@@ -1,14 +1,13 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
-    var hasPinnedChats = m.PinnedChats.Length > 0;
 
-    RenderFragment RenderItem(Chat chat) =>
-        @<NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@(m.ActiveChatId == chat.Id)">
-            <ChildContent>@chat.Title</ChildContent>
+    RenderFragment RenderItem(Chat c) =>
+        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
+            <ChildContent>@c.Title</ChildContent>
             <Ending>
-                <ChatListRecordingToggle ChatId="@chat.Id"/>
-                <ChatListPinToggle ChatId="@chat.Id"/>
+                <ChatListRecordingToggle ChatId="@c.Id"/>
+                <ChatListPinToggle ChatId="@c.Id"/>
             </Ending>
         </NavbarItem>;
 }
@@ -22,18 +21,18 @@
         }
     </Icons>
     <ChildContent>
-        @if (hasPinnedChats) {
+        @if (m.PinnedChats.Length > 0) {
             <NavbarSubgroup Class="first">Pinned</NavbarSubgroup>
-            foreach (var chat in m.PinnedChats)
-                @RenderItem(chat)
+            foreach (var c in m.PinnedChats)
+                @RenderItem(c)
             if (m.UnpinnedChats.Length > 0) {
                 <NavbarSubgroup>Unpinned</NavbarSubgroup>
-                foreach (var chat in m.UnpinnedChats)
-                    @RenderItem(chat)
+                foreach (var c in m.UnpinnedChats)
+                    @RenderItem(c)
             }
         } else {
-            foreach (var chat in m.UnpinnedChats)
-                @RenderItem(chat)
+            foreach (var c in m.UnpinnedChats)
+                @RenderItem(c)
         }
     </ChildContent>
 </NavbarGroup>
@@ -48,7 +47,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.MinDelay, // GetActiveChatId() change should be instantly visible
+            UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -66,10 +65,16 @@
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var pinnedChats = chats.Where(c => pinnedChatIds.Contains(c.Id)).OrderBy(c => c.Title).ToImmutableArray();
-        var unpinnedChats = chats.Where(c => !pinnedChatIds.Contains(c.Id)).OrderBy(c => c.Title).ToImmutableArray();
+        var pinnedChats = chats
+            .Where(c => pinnedChatIds.Contains(c.Id))
+            .OrderBy(c => c.Title)
+            .ToArray();
+        var unpinnedChats = chats
+            .Where(c => !pinnedChatIds.Contains(c.Id))
+            .OrderBy(c => c.Title)
+            .ToArray();
 
-        return new () {
+        return new Model() {
             CanCreateChat = true,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
@@ -84,8 +89,8 @@
         public static Model None { get; } = new();
 
         public bool CanCreateChat { get; init; }
-        public ImmutableArray<Chat> PinnedChats { get; init; } = ImmutableArray<Chat>.Empty;
-        public ImmutableArray<Chat> UnpinnedChats { get; init; } = ImmutableArray<Chat>.Empty;
-        public Symbol ActiveChatId { get; init; } = Constants.Chat.DefaultChatId;
+        public Chat[] PinnedChats { get; init; } = Array.Empty<Chat>();
+        public Chat[] UnpinnedChats { get; init; } = Array.Empty<Chat>();
+        public Symbol ActiveChatId { get; init; }
     }
 }

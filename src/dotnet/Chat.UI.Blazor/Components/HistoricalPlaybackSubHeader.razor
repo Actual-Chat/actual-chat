@@ -81,7 +81,7 @@
     }
 
     private Task OnStop(MouseEventArgs _) {
-        ChatPlayers.StopPlayback(true);
+        ChatPlayers.StopPlayback();
         return Task.CompletedTask;
     }
 

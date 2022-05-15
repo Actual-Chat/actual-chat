@@ -55,22 +55,15 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
             var activeChatId = _chatUI.ActiveChatId.Value;
             if (activeChatId.IsEmpty || activeChatId != state.ActiveChatId)
-                return;
+                state = state with { IsPlayingActive = false };
 
             // Let's try to activate recording first
-            if (state.IsRecordingOn) {
-                var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
-                if (permissions.HasFlag(ChatPermissions.Write)) {
-                    await _userInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
-                    var startRecordingProcess = _audioRecorder.StartRecording(activeChatId);
-                    await startRecordingProcess.WhenStarted.ConfigureAwait(false);
-                }
-            }
-            if (state.IsRealtimePlaybackOn) {
+            if (state.IsPlayingActive || state.IsPlayingPinned) {
                 var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
                 if (permissions.HasFlag(ChatPermissions.Read)) {
                     await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
-                    _chatPlayers.StartRealtimePlayback(state.MustPlayPinned);
+                    _chatUI.IsPlayingActive.Value = state.IsPlayingActive;
+                    _chatUI.IsPlayingPinned.Value = state.IsPlayingPinned;
                 }
             }
         }, Log, "Error while restoring ChatPageState");
@@ -81,15 +74,13 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     {
         var activeChatId = await _chatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await _chatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var audioRecorderState = await _audioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-        var playbackState = await _chatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        var realtimeChatPlaybackState = playbackState as RealtimeChatPlaybackState;
+        var isPlayingActive = await _chatUI.IsPlayingActive.Use(cancellationToken).ConfigureAwait(false);
+        var isPlayingPinned = await _chatUI.IsPlayingPinned.Use(cancellationToken).ConfigureAwait(false);
         return new Model() {
             ActiveChatId = activeChatId,
             PinnedChatIds = pinnedChatIds.ToArray(),
-            IsRealtimePlaybackOn = realtimeChatPlaybackState != null,
-            MustPlayPinned = realtimeChatPlaybackState?.IsPlayingPinned == true,
-            IsRecordingOn = audioRecorderState?.ChatId == activeChatId,
+            IsPlayingActive = isPlayingActive,
+            IsPlayingPinned = isPlayingPinned,
         };
     }
 
@@ -114,8 +105,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     {
         public Symbol ActiveChatId { get; init; }
         public Symbol[] PinnedChatIds { get; init; } = Array.Empty<Symbol>();
-        public bool IsRealtimePlaybackOn { get; init; }
-        public bool MustPlayPinned { get; init; }
-        public bool IsRecordingOn { get; init; }
+        public bool IsPlayingActive { get; init; }
+        public bool IsPlayingPinned { get; init; }
     }
 }

@@ -39,29 +39,30 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
-        var playbackState = ChatPlayers.ChatPlaybackState;
-        var cRealtimePlaybackState = await Computed
-            .Capture(ct => ChatUI.GetRealtimeChatPlaybackState(true, ct), cancellationToken)
+        var cExpectedPlaybackState = await Computed
+            .Capture(ct => ChatUI.GetRealtimeChatPlaybackState(ct), cancellationToken)
             .ConfigureAwait(false);
+        var playbackState = ChatPlayers.ChatPlaybackState;
 
         while (true) {
-            await playbackState
-                .When(p => p is RealtimeChatPlaybackState { IsPlayingPinned: true }, cancellationToken)
-                .ConfigureAwait(false);
+            if (!cExpectedPlaybackState.IsConsistent())
+                cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+            var expectedPlaybackState = cExpectedPlaybackState.ValueOrDefault;
 
-            var doneTask = playbackState
-                .When(p => p is not RealtimeChatPlaybackState { IsPlayingPinned: true }, cancellationToken);
-            while (true) {
-                if (!cRealtimePlaybackState.IsConsistent())
-                    cRealtimePlaybackState = await cRealtimePlaybackState.Update(cancellationToken).ConfigureAwait(false);
-                if (playbackState.Value is not RealtimeChatPlaybackState { IsPlayingPinned: true } rcps)
-                    break;
-                playbackState.Value = cRealtimePlaybackState.Value ?? rcps;
-                var invalidatedTask = cRealtimePlaybackState.WhenInvalidated(cancellationToken);
-                var completedTask = await Task.WhenAny(invalidatedTask, doneTask).ConfigureAwait(false);
-                if (completedTask == doneTask)
-                    break;
+            var playbackStateValue = playbackState.Value;
+            if (playbackStateValue == null) {
+                if (expectedPlaybackState != null)
+                    ChatPlayers.StartPlayback(expectedPlaybackState);
             }
+            else if (playbackStateValue is RealtimeChatPlaybackState realtimePlaybackState) {
+                if (realtimePlaybackState != expectedPlaybackState)
+                    playbackState.Value = expectedPlaybackState;
+            }
+
+            await Task.WhenAny(
+                playbackState.Computed.WhenInvalidated(cancellationToken),
+                cExpectedPlaybackState.WhenInvalidated(cancellationToken))
+                .ConfigureAwait(false);
         }
         // ReSharper disable once FunctionNeverReturns
     }
@@ -98,7 +99,7 @@ public class ChatUIStateSync : WorkerBase
                 // Update _lastLanguageId
                 await IsLanguageChanged().ConfigureAwait(false);
                 // Start recording = start realtime playback
-                ChatPlayers.StartRealtimePlayback(false);
+                ChatUI.IsPlayingActive.Value = true;
             }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder

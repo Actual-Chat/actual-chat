@@ -1,15 +1,34 @@
-@using System.Net
 @inherits ComputedStateComponent<ContactListNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue;
-    var contacts = m.Contacts;
+    var m = State.LatestNonErrorValue ?? Model.None;
+
+    RenderFragment RenderItem(ContactModel c) =>
+        @<NavbarItem
+             Url="@($"/chat/{c.ShortChatId.UrlEncode()}")"
+             IsOnline="@c.IsOnline"
+             IsActive="@(m.ActiveChatId == c.ShortChatId || m.ActiveChatId == c.FullChatId)">
+            <ChildContent>@c.Contact.Name</ChildContent>
+            <Ending>
+                <ChatListRecordingToggle ChatId="@c.FullChatId"/>
+                <ChatListPinToggle ChatId="@c.FullChatId"/>
+            </Ending>
+        </NavbarItem>;
 }
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
-        @foreach(var contact in contacts) {
-            var peerChatId = PeerChatExt.CreateShortPeerChatId(contact.UserContact.TargetUserId);
-            <NavbarItem Url="@($"/chat/{peerChatId.UrlEncode()}")" IsOnline="@contact.IsOnline">@contact.UserContact.Name</NavbarItem>
+        @if (m.PinnedContacts.Length > 0) {
+            <NavbarSubgroup Class="first">Pinned</NavbarSubgroup>
+            foreach (var c in m.PinnedContacts)
+                @RenderItem(c)
+            if (m.UnpinnedContacts.Length > 0) {
+                <NavbarSubgroup>Unpinned</NavbarSubgroup>
+                foreach (var c in m.UnpinnedContacts)
+                    @RenderItem(c)
+            }
+        } else {
+            foreach (var c in m.UnpinnedContacts)
+                @RenderItem(c)
         }
     </ChildContent>
 </NavbarGroup>
@@ -18,33 +37,56 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts Contacts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userContacts = await Contacts.GetAll(Session, cancellationToken).ConfigureAwait(false);
-        var resolvePresence = userContacts
+        var contactTasks = userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
-                return new Contact(
-                    userContact,
-                    presence is Presence.Online or Presence.Recording
-                );
-            })
-            .ToArray();
-        var contacts = await Task.WhenAll(resolvePresence).ConfigureAwait(false);
+                return new ContactModel(userContact) {
+                    IsOnline = presence is Presence.Online or Presence.Recording,
+                    FullChatId = PeerChatExt.CreateFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
+                    ShortChatId = PeerChatExt.CreateShortPeerChatId(userContact.TargetUserId),
+                };
+            });
+        var contacts = await Task.WhenAll(contactTasks).ConfigureAwait(false);
 
-        return new () {
-            Contacts = contacts.OrderBy(c => c.UserContact.Name).ToArray(),
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedContacts = contacts
+            .Where(c => pinnedChatIds.Contains(c.ShortChatId))
+            .OrderBy(c => c.Contact.Name)
+            .ToArray();
+        var unpinnedContacts = contacts
+            .Where(c => !pinnedChatIds.Contains(c.ShortChatId))
+            .OrderBy(c => c.Contact.Name)
+            .ToArray();
+
+        return new Model() {
+            PinnedContacts = pinnedContacts,
+            UnpinnedContacts = unpinnedContacts,
+            ActiveChatId = activeChatId,
         };
     }
 
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public Contact[] Contacts { get; init; } = Array.Empty<Contact>();
+        public ContactModel[] PinnedContacts { get; init; } = Array.Empty<ContactModel>();
+        public ContactModel[] UnpinnedContacts { get; init; } = Array.Empty<ContactModel>();
+        public Symbol ActiveChatId { get; init; }
     }
 
-    public sealed record Contact(UserContact UserContact, bool IsOnline);
+    public sealed record ContactModel(UserContact Contact) {
+        public string FullChatId { get; init; } = "";
+        public string ShortChatId { get; init; } = "";
+        public bool IsOnline { get; init; }
+    };
 }

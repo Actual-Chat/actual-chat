@@ -7,21 +7,14 @@ public abstract record ChatPlaybackState
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-public record RealtimeChatPlaybackState(
-    ImmutableHashSet<Symbol> ChatIds,
-    bool IsPlayingPinned)
-    : ChatPlaybackState
+public record RealtimeChatPlaybackState(ImmutableHashSet<Symbol> ChatIds) : ChatPlaybackState
 {
     // This record relies on referential equality
     public virtual bool Equals(RealtimeChatPlaybackState? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-public record HistoricalChatPlaybackState(
-    Symbol ChatId,
-    Moment StartAt,
-    RealtimeChatPlaybackState? PreviousState)
-    : ChatPlaybackState
+public record HistoricalChatPlaybackState(Symbol ChatId, Moment StartAt) : ChatPlaybackState
 {
     // This record relies on referential equality
     public virtual bool Equals(HistoricalChatPlaybackState? other) => ReferenceEquals(this, other);
