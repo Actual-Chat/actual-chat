@@ -9,12 +9,12 @@
 </RenderIntoSlot>
 
 @if (second / 3 % 2 == 0) {
-    <RenderIntoStack Name="TestFooter">
+    <RenderIntoStack Name="TestFooter" MustPrepend="true">
         Footer 3/2: <TestTimer UpdatePeriod="3"/>
     </RenderIntoStack>
 }
 @if (second / 5 % 2 == 0) {
-    <RenderIntoStack Name="TestFooter">
+    <RenderIntoStack Name="TestFooter" MustPrepend="true">
         Footer 5/2: <TestTimer UpdatePeriod="5"/>
     </RenderIntoStack>
 }

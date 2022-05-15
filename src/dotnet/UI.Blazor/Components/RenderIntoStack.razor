@@ -7,13 +7,14 @@
     if (items.Contains(this))
         stackStateComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
     else
-        stackState.Value = items.Add(this);
+        stackState.Value = MustPrepend ? items.Insert(0, this) : items.Add(this);
 }
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public double Order { get; set; } = 0;
+    [Parameter] public bool MustPrepend { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public void Dispose() {

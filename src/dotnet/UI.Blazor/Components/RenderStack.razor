@@ -4,7 +4,9 @@
     var items = State.ValueOrDefault;
     if (items == null || items.Count == 0)
         return;
-    var orderedItems = IsReversed ? items.OrderByDescending(x => x.Order) : items.OrderBy(x => x.Order);
+    var orderedItems = items.OrderBy(x => x.Order) as IEnumerable<RenderIntoStack>;
+    if (IsReversed)
+        orderedItems = orderedItems.Reverse();
 }
 @foreach (var item in orderedItems) {
     @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
