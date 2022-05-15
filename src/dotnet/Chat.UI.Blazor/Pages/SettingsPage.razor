@@ -7,6 +7,22 @@
 
 <UserNameEditor />
 
-<h4 class="section top-section">Avatars</h4>
+<h4 class="section">User page</h4>
+<CopyToClipboard Class="text-secondary" Text="@_userPage"/>
+
+<h4 class="section">Avatars</h4>
 
 <UserAvatarsEditor />
+
+@code {
+    private string _userPage = "";
+
+    [Inject] public Session Session { get; init; } = null!;
+    [Inject] public IAuth Auth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        var user = await Auth.GetUser(Session, default).ConfigureAwait(true);
+        _userPage = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
+    }
+}

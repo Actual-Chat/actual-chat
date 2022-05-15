@@ -10,7 +10,7 @@
 }
 
 @if (user != null) {
-    var userInfoLink = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
+    var userPage = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
     <MainHeader>
         <span class="text-secondary">User: @user.Name</span>
     </MainHeader>
@@ -31,8 +31,8 @@
             </div>
         </div>
     }
-    <h4 class="section">User info link</h4>
-    <CopyToClipboard Class="text-secondary" Text="@userInfoLink"/>
+    <h4 class="section">User page</h4>
+    <CopyToClipboard Class="text-secondary" Text="@userPage"/>
 }
 
 @code {
