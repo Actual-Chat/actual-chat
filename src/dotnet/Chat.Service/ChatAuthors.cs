@@ -111,10 +111,10 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     public virtual async Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
-        var (userId1, user2Id) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (user2Id.IsNullOrEmpty())
+        var (userId1, userId2) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (userId2.IsNullOrEmpty())
             return false;
-        var contact = await UserContactsBackend.GetByTargetId(userId1, user2Id, cancellationToken).ConfigureAwait(false);
+        var contact = await UserContactsBackend.GetByTargetId(userId1, userId2, cancellationToken).ConfigureAwait(false);
         return contact == null;
     }
 
@@ -143,11 +143,11 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
         var (session, chatPrincipalId) = command;
-        var (userId1, user2Id) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (user2Id.IsNullOrEmpty())
+        var (userId1, userId2) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (userId2.IsNullOrEmpty())
             return;
-        _ = await UserContactsBackend.GetOrCreate(userId1, user2Id, cancellationToken).ConfigureAwait(false);
-        _ = await UserContactsBackend.GetOrCreate(user2Id, userId1, cancellationToken).ConfigureAwait(false);
+        _ = await UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
+        _ = await UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
@@ -170,15 +170,15 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return ("","");
-        var user2Id = await Backend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (user2Id == null)
-            return ("","");
-        if (user.Id == user2Id)
-            return ("","");
-        var user2 = await AuthBackend.GetUser(user2Id, cancellationToken).ConfigureAwait(false);
+            return ("", "");
+        var userId2 = await Backend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (userId2 == null)
+            return ("", "");
+        if (user.Id == userId2)
+            return ("", "");
+        var user2 = await AuthBackend.GetUser(userId2, cancellationToken).ConfigureAwait(false);
         if (user2 == null)
-            return ("","");
+            return ("", "");
         return (user.Id, user2.Id);
     }
 }

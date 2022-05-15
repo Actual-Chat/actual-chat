@@ -63,7 +63,7 @@
         return new Model {
             User = userProfile.User,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
-            CanSendMessage = await Chats.CanSendUserPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
+            CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
         };
     }
 
@@ -91,8 +91,9 @@
     }
 
     private async Task OnSendMessageClick() {
-        var peerChatId = await Chats.GetUserPeerChatId(Session, UserId, default);
-        var encodedUrl = WebUtility.UrlEncode(peerChatId);
-        Nav.NavigateTo("/chat/" + encodedUrl);
+        var peerChatId = await Chats.GetPeerChatId(Session, UserId, default);
+        if (peerChatId.IsNullOrEmpty())
+            return;
+        Nav.NavigateTo($"/chat/{peerChatId.UrlEncode()}");
     }
 }

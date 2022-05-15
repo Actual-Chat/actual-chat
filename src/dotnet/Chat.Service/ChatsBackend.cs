@@ -484,17 +484,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task<ChatPermissions> GetNewPeerChatPermissions(string chatId, string chatPrincipalId, CancellationToken cancellationToken)
     {
-        var chatIdKind = PeerChatExt.GetChatIdKind(chatId);
-        switch (chatIdKind) {
-            case PeerChatIdKind.UserIds:
-                return await GetNewUsersPeerChatPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        }
-        return ChatPermissions.None;
-    }
-
-    private async Task<ChatPermissions> GetNewUsersPeerChatPermissions(string chatId, string chatPrincipalId,
-        CancellationToken cancellationToken)
-    {
         ParseChatPrincipalId(chatPrincipalId, out var chatAuthorId, out var userId);
         if (!chatAuthorId.IsNullOrEmpty()) {
             var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
@@ -503,7 +492,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         if (userId.IsNullOrEmpty())
             return ChatPermissions.None;
-        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
+        if (!PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
             return ChatPermissions.None;
         string? targetUserId = null;
         if (StringComparer.Ordinal.Equals(userId1, userId))
@@ -520,18 +509,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
     {
-        switch (PeerChatExt.GetChatIdKind(chatId)) {
-            case PeerChatIdKind.UserIds:
-                await EnsureUsersPeerChatContactsCreated(chatId, cancellationToken).ConfigureAwait(false);
-                break;
-            default:
-                throw new NotSupportedException();
-        }
-    }
-
-    private async Task EnsureUsersPeerChatContactsCreated(Symbol chatId, CancellationToken cancellationToken)
-    {
-        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
+        if (!PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
             return;
         await _userContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
         await _userContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
@@ -542,18 +520,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat != null)
             return chat;
-        switch (PeerChatExt.GetChatIdKind(chatId)) {
-            case PeerChatIdKind.UserIds:
-                return await CreateUsersPeerChat(chatId, cancellationToken).ConfigureAwait(false);
-            default:
-                throw new NotSupportedException();
-        }
+        return await CreatePeerChat(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Chat> CreateUsersPeerChat(Symbol chatId, CancellationToken cancellationToken)
+    private async Task<Chat> CreatePeerChat(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
-            throw new InvalidOperationException("Application invariant violated");
+        var (userId1, userId2) = PeerChatExt.ParseFullPeerChatId(chatId);
         var chat = new Chat {
             Id = chatId,
             OwnerIds = ImmutableArray<Symbol>.Empty.Add(userId1).Add(userId2),

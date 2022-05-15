@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -86,4 +87,10 @@ public static class StringExt
         var hashBytes = md5.ComputeHash(inputBytes);
         return Convert.ToHexString(hashBytes);
     }
+
+    public static string UrlEncode(this string input)
+        => WebUtility.UrlEncode(input);
+
+    public static string UrlDecode(this string input)
+        => WebUtility.UrlDecode(input);
 }

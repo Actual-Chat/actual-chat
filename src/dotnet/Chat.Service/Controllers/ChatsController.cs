@@ -65,12 +65,12 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CanSendUserPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
-        => _service.CanSendUserPeerChatMessage(session, chatPrincipalId, cancellationToken);
+    public Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+        => _service.CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string?> GetUserPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
-        => _service.GetUserPeerChatId(session, chatPrincipalId, cancellationToken);
+    public Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+        => _service.GetPeerChatId(session, chatPrincipalId, cancellationToken);
 
     [HttpGet]
     public Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)

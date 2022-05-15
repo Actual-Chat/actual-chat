@@ -8,9 +8,8 @@
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
         @foreach(var contact in contacts) {
-            var url = PeerChatExt.CreatePeerChatLink(contact.UserContact.TargetUserId);
-            var encodedUrl = WebUtility.UrlEncode(url);
-            <NavbarItem Url="@($"/chat/{encodedUrl}")" IsOnline="@contact.IsOnline">@contact.UserContact.Name</NavbarItem>
+            var peerChatId = PeerChatExt.CreateShortPeerChatId(contact.UserContact.TargetUserId);
+            <NavbarItem Url="@($"/chat/{peerChatId.UrlEncode()}")" IsOnline="@contact.IsOnline">@contact.UserContact.Name</NavbarItem>
         }
     </ChildContent>
 </NavbarGroup>
@@ -24,7 +23,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userContacts = await Contacts.GetContacts(Session, cancellationToken).ConfigureAwait(false);
+        var userContacts = await Contacts.GetAll(Session, cancellationToken).ConfigureAwait(false);
         var resolvePresence = userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
@@ -41,8 +40,9 @@
         };
     }
 
-    public class Model {
+    public sealed record Model {
         public static Model None { get; } = new();
+
         public Contact[] Contacts { get; init; } = Array.Empty<Contact>();
     }
 

@@ -80,7 +80,7 @@
             await ChatAuthors.GetUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token).ConfigureAwait(false),
             StringComparer.Ordinal);
 
-        var contacts = await UserContacts.GetContacts(Session, DisposeTokenSource.Token).ConfigureAwait(false);
+        var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
         var chatContacts = new ConcurrentBag<Contact>();
         var resolveChatContacts = contacts
             .Select(async userContact => {

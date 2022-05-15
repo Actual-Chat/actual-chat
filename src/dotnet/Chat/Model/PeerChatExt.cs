@@ -1,32 +1,64 @@
 namespace ActualChat.Chat;
 
-public enum PeerChatShortIdKind { None, UserId }
-
-public enum PeerChatIdKind { None, UserIds }
+public enum PeerChatIdKind { None, Short, Full }
 
 public static class PeerChatExt
 {
-    private const string PeerChatIdPrefix = "p:";
+    private const string PeerChatIdPrefix = "p-";
 
     public static bool IsPeerChatId(string chatId)
         => chatId.StartsWith(PeerChatIdPrefix, StringComparison.Ordinal);
 
-    public static string CreatePeerChatLink(string targetPrincipalId)
-        => Invariant($"{PeerChatIdPrefix}{targetPrincipalId}");
+    public static PeerChatIdKind GetChatIdKind(string chatId)
+    {
+        if (!IsPeerChatId(chatId))
+            return PeerChatIdKind.None;
+        return chatId.Count(c => c == '-') switch {
+            1 => PeerChatIdKind.Short,
+            2 => PeerChatIdKind.Full,
+            _ => PeerChatIdKind.None,
+        };
+    }
 
-    public static string CreateUsersPeerChatId(string userId1, string userId2)
+    public static string CreateShortPeerChatId(string targetPrincipalId)
+        => $"{PeerChatIdPrefix}{targetPrincipalId}";
+
+    public static string CreateFullPeerChatId(string userId1, string userId2)
     {
         if (string.Compare(userId1, userId2, StringComparison.Ordinal) > 0)
             (userId1, userId2) = (userId2, userId1);
-        return Invariant($"{PeerChatIdPrefix}{userId1}:{userId2}");
+        return $"{PeerChatIdPrefix}{userId1}-{userId2}";
     }
 
-    public static bool TryParseUsersPeerChatId(string chatId, out string userId1, out string userId2)
+    public static string ParseShortPeerChatId(string shortChatId)
+    {
+        if (!TryParseShortPeerChatId(shortChatId, out var userId))
+            throw new InvalidOperationException("Invalid short peer chat ID.");
+        return userId;
+    }
+
+    public static (string UserId1, string UserId2) ParseFullPeerChatId(string fullChatId)
+    {
+        if (!TryParseFullPeerChatId(fullChatId, out var userId1, out var userId2))
+            throw new InvalidOperationException("Invalid full peer chat ID.");
+        return (userId1, userId2);
+    }
+
+    public static bool TryParseShortPeerChatId(string shortChatId, out string userId)
+    {
+        userId = "";
+        if (!IsPeerChatId(shortChatId))
+            return false;
+        userId = shortChatId.Substring(PeerChatIdPrefix.Length);
+        return true;
+    }
+
+    public static bool TryParseFullPeerChatId(string fullChatId, out string userId1, out string userId2)
     {
         userId1 = userId2 = "";
-        if (!IsPeerChatId(chatId))
+        if (!IsPeerChatId(fullChatId))
             return false;
-        var parts = chatId.Split(":");
+        var parts = fullChatId.Split("-");
         if (parts.Length != 3)
             return false;
         userId1 = parts[1];
@@ -34,31 +66,4 @@ public static class PeerChatExt
         return !userId1.IsNullOrEmpty() && !userId2.IsNullOrEmpty()
             && !StringComparer.Ordinal.Equals(userId1, userId2);
     }
-
-    public static PeerChatShortIdKind GetChatShortIdKind(string chatShortId)
-    {
-        if (!IsPeerChatId(chatShortId))
-            return PeerChatShortIdKind.None;
-        if (IsUserLink(chatShortId))
-            return PeerChatShortIdKind.UserId;
-        return PeerChatShortIdKind.None;
-    }
-
-    public static PeerChatIdKind GetChatIdKind(string chatId)
-    {
-        if (!IsPeerChatId(chatId))
-            return PeerChatIdKind.None;
-        if (IsUsersPeerChatId(chatId))
-            return PeerChatIdKind.UserIds;
-        return PeerChatIdKind.None;
-    }
-
-    public static string GetUserId(string chatShortId)
-        => chatShortId.Substring(PeerChatIdPrefix.Length);
-
-    private static bool IsUserLink(string chatId)
-        => chatId.Count(c => c == ':') == 1;
-
-    private static bool IsUsersPeerChatId(string chatId)
-        => chatId.Count(c => c == ':') == 2;
 }

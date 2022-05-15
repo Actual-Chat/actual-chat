@@ -3,5 +3,5 @@ namespace ActualChat.Users;
 public interface IUserContacts
 {
     [ComputeMethod]
-    public Task<ImmutableArray<UserContact>> GetContacts(Session session, CancellationToken cancellationToken);
+    public Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken);
 }

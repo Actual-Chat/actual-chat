@@ -32,15 +32,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
         var isPeerChat = PeerChatExt.IsPeerChatId(chatId);
-        if (isPeerChat)
-            return await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        return isPeerChat
+            ? await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false)
+            : await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
     protected virtual async Task<string> GetUsersPeerChatTitle(string chatId, User user, CancellationToken cancellationToken)
     {
-        if (PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2)) {
+        if (PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2)) {
             var targetUserId = "";
             if (userId1 == user.Id)
                 targetUserId = userId2;
@@ -57,18 +57,20 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual async Task<string> GetUsersPeerChatId(
-        Session session,
-        string chatShortId,
-        CancellationToken cancellationToken)
+    protected virtual async Task<string> GetFullPeerChatId(Session session, string chatId, CancellationToken cancellationToken)
     {
+        switch (PeerChatExt.GetChatIdKind(chatId)) {
+            case PeerChatIdKind.None:
+                return "";
+            case PeerChatIdKind.Full:
+                return chatId;
+        }
+        if (!PeerChatExt.TryParseShortPeerChatId(chatId, out var userId2))
+            return "";
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return "";
-        var user2Id = PeerChatExt.GetUserId(chatShortId);
-        if (!user2Id.IsNullOrEmpty())
-            return PeerChatExt.CreateUsersPeerChatId(user.Id, user2Id);
-        return "";
+        return PeerChatExt.CreateFullPeerChatId(user.Id, userId2);
     }
 
     // [ComputeMethod]
@@ -149,7 +151,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await _backend.GetTextEntryAttachments(chatId, entryId, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<bool> CanSendUserPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
@@ -173,14 +175,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return true;
     }
 
-    public virtual async Task<string?> GetUserPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
-        if (!await CanSendUserPeerChatMessage(session, chatPrincipalId, cancellationToken).ConfigureAwait(false))
+        if (!await CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken).ConfigureAwait(false))
             return Symbol.Empty;
-        var user2Id = await _chatAuthorsBackend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (user2Id == null)
+        var userId2 = await _chatAuthorsBackend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (userId2 == null)
             return null;
-        var peerChatId = PeerChatExt.CreatePeerChatLink(user2Id);
+        var peerChatId = PeerChatExt.CreateShortPeerChatId(userId2);
         return peerChatId;
     }
 
@@ -354,23 +356,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     private async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        chatId = await NormalizePeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.IsNullOrEmpty())
             return null;
-        switch (PeerChatExt.GetChatIdKind(chatId)) {
-            case PeerChatIdKind.UserIds:
-                return await GetUsersPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
-        }
-        return null;
-    }
-
-    private async Task<string> NormalizePeerChatId(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        switch (PeerChatExt.GetChatShortIdKind(chatId)) {
-            case PeerChatShortIdKind.UserId:
-                return await GetUsersPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
-        }
-        return chatId;
+        return await GetUsersPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<bool> IsInvited(
@@ -381,10 +370,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         if (!options.Items.TryGetValue("Invite::ChatId", out var inviteChatId))
             return false;
-        if (!StringComparer.Ordinal.Equals(chatId, inviteChatId as string))
-            return false;
-
-        return true;
+        return StringComparer.Ordinal.Equals(chatId, inviteChatId as string);
     }
 
     [ComputeMethod]
