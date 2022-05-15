@@ -53,10 +53,10 @@ public interface IChatsClientDef
         CancellationToken cancellationToken);
 
     [Get(nameof(CanSendUserPeerChatMessage))]
-    Task<bool> CanSendUserPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<bool> CanSendUserPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     [Get(nameof(GetUserPeerChatId))]
-    Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<string?> GetUserPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     [Get(nameof(GetMentionCandidates))]
     Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
@@ -87,7 +87,7 @@ public interface IChatAuthorsClientDef
     [Get(nameof(GetChatIds))]
     Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(CanAddToContacts))]
-    Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
     [Post(nameof(AddToContacts))]
     Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateChatAuthors))]
