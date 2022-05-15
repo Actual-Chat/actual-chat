@@ -1,4 +1,5 @@
 @page "/u/{UserId}"
+@using System.Net
 @inherits ComputedStateComponent<UserPage.Model>
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
@@ -9,15 +10,41 @@
 }
 
 @if (user != null) {
+    var userInfoLink = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
     <MainHeader>
-        <span class="text-secondary">User page: @user.Name (@UserId)</span>
+        <span class="text-secondary">User: @user.Name</span>
     </MainHeader>
+
+    <div class="user-info_badge">
+        <UserAuthorCircle UserId="@user.Id" Size="PersonCircleSize.Size12" ShowsPresence="true" />
+        <UserAuthorName UserId="@user.Id" Class="text-primary font-semibold text-lg"/>
+    </div>
+    @if (m.CanAddContact || m.CanSendMessage) {
+        <div class="user-info_buttons">
+            <div class="btn-group btn-group-font-normal">
+                @if (m.CanAddContact) {
+                    <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
+                }
+                @if (m.CanSendMessage) {
+                    <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
+                }
+            </div>
+        </div>
+    }
+    <h4 class="section">User info link</h4>
+    <CopyToClipboard Class="text-secondary" Text="@userInfoLink"/>
 }
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+
+    private bool IsAddingContact { get; set; }
+
     [Parameter] public string UserId { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -30,7 +57,11 @@
         var userProfile = await UserProfiles.GetByUserId(Session, UserId, cancellationToken);
         if (userProfile == null)
             return new Model { IsUnavailable = true };
-        return new Model { User = userProfile.User };
+        return new Model {
+            User = userProfile.User,
+            CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
+            CanSendMessage = await Chats.CanSendUserPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
+        };
     }
 
     public sealed record Model {
@@ -38,5 +69,27 @@
 
         public bool IsUnavailable { get; init; }
         public User? User { get; init; }
+        public bool CanAddContact { get; init; }
+        public bool CanSendMessage { get; init; }
+    }
+
+    private async Task OnAddContactClick() {
+        if (IsAddingContact)
+            return;
+        IsAddingContact = true;
+        StateHasChanged();
+        try {
+            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
+        }
+        finally {
+            IsAddingContact = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSendMessageClick() {
+        var peerChatId = await Chats.GetUserPeerChatId(Session, UserId, default);
+        var encodedUrl = WebUtility.UrlEncode(peerChatId);
+        Nav.NavigateTo("/chat/" + encodedUrl);
     }
 }

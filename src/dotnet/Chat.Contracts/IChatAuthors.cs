@@ -17,7 +17,7 @@ public interface IChatAuthors
     [ComputeMethod(KeepAliveTime = 1)]
     Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
@@ -34,7 +34,7 @@ public interface IChatAuthors
     [DataContract]
     public sealed record AddToContactsCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatAuthorId
+        [property: DataMember] string ChatPrincipalId
         ) : ISessionCommand<Unit>;
 
     [DataContract]

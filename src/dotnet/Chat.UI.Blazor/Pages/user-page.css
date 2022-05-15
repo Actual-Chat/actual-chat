@@ -1,0 +1,7 @@
+.user-info_badge {
+    @apply flex flex-row items-center mt-2 gap-x-3
+}
+
+.user-info_buttons {
+    @apply flex flex-row mt-4
+}

@@ -52,10 +52,10 @@ public interface IChats
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<bool> CanSendUserPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<bool> CanSendUserPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<string?> GetUserPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
 

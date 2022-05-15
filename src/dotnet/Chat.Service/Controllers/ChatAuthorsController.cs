@@ -30,8 +30,8 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service.GetChatAuthorAvatarId(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
-        => _service.CanAddToContacts(session, chatAuthorId, cancellationToken);
+    public Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+        => _service.CanAddToContacts(session, chatPrincipalId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
