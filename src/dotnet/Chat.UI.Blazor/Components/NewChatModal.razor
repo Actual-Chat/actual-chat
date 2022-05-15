@@ -34,7 +34,7 @@
 
     private async Task OnCreate()
     {
-        var command = new IChats.CreateChatCommand(Session, _form.Title) { IsPublic = true };
+        var command = new IChats.CreateChatCommand(Session, _form.Title);
         var result = await Cmd.Run(command, default);
         if (!result.CommandEvent.IsCompletedSuccessfully)
             return;
