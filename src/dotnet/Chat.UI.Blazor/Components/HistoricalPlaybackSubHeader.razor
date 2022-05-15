@@ -1,0 +1,94 @@
+@inherits ComputedStateComponent<HistoricalPlaybackSubHeader.Model>
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
+@{
+    var m = State.ValueOrDefault ?? Model.NotPlaying;
+    if (m == Model.NotPlaying)
+        return;
+
+}
+
+<div class="historical-playback-sub-header">
+    <div class="historical-playback-sub-header-content">
+        @* Icons *@
+        <div class="c-icons">
+            <svg class="h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 24.123 11.997 C 24.123 18.624 18.75 23.997 12.123 23.997 C 5.496 23.997 0.123 18.624 0.123 11.997 L 2.123 11.997 C 2.123 17.511 6.609 21.997 12.123 21.997 C 17.637 21.997 22.123 17.511 22.123 11.997 C 22.123 6.483 17.637 1.997 12.123 1.997 C 9.346 1.997 6.836 3.138 5.024 4.974 L 7.085 7.035 L 0.123 8.389 L 1.428 1.376 L 3.607 3.556 C 5.779 1.36 8.789 -0.003 12.123 -0.003 C 18.75 -0.003 24.123 5.37 24.123 11.997 Z M 11.123 5.997 L 11.123 13.997 L 18.123 13.997 L 18.123 11.997 L 13.123 11.997 L 13.123 5.997 L 11.123 5.997 Z"></path>
+            </svg>
+        </div>
+        @* Position *@
+        <div class="c-text">
+            @if (m.PlayingAt is { } playingAt) {
+                var localTime = playingAt.ToLocalTime();
+                var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
+                var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
+                <span>
+                    Playing audio recorded
+                    <span class="c-moment" title="@absoluteTime">@relativeTime</span>
+                </span>
+            }
+        </div>
+        @* Stop button *@
+        <div class="c-stop">
+            <ButtonSquare Click="OnStop">
+                <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0h24v24h-24z"/>
+                </svg>
+            </ButtonSquare>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private ILiveTime LiveTime { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            InitialValue = Model.NotPlaying,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        if (player is not HistoricalChatPlayer)
+            return Model.NotPlaying;
+
+        var playback = player.Playback;
+        var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+        if (!isPlaying)
+            return Model.NotPlaying;
+
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        Moment? playingAt = null;
+        foreach (var playbackState in playbackStates) {
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
+            if (actualPlaybackState == null)
+                continue;
+            var trackInfo = playbackState.TrackInfo;
+
+            playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
+        }
+
+        return new () {
+            PlayingAt = playingAt,
+        };
+    }
+
+    private Task OnStop(MouseEventArgs _) {
+        ChatPlayers.StopPlayback(true);
+        return Task.CompletedTask;
+    }
+
+    public sealed class Model
+    {
+        public static Model NotPlaying { get; } = new();
+
+        public DateTime? PlayingAt { get; init; }
+    }
+}

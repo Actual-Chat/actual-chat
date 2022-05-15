@@ -7,8 +7,11 @@
     </div>
     <div class="flex-1 flex-x h-full overflow-hidden">
         <div class="flex-1 -flex-y h-full overflow-hidden">
-            <div class="flex-none flex-y w-full overflow-hidden">
+            <div class="flex-none flex-y w-full overflow-hidden z-40">
                 @Footer
+            </div>
+            <div class="flex-none flex-y w-full overflow-hidden z-30">
+                @SubFooter
             </div>
             <div class="flex-1 flex-y overflow-y-auto @BodyClass">
                 @Body
@@ -24,6 +27,7 @@
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? SubHeader { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public RenderFragment? SubFooter { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? RightPanel { get; set; }
 }

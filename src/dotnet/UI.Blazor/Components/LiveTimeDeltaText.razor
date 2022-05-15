@@ -4,7 +4,7 @@
     var tooltip = Tooltip;
     if (tooltip == null) {
         var localTime = Moment.GetValueOrDefault().ToDateTime().ToLocalTime();
-        tooltip = Moment.HasValue ? $"{localTime.ToLongDateString()}, {localTime.ToShortTimeString()}" : NullText;
+        tooltip = Moment.HasValue ? $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}" : NullText;
     }
 }
 

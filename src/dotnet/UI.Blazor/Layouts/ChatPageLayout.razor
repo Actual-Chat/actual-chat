@@ -2,19 +2,10 @@
 @layout BaseLayout
 
 <PageWithHeaderAndFooter Class="chat-page" BodyClass="pt-0">
-    <Header>
-        <RenderSlot Name="MainHeader"/>
-    </Header>
-    <SubHeader>
-        <RenderSlot Name="SubHeader"/>
-    </SubHeader>
-    <Footer>
-        <RenderSlot Name="MainFooter"/>
-    </Footer>
-    <Body>
-        @Body
-    </Body>
-    <RightPanel>
-        <RenderSlot Name="MainRightPanel"/>
-    </RightPanel>
+    <Header><RenderSlot Name="MainHeader"/></Header>
+    <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
+    <Footer><RenderSlot Name="MainFooter"/></Footer>
+    <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
+    <Body>@Body</Body>
+    <RightPanel><RenderSlot Name="MainRightPanel"/></RightPanel>
 </PageWithHeaderAndFooter>

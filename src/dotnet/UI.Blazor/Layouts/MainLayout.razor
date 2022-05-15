@@ -2,13 +2,9 @@
 @layout BaseLayout
 
 <PageWithHeaderAndFooter BodyClass="p-3">
-    <Header>
-        <RenderSlot Name="MainHeader"/>
-    </Header>
-    <Footer>
-        <RenderSlot Name="MainFooter"/>
-    </Footer>
-    <Body>
-        @Body
-    </Body>
+    <Header><RenderSlot Name="MainHeader"/></Header>
+    <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
+    <Footer><RenderSlot Name="MainFooter"/></Footer>
+    <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
+    <Body>@Body</Body>
 </PageWithHeaderAndFooter>

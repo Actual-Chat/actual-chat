@@ -1,14 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<UnreadMessagesHeader.Model>
-
-@if (State.Value.Count > 0) {
-    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-primary-inverted font-bold" @onclick="Click">
-        @State.Value.Count unread @PluralizeMessage(@State.Value.Count)
-    </div>
+@inherits ComputedStateComponent<UnreadMessagesSubHeader.Model>
+@{
+    var m = State.ValueOrDefault ?? Model.None;
+    if (m.Count == 0)
+        return;
 }
 
-@code {
+<div class="unread-messages-sub-header" @onclick="Click">
+    @m.Count unread @PluralizeMessage(m.Count)
+</div>
 
+@code {
     [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
@@ -17,14 +19,14 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
-            InitialValue = Model.Empty,
+            InitialValue = Model.None,
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
         if (!count.HasValue)
-            return Model.Empty;
+            return Model.None;
 
         return new() {
             Count = count.Value,
@@ -38,10 +40,9 @@
         };
     }
 
-    public class Model {
-        public static readonly Model Empty = new();
+    public sealed record Model {
+        public static readonly Model None = new();
 
-        public int Count { get; set; }
+        public int Count { get; init; }
     }
-
 }

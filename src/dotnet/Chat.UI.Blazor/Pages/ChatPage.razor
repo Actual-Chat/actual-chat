@@ -19,36 +19,40 @@
     <WhenError Error="error"/>
 } else if (chat != null) {
     @* @key=... ensures child components are recreated on navigation to another chat *@
-    <RenderIntoSlot Name="MainHeader" @key="@(chat.Id + "-header")">
-        <CascadingValue Value="chat">
-            <ChatHeader/>
-        </CascadingValue>
-    </RenderIntoSlot>
-
-    <RenderIntoSlot Name="SubHeader" @key="@(chat.Id + "-sub-header")">
-        <CascadingValue Value="chat">
-            <UnreadMessagesHeader Click="@OnUnreadMessagesClick"/>
-        </CascadingValue>
-    </RenderIntoSlot>
-
-    <RenderIntoSlot Name="MainFooter" @key="@(chat.Id + "-footer")">
-        <CascadingValue Value="chat">
-            <ChatFooter/>
-        </CascadingValue>
-    </RenderIntoSlot>
-
-    if (m.IsRightPanelVisible) {
-        <RenderIntoSlot Name="MainRightPanel" @key="@(chat.Id + "-right-panel")">
+    <NoComponent @key="chat.Id">
+        <RenderIntoSlot Name="MainHeader">
             <CascadingValue Value="chat">
-                <ChatRightPanel/>
+                <ChatHeader/>
             </CascadingValue>
         </RenderIntoSlot>
-    }
 
-    <NoComponent @key="chat.Id">
+        <RenderIntoStack Name="SubHeader" Order="-1000_000">
+            <CascadingValue Value="chat">
+                <HistoricalPlaybackSubHeader/>
+            </CascadingValue>
+        </RenderIntoStack>
+        <RenderIntoStack Name="SubHeader" Order="1000_000">
+            <CascadingValue Value="chat">
+                <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
+            </CascadingValue>
+        </RenderIntoStack>
+
+        <RenderIntoSlot Name="MainFooter">
+            <CascadingValue Value="chat">
+                <ChatFooter/>
+            </CascadingValue>
+        </RenderIntoSlot>
+
+        @if (m.IsRightPanelVisible) {
+            <RenderIntoSlot Name="MainRightPanel">
+                <CascadingValue Value="chat">
+                    <ChatRightPanel/>
+                </CascadingValue>
+            </RenderIntoSlot>
+        }
+
         <CascadingValue Value="chat">
             <ChatView @ref="_chatView" />
-            <HistoricalPlaybackPanel/>
         </CascadingValue>
     </NoComponent>
 } else {
