@@ -12,7 +12,7 @@ public sealed record ChatAuthor : Author
         chatId = "";
         if (chatAuthorId.IsNullOrEmpty())
             return false;
-        var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
+        var chatIdLength = chatAuthorId.LastIndexOf(":", StringComparison.Ordinal);
         if (chatIdLength == -1)
             return false;
         chatId = chatAuthorId.Substring(0, chatIdLength);
