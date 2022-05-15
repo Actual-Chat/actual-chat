@@ -1,0 +1,23 @@
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
+@{
+    var stackState = RenderVars.RenderStack(Name);
+    var stackStateComputed = stackState.Computed;
+    var items = stackState.Value;
+    if (items.Contains(this))
+        stackStateComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
+    else
+        stackState.Value = items.Add(this);
+}
+@code {
+    [Inject] private RenderVars RenderVars { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public double Order { get; set; } = 0;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public void Dispose() {
+        var stackState = RenderVars.RenderStack(Name);
+        stackState.Value = stackState.Value.Remove(this);
+    }
+}

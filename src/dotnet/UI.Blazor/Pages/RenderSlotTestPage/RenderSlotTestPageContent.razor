@@ -1,17 +1,26 @@
 @inherits ComputedStateComponent<Moment>
 @{
     var time = State.ValueOrDefault;
+    var second = (long) time.ToDateTime().TimeOfDay.TotalSeconds;
 }
 
 <RenderIntoSlot Name="TestHeader">
     Header: <TestTimer UpdatePeriod="3"/> + @time.ToString("F")
 </RenderIntoSlot>
 
-@if (time.ToDateTime().Second / 30 % 2 == 0) {
-    <RenderIntoSlot Name="TestFooter">
-        Footer: <TestTimer UpdatePeriod="10"/>
-    </RenderIntoSlot>
+@if (second / 3 % 2 == 0) {
+    <RenderIntoStack Name="TestFooter">
+        Footer 3/2: <TestTimer UpdatePeriod="3"/>
+    </RenderIntoStack>
 }
+@if (second / 5 % 2 == 0) {
+    <RenderIntoStack Name="TestFooter">
+        Footer 5/2: <TestTimer UpdatePeriod="5"/>
+    </RenderIntoStack>
+}
+<RenderIntoStack Name="TestFooter" Order="1">
+    Footer 1: <TestTimer UpdatePeriod="1"/>
+</RenderIntoStack>
 
 Content: @DateTime.Now.ToString("F")
 

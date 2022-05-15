@@ -1,13 +1,12 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
-
 @{
     var slotState = RenderVars.RenderSlot(Name);
     var slotComputed = slotState.Computed;
-    if (slotComputed.ValueOrDefault == ChildContent)
+    if (slotComputed.Value == this)
         slotComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
     else
-        slotState.Value = ChildContent;
+        slotState.Value = this;
 }
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;

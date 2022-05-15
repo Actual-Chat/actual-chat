@@ -1,16 +1,16 @@
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<RenderFragment?>
+@inherits ComputedStateComponent<RenderIntoSlot?>
 
-@State.ValueOrDefault
+@State.Value?.ChildContent
 
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
 
-    protected override ComputedState<RenderFragment?>.Options GetStateOptions()
+    protected override ComputedState<RenderIntoSlot?>.Options GetStateOptions()
         => new () { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<RenderFragment?> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken)
         => await RenderVars.RenderSlot(Name).Use(cancellationToken);
 }

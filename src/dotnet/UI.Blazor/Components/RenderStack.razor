@@ -1,0 +1,25 @@
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<ImmutableList<RenderIntoStack>>
+@{
+    var items = State.ValueOrDefault;
+    if (items == null || items.Count == 0)
+        return;
+    var orderedItems = IsReversed ? items.OrderByDescending(x => x.Order) : items.OrderBy(x => x.Order);
+}
+@foreach (var item in orderedItems) {
+    @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
+}
+
+@code {
+    [Inject] private RenderVars RenderVars { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public bool IsReversed { get; set; }
+    [Parameter] public RenderFragment<RenderFragment?>? Item { get; set; }
+
+    protected override ComputedState<ImmutableList<RenderIntoStack>>.Options GetStateOptions()
+        => new () { UpdateDelayer = UpdateDelayer.ZeroDelay };
+
+    protected override async Task<ImmutableList<RenderIntoStack>> ComputeState(CancellationToken cancellationToken)
+        => await RenderVars.RenderStack(Name).Use(cancellationToken);
+}

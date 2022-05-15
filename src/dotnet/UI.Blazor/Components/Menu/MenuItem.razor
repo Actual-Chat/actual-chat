@@ -9,14 +9,14 @@
 
 <div class="relative !pl-0.5">
     @if (Menu.Orientation == MenuOrientation.Horizontal) {
-        <button @onclick="OnClick" tooltip="@Title" flow="@tooltipFlow" disabled="@Disabled"
+        <button @onclick="OnClick" tooltip="@Title" flow="@tooltipFlow" disabled="@IsDisabled"
                 class="menu-item flex h-8 w-full text-secondary @cls" name="@Name">
             <div class="icon-container horizontal-item relative flex-auto mx-1 h-full">
                 <div class="rounded-sm text-xxs relative">@Icon</div>
             </div>
         </button>
     } else {
-        <button @onclick="OnClick" disabled="@Disabled"
+        <button @onclick="OnClick" disabled="@IsDisabled"
                 class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-6 @cls" name="@Name">
             @if (Menu.IconPosition == MenuIconPosition.Left) {
                 @if (Icon != null) {
@@ -48,7 +48,7 @@
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
-    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
     private async Task OnClick() {
