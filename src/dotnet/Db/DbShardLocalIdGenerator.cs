@@ -36,14 +36,11 @@ public class DbShardLocalIdGenerator<TDbContext, TEntity, TShardKey> : IDbShardL
         _maxLocalIdCache = maxLocalIdCacheFactory?.Invoke() ?? new ConcurrentLruCache<Symbol, long>(16384);
     }
 
-    public async Task<long> Next(
-        DbContext dbContext,
-        TShardKey shardKey,
-        CancellationToken cancellationToken)
+    public async Task<long> Next(DbContext dbContext, TShardKey shardKey, CancellationToken cancellationToken)
     {
         // This method must be thread-safe!
 
-        var idSequenceKey = new Symbol(shardKey?.ToString() ?? "");
+        var idSequenceKey = new Symbol(shardKey.ToString() ?? "");
         var maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
         if (maxLocalId == 0) {
             var shardFilterExpr = CreateShardFilterExpression(shardKey);
