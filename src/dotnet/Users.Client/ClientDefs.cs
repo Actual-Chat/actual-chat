@@ -7,6 +7,8 @@ public interface IUserProfilesClientDef
 {
     [Get(nameof(Get))]
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
+    [Get(nameof(GetByUserId))]
+    Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
     [Get(nameof(GetUserAuthor))]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]

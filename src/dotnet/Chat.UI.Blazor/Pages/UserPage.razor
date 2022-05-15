@@ -1,0 +1,42 @@
+@page "/u/{UserId}"
+@inherits ComputedStateComponent<UserPage.Model>
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
+@{
+    var m = State.LatestNonErrorValue;
+    if (m.IsUnavailable)
+        Nav.Unavailable("user");
+    var user = m.User;
+}
+
+@if (user != null) {
+    <MainHeader>
+        <span class="text-secondary">User page: @user.Name (@UserId)</span>
+    </MainHeader>
+}
+
+@code {
+    [Inject] public Session Session { get; init; } = null!;
+    [Inject] public IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Parameter] public string UserId { get; set; } = "";
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var userProfile = await UserProfiles.GetByUserId(Session, UserId, cancellationToken);
+        if (userProfile == null)
+            return new Model { IsUnavailable = true };
+        return new Model { User = userProfile.User };
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public bool IsUnavailable { get; init; }
+        public User? User { get; init; }
+    }
+}

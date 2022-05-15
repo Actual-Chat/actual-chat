@@ -28,6 +28,12 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
+    {
+        await AssertCanReadUserProfile(session, userId, cancellationToken).ConfigureAwait(false);
+        return await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
         => _backend.GetUserAuthor(userId, cancellationToken);
 
@@ -63,5 +69,19 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
         throw new UnauthorizedAccessException(
             $"User id='{currentUserProfile.User.Id}' is not allowed to update status of user id='{userProfileToUpdate.Id}'");
+    }
+
+    private async Task AssertCanReadUserProfile(
+        Session session,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
+            ?? throw new Exception("User profile not found");
+        if (currentUserProfile.User.Id == userId)
+            return;
+        if (currentUserProfile.Status == UserStatus.Active)
+            return;
+        throw new SecurityException("User cannot read other profiles");
     }
 }
