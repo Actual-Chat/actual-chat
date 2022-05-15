@@ -2,18 +2,21 @@
 @inherits ComputedStateComponent<ChatAuthorsTab.Model>
 @{
     var m = State.LatestNonErrorValue;
+    var isPeerChat = PeerChatExt.GetChatIdKind(Chat.Id) == PeerChatIdKind.Full;
 }
 
 <div class="flex-y w-full space-y-3">
-    <div class="flex-x w-full justify-between">
-        <div class="flex-auto"></div>
-        <div class="flex-none">
-            <Button Click="OnInviteClick" Title="Invite users">
-                <i class="fa fa-user-plus p-1 pl-0" aria-hidden="true"></i>
-                Invite users
-            </Button>
+    @if (!isPeerChat) {
+        <div class="flex-x w-full justify-between">
+            <div class="flex-auto"></div>
+            <div class="flex-none">
+                <Button Click="OnInviteClick" Title="Invite users">
+                    <i class="fa fa-user-plus p-1 pl-0" aria-hidden="true"></i>
+                    Invite users
+                </Button>
+            </div>
         </div>
-    </div>
+    }
     @foreach (var authorId in m.AuthorIds) {
         <ChatAuthorBadge
             AuthorId="@authorId"

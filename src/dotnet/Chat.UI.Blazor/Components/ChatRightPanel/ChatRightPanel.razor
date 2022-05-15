@@ -1,15 +1,24 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var isPeerChat = PeerChatExt.GetChatIdKind(Chat.Id) == PeerChatIdKind.Full;
+}
 
 <div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">
     <TabPanel>
         <Tab Title="Users" Id="Users" Class="custom-scrollbar">
             <ChatAuthorsTab />
         </Tab>
-        <Tab Title="You" Id="You" Class="custom-scrollbar">
-            <ChatUserTab />
-        </Tab>
-        <Tab Title="Chat" Id="Chat" Class="custom-scrollbar">
-            <ChatTab />
-        </Tab>
+        @if (!isPeerChat) {
+            <Tab Title="You" Id="You" Class="custom-scrollbar">
+                <ChatUserTab />
+            </Tab>
+            <Tab Title="Chat" Id="Chat" Class="custom-scrollbar">
+                <ChatTab />
+            </Tab>
+        }
     </TabPanel>
 </div>
+
+@code {
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+}
