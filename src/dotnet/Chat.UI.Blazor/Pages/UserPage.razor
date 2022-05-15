@@ -4,36 +4,38 @@
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var m = State.LatestNonErrorValue;
-    if (m.IsUnavailable)
-        Nav.Unavailable("user");
     var user = m.User;
-}
-
-@if (user != null) {
-    var userPage = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
-    <MainHeader>
-        <span class="text-secondary">User: @user.Name</span>
-    </MainHeader>
-
-    <div class="user-info_badge">
-        <UserAuthorCircle UserId="@user.Id" Size="PersonCircleSize.Size12" ShowsPresence="true" />
-        <UserAuthorName UserId="@user.Id" Class="text-primary font-semibold text-lg"/>
-    </div>
-    @if (m.CanAddContact || m.CanSendMessage) {
-        <div class="user-info_buttons">
-            <div class="btn-group btn-group-font-normal">
-                @if (m.CanAddContact) {
-                    <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
-                }
-                @if (m.CanSendMessage) {
-                    <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
-                }
-            </div>
-        </div>
+    if (user == null) {
+        if (ReferenceEquals(m, Model.Unavailable))
+            Nav.Unavailable("user");
+        return;
     }
-    <h4 class="section">User page</h4>
-    <CopyToClipboard Class="text-secondary" Text="@userPage"/>
 }
+
+<MainHeader>
+    <span class="text-secondary">User: @user.Name</span>
+</MainHeader>
+
+<div class="user-info_badge">
+    <UserAuthorCircle UserId="@user.Id" Size="PersonCircleSize.Size12" ShowsPresence="true" />
+    <UserAuthorName UserId="@user.Id" Class="text-primary font-semibold text-lg"/>
+</div>
+
+@if (m.CanAddContact || m.CanSendMessage) {
+    <div class="user-info_buttons">
+        <div class="btn-group btn-group-font-normal">
+            @if (m.CanAddContact) {
+                <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
+            }
+            @if (m.CanSendMessage) {
+                <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
+            }
+        </div>
+    </div>
+}
+
+<h4 class="section section-top">Link to this page</h4>
+<UserPageLink/>
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
@@ -50,13 +52,14 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userProfile = await UserProfiles.GetByUserId(Session, UserId, cancellationToken);
         if (userProfile == null)
-            return new Model { IsUnavailable = true };
+            return Model.Unavailable;
+
         return new Model {
             User = userProfile.User,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
@@ -66,8 +69,8 @@
 
     public sealed record Model {
         public static Model None { get; } = new();
+        public static Model Unavailable { get; } = new();
 
-        public bool IsUnavailable { get; init; }
         public User? User { get; init; }
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }

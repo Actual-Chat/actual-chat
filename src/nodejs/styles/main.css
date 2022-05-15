@@ -75,7 +75,7 @@ h1.section, h2.section, h3.section, h4.section {
     @apply text-secondary subpixel-antialiased;
 }
 
-h1.top-section, h2.top-section, h3.top-section, h4.top-section,
+h1.section-top, h2.section-top, h3.section-top, h4.section-top,
 h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.section:nth-child(1) {
     @apply mt-0;
     @apply border-0;

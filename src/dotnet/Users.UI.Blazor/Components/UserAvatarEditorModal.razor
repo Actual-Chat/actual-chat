@@ -1,7 +1,7 @@
 @implements IModalView<UserAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
-    var m = _model!;
+    var m = _model;
 }
 
 <Form Model="@m" OnValidSubmit="@OnSave">
@@ -28,7 +28,7 @@
 </Form>
 
 @code {
-    private EditModel? _model;
+    private EditModel _model = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
