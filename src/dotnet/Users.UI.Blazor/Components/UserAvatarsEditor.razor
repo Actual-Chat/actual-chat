@@ -13,11 +13,6 @@
                     <ActionsTemplate>
                         <div class="self-center btn-group">
                             <Button Click="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
-                            @if (item.IsSelected) {
-                                <Button Class="btn-success" Click="@(() => Select(""))">Deselect</Button>
-                            } else {
-                                <Button Class="btn-success" Click="@(() => Select(item.AvatarId))">Select</Button>
-                            }
                         </div>
                     </ActionsTemplate>
                 </UserAvatar>
@@ -71,26 +66,13 @@
         };
     }
 
-    private async Task Select(string avatarId) {
-        if (ChatId.IsNullOrEmpty()) {
-            var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
-            await Cmd.Run(command).ConfigureAwait(false);
-        } else {
-            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, default).ConfigureAwait(false);
-            chatUserSettings ??= new();
-            chatUserSettings = chatUserSettings with { AvatarId = avatarId };
-            var command = new IChatUserSettings.SetCommand(Session, ChatId, chatUserSettings);
-            await Cmd.Run(command).ConfigureAwait(false);
-        }
-    }
-
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
         await Cmd.Run(command).ConfigureAwait(false);
     }
 
     private void EditAvatar(string avatarId) {
-        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId));
+        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
     }
 
     public class Model {
