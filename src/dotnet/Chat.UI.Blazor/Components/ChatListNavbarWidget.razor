@@ -3,7 +3,7 @@
     var m = State.LatestNonErrorValue ?? Model.None;
     var hasPinnedChats = m.PinnedChats.Length > 0;
 
-    RenderFragment RenderChat(Chat chat) =>
+    RenderFragment RenderItem(Chat chat) =>
         @<NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@(m.ActiveChatId == chat.Id)">
             <ChildContent>@chat.Title</ChildContent>
             <Ending>
@@ -25,13 +25,15 @@
         @if (hasPinnedChats) {
             <NavbarSubgroup Class="first">Pinned</NavbarSubgroup>
             foreach (var chat in m.PinnedChats)
-                @RenderChat(chat)
-            <NavbarSubgroup>Unpinned</NavbarSubgroup>
-            foreach (var chat in m.UnpinnedChats)
-                @RenderChat(chat)
+                @RenderItem(chat)
+            if (m.UnpinnedChats.Length > 0) {
+                <NavbarSubgroup>Unpinned</NavbarSubgroup>
+                foreach (var chat in m.UnpinnedChats)
+                    @RenderItem(chat)
+            }
         } else {
             foreach (var chat in m.UnpinnedChats)
-                @RenderChat(chat)
+                @RenderItem(chat)
         }
     </ChildContent>
 </NavbarGroup>
