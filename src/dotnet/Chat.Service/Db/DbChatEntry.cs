@@ -99,7 +99,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         Type = model.Type;
         Id = model.Id;
         Version = model.Version;
-        IsRemoved = IsRemoved;
+        IsRemoved = model.IsRemoved;
 
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;

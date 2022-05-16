@@ -47,7 +47,8 @@
 </DialogFrame>
 
 @code {
-    [Inject] private FeedbackUI FeedbackUI { get; set; } = null!;
+    [Inject] private UICommandRunner Commander { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
@@ -58,7 +59,8 @@
 
     private async Task OnDelete() {
         await ModalInstance.CloseAsync(ModalResult.Cancel());
-        await FeedbackUI.AskFeatureRequestFeedback("message-menu/delete-message", "Delete Message");
+        var command = new IChats.RemoveTextEntryCommand(Session, ModalModel.MessageModel.Entry.ChatId, ModalModel.MessageModel.Entry.Id);
+        await Commander.Run(command);
     }
 
     public sealed record Model(ChatMessageModel MessageModel);
