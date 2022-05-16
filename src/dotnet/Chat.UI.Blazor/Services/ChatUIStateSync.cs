@@ -1,5 +1,6 @@
 ﻿using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Users;
+using Blazored.SessionStorage.JsonConverters;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -51,12 +52,11 @@ public class ChatUIStateSync : WorkerBase
 
             var playbackStateValue = playbackState.Value;
             if (playbackStateValue is null or RealtimeChatPlaybackState) {
-                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
+                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState))
                     playbackState.Value = expectedPlaybackState;
-                    continue;
-                }
             }
 
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             await Task.WhenAny(
                 playbackState.Computed.WhenInvalidated(cancellationToken),
                 cExpectedPlaybackState.WhenInvalidated(cancellationToken))
