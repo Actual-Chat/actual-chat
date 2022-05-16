@@ -61,11 +61,11 @@
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.ShortChatId))
+            .Where(c => pinnedChatIds.Contains(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.ShortChatId))
+            .Where(c => !pinnedChatIds.Contains(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
 
