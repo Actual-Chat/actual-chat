@@ -354,14 +354,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await _backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        chatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatId.IsNullOrEmpty())
-            return null;
-        return await GetUsersPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
-    }
-
     private async Task<bool> IsInvited(
         Session session,
         string chatId,
@@ -374,17 +366,26 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual async Task<Chat?> GetUsersPeerChat(Session session, string chatId, CancellationToken cancellationToken)
+    protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNullOrEmpty())
+        switch (PeerChatExt.GetChatIdKind(chatId)) {
+        case PeerChatIdKind.Short:
+            chatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
+            return await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        case PeerChatIdKind.Full:
+            break;
+        default:
             return null;
+        }
+
         var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         if (!canRead)
             return null;
+
         var chat = await _backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         chat ??= new Chat {
             Id = chatId,
-            ChatType = ChatType.Direct
+            ChatType = ChatType.PeerToPeer,
         };
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         var newTitle = await GetUsersPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);

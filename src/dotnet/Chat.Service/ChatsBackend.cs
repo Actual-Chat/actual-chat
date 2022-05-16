@@ -529,7 +529,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var chat = new Chat {
             Id = chatId,
             OwnerIds = ImmutableArray<Symbol>.Empty.Add(userId1).Add(userId2),
-            ChatType = ChatType.Direct
+            ChatType = ChatType.PeerToPeer
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         return await CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);

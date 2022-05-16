@@ -74,11 +74,8 @@
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
-        ChatUI.ActiveChatId.Value = ChatId;
-        _activeChatIdComputed = ChatUI.ActiveChatId.Computed;
-    }
+    protected override void OnParametersSet()
+        => _activeChatIdComputed = null;
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
@@ -104,6 +101,11 @@
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
+        if (_activeChatIdComputed == null) {
+            var activeChatIdState = ChatUI.ActiveChatId;
+            activeChatIdState.Value = chat.Id;
+            _activeChatIdComputed = activeChatIdState.Computed;
+        }
         var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
