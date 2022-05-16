@@ -75,28 +75,28 @@
     --playing-glow-min: rgb(0, 139, 173);
 }
 
-.theme-white-blue {
-    --background-primary: #B3B6B7;
-    --background-secondary: #bdc0c1;
-    --background-accent: #a9acad;
+.theme-dark-blue {
+    --background-primary: #1f294d;
+    --background-secondary: #24315b;
+    --background-accent: #19223f;
     --background-strong-accent: #93c5fd;
     --background-online: #31d872;
-    --background-message-hover: #f3f4f6;
+    --background-message-hover: #2f4077;
     --background-separate-line: #2b3641;
     --background-error-alert: #f2b6bb;
     --background-avatar: #5a7188;
-    --background-mention: #fed7aa;
+    --background-mention: #24315b;
     --background-mention-hover: #fb923c;
-    --background-mention-message: #fff7ed;
-    --background-mention-message-hover: #fff7e5;
-    --background-own-hover: #cbd5e1;
-    --background-own-message: #f6f8f9;
+    --background-mention-message: #24315b;
+    --background-mention-message-hover: #2f4077;
+    --background-own-hover: #2f4077;
+    --background-own-message: #24315b;
 
-    --text-color-primary: #171819;
+    --text-color-primary: #f8f9fc;
     --text-color-primary-muted: #3b4a59;
-    --text-color-secondary: #212223;
+    --text-color-secondary: #eaecf6;
     --text-color-secondary-muted: #5a7188;
-    --text-color-accent: #0e0e0f;
+    --text-color-accent: #dbe0f1;
     --text-color-online: #31d872;
     --text-color-accent-muted: #e1e6eb;
     --text-color-white: #ffffff;
