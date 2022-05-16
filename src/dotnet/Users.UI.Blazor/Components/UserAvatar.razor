@@ -4,20 +4,20 @@
 }
 
 <div class="user-avatar-card relative">
-    <div class="user-avatar-card_content">
+    <div class="user-avatar-card-content">
         @if (!m.Picture.IsNullOrEmpty()) {
-            <img class="user-avatar-card_picture" src="@m.Picture" alt="avatar pic">
+            <img class="user-avatar-card-picture" src="@m.Picture" alt="avatar pic">
         } else {
-            <svg class="user-avatar-card_picture user-avatar-card_picture-svg"
+            <svg class="user-avatar-card-picture"
                  viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm7.753 18.305c-.261-.586-.789-.991-1.871-1.241-2.293-.529-4.428-.993-3.393-2.945 3.145-5.942.833-9.119-2.489-9.119-3.388 0-5.644 3.299-2.489 9.119 1.066 1.964-1.148 2.427-3.393 2.945-1.084.25-1.608.658-1.867 1.246-1.405-1.723-2.251-3.919-2.251-6.31 0-5.514 4.486-10 10-10s10 4.486 10 10c0 2.389-.845 4.583-2.247 6.305z"/>
             </svg>
         }
-        <p class="user-avatar-card_bio">@m.Bio</p>
+        <p class="user-avatar-card-bio">@(m.Bio.NullIfEmpty() ?? "No bio")</p>
     </div>
     <div class="absolute top-0 right-0">
         @if (!m.Tag.IsNullOrEmpty()) {
-            <span class="user-avatar-card_tag">@m.Tag</span>
+            <span class="user-avatar-card-tag">@m.Tag</span>
         }
     </div>
 </div>
@@ -37,18 +37,24 @@
         var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)
             return new Model();
+
         var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken).ConfigureAwait(true);
-        string activeAvatarId = "";
+        var activeAvatarId = "";
         if (!ChatId.IsNullOrEmpty()) {
             var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
             activeAvatarId = chatUserSettings?.AvatarId ?? "";
         }
-        var tag = Equals(activeAvatarId, AvatarId) ? "active" : Equals(defaultAvatarId, AvatarId) ? "default" : "";
+
+        var isActive = StringComparer.Ordinal.Equals(activeAvatarId, AvatarId);
+        var isDefault = StringComparer.Ordinal.Equals(defaultAvatarId, AvatarId);
+        var tag = isActive
+            ? isDefault ? "active, default" : "active"
+            : isDefault ? "default" : "";
 
         return new Model {
             Picture = userAvatar.Picture,
             Bio = userAvatar.Bio,
-            Tag = tag
+            Tag = tag,
         };
     }
 

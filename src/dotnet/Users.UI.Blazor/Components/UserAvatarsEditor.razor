@@ -3,11 +3,11 @@
 
 <ul class="user-avatar-editor">
     @foreach (var avatarId in State.LatestNonErrorValue) {
-        <li class="user-avatar-editor_item" @onclick="@(() => EditAvatar(avatarId))">
+        <li class="user-avatar-editor-item" @onclick="@(() => EditAvatar(avatarId))">
             <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" />
         </li>
     }
-    <li class="user-avatar-editor_item" @onclick="OnAddNewAvatar">
+    <li class="user-avatar-editor-item" @onclick="OnAddNewAvatar">
         <UserAvatarAddTile />
     </li>
 </ul>

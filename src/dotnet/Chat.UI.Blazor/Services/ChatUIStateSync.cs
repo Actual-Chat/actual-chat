@@ -50,13 +50,11 @@ public class ChatUIStateSync : WorkerBase
             var expectedPlaybackState = cExpectedPlaybackState.ValueOrDefault;
 
             var playbackStateValue = playbackState.Value;
-            if (playbackStateValue == null) {
-                if (expectedPlaybackState != null)
-                    ChatPlayers.StartPlayback(expectedPlaybackState);
-            }
-            else if (playbackStateValue is RealtimeChatPlaybackState realtimePlaybackState) {
-                if (realtimePlaybackState != expectedPlaybackState)
+            if (playbackStateValue is null or RealtimeChatPlaybackState) {
+                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
                     playbackState.Value = expectedPlaybackState;
+                    continue;
+                }
             }
 
             await Task.WhenAny(

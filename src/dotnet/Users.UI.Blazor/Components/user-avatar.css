@@ -2,21 +2,22 @@
     @apply flex flex-wrap gap-4;
 }
 
-.user-avatar-editor_item {
+.user-avatar-editor-item {
     @apply cursor-pointer;
 }
 
 .user-avatar-card {
+    @apply w-40 h-32 max-w-xs p-2 pb-1.5;
+    @apply border rounded-xl shadow-lg;
     @apply flex flex-col items-center overflow-hidden;
-    @apply w-40 h-32 max-w-xs p-2;
-    @apply bg-white font-semibold text-center border rounded-2xl shadow-lg;
+    @apply bg-white font-semibold text-center;
 }
 
-.user-avatar-card_content {
+.user-avatar-card-content {
     @apply my-auto;
 }
 
-.user-avatar-card_bio {
+.user-avatar-card-bio {
     @apply mt-2 h-8 text-xs text-gray-400;
     @apply font-light;
     display: -webkit-box;
@@ -25,19 +26,19 @@
     overflow: hidden;
 }
 
-.user-avatar-card_picture {
+.user-avatar-card-picture {
     @apply w-16 h-16 rounded-full shadow-lg mx-auto;
 }
-
-.user-avatar-card_picture-svg {
-    @apply text-secondary fill-current;
+svg.user-avatar-card-picture {
+    @apply text-secondary fill-current opacity-40;
 }
 
-.user-avatar-card_tag {
-    @apply bg-online pl-1 pr-2.5 py-0.5;
-    @apply align-top font-light text-secondary text-xxs uppercase;
+.user-avatar-card-tag {
+    @apply pl-2 pr-2.5 pt-1 pb-0.5 rounded-bl;
+    @apply bg-online;
+    @apply align-top text-secondary text-xxs font-light;
 }
 
-.user-avatar-card_add-tile .user-avatar-card_picture {
+.user-avatar-card-add-tile .user-avatar-card-picture {
     @apply m-auto;
 }

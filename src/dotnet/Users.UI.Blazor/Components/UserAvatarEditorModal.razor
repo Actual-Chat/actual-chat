@@ -1,3 +1,4 @@
+@using Stl.Reflection
 @implements IModalView<UserAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
@@ -11,20 +12,22 @@
             <ValidationSummary />
 
             <FormSection InputId="@m.PictureId" Label="Picture">
-                <TextBox @bind-Value="@m.Picture" id="@m.PictureId" Autofocus="true" />
+                <TextBox @bind-Value="@m.Picture" Id="@m.PictureId" Autofocus="true" />
             </FormSection>
 
             <FormSection InputId="@m.BioId" Label="Bio">
-                <TextBox @bind-Value="@m.Bio" id="@m.BioId" />
+                <TextBox @bind-Value="@m.Bio" Id="@m.BioId" />
             </FormSection>
 
-            <FormSection InputId="@m.IsDefaultId" Label="Is default avatar for the user">
-                <ToggleEdit @bind-Value="@m.IsDefault" id="@m.IsDefaultId" />
+            <FormSection InputId="@m.IsDefaultId">
+                <ToggleEdit @bind-Value="@m.IsDefault" Id="@m.IsDefaultId"
+                            Label="Default for the user" />
             </FormSection>
 
             @if (!ModalModel.ChatId.IsNullOrEmpty()) {
-                <FormSection InputId="@m.IsActiveId" Label="Is active avatar in this chat (otherwise default is used)">
-                    <ToggleEdit @bind-Value="@m.IsActive" id="@m.IsActiveId" />
+                <FormSection InputId="@m.IsActiveId">
+                    <ToggleEdit @bind-Value="@m.IsActive" Id="@m.IsActiveId"
+                                Label="Used in this chat (otherwise the default one is used)"/>
                 </FormSection>
             }
         </Body>
@@ -39,8 +42,7 @@
 
 @code {
     private EditModel _model = null!;
-    private bool _isDefaultAvatar;
-    private bool _isActiveAvatar;
+    private EditModel _originalModel = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
@@ -56,34 +58,34 @@
 
         var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
         var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default).ConfigureAwait(true);
-        _isDefaultAvatar = Equals(ModalModel.AvatarId, defaultAvatarId);
+        var isDefault = Equals(ModalModel.AvatarId, defaultAvatarId);
+        var isActive = false;
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
             var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default).ConfigureAwait(true);
-            string selectedAvatarId = chatUserSettings?.AvatarId ?? "";
-            _isActiveAvatar = Equals(ModalModel.AvatarId, selectedAvatarId);
+            var activeAvatarId = chatUserSettings?.AvatarId.Value ?? "";
+            isActive = Equals(ModalModel.AvatarId, activeAvatarId);
         }
 
         _model.Name = userAvatar?.Name ?? "";
         _model.Picture = userAvatar?.Picture ?? "";
         _model.Bio = userAvatar?.Bio ?? "";
-        _model.IsDefault = _isDefaultAvatar;
-        _model.IsActive = _isActiveAvatar;
+        _model.IsDefault = isDefault;
+        _model.IsActive = isActive;
+
+        _originalModel = MemberwiseCloner.Invoke(_model);
     }
 
     private async void OnSave() {
-        var command = new IUserAvatars.UpdateCommand(Session, ModalModel.AvatarId, _model.Name, _model.Picture, _model.Bio);
+        var avatarId = ModalModel.AvatarId;
+        var command = new IUserAvatars.UpdateCommand(Session, avatarId, _model.Name, _model.Picture, _model.Bio);
         await Cmd.Run(command).ConfigureAwait(true);
 
-        if (_model.IsDefault)
-            await SetDefaultAvatar(ModalModel.AvatarId);
-        else if (_isDefaultAvatar)
-            await SetDefaultAvatar(""); // clear default avatar id
+        if (_model.IsDefault && !_originalModel.IsDefault)
+            await SetDefaultAvatar(_model.IsDefault ? avatarId : "").ConfigureAwait(true);
 
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
-            if (_model.IsActive)
-                await SetActiveAvatar(ModalModel.AvatarId);
-            else if (_isActiveAvatar)
-                await SetActiveAvatar(""); // clear active avatar id
+            if (_model.IsActive && !_originalModel.IsActive)
+                await SetActiveAvatar(_model.IsActive ? avatarId : "").ConfigureAwait(true);
         }
 
         CloseModal();
