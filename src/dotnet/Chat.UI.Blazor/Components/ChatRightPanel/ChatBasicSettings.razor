@@ -5,11 +5,11 @@
     <DataAnnotationsValidator/>
 
     <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
-        <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true" Class="right-panel-chat-title"/>
+        <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true" Class="right-panel-input"/>
     </FormSection>
 
     <FormSection Label="Picture" InputId="@_form.PictureId">
-        <TextBox @bind-Value="@_form.Picture" id="@_form.PictureId" />
+        <TextBox @bind-Value="@_form.Picture" id="@_form.PictureId" Class="right-panel-input"/>
     </FormSection>
 
     <FormSection>
