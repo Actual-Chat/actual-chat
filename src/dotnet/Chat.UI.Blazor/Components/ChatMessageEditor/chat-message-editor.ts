@@ -12,7 +12,6 @@ export class ChatMessageEditor {
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
     private recordButtonObserver : MutationObserver;
-    private inputObserver : ResizeObserver;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
     private attachmentsIdSeed: number = 0;
@@ -34,8 +33,6 @@ export class ChatMessageEditor {
         this.audioButtons = this.editorDiv.querySelector('.recorder-buttons');
 
         // Wiring up event listeners
-        this.inputObserver = new ResizeObserver(this.updateRecorderButtonPosition);
-        this.inputObserver.observe(this.input);
         this.input.addEventListener('paste', this.inputPasteListener);
         this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
@@ -73,22 +70,6 @@ export class ChatMessageEditor {
         this.input.focus();
         this.changeMode();
     })
-
-    private updateRecorderButtonPosition = () => {
-        this.audioButtons.classList.remove('hidden');
-        this.audioButtons.classList.add('flex');
-        const inputWidth = this.input.offsetWidth;
-        const screenWidth = window.innerWidth;
-        // console.log('inputWidth: ', inputWidth);
-        if (inputWidth < screenWidth/4){
-            this.audioButtons.classList.add('hidden');
-            this.audioButtons.classList.remove('flex');
-        } else {
-            const inputLeft = this.input.getBoundingClientRect().left;
-            let offset = screenWidth - inputLeft - inputWidth + 4;
-            this.audioButtons.style.right = `${offset}px`;
-        }
-    }
 
     private syncLanguageButtonVisibility = () => {
         const isRecording = this.recordButton.classList.contains('on');
@@ -210,7 +191,6 @@ export class ChatMessageEditor {
         this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButtonObserver.disconnect();
-        this.inputObserver.disconnect();
     }
 }
 
