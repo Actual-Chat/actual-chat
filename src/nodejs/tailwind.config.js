@@ -23,6 +23,7 @@ module.exports = {
       colors: {
         'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
+        'audio-message': 'var(--audio-message)',
       },
       textColor: {
         'primary': 'var(--text-color-primary)',
