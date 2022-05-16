@@ -1,10 +1,16 @@
+@using ActualChat.UI.Blazor.Components.ChatIcon
+
 <div class="flex-x justify-items-stretch items-center bg-primary md:bg-secondary text-primary font-medium px-1">
     @* TODO: remove? *@
     <div class="flex-none self-start">
         <NavbarToggle/>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-3 px-2 cursor-pointer group" @onclick="OnTitleClick">
-        <div class="flex-auto text-secondary chat-header-title">@Chat.Title</div>
+    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-3 px-2 group">
+        <ChatIcon
+            Title="@Chat.Title"
+            Picture="@Chat.Picture">
+        </ChatIcon>
+        <div class="flex-auto text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">@Chat.Title</div>
         <button class="flex-none hidden group-hover:flex font-light text-xs bg-primary border-accent border-2 rounded p-0.5 px-2 chat-header-panel-hint">
             @(RightPanelUI.IsVisible.Value ? "Hide" : "Show") settings
         </button>

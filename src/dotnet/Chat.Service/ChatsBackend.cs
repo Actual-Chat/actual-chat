@@ -301,6 +301,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             throw new InvalidOperationException("chat has been modified already");
 
         dbChat.Title = chat.Title;
+        dbChat.Picture = chat.Picture;
         dbChat.IsPublic = chat.IsPublic;
         dbChat.Version = VersionGenerator.NextVersion();
 
