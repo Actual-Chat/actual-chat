@@ -323,7 +323,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
 
         var chatId = command.Entry.ChatId;
-        var isPeerChatId = PeerChatExt.IsPeerChatId(chatId);
+        var isPeerChatId = ChatIdExt.IsPeerChatId(chatId);
         if (isPeerChatId)
             _ = await GetOrCreatePeerChat(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
 
@@ -492,7 +492,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         if (userId.IsNullOrEmpty())
             return ChatPermissions.None;
-        if (!PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
+        if (!ChatIdExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
             return ChatPermissions.None;
         string? targetUserId = null;
         if (StringComparer.Ordinal.Equals(userId1, userId))
@@ -509,7 +509,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (!PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
+        if (!ChatIdExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
             return;
         await _userContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
         await _userContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
@@ -525,7 +525,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task<Chat> CreatePeerChat(Symbol chatId, CancellationToken cancellationToken)
     {
-        var (userId1, userId2) = PeerChatExt.ParseFullPeerChatId(chatId);
+        var (userId1, userId2) = ChatIdExt.ParseFullPeerChatId(chatId);
         var chat = new Chat {
             Id = chatId,
             OwnerIds = ImmutableArray<Symbol>.Empty.Add(userId1).Add(userId2),

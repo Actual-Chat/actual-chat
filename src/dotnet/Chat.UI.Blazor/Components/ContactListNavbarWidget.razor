@@ -52,8 +52,8 @@
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
                 return new ContactModel(userContact) {
                     IsOnline = presence is Presence.Online or Presence.Recording,
-                    FullChatId = PeerChatExt.CreateFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
-                    ShortChatId = PeerChatExt.CreateShortPeerChatId(userContact.TargetUserId),
+                    FullChatId = ChatIdExt.FormatFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
+                    ShortChatId = ChatIdExt.FormatShortPeerChatId(userContact.TargetUserId),
                 };
             });
         var contacts = await Task.WhenAll(contactTasks).ConfigureAwait(false);

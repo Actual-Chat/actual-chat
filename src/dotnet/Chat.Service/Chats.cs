@@ -31,16 +31,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var isPeerChat = PeerChatExt.IsPeerChatId(chatId);
+        var isPeerChat = ChatIdExt.IsPeerChatId(chatId);
         return isPeerChat
             ? await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false)
             : await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    protected virtual async Task<string> GetUsersPeerChatTitle(string chatId, User user, CancellationToken cancellationToken)
+    protected virtual async Task<string> GetPeerChatTitle(string chatId, User user, CancellationToken cancellationToken)
     {
-        if (PeerChatExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2)) {
+        if (ChatIdExt.TryParseFullPeerChatId(chatId, out var userId1, out var userId2)) {
             var targetUserId = "";
             if (userId1 == user.Id)
                 targetUserId = userId2;
@@ -59,18 +59,18 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<string> GetFullPeerChatId(Session session, string chatId, CancellationToken cancellationToken)
     {
-        switch (PeerChatExt.GetChatIdKind(chatId)) {
-            case PeerChatIdKind.None:
-                return "";
-            case PeerChatIdKind.Full:
-                return chatId;
+        switch (ChatIdExt.GetChatIdKind(chatId)) {
+        case ChatIdKind.PeerFull:
+            return chatId;
+        case ChatIdKind.PeerShort:
+            if (!ChatIdExt.TryParseShortPeerChatId(chatId, out var userId2))
+                throw new ArgumentOutOfRangeException(nameof(chatId));
+            var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+            user.MustBeAuthenticated();
+            return ChatIdExt.FormatFullPeerChatId(user.Id, userId2);
+        default:
+            throw new ArgumentOutOfRangeException(nameof(chatId));
         }
-        if (!PeerChatExt.TryParseShortPeerChatId(chatId, out var userId2))
-            return "";
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
-            return "";
-        return PeerChatExt.CreateFullPeerChatId(user.Id, userId2);
     }
 
     // [ComputeMethod]
@@ -182,7 +182,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var userId2 = await _chatAuthorsBackend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (userId2 == null)
             return null;
-        var peerChatId = PeerChatExt.CreateShortPeerChatId(userId2);
+        var peerChatId = ChatIdExt.FormatShortPeerChatId(userId2);
         return peerChatId;
     }
 
@@ -368,11 +368,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        switch (PeerChatExt.GetChatIdKind(chatId)) {
-        case PeerChatIdKind.Short:
+        switch (ChatIdExt.GetChatIdKind(chatId)) {
+        case ChatIdKind.PeerShort:
             chatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
             return await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
-        case PeerChatIdKind.Full:
+        case ChatIdKind.PeerFull:
             break;
         default:
             return null;
@@ -388,8 +388,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.PeerToPeer,
         };
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var newTitle = await GetUsersPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
-        chat = chat with { Title = newTitle };
+        var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
+        chat = chat with { Title = title };
         return chat;
     }
 }

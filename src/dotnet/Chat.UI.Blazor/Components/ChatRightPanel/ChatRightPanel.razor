@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    var isPeerChat = PeerChatExt.GetChatIdKind(Chat.Id) == PeerChatIdKind.Full;
+    var isPeerChat = ChatIdExt.GetChatIdKind(Chat.Id) == ChatIdKind.PeerFull;
 }
 
 <div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">

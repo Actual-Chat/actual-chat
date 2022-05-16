@@ -34,7 +34,7 @@
 }
 .historical-playback-sub-header-content .c-text {
     @apply pb-0.5;
-    @apply font-light
+    @apply font-light;
 }
 .historical-playback-sub-header-content .c-moment {
     @apply font-normal;
@@ -46,3 +46,20 @@
     @apply text-primary-inverted font-semibold;
     @apply animate-display-from-top-slow hover:cursor-pointer;
 }
+
+.recording-elsewhere-sub-header {
+    @apply relative z-20 p-0.5 mx-4 rounded-t-lg;
+    @apply flex flex-row items-center justify-center;
+    @apply bg-button-error text-primary-inverted shadow-lg opacity-75;
+    @apply animate-display-from-bottom-slow;
+}
+.recording-elsewhere-sub-header-content {
+    @apply flex-1 flex flex-row items-center justify-center gap-x-2;
+}
+.recording-elsewhere-sub-header-content .c-text {
+    @apply font-light;
+}
+.recording-elsewhere-sub-header-content a {
+    @apply font-semibold underline;
+}
+

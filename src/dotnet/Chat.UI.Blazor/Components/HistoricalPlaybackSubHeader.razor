@@ -6,7 +6,6 @@
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
         return;
-
 }
 
 <div class="historical-playback-sub-header">
@@ -75,7 +74,7 @@
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
 
-        return new () {
+        return new Model() {
             PlayingAt = playingAt,
         };
     }
@@ -85,7 +84,7 @@
         return Task.CompletedTask;
     }
 
-    public sealed class Model
+    public sealed record Model
     {
         public static Model NotPlaying { get; } = new();
 

@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<ChatAuthorsTab.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var isPeerChat = PeerChatExt.GetChatIdKind(Chat.Id) == PeerChatIdKind.Full;
+    var isPeerChat = ChatIdExt.GetChatIdKind(Chat.Id) == ChatIdKind.PeerFull;
 }
 
 <div class="flex-y w-full space-y-3">

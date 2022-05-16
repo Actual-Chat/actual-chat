@@ -1,0 +1,75 @@
+@inherits ComputedStateComponent<RecordingElsewhereSubHeader.Model>
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
+@{
+    var m = State.ValueOrDefault;
+    if (m?.RecordingChat == null)
+        return;
+}
+
+<div class="recording-elsewhere-sub-header">
+    <div class="recording-elsewhere-sub-header-content">
+        <div class="c-icons">
+            <svg class="h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 10c0 2.209-1.791 4-4 4s-4-1.791-4-4v-6c0-2.209 1.791-4 4-4s4 1.791 4 4v6zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13.03v-2.03h-2v2.03c-2.282.139-4 .744-4 1.47 0 .829 2.238 1.5 5 1.5s5-.671 5-1.5c0-.726-1.718-1.331-4-1.47z"/>
+            </svg>
+        </div>
+        <div class="c-text">
+            Recording is on in
+            <a href="@m.RecordingChatUrl">"@(m.RecordingChat.Title)"</a> chat!
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (recordingChatId.IsEmpty || recordingChatId == Chat.Id)
+            return Model.None;
+
+        var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+        if (recordingChat == null)
+            return Model.None;
+
+        if (recordingChat.ChatType == ChatType.Group)
+            return new Model() {
+                RecordingChat = recordingChat,
+                RecordingChatUrl = $"/chat/{recordingChat.Id.Value.UrlEncode()}",
+            };
+
+        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return Model.None;
+
+        var (userId1, userId2) = ChatIdExt.ParseFullPeerChatId(recordingChat.Id);
+        var peerUserId = user.Id.Value != userId1 ? userId1 : userId2;
+        return new Model() {
+            RecordingChat = recordingChat,
+            RecordingChatUrl = $"/chat/{ChatIdExt.FormatShortPeerChatId(peerUserId).UrlEncode()}",
+        };
+    }
+
+    private void OnStop()
+        => ChatUI.RecordingChatId.Value = Symbol.Empty;
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public Chat? RecordingChat { get; init; }
+        public string? RecordingChatUrl { get; init; }
+    }
+}
