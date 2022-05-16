@@ -11,7 +11,7 @@
        class="@cls"
        value="@CurrentValue"
        @attributes="@AdditionalAttributes"
-       @oninput="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
+       @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
 
 @code {
     private ElementReference _inputRef;
