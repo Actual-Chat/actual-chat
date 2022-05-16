@@ -5,8 +5,8 @@
     var cls = "pin-toggle transparent off";
 }
 
-<ButtonSquare Class="@cls" Click="@Toggle">
-    <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
+<ButtonSquare Class="@cls" Click="@Toggle" Title="Pin this chat">
+    <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 32 32">
         @if (isPinned) {
             <path d="M8 17h2v5l-2 2v-7zm2-11.5c0-2.319 1.219-4.35 3.047-5.5h-9.047c.068 1.911 2.429 2.097 2.429 5 0 3.771-3.429 3.291-3.429 10h12c0-1.358-.145-2.412-.369-3.276-2.678-.803-4.631-3.284-4.631-6.224zm11 0c0 2.485-2.018 4.5-4.5 4.5-2.484 0-4.5-2.015-4.5-4.5s2.016-4.5 4.5-4.5c2.482 0 4.5 2.015 4.5 4.5zm-2-.5h-5v1h5v-1z"/>
         } else {
