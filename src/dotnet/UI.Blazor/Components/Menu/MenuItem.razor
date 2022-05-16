@@ -17,7 +17,7 @@
         </button>
     } else {
         <button @onclick="OnClick" disabled="@IsDisabled"
-                class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-6 @cls" name="@Name">
+                class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-4 @cls" name="@Name">
             @if (Menu.IconPosition == MenuIconPosition.Left) {
                 @if (Icon != null) {
                     <div class="w-6 @leftContainerClass">

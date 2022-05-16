@@ -6,37 +6,38 @@
     @apply text-secondary;
 }
 
-.form-toggle-input {
-    @apply appearance-none;
+.form-toggle .form-toggle-input {
+    @apply appearance-none ring-0;
     @apply w-9 h-5;
     @apply rounded-full bg-no-repeat bg-contain bg-gray-300 focus:outline-none cursor-pointer shadow-sm;
     background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E");
     background-position: 0;
     transition: background-position .1s ease-in-out
 }
-.form-toggle-input:focus {
+.form-toggle .form-toggle-input:focus {
+    @apply ring-0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E")
 }
-.form-toggle-input:checked {
+.form-toggle .form-toggle-input:checked {
+    @apply ring-0;
     background-position: 100%;
     background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E")
 }
-
-.form-toggle-input:checked {
+.form-toggle .form-toggle-input:checked {
     @apply bg-toggle-on;
-    @apply border-toggle-on;
     /*background-color: #0d6efd;*/
     /*border-color: #0d6efd*/
 }
-.form-toggle-input:checked[type=checkbox] {
+.form-toggle .form-toggle-input:checked[type=checkbox] {
+    @apply ring-0;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e")
 }
-.form-toggle-input:checked[type=radio] {
+.form-toggle .form-toggle-input:checked[type=radio] {
     background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%222%22 fill=%22%23fff%22/%3E%3C/svg%3E")
 }
-.form-toggle-input[type=checkbox]:indeterminate {
+.form-toggle .form-toggle-input[type=checkbox]:indeterminate {
     background-color: #0d6efd;
-    border-color: #0d6efd;
+    @apply ring-0;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e")
 }
 .form-toggle-input:disabled {
