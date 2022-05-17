@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { AudioContextPool } from 'audio-context-pool';
+import { audioContextLazy } from 'audio-context-lazy';
 import { ResolveCallbackMessage } from 'resolve-callback-message';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
@@ -193,7 +193,7 @@ export class OpusMediaRecorder {
         if (this.context != null)
             return;
 
-        this.context = await AudioContextPool.get('main') as AudioContext;
+        this.context = await audioContextLazy.get();
         if (this.context.sampleRate !== 48000) {
             throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
         }
