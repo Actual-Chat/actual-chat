@@ -52,7 +52,7 @@
 }
 
 .chat-message.own-message {
-    @apply border-l-2 border-x-own-hover bg-own-message;
+    @apply border-l-2 border-x-own-message-hover bg-own-message;
 }
 
 .chat-message.own-message:hover {

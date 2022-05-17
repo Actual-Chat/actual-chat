@@ -9,7 +9,7 @@
 }
 
 [tooltip]::after {
-    @apply text-center whitespace-nowrap overflow-hidden text-ellipsis py-1 px-2 z-20 bg-separate-line;
+    @apply text-center whitespace-nowrap overflow-hidden text-ellipsis py-1 px-2 z-20 bg-separator;
     @apply text-primary-inverted shadow-current shadow-md rounded-sm min-w-12 max-w-xxs;
     content: attr(tooltip);
 }
@@ -30,7 +30,7 @@
 /* ONLY the ::before */
 [tooltip]:not([flow])::before,
 [tooltip][flow^="top"]::before {
-    @apply bottom-full border-b-0 border-t-separate-line;
+    @apply bottom-full border-b-0 border-t-separator;
 }
 
 /* ONLY the ::after */
@@ -50,7 +50,7 @@
 /* DOWN */
 
 [tooltip][flow^="bottom"]::before {
-    @apply top-full border-t-0 border-b-separate-line;
+    @apply top-full border-t-0 border-b-separator;
 }
 
 [tooltip][flow^="bottom"]::after {
@@ -65,7 +65,7 @@
 /* LEFT */
 
 [tooltip][flow^="left"]::before {
-    @apply top-1/2 border-r-0 border-l-separate-line -translate-y-1/2;
+    @apply top-1/2 border-r-0 border-l-separator -translate-y-1/2;
     left: calc(0rem - 5px);
 }
 
@@ -77,7 +77,7 @@
 /* RIGHT */
 
 [tooltip][flow^="right"]::before {
-    @apply top-1/2 border-l-0 border-r-separate-line -translate-y-1/2;
+    @apply top-1/2 border-l-0 border-r-separator -translate-y-1/2;
     right: calc(0rem - 5px);
 }
 

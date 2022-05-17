@@ -110,35 +110,35 @@ button.off, .btn.off, btn.btn-square.on {
 }
 
 .btn.btn-success {
-    @apply bg-button-success border-success text-primary-inverted;
+    @apply bg-success border-success text-primary-inverted;
 }
 .btn.btn-success:enabled {
-    @apply hover:bg-button-success-hover hover:border-success-muted;
-    @apply active:bg-button-success-hover;
+    @apply hover:bg-success-hover hover:border-success-hover;
+    @apply active:bg-success-hover;
 }
 
 .btn.btn-success-outline {
-    @apply bg-button-success-outline border-success border-2 text-success;
+    @apply bg-success-outline border-success border-2 text-success;
 }
 .btn.btn-success-outline:enabled {
-    @apply hover:bg-button-success-outline-hover;
-    @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
+    @apply hover:bg-success-outline-hover;
+    @apply active:bg-success-outline-hover active:border-success-outline-hover;
 }
 
 .btn.btn-cancel {
-    @apply bg-button-cancel border-button-cancel text-primary-inverted;
+    @apply bg-cancel border-cancel text-primary-inverted;
 }
 .btn.btn-cancel:enabled {
-    @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
-    @apply active:bg-button-cancel-hover;
+    @apply hover:bg-cancel-hover hover:border-cancel-hover;
+    @apply active:bg-cancel-hover;
 }
 
 .btn.btn-error {
-    @apply bg-button-error border-button-error text-primary-inverted;
+    @apply bg-error border-error text-primary-inverted;
 }
 .btn.btn-error:enabled {
-    @apply hover:bg-button-error-hover hover:border-button-error-hover;
-    @apply active:bg-button-error-hover;
+    @apply hover:bg-error-hover hover:border-error-hover;
+    @apply active:bg-error-hover;
 }
 
 .btn.btn-xs {
@@ -176,7 +176,7 @@ button.off, .btn.off, btn.btn-square.on {
 }
 
 .btn.btn-primary {
-    @apply relative flex hover:cursor-pointer border border-button-primary bg-primary text-secondary;
+    @apply relative flex hover:cursor-pointer border border-avatar bg-primary text-secondary;
     @apply hover:bg-avatar hover:text-primary-inverted;
     @apply active:bg-avatar;
 }

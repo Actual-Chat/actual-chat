@@ -6,7 +6,7 @@
     @apply p-0 rounded;
 }
 .navbar-content .btn.btn-square:hover {
-    @apply text-toggle-on;
+    @apply text-toggle-hover;
 }
 
 #navbar-toggle:checked~#navbar {
