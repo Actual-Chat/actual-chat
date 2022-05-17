@@ -1,0 +1,34 @@
+name: Deploy prod
+
+on: workflow_dispatch
+
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+      - name: Print version
+        run: echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
+      - name: Verify tag matches version.json
+        if: endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true
+        run: |
+          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
+          exit 1
+      - name: Pull non-prod docker image
+        run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
+      - name: Tag docker image
+        run: |
+          docker tag us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} \
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{ steps.nbgv.outputs.SimpleVersion }}
+      - name: Push prod docker image
+        run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}

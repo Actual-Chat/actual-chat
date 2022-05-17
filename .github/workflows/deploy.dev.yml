@@ -5,7 +5,8 @@ concurrency:
 on:
   push:
     branches:
-      - "release/v*"
+      - dev
+      - release/v*
     paths-ignore:
       - "docs/**"
       - "**.md"
