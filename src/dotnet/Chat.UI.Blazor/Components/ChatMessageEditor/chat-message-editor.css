@@ -3,6 +3,11 @@
     height: 0;
 }
 
+.message-input {
+    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3;
+    @apply break-words outline-none hover:cursor-text text-primary;
+}
+
 .not-recording {
     @apply text-secondary;
 }
@@ -12,7 +17,7 @@
 }
 
 [contenteditable=true]:empty:not(:focus):before {
-    @apply text-placeholder truncate text-xs md:text-sm;
+    @apply text-placeholder truncate text-xs md:text-base;
     content:attr(data-text)
 }
 

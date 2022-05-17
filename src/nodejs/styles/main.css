@@ -2,6 +2,7 @@
 
 html {
     height: 100%;
+    @apply text-base;
 }
 
 body {
@@ -94,7 +95,7 @@ button.off, .btn.off, btn.btn-square.on {
 
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 text-sm text-sm font-medium fill-current rounded-md border;
+    @apply py-2 px-3 font-medium fill-current rounded-md border;
     @apply h-8 min-w-16 max-w-max;
 }
 .btn .btn-content {

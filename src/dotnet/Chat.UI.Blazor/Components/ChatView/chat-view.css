@@ -5,7 +5,7 @@
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-sm text-current break-words;
+    @apply text-current break-words;
     @apply border-l-2 border-transparent;
 }
 

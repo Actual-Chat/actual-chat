@@ -45,7 +45,7 @@
 
     private string GetStatusTextClass()
         => Size switch {
-            PersonCircleSize.Size12 => "text-sm",
+            PersonCircleSize.Size12 => "",
             _ => "text-xxs leading-4",
         };
 
@@ -54,9 +54,9 @@
             return TextClass;
 
         var sizeClass = Size switch {
-            PersonCircleSize.Size6 => "text-sm",
-            PersonCircleSize.Size8 => "text-sm",
-            _ => "text-base",
+            PersonCircleSize.Size6 => "",
+            PersonCircleSize.Size8 => "",
+            _ => "text-md",
             };
         return "select-none " + sizeClass;
     }

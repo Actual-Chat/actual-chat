@@ -19,7 +19,7 @@
                         <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     </div>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
-                                 Class="message-input flex-1 -flex-y overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3 break-words outline-none hover:cursor-text text-primary block"
+                                 Class="message-input -flex-y"
                                  Placeholder="@("#" + Chat.Title)"
                                  Posted="OnPosted" Rendered="OnSlateEditorRendered"/>
                     <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
