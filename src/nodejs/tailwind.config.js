@@ -48,8 +48,8 @@ module.exports = {
         'mention-hover': 'var(--mention-hover)',
         'mention-message': 'var(--mention-message)',
         'mention-message-hover': 'var(--mention-message-hover)',
-        'own-message': 'var(--mention-message-hover)',
-        'own-message-hover': 'var(--mention-message-hover)',
+        'own-message': 'var(--own-message)',
+        'own-message-hover': 'var(--own-message-hover)',
       },
       textColor: {
         'primary': 'var(--text-primary)',
