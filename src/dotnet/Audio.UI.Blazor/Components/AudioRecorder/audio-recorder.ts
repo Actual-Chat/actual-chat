@@ -37,11 +37,6 @@ export class AudioRecorder {
         return new AudioRecorder(blazorRef, sessionId);
     }
 
-    public static async initRecorderPool(): Promise<void> {
-        const recorder = await this.recorderPool.get();
-        await this.recorderPool.release(recorder);
-    }
-
     public async startRecording(chatId : string): Promise<void> {
         try {
             if (this.isRecording())

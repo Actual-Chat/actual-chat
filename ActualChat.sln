@@ -160,7 +160,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Users", "Users", "{9EF8D096
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E726-4D5A-90A1-BDD668CFD906}"
 	ProjectSection(SolutionItems) = preProject
-		src\nodejs\src\audio-context-pool.ts = src\nodejs\src\audio-context-pool.ts
+		src\nodejs\src\audio-context-lazy.ts = src\nodejs\src\audio-context-lazy.ts
 		src\nodejs\src\delay.ts = src\nodejs\src\delay.ts
 		src\nodejs\src\is-promise.ts = src\nodejs\src\is-promise.ts
 		src\nodejs\src\next-tick.ts = src\nodejs\src\next-tick.ts

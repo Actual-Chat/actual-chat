@@ -1,5 +1,3 @@
-import { isAudioContext } from 'audio-context-pool';
-
 const LogScope: string = 'ChromiumEchoCancellation';
 
 /**
