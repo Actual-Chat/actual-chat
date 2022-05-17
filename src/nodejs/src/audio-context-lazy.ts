@@ -13,24 +13,24 @@ export class AudioContextLazy {
             await this.whenInitialized;
         }
 
+        await AudioContextLazy.resume(this.audioContext);
+
         return this.audioContext;
     }
 
     private async initialize(): Promise<void> {
-        const audioContext = await this.create();
+        const audioContext = await AudioContextLazy.create();
         await this.warmup(audioContext);
         this.audioContext = audioContext;
     }
 
-    private async create() {
+    private static async create() {
         const audioContext = new AudioContext({
             latencyHint: 'interactive',
             sampleRate: 48000,
         });
 
-        console.log(`${LogScope}.initialize: audioContext.state=`, audioContext.state);
-        await audioContext.resume();
-        console.log(`${LogScope}.initialize: audioContext.state=`, audioContext.state);
+        await AudioContextLazy.resume(audioContext);
 
         await Promise.all([
             audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
@@ -38,6 +38,14 @@ export class AudioContextLazy {
             audioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
         ]);
         return audioContext;
+    }
+
+    private static async resume(audioContext: AudioContext) {
+        console.log(`${LogScope}.resume: audioContext.state=`, audioContext.state);
+        if (audioContext.state !== 'running' && audioContext.state !== 'closed') {
+            await audioContext.resume();
+        }
+        console.log(`${LogScope}.resume: audioContext.state=`, audioContext.state);
     }
 
     private async warmup(audioContext: AudioContext): Promise<void> {
