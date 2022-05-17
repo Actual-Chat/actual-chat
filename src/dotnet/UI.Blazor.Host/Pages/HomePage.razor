@@ -1,7 +1,14 @@
 @page "/"
-@inject NavigationManager _nav
+@using ActualChat.Chat
 
 @code {
-    protected override void OnInitialized()
-        => _nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        var chat = await Chats.Get(Session, Constants.Chat.DefaultChatId, default).ConfigureAwait(true);
+        if (chat != null)
+            Nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
+    }
 }
