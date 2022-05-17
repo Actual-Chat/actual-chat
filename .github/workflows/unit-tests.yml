@@ -24,7 +24,7 @@ jobs:
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
       - name: Build and Run unit tests
-        run: docker-compose -f docker-compose.unit-tests.yml up --build --abort-on-container-exit --exit-code-from tests
+        run: docker-compose -f docker-compose.unit-tests.yml up --build --abort-on-container-exit --no-log-prefix --exit-code-from tests
       - name: Report test results
         uses: dorny/test-reporter@v1
         if: success() || failure()    # run this step even if previous step failed
