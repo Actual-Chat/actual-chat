@@ -25,7 +25,7 @@ jobs:
           echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
       - name: Pull non-prod docker image
-        run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
+        run: docker pull us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
       - name: Tag docker image
         run: |
           docker tag us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} \
