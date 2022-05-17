@@ -2,16 +2,14 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-<div>
-    <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-        <div class="dialog-body">
-            @Body
-        </div>
-        <div class="dialog-buttons">
-            @Buttons
-        </div>
-    </ModalFrame>
-</div>
+<ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
+    <div class="dialog-body">
+        @Body
+    </div>
+    <div class="dialog-buttons">
+        @Buttons
+    </div>
+</ModalFrame>
 
 @code {
     [Inject] private Escapist Escapist { get; init; } = null!;
