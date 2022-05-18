@@ -24,7 +24,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/224609592665/locations/global/workloadIdentityPools/actual-bootstrap/providers/actual-bootstrap-github-actual
-          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+          service_account: actual-prod-resman-pf-1@actual-prod-iac-core-0.iam.gserviceaccount.com
       - name: Login to GAR
         uses: docker/login-action@v2
         with:
