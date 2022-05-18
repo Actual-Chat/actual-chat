@@ -22,6 +22,12 @@ jobs:
         with:
           workload_identity_provider: projects/224609592665/locations/global/workloadIdentityPools/actual-bootstrap/providers/actual-bootstrap-github-actual
           service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+      - name: Login to GAR
+        uses: docker/login-action@v2
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
