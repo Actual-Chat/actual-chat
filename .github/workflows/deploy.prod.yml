@@ -2,6 +2,10 @@ name: Deploy prod
 
 on: workflow_dispatch
 
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
 jobs:
   deployment:
     runs-on: ubuntu-latest
