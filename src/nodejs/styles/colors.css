@@ -76,9 +76,9 @@
 }
 
 .theme-dark-blue {
-    --background-primary: #1f294d;
-    --background-secondary: #24315b;
-    --background-accent: #19223f;
+    --background-primary: #2F3136;
+    --background-secondary: #36393F;
+    --background-accent: #292B2F;
     --background-strong-accent: #93c5fd;
     --background-online: #31d872;
     --background-message-hover: #2f4077;
@@ -92,9 +92,9 @@
     --background-own-hover: #2f4077;
     --background-own-message: #24315b;
 
-    --text-color-primary: #f8f9fc;
+    --text-color-primary: #fafafa;
     --text-color-primary-muted: #3b4a59;
-    --text-color-secondary: #eaecf6;
+    --text-color-secondary: #eff0f1;
     --text-color-secondary-muted: #5a7188;
     --text-color-accent: #dbe0f1;
     --text-color-online: #31d872;
