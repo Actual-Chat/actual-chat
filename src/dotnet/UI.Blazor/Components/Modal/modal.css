@@ -19,10 +19,15 @@
     @apply flex flex-col justify-center items-center;
 }
 
+.modal-chrome-overlay {
+    @apply block fixed left-0 top-0 h-full w-full;
+}
+
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
     @apply bg-primary text-secondary;
     @apply overflow-hidden;
+    @apply z-10;
 }
 .modal-frame {
     @apply h-full md:h-auto w-full md:w-modal;
