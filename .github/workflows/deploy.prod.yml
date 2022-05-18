@@ -50,4 +50,4 @@ jobs:
           docker tag us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} \
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{ steps.nbgv.outputs.SimpleVersion }}
       - name: Push prod docker image
-        run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
+        run: docker push us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{ steps.nbgv.outputs.SimpleVersion }}
