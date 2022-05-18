@@ -7,11 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
           lfs: true
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v0.7.2'
+        with:
+          workload_identity_provider: projects/224609592665/locations/global/workloadIdentityPools/actual-bootstrap/providers/actual-bootstrap-github-actual
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
