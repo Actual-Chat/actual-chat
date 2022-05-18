@@ -20,3 +20,4 @@ export * from './messaging-init';
 export * from './Components/Escapist/escapist';
 export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/Escapist/escapist-subscription';
+export * from './Components/TextBox/text-box';
