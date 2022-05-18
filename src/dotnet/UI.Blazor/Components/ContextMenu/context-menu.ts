@@ -82,6 +82,8 @@ export class ContextMenu {
             const sameTop = menuSize.top == buttonSize.top;
             this._button.classList.remove('rounded-l-lg');
             this._button.classList.remove('border-l');
+            this._button.classList.remove('show-on-hover');
+            this._button.classList.add('show');
             if (sameTop)
                 this._menu.classList.remove('rounded-tr-md');
             if (sameBottom)
@@ -90,6 +92,8 @@ export class ContextMenu {
         else {
             this._button.classList.add('rounded-l-lg');
             this._button.classList.add('border-l');
+            this._button.classList.add('show-on-hover');
+            this._button.classList.remove('show');
         }
     }
 

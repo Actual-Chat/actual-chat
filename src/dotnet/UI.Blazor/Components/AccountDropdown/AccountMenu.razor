@@ -2,12 +2,12 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 
-<Dropdown Class="relative mt-1" MenuClass="bottom-12 w-48 rounded-md" ButtonClass="!border-0 !pl-0.5 !bg-primary">
+<Dropdown Class="relative mt-1" MenuClass="" ButtonClass="!border-0 !bg-primary">
     <ButtonTemplate>
         <AccountView/>
     </ButtonTemplate>
     <MenuTemplate>
-        <Menu Class="rounded-md border border-accent" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
+        <Menu Class="account-dropdown-menu" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
             <MenuItem Title="Settings" Name="settings" Click="OnSettingsClick">
                 <Icon>
                     <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 32 32">

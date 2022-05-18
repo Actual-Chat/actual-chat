@@ -23,6 +23,7 @@ module.exports = {
       colors: {
         'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
+        'error-toast-text': 'var(--error-toast-text)',
         'audio-message': 'var(--audio-message)',
         'online': 'var(--online)',
         'unread': 'var(--unread)',
@@ -50,6 +51,8 @@ module.exports = {
         'mention-message-hover': 'var(--mention-message-hover)',
         'own-message': 'var(--own-message)',
         'own-message-hover': 'var(--own-message-hover)',
+        'context-menu': 'var(--context-menu)',
+        'context-border': 'var(--context-border)',
       },
       textColor: {
         'primary': 'var(--text-primary)',

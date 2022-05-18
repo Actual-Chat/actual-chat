@@ -34,9 +34,12 @@
     --own-message: #f6f8f9;
     --own-message-hover: #cbd5e1;
     --audio-message: #d2effc;
+    --context-menu: #F9FAFB;
+    --context-border: #e2e7ec;
 
-    --error-toast-header: #feb7b7;
-    --error-toast-body: #fecaca;
+    --error-toast-header: #fd5757;
+    --error-toast-body: #fd6a6a;
+    --error-toast-text: #fafafa;
 
     --glow-max: rgb(255, 255, 255);
     --glow-mid: rgb(181, 240, 255);
@@ -47,81 +50,48 @@
 }
 
 .theme-dark {
-    --background-primary: #1a1f25;
-    --background-secondary: #222831;
-    --background-accent: #4b5666;
-    --background-strong-accent: #93c5fd;
-    --background-online: #31d872;
-    --background-message-hover: #1f2937;
-
-    --text-color-primary: #f6f7f9;
-    --text-color-primary-muted: #d3d9e1;
-    --text-color-secondary: #bcc4d1;
-    --text-color-secondary-muted: #8e9cb1;
-    --text-color-accent: #d3d9e1;
-    --text-color-accent-muted: #e1e6eb;
-    --text-color-toggle-on: #31d872;
-
-    --button-color-success: #27ce68;
-    --button-color-success-hover: #21ad58;
-    --button-color-error: #95211E;
-    --button-color-error-hover: #D94440;
-
-    --glow-max: #fff;
-    --glow-mid: rgb(181, 240, 255);
-    --glow-min: rgb(0, 204, 255);
-    --playing-glow-max: rgb(181, 240, 255);
-    --playing-glow-mid: rgb(0, 204, 255);
-    --playing-glow-min: rgb(0, 139, 173);
-}
-
-.theme-dark-blue {
     --background-primary: #2F3136;
     --background-secondary: #36393F;
     --background-accent: #292B2F;
-    --background-strong-accent: #93c5fd;
-    --background-online: #31d872;
-    --background-message-hover: #2f4077;
-    --background-separate-line: #2b3641;
-    --background-error-alert: #f2b6bb;
-    --background-avatar: #5a7188;
-    --background-mention: #24315b;
-    --background-mention-hover: #fb923c;
-    --background-mention-message: #24315b;
-    --background-mention-message-hover: #2f4077;
-    --background-own-hover: #2f4077;
-    --background-own-message: #24315b;
+    --text-primary: #fafafa;
+    --text-secondary: #e5e6e8;
+    --text-accent: #d0d2d6;
 
-    --text-color-primary: #fafafa;
-    --text-color-primary-muted: #3b4a59;
-    --text-color-secondary: #eff0f1;
-    --text-color-secondary-muted: #5a7188;
-    --text-color-accent: #dbe0f1;
-    --text-color-online: #31d872;
-    --text-color-accent-muted: #e1e6eb;
-    --text-color-white: #ffffff;
-    --text-color-placeholder: #788ea5;
-    --text-color-toggle-off: #d87330;
-    --text-color-toggle-on: #09a7ec;
-    --text-color-toggle-hover: #0899d9;
-    --text-color-rating: #fde047;
-    --text-inline-code: #D83E52;
-    --text-button-on: #ef4444;
+    --online: #31d872;
+    --unread: #93c5fd;
+    --separator: #2b3641;
+    --placeholder: #788ea5;
+    --white: #ffffff;
+    --rating: #fde047;
+    --error: #f87171;
+    --error-hover: #ef4444;
+    --success: #0ea5e9;
+    --success-hover: #0284c7;
+    --success-outline: #F9FAFB;
+    --success-outline-hover: #e0f2fe;
+    --cancel: #64748b;
+    --cancel-hover: #475569;
+    --code: #D83E52;
+    --avatar: #5a7188;
+    --recorder-on: #ef4444;
+    --toggle-on: #5eead4;
+    --toggle-hover: #99f6e4;
+    --message-hover: #484c54;
+    --mention: #672d0d;
+    --mention-hover: #893d11;
+    --mention-message: #4e4039;
+    --mention-message-hover: #594941;
+    --own-message: #3f434a;
+    --own-message-hover: #484c54;
+    --audio-message: #d2effc;
+    --context-menu: #17181a;
+    --context-border: #17181a;
 
-    --button-color-success: #3da9fc;
-    --button-color-success-hover: #0284c7;
-    --button-color-success-outline: #F9FAFB;
-    --button-color-success-outline-hover: #e0f2fe;
-    --button-color-accent: #ffffff;
-    --button-color-accent-hover: #FAFAFA;
-    --button-color-cancel: #64748b;
-    --button-color-cancel-hover: #475569;
-    --button-color-error: #ef4444;
-    --button-color-error-hover: #dc2626;
-    --error-toast-header: #feb7b7;
-    --error-toast-body: #fecaca;
+    --error-toast-header: #fc3030;
+    --error-toast-body: #fd5757;
+    --error-toast-text: #fafafa;
 
-    --glow-max: #fff;
+    --glow-max: rgb(255, 255, 255);
     --glow-mid: rgb(181, 240, 255);
     --glow-min: rgb(0, 204, 255);
     --playing-glow-max: rgb(181, 240, 255);

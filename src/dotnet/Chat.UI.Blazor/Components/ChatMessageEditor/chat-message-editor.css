@@ -50,6 +50,14 @@
     max-height: 200px;
 }
 
+.attach-dropdown-menu {
+    @apply rounded-md p-1 absolute bottom-14 -left-1 shadow-context;
+}
+
+.attach-dropdown-menu.menu {
+    @apply border border-context-border;
+}
+
 .recorder-buttons {
     @apply flex-none rounded-2xl bg-accent ml-3;
 }

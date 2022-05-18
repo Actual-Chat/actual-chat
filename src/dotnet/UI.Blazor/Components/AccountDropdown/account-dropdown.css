@@ -3,3 +3,11 @@
     transform: translate(0) scale(1);
     visibility: visible;
   }
+
+.account-dropdown-menu {
+    @apply rounded-md p-1 absolute bottom-14 w-56 shadow-context;
+}
+
+.account-dropdown-menu.menu {
+    @apply border border-context-border;
+}

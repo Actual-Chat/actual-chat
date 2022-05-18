@@ -224,6 +224,25 @@ input.input-underlined {
     @apply bg-transparent border-b border-placeholder;
 }
 
+.error-toast {
+    @apply flex flex-col w-full justify-center my-1 shadow-md rounded-md text-error-toast-text z-50;
+}
+
+.error-toast .toast-header {
+    @apply flex flex-row w-full p-2 bg-error-toast-header rounded-t-md;
+}
+
+.error-toast .header-icon {
+    @apply flex justify-center items-center mb-0.5;
+}
+
+.error-toast .header-title {
+    @apply flex flex-1 float-left w-full text-lg font-medium px-2;
+}
+
+.error-toast .toast-content {
+    @apply flex p-2 rounded-b-md bg-error-toast-body;
+}
 
 /* Other */
 
