@@ -26,6 +26,14 @@ public class MarkupParserTest : TestBase
     }
 
     [Fact]
+    public void UrlWithQueryTest()
+    {
+        var m = Parse<UrlMarkup>("https://habr.com/ru/all/?q=1", out var text);
+        m.Url.Should().Be(text);
+        m.IsImage.Should().BeFalse();
+    }
+
+    [Fact]
     public void MentionTest()
     {
         var m = Parse<Mention>("@alex", out var text);

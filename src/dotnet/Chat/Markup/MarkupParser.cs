@@ -30,7 +30,7 @@ public class MarkupParser : IMarkupParser
             or 'w' // for www.
             ).Labelled("First URL character");
     private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || ":/?&#+%_.\\-~".Contains(c, StringComparison.Ordinal)).Labelled("URL character");
+        Token(c => char.IsLetterOrDigit(c) || ":/?&#+=%_.\\-~".Contains(c, StringComparison.Ordinal)).Labelled("URL character");
     private static readonly Parser<char, char> SpaceOrTabChar =
         Token(c => c is ' ' or '\t').Labelled("space or tab");
     private static readonly Parser<char, char> EndOfLineChar =
