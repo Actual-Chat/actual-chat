@@ -47,14 +47,6 @@ public sealed class OpenAudioSegment
                 Index, StreamId);
     }
 
-    public void SetAudibleDuration(TimeSpan audibleDuration)
-    {
-        if (!TaskSource.For(AudibleDurationTask).TrySetResult(audibleDuration))
-            Log.LogWarning(
-                "SetAudibleDuration came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
-                Index, StreamId);
-    }
-
     public void Close(TimeSpan duration)
     {
         TaskSource.For(RecordedAtTask).TrySetResult(null);
