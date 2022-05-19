@@ -31,9 +31,9 @@ jobs:
       - name: Print version
         run: echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
       - name: Verify tag matches version.json
-        if: endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true
+        if: github.ref != 'refs/heads/dev' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true
         run: |
-          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
+          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }} and branch is not 'dev'"
           exit 1
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
