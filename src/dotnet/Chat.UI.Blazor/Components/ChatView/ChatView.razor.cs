@@ -1,4 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
@@ -28,6 +29,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
 
     private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
@@ -219,7 +221,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             chatEntries,
 			attachments,
 			_initialLastReadEntryId,
-            MarkupParser);
+            MarkupParser,
+            DateTimeService);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;

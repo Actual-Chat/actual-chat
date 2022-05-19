@@ -35,7 +35,6 @@ public class CoreModule : HostModule<CoreSettings>
         services.TryAddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
-        fusion.AddComputeService<ILiveTime, LiveTime>();
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);

@@ -19,7 +19,7 @@
         @* Position *@
         <div class="c-text">
             @if (m.PlayingAt is { } playingAt) {
-                var localTime = playingAt.ToLocalTime();
+                var localTime = DateTimeService.ToLocalTime(playingAt);
                 var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                 var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
                 <span>
@@ -44,6 +44,7 @@
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 

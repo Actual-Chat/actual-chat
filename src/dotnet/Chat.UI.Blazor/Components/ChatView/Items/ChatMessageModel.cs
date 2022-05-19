@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
@@ -60,7 +62,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         List<ChatEntry> chatEntries,
         IDictionary<long, ImmutableArray<TextEntryAttachment>> chatEntryAttachments,
         long? lastReadEntryId,
-        IMarkupParser markupParser)
+        IMarkupParser markupParser,
+        DateTimeService dateTimeService)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -82,7 +85,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var markup = entry.AudioEntryId == null
                 ? markupParser.Parse(entry.Content)
                 : new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
-            var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
+            var date = DateOnly.FromDateTime(dateTimeService.ToLocalTime(entry.BeginsAt));
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             if (!chatEntryAttachments.TryGetValue(entry.Id, out var attachments))

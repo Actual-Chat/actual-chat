@@ -1,6 +1,7 @@
 @using Stl.Plugins
 @using Blazored.Modal
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
 @implements IDisposable
 @{
     var moduleAssemblies = Plugins.GetPlugins<IBlazorUIModule>()
@@ -35,8 +36,12 @@
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
     [Inject] private StateRestore StateRestore { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ILogger<App> Log { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!SessionId.IsNullOrEmpty()) {
             var session = new Session(SessionId);
@@ -49,9 +54,27 @@
                 SessionProvider.Session = session;
         }
         if (!CircuitContext.IsPrerendering) {
+            await SetupTimeOffset();
             CircuitContext.RootComponent = this;
             // This method should be called only when ISessionProvider.Session is set!
-            StateRestore.Restore(CancellationToken.None);
+            _ = StateRestore.Restore(CancellationToken.None);
+        }
+    }
+
+    private async Task SetupTimeOffset() {
+        var ssb = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
+        if (!ssb)
+            return;
+        // useful js functions
+        // Intl.DateTimeFormat().resolvedOptions().timeZone
+        // new Date().getTimezoneOffset()
+        try {
+            var timeOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()")
+                .ConfigureAwait(true);
+            DateTimeService.SetupTimeOffset(TimeSpan.FromMinutes(-timeOffset));
+        }
+        catch(Exception ex) {
+            Log.LogWarning(ex, "Failed to setup time offset");
         }
     }
 
