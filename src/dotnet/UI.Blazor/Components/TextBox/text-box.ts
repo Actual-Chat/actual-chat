@@ -13,7 +13,7 @@ export class TextBox implements Disposable {
         this.input = input;
         fromEvent(input, 'input')
             .pipe(takeUntil(this.disposed$))
-            .pipe(debounceTime(500))
+            .pipe(debounceTime(800))
             .subscribe(event => {
                 console.log("text-box, emit on change. value: " + input.value);
                 input.dispatchEvent(new Event('change'));
