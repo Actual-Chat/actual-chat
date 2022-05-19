@@ -137,6 +137,13 @@ code
         um.Text.Should().Be("*");
     }
 
+    [Fact(Skip = "Need to be implemented")]
+    public void PlainTest_SpecialCase1()
+    {
+        var m = Parse<PlainTextMarkup>("--background-message-hover: #f3f4f6;", out var text);
+        m.Text.Should().Be(text);
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)
