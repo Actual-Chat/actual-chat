@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
 using Stl.Versioning;
-using Stl.Redis;
 
 namespace ActualChat.Chat;
 
@@ -24,8 +23,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IUserContactsBackend _userContactsBackend;
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> _dbChatEntryIdGenerator;
-    private readonly RedisSequenceSet<ChatEntry> _idSequences;
-    private readonly ICommander _commander;
     private readonly IEventPublisher _eventPublisher;
 
     public ChatsBackend(IServiceProvider services) : base(services)
@@ -37,8 +34,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         _dbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
-        _commander = services.GetRequiredService<ICommander>();
         _eventPublisher = Services.GetRequiredService<IEventPublisher>();
     }
 
@@ -93,7 +88,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         ChatAuthor? author = null;
         if (!authorId.IsNullOrEmpty()) {
-            author = await _chatAuthorsBackend.Get(chatId, authorId!, false, cancellationToken).ConfigureAwait(false);
+            author = await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
             userId = author?.UserId;
         }
 
@@ -326,7 +321,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var chatId = command.Entry.ChatId;
         var isPeerChatId = ChatIdExt.IsPeerChatId(chatId);
         if (isPeerChatId)
-            _ = await GetOrCreatePeerChat(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+            _ = await GetOrCreatePeerChat(chatId, cancellationToken).ConfigureAwait(false);
 
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
@@ -356,9 +351,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         // TODO: Use entity resolver or remove this check (?)
-        var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleAsync(a => a.Id == entry.AuthorId.Value, cancellationToken)
-            .ConfigureAwait(false);
         var isNew = entry.Id == 0;
         var dbEntry = await DbUpsertEntry(dbContext, entry, cancellationToken).ConfigureAwait(false);
 
@@ -516,7 +508,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await _userContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Chat> GetOrCreatePeerChat(Symbol chatId, Symbol authorId, CancellationToken cancellationToken)
+    private async Task<Chat> GetOrCreatePeerChat(Symbol chatId, CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat != null)
