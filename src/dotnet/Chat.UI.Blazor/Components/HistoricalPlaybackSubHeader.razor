@@ -61,8 +61,17 @@
 
         var playback = player.Playback;
         var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        if (!isPlaying)
+        if (!isPlaying) {
+            // If the player still has playing task but playback is not playing,
+            // apparently it is awaiting next track is fetched.
+            // So it make sense to keep header status for a while.
+            if (player.WhenPlaying != null && State.LatestNonErrorValue.PlayingAt.HasValue) {
+                // Invalidate to force recompute to check if the player is really stopped or not.
+                Computed.GetCurrent()!.Invalidate(TimeSpan.FromMilliseconds(100));
+                return State.LatestNonErrorValue;
+            }
             return Model.NotPlaying;
+        }
 
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
