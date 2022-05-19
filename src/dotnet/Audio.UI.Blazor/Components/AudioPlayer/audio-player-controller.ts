@@ -1,7 +1,7 @@
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
 import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
 import { Resettable } from 'object-pool';
-import { AudioContextPool } from 'audio-context-pool';
+import { audioContextLazy } from 'audio-context-lazy';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 
 const LogScope: string = 'AudioPlayerController';
@@ -90,7 +90,7 @@ export class AudioPlayerController implements Resettable {
     }): Promise<void> {
         this.isReset = false;
         /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-        this.audioContext = await AudioContextPool.get('main') as AudioContext;
+        this.audioContext = await audioContextLazy.get();
         if (this.feederNode === null) {
             const feederNodeOptions: AudioWorkletNodeOptions = {
                 channelCount: 1,

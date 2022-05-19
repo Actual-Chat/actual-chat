@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@inherits InputText
+
+@{
+    var cls = CssClass + " " + Class;
+}
+
+<input @ref="Ref"
+       id="@Id"
+       type="text"
+       class="@cls"
+       value="@CurrentValue"
+       @attributes="@AdditionalAttributes"
+       @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public bool Autofocus { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _ = Ref.FocusAsync();
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.TextBox.create", Ref
+                ).ConfigureAwait(true);
+        }
+    }
+
+    protected override void Dispose(bool disposing) {
+        base.Dispose(disposing);
+        if (disposing) {
+            if (JSRef != null!)
+                _ = JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        }
+    }
+}

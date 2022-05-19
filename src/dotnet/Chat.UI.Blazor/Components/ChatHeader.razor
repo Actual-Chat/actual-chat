@@ -10,9 +10,10 @@
             Title="@Chat.Title"
             Picture="@Chat.Picture">
         </ChatIcon>
-        <div class="flex-auto text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">
-            @Chat.Title
-            <button class="flex-none pull-right hidden group-hover:flex font-light text-xs bg-primary border-accent border-2 rounded p-0.5 px-2 chat-header-panel-hint">
+        <div class="flex-1 flex-x text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">
+            <div class="flex self-center">@Chat.Title</div>
+            <div class="flex-1"></div>
+            <button class="flex-none hidden group-hover:flex font-light text-xs bg-primary border-accent border-2 rounded p-0.5 px-2 chat-header-panel-hint">
                 @(RightPanelUI.IsVisible.Value ? "Hide" : "Show") settings
             </button>
         </div>

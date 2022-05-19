@@ -1,7 +1,9 @@
 @using ActualChat.Users
-@inherits ComputedStateComponent<Welcome.Model>
+@inherits ComputedStateComponent<Welcome.Model?>
 @{
     var m = State.LatestNonErrorValue;
+    if (m == null)
+        return;
 }
 
 @if (m.IsAuthenticated) {
@@ -43,13 +45,7 @@
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new ComputedState<Model>.Options() {
-            InitialValue = new Model(false)
-        };
-    }
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return new Model(false);

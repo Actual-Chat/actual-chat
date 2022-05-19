@@ -8,8 +8,10 @@ public static class StringExt
 {
     private static readonly Regex CaseChangeRegex =
         new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+#pragma warning disable MA0023
     private static readonly Regex CamelCaseRegex =
         new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
+#pragma warning restore MA0023
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");

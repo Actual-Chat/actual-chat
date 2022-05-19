@@ -4,17 +4,33 @@
 */
 
 .modal {
+    @apply h-full w-full md:h-auto md:w-auto;
     @apply border-0 rounded-none;
     @apply p-0 bg-transparent;
     box-shadow: none;
 }
+
+.modal .blazored-modal-content {
+    @apply h-full w-full;
+}
+
+.modal-chrome-wrapper {
+    @apply h-full w-full;
+    @apply flex flex-col justify-center items-center;
+}
+
+.modal-chrome-overlay {
+    @apply block fixed left-0 top-0 h-full w-full;
+}
+
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
     @apply bg-primary text-secondary;
     @apply overflow-hidden;
+    @apply z-10;
 }
 .modal-frame {
-    @apply h-screen md:h-auto w-screen md:max-w-modal;
+    @apply h-full md:h-auto w-full md:w-modal;
     @apply md:rounded-lg rounded-none;
     @apply flex flex-col;
 }

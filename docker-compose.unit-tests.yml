@@ -10,6 +10,7 @@ services:
       - ./artifacts:/artifacts
     environment:
       NPM_READ_TOKEN: ${NPM_READ_TOKEN}
+      GITHUB_ACTIONS: ${GITHUB_ACTIONS}
     command: >-
       /bin/sh -c "
       dotnet build --nologo --no-restore --configuration Debug &&
