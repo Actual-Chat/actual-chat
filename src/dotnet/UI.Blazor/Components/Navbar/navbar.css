@@ -9,12 +9,23 @@
     @apply text-toggle-hover;
 }
 
+.navbar-group-toggles {
+    @apply flex flex-1 flex-col text-secondary bg-accent;
+}
+
+.navbar-group-toggles .navbar-group-toggle {
+    @apply h-12 cursor-pointer;
+}
+.navbar-group-toggle .btn-content {
+    @apply px-1;
+}
+
 #navbar-toggle:checked~#navbar {
     @apply translate-x-0;
 }
 
-.navbar-group-toggle:hover .navbar-group-icon {
-    @apply scale-105 ease-in-out duration-150;
+.btn-square.navbar-group-toggle {
+    @apply rounded-none;
 }
 
 /* Mobile title */

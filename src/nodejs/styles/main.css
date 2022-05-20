@@ -17,6 +17,11 @@ a {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
+input,
+textarea {
+    @apply bg-secondary;
+}
+
 code {
     @apply px-0.5;
     @apply rounded-sm border border-accent;
