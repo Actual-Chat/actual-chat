@@ -72,3 +72,13 @@ form .right-panel-input:active,
 form .right-panel-input:focus {
     @apply ring-0 appearance-none;
 }
+
+.btn-square.attach-btn {
+    @apply flex flex-1 min-h-footer ml-4;
+}
+.btn.btn-square.attach-btn:hover > .btn-content {
+    @apply bg-transparent;
+}
+.btn.btn-square:enabled:focus > .btn-content {
+    @apply bg-square-focus;
+}

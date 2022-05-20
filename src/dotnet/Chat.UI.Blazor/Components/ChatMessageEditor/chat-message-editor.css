@@ -51,7 +51,7 @@
 }
 
 .attach-dropdown-menu {
-    @apply rounded-md p-1 absolute bottom-14 -left-1 shadow-context;
+    @apply rounded-md p-1 absolute bottom-5 -left-10 shadow-context;
 }
 
 .attach-dropdown-menu.menu {

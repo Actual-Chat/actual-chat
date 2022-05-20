@@ -15,9 +15,7 @@
                 <AttachmentListPreview @ref="AttachmentListPreviewRef"
                                        RemoveRequested="@(c => RemoveAttachment(c))" />
                 <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
-                    <div class="flex-none self-center m-3 mr-0 border-2 border-accent">
-                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
-                    </div>
+                    <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                  Class="message-input -flex-y"
                                  Placeholder="@("#" + Chat.Title)"

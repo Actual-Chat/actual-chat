@@ -241,7 +241,6 @@ button.off, .btn.off, .btn.btn-square.off .btn-content {
     @apply text-square-title;
 }
 
-/*test*/
 .btn.btn-square:enabled:focus > .btn-content {
     @apply bg-square-focus;
 }
