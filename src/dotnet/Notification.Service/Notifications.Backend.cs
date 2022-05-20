@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -100,9 +101,22 @@ public partial class Notifications
             var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (batchResponse.FailureCount > 0)
-                _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}",
-                    batchResponse.FailureCount);
+            if (batchResponse.FailureCount > 0) {
+                var errorInfoItems = await Task.WhenAll(batchResponse.Responses
+                    .Where(r => !r.IsSuccess)
+                    .Select(async r => new {
+                        r.Exception.MessagingErrorCode,
+                        r.Exception.HttpResponse.StatusCode,
+                        Content = await r.Exception.HttpResponse.Content.ReadAsStringAsync(cancellationToken)
+                            .ConfigureAwait(false),
+                    })).ConfigureAwait(false);
+                var errorDetails = errorInfoItems
+                    .Select(x => $"MessagingError = {x.MessagingErrorCode}; HttpCode = {x.StatusCode}; Content = {x.Content}")
+                    .Aggregate(new StringBuilder(), (sb, item) => sb.AppendLine(item))
+                    .ToString();
+                _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}; {Details}",
+                    batchResponse.FailureCount, errorDetails);
+            }
 
             if (batchResponse.SuccessCount > 0)
                 _ = Task.Run(
