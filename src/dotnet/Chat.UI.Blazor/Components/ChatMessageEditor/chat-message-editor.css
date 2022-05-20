@@ -62,7 +62,7 @@
     @apply flex-none rounded-2xl bg-accent ml-3;
 }
 
-.btn.audio-recorder-toggle.on {
+.btn.audio-recorder-toggle.on .btn-content {
     @apply text-recorder-on;
 }
 

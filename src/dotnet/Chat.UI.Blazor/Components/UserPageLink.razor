@@ -6,7 +6,7 @@
     var url = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
 }
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
-    <div class="flex-none">
+    <div class="flex-none text-primary">
         <a href="@url">@url</a>
     </div>
     <CopyToClipboard Class="flex-none text-secondary" InputClass="hidden" Text="@url"/>

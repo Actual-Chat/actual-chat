@@ -1,5 +1,6 @@
 
 :root, .theme-light {
+    /* MAIN COLORS */
     --background-primary: #edf0f3;
     --background-secondary: #F9FAFB;
     --background-accent: #e2e7ec;
@@ -7,20 +8,43 @@
     --text-secondary: #4b5e71;
     --text-accent: #232c35;
 
+    /* BUTTONS */
+    --success: #0ea5e9;
+    --success-hover: #0284c7;
+    --success-title: #edf0f3;
+    --success-ring: #94d2fc;
+    --success-outline-hover: #e0f2fe;
+    --success-outline-title: #0284c7;
+
+    --cancel: #64748b;
+    --cancel-hover: #546174;
+    --cancel-title: #edf0f3;
+    --cancel-ring: #9aa6b7;
+    --cancel-outline-hover: #eef1f4;
+    --cancel-outline-title: #64748b;
+
+    --error: #ef4444;
+    --error-hover: #ec2020;
+    --error-title: #edf0f3;
+    --error-ring: #f47a7a;
+    --error-outline-hover: #fef4f4;
+    --error-outline-title: #ef4444;
+
+    --square: #e2e7ec;
+    --square-active: #e2e7ec;
+    --square-hover: #edf0f3;
+    --square-focus: #cad3dc;
+    --square-title: #4b5e71;
+
+    --shadow-main: #000000;
+
+    /* UTILS COLORS */
     --online: #31d872;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
     --white: #ffffff;
     --rating: #fde047;
-    --error: #f87171;
-    --error-hover: #ef4444;
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
-    --success-outline: #F9FAFB;
-    --success-outline-hover: #e0f2fe;
-    --cancel: #64748b;
-    --cancel-hover: #475569;
     --code: #D83E52;
     --avatar: #5a7188;
     --recorder-on: #ef4444;
@@ -50,6 +74,7 @@
 }
 
 .theme-dark {
+    /* MAIN COLORS */
     --background-primary: #2F3136;
     --background-secondary: #36393F;
     --background-accent: #292B2F;
@@ -57,25 +82,48 @@
     --text-secondary: #e5e6e8;
     --text-accent: #d0d2d6;
 
+    /* BUTTONS */
+    --success: #0ea5e9;
+    --success-hover: #0284c7;
+    --success-title: #edf0f3;
+    --success-ring: #94d2fc;
+    --success-outline-hover: #2F3136;
+    --success-outline-title: #0ea5e9;
+
+    --cancel: #64748b;
+    --cancel-hover: #546174;
+    --cancel-title: #edf0f3;
+    --cancel-ring: #9aa6b7;
+    --cancel-outline-hover: #2F3136;
+    --cancel-outline-title: #d7d8dc;
+
+    --error: #ef4444;
+    --error-hover: #ec2020;
+    --error-title: #edf0f3;
+    --error-ring: #f47a7a;
+    --error-outline-hover: #2F3136;
+    --error-outline-title: #ef4444;
+
+    --square: #292b2f;
+    --square-active: #202125;
+    --square-hover: #202125;
+    --square-focus: #17181a;
+    --square-title: #edf0f3;
+
+    --shadow-main: #64748b;
+
+    /* UTILS COLORS */
     --online: #31d872;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
     --white: #ffffff;
     --rating: #fde047;
-    --error: #f87171;
-    --error-hover: #ef4444;
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
-    --success-outline: #F9FAFB;
-    --success-outline-hover: #e0f2fe;
-    --cancel: #64748b;
-    --cancel-hover: #475569;
     --code: #D83E52;
     --avatar: #5a7188;
     --recorder-on: #ef4444;
-    --toggle-on: #5eead4;
-    --toggle-hover: #99f6e4;
+    --toggle-on: #52baf6;
+    --toggle-hover: #65c1f7;
     --message-hover: #484c54;
     --mention: #672d0d;
     --mention-hover: #893d11;

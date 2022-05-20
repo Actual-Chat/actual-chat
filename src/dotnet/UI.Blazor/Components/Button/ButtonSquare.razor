@@ -5,8 +5,10 @@
         name="@Name" type="@GetButtonType()"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
-    <div class="btn-content @ContentClass">
-        @ChildContent
+    <div class="btn-content flex w-full h-full bg-inherit @ContentClass" tabindex="-1">
+        <div class="p-1 self-center">
+            @ChildContent
+        </div>
     </div>
 </button>
 

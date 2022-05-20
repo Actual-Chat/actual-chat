@@ -26,7 +26,7 @@
 .historical-playback-sub-header {
     @apply relative z-20 p-1 pb-0.5;
     @apply flex flex-row items-center justify-center;
-    @apply bg-accent shadow-lg;
+    @apply bg-secondary shadow-lg text-primary rounded-b-lg border-b-2 border-t-2 border-accent;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
@@ -72,4 +72,3 @@ form .right-panel-input:active,
 form .right-panel-input:focus {
     @apply ring-0 appearance-none;
 }
-
