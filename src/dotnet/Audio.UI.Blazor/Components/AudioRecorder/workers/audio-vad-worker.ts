@@ -140,9 +140,6 @@ async function processQueue(): Promise<void> {
             encoderPort.postMessage(adjustedVadEvent);
         }
 
-    } catch (error) {
-        isVadRunning = false;
-        throw error;
     } finally {
         isVadRunning = false;
     }
