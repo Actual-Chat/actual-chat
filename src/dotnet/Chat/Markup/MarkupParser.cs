@@ -31,10 +31,10 @@ public class MarkupParser : IMarkupParser
             ).Labelled("First URL character");
     private static readonly Parser<char, char> UrlChar =
         Token(c => char.IsLetterOrDigit(c) || ":/?&#+=%_.\\-~".Contains(c, StringComparison.Ordinal)).Labelled("URL character");
-    private static readonly Parser<char, char> SpaceOrTabChar =
-        Token(c => c is ' ' or '\t').Labelled("space or tab");
+    private static readonly Parser<char, char> WhitespaceChar =
+        Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
     private static readonly Parser<char, char> EndOfLineChar =
-        Token(c => c is ('\r' or '\n' or '\u2028')).Labelled("line separator");
+        Token(c => c is '\r' or '\n' or '\u2028').Labelled("line separator");
     private static readonly Parser<char, char> NotEndOfLineChar =
         Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
     private static readonly Parser<char, char> StringIdChar =
@@ -45,9 +45,9 @@ public class MarkupParser : IMarkupParser
         Token(c => !(char.IsLetterOrDigit(c) || c is '_')).Labelled("not letter, digit, or '_'");
     private static readonly Parser<char, char> SpecialChar =
         Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
-    private static readonly Parser<char, char> NotSpecialOrWordChar =
-        Token(c => !(char.IsLetterOrDigit(c) || c is '_' or '*' or '`' or '@'))
-            .Labelled("not letter, digit, '_', '*', '`', or '@'");
+    private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
+        Token(c => !(char.IsWhiteSpace(c) || c is '_' or '*' or '`' or '@'))
+            .Labelled("not whitespace, line separator, '_', '*', '`', or '@'");
 
     // Tokens
 
@@ -76,11 +76,11 @@ public class MarkupParser : IMarkupParser
     // Markup parsers
 
     // Word text & delimiter
-    private static readonly Parser<char, Markup> WordText =
-        WordChar.AtLeastOnceString().ToPlainTextMarkup();
-    internal static readonly Parser<char, Markup> DelimiterText =
-        NotSpecialOrWordChar.AtLeastOnceString().ToPlainTextMarkup();
-    private static readonly Parser<char, Markup> WhitespaceText =
+    private static readonly Parser<char, Markup> NonWhitespaceText =
+        NotSpecialOrWhitespaceChar.AtLeastOnceString().ToPlainTextMarkup();
+    internal static readonly Parser<char, Markup> WhitespaceText =
+        WhitespaceChar.AtLeastOnceString().ToPlainTextMarkup();
+    private static readonly Parser<char, Markup> WhitespaceOrEndOfLineText =
         Whitespace.AtLeastOnceString().ToPlainTextMarkup();
 
     // Mention
@@ -119,16 +119,16 @@ public class MarkupParser : IMarkupParser
 
     // Mention | PreformattedText | Url | WordText
     private static readonly Parser<char, Markup> NonStylizedMarkup =
-        SafeTryOneOf(Mention, PreformattedText, Url, WordText)
+        SafeTryOneOf(Mention, PreformattedText, Url, NonWhitespaceText)
         .Debug("T");
 
     // Stylized text
     private static readonly Parser<char, Markup> BoldMarkup =
-        Rec(() => TextBlock!).Between(Try(BoldToken))
+        Rec(() => TextBlock).Between(Try(BoldToken))
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Bold))
             .Debug("**");
     private static readonly Parser<char, Markup> ItalicMarkup =
-        Rec(() => TextBlock!).Between(ItalicToken)
+        Rec(() => TextBlock).Between(ItalicToken)
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
             .Debug("*");
 
@@ -142,9 +142,9 @@ public class MarkupParser : IMarkupParser
     private static readonly Parser<char, string> CodeBlockStart =
         CodeBlockToken
             .Then(StringIdChar.ManyString()) // Language
-            .Before(SpaceOrTabChar.SkipUntil(EndOfLine));
+            .Before(WhitespaceChar.SkipUntil(EndOfLine));
     private static readonly Parser<char, char> CodeBlockEnd =
-        SpaceOrTabChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
+        WhitespaceChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
     private static readonly Parser<char, string> CodeBlockLine =
         Lookahead(Not(CodeBlockEnd))
             .Then(NotEndOfLineChar.ManyString());

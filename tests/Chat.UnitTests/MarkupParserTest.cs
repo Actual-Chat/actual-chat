@@ -34,6 +34,17 @@ public class MarkupParserTest : TestBase
     }
 
     [Fact]
+    public void UrlWithQueryAndHashTest()
+    {
+        var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x", out _);
+        m.Items.Length.Should().Be(2);
+        var url = (UrlMarkup) m.Items[0];
+        url.Url.Should().EndWith("344");
+        var text = (PlainTextMarkup) m.Items[1];
+        text.Text.Should().Be(" x");
+    }
+
+    [Fact]
     public void MentionTest()
     {
         var m = Parse<Mention>("@alex", out var text);
@@ -137,10 +148,25 @@ code
         um.Text.Should().Be("*");
     }
 
-    [Fact(Skip = "Need to be implemented")]
-    public void PlainTest_SpecialCase1()
+    [Fact]
+    public void SpecialTest_CssRuleCase()
     {
         var m = Parse<PlainTextMarkup>("--background-message-hover: #f3f4f6;", out var text);
+        m.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void SpecialTest_SmileCase()
+    {
+        var m = Parse<PlainTextMarkup>(":)", out var text);
+        m.Text.Should().Be(text);
+    }
+
+
+    [Fact]
+    public void SpecialTest_DoubleSmileCase()
+    {
+        var m = Parse<PlainTextMarkup>(":) :)", out var text);
         m.Text.Should().Be(text);
     }
 
