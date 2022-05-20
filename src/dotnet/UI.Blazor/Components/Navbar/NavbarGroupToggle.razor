@@ -4,7 +4,7 @@
 @using ActualChat.UI.Blazor.Services
 @{
     var isActive = NavbarUI.ActiveGroupId == Id;
-    var cls = isActive ? "!text-primary !bg-secondary" : "!text-secondary !bg-accent";
+    var cls = isActive ? "!text-primary !bg-primary" : "!text-secondary !bg-accent";
     var btnClass = $"navbar-group-toggle {cls} {Class}";
 }
 
