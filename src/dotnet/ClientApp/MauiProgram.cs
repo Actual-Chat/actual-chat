@@ -26,7 +26,6 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder
-            .RegisterBlazorMauiWebView()
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -47,7 +46,11 @@ public static class MauiProgram
             optional: true,
             reloadOnChange: false);
         var services = builder.Services;
-        services.AddBlazorWebView();
+        services.AddMauiBlazorWebView();
+
+#if DEBUG
+        builder.Services.AddBlazorWebViewDeveloperTools();
+#endif
 
         services.TryAddSingleton(builder.Configuration);
         services.AddSingleton(c => new HostInfo() {
