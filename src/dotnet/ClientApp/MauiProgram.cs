@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Stl.Fusion.Client;
 using Stl.Plugins;
+using Serilog;
 
 namespace ActualChat.ClientApp;
 
@@ -51,6 +52,14 @@ public static class MauiProgram
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
+
+        var appName = typeof(MauiProgram).Assembly.GetName().Name;
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File($"C:\\Logs\\maui.{appName}.log")
+            .CreateLogger();
+
+		builder.Logging.AddSerilog();
 
         services.TryAddSingleton(builder.Configuration);
         services.AddSingleton(c => new HostInfo() {
@@ -108,6 +117,12 @@ public static class MauiProgram
 
         // Injecting plugin services
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
+
+
+        
+
+		Log.Logger.Information("test. starting.");
+
         return builder.Build();
     }
 }
