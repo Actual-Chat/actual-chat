@@ -25,13 +25,24 @@
 /* Navgar subgroup */
 .navbar-subgroup {
     @apply pt-2;
-    @apply text-secondary text-xs font-semibold uppercase opacity-75;
+    @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-subgroup.first {
     @apply pt-0;
 }
+.navbar-subgroup .navbar-subgroup-content {
+    @apply text-secondary text-xs font-semibold uppercase opacity-75;
+}
+.navbar-subgroup .navbar-subgroup-ending {
+    @apply flex-1 justify-self-end;
+    @apply flex flex-row justify-end gap-x-1;
+    @apply text-secondary text-xs font-light;
+}
 
 /* Navbar item */
+.navbar-item {
+    @apply flex flex-row justify-start items-center gap-x-1 w-full;
+}
 .navbar-item .navbar-item-content {
     @apply text-primary;
 }
@@ -53,9 +64,16 @@
     @apply border border-primary-inverted;
 }
 
+.navbar-item .navbar-item-ending {
+    @apply flex-1 justify-self-end;
+    @apply flex flex-row justify-end gap-x-1;
+}
+
+.navbar-subgroup .pin-toggle.off,
 .navbar-item .pin-toggle.off {
     @apply invisible;
 }
+.navbar-subgroup:hover .pin-toggle.off,
 .navbar-item:hover .pin-toggle.off {
     @apply visible;
 }

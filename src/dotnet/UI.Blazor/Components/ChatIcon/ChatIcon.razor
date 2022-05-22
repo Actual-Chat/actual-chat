@@ -1,12 +1,14 @@
+@using Microsoft.Toolkit.HighPerformance
 @namespace ActualChat.UI.Blazor.Components.ChatIcon
 
 @if (Picture.IsNullOrEmpty()) {
     <div class="chat-icon chat-icon-generated @_iconClass"
          style="@_iconStyle">
-        @Title.Substring(0, 1)
+        @Title[..1]
     </div>
 } else {
     <img class="chat-icon chat-icon-image @_iconClass"
+         alt=""
          src="@Picture" />
 }
 
@@ -16,11 +18,11 @@
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Picture { get; set; } = "";
-    [Parameter] public ChatIconSize Size { get; set; } = ChatIconSize.Size9;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _iconClass = GetSizeClass();
+        _iconClass = Size.GetCssClass();
 
         if (Click.HasDelegate)
             _iconClass += " cursor-pointer";
@@ -30,13 +32,8 @@
     }
 
     private string GenerateColor() {
-        var hash = Title.Aggregate(0, (current, c) => c + ((current << 5) - current));
+        var hash = Title.GetDjb2HashCode();
         var h = hash % 360;
         return $"hsl({h}, 30%, 80%)";
-    }
-
-    private string GetSizeClass() {
-        var size = (int) Size;
-        return $"h-{size} w-{size}";
     }
 }

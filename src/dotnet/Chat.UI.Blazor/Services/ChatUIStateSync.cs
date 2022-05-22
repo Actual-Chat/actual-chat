@@ -96,7 +96,7 @@ public class ChatUIStateSync : WorkerBase
                 // Update _lastLanguageId
                 await IsLanguageChanged().ConfigureAwait(false);
                 // Start recording = start realtime playback
-                ChatUI.IsPlayingActive.Value = true;
+                ChatUI.IsPlaying.Value = true;
             }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder

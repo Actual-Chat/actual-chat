@@ -20,7 +20,7 @@
     @foreach (var authorId in m.AuthorIds) {
         <ChatAuthorBadge
             AuthorId="@authorId"
-            Size="PersonCircleSize.Size12"
+            Size="SquareSize.Size12"
             ShowsPresence="true"
             Click="() => OnChatAuthorClick(authorId)"
             TextClass="font-medium text-primary select-none"/>

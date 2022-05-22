@@ -1,7 +1,7 @@
 .chat-icon-generated {
-    @apply flex items-center justify-center rounded-full;
+    @apply flex items-center justify-center rounded-md;
 }
 
 .chat-icon-image {
-    @apply rounded-full;
+    @apply rounded-md;
 }

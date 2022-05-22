@@ -11,8 +11,9 @@ public class ChatUI
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<Symbol> RecordingChatId { get; }
     public IMutableState<ImmutableHashSet<Symbol>> PinnedChatIds { get; }
-    public IMutableState<bool> IsPlayingActive { get; }
-    public IMutableState<bool> IsPlayingPinned { get; }
+    public IMutableState<bool> MustPlayPinnedChats { get; }
+    public IMutableState<bool> MustPlayPinnedContactChats { get; }
+    public IMutableState<bool> IsPlaying { get; }
 
     public ChatUI(IServiceProvider services)
     {
@@ -23,8 +24,9 @@ public class ChatUI
         ActiveChatId = stateFactory.NewMutable<Symbol>();
         RecordingChatId = stateFactory.NewMutable<Symbol>();
         PinnedChatIds = stateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
-        IsPlayingActive = stateFactory.NewMutable<bool>();
-        IsPlayingPinned = stateFactory.NewMutable<bool>();
+        MustPlayPinnedChats = stateFactory.NewMutable<bool>();
+        MustPlayPinnedContactChats = stateFactory.NewMutable<bool>();
+        IsPlaying = stateFactory.NewMutable<bool>();
 
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
@@ -33,20 +35,30 @@ public class ChatUI
     [ComputeMethod]
     public virtual async Task<RealtimeChatPlaybackState?> GetRealtimeChatPlaybackState(CancellationToken cancellationToken)
     {
+        var isPlaying = await IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+        if (!isPlaying)
+            return null;
+
         var chatIds = ImmutableHashSet<Symbol>.Empty;
+        var activeChatId = await ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (!activeChatId.IsEmpty)
+            chatIds = chatIds.Add(activeChatId);
 
-        var isPlayingActive = await IsPlayingActive.Use(cancellationToken).ConfigureAwait(false);
-        var isPlayingPinned = await IsPlayingPinned.Use(cancellationToken).ConfigureAwait(false);
-
-        if (isPlayingActive) {
-            var activeChatId = await ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (!activeChatId.IsEmpty)
-                chatIds = chatIds.Add(activeChatId);
-
-        }
-        if (isPlayingPinned) {
+        var mustPlayPinnedChats = await MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
+        var mustPlayPinnedContactChats = await MustPlayPinnedContactChats.Use(cancellationToken).ConfigureAwait(false);
+        if (mustPlayPinnedChats || mustPlayPinnedContactChats) {
             var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-            chatIds = chatIds.Union(pinnedChatIds);
+            foreach (var chatId in pinnedChatIds) {
+                var chatIdKind = ChatIdExt.GetChatIdKind(chatId);
+                var mustPlay = chatIdKind switch {
+                    ChatIdKind.Group => mustPlayPinnedChats,
+                    ChatIdKind.PeerShort => mustPlayPinnedContactChats,
+                    ChatIdKind.PeerFull => mustPlayPinnedContactChats,
+                    _ => false,
+                };
+                if (mustPlay)
+                    chatIds = chatIds.Add(chatId);
+            }
         }
 
         return chatIds.Count == 0 ? null : new RealtimeChatPlaybackState(chatIds);

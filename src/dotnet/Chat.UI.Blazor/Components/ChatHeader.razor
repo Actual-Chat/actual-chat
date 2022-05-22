@@ -1,15 +1,12 @@
 @using ActualChat.UI.Blazor.Components.ChatIcon
 
 <div class="flex-x justify-items-stretch items-center bg-primary md:bg-secondary text-primary font-medium px-1">
-    @* TODO: remove? *@
-    <div class="flex-none self-start">
+    <div class="flex-none self-start invisible">
+        @* This thing just reserves the space *@
         <NavbarToggle/>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-3 px-2 group">
-        <ChatIcon
-            Title="@Chat.Title"
-            Picture="@Chat.Picture">
-        </ChatIcon>
+    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-2 px-3 group">
+        <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" />
         <div class="flex-1 flex-x text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">
             <div class="flex self-center">@Chat.Title</div>
             <div class="flex-1"></div>
@@ -20,7 +17,7 @@
     </div>
     <div class="flex-none flex-x items-center gap-x-3 pl-2">
         <ChatActivities/>
-        <ChatPlaybackToggles/>
+        <ChatPlaybackToggle/>
     </div>
 </div>
 

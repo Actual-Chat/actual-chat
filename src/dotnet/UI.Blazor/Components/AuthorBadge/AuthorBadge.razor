@@ -21,7 +21,7 @@
     private string _statusTextClass = "";
     private string _statusText = "";
 
-    [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
     [Parameter] public string TextClass { get; set; } = "";
     [Parameter] public IAuthorLike Author { get; set; } = null!;
@@ -45,7 +45,7 @@
 
     private string GetStatusTextClass()
         => Size switch {
-            PersonCircleSize.Size12 => "",
+            SquareSize.Size12 => "",
             _ => "text-xxs leading-4",
         };
 
@@ -54,8 +54,8 @@
             return TextClass;
 
         var sizeClass = Size switch {
-            PersonCircleSize.Size6 => "",
-            PersonCircleSize.Size8 => "",
+            SquareSize.Size6 => "",
+            SquareSize.Size8 => "",
             _ => "text-md",
             };
         return "select-none " + sizeClass;
