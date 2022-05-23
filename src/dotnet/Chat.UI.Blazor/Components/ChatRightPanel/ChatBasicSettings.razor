@@ -1,15 +1,22 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Headers
+@using ActualChat.UI.Blazor.Components.ChatIcon
 
 <Form Model="@_form" OnValidSubmit="@OnSave">
     <DataAnnotationsValidator/>
 
+    <ChatIcon
+        ShowImagePicker="true"
+        ImagePicked="OnImagePicked"
+        PictureClick="OnPictureClick"
+        Size="SquareSize.Size20"
+        Title="@_form.Title"
+        Picture="@_form.Picture">
+    </ChatIcon>
+
     <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
         <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true" Class="right-panel-input"/>
-    </FormSection>
-
-    <FormSection Label="Picture" InputId="@_form.PictureId">
-        <TextBox @bind-Value="@_form.Picture" id="@_form.PictureId" Class="right-panel-input"/>
     </FormSection>
 
     <FormSection>
@@ -21,7 +28,6 @@
     </div>
 </Form>
 
-
 @code {
     private FormModel _form = null!;
 
@@ -31,6 +37,11 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private IHttpClientFactory ClientFactory { get; init; } = null!;
+    [Inject] private UriMapper UriMapper { get; init; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
 
     protected override Task OnParametersSetAsync() {
         _form ??= new(ComponentIdGenerator);
@@ -66,5 +77,30 @@
             PictureId = $"{FormId}-picture";
             IsPublicId = $"{FormId}-is-public";
         }
+    }
+
+    private async Task OnImagePicked(InputFileChangeEventArgs e) {
+        if (e.File.Size > Constants.Chat.PictureFileSizeLimit) {
+            ErrorUI.ShowError("File is too big. Max file size: 1Mb.");
+            return;
+        }
+
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(e.File.OpenReadStream(Constants.Chat.PictureFileSizeLimit));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(e.File.ContentType);
+        content.Add(fileContent, "file", e.File.Name);
+        var client = ClientFactory.CreateClient();
+        var url = UriMapper.ToAbsolute($"/api/chats/{Chat.Id}/upload-picture");
+        var response = await client.PostAsync(url, content);
+        if (response.IsSuccessStatusCode) {
+            _form.Picture = await response.Content.ReadAsStringAsync();
+        } else {
+            ErrorUI.ShowError(response.ReasonPhrase ?? "Something went wrong");
+        }
+    }
+
+    private async Task OnPictureClick(MouseEventArgs arg) {
+        var url = ContentUrlMapper.ContentUrl(_form.Picture);
+        await ImagePreviewUI.Show(url);
     }
 }

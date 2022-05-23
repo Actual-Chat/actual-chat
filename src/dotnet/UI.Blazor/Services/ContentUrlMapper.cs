@@ -27,4 +27,7 @@ public class ContentUrlMapper
             return _mediaBaseUri + "400x300,fit/" + imageUrl;
         return imageUrl;
     }
+
+    public string PicturePreviewUrl(string imageUrl)
+        => _transformUri ? $"{_mediaBaseUri}100/{imageUrl}" : imageUrl;
 }
