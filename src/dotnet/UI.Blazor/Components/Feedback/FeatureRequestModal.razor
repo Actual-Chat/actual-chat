@@ -19,7 +19,7 @@
             <p>1 = not important, 5 = very important!</p>
         </div>
 
-        <div @ref="_feedbackRef" class="flex justify-center my-4">
+        <div @ref="Ref" class="flex justify-center my-4">
             @for (var i = 1; i <= 5; i++) {
                 var cls = _rating >= i ? "fa-star" : "fa-star-o";
                 var rating = i;
@@ -43,19 +43,28 @@
 @code {
     private int _rating;
     private string _comment = "";
-    private DotNetObjectReference<IFeatureBackend> _blazorRef = null!;
-    private IJSObjectReference _jsRef = null!;
-    private ElementReference _feedbackRef;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    private DotNetObjectReference<IFeatureBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    public async ValueTask DisposeAsync()
+    {
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
     [JSInvokable]
     private async Task SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;
-        await _jsRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
     }
 
     private void OnSubmit() {
@@ -70,19 +79,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _blazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            BlazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.Feedback.create",
-                _feedbackRef, _blazorRef
+                Ref, BlazorRef
                 ).ConfigureAwait(true);
         }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_jsRef != null!)
-            await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
-        _blazorRef?.Dispose();
     }
 
     public class Model {

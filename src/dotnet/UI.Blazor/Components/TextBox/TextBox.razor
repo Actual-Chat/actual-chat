@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
 @inherits InputText
+@implements IAsyncDisposable
 
 @{
     var cls = CssClass + " " + Class;
@@ -33,11 +34,9 @@
         }
     }
 
-    protected override void Dispose(bool disposing) {
-        base.Dispose(disposing);
-        if (disposing) {
-            if (JSRef != null!)
-                _ = JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
-        }
+    public virtual async ValueTask DisposeAsync() {
+        Dispose(true);
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
     }
 }
