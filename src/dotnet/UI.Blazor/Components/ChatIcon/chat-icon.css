@@ -18,6 +18,10 @@
     @apply cursor-pointer;
 }
 
+.chat-icon-size-6 {
+    @apply w-6 h-6;
+}
+
 .chat-icon-size-9 {
     @apply w-9 h-9;
 }

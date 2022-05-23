@@ -1,3 +1,5 @@
+@using ActualChat.UI.Blazor.Components.ChatIcon
+
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
@@ -9,7 +11,12 @@
 
     RenderFragment RenderItem(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
-            <ChildContent>@c.Title</ChildContent>
+            <ChildContent>
+                <div class="flex-x items-center">
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size6"/>
+                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                </div>
+            </ChildContent>
             <Ending>
                 <ChatListPinToggle ChatId="@c.Id"/>
                 <ChatListRecordingToggle ChatId="@c.Id"/>
