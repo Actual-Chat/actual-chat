@@ -22,6 +22,10 @@ textarea {
     @apply bg-secondary;
 }
 
+input[type="text"]:focus {
+    @apply outline-none ring-2 ring-success rounded-sm border-0;
+}
+
 code {
     @apply px-0.5;
     @apply rounded-sm border border-accent;

@@ -3,15 +3,15 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="tab-panel @Class">
         <div class="tab-panel-tabs" role="tablist">
-            @foreach (var tab in Tabs) {
-                var isActive = tab == ActiveTab;
-                <button class="@tab.ButtonClass @(isActive ? "on" : "off")"
-                        role="tab" aria-selected="@isActive"
-                        data-id="@tab.Id"
-                        @onclick="_ => ActiveTab = tab">
-                    @tab.Title
-                </button>
-            }
+            <div class="mx-3">
+                @foreach (var tab in Tabs) {
+                    var isActive = tab == ActiveTab;
+                    var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")}";
+                    <ButtonSquare Class="@cls" Click="_ => ActiveTab = tab" AriaSelected="@isActive" DataId="@tab.Id" Role="tab">
+                        @tab.Title
+                    </ButtonSquare>
+                }
+            </div>
         </div>
         @ChildContent
     </div>

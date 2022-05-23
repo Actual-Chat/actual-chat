@@ -28,14 +28,14 @@
 
 /* Webkit */
 .custom-scrollbar::-webkit-scrollbar {
-    @apply w-2;
+    @apply w-5;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
     @apply bg-secondary rounded-full;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-accent rounded-full border-2 border-secondary;
+    @apply bg-accent rounded-full border-8 border-secondary;
 }
 
 /* Mozilla */
