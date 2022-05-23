@@ -109,13 +109,6 @@ public partial class MauiBlazorWebViewHandler
                     Debug.WriteLine($"webview.WebResourceRequested: {uri}");
                 }
             };
-
-
-#if DEBUG
-            ctrl.CoreWebView2.Settings.AreDevToolsEnabled = true;
-#else
-            ctrl.CoreWebView2.Settings.AreDevToolsEnabled = false;
-#endif
         }, webview, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.FromCurrentSynchronizationContext());
 
         return webview;
