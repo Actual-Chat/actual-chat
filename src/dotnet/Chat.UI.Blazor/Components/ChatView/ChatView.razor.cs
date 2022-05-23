@@ -94,11 +94,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
-        var clock = Clocks.CoarseCpuClock;
         while (!cancellationToken.IsCancellationRequested)
             try {
                 await VisibleKeys.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
-                await clock.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(true);
                 var visibleKeys = await VisibleKeys.Use(cancellationToken).ConfigureAwait(true);
                 if (visibleKeys.Count == 0)
                     continue;

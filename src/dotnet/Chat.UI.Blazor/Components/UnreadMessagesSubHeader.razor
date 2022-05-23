@@ -13,6 +13,7 @@
 @code {
     [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
@@ -20,13 +21,33 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
+
+            UpdateDelayer = new UpdateDelayer(UICommandTracker.None, 0.3),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var clock = Clocks.CoarseCpuClock;
         var count = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
         if (!count.HasValue)
             return Model.None;
+
+        var resultIsStable = false;
+        while (!resultIsStable) {
+            // wait for unread message invalidations
+            await clock.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+
+            var count2 = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
+            if (!count2.HasValue )
+                return Model.None;
+
+            if (count.Value > count2.Value) {
+                count = count2;
+            } else {
+                count = count2;
+                resultIsStable = true;
+            }
+        }
 
         return new() {
             Count = count.Value,
