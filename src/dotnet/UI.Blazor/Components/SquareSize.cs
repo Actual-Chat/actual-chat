@@ -6,4 +6,5 @@ public enum SquareSize
     Size8 = 8, // w-8 h-8
     Size9 = 9, // w-9 h-9
     Size12 = 12, // w-12 h-12
+    Size20 = 20, // w-20 h-20
 }

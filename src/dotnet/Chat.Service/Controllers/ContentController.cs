@@ -20,7 +20,7 @@ public class ContentController : ControllerBase
             return NotFound();
         var blob = (await blobStorage.GetBlobsAsync(new[] {blobId}, cancellationToken).ConfigureAwait(false)).Single();
         string contentType = MediaTypeNames.Application.Octet;
-        if (blob != null && blob.IsFile && blob.Metadata.TryGetValue(ContentSaverBackend.ContentType, out var metadataContentType))
+        if (blob != null && blob.IsFile && blob.Metadata.TryGetValue(Constants.Headers.ContentType, out var metadataContentType))
             contentType = metadataContentType;
         return File(byteStream, contentType);
     }
