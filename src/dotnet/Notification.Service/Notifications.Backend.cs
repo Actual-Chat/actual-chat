@@ -77,7 +77,7 @@ public partial class Notifications
             },
             Webpush = new WebpushConfig {
                 Notification = new WebpushNotification {
-                    Renotify = true,
+                    Renotify = false,
                     Tag = chatId,
                     RequireInteraction = false,
                     // Icon = ??? TODO(AK): Set icon
