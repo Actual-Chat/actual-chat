@@ -23,6 +23,10 @@ public class MarkupParserTest : TestBase
         var m = Parse<UrlMarkup>("https://habr.com/ru/all/", out var text);
         m.Url.Should().Be(text);
         m.IsImage.Should().BeFalse();
+
+        m = Parse<UrlMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
+        m.Url.Should().Be(text);
+        m.IsImage.Should().BeFalse();
     }
 
     [Fact]
