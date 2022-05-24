@@ -21,3 +21,6 @@
 .btn.btn-square.account-btn:hover > .btn-content {
     @apply bg-transparent;
 }
+.btn.btn-square.account-btn:focus {
+    @apply ring-4 ring-square-focus rounded-sm;
+}
