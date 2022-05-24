@@ -70,18 +70,19 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     private async Task<object?> ProcessCommand(IAudioRecorderCommand command, CancellationToken cancellationToken)
     {
         switch (command) {
-            case StartAudioRecorderCommand startCommand:
-                var chatId = startCommand.ChatId;
-                await WhenInitialized.ConfigureAwait(false);
-                await StartRecordingInternal(chatId).ConfigureAwait(false);
-                break;
-            case StopAudioRecorderCommand:
-                if (!WhenInitialized.IsCompletedSuccessfully)
-                    throw new LifetimeException("Recorder is not initialized yet.");
-                await StopRecordingInternal().ConfigureAwait(false);
-                break;
-            default:
-                throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+        case StartAudioRecorderCommand startCommand:
+            var chatId = startCommand.ChatId;
+            await WhenInitialized.ConfigureAwait(false);
+            await StartRecordingInternal(chatId).ConfigureAwait(false);
+            break;
+        case StopAudioRecorderCommand:
+            if (!WhenInitialized.IsCompletedSuccessfully)
+                throw new LifetimeException("Recorder is not initialized yet.");
+
+            await StopRecordingInternal().ConfigureAwait(false);
+            break;
+        default:
+            throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
         }
         return null;
     }

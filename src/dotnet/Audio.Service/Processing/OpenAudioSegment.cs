@@ -47,6 +47,15 @@ public sealed class OpenAudioSegment
                 Index, StreamId);
     }
 
+    // TODO(AK): review: use or delete
+    public void SetAudibleDuration(TimeSpan audibleDuration)
+    {
+        if (!TaskSource.For(AudibleDurationTask).TrySetResult(audibleDuration))
+            Log.LogWarning(
+                "SetAudibleDuration came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
+                Index, StreamId);
+    }
+
     public void Close(TimeSpan duration)
     {
         TaskSource.For(RecordedAtTask).TrySetResult(null);
@@ -58,6 +67,7 @@ public sealed class OpenAudioSegment
         TaskSource.For(ClosedSegmentTask).SetResult(audioSegment);
     }
 
+    // TODO(AK): review: use or delete
     public void TryClose(Exception error)
     {
         TaskSource.For(RecordedAtTask).TrySetException(error);
