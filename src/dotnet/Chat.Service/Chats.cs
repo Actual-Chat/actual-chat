@@ -309,20 +309,36 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var (session, chatId, entryId) = command;
         await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
-        var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var textEntry = await RemoveChatEntry(session, chatId, entryId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
 
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
-        var tile = await GetTile(session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken).ConfigureAwait(false);
-        var chatEntry = tile.Entries.Single(e => e.Id == entryId);
+        if (textEntry.AudioEntryId != null)
+            await RemoveChatEntry(session, chatId, textEntry.AudioEntryId.Value, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task<ChatEntry> RemoveChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
+    {
+        var chatEntry = await GetChatEntry(session, chatId, entryId, type, cancellationToken).ConfigureAwait(false);
+
+        var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw new SecurityException("You can delete only your own messages.");
 
         chatEntry = chatEntry with { IsRemoved = true };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        return chatEntry;
     }
 
-    // Protected methods
+    private async Task<ChatEntry> GetChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
+    {
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
+        var tile = await GetTile(session, chatId, type, idTile.Range, cancellationToken)
+            .ConfigureAwait(false);
+        var chatEntry = tile.Entries.Single(e => e.Id == entryId);
+        return chatEntry;
+    }
 
     private async Task JoinChat(Session session, string chatId, CancellationToken cancellationToken)
         => await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
