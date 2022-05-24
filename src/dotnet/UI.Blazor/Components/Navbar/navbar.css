@@ -44,7 +44,7 @@
     @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-item .navbar-item-content {
-    @apply text-primary;
+    @apply text-primary overflow-hidden;
 }
 .navbar-item.active .navbar-item-content {
     @apply font-semibold;
@@ -71,11 +71,11 @@
 
 .navbar-subgroup .pin-toggle.off,
 .navbar-item .pin-toggle.off {
-    @apply invisible;
+    @apply hidden;
 }
 .navbar-subgroup:hover .pin-toggle.off,
 .navbar-item:hover .pin-toggle.off {
-    @apply visible;
+    @apply block;
 }
 
 .navbar-item .pin-toggle.recorder,
