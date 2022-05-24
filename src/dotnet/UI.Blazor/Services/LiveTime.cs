@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.UI.Blazor.Services;
 
 public interface ILiveTime
 {
@@ -14,9 +14,13 @@ public class LiveTime : ILiveTime
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
     private MomentClockSet Clocks { get; }
+    private DateTimeService DateTimeService { get; }
 
-    public LiveTime(MomentClockSet clocks)
-        => Clocks = clocks;
+    public LiveTime(MomentClockSet clocks, DateTimeService dateTimeService)
+    {
+        Clocks = clocks;
+        DateTimeService = dateTimeService;
+    }
 
     // [ComputeMethod]
     public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
@@ -63,9 +67,9 @@ public class LiveTime : ILiveTime
             return (result, delay);
         }
 
-        var localTime = time.ToDateTime().ToLocalTime();
+        var localTime = DateTimeService.ToLocalTime(time);
         var localTimeDate = localTime.Date;
-        var localNow = now.ToDateTime().ToLocalTime();
+        var localNow = DateTimeService.ToLocalTime(now);
         var localToday = localNow.Date;
         if (localTimeDate == localToday) {
             result = $"today at {localTime.ToShortTimeString()}";

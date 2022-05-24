@@ -35,7 +35,6 @@ public class CoreModule : HostModule<CoreSettings>
         services.TryAddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
-        fusion.AddComputeService<ILiveTime, LiveTime>();
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
@@ -43,6 +42,8 @@ public class CoreModule : HostModule<CoreSettings>
 
     private void InjectServerServices(IServiceCollection services)
     {
+        services.AddSingleton<IContentSaver, ContentSaver>();
+
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty())
             services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();

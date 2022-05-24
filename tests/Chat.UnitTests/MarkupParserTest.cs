@@ -23,6 +23,29 @@ public class MarkupParserTest : TestBase
         var m = Parse<UrlMarkup>("https://habr.com/ru/all/", out var text);
         m.Url.Should().Be(text);
         m.IsImage.Should().BeFalse();
+
+        m = Parse<UrlMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
+        m.Url.Should().Be(text);
+        m.IsImage.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UrlWithQueryTest()
+    {
+        var m = Parse<UrlMarkup>("https://habr.com/ru/all/?q=1", out var text);
+        m.Url.Should().Be(text);
+        m.IsImage.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UrlWithQueryAndHashTest()
+    {
+        var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x", out _);
+        m.Items.Length.Should().Be(2);
+        var url = (UrlMarkup) m.Items[0];
+        url.Url.Should().EndWith("344");
+        var text = (PlainTextMarkup) m.Items[1];
+        text.Text.Should().Be(" x");
     }
 
     [Fact]
@@ -127,6 +150,28 @@ code
         m.Items.Length.Should().Be(11);
         var um = (UnparsedTextMarkup) m.Items.Last();
         um.Text.Should().Be("*");
+    }
+
+    [Fact]
+    public void SpecialTest_CssRuleCase()
+    {
+        var m = Parse<PlainTextMarkup>("--background-message-hover: #f3f4f6;", out var text);
+        m.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void SpecialTest_SmileCase()
+    {
+        var m = Parse<PlainTextMarkup>(":)", out var text);
+        m.Text.Should().Be(text);
+    }
+
+
+    [Fact]
+    public void SpecialTest_DoubleSmileCase()
+    {
+        var m = Parse<PlainTextMarkup>(":) :)", out var text);
+        m.Text.Should().Be(text);
     }
 
     // Helpers

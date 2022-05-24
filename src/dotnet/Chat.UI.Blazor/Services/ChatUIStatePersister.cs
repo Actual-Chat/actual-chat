@@ -62,8 +62,8 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
                 var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
                 if (permissions.HasFlag(ChatPermissions.Read)) {
                     await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
-                    _chatUI.IsPlayingActive.Value = state.IsPlayingActive;
-                    _chatUI.IsPlayingPinned.Value = state.IsPlayingPinned;
+                    _chatUI.IsPlaying.Value = state.IsPlayingActive;
+                    _chatUI.MustPlayPinnedChats.Value = state.IsPlayingPinned;
                 }
             }
         }, Log, "Error while restoring ChatPageState");
@@ -74,8 +74,8 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     {
         var activeChatId = await _chatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await _chatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var isPlayingActive = await _chatUI.IsPlayingActive.Use(cancellationToken).ConfigureAwait(false);
-        var isPlayingPinned = await _chatUI.IsPlayingPinned.Use(cancellationToken).ConfigureAwait(false);
+        var isPlayingActive = await _chatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+        var isPlayingPinned = await _chatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
         return new Model() {
             ActiveChatId = activeChatId,
             PinnedChatIds = pinnedChatIds.ToArray(),

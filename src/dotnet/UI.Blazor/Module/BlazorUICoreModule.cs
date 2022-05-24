@@ -49,6 +49,9 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
+        services.AddScoped<DateTimeService>();
+        services.AddScoped<ContentUrlMapper>();
+        fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();

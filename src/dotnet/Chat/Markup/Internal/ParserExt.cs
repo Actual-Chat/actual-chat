@@ -44,8 +44,8 @@ internal static class ParserExt
 
     public static Parser<char, Markup> AtLeastOnceInlineMarkup(this Parser<char, Markup> markup) =>
         markup
-            .JoinMarkup(Try(MarkupParser.DelimiterText.JoinMarkup(markup)).ManyMarkup())
-            .JoinMarkup(Try(MarkupParser.DelimiterText).Or(Nothing.ThenReturn(Markup.Empty)))
+            .JoinMarkup(Try(MarkupParser.WhitespaceText.JoinMarkup(markup)).ManyMarkup())
+            .JoinMarkup(Try(MarkupParser.WhitespaceText).Or(Nothing.ThenReturn(Markup.Empty)))
             .Debug("1+ inline");
 
     // Helper properties & methods

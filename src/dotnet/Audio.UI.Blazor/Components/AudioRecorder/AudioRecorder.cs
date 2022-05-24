@@ -78,6 +78,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         case StopAudioRecorderCommand:
             if (!WhenInitialized.IsCompletedSuccessfully)
                 throw new LifetimeException("Recorder is not initialized yet.");
+
             await StopRecordingInternal().ConfigureAwait(false);
             break;
         default:

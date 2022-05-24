@@ -5,7 +5,7 @@
     var entry = Model.Entry;
     var markup = Model.Markup;
     var attachments = Model.Attachments;
-    var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
+    var timestamp = DateTimeService.ToLocalTime(entry.BeginsAt).ToShortTimeString();
 
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
@@ -84,6 +84,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
 
     private string PrincipalId { get; set; } = "";
 

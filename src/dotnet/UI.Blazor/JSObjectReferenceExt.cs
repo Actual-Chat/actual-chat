@@ -6,21 +6,26 @@ namespace ActualChat.UI.Blazor;
 /// </summary>
 public static class JSObjectReferenceExt
 {
-    public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef)
-        => jsObjectRef == null
-            ? ValueTask.CompletedTask
-            : jsObjectRef.DisposeAsync().Suppress<JSDisconnectedException>();
-
-    public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsMethodName)
+    public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsDisposeMethodName = "")
     {
         return jsObjectRef == null
             ? ValueTask.CompletedTask
-            : DisposeSilentlyAsyncImpl(jsObjectRef, jsMethodName);
+            : DisposeSilentlyAsyncImpl(jsObjectRef, jsDisposeMethodName);
 
-        async ValueTask DisposeSilentlyAsyncImpl(IJSObjectReference jsObjectRef1, string jsMethodName1)
+        async ValueTask DisposeSilentlyAsyncImpl(IJSObjectReference jsObjectRef1, string jsDisposeMethodName1)
         {
-            await jsObjectRef1.InvokeVoidAsync(jsMethodName1).Suppress<JSDisconnectedException>().ConfigureAwait(true);
-            await jsObjectRef1.DisposeAsync().Suppress<JSDisconnectedException>().ConfigureAwait(false);
+            if (!jsDisposeMethodName1.IsNullOrEmpty())
+                try {
+                    await jsObjectRef1.InvokeVoidAsync(jsDisposeMethodName1).ConfigureAwait(true);
+                }
+                catch (OperationCanceledException) { }
+                catch (JSDisconnectedException) { }
+
+            try {
+                await jsObjectRef1.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (JSDisconnectedException) { }
         }
     }
 }

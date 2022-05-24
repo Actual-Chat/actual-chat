@@ -77,11 +77,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     public override async ValueTask DisposeAsync()
     {
-        if (JSRef != null!)
-            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
-        BlazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
-        GC.SuppressFinalize(this);
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     protected override void OnInitialized()

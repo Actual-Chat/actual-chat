@@ -169,7 +169,8 @@ public sealed class AudioProcessor : IAudioProcessor
 
         // Cancellation is "embedded" into transcripts at this point, so...
         cancellationToken = CancellationToken.None;
-        var diffs = transcripts.GetDiffs(cancellationToken).Memoize();
+        // TODO(AY): review cancellation stuff
+        var diffs = transcripts.GetDiffs(cancellationToken).Memoize(cancellationToken);
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(audioEntryTask, streamId, diffs.Replay(cancellationToken), cancellationToken);
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);

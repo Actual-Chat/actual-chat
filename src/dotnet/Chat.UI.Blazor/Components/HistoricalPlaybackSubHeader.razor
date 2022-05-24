@@ -19,7 +19,7 @@
         @* Position *@
         <div class="c-text">
             @if (m.PlayingAt is { } playingAt) {
-                var localTime = playingAt.ToLocalTime();
+                var localTime = DateTimeService.ToLocalTime(playingAt);
                 var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                 var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
                 <span>
@@ -44,6 +44,7 @@
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -60,8 +61,17 @@
 
         var playback = player.Playback;
         var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        if (!isPlaying)
+        if (!isPlaying) {
+            // If the player still has playing task but playback is not playing,
+            // apparently it is awaiting next track is fetched.
+            // So it make sense to keep header status for a while.
+            if (player.WhenPlaying != null && State.LatestNonErrorValue.PlayingAt.HasValue) {
+                // Invalidate to force recompute to check if the player is really stopped or not.
+                Computed.GetCurrent()!.Invalidate(TimeSpan.FromMilliseconds(100));
+                return State.LatestNonErrorValue;
+            }
             return Model.NotPlaying;
+        }
 
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;

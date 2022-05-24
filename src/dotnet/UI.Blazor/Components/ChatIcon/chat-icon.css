@@ -1,7 +1,39 @@
+.chat-icon {
+    @apply relative;
+}
+
+.chat-icon-picker {
+    @apply absolute bg-secondary rounded-md right-0 bottom-0;
+}
+
 .chat-icon-generated {
-    @apply flex items-center justify-center rounded-full;
+    @apply flex items-center justify-center rounded-md cursor-default pointer-events-none;
 }
 
 .chat-icon-image {
-    @apply rounded-full;
+    @apply rounded-md;
+}
+
+.chat-icon-show-cursor .chat-icon-image {
+    @apply cursor-pointer;
+}
+
+.chat-icon-size-6 {
+    @apply w-6 h-6;
+}
+
+.chat-icon-size-9 {
+    @apply w-9 h-9;
+}
+
+.chat-icon-size-20 {
+    @apply w-20 h-20 text-2xl;
+}
+
+.chat-icon-size-20 .chat-icon-picker {
+    @apply w-9 h-9;
+}
+
+.chat-icon-input-file-label {
+    @apply w-full h-full cursor-pointer flex items-center justify-center;
 }

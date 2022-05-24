@@ -24,8 +24,8 @@
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    private DotNetObjectReference<IContextMenuBackend>? BlazorRef { get; set; } = null!;
-    private IJSObjectReference? JSRef { get; set; } = null!;
+    private DotNetObjectReference<IContextMenuBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private bool _isOpen;
 
@@ -53,18 +53,10 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (JSRef != null) {
-            try {
-                await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
-                await JSRef.DisposeAsync().ConfigureAwait(true);
-            }
-            catch (JSDisconnectedException) { }
-            JSRef = null;
-        }
-        if (BlazorRef != null) {
-            BlazorRef.Dispose();
-            BlazorRef = null;
-        }
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
