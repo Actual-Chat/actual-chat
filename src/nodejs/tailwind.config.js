@@ -68,6 +68,7 @@ module.exports = {
         'own-message-hover': 'var(--own-message-hover)',
         'context-menu': 'var(--context-menu)',
         'context-border': 'var(--context-border)',
+        'selection': 'var(--selection)',
         'shadow-main': 'var(--shadow-main)',
       },
       textColor: {

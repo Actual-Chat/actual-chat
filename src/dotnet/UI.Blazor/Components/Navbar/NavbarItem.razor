@@ -10,7 +10,7 @@
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
         } else {
-            <a href="@Url">@ChildContent</a>
+            <a class="unfocusable" href="@Url">@ChildContent</a>
         }
     </div>
     <div class="navbar-item-ending">

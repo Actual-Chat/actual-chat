@@ -7,7 +7,7 @@
 }
 
 .tab-panel .tab {
-    @apply grow overflow-y-auto;
+    @apply grow overflow-y-auto px-2;
 }
 
 .tab-panel-tabs .btn-square.tab-btn {

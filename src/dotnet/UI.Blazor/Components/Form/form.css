@@ -8,10 +8,6 @@
     @apply w-full;
 }
 
-.form-section-content input {
-    @apply text-primary bg-primary;
-}
-
 .form label {
     @apply font-medium text-secondary;
 }

@@ -67,12 +67,6 @@
     @apply underline underline-offset-2 decoration-dashed decoration-audio-message;
 }
 
-form .right-panel-input,
-form .right-panel-input:active,
-form .right-panel-input:focus {
-    @apply ring-0 appearance-none;
-}
-
 .btn-square.attach-btn {
     @apply flex flex-1 min-h-footer ml-4;
 }
@@ -81,4 +75,12 @@ form .right-panel-input:focus {
 }
 .btn.btn-square:enabled:focus > .btn-content {
     @apply bg-square-focus;
+}
+
+.chat-header-panel-hint.btn.btn-square {
+    @apply flex-none hidden group-hover:flex font-light text-xs;
+    @apply bg-primary ring-2 ring-accent rounded;
+}
+.chat-header-panel-hint.btn.btn-square:focus .btn-content {
+    @apply bg-inherit;
 }

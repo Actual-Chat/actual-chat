@@ -27,10 +27,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _ = Ref.FocusAsync();
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.TextBox.create", Ref
                 ).ConfigureAwait(true);
+            if (Autofocus)
+                await Focus();
         }
     }
 
@@ -39,4 +40,7 @@
         await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         JSRef = null!;
     }
+
+    private async Task Focus()
+        => await JSRef.InvokeVoidAsync("focus", Ref);
 }

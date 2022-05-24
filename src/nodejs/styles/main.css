@@ -9,6 +9,10 @@ body {
     height: 100%;
 }
 
+*:focus {
+    @apply outline-none;
+}
+
 input,
 textarea,
 button,
@@ -16,14 +20,26 @@ select,
 a {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
+a {
+    @apply bg-inherit text-primary;
+}
+a:focus {
+    @apply outline-none underline underline-offset-1 decoration-success;
+}
+a.unfocusable:focus {
+    @apply outline-none no-underline;
+}
 
 input,
 textarea {
-    @apply bg-secondary;
+    @apply bg-secondary text-primary border-accent;
 }
 
-input[type="text"]:focus {
-    @apply outline-none ring-2 ring-success rounded-sm border-0;
+input:focus {
+    @apply outline-none ring-2 ring-success rounded-sm bg-primary;
+}
+input:focus[type="text"]::selection {
+    @apply bg-selection text-accent;
 }
 
 code {
@@ -246,7 +262,7 @@ button.off, .btn.off, .btn.btn-square.off .btn-content {
 }
 
 .btn.btn-square:enabled:focus > .btn-content {
-    @apply bg-square-focus;
+    @apply bg-square-focus rounded-sm;
 }
 .btn.btn-square:enabled:active > .btn-content {
     @apply bg-square-active;
