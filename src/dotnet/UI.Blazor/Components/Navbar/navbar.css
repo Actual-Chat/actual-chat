@@ -55,7 +55,7 @@
     @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-item .navbar-item-content {
-    @apply text-primary overflow-hidden;
+    @apply text-primary overflow-hidden mb-1;
 }
 .navbar-item.active .navbar-item-content {
     @apply font-semibold;
