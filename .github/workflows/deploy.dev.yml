@@ -3,6 +3,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 on:
+  create:
   push:
     branches:
       - dev
@@ -14,6 +15,7 @@ env:
   DOCKER_BUILDKIT: 1
 jobs:
   build:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
