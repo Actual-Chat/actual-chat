@@ -1,5 +1,5 @@
-﻿using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Chat.Module;
+﻿using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -13,7 +13,7 @@ public class ChatUIStateSync : WorkerBase
     private AudioRecorder? _audioRecorder;
     private IChatUserSettings? _chatUserSettings;
     private IChats? _chats;
-    private ChatSettings? _chatSettings;
+    private AudioSettings? _chatSettings;
 
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
@@ -27,7 +27,7 @@ public class ChatUIStateSync : WorkerBase
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private ChatSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<ChatSettings>();
+    private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -135,11 +135,11 @@ public class ChatUIStateSync : WorkerBase
     }
 
     private Task RestartRecording(
-        bool stop,
+        bool mustStop,
         Symbol chatIdToStartRecording,
         CancellationToken cancellationToken)
         => BackgroundTask.Run(async () => {
-                if (stop) {
+                if (mustStop) {
                     // Recording is running - let's top it first;
                     await AudioRecorder.StopRecording().WhenCompleted.ConfigureAwait(false);
                 }
@@ -165,7 +165,7 @@ public class ChatUIStateSync : WorkerBase
             // wait for recording started
             cLastChatEntry = await cLastChatEntry.When(x => !x.ChatId.IsEmpty, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            using var timeoutCts = new CancellationTokenSource(ChatSettings.TurnOffRecordingAfterIdleTimeout);
+            using var timeoutCts = new CancellationTokenSource(ChatSettings.IdleRecordingTimeout);
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             try {
