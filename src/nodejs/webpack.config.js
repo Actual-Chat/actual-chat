@@ -49,6 +49,7 @@ class WatchRunPlugin {
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
+const mauiOutputPath = _('./../dotnet/ClientApp/wwwroot/dist');
 
 module.exports = (env, args) => {
 
@@ -72,8 +73,10 @@ module.exports = (env, args) => {
       hints: false,
     },
     optimization: {
-      // prevent process.env.NODE_ENV overriding by --mode
-      nodeEnv: false,
+      // disabled optimization, otherwise react import can not be built
+      // (it can not determine whether production or developemnt configration should be used)
+      // // prevent process.env.NODE_ENV overriding by --mode
+      // nodeEnv: false,
       // workaround of https://github.com/webpack-contrib/mini-css-extract-plugin/issues/85
       // https://github.com/webpack/webpack/issues/7300#issuecomment-702840962
       // removes '1.bundle.js' and other trash from emitting
@@ -97,7 +100,7 @@ module.exports = (env, args) => {
       followSymlinks: false,
     },
     resolve: {
-      extensions: ['.ts', '.js', '...'],
+      extensions: ['.ts', ".tsx", '.js', '...'],
       modules: [_('./node_modules'), _('./src/')],
       roots: [],
       fallback: {
@@ -136,6 +139,13 @@ module.exports = (env, args) => {
       new webpack.ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
       }),
+      // required to resolve whether react is imported for production or development.
+      // this definition was required because optimization, nodeEnv is set to false
+      // I temporarely commented out this optimization
+      // TODO: check this with colleagues
+	  // new webpack.DefinePlugin({
+		//   process: isDevelopment ? {env: {}} : {env: { NODE_ENV: 'production'}}
+	  // }),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
@@ -279,6 +289,15 @@ module.exports = (env, args) => {
         runtime: false,
         library: {
           type: 'module',
+        }
+      },
+      messagingServiceWorker: {
+        import: './../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+            type: 'module',
         }
       },
       bundle: {
