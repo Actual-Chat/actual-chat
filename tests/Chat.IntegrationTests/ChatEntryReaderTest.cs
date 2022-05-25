@@ -30,7 +30,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await AddChatEntries(chats, session, ChatId, CancellationToken.None);
+        await CreateChatEntries(chats, session, ChatId, 3);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
@@ -66,7 +66,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await AddChatEntries(chats, session, ChatId, CancellationToken.None);
+        await CreateChatEntries(chats, session, ChatId, 3);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
 
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
@@ -95,7 +95,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
 
     [Fact]
-    public async Task ReadAllTilesTest()
+    public async Task ReadTilesTest()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
@@ -114,7 +114,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await AddChatEntries(chats, session, ChatId, CancellationToken.None);
+        await CreateChatEntries(chats, session, ChatId, 3);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
@@ -122,15 +122,15 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
         var tiles = Constants.Chat.IdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
-        var result = await reader.ReadAllTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
+        var result = await reader.ReadTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
         result.Count.Should().BeGreaterThan(0);
         result.Count.Should().BeLessThanOrEqualTo(2);
-        result[0].Value.Should().NotBeNull();
-        result[0].Value.Entries.Length.Should().BeGreaterThan(3);
+        result[0].Should().NotBeNull();
+        result[0].Entries.Length.Should().BeGreaterThan(3);
     }
 
     [Fact]
-    public async Task ReadNewTilesTest()
+    public async Task ObserveTest1()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
@@ -152,28 +152,29 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None).ConfigureAwait(false);
 
-        var cts1 = new CancellationTokenSource();
+        using var cts1 = new CancellationTokenSource();
         cts1.CancelAfter(500);
-        var result = await reader.ReadNewTiles(idRange.End - 1, cts1.Token).TrimOnCancellation().ToListAsync();
+        var result = await reader.Observe(idRange.End, cts1.Token).TrimOnCancellation().ToListAsync();
         result.Count.Should().Be(0);
 
-        var cts2 = new CancellationTokenSource();
-        var resultTask = reader.ReadNewTiles(idRange.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
-        _ = Task.Run(() => AddChatEntries(chats,
-                session,
-                ChatId,
-                CancellationToken.None,
+        using var cts2 = new CancellationTokenSource();
+        cts2.CancelAfter(500);
+        result = await reader.Observe(idRange.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
+        result.Count.Should().Be(1);
+
+        using var cts3 = new CancellationTokenSource();
+        var resultTask = reader.Observe(idRange.End - 1, cts3.Token).TrimOnCancellation().ToListAsync();
+        _ = BackgroundTask.Run(() => CreateChatEntries(
+                chats, session, ChatId,
                 (int)Constants.Chat.IdTileStack.MinTileSize)
-            .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
+            .ContinueWith(_ => cts3.CancelAfter(500), CancellationToken.None));
 
         result = await resultTask;
-        result.Count.Should().Be(1);
-        result[0].Value.Should().NotBeNull();
-        result[0].Value.Entries.Length.Should().BeGreaterThanOrEqualTo(1);
+        result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
     }
 
     [Fact]
-    public async Task ReadAllWaitingForNewTest()
+    public async Task ObserveTest2()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
@@ -195,21 +196,23 @@ public class ChatEntryReaderTest : AppHostTestBase
         var idRange = chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
 
-        var cts2 = new CancellationTokenSource();
-        var resultTask = reader.ReadAllWaitingForNew(idRange.Result.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
+        using var cts2 = new CancellationTokenSource();
+        var resultTask = reader.Observe(idRange.Result.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
 
-        _ = Task.Run(() => AddChatEntries(chats,
-                session,
-                ChatId,
-                CancellationToken.None,
-                (int)Constants.Chat.IdTileStack.MinTileSize)
+        _ = BackgroundTask.Run(() => CreateChatEntries(
+                chats, session, ChatId,
+                (int) Constants.Chat.IdTileStack.MinTileSize)
             .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
 
         var result = await resultTask;
-        result.Count.Should().Be(1+(int)Constants.Chat.IdTileStack.MinTileSize);
+        result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
     }
 
-    private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken, int entryCount = 3)
+    private async Task CreateChatEntries(
+        IChats chats,
+        Session session,
+        string chatId,
+        int count)
     {
         var phrases = new[] {
             "back in black i hit the sack",
@@ -217,12 +220,13 @@ public class ChatEntryReaderTest : AppHostTestBase
             "it was a teenage wedding and the all folks wished them well",
         };
 
-        var count = 0;
         while (true)
             foreach (var text in phrases) {
-                await chats.CreateTextEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
-                if (++count >= entryCount)
+                if (count-- <= 0)
                     return;
+                await chats
+                    .CreateTextEntry(new (session, chatId, text), CancellationToken.None)
+                    .ConfigureAwait(false);
             }
     }
 }

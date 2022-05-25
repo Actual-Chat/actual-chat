@@ -25,7 +25,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             .ConfigureAwait(false);
         var startId = startEntry?.Id ?? idRange.End - 1;
 
-        var entries = audioEntryReader.ReadAllWaitingForNew(startId, cancellationToken);
+        var entries = audioEntryReader.Observe(startId, cancellationToken);
         var playProcesses = new ConcurrentDictionary<IMessageProcess<PlayTrackCommand>, Unit>();
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt)
