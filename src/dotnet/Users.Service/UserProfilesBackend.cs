@@ -49,7 +49,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (user == null)
             return null;
 
-        var userAuthor = new UserAuthor { Name = user.Name };
+        var userAuthor = new UserAuthor { Id = user.Id, Name = user.Name };
 
         var profile = await Get(userId, cancellationToken).ConfigureAwait(false);
         if (profile == null)
