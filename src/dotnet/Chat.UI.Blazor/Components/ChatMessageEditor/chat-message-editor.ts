@@ -67,7 +67,8 @@ export class ChatMessageEditor {
     })
 
     private postClickListener = ((event: MouseEvent & { target: Element; }) => {
-        this.input.focus();
+        const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
+        input.focus();
         this.changeMode();
     })
 
