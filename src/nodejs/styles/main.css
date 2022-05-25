@@ -35,8 +35,9 @@ textarea {
     @apply bg-secondary text-primary border-accent;
 }
 
-input:focus {
-    @apply outline-none ring-2 ring-success rounded-sm bg-primary;
+input:focus,
+input.input-copy-to-clipboard:focus {
+    @apply outline-none ring-2 ring-success rounded-sm bg-primary border-0;
 }
 input:focus[type="text"]::selection {
     @apply bg-selection text-accent;
@@ -309,7 +310,6 @@ button.off, .btn.off, .btn.btn-square.off .btn-content {
 
 input.input-copy-to-clipboard {
     @apply bg-transparent border-b border-placeholder;
-    @apply focus:outline-none focus:border-sky-500;
 }
 
 input.input-imprinted {
