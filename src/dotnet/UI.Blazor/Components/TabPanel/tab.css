@@ -3,7 +3,7 @@
 }
 .tab-panel-tabs {
     @apply flex flex-row flex-wrap;
-    @apply mb-2.5 pb-1.5 gap-x-2 border-b border-accent -mx-3;
+    @apply mb-2.5 pb-1.5 border-b border-accent -mx-3;
 }
 
 .tab-panel .tab {
@@ -12,7 +12,7 @@
 
 .tab-panel-tabs .btn-square.tab-btn {
     @apply bg-transparent text-md rounded-none border-transparent border-b-2;
-    @apply text-secondary font-medium leading-tight uppercase;
+    @apply text-secondary font-medium leading-tight uppercase px-1;
 }
 .tab-panel-tabs .btn-square.tab-btn.on {
     @apply border-success;

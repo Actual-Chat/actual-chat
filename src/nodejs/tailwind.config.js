@@ -69,6 +69,8 @@ module.exports = {
         'context-menu': 'var(--context-menu)',
         'context-border': 'var(--context-border)',
         'selection': 'var(--selection)',
+        'dot': 'var(--dot)',
+        'dot-selected': 'var(--dot-selected)',
         'shadow-main': 'var(--shadow-main)',
       },
       textColor: {

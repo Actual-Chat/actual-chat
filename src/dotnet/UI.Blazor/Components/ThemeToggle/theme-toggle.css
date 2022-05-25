@@ -1,0 +1,9 @@
+.dot {
+    @apply h-2 w-2 rounded-full m-0.5 bg-dot;
+}
+.dot-border {
+    @apply rounded-full ring-1 ring-dot-selected m-2.5;
+}
+.selected .dot {
+    @apply bg-dot-selected;
+}

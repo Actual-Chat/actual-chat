@@ -8,6 +8,7 @@ import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/ChatIcon/chat-icon.css'
 import './Components/tooltip.css'
+import './Components/ThemeToggle/theme-toggle.css'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';

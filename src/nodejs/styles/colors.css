@@ -61,6 +61,8 @@
     --context-menu: #F9FAFB;
     --context-border: #e2e7ec;
     --selection: #cbd5e1;
+    --dot: #e2e7ec;
+    --dot-selected: #4b5e71;
 
     --error-toast-header: #fd5757;
     --error-toast-body: #fd6a6a;
@@ -136,6 +138,8 @@
     --context-menu: #17181a;
     --context-border: #17181a;
     --selection: #484c54;
+    --dot: #292B2F;
+    --dot-selected: #fafafa;
 
     --error-toast-header: #fc3030;
     --error-toast-body: #fd5757;
