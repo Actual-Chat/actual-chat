@@ -20,6 +20,10 @@ export class TextBox implements Disposable {
             });
     }
 
+    public focus() {
+        this.input.focus();
+    }
+
     public dispose() {
         this.disposed$.next();
         this.disposed$.complete();

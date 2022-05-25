@@ -1,5 +1,5 @@
 ﻿.menu {
-    @apply bg-secondary shadow-lg;
+    @apply bg-context-menu shadow-lg;
 }
 
 .menu-item {

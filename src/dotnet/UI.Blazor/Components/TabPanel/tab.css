@@ -3,21 +3,20 @@
 }
 .tab-panel-tabs {
     @apply flex flex-row flex-wrap;
-    @apply mb-2;
-}
-.tab-panel-tabs button {
-    @apply px-2 py-1;
-    @apply border-0 border-b-2;
-    @apply cursor-pointer hover:bg-primary;
-    @apply text-secondary font-medium leading-tight uppercase;
-}
-.tab-panel-tabs button.on {
-    @apply border-success;
-}
-.tab-panel-tabs button.off {
-    @apply border-transparent;
+    @apply mb-2.5 pb-1.5 gap-x-2 border-b border-accent -mx-3;
 }
 
 .tab-panel .tab {
-    @apply grow overflow-y-auto;
+    @apply grow overflow-y-auto px-2;
+}
+
+.tab-panel-tabs .btn-square.tab-btn {
+    @apply bg-transparent text-md rounded-none border-transparent border-b-2;
+    @apply text-secondary font-medium leading-tight uppercase;
+}
+.tab-panel-tabs .btn-square.tab-btn.on {
+    @apply border-success;
+}
+.tab-panel-tabs .btn-square.tab-btn.on .btn-content {
+    @apply text-secondary;
 }

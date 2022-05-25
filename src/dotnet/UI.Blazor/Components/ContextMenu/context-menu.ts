@@ -65,31 +65,29 @@ export class ContextMenu {
     }
 
     private updatePosition(menu: HTMLDivElement) {
-        let maxBottom = document.documentElement.clientHeight - 110
-        let size = this._menu.getBoundingClientRect();
-        let bottom = size.bottom;
+        const maxBottom = document.documentElement.clientHeight - 90
+        const maxTop = 60
+        const size = this._menu.getBoundingClientRect();
+        const bottom = size.bottom;
+        const top = size.top;
         if (bottom > maxBottom) {
             let offset = bottom - maxBottom;
             this._menu.style.transform=`translate(0,-${offset}px)`;
+        }
+        if (top < maxTop) {
+            let offset = maxTop - top;
+            this._menu.style.transform=`translate(0,${offset}px)`;
         }
     }
 
     private updateStyle(isOpen: boolean) {
         if (isOpen) {
-            const menuSize = this._menu.getBoundingClientRect();
-            const buttonSize = this._button.getBoundingClientRect();
-            const sameBottom = menuSize.bottom == buttonSize.bottom;
-            const sameTop = menuSize.top == buttonSize.top;
-            this._button.classList.remove('rounded-l-lg');
-            this._button.classList.remove('border-l');
-            if (sameTop)
-                this._menu.classList.remove('rounded-tr-md');
-            if (sameBottom)
-                this._menu.classList.remove('rounded-br-md');
+            this._button.classList.remove('show-on-hover');
+            this._button.classList.add('show');
         }
         else {
-            this._button.classList.add('rounded-l-lg');
-            this._button.classList.add('border-l');
+            this._button.classList.add('show-on-hover');
+            this._button.classList.remove('show');
         }
     }
 

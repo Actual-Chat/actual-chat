@@ -9,7 +9,7 @@
 <button @onclick="Click" class="btn @Class" title="@Title" disabled="@IsDisabled"
         name="@Name" type="@GetButtonType()"
         @attributes="@extraAttributes">
-    <div class="btn-content @ContentClass">
+    <div class="btn-content @ContentClass" tabindex="-1">
         @ChildContent
     </div>
 </button>

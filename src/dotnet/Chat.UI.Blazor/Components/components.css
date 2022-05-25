@@ -26,7 +26,7 @@
 .historical-playback-sub-header {
     @apply relative z-20 p-1 pb-0.5;
     @apply flex flex-row items-center justify-center;
-    @apply bg-accent shadow-lg;
+    @apply bg-secondary shadow-lg text-primary rounded-b-lg border-b-2 border-t-2 border-accent;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
@@ -67,9 +67,20 @@
     @apply underline underline-offset-2 decoration-dashed decoration-audio-message;
 }
 
-form .right-panel-input,
-form .right-panel-input:active,
-form .right-panel-input:focus {
-    @apply ring-0 appearance-none;
+.btn-square.attach-btn {
+    @apply flex flex-1 min-h-footer ml-4;
+}
+.btn.btn-square.attach-btn:hover > .btn-content {
+    @apply bg-transparent;
+}
+.btn.btn-square:enabled:focus > .btn-content {
+    @apply bg-square-focus;
 }
 
+.chat-header-panel-hint.btn.btn-square {
+    @apply flex-none hidden group-hover:flex font-light text-xs;
+    @apply bg-primary ring-2 ring-accent rounded;
+}
+.chat-header-panel-hint.btn.btn-square:focus .btn-content {
+    @apply bg-inherit;
+}

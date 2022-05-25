@@ -1,12 +1,14 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="btn btn-square @Class" title="@Title" disabled="@IsDisabled"
-        name="@Name" type="@GetButtonType()"
+<button class="btn btn-square @Class" title="@Title" disabled="@IsDisabled" aria-selected="@AriaSelected"
+        name="@Name" data-id="@DataId" role="@Role" type="@GetButtonType()"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
-    <div class="btn-content @ContentClass">
-        @ChildContent
+    <div class="btn-content flex w-full h-full bg-inherit @ContentClass" tabindex="-1">
+        <div class="p-1 self-center">
+            @ChildContent
+        </div>
     </div>
 </button>
 
@@ -15,6 +17,9 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
+    [Parameter] public bool AriaSelected { get; set; }
+    [Parameter] public string DataId { get; set; } = "";
+    [Parameter] public string Role { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }

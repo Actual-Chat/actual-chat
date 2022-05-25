@@ -34,8 +34,11 @@
     @apply md:rounded-lg rounded-none;
     @apply flex flex-col;
 }
-.btn.modal-close {
-    @apply p-0.5 pt-0 px-1.5 -mr-2;
+.btn.btn-square.modal-close {
+    @apply h-fit -mr-1.5;
+}
+.btn.btn-square.modal-close:hover > .btn-content {
+    @apply bg-transparent opacity-90;
 }
 
 .dialog-body {

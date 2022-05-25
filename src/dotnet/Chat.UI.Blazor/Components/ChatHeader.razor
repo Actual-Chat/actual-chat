@@ -10,12 +10,12 @@
         <div class="flex-1 flex-x text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">
             <div class="flex self-center">@Chat.Title</div>
             <div class="flex-1"></div>
-            <button class="flex-none hidden group-hover:flex font-light text-xs bg-primary border-accent border-2 rounded p-0.5 px-2 chat-header-panel-hint">
+            <ButtonSquare Class="chat-header-panel-hint">
                 @(RightPanelUI.IsVisible.Value ? "Hide" : "Show") settings
-            </button>
+            </ButtonSquare>
         </div>
     </div>
-    <div class="flex-none flex-x items-center gap-x-3 pl-2">
+    <div class="flex-none flex-x items-center gap-x-3 px-0.5">
         <ChatActivities/>
         <ChatPlaybackToggle/>
     </div>

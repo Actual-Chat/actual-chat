@@ -9,12 +9,23 @@
     @apply text-toggle-hover;
 }
 
+.navbar-group-toggles {
+    @apply flex flex-1 flex-col text-secondary bg-accent;
+}
+
+.navbar-group-toggles .navbar-group-toggle {
+    @apply h-12 cursor-pointer;
+}
+.navbar-group-toggle .btn-content {
+    @apply px-1;
+}
+
 #navbar-toggle:checked~#navbar {
     @apply translate-x-0;
 }
 
-.navbar-group-toggle:hover .navbar-group-icon {
-    @apply scale-105 ease-in-out duration-150;
+.btn-square.navbar-group-toggle {
+    @apply rounded-none;
 }
 
 /* Mobile title */
@@ -44,7 +55,7 @@
     @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-item .navbar-item-content {
-    @apply text-primary overflow-hidden;
+    @apply text-primary overflow-hidden mb-1;
 }
 .navbar-item.active .navbar-item-content {
     @apply font-semibold;

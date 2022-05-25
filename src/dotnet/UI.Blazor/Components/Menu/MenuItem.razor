@@ -2,12 +2,12 @@
 @using ActualChat.UI.Blazor.Components
 @{
     var cls = $"{Class} {Menu.ItemClass}";
-    var leftContainerClass = "flex-auto float-left h-full";
-    var rightContainerClass  = "flex-auto float-right h-full";
+    var leftContainerClass = "float-left h-full";
+    var rightContainerClass  = "float-right h-full";
     var tooltipFlow = Menu.TooltipPosition.ToString().ToLower();
 }
 
-<div class="relative !pl-0.5">
+<div class="relative">
     @if (Menu.Orientation == MenuOrientation.Horizontal) {
         <button @onclick="OnClick" tooltip="@Title" flow="@tooltipFlow" disabled="@IsDisabled"
                 class="menu-item flex h-8 w-full text-secondary @cls" name="@Name">
@@ -20,7 +20,7 @@
                 class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-4 @cls" name="@Name">
             @if (Menu.IconPosition == MenuIconPosition.Left) {
                 @if (Icon != null) {
-                    <div class="w-6 @leftContainerClass">
+                    <div class="@leftContainerClass">
                         <div class="flex">@Icon</div>
                     </div>
                 }
@@ -32,7 +32,7 @@
                     <div class="flex">@Title</div>
                 </div>
                 @if (Icon != null) {
-                    <div class="w-6 @leftContainerClass">
+                    <div class="@leftContainerClass">
                         <div class="flex">@Icon</div>
                     </div>
                 }
