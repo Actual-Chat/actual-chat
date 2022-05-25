@@ -1,3 +1,7 @@
+/// <reference lib="WebWorker" />
+export type { };
+declare const self: WorkerGlobalScope;
+
 import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
 import { OpusDecoder } from './opus-decoder';
 

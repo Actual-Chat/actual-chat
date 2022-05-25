@@ -6,6 +6,8 @@
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
+@using System.Text.Json
+@using System.Text
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
 @inject HostSettings HostSettings
@@ -85,13 +87,24 @@
 </div>
 
 @if (isCloseWindowRequest) {
-    <script>
-        setTimeout(function () {
-            window.close();
-        }, 500)
-    </script>
+    @if (StringComparer.Ordinal.Equals(HttpContext.Request.Path.Value, "/fusion/close-app")) {
+    	var cookies = HttpContext.Request.Cookies.Where(x => x.Key != "_ssb_").Append(KeyValuePair.Create("_ssb_", "0")).ToArray();
+    	var secret= Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(cookies)));
+    	var appUrl = $"http://127.0.0.1:57348/?secret={secret}";
+
+    	<script>
+    		window.location = '@appUrl';
+    	</script>
+    }
+    else {
+    	<script>
+    		setTimeout(function () {
+    			window.close();
+    		}, 500)
+    	</script>
+    }
     <div class="alert alert-primary">
-        @(closeWindowFlowName) completed, you can close this window.
+    	@(closeWindowFlowName) completed, you can close this window.
     </div>
 } else {
     <app id="app" class="flex flex-col h-full" >
