@@ -12,7 +12,7 @@
     } else {
         <div class="chat-icon-generated @_iconClass"
              style="@_iconStyle">
-            @Title[..1]
+            @((Title.NullIfEmpty() ?? " ")[..1])
         </div>
     }
     @if (ShowImagePicker) {
