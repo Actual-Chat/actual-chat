@@ -4,6 +4,8 @@
 const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require("copy-webpack-plugin");
+const FileManagerPlugin = require('filemanager-webpack-plugin');
+
 /**
  * @param {string} file
  */
@@ -19,7 +21,6 @@ class WatchRunPlugin {
     compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
 
       if (comp.modifiedFiles && comp.modifiedFiles.size > 0) {
-
         const changedFiles = Array.from(comp.modifiedFiles)
           .map(x => {
             while (x.charAt(x.length - 1) === path.sep) {
@@ -29,8 +30,9 @@ class WatchRunPlugin {
           })
           .filter((x, idx, self) => self.indexOf(x) === idx);
         const changedFilesStr = changedFiles.map(file => `\n  ${file}`).join('');
+        const currentdate = new Date();
         console.log('\x1b[35m-----------------------');
-        console.log('CHANGED:' + changedFilesStr);
+        console.log('CHANGED: (' + currentdate.toLocaleString() + ')' + changedFilesStr);
         console.log('-----------------------\x1b[0m');
       }
       if (comp.removedFiles && comp.removedFiles.size > 0) {
@@ -47,6 +49,7 @@ class WatchRunPlugin {
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
+const mauiOutputPath = _('./../dotnet/ClientApp/wwwroot/dist');
 
 module.exports = (env, args) => {
 
@@ -115,6 +118,16 @@ module.exports = (env, args) => {
         patterns: [
           { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
         ],
+      }),
+      // @ts-ignore
+      new FileManagerPlugin({
+        events: {
+          onEnd: {
+            copy: [
+              { source: outputPath, destination: mauiOutputPath },
+            ],
+          }
+        }
       }),
       // @ts-ignore
       new MiniCssExtractPlugin({

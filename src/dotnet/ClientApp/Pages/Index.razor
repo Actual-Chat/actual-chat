@@ -1,0 +1,9 @@
+@namespace ActualChat.ClientApp
+@page "/"
+@inject NavigationManager _nav
+
+@code {
+    protected override void OnInitialized()
+        //=> _nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
+        => _nav.NavigateTo("/chat/43fuvyz4zk");
+}

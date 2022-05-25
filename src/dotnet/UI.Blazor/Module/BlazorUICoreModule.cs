@@ -2,6 +2,7 @@ using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.SessionStorage;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.OS;
 using Stl.Plugins;
@@ -59,7 +60,6 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<ContentUrlMapper>();
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
-        if (OSInfo.IsWebAssembly)
-            services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
+        services.TryAddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
     }
 }
