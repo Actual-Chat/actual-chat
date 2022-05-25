@@ -18,6 +18,7 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
             onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
             break;
         default:
+            // noinspection ExceptionCaughtLocallyJS
             throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
@@ -29,9 +30,9 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
 function onOperationCompleted(message: OperationCompletedDecoderWorkerMessage) {
     const { callbackId: callbackId } = message;
     const callback = workerCallbacks.get(callbackId);
-    if (callback === undefined) {
+    if (callback === undefined)
         throw new Error(`Callback #${callbackId} is not found.`);
-    }
+
     workerCallbacks.delete(callbackId);
     callback();
 }

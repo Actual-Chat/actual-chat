@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
+import { addInteractionHandler } from '../../nodejs/src/first-interaction';
 
 const LogScope = 'MessagingInit';
 
@@ -82,26 +83,16 @@ function hasPromiseBasedNotificationApi(): boolean {
     }
 }
 
-// TODO(AK): Move to more natural place, like joining a chat, etc.
-function addInitEventListeners() : void {
-    self.addEventListener('click', onInitEvent);
-    self.addEventListener('doubleclick', onInitEvent);
-    self.addEventListener('onkeydown', onInitEvent);
-    self.addEventListener('touchend', onInitEvent);
-}
-
-function removeInitEventListeners() : void {
-    self.removeEventListener('click', onInitEvent);
-    self.removeEventListener('doubleclick', onInitEvent);
-    self.removeEventListener('onkeydown', onInitEvent);
-    self.removeEventListener('touchend', onInitEvent);
-}
-
-const onInitEvent = async () => {
-    removeInitEventListeners();
+addInteractionHandler(LogScope, async () => {
     const isGranted = await requestNotificationPermission();
     if (!isGranted)
-        console.log(`${LogScope}: Notifications are disabled.`);
-}
+        throw `${LogScope}: Notifications are disabled.`;
 
-addInitEventListeners();
+    // Notification permissions are granted on touchend
+    // that follows scroll, but this isn't what considered
+    // "user interaction" w/ AudioContext, so we always
+    // return false here.
+    // Only AudioContextLazy returns true when it
+    // completes the initialization.
+    return false;
+});

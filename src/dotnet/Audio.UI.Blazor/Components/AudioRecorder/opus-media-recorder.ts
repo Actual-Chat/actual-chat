@@ -91,7 +91,7 @@ export class OpusMediaRecorder {
     public async start(sessionId: string, chatId: string): Promise<void> {
         console.assert(sessionId != '' && chatId != '', 'sessionId and chatId both should have value specified.');
 
-        await this.initialize();
+        await this.init();
 
         if (this.source)
             this.source.disconnect();
@@ -189,14 +189,14 @@ export class OpusMediaRecorder {
         });
     }
 
-    private async initialize(): Promise<void> {
+    private async init(): Promise<void> {
         if (this.context != null)
             return;
 
         this.context = await audioContextLazy.get();
-        if (this.context.sampleRate !== 48000) {
+        if (this.context.sampleRate !== 48000)
             throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
-        }
+
         const encoderWorkletOptions: AudioWorkletNodeOptions = {
             numberOfInputs: 1,
             numberOfOutputs: 1,
@@ -275,9 +275,9 @@ export class OpusMediaRecorder {
 
     private popCallback(callbackId: number): Function {
         const callback = this.callbacks.get(callbackId);
-        if (callback === undefined) {
+        if (callback === undefined)
             throw new Error(`Callback #${callbackId} is not found.`);
-        }
+
         this.callbacks.delete(callbackId);
         return callback;
     }
