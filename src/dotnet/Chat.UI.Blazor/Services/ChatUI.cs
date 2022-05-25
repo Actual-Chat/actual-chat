@@ -1,12 +1,17 @@
+using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class ChatUI
+public partial class ChatUI
 {
     private IServiceProvider Services { get; }
+    private IStateFactory StateFactory { get; }
+    private IChatReadPositions ChatReadPositions { get; }
     private ModalUI ModalUI { get; }
+    private Session Session { get; }
 
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<Symbol> RecordingChatId { get; }
@@ -19,15 +24,18 @@ public class ChatUI
     {
         Services = services;
         ModalUI = services.GetRequiredService<ModalUI>();
+        Session = services.GetRequiredService<Session>();
 
-        var stateFactory = services.StateFactory();
-        ActiveChatId = stateFactory.NewMutable<Symbol>();
-        RecordingChatId = stateFactory.NewMutable<Symbol>();
-        PinnedChatIds = stateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
-        MustPlayPinnedChats = stateFactory.NewMutable<bool>();
-        MustPlayPinnedContactChats = stateFactory.NewMutable<bool>();
-        IsPlaying = stateFactory.NewMutable<bool>();
+        StateFactory = services.StateFactory();
+        ChatReadPositions = services.GetRequiredService<IChatReadPositions>();
+        ActiveChatId = StateFactory.NewMutable<Symbol>();
+        RecordingChatId = StateFactory.NewMutable<Symbol>();
+        PinnedChatIds = StateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
+        MustPlayPinnedChats = StateFactory.NewMutable<bool>();
+        MustPlayPinnedContactChats = StateFactory.NewMutable<bool>();
+        IsPlaying = StateFactory.NewMutable<bool>();
 
+        _lastReadEntryIds = new SharedResourcePool<Symbol, IPersistentState<long>>(RestoreLastReadEntryId);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
     }

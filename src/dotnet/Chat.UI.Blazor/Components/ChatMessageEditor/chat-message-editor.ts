@@ -128,7 +128,7 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    public postMessage = async (chatId: string, text : string): Promise<string> => {
+    public postMessage = async (chatId: string, text : string): Promise<number> => {
         const formData = new FormData();
         const attachmentsList = [];
         if (this.attachments.size > 0) {
@@ -154,7 +154,8 @@ export class ChatMessageEditor {
                 reason = "unknown";
             throw new Error('Failed to send message. Reason: ' + reason);
         }
-        return response.statusText;
+        const entryId = await response.text();
+        return Number(entryId);
     }
 
     public onPostSucceeded = () => {

@@ -43,6 +43,7 @@
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -55,8 +56,13 @@
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
+    private IPersistentState<long>? LastReadEntryId { get; set; }
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -64,6 +70,8 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+        if (LastReadEntryId != null)
+            await LastReadEntryId.DisposeAsync();
     }
 
     protected override void OnParametersSet()
@@ -89,8 +97,10 @@
         try {
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
-            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
+            var entryId = await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            if (LastReadEntryId != null)
+                LastReadEntryId.Value = entryId;
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);
