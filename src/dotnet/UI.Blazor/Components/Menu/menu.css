@@ -1,5 +1,5 @@
 ﻿.menu {
-    @apply bg-context-menu shadow-lg;
+    @apply bg-context-menu shadow-lg min-w-max;
 }
 
 .menu-item {
