@@ -21,7 +21,7 @@ public class MessageController : ControllerBase
     [HttpPost]
     [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
-    public async Task<IActionResult> PostMessage(string chatId)
+    public async Task<ActionResult<long>> PostMessage(string chatId)
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
@@ -107,7 +107,7 @@ public class MessageController : ControllerBase
 
         try {
             var chatEntry = await _commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-            return Ok();
+            return chatEntry.Id;
         }
         catch {
             return BadRequest("Failed to process command");
