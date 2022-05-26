@@ -95,7 +95,8 @@ module.exports = (env, args) => {
       aggregateTimeout: 30, // ms
       ignored: [
         _('node_modules'),
-        outputPath,
+		outputPath,		
+        mauiOutputPath,
       ],
       followSymlinks: false,
     },
