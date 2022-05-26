@@ -17,6 +17,7 @@ deploy
 **/node_modules/
 **/bower_components/
 **/wwwroot/lib/*
+**/wwwroot/dist/*
 **/appsettings.Development.json
 **/.classpath
 **/.dockerignore
