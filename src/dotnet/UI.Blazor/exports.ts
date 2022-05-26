@@ -21,6 +21,8 @@ export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/TextBox/text-box';
 export * from './Components/VirtualList/virtual-list';
 
+export * from './Layouts/base-layout';
+
 export * from './messaging-init';
 export * from './theme';
 
