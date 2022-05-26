@@ -1,9 +1,9 @@
 .tab-panel {
-    @apply flex flex-col h-full;
+    @apply flex-y h-full;
 }
 .tab-panel-tabs {
     @apply mb-2.5 pb-1.5;
-    @apply flex flex-row flex-wrap;
+    @apply flex-x;
     @apply border-b border-accent;
 }
 
