@@ -41,6 +41,9 @@ jobs:
       - name: Replace git+ssh://git@ to https://
         run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
       
+      - name: Replace npm creds
+        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
+      
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
 
@@ -49,6 +52,7 @@ jobs:
         with:
           context: .
           tags: actual-chat/build:latest
+          target: base
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/actual-chat-build.tar
