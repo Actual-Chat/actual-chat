@@ -1,9 +1,7 @@
 /* Navbar */
-.navbar-content .btn {
-    @apply bg-transparent hover:bg-accent;
-}
 .navbar-content .btn.btn-square {
     @apply p-0 rounded;
+    @apply bg-transparent hover:bg-accent;
 }
 .navbar-content .btn.btn-square:hover {
     @apply text-toggle-hover;
@@ -12,12 +10,15 @@
 .navbar-group-toggles {
     @apply flex flex-1 flex-col text-secondary bg-accent;
 }
-
-.navbar-group-toggles .navbar-group-toggle {
-    @apply h-12 cursor-pointer;
+.navbar-group-toggles .navbar-group-toggle.btn {
+    @apply flex-none h-12 w-12 cursor-pointer;
+    @apply hover:bg-secondary hover:opacity-60;
 }
-.navbar-group-toggle .btn-content {
-    @apply px-1;
+.navbar-group-toggles .navbar-group-toggle.btn.on {
+    @apply text-primary bg-primary;
+}
+.navbar-group-toggles .navbar-group-toggle .btn-content {
+    @apply p-1;
 }
 
 #navbar-toggle:checked~#navbar {
@@ -77,23 +78,27 @@
 
 .navbar-item .navbar-item-ending {
     @apply flex-1 justify-self-end;
-    @apply flex flex-row justify-end gap-x-1;
+    @apply flex flex-row justify-end gap-x-0.5;
 }
 
+.navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
+.navbar-item .btn.pin-toggle .btn-content .btn-content-inner {
+    @apply p-0.25;
+}
 .navbar-subgroup .pin-toggle.off,
 .navbar-item .pin-toggle.off {
-    @apply hidden;
+    @apply invisible;
 }
 .navbar-subgroup:hover .pin-toggle.off,
 .navbar-item:hover .pin-toggle.off {
-    @apply block;
+    @apply visible;
 }
 
-.navbar-item .pin-toggle.recorder,
-.navbar-item:hover .pin-toggle.recorder {
+.navbar-item .pin-toggle.recording-in-chat,
+.navbar-item:hover .pin-toggle.recording-in-chat {
     @apply text-recorder-on;
 }
 
-.navbar-item .pin-toggle.recorder svg {
+.navbar-item .pin-toggle.recording-in-chat svg {
     filter: drop-shadow(0px 0px 3px rgb(239 68 68 / 0.7));
 }

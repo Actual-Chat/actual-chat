@@ -77,9 +77,6 @@
 .btn.btn-square.attach-btn:hover > .btn-content {
     @apply bg-transparent;
 }
-.btn.btn-square:enabled:focus > .btn-content {
-    @apply bg-square-focus;
-}
 
 .chat-header-panel-hint.btn.btn-square {
     @apply flex-none hidden group-hover:flex font-light text-xs;

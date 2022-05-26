@@ -35,9 +35,10 @@ textarea {
     @apply bg-secondary text-primary border-accent;
 }
 
-input:focus,
-input.input-copy-to-clipboard:focus {
-    @apply outline-none ring-2 ring-success rounded-sm bg-primary border-0;
+input:focus {
+    @apply bg-primary;
+    @apply rounded-sm border-0 outline-none;
+    @apply ring-2 ring-success;
 }
 input:focus[type="text"]::selection {
     @apply bg-selection text-accent;
@@ -64,35 +65,6 @@ h3 {
     @apply text-lg;
 }
 
-/* Flex shortcuts */
-
-.flex-x {
-    @apply flex flex-row;
-}
-.-flex-x {
-    @apply flex flex-row-reverse;
-}
-.flex-y {
-    @apply flex flex-col;
-}
-.-flex-y {
-    @apply flex flex-col-reverse;
-}
-
-/* Inline-flex shortcuts */
-
-.inline-flex-x {
-    @apply inline-flex flex-row;
-}
-.-inline-flex-x {
-    @apply inline-flex flex-row-reverse;
-}
-.inline-flex-y {
-    @apply inline-flex flex-col;
-}
-.-inline-flex-y {
-    @apply inline-flex flex-col-reverse;
-}
 
 /* Sections */
 
@@ -108,209 +80,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply border-0;
 }
 
-/* Suffixes */
-
-button.on, .btn.on, .btn.btn-square.on .btn-content {
-    @apply text-toggle-on;
-}
-button.off, .btn.off, .btn.btn-square.off .btn-content {
-    @apply text-secondary;
-}
-
-/* Buttons */
-
-.btn {
-    @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 font-medium fill-current rounded-md border;
-    @apply h-8 min-w-16 max-w-max;
-}
-.btn .btn-content {
-    @apply flex-x place-self-center;
-}
-
-.btn:disabled {
-    @apply opacity-70;
-}
-.btn.-disabled:disabled {
-    @apply opacity-100;
-}
-
-/*BUTTON SUCCESS*/
-.btn.btn-success {
-    @apply bg-success border-success text-success-title;
-}
-.btn.btn-success:enabled:hover,
-.btn.btn-success:enabled:focus:hover {
-    @apply bg-success-hover border-success-hover;
-}
-.btn.btn-success:enabled:active,
-.btn.btn-success:enabled:focus:active {
-    @apply outline-none ring-2 ring-success-ring bg-success border-success-ring;
-}
-.btn.btn-success:enabled:focus {
-    @apply outline-none ring-1 ring-success-ring bg-success border-success-ring;
-}
-
-/*BUTTON SUCCESS OUTLINE*/
-.btn.btn-success-outline {
-    @apply bg-secondary border-success text-success-outline-title;
-}
-.btn.btn-success-outline:enabled:hover,
-.btn.btn-success-outline:enabled:focus:hover {
-    @apply bg-success-outline-hover border-success-hover;
-}
-.btn.btn-success-outline:enabled:active,
-.btn.btn-success-outline:enabled:focus:active {
-    @apply outline-none ring-2 ring-success-ring bg-secondary border-success-ring;
-}
-.btn.btn-success-outline:enabled:focus {
-    @apply outline-none ring-1 ring-success-ring bg-secondary border-success-ring;
-}
-
-/*BUTTON CANCEL*/
-.btn.btn-cancel {
-    @apply bg-cancel border-cancel text-cancel-title;
-}
-.btn.btn-cancel:enabled:hover,
-.btn.btn-cancel:enabled:focus:hover {
-    @apply bg-cancel-hover border-cancel-hover;
-}
-.btn.btn-cancel:enabled:active,
-.btn.btn-cancel:enabled:focus:active {
-    @apply outline-none ring-2 ring-cancel-ring bg-cancel border-cancel-ring;
-}
-.btn.btn-cancel:enabled:focus {
-    @apply outline-none ring-1 ring-cancel-ring bg-cancel border-cancel-ring;
-}
-
-/*BUTTON CANCEL OUTLINE*/
-.btn.btn-cancel-outline {
-    @apply bg-secondary border-cancel text-cancel-outline-title;
-}
-.btn.btn-cancel-outline:enabled:hover,
-.btn.btn-cancel-outline:enabled:focus:hover {
-    @apply bg-cancel-outline-hover border-cancel-hover;
-}
-.btn.btn-cancel-outline:enabled:active,
-.btn.btn-cancel-outline:enabled:focus:active {
-    @apply outline-none ring-2 ring-cancel-ring bg-secondary border-cancel-ring;
-}
-.btn.btn-cancel-outline:enabled:focus {
-    @apply outline-none ring-1 ring-cancel-ring bg-secondary border-cancel-ring;
-}
-
-/*BUTTON ERROR*/
-.btn.btn-error {
-    @apply bg-error border-error text-error-title;
-}
-.btn.btn-error:enabled:hover,
-.btn.btn-error:enabled:focus:hover {
-    @apply bg-error-hover border-error-hover;
-}
-.btn.btn-error:enabled:active,
-.btn.btn-error:enabled:focus:active {
-    @apply outline-none ring-2 ring-error-ring bg-error border-error-ring;
-}
-.btn.btn-error:enabled:focus {
-    @apply outline-none ring-1 ring-error-ring bg-error border-error-ring rounded-md;
-}
-
-/*BUTTON ERROR OUTLINE*/
-.btn.btn-error-outline {
-    @apply bg-secondary border-error text-error-outline-title;
-}
-.btn.btn-error-outline:enabled:hover,
-.btn.btn-error-outline:enabled:focus:hover {
-    @apply bg-error-outline-hover border-error-hover;
-}
-.btn.btn-error-outline:enabled:active,
-.btn.btn-error-outline:enabled:focus:active {
-    @apply outline-none ring-2 ring-error-ring bg-secondary border-error-ring;
-}
-.btn.btn-error-outline:enabled:focus {
-    @apply outline-none ring-1 ring-error-ring bg-secondary border-error-ring;
-}
-
-.btn.btn-transparent {
-    @apply relative flex border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
-    @apply hover:cursor-pointer;
-}
-
-.btn.btn-xs {
-    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
-}
-.btn.btn-sm {
-    @apply text-xs min-h-6 min-w-12;
-}
-.btn.btn-lg {
-    @apply min-h-10 min-w-20 text-base;
-}
-
-.btn.btn-square {
-    @apply text-base font-semibold p-0 h-full mx-0 min-w-0 border-0 inline-block overflow-hidden;
-}
-.btn.btn-square:disabled {
-    @apply opacity-70;
-}
-.btn.btn-square.-disabled:disabled {
-    @apply opacity-100;
-}
-.btn.btn-square:enabled {
-    @apply bg-square text-square-title;
-}
-.btn-square:enabled { /* We want this selector to be less important than other selectors settings text color */
-    @apply text-square-title;
-}
-
-.btn.btn-square:enabled:focus > .btn-content {
-    @apply bg-square-focus rounded-sm;
-}
-.btn.btn-square:enabled:active > .btn-content {
-    @apply bg-square-active;
-}
-.btn.btn-square:enabled:hover > .btn-content {
-    @apply bg-square-hover;
-}
-
-.btn.btn-square.transparent {
-    @apply bg-transparent hover:bg-accent;
-}
-.btn.btn-square.show-on-hover {
-    @apply invisible z-10 absolute;
-}
-
-.btn.menu-item-btn {
-    @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
-}
-
-.btn-group {
-    @apply overflow-hidden rounded-md;
-    @apply flex flex-row gap-px bg-secondary;
-}
-.btn-group .btn {
-    @apply rounded-none;
-}
-.btn-group.flex-y .btn {
-    @apply fill-available;
-}
-.btn-group.btn-group-font-normal .btn {
-    @apply font-normal;
-}
-.btn-group.btn-group-font-light .btn {
-    @apply font-light;
-}
-.btn-group.btn-group-font-medium .btn {
-    @apply font-medium;
-}
-.btn-group.btn-group-font-semibold .btn {
-    @apply font-semibold;
-}
-
 /* Other inputs */
-
-input.input-copy-to-clipboard {
-    @apply bg-transparent border-b border-placeholder;
-}
 
 input.input-imprinted {
     @apply border-0 bg-accent;
@@ -338,15 +108,4 @@ input.input-underlined {
 
 .error-toast .toast-content {
     @apply flex p-2 rounded-b-md bg-error-toast-body;
-}
-
-/* Other */
-
-.whitespace-break-spaces {
-    white-space: break-spaces;
-}
-
-.fill-available {
-    min-width: -webkit-fill-available;
-    min-width: -moz-available;
 }
