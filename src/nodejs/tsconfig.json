@@ -35,10 +35,23 @@
     "noImplicitAny": false,
     // change to true (?)
     "strictNullChecks": false,
-    // change to false (?)
+    // Tells TypeScript to read JS files, as
+    // normally they are ignored as source files
     "allowJs": true,
     "checkJs": false,
     "sourceMap": true,
+    // Generate d.ts files
+    "declaration": true,
+    // This compiler run should
+    // only output d.ts files
+    "emitDeclarationOnly": true,
+    // Types should go into this directory.
+    // Removing this would place the .d.ts files
+    // next to the .js files
+    "outDir": "./../dotnet/UI.Blazor.Host/wwwroot/dist",
+    // go to js file when using IDE functions like
+    // "Go to Definition" in VSCode
+    "declarationMap": true,
     /* Basic Options */
     "target": "es2017",
     "module": "es2020",
