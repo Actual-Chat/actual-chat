@@ -36,12 +36,12 @@
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
     [Inject] private StateRestore StateRestore { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<App> Log { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         if (!SessionId.IsNullOrEmpty()) {
             var session = new Session(SessionId);
@@ -54,27 +54,27 @@
                 SessionProvider.Session = session;
         }
         if (!CircuitContext.IsPrerendering) {
-            await SetupTimeOffset();
             CircuitContext.RootComponent = this;
+            _ = InitializeTimeZoneConverter();
             // This method should be called only when ISessionProvider.Session is set!
             _ = StateRestore.Restore(CancellationToken.None);
         }
+        return Task.CompletedTask;
     }
 
-    private async Task SetupTimeOffset() {
-        var ssb = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
-        if (!ssb)
+    private async Task InitializeTimeZoneConverter() {
+        if (TimeZoneConverter is not ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             return;
-        // useful js functions
+
+        // Useful JS functions:
         // Intl.DateTimeFormat().resolvedOptions().timeZone
         // new Date().getTimezoneOffset()
         try {
-            var timeOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()")
-                .ConfigureAwait(true);
-            DateTimeService.SetupTimeOffset(TimeSpan.FromMinutes(-timeOffset));
+            var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()").ConfigureAwait(false);
+            serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
         }
-        catch(Exception ex) {
-            Log.LogWarning(ex, "Failed to setup time offset");
+        catch (Exception ex) {
+            Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
         }
     }
 

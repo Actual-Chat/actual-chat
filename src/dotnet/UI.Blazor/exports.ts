@@ -1,16 +1,15 @@
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/Button/button.css';
+import './Components/ChatIcon/chat-icon.css'
 import './Components/Clipboard/clipboard.css';
 import './Components/ContextMenu/context-menu.css';
+import './Components/Form/form.css'
+import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
 import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
-import './Components/Form/form.css'
-import './Components/Form/toggle.css'
-import './Components/ChatIcon/chat-icon.css'
 import './Components/tooltip.css'
-import './Components/ThemeToggle/theme-toggle.css'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';

@@ -21,4 +21,8 @@
     <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\ThemeToggle" />
+  </ItemGroup>
+
 </Project>

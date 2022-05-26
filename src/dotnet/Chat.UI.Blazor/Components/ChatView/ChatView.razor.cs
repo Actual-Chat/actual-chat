@@ -29,7 +29,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
     private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
@@ -66,6 +66,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (VisibleKeys == null)
             try {
@@ -215,12 +216,13 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(c => c.Length > 0)
             .ToDictionary(c => c[0].EntryId, c => c);
 
+        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
 			attachments,
 			_initialLastReadEntryId,
             MarkupParser,
-            DateTimeService);
+            TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;

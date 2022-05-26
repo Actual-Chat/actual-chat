@@ -1,0 +1,19 @@
+@page "/settings"
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
+
+<MainHeader>
+    <span class="text-secondary">Settings</span>
+</MainHeader>
+
+<div class="flex-y w-full border-accent p-3">
+    <TabPanel>
+        <div class="w-full lg:w-2/3 xl:w-1/2 xxl:w-1/3">
+            <Tab Title="My Account" Id="MyAccount">
+                <UserSettings/>
+            </Tab>
+            <Tab Title="Appearance" Id="Appearance">
+                <AppearanceSettings/>
+            </Tab>
+        </div>
+    </TabPanel>
+</div>

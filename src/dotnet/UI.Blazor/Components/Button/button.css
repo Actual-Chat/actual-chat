@@ -182,6 +182,18 @@
     @apply font-semibold;
 }
 
+/* Dot */
+
+.dot {
+    @apply rounded-full ring-1 ring-dot-selected m-2.5;
+}
+.dot-dot {
+    @apply h-2 w-2 rounded-full m-0.5 bg-dot;
+}
+.on .dot-dot {
+    @apply bg-dot-selected;
+}
+
 /* Suffixes */
 
 button.on, .btn.on, .btn.btn-square.on {
@@ -190,3 +202,4 @@ button.on, .btn.on, .btn.btn-square.on {
 button.off, .btn.off, .btn.btn-square.off {
     @apply text-secondary;
 }
+
