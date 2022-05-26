@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Stl.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -58,8 +57,11 @@ public sealed class ServerSideTimeZoneConverter : TimeZoneConverter
     public override DateTime ToLocalTime(DateTime utcTime)
     {
         // TODO(DF): This implementation does not properly handle DST change!
-        if (!WhenInitialized.IsCompleted)
-            throw Errors.NotInitialized();
+
+        // Ideally we want to throw an error when !WhenInitialized.IsCompleted,
+        // but since we assume WhenInitialized is used in Component.OnInitializedAsync,
+        // re-render will be triggered anyway for anything that was rendered
+        // w/ the wrong timezone.
 
         utcTime = AssertUtcTime(utcTime);
         return utcTime - _utcOffset;
