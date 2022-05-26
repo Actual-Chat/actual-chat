@@ -112,14 +112,14 @@
   </ItemGroup>
   
   <!-- Extra trimming roots -->
-  <!--<ItemGroup>
+  <ItemGroup>
     <TrimmerRootAssembly Include="Stl.Fusion" />
     <TrimmerRootAssembly Include="Stl.Fusion.Client" />
     <TrimmerRootAssembly Include="Stl.Fusion.Blazor" />
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
-  </ItemGroup>-->
+  </ItemGroup>
   
 </Project>
 
