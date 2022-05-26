@@ -150,7 +150,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         services.AddCors(options => {
-            options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
+            options.AddPolicy("Default", builder => {
+                builder.AllowAnyOrigin().WithFusionHeaders();
+                builder.WithOrigins("https://0.0.0.0")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
         });
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.All;

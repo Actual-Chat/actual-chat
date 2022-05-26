@@ -35,6 +35,7 @@ import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 const AUDIO_BITS_PER_SECOND = 32000;
 
 export class OpusMediaRecorder {
+    public static origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
@@ -70,7 +71,7 @@ export class OpusMediaRecorder {
 
     public pause(): void {
         console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an pause() call. Lifetime error.");
-        console.assert(this.source != null, "Recorder: pause() call is invalid when source is null. Lifetime error.");
+        console.assert(this.source != null, 'Recorder: pause() call is invalid when source is null. Lifetime error.');
 
         // Stop stream first
         this.source.disconnect();
@@ -81,7 +82,7 @@ export class OpusMediaRecorder {
 
     public resume(): void {
         console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an resume() call. Lifetime error.");
-        console.assert(this.source != null, "Recorder: resume() call is invalid when source is null. Lifetime error.");
+        console.assert(this.source != null, 'Recorder: resume() call is invalid when source is null. Lifetime error.');
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
         this.source.connect(this.vadWorklet);
@@ -167,8 +168,7 @@ export class OpusMediaRecorder {
     }
 
     private loadWorkers(): Promise<void> {
-        const origin = new URL('opus-media-recorder.ts', import.meta.url).origin;
-        const audioHubUrl = new URL('/api/hub/audio', origin).toString();
+        const audioHubUrl = new URL('/api/hub/audio', OpusMediaRecorder.origin).toString();
 
         const callbackId = this.lastCallbackId++;
         return new Promise(resolve => {
