@@ -49,7 +49,7 @@ public static class MauiProgram
         var services = builder.Services;
         services.AddMauiBlazorWebView();
 
-#if DEBUG
+#if DEBUG || DEBUG_MAUI
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
 
