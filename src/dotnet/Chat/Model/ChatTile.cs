@@ -7,7 +7,7 @@ public class ChatTile
     public Range<long> IdTileRange { get; init; }
     public bool IncludesRemoved { get; init; }
     public Range<Moment> BeginsAtRange { get; init; }
-    public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty;
+    public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty; // Always sorted by Id!
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => Entries.Length == 0;
 

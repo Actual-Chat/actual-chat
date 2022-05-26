@@ -1,0 +1,192 @@
+.btn {
+    @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
+    @apply py-2 px-3 font-medium fill-current rounded-md border;
+    @apply h-8 min-w-16 max-w-max;
+}
+.btn .btn-content {
+    @apply flex flex-row place-self-center;
+}
+
+.btn:disabled {
+    @apply opacity-70;
+}
+.btn.-disabled:disabled {
+    @apply opacity-100;
+}
+
+/* Success */
+.btn.btn-success {
+    @apply bg-success border-success text-success-title;
+}
+.btn.btn-success:hover,
+.btn.btn-success:focus:hover {
+    @apply bg-success-hover border-success-hover;
+}
+.btn.btn-success:active,
+.btn.btn-success:focus:active {
+    @apply outline-none ring-2 ring-success-ring bg-success border-success-ring;
+}
+.btn.btn-success:focus {
+    @apply outline-none ring-1 ring-success-ring bg-success border-success-ring;
+}
+
+/* Success outline */
+.btn.btn-success-outline {
+    @apply bg-secondary border-success text-success-outline-title;
+}
+.btn.btn-success-outline:hover,
+.btn.btn-success-outline:focus:hover {
+    @apply bg-success-outline-hover border-success-hover;
+}
+.btn.btn-success-outline:active,
+.btn.btn-success-outline:focus:active {
+    @apply outline-none ring-2 ring-success-ring bg-secondary border-success-ring;
+}
+.btn.btn-success-outline:focus {
+    @apply outline-none ring-1 ring-success-ring bg-secondary border-success-ring;
+}
+
+/* Cancel */
+.btn.btn-cancel {
+    @apply bg-cancel border-cancel text-cancel-title;
+}
+.btn.btn-cancel:hover,
+.btn.btn-cancel:focus:hover {
+    @apply bg-cancel-hover border-cancel-hover;
+}
+.btn.btn-cancel:active,
+.btn.btn-cancel:focus:active {
+    @apply outline-none ring-2 ring-cancel-ring bg-cancel border-cancel-ring;
+}
+.btn.btn-cancel:focus {
+    @apply outline-none ring-1 ring-cancel-ring bg-cancel border-cancel-ring;
+}
+
+/* Cancel outline */
+.btn.btn-cancel-outline {
+    @apply bg-secondary border-cancel text-cancel-outline-title;
+}
+.btn.btn-cancel-outline:hover,
+.btn.btn-cancel-outline:focus:hover {
+    @apply bg-cancel-outline-hover border-cancel-hover;
+}
+.btn.btn-cancel-outline:active,
+.btn.btn-cancel-outline:focus:active {
+    @apply outline-none ring-2 ring-cancel-ring bg-secondary border-cancel-ring;
+}
+.btn.btn-cancel-outline:focus {
+    @apply outline-none ring-1 ring-cancel-ring bg-secondary border-cancel-ring;
+}
+
+/* Error */
+.btn.btn-error {
+    @apply bg-error border-error text-error-title;
+}
+.btn.btn-error:hover,
+.btn.btn-error:focus:hover {
+    @apply bg-error-hover border-error-hover;
+}
+.btn.btn-error:active,
+.btn.btn-error:focus:active {
+    @apply outline-none ring-2 ring-error-ring bg-error border-error-ring;
+}
+.btn.btn-error:focus {
+    @apply outline-none ring-1 ring-error-ring bg-error border-error-ring rounded-md;
+}
+
+/* Error outline */
+.btn.btn-error-outline {
+    @apply bg-secondary border-error text-error-outline-title;
+}
+.btn.btn-error-outline:hover,
+.btn.btn-error-outline:focus:hover {
+    @apply bg-error-outline-hover border-error-hover;
+}
+.btn.btn-error-outline:active,
+.btn.btn-error-outline:focus:active {
+    @apply outline-none ring-2 ring-error-ring bg-secondary border-error-ring;
+}
+.btn.btn-error-outline:focus {
+    @apply outline-none ring-1 ring-error-ring bg-secondary border-error-ring;
+}
+
+.btn.btn-transparent {
+    @apply relative flex border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply hover:cursor-pointer;
+}
+
+.btn.btn-xs {
+    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
+}
+.btn.btn-sm {
+    @apply text-xs min-h-6 min-w-12;
+}
+.btn.btn-lg {
+    @apply min-h-10 min-w-20 text-base;
+}
+
+.btn.btn-square {
+    @apply inline-block overflow-hidden;
+    @apply p-0 mx-0 min-w-0 h-full;
+    @apply border-0 bg-square;
+    @apply text-base font-semibold text-square-title;
+}
+.btn.btn-square:disabled {
+    @apply opacity-70;
+}
+.btn.btn-square.-disabled:disabled {
+    @apply opacity-100;
+}
+
+.btn.btn-square .btn-content {
+    @apply flex-none flex-x w-full h-full;
+}
+.btn.btn-square:focus {
+    @apply bg-square-focus rounded-sm;
+}
+.btn.btn-square:active {
+    @apply bg-square-active;
+}
+.btn.btn-square:hover {
+    @apply bg-square-hover;
+}
+
+.btn.btn-square.show-on-hover {
+    @apply invisible z-10 absolute;
+}
+
+.btn.btn-square .btn-content-inner {
+    @apply p-1 self-center;
+}
+
+.btn-group {
+    @apply overflow-hidden rounded-md;
+    @apply flex flex-row gap-px bg-secondary;
+}
+.btn-group .btn {
+    @apply rounded-none;
+}
+.btn-group.flex-y .btn {
+    @apply fill-available;
+}
+.btn-group.btn-group-font-normal .btn {
+    @apply font-normal;
+}
+.btn-group.btn-group-font-light .btn {
+    @apply font-light;
+}
+.btn-group.btn-group-font-medium .btn {
+    @apply font-medium;
+}
+.btn-group.btn-group-font-semibold .btn {
+    @apply font-semibold;
+}
+
+/* Suffixes */
+
+button.on, .btn.on, .btn.btn-square.on {
+    @apply text-toggle-on;
+}
+button.off, .btn.off, .btn.btn-square.off {
+    @apply text-secondary;
+}
