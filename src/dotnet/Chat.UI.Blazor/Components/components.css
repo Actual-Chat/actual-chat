@@ -68,7 +68,7 @@
 }
 
 .playable-text-markup {
-    @apply underline underline-offset-2 decoration-dashed decoration-audio-message;
+    @apply underline decoration-dotted decoration-audio-message;
 }
 
 .btn-square.attach-btn {
