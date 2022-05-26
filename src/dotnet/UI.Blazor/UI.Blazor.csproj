@@ -21,4 +21,8 @@
     <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <TypeScriptCompile Include="theme.ts" />
+  </ItemGroup>
+
 </Project>

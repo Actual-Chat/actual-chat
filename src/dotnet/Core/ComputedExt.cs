@@ -14,4 +14,16 @@ public static class ComputedExt
             await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
     }
+
+    public static async IAsyncEnumerable<IComputed<T>> Changes<T>(
+        this IComputed<T> computed,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        while (true) {
+            computed = await computed.Update(cancellationToken).ConfigureAwait(false);
+            yield return computed;
+            await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+        }
+        // ReSharper disable once IteratorNeverReturns
+    }
 }

@@ -57,10 +57,14 @@
     --mention-message-hover: #fff7e5;
     --own-message: #f6f8f9;
     --own-message-hover: #cbd5e1;
-    --audio-message: #d2effc;
+    --audio-message: #0ea5e9;
     --context-menu: #F9FAFB;
     --context-border: #e2e7ec;
     --selection: #cbd5e1;
+    --dot: #e2e7ec;
+    --dot-selected: #4b5e71;
+    --skeleton: #edf0f3;
+    --skeleton-border: #F9FAFB;
 
     --error-toast-header: #fd5757;
     --error-toast-body: #fd6a6a;
@@ -136,6 +140,10 @@
     --context-menu: #17181a;
     --context-border: #17181a;
     --selection: #484c54;
+    --dot: #292B2F;
+    --dot-selected: #fafafa;
+    --skeleton: #292B2F;
+    --skeleton-border: #2F3136;
 
     --error-toast-header: #fc3030;
     --error-toast-body: #fd5757;

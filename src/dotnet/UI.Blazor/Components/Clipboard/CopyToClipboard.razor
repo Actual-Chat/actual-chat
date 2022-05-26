@@ -1,17 +1,15 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 
-<div class="copy-to-clipboard flex-x items-center gap-x-1 @Class">
-    <input @ref="InputRef" class="input-copy-to-clipboard flex-auto @InputClass" type="text" value="@Text" onclick="@OnClick"/>
-    <ButtonSquare Click="OnClick" Class="flex-none grid transparent !contents" ContentClass="flex-x gap-x-1">
-        <div class="flex-x gap-x-1">
-            <i class="fa fa-files-o py-0.5" aria-hidden="true"></i>
-            @if (StringComparer.Ordinal.Equals(_lastCopiedText, Text)) {
-                <div class="flex-1 font-light text-xs">
-                    copied!
-                </div>
-            }
-        </div>
+<div class="copy-to-clipboard @Class">
+    <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
+    <ButtonSquare Click="OnClick" ContentClass="flex-x gap-x-1">
+        <i class="fa fa-files-o py-0.5" aria-hidden="true"></i>
+        @if (StringComparer.Ordinal.Equals(_lastCopiedText, Text)) {
+            <div class="c-copied">
+                copied!
+            </div>
+        }
     </ButtonSquare>
 </div>
 

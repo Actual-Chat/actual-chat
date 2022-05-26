@@ -6,6 +6,7 @@
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
         return;
+    var timeZoneConverter = LiveTime.TimeZoneConverter;
 }
 
 <div class="historical-playback-sub-header">
@@ -19,7 +20,7 @@
         @* Position *@
         <div class="c-text">
             @if (m.PlayingAt is { } playingAt) {
-                var localTime = DateTimeService.ToLocalTime(playingAt);
+                var localTime = timeZoneConverter.ToLocalTime(playingAt);
                 var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                 var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
                 <span>
@@ -30,7 +31,7 @@
         </div>
         @* Stop button *@
         <div class="c-stop">
-            <ButtonSquare Click="OnStop" Class="!bg-secondary">
+            <ButtonSquare Click="OnStop">
                 <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M0 0h24v24h-24z"/>
                 </svg>
@@ -44,9 +45,11 @@
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => await LiveTime.WhenInitialized.ConfigureAwait(false);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

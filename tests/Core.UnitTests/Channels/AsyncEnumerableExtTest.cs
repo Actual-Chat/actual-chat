@@ -80,7 +80,7 @@ public class AsyncEnumerableExtTest
     public async Task MergeCancellationTest()
     {
         var clock = new TestClock();
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var left = Left(cts.Token);
         var right = Right(cts.Token);
         var result = left.Merge(right);
@@ -137,7 +137,7 @@ public class AsyncEnumerableExtTest
     public async Task RandomizedMergeTest()
     {
         var testClock = new TestClock();
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var random = new Random();
         var otherSourceLength = random.Next(4, 7);
         var sequenceLength = 100;

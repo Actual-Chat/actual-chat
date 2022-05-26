@@ -3,7 +3,7 @@
     var m = State.LatestNonErrorValue ?? Model.None;
     var mustPlayPinned = m.MustPlayPinned;
     var isPlaying = mustPlayPinned && m.IsPlaying;
-    var mustPlayPinnedClass = "pin-toggle transparent"
+    var mustPlayPinnedClass = "pin-toggle play-pinned"
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
 

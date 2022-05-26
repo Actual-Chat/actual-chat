@@ -2,6 +2,9 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface ILiveTime
 {
+    TimeZoneConverter TimeZoneConverter { get; }
+    Task WhenInitialized { get; }
+
     [ComputeMethod]
     Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
 
@@ -14,24 +17,27 @@ public class LiveTime : ILiveTime
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
     private MomentClockSet Clocks { get; }
-    private DateTimeService DateTimeService { get; }
 
-    public LiveTime(MomentClockSet clocks, DateTimeService dateTimeService)
+    public Task WhenInitialized => TimeZoneConverter.WhenInitialized;
+    public TimeZoneConverter TimeZoneConverter { get; }
+
+    public LiveTime(MomentClockSet clocks, TimeZoneConverter timeZoneConverter)
     {
         Clocks = clocks;
-        DateTimeService = dateTimeService;
+        TimeZoneConverter = timeZoneConverter;
     }
 
     // [ComputeMethod]
-    public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
+    public virtual async Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
+        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
         var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);
         if (delay < TimeSpan.MaxValue) {
             // Invalidate the result when it's supposed to change
             delay = TrimInvalidationDelay(delay + TimeSpan.FromMilliseconds(100));
             Computed.GetCurrent()!.Invalidate(delay, false);
         }
-        return Task.FromResult(text);
+        return text;
     }
 
     public string GetDeltaText(Moment time)
@@ -67,9 +73,9 @@ public class LiveTime : ILiveTime
             return (result, delay);
         }
 
-        var localTime = DateTimeService.ToLocalTime(time);
+        var localTime = TimeZoneConverter.ToLocalTime(time);
         var localTimeDate = localTime.Date;
-        var localNow = DateTimeService.ToLocalTime(now);
+        var localNow = TimeZoneConverter.ToLocalTime(now);
         var localToday = localNow.Date;
         if (localTimeDate == localToday) {
             result = $"today at {localTime.ToShortTimeString()}";

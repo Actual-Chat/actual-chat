@@ -4,7 +4,7 @@ using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class ModalUI
+public sealed class ModalUI
 {
     private readonly IModalService _modalService;
     private readonly IMatchingTypeFinder _matchingTypeFinder;

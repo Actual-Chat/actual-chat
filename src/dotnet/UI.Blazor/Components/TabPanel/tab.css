@@ -1,18 +1,21 @@
 .tab-panel {
-    @apply flex flex-col h-full;
+    @apply flex-y h-full;
 }
 .tab-panel-tabs {
-    @apply flex flex-row flex-wrap;
-    @apply mb-2.5 pb-1.5 gap-x-2 border-b border-accent -mx-3;
-}
-
-.tab-panel .tab {
-    @apply grow overflow-y-auto px-2;
+    @apply mb-2.5 pb-1.5;
+    @apply flex-x;
+    @apply border-b border-accent;
 }
 
 .tab-panel-tabs .btn-square.tab-btn {
-    @apply bg-transparent text-md rounded-none border-transparent border-b-2;
-    @apply text-secondary font-medium leading-tight uppercase;
+    @apply !bg-transparent border-transparent border-b-2 rounded-none;
+    @apply text-secondary text-md font-medium leading-tight uppercase;
+}
+.tab-panel-tabs .btn-square.tab-btn:focus {
+    @apply rounded-none;
+}
+.tab-panel-tabs .btn-square.tab-btn .btn-content {
+    @apply px-1;
 }
 .tab-panel-tabs .btn-square.tab-btn.on {
     @apply border-success;
@@ -20,3 +23,8 @@
 .tab-panel-tabs .btn-square.tab-btn.on .btn-content {
     @apply text-secondary;
 }
+
+.tab-panel .tab {
+    @apply grow overflow-y-auto px-2;
+}
+

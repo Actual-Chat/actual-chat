@@ -24,9 +24,9 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative z-20 p-1 pb-0.5;
+    @apply relative z-20 p-1 pb-0.25;
     @apply flex flex-row items-center justify-center;
-    @apply bg-secondary shadow-lg text-primary rounded-b-lg border-b-2 border-t-2 border-accent;
+    @apply bg-accent shadow-lg text-primary;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
@@ -39,6 +39,10 @@
 .historical-playback-sub-header-content .c-moment {
     @apply font-normal;
 }
+.historical-playback-sub-header-content .c-stop .btn {
+    @apply bg-transparent;
+}
+
 
 .unread-messages-sub-header {
     @apply relative z-10 mx-4 px-2 pb-0.5;
@@ -64,7 +68,7 @@
 }
 
 .playable-text-markup {
-    @apply underline underline-offset-2 decoration-dashed decoration-audio-message;
+    @apply underline decoration-dotted decoration-audio-message;
 }
 
 .btn-square.attach-btn {
@@ -72,9 +76,6 @@
 }
 .btn.btn-square.attach-btn:hover > .btn-content {
     @apply bg-transparent;
-}
-.btn.btn-square:enabled:focus > .btn-content {
-    @apply bg-square-focus;
 }
 
 .chat-header-panel-hint.btn.btn-square {

@@ -8,7 +8,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
-    private readonly TaskSource<Unit> _initializeTaskSource = TaskSource.New<Unit>(true);
+    private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     private Symbol _currentAuthorId;
     private long _lastNavigateToEntryId;
@@ -29,9 +29,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private DateTimeService DateTimeService { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
-    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
+    private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
 
@@ -66,31 +66,30 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (VisibleKeys == null)
-            try {
-                NavigateToEntryId = StateFactory.NewMutable(0L);
-                VisibleKeys = StateFactory.NewMutable(new List<string>());
-                _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
+        try {
+            NavigateToEntryId = StateFactory.NewMutable(0L);
+            VisibleKeys = StateFactory.NewMutable(new List<string>());
+            _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-                var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, _disposeToken.Token)
-                    .ConfigureAwait(true);
-                _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
+            var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, _disposeToken.Token)
+                .ConfigureAwait(true);
+            _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
 
-                var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
-                    .ConfigureAwait(true);
-                if (readPosition.HasValue) {
-                    _lastReadEntryId = readPosition.Value;
-                    _initialLastReadEntryId = readPosition.Value;
-                }
+            var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
+                .ConfigureAwait(true);
+            if (readPosition.HasValue) {
+                _lastReadEntryId = readPosition.Value;
+                _initialLastReadEntryId = readPosition.Value;
             }
-            finally {
-                _initializeTaskSource.SetResult(Unit.Default);
-            }
+        }
+        finally {
+            await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
+            _whenInitializedSource.SetResult(Unit.Default);
+        }
     }
 
     protected override bool ShouldRender()
-        => InitCompleted;
+        => WhenInitialized.IsCompleted;
 
     private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
@@ -135,8 +134,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
-        if (!_initializeTaskSource.Task.IsCompleted)
-            await _initializeTaskSource.Task.ConfigureAwait(true);
+        await WhenInitialized.ConfigureAwait(true);
 
         var chat = Chat;
         var chatId = chat.Id.Value;
@@ -220,7 +218,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 			attachments,
 			_initialLastReadEntryId,
             MarkupParser,
-            DateTimeService);
+            TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;

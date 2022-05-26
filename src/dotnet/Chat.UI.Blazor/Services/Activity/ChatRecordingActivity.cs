@@ -37,7 +37,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 
     [ComputeMethod]
     public virtual Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken)
-        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).ToImmutableArray());
+        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
 
     [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken)
@@ -58,8 +58,8 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
             .ConfigureAwait(false);
         var startId = startEntry?.Id ?? idRange.End - 1;
 
-        var entries = EntryReader.ReadAllWaitingForNew(startId, cancellationToken);
-        await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        var entries = EntryReader.Observe(startId, cancellationToken);
+        await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsEmpty)
                 continue;
             AddActiveEntry(entry);

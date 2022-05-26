@@ -27,7 +27,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
 
         idRange = (startEntry.Id, idRange.End);
-        var entries = audioEntryReader.ReadAll(idRange, cancellationToken);
+        var entries = audioEntryReader.Read(idRange, cancellationToken);
         var playProcesses = new ConcurrentDictionary<IMessageProcess<PlayTrackCommand>, Unit>();
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.StreamId.IsEmpty) // Streaming entry
