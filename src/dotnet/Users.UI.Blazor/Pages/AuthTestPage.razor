@@ -189,7 +189,7 @@
     }
 
     public sealed record Model {
-        public static Model None { get; } = new() { UserProfile = UserProfile.Guest };
+        public static Model None { get; } = new() { UserProfile = UserProfile.Guest, User = UserProfile.Guest.User };
 
         public SessionInfo? SessionInfo { get; init; }
         public User User { get; init; } = null!;
