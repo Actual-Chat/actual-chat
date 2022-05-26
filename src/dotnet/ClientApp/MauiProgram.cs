@@ -7,6 +7,7 @@ using ActualChat.Feedback.Client.Module;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback.Module;
 using ActualChat.Module;
+using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -94,7 +95,8 @@ public static class MauiProgram
             typeof(ChatBlazorUIModule),
             typeof(UsersClientModule),
             typeof(UsersBlazorUIModule),
-            typeof(FeedbackClientModule)
+            typeof(FeedbackClientModule),
+            typeof(NotificationBlazorUIModule)
         );
         // TODO: can CreateMauiApp() be async?
         var plugins = pluginHostBuilder.Build();
