@@ -34,10 +34,10 @@ To build & run the project:
 
 ```bash
 # Start Docker containers for PostgreSQL, Redis etc.
-docker-compose up
+./Docker-Start.cmd
 
 # Install dependencies and run watch (dotnet watch + webpack watch)
-dotnet run --project build -- restore-tools npm-install watch
+./run-build restore-tools npm-install watch
 ```
 
 If you're getting `RpcException` with 
@@ -48,17 +48,17 @@ Other useful commands:
 
 ```powershell
 # What else build project can do?
-dotnet run --project build -- --help
+./run-build --help
  
 # List all available targets (you can combine them)
-dotnet run --project build -- --list-targets
+./run-build -- --list-targets
 
 # Run with observability services (opentelemetry collector + jaeger) locally:
 docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
 
 # Use either env. var or the matching option in your appsettings.local.json
 $env:HostSettings__OpenTelemetryEndpoint="localhost"
-docker run --project build -- watch
+./run-build -- watch
 ```
 
 You can add your own targets (as C# code) to `./build/Program.cs`, which is actually a [Bullseye](https://github.com/adamralph/bullseye) build project written in C#.
@@ -75,7 +75,7 @@ There are some shortcuts in `*.cmd` files, you can use them too.
  - Import certificate [local.actual.chat.crt](./.config/local.actual.chat/ssl/local.actual.chat.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
  - Start Docker containers for reverse proxy and image proxy.
 ```
-docker-compose up -d
+./Docker-Start.cmd
  ```
  - Run Actual-chat app.
  - Navigate with browser to https://local.actual.chat/
