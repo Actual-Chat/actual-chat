@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Components\ThemeToggle" />
+    <TypeScriptCompile Include="theme.ts" />
   </ItemGroup>
 
 </Project>
