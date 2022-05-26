@@ -11,8 +11,8 @@
     @apply flex flex-1 flex-col text-secondary bg-accent;
 }
 .navbar-group-toggles .navbar-group-toggle.btn {
-    @apply flex-none h-12 w-12 cursor-pointer;
-    @apply hover:bg-secondary hover:opacity-60;
+    @apply flex-none h-12 w-12;
+    @apply hover:scale-105;
 }
 .navbar-group-toggles .navbar-group-toggle.btn.on {
     @apply text-primary bg-primary;

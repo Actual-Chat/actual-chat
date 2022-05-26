@@ -72,6 +72,8 @@ module.exports = {
         'dot': 'var(--dot)',
         'dot-selected': 'var(--dot-selected)',
         'shadow-main': 'var(--shadow-main)',
+        'skeleton': 'var(--skeleton)',
+        'skeleton-border': 'var(--skeleton-border)',
       },
       textColor: {
         'primary': 'var(--text-primary)',

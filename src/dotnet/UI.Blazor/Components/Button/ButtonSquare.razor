@@ -5,10 +5,9 @@
         name="@Name" type="@GetButtonType()"
         disabled="@IsDisabled"
         autofocus="@IsAutofocused"
-        tabindex="-1"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
-    <div class="btn-content @ContentClass">
+    <div class="btn-content @ContentClass" tabindex="-1">
         <div class="btn-content-inner">
             @ChildContent
         </div>

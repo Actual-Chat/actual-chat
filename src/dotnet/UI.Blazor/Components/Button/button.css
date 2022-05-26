@@ -137,24 +137,21 @@
 .btn.btn-square.-disabled:disabled {
     @apply opacity-100;
 }
-
 .btn.btn-square .btn-content {
     @apply flex-none flex-x w-full h-full;
 }
-.btn.btn-square:focus {
+.btn.btn-square:focus > .btn-content {
     @apply bg-square-focus rounded-sm;
 }
-.btn.btn-square:active {
+.btn.btn-square:active > .btn-content {
     @apply bg-square-active;
 }
-.btn.btn-square:hover {
+.btn.btn-square:hover > .btn-content {
     @apply bg-square-hover;
 }
-
 .btn.btn-square.show-on-hover {
     @apply invisible z-10 absolute;
 }
-
 .btn.btn-square .btn-content-inner {
     @apply p-1 self-center;
 }
