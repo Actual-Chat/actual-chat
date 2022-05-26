@@ -17,7 +17,6 @@ _ReSharper*/
 *.userosscache
 *.sln.docstates
 *.userprefs
-**/Properties/launchSettings.json
 
 # Build artifacts
 [Aa]rtifacts/
