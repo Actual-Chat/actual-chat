@@ -233,7 +233,7 @@ internal static class Program
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
         });
 
-        Target("generate-version", DependsOn("restore-tools"), async () => {
+        Target("generate-version", async () => {
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);

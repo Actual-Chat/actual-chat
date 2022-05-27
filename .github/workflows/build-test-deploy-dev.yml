@@ -7,23 +7,30 @@ on:
   create:
   push:
     branches:
+      - master
       - dev
       - release/v*
     paths-ignore:
       - "**.md"
   pull_request:
     branches: 
+      - master
       - dev
       - release/v*
 
 permissions:
-  contents: 'read'
-  id-token: 'write'
+  contents: read
+  id-token: write
+  packages: write
 
 jobs:
-  build:
+  build-test:
     name: Build and Run Unit Tests
     runs-on: ubuntu-latest
+    outputs:
+      semver2: ${{ steps.nbgv.outputs.SemVer2 }}
+      version: ${{ steps.nbgv.outputs.Version }}
+      simple-version: ${{ steps.nbgv.outputs.SimpleVersion }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -43,81 +50,28 @@ jobs:
       
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
       
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
 
-      - name: Build
+      - name: Build tests
         uses: docker/build-push-action@v3
         with:
           context: .
           tags: actual-chat/build:latest
           target: base
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/actual-chat-build.tar
 
-      - name: Upload built image
-        uses: actions/upload-artifact@v3
-        with:
-          name: actual-chat-build
-          path: /tmp/actual-chat-build.tar
-  
-  unit-tests:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          # Avoid shallow clone for Nerdbank.GitVersioning
-          fetch-depth: 0
-          lfs: true
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: actual-chat-build
-          path: /tmp
-      
-      - name: Load Docker image
-        run: |
-          docker load --input /tmp/actual-chat-build.tar
-          docker image ls -a
-
-      - name: Build and Run unit tests
+      - name: Run unit tests
         run: docker-compose -f docker-compose.unit-tests.yml up --abort-on-container-exit --no-log-prefix --exit-code-from tests
-
-      - name: Report test results
-        uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
-        with:
-          name: Unit tests results            # Name of the check run which will be created
-          path: './artifacts/**/*.trx'   # Path to test results
-          reporter: dotnet-trx        # Format of test results
-
-  integration-tests:
-    if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/remotes/pull/') ||
-      startsWith(github.ref, 'refs/heads/release/')
-
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          # Avoid shallow clone for Nerdbank.GitVersioning
-          fetch-depth: 0
-          lfs: true
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
 
       - name: Authenticate to Google Cloud
         id: auth
@@ -126,19 +80,13 @@ jobs:
           token_format: access_token
           workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
           service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
-      
-      - name: Download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: actual-chat-build
-          path: /tmp
-      
-      - name: Load Docker image
-        run: |
-          docker load --input /tmp/actual-chat-build.tar
-          docker image ls -a
 
       - name: Run integration tests
+        if: |
+          github.ref == 'refs/heads/master' ||
+          github.ref == 'refs/heads/dev' ||
+          startsWith(github.ref, 'refs/remotes/pull/') ||
+          startsWith(github.ref, 'refs/heads/release/')
         run: |-
           export GITHUB_TOKEN="${{secrets.GITHUB_TOKEN}}"
           export NPM_READ_TOKEN="${{secrets.NPM_READ_TOKEN}}"
@@ -154,6 +102,110 @@ jobs:
         uses: dorny/test-reporter@v1
         if: success() || failure()    # run this step even if previous step failed
         with:
-          name: Integration tests results            # Name of the check run which will be created
+          name: Tests results            # Name of the check run which will be created
           path: './artifacts/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        if: |
+          github.ref == 'refs/heads/master' ||
+          github.ref == 'refs/heads/dev' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          tags: |
+            actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
+            ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  deploy-dev:
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    needs: build-test
+    environment: dev
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v0.7.2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GAR
+        uses: docker/login-action@v2
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Deploy dev
+        if: |
+          github.ref == 'refs/heads/dev' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-app:${{needs.build-test.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{needs.build-test.outputs.semver2}}
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build-test.outputs.semver2}}
+
+  deploy-prod:
+    if: |
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    needs: 
+      - build-test
+      - deploy-dev
+    environment: prod
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v0.7.2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GAR
+        uses: docker/login-action@v2
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Deploy prod
+        uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-app:${{needs.build-test.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build-test.outputs.version}}
