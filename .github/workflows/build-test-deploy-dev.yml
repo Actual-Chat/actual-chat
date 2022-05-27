@@ -135,21 +135,19 @@ jobs:
           TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: redis|test_{instance.}{context}
-        run: >-
-          docker run -v $(pwd)/artifacts:/artifacts
-            -e Hosting__WebRootPath
-            -e GITHUB_TOKEN
-            -e NPM_READ_TOKEN
-            -e USERSSETTINGS__GOOGLECLIENTID
-            -e USERSSETTINGS__GOOGLECLIENTSECRET
-            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTID
-            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET
-            -e TESTS__USERS__USER1__EMAIL
-            -e TESTS__USERS__USER1__PASSWORD
-            -e RedisSettings__DefaultRedis
-            actual-chat-app-build:latest /bin/bash -c "
-              dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && 
-              cp -R /src/tests/. /artifacts"
+        run: |-
+          docker run -v $(pwd)/artifacts:/artifacts \
+            -e Hosting__WebRootPath \
+            -e GITHUB_TOKEN \
+            -e NPM_READ_TOKEN \
+            -e USERSSETTINGS__GOOGLECLIENTID \
+            -e USERSSETTINGS__GOOGLECLIENTSECRET \
+            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTID \
+            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET \
+            -e TESTS__USERS__USER1__EMAIL \
+            -e TESTS__USERS__USER1__PASSWORD \
+            -e RedisSettings__DefaultRedis \
+            actual-chat-app-build:latest /bin/bash -c "dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && cp -R /src/tests/. /artifacts"
 
       - name: Report test results
         uses: dorny/test-reporter@v1
