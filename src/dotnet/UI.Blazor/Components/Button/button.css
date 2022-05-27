@@ -1,8 +1,10 @@
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 fill-current rounded-md border;
-    @apply h-12 md:h-10 min-w-full md:min-w-16 max-w-max;
+    @apply py-1 px-3 fill-current rounded-md border;
+    @apply min-w-0 md:min-w-24 max-w-full md:max-w-max;
     @apply text-xl md:text-lg font-normal md:font-normal;
+    @apply h-12 md:h-10 min-h-12 md:min-h-10;
+    @apply whitespace-nowrap;
 }
 .btn .btn-content {
     @apply flex flex-row place-self-center;
@@ -128,7 +130,7 @@
 
 .btn.btn-square {
     @apply inline-block overflow-hidden;
-    @apply p-0 mx-0 min-w-0 h-full;
+    @apply p-0 mx-0 min-w-0 h-full min-h-0;
     @apply border-0 bg-square;
     @apply text-base font-semibold text-square-title;
 }
@@ -157,27 +159,19 @@
     @apply p-1 self-center;
 }
 
+/*Default horizontal*/
 .btn-group {
-    @apply overflow-hidden rounded-md;
-    @apply flex flex-row gap-px bg-secondary;
+    @apply flex flex-row gap-x-2;
+    @apply max-w-none md:max-w-fit w-full md:w-auto;
 }
 .btn-group .btn {
-    @apply rounded-none;
+    @apply flex-1;
+    @apply min-w-0 md:min-w-24;
+    @apply justify-items-stretch;
 }
-.btn-group.flex-y .btn {
-    @apply fill-available;
-}
-.btn-group.btn-group-font-normal .btn {
-    @apply font-normal;
-}
-.btn-group.btn-group-font-light .btn {
-    @apply font-light;
-}
-.btn-group.btn-group-font-medium .btn {
-    @apply font-medium;
-}
-.btn-group.btn-group-font-semibold .btn {
-    @apply font-semibold;
+
+.btn-group.vertical {
+    @apply flex-col gap-y-2;
 }
 
 /* Dot */
