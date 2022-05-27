@@ -31,6 +31,34 @@ jobs:
       semver2: ${{ steps.nbgv.outputs.SemVer2 }}
       version: ${{ steps.nbgv.outputs.Version }}
       simple-version: ${{ steps.nbgv.outputs.SimpleVersion }}
+    services:
+      redis:
+        image: redis:6.2.6-alpine3.14
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+      postgres:
+        image: postgres:14.0-alpine3.14
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: password
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -67,15 +95,19 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          tags: actual-chat/build:latest
+          tags: actual-chat-app-build:latest
           target: base
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run unit tests
-        run: docker-compose -f docker-compose.unit-tests.yml up --abort-on-container-exit --no-log-prefix --exit-code-from tests
-
+        run: >-
+          docker run -v ./artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
+            dotnet build --nologo --no-restore --configuration Debug &&
+            dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests && 
+            cp -R /src/tests/. /artifacts"
+        
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v0.7.2
@@ -90,16 +122,33 @@ jobs:
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/remotes/pull/') ||
           startsWith(github.ref, 'refs/heads/release/')
-        run: |-
-          export GITHUB_TOKEN="${{secrets.GITHUB_TOKEN}}"
-          export NPM_READ_TOKEN="${{secrets.NPM_READ_TOKEN}}"
-          export USERSSETTINGS__GOOGLECLIENTID="${{secrets.USERSSETTINGS__GOOGLECLIENTID}}"
-          export USERSSETTINGS__GOOGLECLIENTSECRET="${{secrets.USERSSETTINGS__GOOGLECLIENTSECRET}}"
-          export USERSSETTINGS__MICROSOFTACCOUNTCLIENTID="${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTID}}"
-          export USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET="${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}"
-          export TESTS__USERS__USER1__EMAIL="${{secrets.TESTS__USERS__USER1__EMAIL}}"
-          export TESTS__USERS__USER1__PASSWORD="${{secrets.TESTS__USERS__USER1__PASSWORD}}"
-          docker-compose -f docker-compose.yml -f docker-compose.integration-tests.yml up --abort-on-container-exit --no-log-prefix --exit-code-from tests
+        env:
+          Hosting__WebRootPath: /src/src/dotnet/UI.Blazor.Host/wwwroot/
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
+          USERSSETTINGS__GOOGLECLIENTID: ${{secrets.USERSSETTINGS__GOOGLECLIENTID}}
+          USERSSETTINGS__GOOGLECLIENTSECRET: ${{secrets.USERSSETTINGS__GOOGLECLIENTSECRET}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTID: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTID}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}
+          TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
+          TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
+          RedisSettings__DefaultRedis: redis|test_{instance.}{context}
+        run: >-
+          docker run -v ./artifacts:/artifacts 
+            -e Hosting__WebRootPath
+            -e GITHUB_TOKEN
+            -e NPM_READ_TOKEN
+            -e USERSSETTINGS__GOOGLECLIENTID
+            -e USERSSETTINGS__GOOGLECLIENTSECRET
+            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTID
+            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET
+            -e TESTS__USERS__USER1__EMAIL
+            -e TESTS__USERS__USER1__PASSWORD
+            -e RedisSettings__DefaultRedis
+            actual-chat-app-build:latest /bin/bash -c "
+              dotnet build --nologo --no-restore --configuration Release &&
+              dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Release integration-tests && 
+              cp -R /src/tests/. /artifacts"
 
       - name: Report test results
         uses: dorny/test-reporter@v1
