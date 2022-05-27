@@ -56,6 +56,9 @@ jobs:
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
+
+      - name: restore tools for nbgv
+        run: dotnet tool restore
       
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
