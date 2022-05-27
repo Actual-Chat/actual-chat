@@ -77,6 +77,9 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
 
+FROM dotnet-build as dotnet-build-debug
+RUN dotnet build --nologo --no-restore --configuration Debug
+
 FROM runtime as app
 COPY --from=dotnet-build /app .
 COPY --from=nodejs-build /src/src/dotnet/UI.Blazor.Host/wwwroot/ /app/wwwroot/

@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   build-test:
-    name: Build and Run Unit Tests
+    name: Build and Run Tests
     runs-on: ubuntu-latest
     outputs:
       semver2: ${{ steps.nbgv.outputs.SemVer2 }}
@@ -96,15 +96,14 @@ jobs:
         with:
           context: .
           tags: actual-chat-app-build:latest
-          target: base
+          target: dotnet-build-debug
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run unit tests
         run: >-
-          docker run -v ./artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
-            dotnet build --nologo --no-restore --configuration Debug &&
+          docker run -v $(pwd)/artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
             dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests && 
             cp -R /src/tests/. /artifacts"
         
@@ -134,7 +133,7 @@ jobs:
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: redis|test_{instance.}{context}
         run: >-
-          docker run -v ./artifacts:/artifacts 
+          docker run -v $(pwd)/artifacts:/artifacts 
             -e Hosting__WebRootPath
             -e GITHUB_TOKEN
             -e NPM_READ_TOKEN
@@ -146,8 +145,7 @@ jobs:
             -e TESTS__USERS__USER1__PASSWORD
             -e RedisSettings__DefaultRedis
             actual-chat-app-build:latest /bin/bash -c "
-              dotnet build --nologo --no-restore --configuration Release &&
-              dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Release integration-tests && 
+              dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && 
               cp -R /src/tests/. /artifacts"
 
       - name: Report test results
@@ -182,6 +180,7 @@ jobs:
 
 
   deploy-dev:
+    name: Deploy dev
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
@@ -224,6 +223,7 @@ jobs:
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build-test.outputs.semver2}}
 
   deploy-prod:
+    name: Deploy prod
     if: |
       github.ref == 'refs/heads/master' ||
       startsWith(github.ref, 'refs/heads/release/')
