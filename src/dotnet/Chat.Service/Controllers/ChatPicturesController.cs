@@ -20,7 +20,7 @@ public class ChatPicturesController : ControllerBase
     }
 
     [HttpPost, Route("api/chats/{chatId}/upload-picture")]
-    public async Task<IActionResult> UploadPicture(string chatId, CancellationToken token)
+    public async Task<IActionResult> UploadPicture(string chatId, CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
@@ -36,10 +36,9 @@ public class ChatPicturesController : ControllerBase
         if (file.Length > Constants.Chat.PictureFileSizeLimit)
             return BadRequest("Image is too big");
 
-        // TODO Does not work
-        // var chat = await _chats.Get(_sessionResolver.Session, chatId, token).ConfigureAwait(false);
-        // if (chat == null)
-        //     return NotFound();
+        var chat = await _chats.Get(_sessionResolver.Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return NotFound();
 
         var stream = file.OpenReadStream();
         await using var _ = stream.ConfigureAwait(false);
@@ -48,7 +47,7 @@ public class ChatPicturesController : ControllerBase
         var contentId = $"chat-pictures/{chatId}/{pictureName}";
 
         var content = new Content(contentId, file.ContentType, stream);
-        await _contentSaver.SaveContent(content, token).ConfigureAwait(false);
+        await _contentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         return Ok(contentId);
     }

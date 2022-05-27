@@ -65,7 +65,7 @@ public class MessageController : ControllerBase
                         incorrectPart = true;
                     else if (file.Content.Length > Constants.Attachments.FileSizeLimit)
                         incorrectPart = true;
-                    else if (post.Files.Count >= Constants.Attachments.FilesNumberLimit)
+                    else if (post.Files.Count >= Constants.Attachments.FileCountLimit)
                         incorrectPart = true;
                     else
                         post.Files.Add(file);

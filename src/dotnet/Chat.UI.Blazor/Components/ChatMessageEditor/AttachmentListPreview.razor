@@ -62,7 +62,7 @@
             ErrorUI.ShowError("File is too big. Max file size: 8Mb.");
             return false;
         }
-        if (_attachments.Length >= Constants.Attachments.FilesNumberLimit) {
+        if (_attachments.Length >= Constants.Attachments.FileCountLimit) {
             ErrorUI.ShowError("Too many files. Max allowed number is 10.");
             return false;
         }

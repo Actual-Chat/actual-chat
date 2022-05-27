@@ -35,5 +35,5 @@
 }
 
 .chat-icon-input-file-label {
-    @apply w-full h-full cursor-pointer flex items-center justify-center;
+    @apply flex items-center justify-center w-full h-full cursor-pointer;
 }
