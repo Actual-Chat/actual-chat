@@ -16,6 +16,6 @@
 }
 
 .copy-to-clipboard input:focus {
-    @apply rounded border-0 outline-none;
-    @apply ring-0 md:ring-2 ring-accent;
+    @apply rounded-sm border-0 outline-none;
+    @apply ring-0;
 }
