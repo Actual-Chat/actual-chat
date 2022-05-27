@@ -22,6 +22,9 @@ permissions:
   contents: read
   id-token: write
   packages: write
+  issues: read
+  checks: write
+  statuses: write
 
 jobs:
   build-test:
@@ -104,7 +107,7 @@ jobs:
       - name: Run unit tests
         run: >-
           docker run -v $(pwd)/artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
-            dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests && 
+            dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests &&
             cp -R /src/tests/. /artifacts"
         
       - name: Authenticate to Google Cloud
@@ -133,7 +136,7 @@ jobs:
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: redis|test_{instance.}{context}
         run: >-
-          docker run -v $(pwd)/artifacts:/artifacts 
+          docker run -v $(pwd)/artifacts:/artifacts
             -e Hosting__WebRootPath
             -e GITHUB_TOKEN
             -e NPM_READ_TOKEN
