@@ -1,0 +1,59 @@
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@implements IAsyncDisposable
+
+<input @ref="InputRef" type="file" @attributes="InputAttributes"/>
+
+@code {
+    private ElementReference InputRef { get; set; }
+    private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
+    [Parameter] public int? MaxSize { get; set; }
+    [Parameter] public EventCallback<string> Uploaded { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> InputAttributes { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) {
+            return;
+        }
+        BlazorRef = DotNetObjectReference.Create(this);
+        var options = new Options {
+            MaxSize = MaxSize,
+            UploadUrl = UploadUrl,
+        };
+        JSRef = await JS
+            .InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.FileUpload.create",
+                InputRef,
+                BlazorRef,
+                options)
+            .ConfigureAwait(true);
+    }
+
+    [JSInvokable]
+    public async Task OnUploaded(string fileUrl) {
+        await Uploaded.InvokeAsync(fileUrl).ConfigureAwait(false);
+    }
+
+    [JSInvokable]
+    public void OnInvalidSize() {
+        if (!MaxSize.HasValue) return;
+        var size = FileSizeFormatter.Format(MaxSize.Value);
+        var message = $"File is too big. Max file size: {size}.";
+        ErrorUI.ShowError(message);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+}

@@ -17,6 +17,6 @@ public class ContentSaverBackend : IContentSaverBackend
         await stream.WriteAsync(command.Content, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
         var content = new Content(command.ContentId, command.ContentType, stream);
-        await ContentSaver.SaveContent(content, cancellationToken).ConfigureAwait(false);
+        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
     }
 }

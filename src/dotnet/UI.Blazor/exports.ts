@@ -23,3 +23,5 @@ export * from './Components/VirtualList/virtual-list';
 
 export * from './messaging-init';
 export * from './theme';
+
+export * from './Components/FileUpload/file-upload';

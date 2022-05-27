@@ -9,14 +9,17 @@ internal class ContentSaver : IContentSaver
     public ContentSaver(IBlobStorageProvider blobStorageProvider)
         => _blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
-    public async Task SaveContent(Content content, CancellationToken token)
+    public async Task Save(Content content, CancellationToken cancellationToken)
     {
-        await _blobStorage.WriteAsync(content.ContentId, content.Stream, false, token).ConfigureAwait(false);
-        var blob = (await _blobStorage.GetBlobsAsync(new[] { content.ContentId }, token).ConfigureAwait(false)).Single();
+        await _blobStorage.WriteAsync(content.ContentId, content.Stream, false, cancellationToken)
+            .ConfigureAwait(false);
+        var blobs = await _blobStorage.GetBlobsAsync(new[] { content.ContentId }, cancellationToken)
+            .ConfigureAwait(false);
+        var blob = blobs.Single();
         if (blob == null)
             throw new InvalidOperationException($"Unable to read stored blob: {content.ContentId}");
 
         blob.Metadata[Constants.Headers.ContentType] = content.ContentType;
-        await _blobStorage.SetBlobsAsync(new[] { blob }, token).ConfigureAwait(false);
+        await _blobStorage.SetBlobsAsync(new[] { blob }, cancellationToken).ConfigureAwait(false);
     }
 }
