@@ -124,11 +124,11 @@ public class MarkupParser : IMarkupParser
 
     // Stylized text
     private static readonly Parser<char, Markup> BoldMarkup =
-        Rec(() => TextBlock).Between(Try(BoldToken))
+        Rec(() => TextBlock!).Between(Try(BoldToken))
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Bold))
             .Debug("**");
     private static readonly Parser<char, Markup> ItalicMarkup =
-        Rec(() => TextBlock).Between(ItalicToken)
+        Rec(() => TextBlock!).Between(ItalicToken)
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
             .Debug("*");
 
