@@ -87,7 +87,6 @@
             return;
 
         try {
-            await SlateEditorRef.Clear().ConfigureAwait(true);
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
             _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);

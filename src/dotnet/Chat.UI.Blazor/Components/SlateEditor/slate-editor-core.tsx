@@ -66,6 +66,7 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
                         if (!event.shiftKey) {
                             event.preventDefault()
                             handle.onPost(handle.getText())
+                            handle.clearText()
                         }
                         break
                 }
