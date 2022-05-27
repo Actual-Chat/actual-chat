@@ -34,6 +34,9 @@ input,
 textarea {
     @apply bg-secondary text-primary border-accent;
 }
+input {
+    @apply h-12 md:h-8;
+}
 
 input:focus {
     @apply bg-primary;
