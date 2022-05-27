@@ -119,13 +119,19 @@
 }
 
 .btn.btn-xs {
-    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
+    @apply text-md md:text-base;
+    @apply h-8 md:h-6 min-h-8 md:min-h-6;
+    @apply min-w-0 md:min-w-16;
 }
 .btn.btn-sm {
-    @apply text-xs min-h-6 min-w-12;
+    @apply text-lg md:text-md;
+    @apply h-10 md:h-8 min-h-10 md:min-h-8;
+    @apply min-w-0 md:min-w-20;
 }
 .btn.btn-lg {
-    @apply min-h-10 min-w-20 text-base;
+    @apply text-2xl md:text-xl;
+    @apply h-16 md:h-12 min-h-16 md:min-h-12;
+    @apply min-w-0 md:min-w-28;
 }
 
 .btn.btn-square {
