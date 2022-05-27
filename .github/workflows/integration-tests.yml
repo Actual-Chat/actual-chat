@@ -4,9 +4,9 @@ concurrency:
   cancel-in-progress: true
 on:
   push:
-    branches: ["master", "release/v*"]
+    branches: ["master", "dev", "release/v*"]
   pull_request:
-    branches: ["master", "release/v*"]
+    branches: ["master", "dev", "release/v*"]
 env:
   DOCKER_BUILDKIT: 1
 jobs:

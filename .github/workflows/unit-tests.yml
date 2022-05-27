@@ -6,7 +6,7 @@ on:
   push:
     branches: ["**"]
   pull_request:
-    branches: ["master", "release/v*"]
+    branches: ["master", "dev", "release/v*"]
 env:
   DOCKER_BUILDKIT: 1
 jobs:
