@@ -17,5 +17,5 @@
 
 .copy-to-clipboard input:focus {
     @apply rounded border-0 outline-none;
-    @apply ring-2 ring-accent;
+    @apply ring-0 md:ring-2 ring-accent;
 }

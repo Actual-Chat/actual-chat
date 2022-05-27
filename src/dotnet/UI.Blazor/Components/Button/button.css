@@ -1,7 +1,8 @@
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 font-medium fill-current rounded-md border;
-    @apply h-8 min-w-16 max-w-max;
+    @apply py-2 px-3 fill-current rounded-md border;
+    @apply h-12 md:h-10 min-w-full md:min-w-16 max-w-max;
+    @apply text-xl md:text-lg font-normal md:font-normal;
 }
 .btn .btn-content {
     @apply flex flex-row place-self-center;

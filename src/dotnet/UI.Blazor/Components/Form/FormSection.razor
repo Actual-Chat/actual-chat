@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 
-<section data-control-id="@InputId">
+<section data-control-id="@InputId" class="@Class">
     @if (!Label.IsNullOrEmpty()) {
         <div class="form-section-label @LabelClass">
             <label for="@(InputId.NullIfEmpty() ?? "-")">
