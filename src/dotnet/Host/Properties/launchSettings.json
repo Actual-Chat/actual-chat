@@ -3,25 +3,24 @@
     "Blazor Debug": {
       "commandName": "Project",
       "launchBrowser": true,
-      "use64Bit": true,
       "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
-      "applicationUrl": "http://localhost:7080;https://localhost:7081",
-      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      "use64Bit": true,
+      "applicationUrl": "http://localhost:7080;https://localhost:7081",
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}"
     },
     "Debug": {
       "commandName": "Project",
-      "launchBrowser": false,
-      "use64Bit": true,
       "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
-      "applicationUrl": "http://localhost:7080;https://localhost:7081",
-      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
-      "hotReloadEnabled": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      "use64Bit": true,
+      "applicationUrl": "http://localhost:7080;https://localhost:7081",
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+      "hotReloadEnabled": true
     }
   }
 }

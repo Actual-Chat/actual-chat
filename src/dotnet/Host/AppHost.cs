@@ -6,7 +6,7 @@ namespace ActualChat.Host;
 
 public class AppHost : IDisposable
 {
-    public string ServerUrls { get; set; } = "http://localhost:7080";
+    public string ServerUrls { get; set; } = "http://localhost:7080;https://localhost:7081";
     public Action<IConfigurationBuilder>? HostConfigurationBuilder { get; set; }
     public Action<WebHostBuilderContext, IServiceCollection>? AppServicesBuilder { get; set; }
     public Action<IConfigurationBuilder>? AppConfigurationBuilder { get; set; }
