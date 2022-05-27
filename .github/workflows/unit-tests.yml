@@ -21,6 +21,8 @@ jobs:
           lfs: true
       - name: Replace git+ssh://git@ to https://
         run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+      - name: Restore tools for nbgv
+        run: dotnet tool restore  
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
       - name: Build and Run unit tests

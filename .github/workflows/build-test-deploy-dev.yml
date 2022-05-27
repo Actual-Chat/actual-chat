@@ -57,7 +57,7 @@ jobs:
         with:
           setAllVars: true
 
-      - name: restore tools for nbgv
+      - name: Restore tools for nbgv
         run: dotnet tool restore
       
       - name: Generate Nerdbank.GitVersioning files

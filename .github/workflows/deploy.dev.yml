@@ -37,6 +37,8 @@ jobs:
         run: |
           echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }} and branch is not 'dev'"
           exit 1
+      - name: Restore tools for nbgv
+        run: dotnet tool restore
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
       - name: Run unit tests
