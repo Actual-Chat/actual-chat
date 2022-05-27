@@ -137,7 +137,7 @@ jobs:
           RedisSettings__DefaultRedis: redis|test_{instance.}{context}
         run: |-
           docker run -v $(pwd)/artifacts:/artifacts \
-            -v "$GOOGLE_APPLICATION_CREDENTIALS:/src/key.json"
+            -v "$GOOGLE_APPLICATION_CREDENTIALS:/src/key.json" \
             -e GOOGLE_APPLICATION_CREDENTIALS=/src/key.json \
             -e Hosting__WebRootPath \
             -e GITHUB_TOKEN \
