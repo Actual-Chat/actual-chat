@@ -40,9 +40,9 @@
         }
         <div class="content message-content rounded-sm">
             @if (entry.IsStreaming) {
-                <ChatMessageTranscript Model="@Model"/>
+                <ChatMessageTranscript Model="@Model" Class="mx-1"/>
             } else {
-                <p class="chat-message-markup text-primary mx-1">
+                <p class="chat-message-markup mx-1">
                     <CascadingValue Value="@entry">
                         <MarkupView Markup="@markup"/>
                     </CascadingValue>
