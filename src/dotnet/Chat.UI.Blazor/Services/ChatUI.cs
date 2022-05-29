@@ -49,11 +49,10 @@ public class ChatUI
         if (mustPlayPinnedChats || mustPlayPinnedContactChats) {
             var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
             foreach (var chatId in pinnedChatIds) {
-                var chatIdKind = ChatIdExt.GetChatIdKind(chatId);
-                var mustPlay = chatIdKind switch {
-                    ChatIdKind.Group => mustPlayPinnedChats,
-                    ChatIdKind.PeerShort => mustPlayPinnedContactChats,
-                    ChatIdKind.PeerFull => mustPlayPinnedContactChats,
+                var chatType = ChatId.GetChatType(chatId);
+                var mustPlay = chatType switch {
+                    ChatType.Group => mustPlayPinnedChats,
+                    ChatType.Peer => mustPlayPinnedContactChats,
                     _ => false,
                 };
                 if (mustPlay)

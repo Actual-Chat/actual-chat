@@ -48,15 +48,15 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatPermissions> GetPermissions(
+    public Task<ChatAuthorPermissions> GetPermissions(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
         => _service.GetPermissions(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.CheckCanJoin(session, chatId, cancellationToken);
+    public Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.CanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(

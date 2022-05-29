@@ -42,10 +42,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
         var permissions = await Chats.GetPermissions(Session, chatId, cancellationToken);
-        var canSend = permissions.HasFlag(ChatPermissions.Write);
+        var canSend = permissions.CanWrite;
         var canJoin = false;
         if (!canSend) {
-            canJoin = await Chats.CheckCanJoin(Session, chatId, cancellationToken);
+            canJoin = await Chats.CanJoin(Session, chatId, cancellationToken);
         }
         return new () { CanPost = canSend, CanJoin = canJoin, };
     }

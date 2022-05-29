@@ -36,7 +36,7 @@ public interface IChatsClientDef
         CancellationToken cancellationToken);
 
     [Get(nameof(GetPermissions))]
-    Task<ChatPermissions> GetPermissions(
+    Task<ChatAuthorPermissions> GetPermissions(
         Session session,
         string chatId,
         CancellationToken cancellationToken);

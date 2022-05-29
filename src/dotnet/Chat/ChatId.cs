@@ -1,24 +1,25 @@
 namespace ActualChat.Chat;
 
-public enum ChatIdKind { Group, PeerShort, PeerFull }
-
-public static class ChatIdExt
+public static class ChatId
 {
     private const string PeerChatIdPrefix = "p-";
 
     public static bool IsPeerChatId(string chatId)
         => chatId.StartsWith(PeerChatIdPrefix, StringComparison.Ordinal);
 
-    public static ChatIdKind GetChatIdKind(string chatId)
+    public static ChatType GetChatType(string chatId)
+        => GetChatIdType(chatId).ToChatType();
+
+    public static ChatIdType GetChatIdType(string chatId)
     {
         if (chatId.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         if (!IsPeerChatId(chatId))
-            return ChatIdKind.Group;
+            return ChatIdType.Group;
         return chatId.Count(c => c == '-') switch {
-            1 => ChatIdKind.PeerShort,
-            2 => ChatIdKind.PeerFull,
+            1 => ChatIdType.PeerShort,
+            2 => ChatIdType.PeerFull,
             _ => throw new ArgumentOutOfRangeException(nameof(chatId)),
         };
     }
