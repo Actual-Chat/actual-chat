@@ -1,5 +1,7 @@
 ﻿namespace ActualChat.Chat;
 
+#pragma warning disable MA0062
+
 [Flags]
 public enum ChatPermissions
 {
