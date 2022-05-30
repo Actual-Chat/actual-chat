@@ -182,7 +182,6 @@ jobs:
         with:
           context: .
           tags: |
-            actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
           push: true
 
