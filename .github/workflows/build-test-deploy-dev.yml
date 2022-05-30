@@ -95,14 +95,8 @@ jobs:
         run: dotnet run --project build -- generate-version
 
       - name: Build tests
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          tags: actual-chat-app-build:latest
-          target: dotnet-build-debug
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |-
+          docker build --target dotnet-build-debug -t actual-chat-app-build:latest .
 
       - name: Run unit tests
         run: >-
@@ -136,8 +130,13 @@ jobs:
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: redis|test_{instance.}{context}
         run: |-
+          mkdir -p ~/.gcp
+          cat <<- 'EOF' > ~/.gcp/key.json
+          ${{secrets.GCP_KEY_JSON}}
+          EOF
+
           docker run -v $(pwd)/artifacts:/artifacts \
-            -v "$GOOGLE_APPLICATION_CREDENTIALS:/src/key.json" \
+            -v ~/.gcp/key.json:/src/key.json \
             -e GOOGLE_APPLICATION_CREDENTIALS=/src/key.json \
             -e Hosting__WebRootPath \
             -e GITHUB_TOKEN \
@@ -178,9 +177,6 @@ jobs:
             actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
 
   deploy-dev:
     name: Deploy dev
