@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.SessionStorage;
