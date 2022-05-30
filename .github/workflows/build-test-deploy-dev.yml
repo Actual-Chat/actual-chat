@@ -95,8 +95,14 @@ jobs:
         run: dotnet run --project build -- generate-version
 
       - name: Build tests
-        run: |-
-          docker build --target dotnet-build-debug --load -t actual-chat-app-build:latest .
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          tags: actual-chat-app-build:latest
+          target: dotnet-build-debug
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run unit tests
         run: >-
@@ -128,7 +134,8 @@ jobs:
           USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}
           TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
-          RedisSettings__DefaultRedis: redis|test_{instance.}{context}
+          RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
+          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres 
         run: |-
           mkdir -p ~/.gcp
           cat <<- 'EOF' > ~/.gcp/key.json
@@ -148,6 +155,7 @@ jobs:
             -e TESTS__USERS__USER1__EMAIL \
             -e TESTS__USERS__USER1__PASSWORD \
             -e RedisSettings__DefaultRedis \
+            -e DbSettings__DefaultDb \
             actual-chat-app-build:latest /bin/bash -c "dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && cp -R /src/tests/. /artifacts"
 
       - name: Report test results
