@@ -18,7 +18,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Stl.Fusion.Client;
 using Stl.Plugins;
-using Serilog;
+//using Serilog;
 
 namespace ActualChat.ClientApp;
 
@@ -35,6 +35,7 @@ public static class MauiProgram
         // TODO: use resources + new EmbeddedFileProvider(typeof(MauiProgram).Assembly) ?
 
         var fileprovider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(MauiProgram).Assembly.Location));
+        var files = fileprovider.GetDirectoryContents("").ToArray();
         builder.Configuration.AddJsonFile(
             fileprovider,
             "appsettings.Development.json",
@@ -54,13 +55,13 @@ public static class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
 
-        var appName = typeof(MauiProgram).Assembly.GetName().Name;
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.File($"C:\\Logs\\maui.{appName}.log")
-            .CreateLogger();
+  //      var appName = typeof(MauiProgram).Assembly.GetName().Name;
+  //      Log.Logger = new LoggerConfiguration()
+  //          .MinimumLevel.Debug()
+  //          .WriteTo.File($"C:\\Logs\\maui.{appName}.log")
+  //          .CreateLogger();
 
-		builder.Logging.AddSerilog();
+		//builder.Logging.AddSerilog();
 
         services.TryAddSingleton(builder.Configuration);
         services.AddSingleton(c => new HostInfo() {
@@ -120,10 +121,7 @@ public static class MauiProgram
         // Injecting plugin services
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
 
-
-
-
-		Log.Logger.Information("test. starting.");
+		//Log.Logger.Information("test. starting.");
 
         return builder.Build();
     }
