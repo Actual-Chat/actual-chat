@@ -8,7 +8,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
 {
     private readonly object _lock = new ();
     private readonly CancellationTokenSource _cts;
-    private IDisposable? _updatedObservableCompletion;
+    private IDisposable _updatedObservableCompletion = null!;
     private Task _lastPersistTask;
 
     protected Func<T, ISessionCommand> PersistCommandFactory { get; }
@@ -16,7 +16,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
 
     public new record Options : MutableState<T>.Options
     {
-        public TimeSpan SampleInterval { get; init; } = TimeSpan.FromMilliseconds(1000);
+        public TimeSpan PersistDelay { get; init; } = TimeSpan.FromMilliseconds(1000);
         public Options()
             => ComputedOptions = ComputedOptions.NoAutoInvalidateOnError;
     }
@@ -25,21 +25,25 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
         Options options,
         Func<T, ISessionCommand> persistCommandFactory,
         IServiceProvider services)
-        : base(options, services, true)
+        : base(options, services, false)
     {
         PersistCommandFactory = persistCommandFactory;
         UICommandRunner = services.GetRequiredService<UICommandRunner>();
         _cts = new CancellationTokenSource();
         _lastPersistTask = Task.CompletedTask;
+
+        Initialize(options);
     }
 
     public async ValueTask DisposeAsync()
     {
         _updatedObservableCompletion.DisposeSilently();
         await _lastPersistTask.ConfigureAwait(false);
+        _cts.Cancel();
+        _cts.DisposeSilently();
     }
 
-    protected override void Initialize(State<T>.Options options)
+    protected sealed override void Initialize(State<T>.Options options)
     {
         base.Initialize(options);
         var updatedObservable = Observable.FromEvent<Action<IState<T>, StateEventKind>, (IState<T>, StateEventKind)>(
@@ -47,7 +51,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
             h => Updated += h,
             h => Updated -= h);
         _updatedObservableCompletion = updatedObservable
-            .Sample((options as Options)?.SampleInterval ?? TimeSpan.FromMilliseconds(1000))
+            .Sample(((Options)options).PersistDelay)
             .Subscribe(OnUpdated);
     }
 

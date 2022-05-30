@@ -4,12 +4,12 @@ using Stl.Conversion;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class PersistentStateReplica<T>: IPersistentState<T>
+public sealed class PersistentStateLease<T>: IPersistentState<T>
 {
     private readonly SharedResourcePool<Symbol, IPersistentState<T>>.Lease _lease;
     private readonly IPersistentState<T> _source;
 
-    public PersistentStateReplica(SharedResourcePool<Symbol, IPersistentState<T>>.Lease lease)
+    public PersistentStateLease(SharedResourcePool<Symbol, IPersistentState<T>>.Lease lease)
     {
         _lease = lease;
         _source = lease.Resource;
