@@ -49,3 +49,7 @@
     @apply m-4;
     @apply flex flex-row justify-end;
 }
+
+div.blazored-modal-content > form {
+    @apply h-full;
+}
