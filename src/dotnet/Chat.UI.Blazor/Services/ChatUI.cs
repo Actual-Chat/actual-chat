@@ -63,6 +63,17 @@ public class ChatUI
         return chatIds.Count == 0 ? null : new RealtimeChatPlaybackState(chatIds);
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> MustKeepAwake(CancellationToken cancellationToken)
+    {
+        var isPlaying = await IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+        if (isPlaying)
+            return true;
+
+        var recordingChatId = await RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        return !recordingChatId.IsEmpty;
+    }
+
     public void ShowChatAuthorDialog(string authorId)
         => ModalUI.Show(new ChatAuthorDialog.Model(authorId));
 
