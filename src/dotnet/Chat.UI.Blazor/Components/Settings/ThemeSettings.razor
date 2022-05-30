@@ -2,7 +2,7 @@
 @{
     var m = State.ValueOrDefault;
 
-    RenderFragment ThemeButton(Theme theme) {
+    RenderFragment ThemeButton(Theme theme, string title) {
         var cls = m == theme ? "on" : "";
         return
             @<button type="button"
@@ -10,15 +10,15 @@
                      onclick="@(() => SetTheme(theme))">
                 <div class="flex-x self-center items-center px-1">
                     <Dot/>
-                    <div class="text-secondary">@theme</div>
+                    <div class="text-secondary">@title</div>
                 </div>
             </button>;
     }
 }
 
 <div class="flex-y gap-y-2">
-    @ThemeButton(Theme.Light)
-    @ThemeButton(Theme.Dark)
+    @ThemeButton(Theme.Light, "Light")
+    @ThemeButton(Theme.Dark, "Dark (an ugly alpha we work on)")
 </div>
 
 @code {
