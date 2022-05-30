@@ -11,7 +11,7 @@ public partial class ChatUI
     public async Task<IPersistentState<long>> GetLastReadEntryId(Symbol chatId, CancellationToken cancellationToken)
     {
         var lease = await _lastReadEntryIds.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        return new PersistentStateReplica<long>(lease);
+        return new PersistentStateLease<long>(lease);
     }
 
     private Task<IPersistentState<long>> RestoreLastReadEntryId(Symbol chatId, CancellationToken cancellationToken)

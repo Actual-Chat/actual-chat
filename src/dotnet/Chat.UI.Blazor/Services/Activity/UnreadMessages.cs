@@ -17,7 +17,7 @@ public class UnreadMessages
         _lastReadEntryId = lastReadEntryId;
     }
 
-    public async Task<int?> GetUnreadMessageCount(CancellationToken cancellationToken)
+    public async Task<int?> GetCount(CancellationToken cancellationToken)
     {
         var lastReadEntryId = await _lastReadEntryId.Use(cancellationToken).ConfigureAwait(false);
         if (lastReadEntryId == 0)

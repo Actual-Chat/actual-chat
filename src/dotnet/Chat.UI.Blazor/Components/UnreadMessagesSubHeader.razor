@@ -42,7 +42,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await UnreadMessages.GetUnreadMessageCount(cancellationToken).ConfigureAwait(true);
+        var count = await UnreadMessages.GetCount(cancellationToken).ConfigureAwait(true);
         if (!count.HasValue)
             return Model.None;
 
