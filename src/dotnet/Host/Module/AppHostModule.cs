@@ -51,7 +51,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
         // and set it as this server's content root.
  #pragma warning disable IL2026
-        Env.WebRootPath =  Cfg.GetValue<string?>("Hosting:WebRootPath").NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
+        Env.WebRootPath =  Cfg.GetValue<string?>(Settings.WebRootPath).NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
  #pragma warning restore IL2026
         Env.ContentRootPath = AppPathResolver.GetContentRootPath();
         Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
