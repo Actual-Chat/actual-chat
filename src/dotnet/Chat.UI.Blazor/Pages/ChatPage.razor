@@ -85,6 +85,7 @@
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
+            || State.HasError
             || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
 
     protected override Task OnAfterRenderAsync(bool firstRender) {
