@@ -96,7 +96,7 @@ jobs:
 
       - name: Build tests
         run: |-
-          docker build --target dotnet-build-debug -t actual-chat-app-build:latest .
+          docker build --target dotnet-build-debug --load -t actual-chat-app-build:latest .
 
       - name: Run unit tests
         run: >-
