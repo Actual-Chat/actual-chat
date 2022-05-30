@@ -10,12 +10,12 @@
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>6.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsPrevVersion>6.0.0</MicrosoftExtensionsPrevVersion>
-    <MySqlVersion>2.1.8</MySqlVersion>
+    <MySqlVersion>2.1.9</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.6.35</RedisVersion>
+    <RedisVersion>2.6.42</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>2.4.52</StlFusionVersion>
+    <StlFusionVersion>2.4.59</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.2.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
@@ -37,7 +37,7 @@
     <PackageReference Update="Google.Cloud.Storage.V1" Version="3.7.0" />
 
     <!-- We use Grpc.Core from otlp exporter -->
-    <PackageReference Update="Grpc.Core" Version="2.45.0" />
+    <PackageReference Update="Grpc.Core" Version="2.46.3" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-beta07"/>
     <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
@@ -129,16 +129,16 @@
     <PackageReference Update="Crayon" Version="2.0.62"/>
 
     <!-- Build / test time only -->
-    <PackageReference Update="bunit" Version="1.7.7"/>
-    <PackageReference Update="FluentAssertions" Version="6.6.*"/>
-    <PackageReference Update="GitHubActionsTestLogger" Version="1.4.1" />
+    <PackageReference Update="bunit" Version="1.8.15"/>
+    <PackageReference Update="FluentAssertions" Version="6.7.*"/>
+    <PackageReference Update="GitHubActionsTestLogger" Version="2.0.0" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.2.0"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
-    <PackageReference Update="Microsoft.Playwright" Version="1.21.*"/>
-    <PackageReference Update="Moq" Version="4.17.2"/>
+    <PackageReference Update="Microsoft.Playwright" Version="1.22.*"/>
+    <PackageReference Update="Moq" Version="4.17.2"/> <!-- NOTE(DF): Don't upgrade, it causes integration tests to fail! -->
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit" Version="2.4.1"/>
@@ -150,8 +150,8 @@
     <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.2.32" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Roslynator.Analyzers" Version="4.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.701" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Roslynator.Analyzers" Version="4.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.702" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
   </ItemGroup>
 
 </Project>
