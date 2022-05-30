@@ -101,15 +101,21 @@ jobs:
           tags: actual-chat-app-build:latest
           target: dotnet-build-debug
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Run unit tests
         run: >-
           docker run -v $(pwd)/artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
             dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests &&
             cp -R /src/tests/. /artifacts"
-        
+
+      - name: Report unit test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Unit tests results     # Name of the check run which will be created
+          path: './artifacts/**/*.trx'   # Path to test results
+          reporter: dotnet-trx        # Format of test results
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v0.7.2
@@ -158,11 +164,11 @@ jobs:
             -e DbSettings__DefaultDb \
             actual-chat-app-build:latest /bin/bash -c "dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && cp -R /src/tests/. /artifacts"
 
-      - name: Report test results
+      - name: Report integration test results
         uses: dorny/test-reporter@v1
         if: success() || failure()    # run this step even if previous step failed
         with:
-          name: Tests results            # Name of the check run which will be created
+          name: Integration tests results     # Name of the check run which will be created
           path: './artifacts/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
 
