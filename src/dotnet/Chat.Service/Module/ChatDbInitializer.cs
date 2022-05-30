@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
+using ActualChat.Hosting;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +14,16 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
 
     private IBlobStorageProvider Blobs { get; }
+    private HostInfo HostInfo { get; init; } = null!;
 
-    public ChatDbInitializer(IServiceProvider services, IBlobStorageProvider blobs) : base(services)
-        => Blobs = blobs;
+    public ChatDbInitializer(
+        IServiceProvider services,
+        IBlobStorageProvider blobs,
+        HostInfo hostInfo) : base(services)
+    {
+        Blobs = blobs;
+        HostInfo = hostInfo;
+    }
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
@@ -30,7 +38,11 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        if (DbInfo.ShouldRecreateDb) {
+        var chatExists = await dbContext.Chats
+            .AsAsyncEnumerable()
+            .AnyAsync(c => c.Id == Constants.Chat.DefaultChatId, cancellationToken).ConfigureAwait(false);
+
+        if ((DbInfo.ShouldRecreateDb && HostInfo.IsDevelopmentInstance) || (!chatExists && HostInfo.IsDevelopmentInstance)) {
             Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
@@ -68,6 +80,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 // Looks like we're starting w/ existing DB
                 dbContext.ChangeTracker.Clear();
             }
+
+            await AddChatAuthors(dbContext, cancellationToken).ConfigureAwait(false);
 
             await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
                 .ConfigureAwait(false);
@@ -115,6 +129,30 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         e.Id,
                         e.Type,
                         e.Content);
+            }
+        }
+    }
+
+    private async Task AddChatAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var defaultChatId = Constants.Chat.DefaultChatId;
+        for (int i = 1; i < 10; i++) {
+            var dbAuthor = new DbChatAuthor {
+                Id = DbChatAuthor.ComposeId(defaultChatId, i + 1),
+                ChatId = defaultChatId,
+                LocalId = i + 1,
+                Version = VersionGenerator.NextVersion(),
+                Name = $"User_00{i}",
+                IsAnonymous = false,
+                UserId = $"user00{i}",
+            };
+            dbContext.ChatAuthors.Add(dbAuthor);
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
             }
         }
     }
