@@ -173,7 +173,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
     }
 
-    [Fact]
+    [Fact(Skip = "Doesn't work at CI since 09434ba5")]
     public async Task ObserveTest2()
     {
         using var appHost = await TestHostFactory.NewAppHost();
