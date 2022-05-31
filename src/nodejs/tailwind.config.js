@@ -855,6 +855,7 @@ module.exports = {
     minWidth: ({ theme }) => ({
       ...theme('spacing'),
       full: '100%',
+      '1/2': '50%',
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',

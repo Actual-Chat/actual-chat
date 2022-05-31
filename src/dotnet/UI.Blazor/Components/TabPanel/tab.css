@@ -4,23 +4,16 @@
 .tab-panel-tabs {
     @apply mb-2.5 pb-1.5;
     @apply flex-x;
-    @apply border-b border-accent;
 }
 
-.tab-panel-tabs .btn-square.tab-btn {
-    @apply !bg-transparent border-transparent border-b-2 rounded-none;
-    @apply text-secondary text-md font-medium leading-tight uppercase;
+.tab-panel-tabs .btn.tab-btn {
+    @apply border-transparent border-0 border-b-2 rounded-none;
+    @apply uppercase text-secondary text-md font-medium leading-tight tracking-wider;
 }
-.tab-panel-tabs .btn-square.tab-btn:focus {
-    @apply rounded-none;
-}
-.tab-panel-tabs .btn-square.tab-btn .btn-content {
-    @apply px-1;
-}
-.tab-panel-tabs .btn-square.tab-btn.on {
+.tab-panel-tabs .btn.tab-btn.on {
     @apply border-success;
 }
-.tab-panel-tabs .btn-square.tab-btn.on .btn-content {
+.tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-secondary;
 }
 

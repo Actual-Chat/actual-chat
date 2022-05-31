@@ -92,3 +92,20 @@
 .chat-header-panel-hint.btn.btn-square:focus .btn-content {
     @apply bg-inherit;
 }
+
+.right-panel-tabs .btn {
+    @apply min-w-1/2;
+}
+.chat-author-tab {
+    @apply flex-y w-full space-y-3 overflow-hidden;
+}
+.people-group {
+    @apply gap-x-0.5;
+}
+.people-group .btn-square {
+    @apply min-w-20 rounded-sm;
+}
+.people-group .btn-square .btn-content {
+    @apply justify-center;
+}
+
