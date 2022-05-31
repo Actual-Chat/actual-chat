@@ -8,17 +8,17 @@
 }
 
 .navbar-group-toggles {
-    @apply flex flex-1 flex-col text-secondary bg-accent;
+    @apply flex flex-1 flex-col text-secondary bg-accent min-w-navbar;
 }
 .navbar-group-toggles .navbar-group-toggle.btn {
-    @apply flex-none h-12 w-12;
+    @apply flex-none h-12 min-w-navbar;
     @apply hover:scale-105;
 }
 .navbar-group-toggles .navbar-group-toggle.btn.on {
     @apply text-primary bg-primary;
 }
 .navbar-group-toggles .navbar-group-toggle .btn-content {
-    @apply p-1;
+    @apply p-1 justify-center;
 }
 
 #navbar-toggle:checked~#navbar {

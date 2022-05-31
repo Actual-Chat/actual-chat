@@ -27,8 +27,10 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <Icons>
         @if (m.CanCreateChat) {
-            <ButtonSquare Title="Create new chat" Click="OnCreateNewChatClick">
-                <i class="fa fa-plus fa-fw pt-0.5" aria-hidden="true"></i>
+            <ButtonSquare Title="Create new chat" Click="OnCreateNewChatClick" Class="!m-0 !p-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-2 -4 28 28">
+                    <path d="M24 9h-9v-9h-6v9h-9v6h9v9h6v-9h9z"/>
+                </svg>
             </ButtonSquare>
         }
     </Icons>

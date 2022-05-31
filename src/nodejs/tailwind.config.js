@@ -850,6 +850,7 @@ module.exports = {
       fit: 'fit-content',
       'footer': '3.75rem',
       'modal-header': '4rem',
+      'mobile-header': '3.5rem',
     }),
     minWidth: ({ theme }) => ({
       ...theme('spacing'),
@@ -858,6 +859,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
+      'navbar': '3.5rem',
     }),
     objectPosition: {
       bottom: 'bottom',
