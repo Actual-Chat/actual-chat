@@ -179,7 +179,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ~/.gcp/key.json
+          GOOGLE_APPLICATION_CREDENTIALS: /src/key.json
           HostSettings__WebRootPath: /src/src/dotnet/UI.Blazor.Host/wwwroot/
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
@@ -192,8 +192,7 @@ jobs:
           RedisSettings__DefaultRedis: 172.17.0.1|test_{instance.}{context}
           DbSettings__DefaultDb: postgresql:Server=172.17.0.1;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
         run: |-
-          mkdir -p ~/.gcp
-          cat <<- 'EOF' > ~/.gcp/key.json
+          cat <<- 'EOF' > /src/key.json
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
