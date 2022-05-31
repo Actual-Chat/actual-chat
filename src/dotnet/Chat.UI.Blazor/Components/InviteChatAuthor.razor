@@ -45,18 +45,20 @@
     </div>
     </Body>
     <Buttons>
-        <Button
-            Click="OnCancel"
-            Class="btn-cancel-outline">
-            Cancel
-        </Button>
-        <Button
-            Click="OnInvite"
-            Type="@ButtonType.Submit"
-            IsDisabled="@(!CanInvite)"
-            Class="btn-success">
-            Invite
-        </Button>
+        <div class="btn-group">
+            <Button
+                Click="OnCancel"
+                Class="btn-cancel-outline">
+                Cancel
+            </Button>
+            <Button
+                Click="OnInvite"
+                Type="@ButtonType.Submit"
+                IsDisabled="@(!CanInvite)"
+                Class="btn-success">
+                Invite
+            </Button>
+        </div>
     </Buttons>
 </DialogFrame>
 

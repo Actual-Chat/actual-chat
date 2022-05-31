@@ -4,19 +4,22 @@
 }
 
 <div class="flex-y w-full md:w-80 border-l border-accent p-3 animate-from-right">
-    <TabPanel>
+    <TabPanel TabsClass="right-panel-tabs">
         <div class="overflow-y-auto custom-scrollbar">
-            <Tab Title="Users">
+            <Tab Title="People">
                 <ChatAuthorsTab/>
             </Tab>
-            @if (!isPeerChat) {
-                <Tab Title="You">
-                    <ChatUserTab/>
-                </Tab>
-                <Tab Title="Chat">
-                    <ChatTab/>
-                </Tab>
-            }
+            <Tab Title="Chat">
+                <ChatTab/>
+            </Tab>
+            @* @if (!isPeerChat) { *@
+            @*     <Tab Title="You"> *@
+            @*         <ChatUserTab/> *@
+            @*     </Tab> *@
+            @*     <Tab Title="Chat"> *@
+            @*         <ChatTab/> *@
+            @*     </Tab> *@
+            @* } *@
         </div>
     </TabPanel>
 </div>
