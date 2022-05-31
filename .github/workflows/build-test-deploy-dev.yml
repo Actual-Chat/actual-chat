@@ -7,6 +7,7 @@ on:
   create:
   push:
     branches:
+      - "**"
       - master
       - dev
       - release/v*
@@ -27,13 +28,114 @@ permissions:
   statuses: write
 
 jobs:
-  build-test:
-    name: Build and Run Tests
+  build:
+    name: Build image
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/remotes/pull/') ||
+      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     outputs:
       semver2: ${{ steps.nbgv.outputs.SemVer2 }}
       version: ${{ steps.nbgv.outputs.Version }}
       simple-version: ${{ steps.nbgv.outputs.SimpleVersion }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          install: true
+
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+
+      - name: Replace npm creds
+        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore tools for nbgv
+        run: dotnet tool restore
+
+      - name: Generate Nerdbank.GitVersioning files
+        run: dotnet run --project build -- generate-version
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v0.7.2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        if: |
+          github.ref == 'refs/heads/master' ||
+          github.ref == 'refs/heads/dev' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          tags: |
+            ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  unit-tests:
+    name: Run Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Debug Build for tests
+        run: |-
+          dotnet run --project build --configuration Release -- restore
+          dotnet build --nologo --no-restore --configuration Debug
+
+      - name: Run unit tests
+        run: dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests
+
+      - name: Report unit test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Unit tests results     # Name of the check run which will be created
+          path: './tests/**/*.trx'   # Path to test results
+          reporter: dotnet-trx        # Format of test results
+
+  integration-tests:
+    name: Run Integration tests
+    if: |
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev' ||
+      startsWith(github.ref, 'refs/remotes/pull/') ||
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
     services:
       redis:
         image: redis:6.2.6-alpine3.14
@@ -70,67 +172,14 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          install: true
-
-      - name: Replace git+ssh://git@ to https://
-        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
-
-      - name: Replace npm creds
-        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
-
-      - name: Generate version variables
-        id: nbgv
-        uses: dotnet/nbgv@master
-        with:
-          setAllVars: true
-
-      - name: Restore tools for nbgv
-        run: dotnet tool restore
-
-      - name: Generate Nerdbank.GitVersioning files
-        run: dotnet run --project build -- generate-version
-
-      - name: Build tests
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          tags: actual-chat-app-build:latest
-          target: dotnet-build-debug
-          load: true
-
-      - name: Run unit tests
-        run: >-
-          docker run -v $(pwd)/artifacts:/artifacts actual-chat-app-build:latest /bin/bash -c "
-            dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests &&
-            cp -R /src/tests/. /artifacts"
-
-      - name: Report unit test results
-        uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
-        with:
-          name: Unit tests results     # Name of the check run which will be created
-          path: './artifacts/**/*.trx'   # Path to test results
-          reporter: dotnet-trx        # Format of test results
-
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v0.7.2
-        with:
-          token_format: access_token
-          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
-          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+      - name: Debug Build for tests
+        run: |-
+          dotnet run --project build --configuration Release -- restore
+          dotnet build --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
-        if: |
-          github.ref == 'refs/heads/master' ||
-          github.ref == 'refs/heads/dev' ||
-          startsWith(github.ref, 'refs/remotes/pull/') ||
-          startsWith(github.ref, 'refs/heads/release/')
         env:
+          GOOGLE_APPLICATION_CREDENTIALS: ~/.gcp/key.json
           HostSettings__WebRootPath: /src/src/dotnet/UI.Blazor.Host/wwwroot/
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
@@ -148,48 +197,15 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          docker run -v $(pwd)/artifacts:/artifacts \
-            -v ~/.gcp/key.json:/src/key.json \
-            -e GOOGLE_APPLICATION_CREDENTIALS=/src/key.json \
-            -e HostSettings__WebRootPath \
-            -e GITHUB_TOKEN \
-            -e NPM_READ_TOKEN \
-            -e USERSSETTINGS__GOOGLECLIENTID \
-            -e USERSSETTINGS__GOOGLECLIENTSECRET \
-            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTID \
-            -e USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET \
-            -e TESTS__USERS__USER1__EMAIL \
-            -e TESTS__USERS__USER1__PASSWORD \
-            -e RedisSettings__DefaultRedis \
-            -e DbSettings__DefaultDb \
-            actual-chat-app-build:latest /bin/bash -c "dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests && cp -R /src/tests/. /artifacts"
+          dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests
 
       - name: Report integration test results
         uses: dorny/test-reporter@v1
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Integration tests results     # Name of the check run which will be created
-          path: './artifacts/**/*.trx'   # Path to test results
+          path: './tests/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build image
-        if: |
-          github.ref == 'refs/heads/master' ||
-          github.ref == 'refs/heads/dev' ||
-          startsWith(github.ref, 'refs/heads/release/')
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          tags: |
-            ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
-          push: true
 
   deploy-dev:
     name: Deploy dev
@@ -198,7 +214,10 @@ jobs:
       github.ref == 'refs/heads/dev' ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
-    needs: build-test
+    needs:
+      - build
+      - unit-tests
+      - integration-tests
     environment: dev
     steps:
       - name: Authenticate to Google Cloud
@@ -241,7 +260,9 @@ jobs:
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
-      - build-test
+      - build
+      - unit-tests
+      - integration-tests
       - deploy-dev
     environment: prod
     steps:

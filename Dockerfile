@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0.3-bullseye-slim-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:6.0.5-bullseye-slim-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -11,7 +11,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0.201-bullseye-slim-amd64 as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:6.0.300-bullseye-slim-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -39,7 +39,7 @@ RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/
 COPY tests/Directory.Build.* tests/.editorconfig tests/
 
 COPY build/ build/
-RUN dotnet run --project build --configuration Release -- restore restore-tools
+RUN dotnet run --project build --configuration Release -- restore
 
 # node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
 FROM node:16-alpine as nodejs-restore
@@ -75,10 +75,8 @@ FROM base as dotnet-build
 RUN apt update \
     && apt install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
+RUN dotnet workload install wasm-tools
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
-
-FROM dotnet-build as dotnet-build-debug
-RUN dotnet build --nologo --no-restore --configuration Debug
 
 FROM runtime as app
 COPY --from=dotnet-build /app .

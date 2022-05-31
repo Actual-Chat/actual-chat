@@ -47,3 +47,6 @@ node_modules/
 # Config files
 *.config.json
 *.config.js
+
+# Test results
+*.trx

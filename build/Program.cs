@@ -303,7 +303,7 @@ internal static class Program
             await File.WriteAllTextAsync(".dockerignore", dockerIgnore).ConfigureAwait(false);
         });
 
-        Target("integration-tests", DependsOn("restore-tools"), async () => {
+        Target("integration-tests", async () => {
             await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +
