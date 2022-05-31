@@ -71,7 +71,7 @@ public sealed class AudioProcessor : IAudioProcessor
         var audio = new AudioSource(
             Task.FromResult(AudioSource.DefaultFormat),
             recordingStream,
-       TimeSpan.Zero,
+            TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
         var openSegment = new OpenAudioSegment(

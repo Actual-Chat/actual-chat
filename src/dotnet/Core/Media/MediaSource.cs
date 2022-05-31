@@ -42,11 +42,6 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     public IAsyncEnumerable<TFrame> GetFrames(CancellationToken cancellationToken)
         => MemoizedFrames.Replay(cancellationToken);
 
-    public Task<TFormat> GetFormatTask()
-        => FormatTask;
-    public Task<TimeSpan> GetDurationTask()
-        => DurationTask;
-
     // Protected & private methods
 
     private async IAsyncEnumerable<TFrame> IterateThrough(

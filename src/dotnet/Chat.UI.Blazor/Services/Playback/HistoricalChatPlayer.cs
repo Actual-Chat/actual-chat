@@ -1,6 +1,3 @@
-using ActualChat.MediaPlayback;
-using ActualChat.Messaging;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
@@ -9,7 +6,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Historical;
 
-    protected override async Task Play(Moment startAt, CancellationToken cancellationToken)
+    protected override async Task Play(
+        ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
     {
         var cpuClock = Clocks.CpuClock;
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
@@ -28,7 +26,6 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
         idRange = (startEntry.Id, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
-        var playProcesses = new ConcurrentDictionary<IMessageProcess<PlayTrackCommand>, Unit>();
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.StreamId.IsEmpty) // Streaming entry
                 continue;
@@ -58,16 +55,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             if (enqueueDelay > TimeSpan.Zero)
                 await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
 
-            var playProcess = await EnqueueEntry(playAt, entry, skipTo, cancellationToken).ConfigureAwait(false);
-            if (playProcess.WhenCompleted.IsCompleted)
-                continue;
-
-            playProcesses.TryAdd(playProcess, default);
-            _ = playProcess.WhenCompleted.ContinueWith(
-                t => playProcesses.TryRemove(playProcess, out _),
-                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
-
-        await Task.WhenAll(playProcesses.Keys.Select(s => s.WhenCompleted)).ConfigureAwait(false);
     }
 }
