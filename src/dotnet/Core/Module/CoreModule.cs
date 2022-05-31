@@ -38,12 +38,12 @@ public class CoreModule : HostModule<CoreSettings>
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
-
-        services.AddScoped(sp => sp.GetRequiredService<CoreSettings>());
     }
 
     private void InjectServerServices(IServiceCollection services)
     {
+        base.InjectServices(services);
+
         services.AddSingleton<IContentSaver, ContentSaver>();
 
         var storageBucket = Settings.GoogleStorageBucket;
