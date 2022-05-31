@@ -1,7 +1,6 @@
 name: Build test and deploy
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 on:
   create:
@@ -33,7 +32,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/remotes/pull/') ||
+      startsWith(github.ref, 'refs/pull/') ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     outputs:
@@ -133,7 +132,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/remotes/pull/') ||
+      startsWith(github.ref, 'refs/pull/') ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     services:
