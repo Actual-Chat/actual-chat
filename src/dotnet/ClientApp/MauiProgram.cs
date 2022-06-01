@@ -77,7 +77,20 @@ public static class MauiProgram
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
-        var settings = builder.Configuration.Get<ClientAppSettings>();
+        //var settings = builder.Configuration.Get<ClientAppSettings>();
+        // host address for local debugging
+        // https://devblogs.microsoft.com/xamarin/debug-local-asp-net-core-web-apis-android-emulators/
+        // https://developer.android.com/studio/run/emulator-networking.html
+        // Unfortunately, this base address does not work WSA.
+        // TODO(DF): find solution for WSA
+        var ipAddress = DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
+        var backendUrl = $"http://{ipAddress}:7080";
+        var settings = new ClientAppSettings {
+            //BaseUri = "https://localhost:7081"
+            //BaseUri = "https://dev.actual.chat"
+            BaseUri = backendUrl
+
+        };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
             throw new Exception("Wrong configuration, base uri can't be empty");
         services.TryAddSingleton<ClientAppSettings>(settings);
@@ -108,7 +121,7 @@ public static class MauiProgram
         var fusionClient = fusion.AddRestEaseClient((_, o) => {
             o.BaseUri = baseUri;
             o.IsLoggingEnabled = true;
-            o.IsMessageLoggingEnabled = false;
+            o.IsMessageLoggingEnabled = true;
         });
         fusionClient.ConfigureHttpClientFactory((c, name, o) => {
             var uriMapper = c.GetRequiredService<UriMapper>();
