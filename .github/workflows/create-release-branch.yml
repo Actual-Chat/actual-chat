@@ -36,7 +36,7 @@ jobs:
         with:
           setAllVars: true
       
-      - run: ⚙️ echo 'SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
+      - run: echo 'Current SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
 
       - name: 🛠️ Increment version.json on dev + create release branch
         id: versions
@@ -46,9 +46,13 @@ jobs:
           git checkout release/v$NBGV_MajorMinorVersion
           echo "::set-output name=RELEASE_VERSION_COMMIT_MESSAGE::$(git log --format=%B -n 1)"
           git checkout dev
+      
+      - run: echo 'New SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
 
       - name: ⏩ Push version.json updates to dev
         run: git push origin dev
 
       - name: ⏩ Push release branch to origin
         run: git push origin release/v$NBGV_MajorMinorVersion
+
+      - run: echo 'Branch `release/v$NBGV_MajorMinorVersion` has been created'
