@@ -76,9 +76,10 @@
     private CancellationTokenSource DisposeTokenSource { get; } = new();
 
     protected override async Task OnInitializedAsync() {
-        var existingChatUserIds = new HashSet<string>(
-            await ChatAuthors.GetUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token).ConfigureAwait(false),
-            StringComparer.Ordinal);
+        var existingChatUserIds = new HashSet<Symbol>(
+            await ChatAuthors
+                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token)
+                .ConfigureAwait(true));
 
         var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
         var chatContacts = new ConcurrentBag<Contact>();

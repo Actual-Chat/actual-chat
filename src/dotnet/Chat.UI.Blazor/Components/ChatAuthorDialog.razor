@@ -44,7 +44,7 @@
         => new() { InitialValue = ComputedModel.None };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        if (!ChatAuthor.TryGetChatId(AuthorId, out var chatId))
+        if (!ChatAuthor.TryParseId(AuthorId, out var chatId, out _))
             return ComputedModel.None;
 
         var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);

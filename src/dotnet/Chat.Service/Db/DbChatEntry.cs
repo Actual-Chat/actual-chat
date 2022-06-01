@@ -62,7 +62,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
-    public static string GetCompositeId(string chatId, ChatEntryType entryType, long entryId)
+    public static string ComposeId(string chatId, ChatEntryType entryType, long entryId)
         => $"{chatId}:{entryType:D}:{entryId.ToString(CultureInfo.InvariantCulture)}";
 
     public ChatEntry ToModel()
@@ -94,7 +94,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public void UpdateFrom(ChatEntry model)
     {
-        CompositeId = GetCompositeId(model.ChatId, model.Type, model.Id);
+        CompositeId = ComposeId(model.ChatId, model.Type, model.Id);
         ChatId = model.ChatId;
         Type = model.Type;
         Id = model.Id;

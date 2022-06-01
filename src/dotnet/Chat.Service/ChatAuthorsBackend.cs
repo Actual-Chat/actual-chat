@@ -57,8 +57,10 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return null;
 
         ChatAuthor? chatAuthor;
-        var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false)) {
+        { // Closes "using" block earlier
+            var dbContext = CreateDbContext();
+            await using var _ = dbContext.ConfigureAwait(false);
+
             var dbChatAuthor = await dbContext.ChatAuthors
                 .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
@@ -69,27 +71,26 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     }
 
     // [ComputeMethod]
-    public virtual async Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken)
     {
         if (userId.IsNullOrEmpty())
-            return Array.Empty<string>();
+            return ImmutableArray<Symbol>.Empty;
 
-        string[] chatIds;
         var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false)) {
-            chatIds = await dbContext.ChatAuthors
-                .Where(a => a.UserId == userId)
-                .Select(a => a.ChatId)
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
-        }
-        return chatIds;
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chatIds = await dbContext.ChatAuthors
+            .Where(a => a.UserId == userId)
+            .Select(a => a.ChatId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return chatIds.Select(x => new Symbol(x)).ToImmutableArray();
     }
 
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await Frontend.GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await Frontend.GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
@@ -109,35 +110,37 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<string>> GetAuthorIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNullOrEmpty())
-            return ImmutableArray<string>.Empty;
+            return ImmutableArray<Symbol>.Empty;
 
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
+
         var authorIds = await dbContext.ChatAuthors
             .Where(a => a.ChatId == chatId)
             .Select(a => a.Id)
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return ImmutableArray.Create(authorIds);
+        return authorIds.Select(x => new Symbol(x)).ToImmutableArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<string>> GetUserIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Symbol>> ListUserIds(string chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNullOrEmpty())
-            return ImmutableArray<string>.Empty;
+            return ImmutableArray<Symbol>.Empty;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
         var userIds = await dbContext.ChatAuthors
             .Where(a => a.ChatId == chatId && a.UserId != null)
             .Select(a => a.UserId!)
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return ImmutableArray.Create(userIds);
+        return userIds.Select(x => new Symbol(x)).ToImmutableArray();
     }
 
     // [CommandHandler]
@@ -148,10 +151,10 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
                 _ = GetByUserId(chatId, userId, false, default);
-                _ = GetChatIdsByUserId(userId, default);
-                _ = GetUserIds(chatId, default);
+                _ = ListUserChatIds(userId, default);
+                _ = ListUserIds(chatId, default);
             }
-            _ = GetAuthorIds(chatId, default);
+            _ = ListAuthorIds(chatId, default);
             return default!;
         }
 

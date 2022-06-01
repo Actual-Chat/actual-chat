@@ -27,10 +27,11 @@ public interface IUserAvatarsClientDef
 {
     [Get(nameof(Get))]
     Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
-    [Get(nameof(GetAvatarIds))]
-    Task<string[]> GetAvatarIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(GetDefaultAvatarId))]
-    Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
+    Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
+    [Get(nameof(ListAvatarIds))]
+    Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken);
+
     [Post(nameof(Create))]
     Task<UserAvatar> Create([Body] IUserAvatars.CreateCommand command, CancellationToken cancellationToken);
     [Post(nameof(Update))]

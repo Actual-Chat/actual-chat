@@ -4,12 +4,10 @@ public interface IUserAvatars
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
-
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetAvatarIds(Session session, CancellationToken cancellationToken);
-
+    Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<UserAvatar> Create(CreateCommand command, CancellationToken cancellationToken);

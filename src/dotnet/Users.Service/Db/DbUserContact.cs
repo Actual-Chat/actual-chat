@@ -17,7 +17,7 @@ public class DbUserContact : IHasId<string>
     public string TargetUserId { get; set; } = null!;
     public string Name { get; set; } = null!;
 
-    public static string GetCompositeId(string ownerUserId, string contactUserId)
+    public static string ComposeId(string ownerUserId, string contactUserId)
         => $"{ownerUserId}:{contactUserId}";
 
     public UserContact ToModel()

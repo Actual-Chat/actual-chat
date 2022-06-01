@@ -19,7 +19,7 @@ public class DbTextEntryAttachment
     public string ContentId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
 
-    public static string GetCompositeId(string chatId, long entryId, int index)
+    public static string ComposeId(string chatId, long entryId, int index)
         => Invariant($"{chatId}:{entryId}:{index}");
 
     public TextEntryAttachment ToModel()
@@ -34,7 +34,7 @@ public class DbTextEntryAttachment
 
     public void UpdateFrom(TextEntryAttachment model)
     {
-        CompositeId = GetCompositeId(model.ChatId, model.EntryId, model.Index);
+        CompositeId = ComposeId(model.ChatId, model.EntryId, model.Index);
         ChatId = model.ChatId;
         EntryId = model.EntryId;
         Index = model.Index;

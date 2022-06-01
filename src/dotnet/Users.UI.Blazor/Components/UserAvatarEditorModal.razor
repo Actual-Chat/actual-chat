@@ -58,12 +58,12 @@
 
         var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
         var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default).ConfigureAwait(true);
-        var isDefault = Equals(ModalModel.AvatarId, defaultAvatarId);
+        var isDefault = OrdinalEquals(ModalModel.AvatarId, defaultAvatarId);
         var isActive = false;
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
             var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default).ConfigureAwait(true);
             var activeAvatarId = chatUserSettings?.AvatarId.Value ?? "";
-            isActive = Equals(ModalModel.AvatarId, activeAvatarId);
+            isActive = OrdinalEquals(ModalModel.AvatarId, activeAvatarId);
         }
 
         _model.Name = userAvatar?.Name ?? "";

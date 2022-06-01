@@ -10,7 +10,7 @@ public sealed record Chat
     public Moment CreatedAt { get; init; }
     public bool IsPublic { get; init; }
     public ChatType ChatType { get; init; } = ChatType.Group;
-    public string Picture { get; set; } = "";
+    public string Picture { get; init; } = "";
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 
     public static bool IsValidId(string chatId)

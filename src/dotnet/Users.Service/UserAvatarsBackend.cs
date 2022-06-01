@@ -28,26 +28,29 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         return userAvatar;
     }
 
-    public virtual Task<string> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken)
-        => Task.FromResult(DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1));
-
     // [ComputeMethod]
-    public virtual async Task<string[]> GetAvatarIds(string userId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(string userId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
         var avatarIds = await dbContext.UserAvatars
             .Where(c => c.UserId==userId)
             .Select(c => c.Id)
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return avatarIds;
+        return avatarIds.Select(x => new Symbol(x)).ToImmutableArray();
     }
 
-    // Not [ComputedMethod]
-    public virtual async Task<UserAvatar> EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken)
+    public Task<Symbol> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken)
     {
-        var avatarId = DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
+        var avatarId = new Symbol(DbUserAvatar.ComposeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1));
+        return Task.FromResult(avatarId);
+    }
+
+    public async Task<UserAvatar> EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken)
+    {
+        var avatarId = DbUserAvatar.ComposeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
         var avatar = await Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (avatar != null) {
             if (name.IsNullOrEmpty() || OrdinalEquals(avatar.Name, name))
@@ -72,7 +75,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
 
         if (Computed.IsInvalidating()) {
             if (!userId.IsNullOrEmpty())
-                _ = GetAvatarIds(userId, default);
+                _ = ListAvatarIds(userId, default);
             var invUserAvatar = context.Operation().Items.Get<UserAvatar>()!;
             _ = Get(invUserAvatar.Id, default);
             return default!;
@@ -85,11 +88,11 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         long nextLocalId;
         if (!userId.IsNullOrEmpty()) {
             nextLocalId = await _dbUserAvatarLocalIdGenerator.Next(dbContext, userId, cancellationToken).ConfigureAwait(false);
-            id = DbUserAvatar.GetCompositeId(userId, UserAvatarType.User, nextLocalId);
+            id = DbUserAvatar.ComposeId(userId, UserAvatarType.User, nextLocalId);
         }
         else {
             nextLocalId = 1;
-            id = DbUserAvatar.GetCompositeId(principalId, UserAvatarType.AnonymousChatAuthor, nextLocalId);
+            id = DbUserAvatar.ComposeId(principalId, UserAvatarType.AnonymousChatAuthor, nextLocalId);
         }
 
         var dbUserAvatar = new DbUserAvatar {

@@ -204,7 +204,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 Type = ChatEntryType.Text,
                 ChatId = dbChat.Id,
                 Id = id,
@@ -233,7 +233,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Audio,
                 Id = id,
@@ -249,7 +249,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Text,
                 Id = id,
@@ -282,7 +282,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Audio,
                 Id = id,
@@ -298,7 +298,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Text,
                 Id = id,

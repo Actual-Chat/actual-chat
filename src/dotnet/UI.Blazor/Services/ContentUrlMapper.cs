@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.Extensions.Hosting;
 
@@ -9,11 +10,11 @@ public class ContentUrlMapper
     private readonly string _contentBaseUri;
     private readonly string _mediaBaseUri;
 
-    public ContentUrlMapper(NavigationManager nav, CoreSettings settings, IHostEnvironment env)
+    public ContentUrlMapper(CoreSettings settings, HostInfo hostInfo, NavigationManager nav)
     {
         var baseUri = new Uri(nav.BaseUri);
 
-        if (env.IsDevelopment()) {
+        if (hostInfo.IsDevelopmentInstance) {
             // TODO: refactor when new certificate with subdomain is available
             _transformUri = StringComparer.OrdinalIgnoreCase.Equals(baseUri.Host, "local.actual.chat");
             _contentBaseUri = _transformUri ? $"{baseUri.Scheme}://cdn.{baseUri.Host}/" : "";

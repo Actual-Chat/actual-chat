@@ -9,7 +9,8 @@ namespace ActualChat.Notification;
 
 public partial class Notifications
 {
-    public virtual async Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -18,22 +19,25 @@ public partial class Notifications
             .Where(d => d.UserId == userId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var entries = dbDevices.Select(d => d.ToModel()).ToArray();
-        return entries;
+        var devices = dbDevices.Select(d => d.ToModel()).ToImmutableArray();
+        return devices;
     }
 
-    public virtual async Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<Symbol>> ListSubscriberIds(string chatId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        return await dbContext.ChatSubscriptions
+        var subscriberIds = await dbContext.ChatSubscriptions
             .Where(cs => cs.ChatId == chatId)
             .Select(cs => cs.UserId)
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        return subscriberIds.Select(x => new Symbol(x)).ToImmutableArray();
     }
 
+    // [CommandHandler]
     public virtual async Task NotifySubscribers(
         INotificationsBackend.NotifySubscribersCommand notifyCommand,
         CancellationToken cancellationToken)
@@ -42,7 +46,7 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
-        var userIds = await GetSubscribers(chatId, cancellationToken).ConfigureAwait(false);
+        var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
@@ -132,7 +136,7 @@ public partial class Notifications
             string userId1,
             [EnumeratorCancellation] CancellationToken cancellationToken1)
         {
-            var devices = await GetDevices(userId1, cancellationToken1).ConfigureAwait(false);
+            var devices = await ListDevices(userId1, cancellationToken1).ConfigureAwait(false);
             foreach (var device in devices)
                 yield return (device.DeviceId, userId1);
         }

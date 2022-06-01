@@ -38,7 +38,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var authorIds = await Authors.GetAuthorIds(Session, Chat.Id, cancellationToken);
+        var authorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
         return new() {
             AuthorIds = authorIds,
         };
@@ -52,6 +52,6 @@
 
     public sealed class Model {
         public static Model None { get; } = new();
-        public ImmutableArray<string> AuthorIds { get; init; } = ImmutableArray<string>.Empty;
+        public ImmutableArray<Symbol> AuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
     }
 }

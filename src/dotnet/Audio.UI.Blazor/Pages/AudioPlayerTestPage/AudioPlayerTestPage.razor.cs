@@ -84,7 +84,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
-            var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
+            var frames = await audioSource.GetFrames(_cts.Token).ToListAsync(_cts.Token).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {

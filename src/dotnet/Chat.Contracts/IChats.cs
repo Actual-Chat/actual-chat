@@ -46,6 +46,7 @@ public interface IChats
         Session session,
         string chatId,
         CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,

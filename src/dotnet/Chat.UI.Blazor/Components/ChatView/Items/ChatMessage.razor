@@ -93,7 +93,7 @@
 
     protected override async Task OnInitializedAsync() {
         PrincipalId = await ChatAuthor
-            .GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None)
+            .GetOwnPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None)
             .ConfigureAwait(true);
         await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
     }

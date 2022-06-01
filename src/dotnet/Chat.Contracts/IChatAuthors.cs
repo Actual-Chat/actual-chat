@@ -5,23 +5,22 @@ namespace ActualChat.Chat;
 public interface IChatAuthors
 {
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<ChatAuthor?> GetChatAuthor(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
+    Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 10)]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 1)]
-    Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 
