@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Web.WebView2.Core;
 using WebView2Control = Microsoft.UI.Xaml.Controls.WebView2;
+
 namespace ActualChat.ClientApp;
 
 public partial class MauiBlazorWebViewHandler
@@ -12,9 +13,10 @@ public partial class MauiBlazorWebViewHandler
     /// <inheritdoc />
     protected override WebView2Control CreatePlatformView()
     {
+        var settings = MauiContext!.Services.GetRequiredService<ClientAppSettings>();
         var webview = new WebView2Control();
-        var baseUri = _settings.BaseUri;
-        if (!_settings.BaseUri.EndsWith('/'))
+        var baseUri = settings.BaseUri;
+        if (!settings.BaseUri.EndsWith('/'))
             baseUri += '/';
         webview.EnsureCoreWebView2Async().AsTask().ContinueWith((t, state) => {
             var ctrl = (WebView2Control)state!;

@@ -34,7 +34,7 @@ public static class MauiProgram
             });
         // TODO: use resources + new EmbeddedFileProvider(typeof(MauiProgram).Assembly) ?
 
-        var fileprovider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(MauiProgram).Assembly.Location));
+        var fileprovider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
         var files = fileprovider.GetDirectoryContents("").ToArray();
         builder.Configuration.AddJsonFile(
             fileprovider,
