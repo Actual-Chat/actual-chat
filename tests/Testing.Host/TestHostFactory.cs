@@ -30,7 +30,8 @@ public static class TestHostFactory
     }
 
     public static async Task<AppHost> NewAppHost(
-        Action<AppHost>? configure = null,
+        ITestOutputHelper output,
+        Action<IConfigurationBuilder>? configureAppSettings = null,
         Action<IServiceCollection>? configureServices = null,
         string? serverUrls = null)
     {
@@ -53,16 +54,18 @@ public static class TestHostFactory
                 });
                 services.AddOptions<TestUsersOptions>(hb.Configuration, "Tests:Users");
             },
-            AppConfigurationBuilder = GetTestAppSettings,
+            AppConfigurationBuilder = builder => {
+                GetTestAppSettings(builder, output);
+                configureAppSettings?.Invoke(builder);
+            },
         };
-        configure?.Invoke(appHost);
         await appHost.Build();
         await appHost.Initialize();
         await appHost.Start();
         return appHost;
     }
 
-    private static void GetTestAppSettings(IConfigurationBuilder config)
+    private static void GetTestAppSettings(IConfigurationBuilder config, ITestOutputHelper output)
     {
         var toDelete = config.Sources
             .Where(s => (s is JsonConfigurationSource source
@@ -82,6 +85,9 @@ public static class TestHostFactory
                 ReloadDelay = 100,
                 ReloadOnChange = false,
             });
+        config.AddInMemoryCollection(new Dictionary<string, string> {
+            { "CoreSettings:Instance", GetInstanceName(output) },
+        });
         config.AddEnvironmentVariables();
 
         static List<(string FileName, bool Optional)> GetTestSettingsFiles()
@@ -94,5 +100,12 @@ public static class TestHostFactory
                 result.Add(("testsettings.docker.json", Optional: false));
             return result;
         }
+    }
+
+    private static string GetInstanceName(ITestOutputHelper output)
+    {
+        var test = output.GetTest();
+        // Postgres identifier limit is 63 bytes
+        return FilePath.GetHashedName(test.TestCase.UniqueID, test.DisplayName);
     }
 }

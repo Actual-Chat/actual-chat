@@ -13,7 +13,7 @@ public class ChatActivityTest : AppHostTestBase
     [Fact]
     public async Task BasicTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
         var clientServices = tester.ClientServices;

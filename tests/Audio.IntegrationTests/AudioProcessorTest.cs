@@ -90,10 +90,9 @@ public class AudioProcessorTest : AppHostTestBase
         readSize.Should().BeLessThan(writtenSize);
     }
 
-    private static async Task<AppHost> NewAppHost()
-        => await TestHostFactory.NewAppHost(
-            null,
-            services => {
+    private async Task<AppHost> NewAppHost()
+        => await NewAppHost(
+            configureServices: services => {
                 services.AddSingleton(new AudioProcessor.Options {
                     IsEnabled = false,
                 });

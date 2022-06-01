@@ -1,5 +1,5 @@
 namespace ActualChat.Testing.Collections;
 
-[CollectionDefinition(nameof(AppHostTests), DisableParallelization = true)]
+[CollectionDefinition(nameof(AppHostTests))]
 public class AppHostTests
 { }

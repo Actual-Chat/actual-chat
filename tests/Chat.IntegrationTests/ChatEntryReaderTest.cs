@@ -13,7 +13,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact]
     public async Task BasicTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
         var user = await tester.SignIn(new User("", "Bob"));
@@ -54,7 +54,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact]
     public async Task FindByMinBeginsAtTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
         var user = await tester.SignIn(new User("", "Bob"));
@@ -97,7 +97,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact]
     public async Task ReadTilesTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
         var user = await tester.SignIn(new User("", "Bob"));
@@ -132,7 +132,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact]
     public async Task ObserveTest1()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
         var user = await tester.SignIn(new User("", "Bob"));
@@ -178,7 +178,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact]
     public async Task ObserveTest2()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
         var user = await tester.SignIn(new User("", "Bob"));

@@ -6,14 +6,12 @@ public class ExampleTest : AppHostTestBase
 {
     private readonly TestSettings _testSettings;
     public ExampleTest(ITestOutputHelper @out, TestSettings testSettings) : base(@out)
-    {
-        _testSettings = testSettings;
-    }
+        => _testSettings = testSettings;
 
     [Fact]
     public async Task SessionTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var sessionA = sessionFactory.CreateSession();
