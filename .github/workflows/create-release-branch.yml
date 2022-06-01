@@ -25,7 +25,7 @@ jobs:
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
-          lfs: true
+          lfs: false
 
       - name: ⚙️ Restore tools for nbgv
         run: dotnet tool restore
