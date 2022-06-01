@@ -38,6 +38,11 @@ jobs:
       
       - run: echo 'Current SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
 
+      - name: ⚙️ Setup CI GIT
+        run: |
+          git config user.name "actualchat bot"
+          git config user.email actualchat.bot@actual.chat
+
       - name: 🛠️ Increment version.json on dev + create release branch
         id: versions
         run: |
