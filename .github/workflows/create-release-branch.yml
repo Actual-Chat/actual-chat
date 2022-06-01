@@ -58,6 +58,8 @@ jobs:
         run: git push origin dev
 
       - name: ⏩ Push release branch to origin
+        env:
+          GITHUB_TOKEN: ${{ secrets.CREATE_RELEASE_GITHUB_TOKEN }} # trigger workflow on create release branch!
         run: git push origin release/v$NBGV_MajorMinorVersion
 
       - run: echo 'Branch `release/v$NBGV_MajorMinorVersion` has been created'
