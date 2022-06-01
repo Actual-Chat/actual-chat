@@ -1,6 +1,5 @@
 ﻿using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
 using Stl.Fusion.Extensions;
