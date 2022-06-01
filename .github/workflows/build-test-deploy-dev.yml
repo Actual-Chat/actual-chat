@@ -92,7 +92,7 @@ jobs:
           context: .
           tags: |
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
-          push: $${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
+          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
