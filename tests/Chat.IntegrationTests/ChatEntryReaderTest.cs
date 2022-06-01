@@ -129,7 +129,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result[0].Entries.Length.Should().BeGreaterThan(3);
     }
 
-    [Fact(Skip = "Doesn't work at CI since 09434ba5")]
+    [Fact]
     public async Task ObserveTest1()
     {
         using var appHost = await TestHostFactory.NewAppHost();
@@ -152,28 +152,30 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None).ConfigureAwait(false);
 
-        using var cts1 = new CancellationTokenSource();
-        cts1.CancelAfter(500);
-        var result = await reader.Observe(idRange.End, cts1.Token).TrimOnCancellation().ToListAsync();
-        result.Count.Should().Be(0);
+        { // Test 1
+            using var cts = new CancellationTokenSource(500);
+            var result = await reader.Observe(idRange.End, cts.Token).TrimOnCancellation().ToListAsync();
+            result.Count.Should().Be(0);
+        }
 
-        using var cts2 = new CancellationTokenSource();
-        cts2.CancelAfter(500);
-        result = await reader.Observe(idRange.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
-        result.Count.Should().Be(1);
+        { // Test 2
+            using var cts = new CancellationTokenSource(500);
+            var result = await reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            result.Count.Should().Be(1);
+        }
 
-        using var cts3 = new CancellationTokenSource();
-        var resultTask = reader.Observe(idRange.End - 1, cts3.Token).TrimOnCancellation().ToListAsync();
-        _ = BackgroundTask.Run(() => CreateChatEntries(
-                chats, session, ChatId,
-                (int)Constants.Chat.IdTileStack.MinTileSize)
-            .ContinueWith(_ => cts3.CancelAfter(500), CancellationToken.None));
-
-        result = await resultTask;
-        result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+        { // Test 3
+            using var cts = new CancellationTokenSource(1000);
+            var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            _ = BackgroundTask.Run(() => CreateChatEntries(
+                    chats, session, ChatId,
+                    (int)Constants.Chat.IdTileStack.MinTileSize));
+            var result = await resultTask;
+            result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+        }
     }
 
-    [Fact(Skip = "Doesn't work at CI since 09434ba5")]
+    [Fact]
     public async Task ObserveTest2()
     {
         using var appHost = await TestHostFactory.NewAppHost();
@@ -196,16 +198,15 @@ public class ChatEntryReaderTest : AppHostTestBase
         var idRange = chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
 
-        using var cts2 = new CancellationTokenSource();
-        var resultTask = reader.Observe(idRange.Result.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
-
-        _ = BackgroundTask.Run(() => CreateChatEntries(
-                chats, session, ChatId,
-                (int) Constants.Chat.IdTileStack.MinTileSize)
-            .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
-
-        var result = await resultTask;
-        result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+        { // Test 1
+            using var cts = new CancellationTokenSource(1000);
+            var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            _ = BackgroundTask.Run(() => CreateChatEntries(
+                    chats, session, ChatId,
+                    (int) Constants.Chat.IdTileStack.MinTileSize));
+            var result = await resultTask;
+            result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+        }
     }
 
     private async Task CreateChatEntries(

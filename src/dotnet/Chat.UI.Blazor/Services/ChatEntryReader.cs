@@ -135,21 +135,26 @@ public sealed class ChatEntryReader
     {
         var idTilesLayer0 = IdTileStack.FirstLayer;
         var idTile = idTilesLayer0.GetTile(minEntryId);
-        var cTile = await CaptureTile(idTile.Range, cancellationToken).ConfigureAwait(false);
-        var cIdRange = (IComputed<Range<long>>?)null;
+
+        var cTileTask = CaptureTile(idTile.Range, cancellationToken);
+        var cIdRangeTask = CaptureIdRange(cancellationToken);
+        await Task.WhenAll(cTileTask.AsTask(), cIdRangeTask.AsTask()).ConfigureAwait(false);
+        var cTile = await cTileTask;
+        var cIdRange = await cIdRangeTask;
         while (true) {
+            if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
+                (cTile, cIdRange) = await ComputedExt.Update(cTile, cIdRange, cancellationToken).ConfigureAwait(false);
+
             var tile = cTile.Value;
             foreach (var e in tile.Entries) // In fact, .Any, just w/ less allocations
                 if (e.Id >= minEntryId)
                     return tile;
 
-            cIdRange = await CaptureOrUpdateIdRange(cIdRange, cancellationToken).ConfigureAwait(false);
             var idRange = cIdRange.Value;
-            if (idRange.IsEmpty) {
+            if (idRange.IsEmpty)
                 // Empty chat (no entries of EntryType) -> let's wait for the new ones
-                await cIdRange.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-                continue;
-            }
+                goto waitForInvalidation;
+
             if (idTile.Range.End <= idRange.Start) {
                 // The tile lies before the very first tile
                 // -> move to the very first tile
@@ -165,9 +170,14 @@ public sealed class ChatEntryReader
                 continue;
             }
 
-            // It's the last tile, so we have to wait for its changes
-            await cTile.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-            cTile = await cTile.Update(cancellationToken).ConfigureAwait(false);
+            waitForInvalidation:
+
+            // It's presumably the last tile, so we have to wait for some
+            var completedTask = await Task.WhenAny(
+                cTile.WhenInvalidated(cancellationToken),
+                cIdRange.WhenInvalidated(cancellationToken)
+                ).ConfigureAwait(false);
+            await completedTask; // Will throw an exception on cancellation
         }
     }
 
@@ -194,15 +204,6 @@ public sealed class ChatEntryReader
 
     private ValueTask<IComputed<Range<long>>> CaptureIdRange(CancellationToken cancellationToken)
         => Computed.Capture(GetIdRange, cancellationToken);
-
-    private ValueTask<IComputed<Range<long>>> CaptureOrUpdateIdRange(
-        IComputed<Range<long>>? cIdRange,
-        CancellationToken cancellationToken)
-        => cIdRange == null
-            ? CaptureIdRange(cancellationToken)
-            : cIdRange.IsInvalidated()
-                ? cIdRange.Update(cancellationToken)
-                : ValueTask.FromResult(cIdRange);
 
     private ValueTask<IComputed<ChatTile>> CaptureTile(Range<long> idRange, CancellationToken cancellationToken)
         => Computed.Capture(ct => GetTile(idRange, ct), cancellationToken);

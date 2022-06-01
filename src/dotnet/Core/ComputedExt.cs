@@ -26,4 +26,41 @@ public static class ComputedExt
         }
         // ReSharper disable once IteratorNeverReturns
     }
+
+    public static async ValueTask<(IComputed<T1>, IComputed<T2>)> Update<T1, T2>(
+        IComputed<T1> c1,
+        IComputed<T2> c2,
+        CancellationToken cancellationToken = default)
+    {
+        while (true) {
+            var t1 = c1.IsConsistent() ? null : c1.Update(cancellationToken).AsTask();
+            var t2 = c2.IsConsistent() ? null : c2.Update(cancellationToken).AsTask();
+            if (t1 is null && t2 is null)
+                return (c1, c2);
+            await Task.WhenAll(t1 ?? Task.CompletedTask, t2 ?? Task.CompletedTask)
+                .ConfigureAwait(false);
+            c1 = t1 is null ? c1 : await t1;
+            c2 = t2 is null ? c2 : await t2;
+        }
+    }
+
+    public static async ValueTask<(IComputed<T1>, IComputed<T2>, IComputed<T3>)> Update<T1, T2, T3>(
+        IComputed<T1> c1,
+        IComputed<T2> c2,
+        IComputed<T3> c3,
+        CancellationToken cancellationToken = default)
+    {
+        while (true) {
+            var t1 = c1.IsConsistent() ? null : c1.Update(cancellationToken).AsTask();
+            var t2 = c2.IsConsistent() ? null : c2.Update(cancellationToken).AsTask();
+            var t3 = c3.IsConsistent() ? null : c3.Update(cancellationToken).AsTask();
+            if (t1 is null && t2 is null && t3 is null)
+                return (c1, c2, c3);
+            await Task.WhenAll(t1 ?? Task.CompletedTask, t2 ?? Task.CompletedTask, t3 ?? Task.CompletedTask)
+                .ConfigureAwait(false);
+            c1 = t1 is null ? c1 : await t1;
+            c2 = t2 is null ? c2 : await t2;
+            c3 = t3 is null ? c3 : await t3;
+        }
+    }
 }

@@ -63,10 +63,11 @@ public class ChatUIStateSync : WorkerBase
             }
 
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-            await Task.WhenAny(
+            var completedTask = await Task.WhenAny(
                 playbackState.Computed.WhenInvalidated(cancellationToken),
                 cExpectedPlaybackState.WhenInvalidated(cancellationToken))
                 .ConfigureAwait(false);
+            await completedTask; // Will throw an exception on cancellation
         }
         // ReSharper disable once FunctionNeverReturns
     }
