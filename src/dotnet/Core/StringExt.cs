@@ -26,7 +26,7 @@ public static class StringExt
     public static string Capitalize(this string s)
         => s.IsNullOrEmpty() ? s : s[..1].ToUpperInvariant() + s[1..];
 
-    public static bool HasPrefix(this string source, string prefix, out string suffix)
+    public static bool OrdinalHasPrefix(this string source, string prefix, out string suffix)
         => source.HasPrefix(prefix, StringComparison.Ordinal, out suffix);
     public static bool HasPrefix(this string source, string prefix, StringComparison stringComparison, out string suffix)
     {

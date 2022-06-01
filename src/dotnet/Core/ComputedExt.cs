@@ -39,8 +39,10 @@ public static class ComputedExt
                 return (c1, c2);
             await Task.WhenAll(t1 ?? Task.CompletedTask, t2 ?? Task.CompletedTask)
                 .ConfigureAwait(false);
+#pragma warning disable MA0004
             c1 = t1 is null ? c1 : await t1;
             c2 = t2 is null ? c2 : await t2;
+#pragma warning restore MA0004
         }
     }
 
@@ -58,9 +60,11 @@ public static class ComputedExt
                 return (c1, c2, c3);
             await Task.WhenAll(t1 ?? Task.CompletedTask, t2 ?? Task.CompletedTask, t3 ?? Task.CompletedTask)
                 .ConfigureAwait(false);
+#pragma warning disable MA0004
             c1 = t1 is null ? c1 : await t1;
             c2 = t2 is null ? c2 : await t2;
             c3 = t3 is null ? c3 : await t3;
+#pragma warning restore MA0004
         }
     }
 }

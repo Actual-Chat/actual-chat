@@ -67,7 +67,9 @@ public class ChatUIStateSync : WorkerBase
                 playbackState.Computed.WhenInvalidated(cancellationToken),
                 cExpectedPlaybackState.WhenInvalidated(cancellationToken))
                 .ConfigureAwait(false);
+#pragma warning disable MA0004
             await completedTask; // Will throw an exception on cancellation
+#pragma warning restore MA0004
         }
         // ReSharper disable once FunctionNeverReturns
     }

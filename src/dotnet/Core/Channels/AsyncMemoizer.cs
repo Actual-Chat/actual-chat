@@ -133,7 +133,9 @@ public sealed class AsyncMemoizer<T>
                 buffer = await SwitchToNewBuffer(buffer).ConfigureAwait(false);
 
             if (newTargetsReadTask is { IsCompleted: true }) {
+#pragma warning disable MA0004
                 var newTargetReads = await newTargetsReadTask;
+#pragma warning restore MA0004
                 if (newTargetReads.IsSome(out var newTarget)) {
                     var success = await buffer
                         .TryCopyTo(newTarget.Target, newTarget.CopiedItemCount, cancellationToken)

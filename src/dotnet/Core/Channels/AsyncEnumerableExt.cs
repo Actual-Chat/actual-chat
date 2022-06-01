@@ -279,7 +279,9 @@ public static class AsyncEnumerableExt
                 await moveNextTask.ConfigureAwait(false);
 
             if (moveNextTask.IsCompleted) {
+#pragma warning disable MA0004
                 var hasNext = await moveNextTask;
+#pragma warning restore MA0004
                 if (hasNext) {
                     buffer.Add(enumerator.Current);
                     moveNextTask = enumerator.MoveNextAsync();
@@ -291,7 +293,9 @@ public static class AsyncEnumerableExt
             }
 
             if (delayTask.IsCompleted) {
+#pragma warning disable MA0004
                 await delayTask; // Will throw an exception on cancellation
+#pragma warning restore MA0004
                 if (buffer.Count > 0) {
                     yield return buffer;
 
