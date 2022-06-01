@@ -18,7 +18,7 @@ public record AudioRecord(
     public Session Session {
         get {
             // Returns cached Session object w/ the matching Id
-            if (_session == null || !StringComparer.Ordinal.Equals(_session.Id.Value, SessionId))
+            if (_session == null || !OrdinalEquals(_session.Id.Value, SessionId))
                 _session = SessionId.IsNullOrEmpty() ? Session.Null : new Session(SessionId);
             return _session;
         }

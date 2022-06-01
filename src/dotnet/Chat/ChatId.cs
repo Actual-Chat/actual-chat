@@ -5,7 +5,7 @@ public static class ChatId
     private const string PeerChatIdPrefix = "p-";
 
     public static bool IsPeerChatId(string chatId)
-        => chatId.StartsWith(PeerChatIdPrefix, StringComparison.Ordinal);
+        => chatId.OrdinalStartsWith(PeerChatIdPrefix);
 
     public static ChatType GetChatType(string chatId)
         => GetChatIdType(chatId).ToChatType();
@@ -29,7 +29,7 @@ public static class ChatId
 
     public static string FormatFullPeerChatId(string userId1, string userId2)
     {
-        if (string.Compare(userId1, userId2, StringComparison.Ordinal) > 0)
+        if (OrdinalCompare(userId1, userId2) > 0)
             (userId1, userId2) = (userId2, userId1);
         return $"{PeerChatIdPrefix}{userId1}-{userId2}";
     }
@@ -68,6 +68,6 @@ public static class ChatId
         userId1 = parts[1];
         userId2 = parts[2];
         return !userId1.IsNullOrEmpty() && !userId2.IsNullOrEmpty()
-            && !StringComparer.Ordinal.Equals(userId1, userId2);
+            && !OrdinalEquals(userId1, userId2);
     }
 }

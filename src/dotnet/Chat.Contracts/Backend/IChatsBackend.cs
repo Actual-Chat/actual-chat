@@ -30,11 +30,11 @@ public interface IChatsBackend
         string chatId, ChatEntryType entryType,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatAuthorPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         Session session, string chatId,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatAuthorPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]

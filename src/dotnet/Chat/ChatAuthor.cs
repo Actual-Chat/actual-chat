@@ -12,7 +12,7 @@ public sealed record ChatAuthor : Author
         chatId = "";
         if (chatAuthorId.IsNullOrEmpty())
             return false;
-        var chatIdLength = chatAuthorId.LastIndexOf(":", StringComparison.Ordinal);
+        var chatIdLength = chatAuthorId.OrdinalIndexOf(":");
         if (chatIdLength == -1)
             return false;
         chatId = chatAuthorId.Substring(0, chatIdLength);
@@ -25,7 +25,7 @@ public sealed record ChatAuthor : Author
         localId = 0;
         if (chatAuthorId.IsNullOrEmpty())
             return false;
-        var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
+        var chatIdLength = chatAuthorId.OrdinalIndexOf(":");
         if (chatIdLength == -1)
             return false;
         chatId = chatAuthorId.Substring(0, chatIdLength);
@@ -36,7 +36,7 @@ public sealed record ChatAuthor : Author
     public static void Parse(string chatAuthorId, out string chatId, out long localId)
     {
         if (!TryParse(chatAuthorId, out chatId, out localId))
-            throw new FormatException();
+            throw new FormatException("Invalid chat author ID format.");
     }
 
     public static bool IsValidId(string chatAuthorId)

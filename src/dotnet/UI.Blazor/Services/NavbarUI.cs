@@ -9,7 +9,7 @@ public class NavbarUI
 
     public void ActivateGroup(string id, string title)
     {
-        if (StringComparer.Ordinal.Equals(id, ActiveGroupId))
+        if (OrdinalEquals(id, ActiveGroupId))
             return;
 
         ActiveGroupId = id;

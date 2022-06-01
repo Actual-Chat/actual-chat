@@ -29,7 +29,7 @@ public partial class MauiBlazorWebViewHandler
                             return;
                         switch (msg.type) {
                             case "_auth":
-                                //var uri = new Uri(msg.url.Replace("/fusion/close-app?", $"/fusion/close-app?port={GetRandomUnusedPort()}&", StringComparison.Ordinal));
+                                // var uri = new Uri(msg.url.Replace("/fusion/close-app?", $"/fusion/close-app?port={GetRandomUnusedPort()}&", StringComparison.Ordinal));
                                 var originalUri = sender.Source;
                                 sender.Source = new Uri(msg.url);
                                 Debug.WriteLine($"_auth: {msg.url}");
@@ -58,7 +58,7 @@ public partial class MauiBlazorWebViewHandler
                                     cookie = sender.CoreWebView2.CookieManager.CreateCookie(key, value, new Uri(baseUri).Host, "/");
                                     sender.CoreWebView2.CookieManager.AddOrUpdateCookie(cookie);
 
-                                    if(string.Equals(key, "FusionAuth.SessionId", StringComparison.Ordinal)) {
+                                    if (OrdinalEquals(key, "FusionAuth.SessionId")) {
                                         string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
                                         await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
                                     }
@@ -94,14 +94,14 @@ public partial class MauiBlazorWebViewHandler
                 /// <see href="https://github.com/MicrosoftEdge/WebView2Feedback/issues/172" />
                 /// <see href="https://github.com/MicrosoftEdge/WebView2Feedback/issues/685" />
                 var uri = args.Request.Uri;
-                if (uri.StartsWith("https://0.0.0.0/api/", StringComparison.Ordinal)) {
-                    args.Request.Uri = uri.Replace("https://0.0.0.0/", baseUri, StringComparison.Ordinal);
+                if (uri.OrdinalStartsWith("https://0.0.0.0/api/")) {
+                    args.Request.Uri = uri.OrdinalReplace("https://0.0.0.0/", baseUri);
                     args.Request.Headers.SetHeader("Origin", baseUri);
                     args.Request.Headers.SetHeader("Referer", baseUri);
-                    Debug.WriteLine($"webview.WebResourceRequested: rewrited to {args.Request.Uri}");
+                    Debug.WriteLine($"webview.WebResourceRequested: Uri is rewritten to {args.Request.Uri}");
                 }
                 // workaround of 'This browser or app may not be secure.'
-                else if (uri.StartsWith("https://accounts.google.com", StringComparison.Ordinal)) {
+                else if (uri.OrdinalStartsWith("https://accounts.google.com")) {
                     args.Request.Headers.SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.141 Safari/537.36");
                     args.Request.Headers.SetHeader("sec-ch-ua", "\"Chromium\";v=\"98\", \" Not A;Brand\";v=\"99\"");
                 }

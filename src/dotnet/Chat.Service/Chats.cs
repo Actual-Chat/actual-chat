@@ -126,11 +126,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthorPermissions> GetPermissions(
+    public virtual async Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
-        => await _backend.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
+        => await _backend.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
     public virtual async Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
@@ -384,7 +384,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Session session, string chatId, ChatPermissions required,
         CancellationToken cancellationToken)
     {
-        var permissions = await _backend.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
+        var permissions = await _backend.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         var hasPermissions = permissions.Has(required);
         if (!hasPermissions && required == ChatPermissions.Read) {
             // NOTE(AY): Maybe makes sense to move this to UI code - i.e. process the invite there
@@ -411,6 +411,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         if (!options.Items.TryGetValue("Invite::ChatId", out var inviteChatId))
             return false;
-        return StringComparer.Ordinal.Equals(chatId, inviteChatId as string);
+        return OrdinalEquals(chatId, inviteChatId as string);
     }
 }

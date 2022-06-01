@@ -49,6 +49,7 @@
     <Using Include="ActualChat.Diagnostics" />
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
     <Using Include="ActualChat.Mathematics" />
+    <Using Include="ActualChat.OrdinalStringExt" Static="true" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Concurrent" />
     <Using Include="System.Collections.Immutable" />
@@ -110,7 +111,7 @@
     <Watch Remove="**\*.js" />
     <Watch Remove="**\*.css" />
   </ItemGroup>
-  
+
   <!-- Extra trimming roots -->
   <ItemGroup>
     <TrimmerRootAssembly Include="Stl.Fusion" />
@@ -120,6 +121,6 @@
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
   </ItemGroup>
-  
+
 </Project>
 

@@ -63,17 +63,17 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthorPermissions> GetPermissions(
+    public virtual async Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
     {
         var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        return await GetRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthorPermissions> GetPermissions(
+    public virtual async Task<ChatAuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken)
@@ -82,9 +82,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null) {
             if (chatType is ChatType.Peer)
-                return await GetNewPeerChatPermissions(chatId, chatPrincipalId, cancellationToken)
+                return await GetDefaultPeerChatRules(chatId, chatPrincipalId, cancellationToken)
                     .ConfigureAwait(false);
-            return new(null, null, ChatPermissions.None);
+            return new(null, null);
         }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
@@ -105,16 +105,14 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (Constants.Chat.DefaultChatId == chatId) {
             var userProfile = user == null ? null
                 : await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-            return new(author, user, userProfile?.IsAdmin == true
-                ? ChatPermissions.Owner
-                : ChatPermissions.None);
+            return new(author, user, userProfile?.IsAdmin == true ? ChatPermissions.Owner : 0);
         }
 
         if (author != null)
             return new(author, user, ChatPermissions.ReadWrite);
         if (chat.IsPublic)
             return new(author, user, ChatPermissions.Read);
-        return new(author, user, ChatPermissions.None);
+        return new(author, user);
     }
 
     // [ComputeMethod]
@@ -470,7 +468,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
     {
-        if (chatPrincipalId.Contains(":", StringComparison.Ordinal)) {
+        if (chatPrincipalId.OrdinalContains(":")) {
             authorId = chatPrincipalId;
             userId = null;
         }
@@ -480,12 +478,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
     }
 
-    private async Task<ChatAuthorPermissions> GetNewPeerChatPermissions(
+    private async Task<ChatAuthorRules> GetDefaultPeerChatRules(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
     {
         if (!ChatId.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
-            return ChatAuthorPermissions.None;
+            return ChatAuthorRules.None;
 
         ParseChatPrincipalId(chatPrincipalId, out var chatAuthorId, out var userId);
         var chatAuthor = chatAuthorId.IsNullOrEmpty()
@@ -495,17 +493,17 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             userId = chatAuthor.UserId;
 
         if (!(Equals(userId, userId1) || Equals(userId, userId2))) // One of these users should be chatPrincipalId
-            return ChatAuthorPermissions.None;
+            return ChatAuthorRules.None;
         var user = userId.IsNullOrEmpty()
             ? null
             : await _authBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
         if (user == null)
-            return ChatAuthorPermissions.None;
+            return ChatAuthorRules.None;
 
         var otherUserId = user.Id == userId1 ? userId2 : userId1;
         var otherUser = await _authBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherUser == null)
-            return ChatAuthorPermissions.None;
+            return ChatAuthorRules.None;
 
         return new(chatAuthor, user, ChatPermissions.ReadWrite);
     }

@@ -27,8 +27,8 @@ public class AppServerAuthHelper : ServerAuthHelper
     public override bool IsCloseWindowRequest(HttpContext httpContext, out string closeWindowFlowName)
     {
         var request = httpContext.Request;
-        var isCloseWindowRequest = StringComparer.Ordinal.Equals(request.Path.Value, Settings.CloseWindowRequestPath)
-            || StringComparer.Ordinal.Equals(request.Path.Value, _closeWindowAppRequestPath);
+        var isCloseWindowRequest = OrdinalEquals(request.Path.Value, Settings.CloseWindowRequestPath)
+            || OrdinalEquals(request.Path.Value, _closeWindowAppRequestPath);
         closeWindowFlowName = "";
         if (isCloseWindowRequest && request.Query.TryGetValue("flow", out var flows))
             closeWindowFlowName = flows.FirstOrDefault() ?? "";

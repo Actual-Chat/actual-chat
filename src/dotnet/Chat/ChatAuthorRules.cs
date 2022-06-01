@@ -1,10 +1,10 @@
 namespace ActualChat.Chat;
 
 [DataContract]
-public record ChatAuthorPermissions(
+public record ChatAuthorRules(
     [property: DataMember] ChatAuthor? Author,
     [property: DataMember] User? User,
-    [property: DataMember] ChatPermissions Permissions)
+    [property: DataMember] ChatPermissions Permissions = 0)
 {
     public bool CanRead => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite => Permissions.Has(ChatPermissions.Write);
@@ -13,7 +13,7 @@ public record ChatAuthorPermissions(
     public bool CanEditProperties => Permissions.Has(ChatPermissions.EditProperties);
     public bool IsOwner => Permissions.Has(ChatPermissions.Owner);
 
-    public static ChatAuthorPermissions None { get; } = new(null, null, ChatPermissions.None);
+    public static ChatAuthorRules None { get; } = new(null, null);
 
     public bool Has(ChatPermissions required)
         => Permissions.Has(required);

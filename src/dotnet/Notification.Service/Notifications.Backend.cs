@@ -84,14 +84,14 @@ public partial class Notifications
                 },
                 FcmOptions = new WebpushFcmOptions {
                     // Link = ??? TODO(AK): Set anchor to open particular entry
-                    Link = StringComparer.Ordinal.Equals(_uriMapper.BaseUri.Host, "localhost")
+                    Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
                         ? null
                         : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString(),
                 }
             },
         };
         var deviceIdGroups = userIds
-            .Where(uid => !StringComparer.Ordinal.Equals(uid, userId))
+            .Where(uid => !OrdinalEquals(uid, userId))
             .ToAsyncEnumerable()
             .SelectMany(uid => GetDevicesInternal(uid, cancellationToken))
             .Chunk(200, cancellationToken);

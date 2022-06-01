@@ -59,7 +59,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
             // Let's try to activate recording first
             if (state.IsPlayingActive || state.IsPlayingPinned) {
-                var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
+                var permissions = await _chats.GetRules(_session, activeChatId, cancellationToken).ConfigureAwait(false);
                 if (permissions.CanRead) {
                     await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
                     _chatUI.IsPlaying.Value = state.IsPlayingActive;
@@ -87,7 +87,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     private async Task<Symbol[]> Normalize(Symbol[] chatIds)
     {
         var permissionTasks = chatIds.Select(async chatId => {
-            var permissions = await _chats.GetPermissions(_session, chatId, default).ConfigureAwait(false);
+            var permissions = await _chats.GetRules(_session, chatId, default).ConfigureAwait(false);
             return (chatId, permissions);
         });
 

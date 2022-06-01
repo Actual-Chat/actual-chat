@@ -1,5 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatAuthorPermissions>
+@inherits ComputedStateComponent<ChatAuthorRules>
 @{
     var m = State.LatestNonErrorValue;
 }
@@ -18,12 +18,12 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<ChatAuthorPermissions>.Options GetStateOptions()
+    protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
         => new() {
-            InitialValue = ChatAuthorPermissions.None,
+            InitialValue = ChatAuthorRules.None,
             UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
-    protected override Task<ChatAuthorPermissions> ComputeState(CancellationToken cancellationToken)
-        => Chats.GetPermissions(Session, Chat.Id, default);
+    protected override Task<ChatAuthorRules> ComputeState(CancellationToken cancellationToken)
+        => Chats.GetRules(Session, Chat.Id, default);
 }

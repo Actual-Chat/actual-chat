@@ -85,7 +85,7 @@ internal class Invites : IInvites
 
     private async Task AssertReadChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var permissions = await _chats.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
+        var permissions = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         permissions.Demand(ChatPermissions.Invite);
     }
 
@@ -102,7 +102,7 @@ internal class Invites : IInvites
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
             var permissions = await _chats
-                .GetPermissions(session, chatInviteDetails.ChatId, cancellationToken)
+                .GetRules(session, chatInviteDetails.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             permissions.Demand(ChatPermissions.Invite);
         }

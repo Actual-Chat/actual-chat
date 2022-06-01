@@ -48,11 +48,11 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatAuthorPermissions> GetPermissions(
+    public Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
-        => _service.GetPermissions(session, chatId, cancellationToken);
+        => _service.GetRules(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)

@@ -50,7 +50,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         var avatarId = DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
         var avatar = await Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (avatar != null) {
-            if (name.IsNullOrEmpty() || StringComparer.Ordinal.Equals(avatar.Name, name))
+            if (name.IsNullOrEmpty() || OrdinalEquals(avatar.Name, name))
                 return avatar;
 
             var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatar.Id, name, avatar.Picture, avatar.Bio);
@@ -67,7 +67,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
     public virtual async Task<UserAvatar> Create(IUserAvatarsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
         var principalId = command.PrincipalId;
-        var userId = !principalId.Contains(":", StringComparison.Ordinal) ? principalId : "";
+        var userId = !principalId.OrdinalContains(":") ? principalId : "";
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {

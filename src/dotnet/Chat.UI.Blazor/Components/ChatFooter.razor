@@ -41,7 +41,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var permissions = await Chats.GetPermissions(Session, chatId, cancellationToken);
+        var permissions = await Chats.GetRules(Session, chatId, cancellationToken);
         var canSend = permissions.CanWrite;
         var canJoin = false;
         if (!canSend) {

@@ -80,7 +80,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
         // Let's try to fix auto-generated user name here
         var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
-        if (!StringComparer.Ordinal.Equals(newName, dbUser.Name)) {
+        if (!OrdinalEquals(newName, dbUser.Name)) {
             dbUser.Name = newName;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }

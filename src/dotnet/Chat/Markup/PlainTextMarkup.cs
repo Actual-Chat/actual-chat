@@ -9,7 +9,7 @@ public abstract record TextMarkup(string Text) : Markup
 
     protected override bool PrintMembers(StringBuilder builder)
     {
-        builder.Append(Invariant($"{nameof(Text)} = \"{Text.Replace("\"", "\\\"", StringComparison.InvariantCulture)}\""));
+        builder.Append(Invariant($"{nameof(Text)} = \"{Text.OrdinalReplace("\"", "\\\"")}\""));
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
 }
@@ -23,7 +23,7 @@ public record PlainTextMarkup(string Text) : TextMarkup(Text)
 
     protected override bool PrintMembers(StringBuilder builder)
     {
-        builder.Append(Invariant($"{nameof(Text)} = \"{Text.Replace("\"", "\\\"", StringComparison.InvariantCulture)}\""));
+        builder.Append(Invariant($"{nameof(Text)} = \"{Text.OrdinalReplace("\"", "\\\"")}\""));
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
 }

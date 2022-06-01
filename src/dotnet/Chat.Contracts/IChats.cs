@@ -36,7 +36,7 @@ public interface IChats
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatAuthorPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);

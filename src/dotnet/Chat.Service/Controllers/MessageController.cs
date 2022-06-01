@@ -50,12 +50,10 @@ public class MessageController : ControllerBase
             var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(section.ContentDisposition,
                 out var contentDisposition);
 
-            // NOTE(AY): Don't change .Equals(.., StringComparison.Ordinal) here -
-            // DispositionType is StringSegment, StringComparer.Ordinal doesn't support it (always returns false)!
-            if (hasContentDispositionHeader && contentDisposition!.DispositionType.Equals("form-data", StringComparison.Ordinal)) {
+            if (hasContentDispositionHeader && OrdinalEquals(contentDisposition!.DispositionType, "form-data")) {
                 var partName = contentDisposition.Name;
                 // NOTE(AY): Same here
-                if (partName.Equals("payload_json", StringComparison.Ordinal)) {
+                if (OrdinalEquals(partName, "payload_json")) {
                     if (!await HandlePayloadJsonPart(post, section).ConfigureAwait(false))
                         incorrectPart = true;
                 }
@@ -178,7 +176,7 @@ public class MessageController : ControllerBase
         fileId = -1;
         const string prefix = "files[";
         const string suffix = "]";
-        if (!partName.StartsWith(prefix, StringComparison.Ordinal) && !partName.EndsWith(suffix, StringComparison.Ordinal))
+        if (!partName.OrdinalStartsWith(prefix) && !partName.OrdinalEndsWith(suffix))
             return false;
         var idSegment = partName.Subsegment(prefix.Length, partName.Length - prefix.Length - suffix.Length);
         if (!int.TryParse(idSegment.AsSpan(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var tempFileId))

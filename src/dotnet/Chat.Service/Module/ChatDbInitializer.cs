@@ -29,7 +29,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dependencies = InitializeTasks
-            .Where(kv => kv.Key.GetType().Name.StartsWith("Users", StringComparison.Ordinal))
+            .Where(kv => kv.Key.GetType().Name.OrdinalStartsWith("Users"))
             .Select(kv => kv.Value)
             .ToArray();
         await Task.WhenAll(dependencies).ConfigureAwait(false);

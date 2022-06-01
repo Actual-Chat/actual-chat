@@ -35,8 +35,8 @@ public interface IChatsClientDef
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetPermissions))]
-    Task<ChatAuthorPermissions> GetPermissions(
+    [Get(nameof(GetRules))]
+    Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);

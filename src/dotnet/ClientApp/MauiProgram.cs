@@ -112,7 +112,7 @@ public static class MauiProgram
         fusionClient.ConfigureHttpClientFactory((c, name, o) => {
             var uriMapper = c.GetRequiredService<UriMapper>();
             var apiBaseUri = uriMapper.ToAbsolute("api/");
-            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.Ordinal);
+            var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
         });

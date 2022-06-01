@@ -21,7 +21,7 @@ public static class StringExt
             ? input
             : CamelCaseRegex.Replace(input, "$1_$2")
                 .ToLower(CultureInfo.InvariantCulture)
-                .Replace("__", "_", StringComparison.InvariantCulture);
+                .OrdinalReplace("__", "_");
 
     public static string Capitalize(this string s)
         => s.IsNullOrEmpty() ? s : s[..1].ToUpperInvariant() + s[1..];
@@ -63,7 +63,7 @@ public static class StringExt
         if (hostPort.IsNullOrEmpty())
             return false;
 
-        var columnIndex = hostPort.IndexOf(":", StringComparison.Ordinal);
+        var columnIndex = hostPort.OrdinalIndexOf(":");
         if (columnIndex <= 0) {
             host = hostPort;
             return true;

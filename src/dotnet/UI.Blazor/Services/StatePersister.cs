@@ -61,7 +61,7 @@ public abstract class StatePersisterBase<TState> : IStateRestoreHandler, IDispos
     {
         using var _ = await Lock.Lock(cancellationToken).ConfigureAwait(false);
         var text = Serializer.Write(state);
-        if (StringComparer.Ordinal.Equals(LastSavedText, text))
+        if (OrdinalEquals(LastSavedText, text))
             return;
         await SaveText(text, cancellationToken).ConfigureAwait(false);
         LastSavedText = text;

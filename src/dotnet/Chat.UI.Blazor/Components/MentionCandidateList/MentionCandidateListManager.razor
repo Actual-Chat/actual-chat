@@ -37,7 +37,7 @@
     public async Task Show(string search)
     {
         var candidates = Candidates.Value;
-        if (candidates != null && StringComparer.Ordinal.Equals(_lastSearch, search))
+        if (candidates != null && OrdinalEquals(_lastSearch, search))
             return;
 
         Candidates.Value = await MentionCandidateProvider

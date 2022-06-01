@@ -42,9 +42,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         CancellationToken cancellationToken)
     {
         var dbChatAuthor = await DbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
-        if (!StringComparer.Ordinal.Equals(dbChatAuthor?.ChatId, chatId))
+        if (!OrdinalEquals(dbChatAuthor?.ChatId, chatId))
             return null;
-        var chatAuthor = dbChatAuthor.ToModel();
+        var chatAuthor = dbChatAuthor!.ToModel();
         return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 

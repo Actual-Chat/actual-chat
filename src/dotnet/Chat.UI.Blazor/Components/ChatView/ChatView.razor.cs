@@ -212,7 +212,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;
         var result = VirtualListData.New(
-            StringComparer.Ordinal.Equals(query.ScrollToKey, scrollToKey)
+            OrdinalEquals(query.ScrollToKey, scrollToKey)
                 ? query
                 : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
             chatMessages,

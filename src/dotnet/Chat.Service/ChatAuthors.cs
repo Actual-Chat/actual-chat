@@ -89,7 +89,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         var chatIds = options.Items.Keys
             .Select(c => c.Value)
-            .Where(c => c.EndsWith(AuthorIdSuffix, StringComparison.Ordinal))
+            .Where(c => c.OrdinalEndsWith(AuthorIdSuffix))
             .Select(c => c.Substring(0, c.Length - AuthorIdSuffix.Length))
             .ToArray();
         return chatIds;

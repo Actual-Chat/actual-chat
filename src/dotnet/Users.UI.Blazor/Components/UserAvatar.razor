@@ -45,8 +45,8 @@
             activeAvatarId = chatUserSettings?.AvatarId ?? "";
         }
 
-        var isActive = StringComparer.Ordinal.Equals(activeAvatarId, AvatarId);
-        var isDefault = StringComparer.Ordinal.Equals(defaultAvatarId, AvatarId);
+        var isActive = OrdinalEquals(activeAvatarId, AvatarId);
+        var isDefault = OrdinalEquals(defaultAvatarId, AvatarId);
         var tag = isActive
             ? isDefault ? "active, default" : "active"
             : isDefault ? "default" : "";

@@ -5,8 +5,6 @@
 [Flags]
 public enum ChatPermissions
 {
-    None           = 0,
-
     Read           = 0x1,
     Write          = 0x2,
     ReadWrite      = Read + Write,

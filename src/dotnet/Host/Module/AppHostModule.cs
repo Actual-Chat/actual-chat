@@ -134,11 +134,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
-        var dataProtection = Settings.DataProtection.IsNullOrEmpty()
-            ? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys")
-            : Settings.DataProtection;
+        var dataProtection = Settings.DataProtection.NullIfEmpty()
+            ?? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys");
         Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
-        if (dataProtection.StartsWith("gs://", StringComparison.OrdinalIgnoreCase)) {
+        if (dataProtection.OrdinalStartsWith("gs://")) {
             var bucket = dataProtection[5..dataProtection.IndexOf('/', 5)];
             var objectName = dataProtection[(6 + bucket.Length)..];
             services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);

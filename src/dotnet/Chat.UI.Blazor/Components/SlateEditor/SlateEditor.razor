@@ -30,7 +30,7 @@
         if (_lastMentionCandidateListManager != null)
             _lastMentionCandidateListManager.Selected += OnMentionCandidateSelected;
 
-        if (_rendered && !StringComparer.Ordinal.Equals(_placeholder, Placeholder))
+        if (_rendered && !OrdinalEquals(_placeholder, Placeholder))
             _ = SetPlaceholder(Placeholder);
     }
 
