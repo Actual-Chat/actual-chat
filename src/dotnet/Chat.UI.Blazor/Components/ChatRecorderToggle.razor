@@ -6,7 +6,12 @@
     var cls = $"audio-recorder-toggle !rounded-xl {recordingStatus}";
 }
 
-<ButtonSquare Class="@cls" Click="OnClick">
+<ButtonSquare Class="@cls"
+              Click="OnClick"
+              @ontouchend="OnLongPressStop"
+              @onmouseup="OnLongPressStop"
+              @onlongpress="OnLongPressStart"
+              data-long-press-delay="200">
     <svg class="fill-current w-14 h-14 m-1.5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
         <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
     </svg>
@@ -18,6 +23,7 @@
     [Parameter] public string ChatId { get; set; } = "";
 
     private Symbol RecordingChatId => State.ValueOrDefault;
+    private bool IsLongPress { get; set; } = false;
 
     protected override ComputedState<Symbol>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
@@ -32,5 +38,19 @@
         ChatUI.RecordingChatId.Value = isRecordingInThisChat
             ? (recordingChatId.IsEmpty ? ChatId : Symbol.Empty)
             : ChatId;
+    }
+
+    private void OnLongPressStart() {
+        if (IsLongPress)
+            return;
+        IsLongPress = true;
+        ChatUI.RecordingChatId.Value = ChatId;
+    }
+
+    private void OnLongPressStop() {
+        if (!IsLongPress)
+            return;
+        IsLongPress = false;
+        ChatUI.RecordingChatId.Value = Symbol.Empty;
     }
 }

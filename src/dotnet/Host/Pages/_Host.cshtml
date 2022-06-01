@@ -155,6 +155,19 @@
     {
         <script src="_framework/blazor.webassembly.js"></script>
     }
+
+    <script>
+        Blazor.registerCustomEventType('longpress', {
+            browserEventName: 'long-press',
+            createEventArgs: (event) => {
+                const isTouch = (('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+                if (!isTouch) {
+                    event.preventDefault();
+                }
+                return event;
+            },
+        });
+    </script>
 }
 </body>
 </html>
