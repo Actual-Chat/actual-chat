@@ -3,11 +3,11 @@
     "DefaultRedis": "localhost|test_{instance.}{context}"
   },
   "DbSettings": {
-    // "DefaultDb": "mysql:Server=localhost;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
-    "DefaultDb": "postgresql:Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
-    // "DefaultDb": "memory:ac_test_{instance_}{context}",
+    // "DefaultDb": "mysql:Server=localhost;Database=ac_{instance_}{context};Port=3306;User=root;Password=mariadb",
+    "DefaultDb": "postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
+    // "DefaultDb": "memory:ac_{instance_}{context}",
     "OverrideDb": "",
-    // OverrideDb": "memory:ac_test_{instance_}{context}",
+    // OverrideDb": "memory:ac_{instance_}{context}",
     "ShouldRecreateDb": true,
     "ShouldVerifyDb": false
   },

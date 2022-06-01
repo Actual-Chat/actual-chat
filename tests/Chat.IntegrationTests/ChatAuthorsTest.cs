@@ -9,7 +9,7 @@ public class ChatAuthorsTest : AppHostTestBase
     [Fact]
     public async Task NullAuthorResult()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var session = tester.Session;
 

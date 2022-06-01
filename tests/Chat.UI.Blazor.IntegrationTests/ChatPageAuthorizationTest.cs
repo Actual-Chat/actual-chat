@@ -22,7 +22,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
     public override async Task InitializeAsync()
     {
-        _appHost = await TestHostFactory.NewAppHost(serverUrls: "http://localhost:7080");
+        _appHost = await NewAppHost( serverUrls: "http://localhost:7080");
         _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
         _tester = _appHost.NewPlaywrightTester();
         _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();

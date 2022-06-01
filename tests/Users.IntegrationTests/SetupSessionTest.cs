@@ -10,7 +10,7 @@ public class SetupSessionTest : AppHostTestBase
     [Fact]
     public async Task SetupSessionBugTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
 
