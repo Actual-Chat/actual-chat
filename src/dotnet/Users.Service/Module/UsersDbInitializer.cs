@@ -71,9 +71,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
     private async Task AddUsers(UsersDbContext dbContext, CancellationToken cancellationToken)
     {
-        for (int i = 1; i < 10; i++) {
-            var userId = $"user00{i}";
-            var userName = $"User_00{i}";
+        for (int i = 1; i < 30; i++) {
+            var userId = $"user{i}";
+            var userName = $"User_{i}";
             var userIdentity = new UserIdentity("internal", userId);
             dbContext.Users.Add(new DbUser() {
                 Id = userId,

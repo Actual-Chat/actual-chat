@@ -93,19 +93,35 @@
     @apply bg-inherit;
 }
 
+.tab-panel .tab.people-tab {
+    @apply h-full overflow-y-hidden;
+}
 .right-panel-tabs .btn {
     @apply min-w-1/2;
 }
 .chat-author-tab {
-    @apply flex-y w-full space-y-3 overflow-hidden;
+    @apply flex-y w-full h-full space-y-3 overflow-hidden;
 }
 .people-group {
-    @apply gap-x-0.5;
+    @apply gap-x-12;
 }
 .people-group .btn-square {
-    @apply min-w-20 rounded-sm;
+    @apply min-w-16 bg-transparent rounded-none border-b-2 border-transparent;
 }
 .people-group .btn-square .btn-content {
-    @apply justify-center;
+    @apply justify-center bg-transparent;
+}
+.people-group .btn-square:hover {
+    @apply text-accent border-success;
+}
+.people-group .btn-square:hover .btn-content {
+    @apply bg-transparent;
+}
+
+.author-settings-modal {
+    @apply min-w-full md:min-w-modal max-w-full;
+}
+.author-settings-modal .user-avatar-editor {
+    @apply gap-x-2 overflow-y-auto max-h-96;
 }
 

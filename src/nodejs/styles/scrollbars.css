@@ -28,10 +28,10 @@
 
 /* Webkit */
 .custom-scrollbar::-webkit-scrollbar {
-    @apply w-2;
+    @apply w-1;
 }
 .custom-scrollbar-x::-webkit-scrollbar {
-    @apply h-2;
+    @apply h-1;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track,
@@ -40,7 +40,9 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .custom-scrollbar-x::-webkit-scrollbar-thumb {
-    @apply bg-accent rounded-full border-2 border-secondary;
+    @apply bg-accent rounded-full;
+    @apply border border-scrollbar;
+    @apply shadow-inner shadow-scrollbar;
 }
 
 /* Mozilla */

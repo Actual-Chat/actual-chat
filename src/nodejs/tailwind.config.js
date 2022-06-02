@@ -74,6 +74,7 @@ module.exports = {
         'shadow-main': 'var(--shadow-main)',
         'skeleton': 'var(--skeleton)',
         'skeleton-border': 'var(--skeleton-border)',
+        'scrollbar': 'var(--scrollbar)',
       },
       textColor: {
         'primary': 'var(--text-primary)',
@@ -196,6 +197,7 @@ module.exports = {
       72: '18rem',
       80: '20rem',
       96: '24rem',
+      144: '36rem',
     },
     animation: {
       none: 'none',

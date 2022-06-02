@@ -137,15 +137,15 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     private async Task AddChatAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         var defaultChatId = Constants.Chat.DefaultChatId;
-        for (int i = 1; i < 10; i++) {
+        for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbChatAuthor {
                 Id = DbChatAuthor.ComposeId(defaultChatId, i + 1),
                 ChatId = defaultChatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
-                Name = $"User_00{i}",
+                Name = $"User_{i}",
                 IsAnonymous = false,
-                UserId = $"user00{i}",
+                UserId = $"user{i}",
             };
             dbContext.ChatAuthors.Add(dbAuthor);
             try {
