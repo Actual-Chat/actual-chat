@@ -95,7 +95,7 @@
     @apply outline-none ring-2 ring-error-ring bg-error border-error-ring;
 }
 .btn.btn-error:focus {
-    @apply outline-none ring-1 ring-error-ring bg-error border-error-ring rounded-md;
+    @apply outline-none ring-1 ring-error-ring bg-error border-error-ring;
 }
 
 /* Error outline */
@@ -112,6 +112,21 @@
 }
 .btn.btn-error-outline:focus {
     @apply outline-none ring-1 ring-error-ring bg-secondary border-error-ring;
+}
+
+.btn.btn-text {
+    @apply bg-transparent border-transparent font-semibold text-primary;
+}
+.btn.btn-text:hover,
+.btn.btn-text:focus:hover {
+    @apply bg-accent border-accent;
+}
+.btn.btn-text:active,
+.btn.btn-text:focus:active {
+    @apply outline-none ring-2 ring-accent bg-transparent border-accent;
+}
+.btn.btn-text:focus {
+    @apply outline-none ring-2 ring-accent bg-transparent border-accent;
 }
 
 .btn.btn-transparent {
