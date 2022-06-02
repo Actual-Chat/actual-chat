@@ -55,8 +55,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        // var allAuthorIds = await Authors.GetAuthorIds(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-        var requestAuthor = await Authors.GetChatAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var requestAuthor = await Authors.GetOwnAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         var authorIds = requestAuthor == null ? allAuthorIds : allAuthorIds.Remove(requestAuthor.Id.ToString());
         return new() {
             AuthorIds = authorIds,
