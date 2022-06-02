@@ -59,7 +59,7 @@ jobs:
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
 
-      - name: Build dotnet restore image
+      - name: Build restore image
         uses: docker/build-push-action@v3
         with:
           context: .
