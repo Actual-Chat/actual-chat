@@ -106,7 +106,7 @@
     @apply gap-x-12;
 }
 .people-group .btn-square {
-    @apply min-w-16 bg-transparent rounded-none border-b-2 border-transparent;
+    @apply min-w-12 bg-transparent rounded-none border-b-2 border-transparent;
 }
 .people-group .btn-square .btn-content {
     @apply justify-center bg-transparent;
