@@ -65,6 +65,10 @@ COPY src/nodejs/package-lock.json src/nodejs/package.json src/nodejs/.npmrc ./
 RUN cat .npmrc && npm ci
 COPY src/nodejs/ ./
 
+FROM scratch as all-restore
+COPY --from=nodejs-restore /src/src/nodejs/package.json ./
+COPY --from=dotnet-restore /src/version.json ./
+
 FROM nodejs-restore as nodejs-build
 COPY src/dotnet/ /src/src/dotnet/
 RUN npm run build:Release

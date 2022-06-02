@@ -59,11 +59,11 @@ jobs:
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
 
-      - name: Build restore image
+      - name: Build dotnet restore image
         uses: docker/build-push-action@v3
         with:
           context: .
-          target: dotnet-restore
+          target: all-restore
           tags: |
             ghcr.io/actual-chat/actual-chat-app-restore:latest
           push: false
