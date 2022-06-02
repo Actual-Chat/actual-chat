@@ -65,7 +65,7 @@ jobs:
           context: .
           target: dotnet-restore
           tags: |
-            ghcr.io/actual-chat/actual-chat-app-restore:${{ steps.nbgv.outputs.SemVer2 }}
+            ghcr.io/actual-chat/actual-chat-app-restore:latest
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
