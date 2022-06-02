@@ -59,6 +59,17 @@ jobs:
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
 
+      - name: Build restore image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          target: dotnet-restore
+          tags: |
+            ghcr.io/actual-chat/actual-chat-app-restore:${{ steps.nbgv.outputs.SemVer2 }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master

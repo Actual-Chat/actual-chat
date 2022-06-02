@@ -39,7 +39,12 @@ RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/
 COPY tests/Directory.Build.* tests/.editorconfig tests/
 
 COPY build/ build/
-RUN dotnet run --project build --configuration Release -- restore
+
+RUN apt update \
+    && apt install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+RUN dotnet run --project build --configuration Release -- restore \
+    && dotnet workload install wasm-tools
 
 # node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
 FROM node:16-alpine as nodejs-restore
@@ -72,10 +77,6 @@ COPY *.props *.targets ./
 RUN dotnet msbuild /t:GenerateAssemblyVersionInfo ActualChat.sln
 
 FROM base as dotnet-build
-RUN apt update \
-    && apt install -y --no-install-recommends python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-RUN dotnet workload install wasm-tools
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
 
 FROM runtime as app
