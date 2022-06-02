@@ -168,7 +168,7 @@
 
 /*Default horizontal*/
 .btn-group {
-    @apply flex flex-row gap-x-2;
+    @apply flex flex-row gap-x-4;
     @apply max-w-none md:max-w-fit w-full md:w-auto;
 }
 .btn-group .btn {

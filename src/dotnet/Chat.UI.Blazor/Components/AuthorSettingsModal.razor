@@ -1,0 +1,30 @@
+@using Stl.Extensibility
+@implements IModalView<AuthorSettingsModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame Title="Author Settings" Class="author-settings-modal">
+    <Body>
+        <section>
+            <UserNameEditor/>
+        </section>
+        <Form Model="@(new object())">
+            <FormSection>
+                <ChatMuteToggle ChatId="@ModalModel.Chat.Id"/>
+            </FormSection>
+        </Form>
+
+        <h4 class="section">User avatars</h4>
+        <div class="mt-2">
+            <UserAvatarsEditor ChatId="@ModalModel.Chat.Id"/>
+        </div>
+    </Body>
+</DialogFrame>
+
+
+@code {
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model(Chat Chat);
+}

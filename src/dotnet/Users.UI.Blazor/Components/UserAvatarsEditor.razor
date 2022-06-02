@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<ul class="user-avatar-editor">
+<ul class="user-avatar-editor custom-scrollbar">
     @foreach (var avatarId in m) {
         <li class="user-avatar-editor-item" @onclick="@(() => EditAvatar(avatarId))">
             <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" />
