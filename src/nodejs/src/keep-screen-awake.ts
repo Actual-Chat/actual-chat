@@ -1,12 +1,24 @@
-import {addInteractionHandler} from 'first-interaction';
-import {default as NoSleep} from 'nosleep.js';
-
-const LogScope = 'NoSleep';
+import { default as NoSleep } from 'nosleep.js';
+import { addInteractionHandler } from 'first-interaction';
 
 const noSleep = new NoSleep();
+const LogScope = 'keep-screen-awake';
 
-const keepDisplayAwake = () => {
-    addInteractionHandler(LogScope, () => noSleep.enable().then());
-}
+const setNoSleepEnabled = async (enable: boolean) => {
+    if (enable && !noSleep.isEnabled) {
+        console.debug(`${LogScope}.setNoSleepEnabled: enabling noSleep`);
+        await noSleep.enable();
+    } else if (!enable && noSleep.isEnabled) {
+        console.debug(`${LogScope}.setNoSleepEnabled: disabling noSleep`);
+        noSleep.disable();
+    }
+};
 
-export {keepDisplayAwake};
+addInteractionHandler('keep-screen-awake', async () => {
+    console.debug(`${LogScope}.onFirstInteraction: warming noSleep up`);
+    await noSleep.enable();
+    noSleep.disable();
+    return false;
+});
+
+export { setNoSleepEnabled };
