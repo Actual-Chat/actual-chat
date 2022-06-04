@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<div class="flex-y w-full h-full md:w-80 border-l border-accent p-3 animate-from-right">
+<div class="flex-y w-full h-full md:w-80 border-l border-accent p-3 animate-from-right"
+     @onswipedright="OnSwipedRight">
     <TabPanel TabsClass="right-panel-tabs">
         <div class="overflow-y-hidden">
             <Tab Title="People" Class="people-tab">
@@ -14,5 +15,11 @@
 </div>
 
 @code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    private void OnSwipedRight() {
+        RightPanelUI.IsVisible.Value = false;
+    }
 }

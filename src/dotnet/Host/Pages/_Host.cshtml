@@ -167,6 +167,18 @@
                 return event;
             },
         });
+        Blazor.registerCustomEventType('swipedleft', {
+            browserEventName: 'swiped-left',
+            createEventArgs: (event) => {
+                return event;
+            },
+        });
+        Blazor.registerCustomEventType('swipedright', {
+            browserEventName: 'swiped-right',
+            createEventArgs: (event) => {
+                return event;
+            },
+        });
     </script>
 }
 </body>
