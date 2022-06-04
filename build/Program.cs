@@ -108,10 +108,12 @@ internal static class Program
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "Host")),
+                    EnvironmentVariables = {
+                        ["ASPNETCORE_ENVIRONMENT"] = "Development",
+                        ["EnableAnalyzer"] = "false",
+                        ["EnableNETAnalyzers"] = "false"
+                    }
                 };
-                psiDotnet.EnvironmentVariables.Add("ASPNETCORE_ENVIRONMENT", "Development");
-                psiDotnet.EnvironmentVariables.Add("EnableAnalyzer", "false");
-                psiDotnet.EnvironmentVariables.Add("EnableNETAnalyzers", "false");
                 dotnetProcess.StartInfo = psiDotnet;
                 dotnetProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
                     if (e?.Data == null)
@@ -137,8 +139,10 @@ internal static class Program
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetFullPath(Path.Combine("src", "nodejs")),
+                    EnvironmentVariables = {
+                        ["CI"] = "true"
+                    }
                 };
-                psiNpm.EnvironmentVariables.Add("CI", "true");
                 npmProcess.StartInfo = psiNpm;
                 npmProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
                     if (e?.Data == null)
