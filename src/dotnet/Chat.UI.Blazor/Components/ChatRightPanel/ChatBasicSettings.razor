@@ -6,6 +6,12 @@
 <Form Model="@_form" OnValidSubmit="@OnSave">
     <DataAnnotationsValidator/>
 
+    <div class="pb-2 mb-4 border-b border-accent">
+        <FormSection>
+            <ChatMuteToggle ChatId="@Chat.Id" />
+        </FormSection>
+    </div>
+
     <ChatIcon
         ShowImagePicker="true"
         ImageUploadUrl="@_form.ImageUploadUrl"

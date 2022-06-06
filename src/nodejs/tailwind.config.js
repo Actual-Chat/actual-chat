@@ -224,6 +224,8 @@ module.exports = {
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
+      'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
+      'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -702,6 +704,22 @@ module.exports = {
           animationTimingFunction: 'cubic-bezier(0,0,0.2,1)',
         },
       },
+      'checkbox-active-on': {
+        '0%': {
+          'box-shadow': '0 0 0 0 rgba(212,212,212, 0)',
+        },
+        '99%': {
+          'box-shadow': '0 0 0 7px rgba(212,212,212, 0.5)',
+        },
+      },
+      'checkbox-active-off': {
+        '0%': {
+          'box-shadow': '0 0 0 0 rgba(154,190,247, 0)',
+        },
+        '99%': {
+          'box-shadow': '0 0 0 7px rgba(154,190,247, 0.5)',
+        },
+      },
       'display-element-from-left': {
         from: {
           transform: 'translateX(-1rem) scale(.05)',
@@ -1140,6 +1158,7 @@ module.exports = {
       30: '30',
       40: '40',
       50: '50',
+      'minus': '-1',
     },
   },
   variantOrder: [

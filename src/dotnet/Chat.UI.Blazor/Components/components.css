@@ -118,6 +118,42 @@
     @apply bg-transparent;
 }
 
+.btn-square.add-user-btn {
+    @apply min-w-8 bg-transparent rounded-none border-b-2 border-transparent flex-1 left-0;
+}
+.btn-square.add-user-btn .btn-content {
+    @apply justify-center bg-transparent;
+}
+.btn-square.add-user-btn:hover {
+    @apply text-accent border-success;
+}
+.btn-square.add-user-btn:hover .btn-content {
+    @apply bg-transparent;
+}
+.btn-square.add-user-btn:focus .btn-content {
+    @apply bg-transparent text-accent;
+}
+
+.search-contacts {
+    @apply flex-x items-center gap-x-1 border-b-2 border-transparent;
+}
+.search-contacts:hover {
+    @apply border-success;
+}
+.search-contacts input {
+    @apply flex-auto border-0 bg-transparent;
+}
+.search-contacts input:focus {
+    @apply outline-none ring-0;
+}
+
+.search-contacts .btn.btn-square {
+    @apply bg-transparent rounded-none;
+}
+.search-contacts .btn.btn-square .btn-content {
+    @apply bg-transparent;
+}
+
 .author-settings-modal {
     @apply min-w-full md:min-w-modal max-w-full;
 }
