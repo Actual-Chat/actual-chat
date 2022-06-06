@@ -6,6 +6,20 @@ namespace ActualChat.ClientApp;
 
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
+    private string? _baseUri;
+
+    public string BaseUri {
+        get {
+            if (_baseUri == null) { 
+                var settings = MauiContext!.Services.GetRequiredService<ClientAppSettings>();
+                _baseUri = settings.BaseUri!;
+                if (!_baseUri.EndsWith('/'))
+                    _baseUri += '/';
+            }
+            return _baseUri;
+        }
+    }
+
     public MauiBlazorWebViewHandler()
     {
         // Intentionally use parameterless constructor.

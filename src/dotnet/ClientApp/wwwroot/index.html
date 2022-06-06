@@ -42,6 +42,31 @@
 
         })();
     </script>
+    <script>
+        window.initPage = function (data) {
+            const baseUri = data;
+            console.log('init page, base uri:' + baseUri);
+            window['_baseURI'] = baseUri;
+            audio.OpusMediaRecorder.origin = baseUri;
+        }
+
+        document.addEventListener("DOMContentLoaded", function(event) {
+            console.log("DOM fully loaded and parsed");
+            //try {
+            //    window.chrome.webview.postMessage(JSON.stringify({ type: 'DOMContentLoaded' }));
+            //}
+            //catch (e) {
+            //  console.log(e);
+            //}
+            try {
+                if (window.Android)
+                    window.Android.DOMContentLoaded();
+            }
+            catch (e) {
+                console.log(e);
+            }
+        });
+    </script>
 </head>
 
 <body>
