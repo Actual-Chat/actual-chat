@@ -1,4 +1,5 @@
 import './Components/AccountDropdown/account-dropdown.css'
+import './Components/AuthorBadge/author-badge.css'
 import './Components/Button/button.css';
 import './Components/ChatIcon/chat-icon.css'
 import './Components/Clipboard/clipboard.css';

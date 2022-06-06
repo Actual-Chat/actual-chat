@@ -174,3 +174,15 @@
 .invite-chat-author-modal .dialog-body input {
     @apply pl-8 py-2 w-full;
 }
+.people-tab .author-badge {
+    @apply rounded-xl cursor-pointer p-0.5 mx-1;
+}
+.people-tab .author-badge .author-avatar-badge {
+    @apply m-0.5;
+}
+.people-tab .author-badge:hover .author-badge-name {
+}
+.people-tab .author-badge:hover {
+    @apply bg-primary;
+}
+
