@@ -1,10 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 
-<div class="author-badge flex-x items-center">
+<div class="author-badge" onclick="@Click">
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
     <div class="flex-y @_contentClass">
-        <div>
+        <div class="author-badge-name">
             <span class="@_nameClass">@Author.Name</span>
         </div>
         @if (ShowsStatusText && !_statusText.IsNullOrEmpty()) {
