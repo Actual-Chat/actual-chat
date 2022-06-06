@@ -160,4 +160,10 @@
 .author-settings-modal .user-avatar-editor {
     @apply gap-x-2 overflow-y-auto max-h-96;
 }
+.author-settings-modal .dialog-body {
+    @apply m-4;
+}
+.author-settings-modal .dialog-buttons {
+    @apply m-0;
+}
 
