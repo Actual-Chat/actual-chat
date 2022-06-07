@@ -16,8 +16,12 @@
 /* DeleteMessageModal */
 
 .delete-message-modal .message-content {
-    word-break: break-word !important;
-    overflow-y: auto !important;
+    @apply overflow-y-auto break-words;
+    @apply max-h-48 rounded-sm ml-1;
+    @apply p-1;
+}
+.delete-message-modal .message-content > * {
+    @apply pointer-events-none;
 }
 
 
@@ -167,3 +171,6 @@
     @apply m-0;
 }
 
+.invite-chat-author-modal .dialog-body input {
+    @apply pl-8 py-2 w-full;
+}

@@ -19,8 +19,7 @@
 }
 .form input:focus {
     @apply outline-none border-success;
-    @apply ring;
-    --tw-ring-color: rgba(14, 165, 233, 0.25);
+    @apply ring ring-success-ring;
 }
 .form input:not([type='checkbox']).invalid:focus {
     @apply border-error;

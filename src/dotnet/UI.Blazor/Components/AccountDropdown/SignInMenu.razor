@@ -13,7 +13,7 @@
         </svg>
     </ButtonTemplate>
     <MenuTemplate>
-        <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
+        <Menu Class="rounded-md border border-accent p-1 mt-1" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
             @foreach (var (name, displayName) in unusedAuthSchemas) {
                 MenuItemTitle = "Sign in with " + displayName;
                 <MenuItem Title="@MenuItemTitle" Click="(() => SignIn(name))"/>

@@ -45,6 +45,19 @@
     @apply grow m-4 mb-0;
     @apply flex flex-col;
 }
+.dialog-body input:not([type='checkbox']) {
+    @apply border rounded-md outline-none p-1 px-2;
+}
+.dialog-body input:not([type='checkbox']).invalid {
+    @apply border-error;
+}
+.dialog-body input:focus {
+    @apply outline-none border-success;
+    @apply ring ring-success-ring;
+}
+.dialog-body input:not([type='checkbox']).invalid:focus {
+    @apply border-error;
+}
 .dialog-buttons {
     @apply m-4;
     @apply flex flex-row justify-end;

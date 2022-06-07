@@ -16,6 +16,9 @@
 .chat-message-modal .chat-message:hover {
     @apply bg-secondary;
 }
+.chat-message-modal .chat-message:hover .author-badge {
+    @apply bg-secondary;
+}
 
 .chat-message-modal .message-attachment-file a {
     @apply cursor-default pointer-events-none;

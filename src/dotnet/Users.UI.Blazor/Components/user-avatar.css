@@ -8,7 +8,7 @@
 
 .user-avatar-card {
     @apply w-40 h-32 max-w-xs p-2 pb-1.5;
-    @apply border rounded-xl shadow-lg;
+    @apply border rounded-xl shadow-inner;
     @apply flex flex-col items-center overflow-hidden;
     @apply bg-white font-semibold text-center;
 }
@@ -18,7 +18,7 @@
 }
 
 .user-avatar-card-bio {
-    @apply mt-2 h-8 text-xs text-gray-400;
+    @apply mt-2 h-8 text-xs text-secondary;
     @apply font-light;
     display: -webkit-box;
     -webkit-line-clamp: 2;
