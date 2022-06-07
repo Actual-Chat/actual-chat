@@ -55,6 +55,7 @@
             _ = SetPlaceholder(Placeholder);
             await Rendered.InvokeAsync().ConfigureAwait(false);
         }
+        await JSRef.InvokeVoidAsync("focus").ConfigureAwait(true);
     }
 
     public async Task<string> GetText()
@@ -99,6 +100,7 @@
     private async Task SetPlaceholder(string placeholder) {
         _placeholder = placeholder;
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
+        // await JSRef.InvokeVoidAsync("focus").ConfigureAwait(true);
     }
 
     private void OnMentionCandidateSelected(MentionCandidate mentionCandidate)
