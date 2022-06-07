@@ -85,11 +85,18 @@ public static class MauiProgram
         // TODO(DF): find solution for WSA
         var ipAddress = DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
         var backendUrl = $"http://{ipAddress}:7080";
+        // To use BaseUri : https://local.actual.chat
+        // We need to modify hosts file on android emulator similar how we did it for windows hosts.
+        // Using instrunctions from https://csimpi.medium.com/android-emulator-add-hosts-file-f4c73447453e,
+        // add line to the hosts file:
+        // 10.0.2.2		local.actual.chat
+        // Emulator has to be started with -writable-system flag every time to see hosts changes
+        // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
         var settings = new ClientAppSettings {
             //BaseUri = "https://localhost:7081"
             //BaseUri = "https://dev.actual.chat"
-            BaseUri = backendUrl
-
+            //BaseUri = backendUrl,
+            BaseUri = "https://local.actual.chat"
         };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
             throw new Exception("Wrong configuration, base uri can't be empty");
