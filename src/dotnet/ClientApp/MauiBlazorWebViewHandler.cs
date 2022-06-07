@@ -1,11 +1,16 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.ClientApp;
 
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
+    private const string loopbackUrl = "http://127.0.0.1:57348/";
+    private record JsMessage(string type, string url);
+
     private string? _baseUri;
 
     public string BaseUri {
@@ -26,6 +31,31 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         // Consturctor with parameters causes Exception on Android platform:
         // Microsoft.Maui.Platform.ToPlatformException
         // Message = Microsoft.Maui.Handlers.PageHandler found for ActualChat.ClientApp.MainPage is incompatible
+    }
+
+    private static async Task<KeyValuePair<string, string>[]> GetRedirectSecret()
+    {
+        var http = new HttpListener();
+        // TODO: use GetRandomUnusedPort()
+        http.Prefixes.Add(loopbackUrl);
+        http.Start();
+        // wait for oauth2 response
+        var context = await http.GetContextAsync().ConfigureAwait(true);
+        var response = context.Response;
+        string responseString = "<html><head></head><body>We are done, please, return to the app.</body></html>";
+        byte[] buffer = Encoding.UTF8.GetBytes(responseString);
+        response.ContentLength64 = buffer.Length;
+        var responseOutput = response.OutputStream;
+        await responseOutput.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(true);
+        responseOutput.Close();
+        http.Stop();
+        var secret = context.Request.QueryString.Get("secret")
+            ?? throw new InvalidOperationException("Secret is null, something went wrong with auth.");
+        Debug.WriteLine($"secret is: {secret}");
+        var json = Encoding.UTF8.GetString(Convert.FromBase64String(secret));
+        var cookies = JsonSerializer.Deserialize<KeyValuePair<string, string>[]>(json)
+                                ?? throw new InvalidOperationException("Secret in wrong format, something went wrong with auth.");
+        return cookies;
     }
 
     //protected static int GetRandomUnusedPort()

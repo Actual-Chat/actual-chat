@@ -134,7 +134,7 @@ public static class MauiProgram
         // Injecting plugin services
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
 
-		//Log.Logger.Information("test. starting.");
+        //Log.Logger.Information("test. starting.");
 
         return builder.Build();
     }

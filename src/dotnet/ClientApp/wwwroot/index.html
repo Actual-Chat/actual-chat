@@ -36,31 +36,40 @@
                     let redirectUrl = new URL(this.closePath + "?flow=" + encode(flowName), window['_baseURI']).href;
                     console.log(`redirectUrl: ${redirectUrl} baseUri: ${window['_baseURI']}`);
                     let url = window['_baseURI'] + action + "?returnUrl=" + encode(redirectUrl);
-                    window.chrome.webview.postMessage(JSON.stringify({ type: '_auth', url }));
+                    window.chatApp.postMessage(JSON.stringify({ type: '_auth', url }));
                 }
             };
 
         })();
     </script>
     <script>
-        window.initPage = function (data) {
-            const baseUri = data;
-            console.log('init page, base uri:' + baseUri);
-            window['_baseURI'] = baseUri;
-            audio.OpusMediaRecorder.origin = baseUri;
+        window.chatApp = {
+            debug : true,
+            initPage : function (data) {
+                const baseUri = data;
+                if (window.chatApp.debug) console.log('init page, base uri:' + baseUri);
+                window['_baseURI'] = baseUri;
+                audio.OpusMediaRecorder.origin = baseUri;
+            },
+            postMessage : function (data) {
+                try {
+                    if (window.Android) // post message to android webview
+                        window.Android.postMessage(data);
+                    if (window.chrome) // post message to windows webview
+                        window.chrome.webview.postMessage(data);
+                }
+                catch (e) {
+                    console.log(e);
+                }
+            } 
         }
 
         document.addEventListener("DOMContentLoaded", function(event) {
-            console.log("DOM fully loaded and parsed");
-            //try {
-            //    window.chrome.webview.postMessage(JSON.stringify({ type: 'DOMContentLoaded' }));
-            //}
-            //catch (e) {
-            //  console.log(e);
-            //}
+            if (window.chatApp.debug) console.log("DOM fully loaded and parsed");
             try {
                 if (window.Android)
                     window.Android.DOMContentLoaded();
+                window.chatApp.postMessage(JSON.stringify({ type: '_DOMContentLoaded' }))
             }
             catch (e) {
                 console.log(e);
