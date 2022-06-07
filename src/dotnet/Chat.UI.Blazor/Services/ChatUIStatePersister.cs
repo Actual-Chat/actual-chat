@@ -5,7 +5,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 {
-    private static TimeSpan ChatActivationTimeout { get; } = TimeSpan.FromSeconds(1);
+    // TODO: optimize WASM so it would restore chat id faster
+    private static TimeSpan ChatActivationTimeout { get; } = TimeSpan.FromSeconds(BlazorModeHelper.IsServerSideBlazor ? 1 : 3);
 
     private readonly Session _session;
     private readonly IChats _chats;
@@ -49,8 +50,8 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
                     .When(chatId => chatId == state.ActiveChatId, timoutCts.Token)
                     .ConfigureAwait(false);
             }
-            catch (OperationCanceledException) {
-                // Intended
+            catch (OperationCanceledException exc) {
+                Log.LogDebug(exc, "Failed to restore ActiveChatId due to timeout");
             }
 
             var activeChatId = _chatUI.ActiveChatId.Value;
