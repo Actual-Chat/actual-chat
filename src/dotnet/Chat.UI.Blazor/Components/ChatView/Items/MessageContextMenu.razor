@@ -17,7 +17,7 @@
         </svg>
     </Icon>
 </MenuItem>
-@if (_isJoined && _isEntryAuthor) {
+@if (_isJoined && _isEntryAuthor && !Model.Entry.IsStreaming) {
     <MenuItem Title="Edit" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-menu/edit", "Edit Message"))">
         <Icon>
             <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-5 -5 34 34">
@@ -26,7 +26,7 @@
         </Icon>
     </MenuItem>
 }
-@if (_isJoined && _isEntryAuthor) {
+@if (_isJoined && _isEntryAuthor && !Model.Entry.IsStreaming) {
     <MenuItem Title="Delete Message" Name="delete message" Click="@(() => ChatUI.ShowDeleteMessageRequest(Model))">
         <Icon>
             <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-4 -6 34 34">
