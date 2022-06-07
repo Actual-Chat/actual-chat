@@ -12,7 +12,7 @@ namespace ActualChat.UI.Blazor.Module;
 
 public class BlazorUICoreModule : HostModule, IBlazorUIModule
 {
-    public static string ImportName => "core";
+    public static string ImportName => "ui";
 
     public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]

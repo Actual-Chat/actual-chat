@@ -29,7 +29,7 @@ public class ChatUIStateSync : WorkerBase
     private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
-    private IJSRuntime Js => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -159,7 +159,7 @@ public class ChatUIStateSync : WorkerBase
             var mustKeepAwake = cUpdate.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 // TODO(AY): Send this update to JS
-                await Js.InvokeVoidAsync($"{JsConstants.GlobalJsModuleName}.setNoSleepEnabled", cancellationToken, mustKeepAwake).ConfigureAwait(false);
+                await JS.InvokeVoidAsync($"{JSConstants.SharedJSModuleName}.setNoSleepEnabled", cancellationToken, mustKeepAwake).ConfigureAwait(false);
                 lastMustKeepAwake = mustKeepAwake;
             }
         }

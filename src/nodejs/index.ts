@@ -6,11 +6,11 @@ import './styles/spinkit.css';
 import './styles/blazor.css';
 import './styles/main.css';
 
-export * as core from '../dotnet/UI.Blazor/exports';
+export * as ui from '../dotnet/UI.Blazor/exports';
 export * as audio from '../dotnet/Audio.UI.Blazor/exports';
 export * as chat from '../dotnet/Chat.UI.Blazor/exports';
 export * as users from '../dotnet/Users.UI.Blazor/exports';
-export * as global from './src/exports';
+export * as shared from './src/exports';
 
 // Initialization
 
