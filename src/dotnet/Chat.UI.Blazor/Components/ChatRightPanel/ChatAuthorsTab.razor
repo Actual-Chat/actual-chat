@@ -1,11 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
+@implements IRightPanelSearchBackend
 @inherits ComputedStateComponent<ChatAuthorsTab.Model>
 @{
     var m = State.LatestNonErrorValue;
     var isPeerChat = ChatId.GetChatType(Chat.Id) == ChatType.Peer;
 }
 
-<div class="chat-author-tab">
+<div @ref="Ref" class="chat-author-tab">
     @if (!isPeerChat) {
         <div class="flex-x right-1 -my-1 gap-x-4">
                 <ButtonSquare Click="OnInviteClick" Title="Invite users" Class="add-user-btn">
@@ -50,8 +52,13 @@
     [Inject] private IChatAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    private DotNetObjectReference<IRightPanelSearchBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -64,6 +71,16 @@
             AuthorIds = authorIds,
             RequestAuthor = requestAuthor,
         };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IRightPanelSearchBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.RightPanelSearch.create",
+                Ref, BlazorRef
+                ).ConfigureAwait(true);
+        }
     }
 
     private void OnInviteClick()
