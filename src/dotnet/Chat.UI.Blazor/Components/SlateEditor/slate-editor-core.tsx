@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useState } from 'react'
+import React, { useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import { Editor, Transforms, Range, createEditor, Descendant } from 'slate'
 import { withHistory } from 'slate-history'
 import {
@@ -91,6 +91,10 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
         if (debug) console.log("hasContent: " + hasContent)
         handle.onHasContentChanged(hasContent)
     }, [hasContent])
+
+    useEffect(() => {
+        handle.onRendered();
+    }, [])
 
     return (
         <Slate

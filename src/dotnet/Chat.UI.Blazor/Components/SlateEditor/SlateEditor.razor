@@ -19,6 +19,7 @@
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool Autofocus { get; set; }
     [Parameter] public EventCallback<string> Posted { get; set; }
     [Parameter] public EventCallback Rendered { get; set; }
     [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
@@ -49,7 +50,7 @@
             BlazorRef = DotNetObjectReference.Create<ISlateEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
-                EditorRef, BlazorRef, Constants.DebugMode.SlateEditor
+                EditorRef, BlazorRef, Constants.DebugMode.SlateEditor, Autofocus
                 ).ConfigureAwait(true);
             _rendered = true;
             _ = SetPlaceholder(Placeholder);

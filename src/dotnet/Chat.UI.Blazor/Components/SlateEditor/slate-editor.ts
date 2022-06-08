@@ -10,18 +10,21 @@ export class SlateEditor {
     private readonly editorHandle: SlateEditorHandle;
     private readonly reactDomRoot: any;
     private readonly debug: boolean;
+    private readonly autofocus: boolean;
 
-    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean): SlateEditor {
-        return new SlateEditor(editorDiv, blazorRef, debug);
+    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean, autofocus : boolean): SlateEditor {
+        return new SlateEditor(editorDiv, blazorRef, debug, autofocus);
     }
 
-    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean) {
+    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean, autofocus : boolean) {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.debug = debug;
+        this.autofocus = autofocus;
         this.editorHandle = new SlateEditorHandle();
         this.editorHandle.onPost = this.onPost;
         this.editorHandle.onMentionCommand = this.onMentionCommand;
+        this.editorHandle.onRendered = this.onRendered;
 
         // @ts-ignore
         this.editorDiv.editorHandle = this.editorHandle;
@@ -52,8 +55,19 @@ export class SlateEditor {
 
     public focus = () => {
         const input = this.editorDiv.querySelector('div');
-        input.focus();
+        if (input)
+            input.focus();
+        else
+            console.log('slate-editor : no input to focus.');
         if (this.debug) console.log('focus');
+    }
+
+    private onRendered = () => {
+        if (this.debug) console.log('slate-editor rendered.');
+        if (this.autofocus) {
+            // invoke focus with delay, otherwise in SSB editor gets focus but immediately loses it.
+            setTimeout(this.focus, 250);
+        }
     }
 
     private dispose() {

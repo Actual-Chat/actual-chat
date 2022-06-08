@@ -22,6 +22,8 @@ export class SlateEditorHandle {
     }
 
     public setPlaceholder = (placeholder: string) => {}
+
+    public onRendered = () : void => {}
 }
 
 class Mention
