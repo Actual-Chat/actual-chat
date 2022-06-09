@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Google;
 

@@ -143,11 +143,11 @@ export class VirtualList {
                 console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}`);
 
             let isScrollHappened = false;
-            if (rs.scrollToKey != null) {
+            let scrollToItemRef = this.getItemRef(rs.scrollToKey);
+            if (scrollToItemRef != null) {
                 // Server-side scroll request
-                const itemRef = this.getItemRef(rs.scrollToKey);
-                if (!this.isItemVisible(itemRef)) {
-                    this.scrollTo(itemRef, rs.useSmoothScroll, 'center');
+                if (!this.isItemVisible(scrollToItemRef)) {
+                    this.scrollTo(scrollToItemRef, rs.useSmoothScroll, 'center');
                     isScrollHappened = true;
                 }
                 this._scrollTopPivotRef = null;
@@ -495,6 +495,8 @@ export class VirtualList {
     }
 
     private getItemRef(key: string): HTMLElement | null {
+        if (key == null || key == "")
+            return null;
         return this._ref.querySelector(`:scope > .item[data-key="${key}"]`);
     }
 

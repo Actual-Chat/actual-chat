@@ -33,7 +33,7 @@
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
     <!-- Generators -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
 
     <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>

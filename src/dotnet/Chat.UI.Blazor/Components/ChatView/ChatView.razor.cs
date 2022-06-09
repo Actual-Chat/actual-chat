@@ -64,6 +64,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         try {
             NavigateToEntryId = StateFactory.NewMutable(0L);
             VisibleKeys = StateFactory.NewMutable(new List<string>());
