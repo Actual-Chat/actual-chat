@@ -1,1 +1,1 @@
-./run-build -- watch
+./run-build.cmd -- watch
