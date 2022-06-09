@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GenerateDocumentationFile >true</GenerateDocumentationFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
@@ -40,6 +40,8 @@
     <PackageReference Include="Roslynator.Analyzers" />
     <PackageReference Include="Meziantou.Analyzer" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+    <PackageReference Include="ActualLab.Generators" />
+    <PackageReference Include="ActualLab.Generators.Abstractions" />
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
@@ -50,6 +52,7 @@
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />
+    <Using Include="ActualLab.Generators" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Concurrent" />
     <Using Include="System.Collections.Immutable" />

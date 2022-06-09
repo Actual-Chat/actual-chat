@@ -9,10 +9,12 @@
     <Authors>ActualChat, Inc.</Authors>
     <Company>ActualChat, Inc.</Company>
     <Copyright>Copyright ActualChat, Inc.</Copyright>
+    <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
+
+    <!-- Assembly name & root namespace -->
     <BaseName>ActualChat</BaseName>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service'))">$(AssemblyName.Replace('.Service',''))</RootNamespace>
@@ -29,6 +31,9 @@
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <AnalysisLevel>preview</AnalysisLevel>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
+    <!-- Generators -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 
     <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>
@@ -47,7 +52,6 @@
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
 
     <!-- Web toolchain settings -->
-
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>

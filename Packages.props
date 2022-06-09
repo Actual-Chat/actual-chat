@@ -2,6 +2,7 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
+    <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
     <AspNetCoreVersion>6.0.5</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>6.0.5</EntityFrameworkCoreVersion>
@@ -35,7 +36,6 @@
     <PackageReference Update="Google.Apis" Version="1.57.0" />
     <PackageReference Update="Google.Apis.Auth" Version="1.57.0" />
     <PackageReference Update="Google.Cloud.Storage.V1" Version="3.7.0" />
-
     <!-- We use Grpc.Core from otlp exporter -->
     <PackageReference Update="Grpc.Core" Version="2.46.3" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
@@ -152,6 +152,10 @@
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.2.32" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Meziantou.Analyzer" Version="1.0.702" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+
+    <!-- Generators -->
+    <PackageReference Update="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="ActualLab.Generators.Abstractions" Version="$(ActualLabGeneratorsVersion)" />
   </ItemGroup>
 
 </Project>
