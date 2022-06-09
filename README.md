@@ -37,7 +37,7 @@ To build & run the project:
 ./Docker-Start.cmd
 
 # Install dependencies and run watch (dotnet watch + webpack watch)
-./run-build restore-tools npm-install watch
+./run-build.cmd restore-tools npm-install watch
 ```
 
 If you're getting `RpcException` with 
@@ -48,17 +48,17 @@ Other useful commands:
 
 ```powershell
 # What else build project can do?
-./run-build --help
+./run-build.cmd --help
  
 # List all available targets (you can combine them)
-./run-build -- --list-targets
+./run-build.cmd -- --list-targets
 
 # Run with observability services (opentelemetry collector + jaeger) locally:
 docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
 
 # Use either env. var or the matching option in your appsettings.local.json
 $env:HostSettings__OpenTelemetryEndpoint="localhost"
-./run-build -- watch
+./run-build.cmd -- watch
 ```
 
 You can add your own targets (as C# code) to `./build/Program.cs`, which is actually a [Bullseye](https://github.com/adamralph/bullseye) build project written in C#.
