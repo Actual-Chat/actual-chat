@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Stl.Fusion.Client;
 using Stl.Plugins;
+using Stl.Fusion.Extensions;
 //using Serilog;
 
 namespace ActualChat.ClientApp;
@@ -137,6 +138,7 @@ public static class MauiProgram
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
         });
+        fusion.AddBackendStatus();
 
         // Injecting plugin services
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
