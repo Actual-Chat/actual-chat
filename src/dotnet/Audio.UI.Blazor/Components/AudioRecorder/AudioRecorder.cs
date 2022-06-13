@@ -57,6 +57,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         BlazorRef?.Dispose();
     }
 
+    public async Task<bool> CanRecord()
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        return await JSRef!.InvokeAsync<bool>("canRecord").ConfigureAwait(false);
+    }
+
     public IMessageProcess<StartAudioRecorderCommand> StartRecording(Symbol chatId, CancellationToken cancellationToken = default)
     {
         if (chatId.IsEmpty)

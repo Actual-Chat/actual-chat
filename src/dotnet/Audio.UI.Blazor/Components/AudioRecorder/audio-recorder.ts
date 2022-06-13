@@ -37,6 +37,16 @@ export class AudioRecorder {
         return new AudioRecorder(blazorRef, sessionId);
     }
 
+    public async canRecord(): Promise<boolean> {
+        try {
+            await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+            return true;
+        } catch (ex: any) {
+            console.error(`${LogScope}.isMicrophoneAvailable: microphone is unavailable.`, ex);
+            return false;
+        }
+    }
+
     public async startRecording(chatId : string): Promise<void> {
         try {
             if (this.isRecording())
