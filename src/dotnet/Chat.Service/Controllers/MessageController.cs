@@ -11,11 +11,13 @@ public class MessageController : ControllerBase
 {
     private readonly ISessionResolver _sessionResolver;
     private readonly ICommander _commander;
+    private readonly ILogger<MessageController> _log;
 
-    public MessageController(ISessionResolver sessionResolver, ICommander commander)
+    public MessageController(ISessionResolver sessionResolver, ICommander commander, ILogger<MessageController> log)
     {
         _sessionResolver = sessionResolver;
         _commander = commander;
+        _log = log;
     }
 
     [HttpPost]
@@ -88,7 +90,7 @@ public class MessageController : ControllerBase
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
-        var command = new IChats.CreateTextEntryCommand(_sessionResolver.Session, chatId, post.Payload!.Text);
+        var command = new IChats.CreateTextEntryCommand(_sessionResolver.Session, chatId, post.Payload!.Text, post.Payload!.RepliedChatEntryId);
         if (post.Files.Count > 0) {
             var uploads = new List<TextEntryAttachmentUpload>();
             foreach (var file in post.Files) {
@@ -201,7 +203,8 @@ public class MessageController : ControllerBase
             messagePost.Payload = payload;
             return true;
         }
-        catch {
+        catch (Exception exc) {
+            _log.LogDebug(exc, "Failed to deserialize message payload");
             return false;
         }
     }
@@ -225,6 +228,7 @@ public class MessageController : ControllerBase
     {
         public string Text { get; init; } = "";
         public IList<FileAttributes> Attachments { get; init; } = new List<FileAttributes>();
+        public long? RepliedChatEntryId { get; init; }
     }
 
     private sealed class MessagePost

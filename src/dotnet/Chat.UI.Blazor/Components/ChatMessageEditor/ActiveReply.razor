@@ -1,0 +1,40 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatMessageModel?>
+
+@{
+    var model = State.LatestNonErrorValue;
+}
+@if (model != null) {
+    <div class="flex-x">
+        <ChatMessage Model="@model"/>
+        <ButtonSquare Class="close-reply modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
+            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-1 -1 26 26">
+                <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"/>
+            </svg>
+        </ButtonSquare>
+    </div>
+}
+
+@code {
+
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
+
+    protected override async Task<ChatMessageModel?> ComputeState(CancellationToken cancellationToken) {
+        var chatEntry = await ChatUI.RepliedChatEntry.Use(cancellationToken).ConfigureAwait(false);
+        if (chatEntry == null) {
+            return null;
+        }
+
+        var chatMessage = new ChatMessageModel(chatEntry, MarkupParser.Parse(chatEntry.Content), ImmutableArray<TextEntryAttachment>.Empty) {
+            IsBlockStart = true,
+            IsQuote = true,
+        };
+        return chatMessage;
+    }
+
+    private void OnCloseClick() {
+        ChatUI.RepliedChatEntry.Value = null;
+    }
+
+}

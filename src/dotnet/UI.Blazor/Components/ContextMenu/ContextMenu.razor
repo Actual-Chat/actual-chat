@@ -69,8 +69,10 @@
         }
     }
 
-    public Task OnItemClick(MenuItem item)
-        => Task.CompletedTask;
+    public Task OnItemClick(MenuItem item) {
+        IsOpen = false;
+        return Task.CompletedTask;
+    }
 
     [JSInvokable]
     public Task Toggle(bool? mustOpen = null) {

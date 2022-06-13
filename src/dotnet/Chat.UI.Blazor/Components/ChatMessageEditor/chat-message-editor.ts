@@ -128,7 +128,7 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    public postMessage = async (chatId: string, text : string): Promise<number> => {
+    public postMessage = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachmentsList = [];
         if (this.attachments.size > 0) {
@@ -140,7 +140,7 @@ export class ChatMessageEditor {
             })
         }
 
-        const payload = { "text": text, "attachments": attachmentsList };
+        const payload = { "text": text, "attachments": attachmentsList, "repliedChatEntryId": repliedChatEntryId };
         const payloadJson = JSON.stringify(payload);
         formData.append("payload_json", payloadJson);
 
@@ -181,6 +181,11 @@ export class ChatMessageEditor {
         }
         this.changeMode();
         editorHandle.onHasContentChanged = () => this.changeMode();
+    }
+
+    public focus = () => {
+        const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
+        input.focus();
     }
 
     private editorHandle = () : SlateEditorHandle => {
