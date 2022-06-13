@@ -1,0 +1,55 @@
+.side-nav {
+    @apply fixed md:static;
+    @apply h-full w-full md:w-64 lg:w-80;
+    @apply md:!transform-none;
+    @apply text-primary bg-primary;
+    @apply top-0 bottom-0;
+}
+
+.side-nav-right {
+    transform: translate3d(100%, 0, 0);
+    @apply left-0;
+    @apply top-[49px];
+    @apply z-40;
+}
+
+.side-nav-left {
+    transform: translate3d(-100%, 0, 0);
+    @apply left-0;
+    @apply z-60;
+}
+
+.side-nav-drawer {
+    @apply fixed;
+    @apply top-0 bottom-0;
+    @apply w-[10px];
+    @apply bg-transparent;
+}
+
+.side-nav-right .side-nav-drawer {
+    @apply -left-[10px]
+}
+
+.side-nav-right .side-nav-closed {
+    transform: translate3d(-100%, 0, 0);
+}
+
+.side-nav-left .side-nav-closed {
+    transform: translate3d(100%, 0, 0);
+}
+
+.side-nav-left .side-nav-drawer {
+    @apply -right-[10px];
+}
+
+.side-nav-hidden {
+    @apply md:hidden;
+}
+
+.side-nav-open {
+    transform: translate3d(0, 0, 0);
+}
+
+.side-nav-animate {
+    transition: transform .250s ease-in-out;
+}

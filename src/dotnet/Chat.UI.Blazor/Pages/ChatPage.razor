@@ -53,13 +53,11 @@
     </CascadingValue>
 </RenderIntoStack>
 
-@if (m.IsRightPanelVisible) {
-    <RenderIntoSlot Name="MainRightPanel">
-        <CascadingValue Value="chat" @key="chat.Id">
-            <ChatRightPanel/>
-        </CascadingValue>
-    </RenderIntoSlot>
-}
+<RenderIntoSlot Name="MainRightPanel">
+    <CascadingValue Value="chat" @key="chat.Id">
+        <ChatRightPanel/>
+    </CascadingValue>
+</RenderIntoSlot>
 
 <CascadingValue Value="chat" @key="chat.Id">
     <ChatView @ref="_chatView" />
@@ -113,14 +111,12 @@
             activeChatIdState.Value = chat.Id;
             _activeChatIdComputed = activeChatIdState.Computed;
         }
-        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
         var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
         return new () {
             Chat = isTheSameChat ? renderedChat : chat,
-            IsRightPanelVisible = isRightPanelVisible,
         };
     }
 
@@ -143,7 +139,6 @@
 
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
-        public bool IsRightPanelVisible { get; init; }
         public Chat? Chat { get; init; }
     }
 }

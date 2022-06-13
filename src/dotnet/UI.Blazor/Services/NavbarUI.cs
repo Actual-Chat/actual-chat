@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    public bool IsVisible { get; set; }
+    public bool? IsVisible { get; set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
     public event EventHandler? ActiveGroupChanged;
