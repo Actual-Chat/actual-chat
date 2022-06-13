@@ -16,7 +16,7 @@
 .side-nav-left {
     transform: translate3d(-100%, 0, 0);
     @apply left-0;
-    @apply z-50;
+    @apply z-60;
 }
 
 .side-nav-drawer {
