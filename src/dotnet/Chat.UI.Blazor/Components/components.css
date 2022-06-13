@@ -78,6 +78,11 @@
 .chat-message-markup {
     @apply text-primary;
 }
+.chat-message-quoted {
+    height: 100%;
+    border-left: 4px solid;
+    @apply border-accent cursor-pointer;
+}
 .playable-text-markup {
     @apply underline decoration-dotted decoration-audio-message;
 }

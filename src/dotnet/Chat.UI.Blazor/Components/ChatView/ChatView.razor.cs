@@ -41,6 +41,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposeToken.Cancel();
+        ChatUI.NavigateToEntry -= ChatUIOnNavigateToEntry;
         await LastReadEntryId.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -55,11 +56,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                 .ConfigureAwait(true);
             navigateToEntryId = chatIdRange.ToInclusive().End;
         }
+
         // reset to ensure navigation will happen
-        _lastNavigateToEntryId = 0;
         _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntryId.Value = navigateToEntryId;
-        NavigateToEntryId.Invalidate();
+        NavigateToEntry(navigateToEntryId);
     }
 
     protected override async Task OnInitializedAsync()
@@ -76,6 +76,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
                 LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
                 _initialLastReadEntryId = LastReadEntryId.Value;
+                ChatUI.NavigateToEntry += ChatUIOnNavigateToEntry;
         }
         finally {
             await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
@@ -223,4 +224,16 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
         return result;
     }
+
+    private void NavigateToEntry(long navigateToEntryId)
+    {
+        // TODO: navigate to chat entry even if it's from another tile
+        // reset to ensure navigation will happen
+        _lastNavigateToEntryId = 0;
+        NavigateToEntryId.Value = navigateToEntryId;
+        NavigateToEntryId.Invalidate();
+    }
+
+    private void ChatUIOnNavigateToEntry(object? sender, long chatEntryId)
+        => NavigateToEntry(chatEntryId);
 }

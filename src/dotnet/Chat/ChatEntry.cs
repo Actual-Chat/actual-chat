@@ -34,6 +34,8 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
 
+    public long? RepliedChatEntryId { get; set; }
+
     // This record relies on version-based equality
     public bool Equals(ChatEntry? other)
         => EqualityComparer.Equals(this, other);

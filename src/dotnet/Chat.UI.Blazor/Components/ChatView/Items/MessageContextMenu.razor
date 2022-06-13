@@ -10,7 +10,7 @@
         </svg>
     </Icon>
 </MenuItem>
-<MenuItem Title="Reply" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-menu/reply", "Reply"))">
+<MenuItem Title="Reply" Name="wip" Click="@(() => ChatUI.Reply(Model.Entry))">
     <Icon>
         <svg class="w-5 h-5 fill-current -scale-x-100" xlmns="http://www.w3.org/2000/svg" viewBox="-3 -4 30 30">
             <path d="M14 18l10-7.088-10-6.912v3.042s-11.618 2.583-14 12.958c5.072-5.431 14-5.218 14-5.218v3.218z"/>

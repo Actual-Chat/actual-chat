@@ -261,7 +261,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, text) = command;
+        var (session, chatId, text, repliedChatEntryId) = command;
         // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
         // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -271,7 +271,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             AuthorId = author.Id,
             Content = text,
             Type = ChatEntryType.Text,
-            HasAttachments = command.Attachments.Length > 0
+            HasAttachments = command.Attachments.Length > 0,
+            RepliedChatEntryId = repliedChatEntryId!,
         };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         var textEntry =  await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

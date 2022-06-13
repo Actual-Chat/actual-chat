@@ -18,6 +18,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsUnread { get; init; }
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
+    public bool IsQuote { get; init; }
 
     public ChatMessageModel(ChatEntry entry, Markup markup, ImmutableArray<TextEntryAttachment> attachments)
     {

@@ -20,6 +20,9 @@ public partial class ChatUI
     public IMutableState<bool> MustPlayPinnedContactChats { get; }
     public IMutableState<bool> IsPlaying { get; }
 
+    public IMutableState<ChatEntry?> RepliedChatEntry { get; }
+    public event EventHandler<long>? NavigateToEntry;
+
     public ChatUI(IServiceProvider services)
     {
         Services = services;
@@ -34,6 +37,7 @@ public partial class ChatUI
         MustPlayPinnedChats = StateFactory.NewMutable<bool>();
         MustPlayPinnedContactChats = StateFactory.NewMutable<bool>();
         IsPlaying = StateFactory.NewMutable<bool>();
+        RepliedChatEntry = StateFactory.NewMutable<ChatEntry?>();
 
         _lastReadEntryIds = new SharedResourcePool<Symbol, IPersistentState<long>>(RestoreLastReadEntryId);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
@@ -87,4 +91,10 @@ public partial class ChatUI
 
     public void ShowDeleteMessageRequest(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
+
+    public void Reply(ChatEntry chatEntry)
+        => RepliedChatEntry.Value = chatEntry;
+
+    public void RaiseNavigateToEntry(long chatEntryId)
+        => NavigateToEntry?.Invoke(this, chatEntryId);
 }
