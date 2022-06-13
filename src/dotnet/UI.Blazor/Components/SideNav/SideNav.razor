@@ -12,9 +12,9 @@
 
     [Parameter] public SideNavDirection Direction { get; set; } = SideNavDirection.LeftToRight;
     [Parameter] public bool IsHidden { get; set; } = false;
-    [Parameter] public bool IsOpened { get; set; } = false;
+    [Parameter] public bool IsOpen { get; set; } = false;
     [Parameter] public EventCallback Closed { get; set; }
-    [Parameter] public EventCallback Opened { get; set; }
+    [Parameter] public EventCallback Open { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     private string Class { get; set; } = "";
@@ -24,11 +24,14 @@
     private DotNetObjectReference<SideNav> BlazorRef { get; set; } = null!;
 
     protected override void OnParametersSet() {
-        Class = Direction == SideNavDirection.LeftToRight ? "side-nav-left" : "side-nav-right";
+        Class = "side-nav-animate";
+        Class += Direction == SideNavDirection.LeftToRight
+            ? " side-nav-left"
+            : " side-nav-right";
         if (IsHidden)
             Class += " side-nav-hidden";
-        if (IsOpened)
-            Class += " side-nav-opened";
+        if (IsOpen)
+            Class += " side-nav-open";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -57,5 +60,5 @@
     public Task OnClosed() => Closed.InvokeAsync();
 
     [JSInvokable]
-    public Task OnOpened() => Opened.InvokeAsync();
+    public Task OnOpen() => Open.InvokeAsync();
 }

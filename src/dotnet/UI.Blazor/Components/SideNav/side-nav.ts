@@ -85,8 +85,8 @@ export class SideNav implements Disposable {
 
                 if (this.options.direction == SideNavDirection.RightToLeft) {
                     if (this.translate <= 50) {
-                        element.classList.add('side-nav-opened');
-                        blazorRef.invokeMethodAsync('OnOpened');
+                        element.classList.add('side-nav-open');
+                        blazorRef.invokeMethodAsync('OnOpen');
                     } else {
                         element.classList.add('side-nav-closed');
                         blazorRef.invokeMethodAsync('OnClosed');
@@ -96,8 +96,8 @@ export class SideNav implements Disposable {
                         element.classList.add('side-nav-closed');
                         blazorRef.invokeMethodAsync('OnClosed');
                     } else {
-                        element.classList.add('side-nav-opened');
-                        blazorRef.invokeMethodAsync('OnOpened');
+                        element.classList.add('side-nav-open');
+                        blazorRef.invokeMethodAsync('OnOpen');
                     }
                 }
 

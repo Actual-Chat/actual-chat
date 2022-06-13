@@ -3,10 +3,10 @@
 @inherits ComputedStateComponent<ChatRightPanel.Model>
 
 <SideNav Direction="SideNavDirection.RightToLeft"
-         Opened="() => RightPanelUI.IsVisible.Value = true"
+         Open="() => RightPanelUI.IsVisible.Value = true"
          Closed="() => RightPanelUI.IsVisible.Value = false"
          IsHidden="@(!State.Value.IsRightPanelVisible)"
-         IsOpened="@State.Value.IsRightPanelVisible">
+         IsOpen="@State.Value.IsRightPanelVisible">
     <div class="flex-y w-full h-full md:w-80 border-l border-accent p-3">
         <TabPanel TabsClass="right-panel-tabs">
             <div class="overflow-y-hidden">
@@ -33,7 +33,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
+        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
         return new () {
             IsRightPanelVisible = isRightPanelVisible,
         };
