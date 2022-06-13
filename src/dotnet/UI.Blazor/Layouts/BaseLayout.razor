@@ -1,26 +1,20 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Components.SideNav
+@using Microsoft.JSInterop.Implementation
 @implements IDisposable
 @{
     var failures = UICommandFailureList.Items;
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
-    var isSideNavHidden = NavbarUI.IsVisible == false;
-    var isSideNavOpen = NavbarUI.IsVisible == true;
 }
 
-<div class="absolute z-60 min-h-mobile-header">
+<div class="absolute z-50 min-h-mobile-header">
     <NavbarToggle/>
 </div>
 <div class="bg-primary flex-1 flex-x justify-items-stretch h-full max-h-full relative">
     <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
-    <SideNav Direction="SideNavDirection.LeftToRight"
-             Open="() => NavbarUI.IsVisible = true"
-             Closed="() => NavbarUI.IsVisible = false"
-             IsHidden="@isSideNavHidden"
-             IsOpen="@isSideNavOpen">
-        <div class="w-full h-full flex-1 flex-y overflow-y-hidden">
+    <nav id="navbar" class="navbar text-primary bg-primary z-50 absolute top-0 left-0 flex flex-row md:static justify-between h-full w-full md:w-64 lg:w-80 overflow-y-hidden transform -translate-x-full md:translate-x-0 transition-all duration-200 ease-in-out">
+        <div class="flex-1 flex-y overflow-y-hidden">
             <div class="absolute">
                 <NavbarToggle/>
             </div>
@@ -42,10 +36,10 @@
                     </div>
                     @* Bottom sticky panel *@
                     <div class="flex-none flex-y">
-                        <div class="flex-y text-xxs p-3">
-                            <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
-                            <div class="pt-0.5"><BlazorModeToggle/></div>
-                        </div>
+                            <div class="flex-y text-xxs p-3">
+                                <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
+                                <div class="pt-0.5"><BlazorModeToggle/></div>
+                            </div>
                         <div class="flex-y justify-center items-start w-full h-full px-2.5 border-t-2 border-accent min-h-footer">
                             <AccountDropdown/>
                         </div>
@@ -53,7 +47,7 @@
                 </div>
             </div>
         </div>
-    </SideNav>
+    </nav>
     <div class="flex-1 overflow-y-auto flex-y relative float-left">
         <div class="bg-secondary flex-1 overflow-y-auto">
             @if (failures.Count != 0) {
