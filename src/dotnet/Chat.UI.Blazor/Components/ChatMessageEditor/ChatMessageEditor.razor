@@ -8,6 +8,7 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
+<EventHandler TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusRequested" />
 <div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
@@ -15,7 +16,7 @@
                 <input class="files-picker" type="file" hidden multiple/>
                 <ActiveReply />
                 <AttachmentListPreview @ref="AttachmentListPreviewRef"
-                                       RemoveRequested="@(c => RemoveAttachment(c))" />
+                                       RemoveRequested="@(RemoveAttachment)" />
                 <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                     <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
@@ -44,8 +45,6 @@
 </div>
 
 @code {
-    private Task? _activeReplyMonitor;
-
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -90,7 +89,6 @@
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 Ref, BlazorRef
                 ).ConfigureAwait(true);
-            _activeReplyMonitor = FocusOnReply();
         }
     }
 
@@ -117,12 +115,8 @@
         }
     }
 
-    private async Task FocusOnReply() {
-        await foreach (var chatEntry in ChatUI.RepliedChatEntry.Changes()) {
-            if (chatEntry.Value != null) {
-                await Focus().ConfigureAwait(true);
-            }
-        }
+    private async Task OnFocusRequested(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken) {
+        await Focus(cancellationToken).ConfigureAwait(false);
     }
 
     [JSInvokable]
@@ -141,8 +135,8 @@
         await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
     }
 
-    private async Task Focus() {
-        await JSRef.InvokeVoidAsync("focus").ConfigureAwait(true);
+    private async Task Focus(CancellationToken cancellationToken) {
+        await JSRef.InvokeVoidAsync("focus", cancellationToken).ConfigureAwait(true);
     }
 
 }

@@ -96,6 +96,8 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
+    [Inject] private ICommander Commander { get; init; } = null!;
+    [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
 
     private string PrincipalId { get; set; } = "";
     private ChatMessageModel? RepliedChatMessage { get; set; }
@@ -127,9 +129,9 @@
     private void OnChatAuthorClick()
         => ChatUI.ShowChatAuthorDialog(Model.Entry.AuthorId);
 
-    private void OnQuoteClick() {
+    private async Task OnQuoteClick() {
         if (Model.IsQuote) {
-            ChatUI.RaiseNavigateToEntry(Model.Entry.Id);
+            await EventAggregator.Publish(new NavigateToChatEntryEvent(Model.Entry.Id)).ConfigureAwait(false);
         }
     }
 
