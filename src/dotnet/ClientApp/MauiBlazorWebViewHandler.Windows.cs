@@ -24,11 +24,10 @@ public partial class MauiBlazorWebViewHandler
                             return;
                         switch (msg.type) {
                         case "_auth":
-                            //var uri = new Uri(msg.url.Replace("/fusion/close-app?", $"/fusion/close-app?port={GetRandomUnusedPort()}&", StringComparison.Ordinal));
                             var originalUri = sender.Source;
-                            sender.Source = new Uri(msg.url);
-                            Debug.WriteLine($"_auth: {msg.url}");
-                            var cookies = await GetRedirectSecret().ConfigureAwait(false);
+                            if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
+                                break;
+                            var cookies = await GetRedirectSecret().ConfigureAwait(true);
                             foreach (var (key, value) in cookies) {
                                 var cookie = sender.CoreWebView2.CookieManager.CreateCookie(key, value, "0.0.0.0", "/");
                                 sender.CoreWebView2.CookieManager.AddOrUpdateCookie(cookie);
@@ -40,11 +39,10 @@ public partial class MauiBlazorWebViewHandler
                                     await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
                                 }
                             }
-
                             sender.Source = originalUri;
                             break;
                         default:
-                                throw new InvalidOperationException($"Unknown message type: {msg.type}");
+                            throw new InvalidOperationException($"Unknown message type: {msg.type}");
                         }
                     }
                     catch (Exception ex) {

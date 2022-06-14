@@ -69,7 +69,6 @@
             try {
                 if (window.Android)
                     window.Android.DOMContentLoaded();
-                window.chatApp.postMessage(JSON.stringify({ type: '_DOMContentLoaded' }))
             }
             catch (e) {
                 console.log(e);

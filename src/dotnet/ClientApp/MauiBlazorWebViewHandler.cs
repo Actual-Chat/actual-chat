@@ -58,6 +58,22 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         return cookies;
     }
 
+    private static async Task<bool> OpenSystemBrowserForSignIn(string url)
+    {
+        //var uri = new Uri(msg.url.Replace("/fusion/close-app?", $"/fusion/close-app?port={GetRandomUnusedPort()}&", StringComparison.Ordinal));
+        Debug.WriteLine($"_auth: {url}");
+        try {
+            var uri = new Uri(url);
+            await Browser.Default.OpenAsync(uri, BrowserLaunchMode.SystemPreferred).ConfigureAwait(true);
+            return true;
+        }
+        catch (Exception ex) {
+            // An unexpected error occured. No browser may be installed on the device.
+            Debug.WriteLine("_auth: failed to open browser. Exception: " + ex);
+            return false;
+        }
+    }
+
     //protected static int GetRandomUnusedPort()
     //{
     //    using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
