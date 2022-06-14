@@ -42,7 +42,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         // wait for oauth2 response
         var context = await http.GetContextAsync().ConfigureAwait(true);
         var response = context.Response;
-        string responseString = "<html><head></head><body>We are done, please, return to the app.</body></html>";
+        string responseString = "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 500)</script></body></html>";
         byte[] buffer = Encoding.UTF8.GetBytes(responseString);
         response.ContentLength64 = buffer.Length;
         var responseOutput = response.OutputStream;

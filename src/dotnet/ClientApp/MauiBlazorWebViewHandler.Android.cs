@@ -25,10 +25,19 @@ partial class MauiBlazorWebViewHandler
                     switch (msg.type) {
                     case "_auth":
                         //var uri = new Uri(msg.url.Replace("/fusion/close-app?", $"/fusion/close-app?port={GetRandomUnusedPort()}&", StringComparison.Ordinal));
-                        var originalUri = sender.Url;
-                        sender.LoadUrl(msg.url);
                         Debug.WriteLine($"_auth: {msg.url}");
-                        var cookies = await GetRedirectSecret().ConfigureAwait(false);
+                        var originalUri = sender.Url;
+                        try {
+                            var uri = new Uri(msg.url);
+                            await Browser.Default.OpenAsync(uri, BrowserLaunchMode.SystemPreferred).ConfigureAwait(true);
+                        }
+                        catch (Exception ex) {
+                            // An unexpected error occured. No browser may be installed on the device.
+                            Debug.WriteLine("_auth: failed to open browser. Exception: " + ex);
+                            break;
+                        }
+                        
+                        var cookies = await GetRedirectSecret().ConfigureAwait(true);
                         foreach (var (key, value) in cookies) {
                             cookieManager.SetCookie("0.0.0.0", $"{key}={value}");
                             cookieManager.SetCookie(new Uri(BaseUri).Host, $"{key}={value}");
@@ -38,7 +47,7 @@ partial class MauiBlazorWebViewHandler
                                 await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
                             }
                         }
-                        sender.LoadUrl(originalUri);
+                        sender.Reload();
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown message type: {msg.type}");
