@@ -145,6 +145,11 @@ public static class MauiProgram
 
         //Log.Logger.Information("test. starting.");
 
+        services.AddLogging(logging => logging
+            .AddDebug()
+            .SetMinimumLevel(LogLevel.Information)
+        );
+
         return builder.Build();
     }
 }
