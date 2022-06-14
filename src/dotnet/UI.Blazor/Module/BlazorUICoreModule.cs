@@ -1,11 +1,10 @@
 using ActualChat.Hosting;
-using ActualChat.Module;
+using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.OS;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -70,5 +69,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
+
+        // UI events
+        services.AddScoped<IEventAggregator, EventAggregator>();
     }
 }

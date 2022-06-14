@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Comparison
 
+<EventHandler TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
     AlignmentEdge="VirtualListEdge.End"

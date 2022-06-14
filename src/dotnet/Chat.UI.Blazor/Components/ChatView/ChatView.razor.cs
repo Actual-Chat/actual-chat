@@ -41,7 +41,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposeToken.Cancel();
-        ChatUI.NavigateToEntry -= ChatUIOnNavigateToEntry;
         await LastReadEntryId.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -76,7 +75,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
                 LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
                 _initialLastReadEntryId = LastReadEntryId.Value;
-                ChatUI.NavigateToEntry += ChatUIOnNavigateToEntry;
         }
         finally {
             await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
@@ -234,6 +232,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         NavigateToEntryId.Invalidate();
     }
 
-    private void ChatUIOnNavigateToEntry(object? sender, long chatEntryId)
-        => NavigateToEntry(chatEntryId);
+    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
+    {
+        NavigateToEntry(@event.ChatEntryId);
+        return Task.CompletedTask;
+    }
 }

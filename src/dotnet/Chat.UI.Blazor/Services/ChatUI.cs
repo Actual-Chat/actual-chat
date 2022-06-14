@@ -19,9 +19,7 @@ public partial class ChatUI
     public IMutableState<bool> MustPlayPinnedChats { get; }
     public IMutableState<bool> MustPlayPinnedContactChats { get; }
     public IMutableState<bool> IsPlaying { get; }
-
     public IMutableState<ChatEntry?> RepliedChatEntry { get; }
-    public event EventHandler<long>? NavigateToEntry;
 
     public ChatUI(IServiceProvider services)
     {
@@ -91,10 +89,4 @@ public partial class ChatUI
 
     public void ShowDeleteMessageRequest(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
-
-    public void Reply(ChatEntry chatEntry)
-        => RepliedChatEntry.Value = chatEntry;
-
-    public void RaiseNavigateToEntry(long chatEntryId)
-        => NavigateToEntry?.Invoke(this, chatEntryId);
 }
