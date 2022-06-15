@@ -23,17 +23,16 @@
                         </div>
                     </div>
                     <div class="content message-content custom-scrollbar">
-                        @if (model.Attachments.Length > 0) {
-                            var attachment = model.Attachments[0];
-                            var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                        @if (FirstAttachment != null) {
+                            var isImage = FirstAttachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
                             @if (isImage) {
-                                <ImageAttachment Attachment="@attachment"/>
+                                <ImageAttachment Attachment="@FirstAttachment"/>
                             } else {
-                                <FileAttachment Attachment="@attachment"/>
+                                <FileAttachment Attachment="@FirstAttachment"/>
                             }
                         }
                         <CascadingValue Value="@model.Entry">
-                            <MarkupView Markup="@model.Markup"/>
+                            <MarkupView Markup="Markup"/>
                         </CascadingValue>
                     </div>
                 </div>
@@ -51,17 +50,33 @@
 @code {
     [Inject] private UICommandRunner Commander { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; set; } = null!;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
+    private TextEntryAttachment? FirstAttachment { get; set; }
+    private Markup Markup { get; set; } = Markup.Empty;
+    private ChatEntry ChatEntry => ModalModel.MessageModel.Entry;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+
+        FirstAttachment = ChatEntry.HasAttachments
+            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text).GetFirstAttachment(ChatEntry.Id, CancellationToken.None).ConfigureAwait(false)
+            : null;
+        Markup = ChatEntry.AudioEntryId == null
+            ? MarkupParser.Parse(ChatEntry.Content)
+            : new PlayableTextMarkup(ChatEntry.Content, ChatEntry.TextToTimeMap);
+    }
 
     private void OnCancel()
         => ModalInstance.CloseAsync(ModalResult.Cancel());
 
     private async Task OnDelete() {
         await ModalInstance.CloseAsync(ModalResult.Cancel());
-        var command = new IChats.RemoveTextEntryCommand(Session, ModalModel.MessageModel.Entry.ChatId, ModalModel.MessageModel.Entry.Id);
+        var command = new IChats.RemoveTextEntryCommand(Session, ChatEntry.ChatId, ModalModel.MessageModel.Entry.Id);
         await Commander.Run(command);
     }
 

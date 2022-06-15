@@ -23,7 +23,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChatReadPositions ChatReadPositions { get; init; } = null!;
-    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -189,24 +188,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 
-        var attachmentEntryIds = chatEntries
-            .Where(c => c.HasAttachments)
-            .Select(c => c.Id)
-            .ToList();
-
-        var attachmentTasks = await Task
-            .WhenAll(attachmentEntryIds.Select(id
-                => Chats.GetTextEntryAttachments(Session, chatId, id, cancellationToken)))
-            .ConfigureAwait(false);
-        var attachments = attachmentTasks
-            .Where(c => c.Length > 0)
-            .ToDictionary(c => c[0].EntryId, c => c);
-
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
-            attachments,
             _initialLastReadEntryId,
-            MarkupParser,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)

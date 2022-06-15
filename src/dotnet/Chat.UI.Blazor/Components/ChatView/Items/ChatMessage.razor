@@ -1,93 +1,98 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatMessage.Model?>
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
 @{
-    var entry = Model.Entry;
-    var markup = Model.Markup;
-    var attachments = Model.Attachments;
+    var model = State.LatestNonErrorValue;
+}
+
+@if (model != null) {
+    var message = model.Message;
+    var entry = message.Entry;
     var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
 
-    var showHeader = Model.IsBlockStart;
+    var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
-    var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionClass = IsMentioned(markup) ? "mention" : "";
-    var ownMessageClass = PrincipalId == Model.Entry.AuthorId ? "own-message" : "";
-    var quoteClass = Model.IsQuote ? "chat-message-quoted" : "";
-}
-@if (Model.DateLine.HasValue) {
-    <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
-}
-@if (Model.IsFirstUnread) {
-    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
-}
-<div class="@quoteClass" @onclick="OnQuoteClick">
-    <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
-        @if (showPicture) {
-            <div class="m-1.5">
-                <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-            </div>
-        } else {
-            <div class="w-10 mr-2 mt-1">
-                <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
-            </div>
-        }
-        <div class="flex-1 overflow-hidden mb-1 mt-1">
-            @if (showHeader) {
-                <div class="header chat-message-header ml-1">
-                    <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary"/>
-                    <ChatMessageTimestamp Moment="entry.BeginsAt"/>
-                    &nbsp;
-                    <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
+    var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
+    var mentionClass = model.IsMentioned ? "mention" : "";
+    var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
+    var quoteClass = message.IsQuote ? "chat-message-quoted" : "";
+
+    @if (message.DateLine.HasValue) {
+        <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
+    }
+    @if (message.IsFirstUnread) {
+        <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+    }
+    <div class="@quoteClass" @onclick="OnQuoteClick">
+        <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
+            @if (showPicture) {
+                <div class="m-1.5">
+                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+                </div>
+            } else {
+                <div class="w-10 mr-2 mt-1">
+                    <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
                 </div>
             }
-            @if (entry.RepliedChatEntryId != null && !Model.IsQuote) {
-                <ChatMessage Model="@RepliedChatMessage" />
-            }
-            <div class="content message-content rounded-sm">
-                @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@Model" Class="mx-1"/>
-                } else {
-                    <p class="chat-message-markup mx-1">
-                        <CascadingValue Value="@entry">
-                            <MarkupView Markup="@markup"/>
-                        </CascadingValue>
-                    </p>
+            <div class="flex-1 overflow-hidden mb-1 mt-1">
+                @if (showHeader) {
+                    <div class="header chat-message-header ml-1">
+                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary"/>
+                        <ChatMessageTimestamp Moment="entry.BeginsAt"/>
+                        &nbsp;
+                        <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
+                    </div>
                 }
-            </div>
-            @if (attachments.Length > 0) {
-                <div class="message-attachments">
-                    @foreach (var attachment in attachments) {
-                        var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
-                        @if (isImage) {
-                            <ImageAttachment Attachment="@attachment"/>
-                        } else {
-                            <FileAttachment Attachment="@attachment"/>
-                        }
+                @if (entry.RepliedChatEntryId != null && !message.IsQuote) {
+                    <ChatMessage Message="@model.RepliedChatMessage" />
+                }
+                <div class="content message-content rounded-sm">
+                    @if (entry.IsStreaming) {
+                        <ChatMessageTranscript Model="@message" Class="mx-1"/>
+                    } else {
+                        <p class="chat-message-markup mx-1">
+                            <CascadingValue Value="@entry">
+                                <MarkupView Markup="@model.Markup"/>
+                            </CascadingValue>
+                        </p>
                     }
                 </div>
+                @if (model.Attachments.Length > 0) {
+                    <div class="message-attachments">
+                        @foreach (var attachment in model.Attachments) {
+                            var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                            @if (isImage) {
+                                <ImageAttachment Attachment="@attachment"/>
+                            } else {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (!message.IsQuote) {
+                <CascadingValue Value="@message">
+                    <ContextMenu
+                        Class="chat-message-menu "
+                        ButtonClass="show-on-hover message-menu-button"
+                        MenuClass="absolute z-10 right-16 -mt-3 -mr-2 rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+                        <ButtonTemplate>
+                            <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                                <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+                            </svg>
+                        </ButtonTemplate>
+                        <MenuTemplate>
+                            <MessageContextMenu/>
+                        </MenuTemplate>
+                    </ContextMenu>
+                </CascadingValue>
             }
         </div>
-
-        @if (!Model.IsQuote) {
-            <CascadingValue Value="@Model">
-                <ContextMenu
-                    Class="chat-message-menu "
-                    ButtonClass="show-on-hover message-menu-button"
-                    MenuClass="absolute z-10 right-16 -mt-3 -mr-2 rounded-l-md rounded-tr-md rounded-br-md shadow-context">
-                    <ButtonTemplate>
-                        <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                            <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-                        </svg>
-                    </ButtonTemplate>
-                    <MenuTemplate>
-                        <MessageContextMenu/>
-                    </MenuTemplate>
-                </ContextMenu>
-            </CascadingValue>
-        }
     </div>
-</div>
+}
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -99,48 +104,79 @@
     [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
 
-    private string PrincipalId { get; set; } = "";
-    private ChatMessageModel? RepliedChatMessage { get; set; }
-
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Model { get; set; } = null!;
+    public ChatMessageModel Message { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        var chatId = Model.Entry.ChatId;
-        PrincipalId = await ChatAuthor
-            .GetOwnPrincipalId(Session, chatId, CancellationToken.None)
-            .ConfigureAwait(false);
-        if (Model.Entry.RepliedChatEntryId != null) {
-            var repliedChatEntry = await Chats.NewEntryReader(Session, chatId, ChatEntryType.Text).Get(Model.Entry.RepliedChatEntryId.Value, CancellationToken.None).ConfigureAwait(false);
-            // TODO: show 'message was deleted' if replied message was removed
-            if (repliedChatEntry != null) {
-                RepliedChatMessage = new ChatMessageModel(repliedChatEntry, MarkupParser.Parse(repliedChatEntry.Content), ImmutableArray<TextEntryAttachment>.Empty) {
-                    IsBlockStart = true,
-                    IsQuote = true,
-                };
-            }
-        }
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-    }
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
+    protected override async Task OnInitializedAsync() {
+        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var principalId = await ChatAuthor
+            .GetOwnPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        var attachments = await LoadAttachments(cancellationToken).ConfigureAwait(false);
+        var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
+        var markup = GetMarkup();
+        var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
+        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage);
+    }
+
+    private Markup GetMarkup()
+    {
+        return Message.Entry.AudioEntryId == null || Message.IsQuote
+            ? MarkupParser.Parse(Message.Entry.Content)
+            : new PlayableTextMarkup(Message.Entry.Content, Message.Entry.TextToTimeMap);
+    }
+
+    private async Task<ChatMessageModel?> GetRepliedChatMessage(CancellationToken cancellationToken) {
+        if (Message.Entry.RepliedChatEntryId == null)
+            return null;
+
+        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None)
+            .ConfigureAwait(false);
+
+    // TODO: show 'message was deleted' if replied message was removed
+        if (repliedChatEntry == null)
+            return null;
+
+        return new ChatMessageModel(repliedChatEntry) {
+            IsBlockStart = true,
+            IsQuote = true,
+        };
+    }
+
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorDialog(Model.Entry.AuthorId);
+        => ChatUI.ShowChatAuthorDialog(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
-        if (Model.IsQuote) {
-            await EventAggregator.Publish(new NavigateToChatEntry(Model.Entry.Id)).ConfigureAwait(false);
+        if (Message.IsQuote) {
+            await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
         }
     }
 
-    private bool IsMentioned(Markup markup)
+    private bool IsMentioned(Markup markup, ChatMessageModel? repliedChatMessage, Symbol principalId)
     {
-        if (RepliedChatMessage?.Entry.AuthorId == PrincipalId)
+        if (repliedChatMessage?.Entry.AuthorId == principalId)
             return true;
 
-        return MarkupValidator.ContainsMention.IsValid(markup) && MarkupValidator.ContainsAuthorMention(PrincipalId).IsValid(markup);
+        return MarkupValidator.ContainsMention.IsValid(markup) && MarkupValidator.ContainsAuthorMention(principalId).IsValid(markup);
     }
+
+    private async Task<ImmutableArray<TextEntryAttachment>> LoadAttachments(CancellationToken cancellationToken) {
+        if (!Message.Entry.HasAttachments) {
+            return ImmutableArray<TextEntryAttachment>.Empty;
+        }
+
+        return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    public record Model(ChatMessageModel Message, Markup Markup, Symbol PrincipalId, ImmutableArray<TextEntryAttachment> Attachments, bool IsMentioned, ChatMessageModel? RepliedChatMessage);
 
 }

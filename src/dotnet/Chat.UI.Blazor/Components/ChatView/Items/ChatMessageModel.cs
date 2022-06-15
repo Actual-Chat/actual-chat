@@ -10,8 +10,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public Symbol Key { get; }
     public ChatEntry Entry { get; }
-    public Markup Markup { get; }
-    public ImmutableArray<TextEntryAttachment> Attachments { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
@@ -20,11 +18,9 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsFirstUnread { get; init; }
     public bool IsQuote { get; init; }
 
-    public ChatMessageModel(ChatEntry entry, Markup markup, ImmutableArray<TextEntryAttachment> attachments)
+    public ChatMessageModel(ChatEntry entry)
     {
         Entry = entry;
-        Markup = markup;
-        Attachments = attachments;
         Key = entry.Id.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -47,8 +43,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
-            && IsFirstUnread == other.IsFirstUnread
-            && Attachments.SequenceEqual(other.Attachments);
+            && IsFirstUnread == other.IsFirstUnread;
     }
 
     public override int GetHashCode()
@@ -61,15 +56,14 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
-        IDictionary<long, ImmutableArray<TextEntryAttachment>> chatEntryAttachments,
         long? lastReadEntryId,
-        IMarkupParser markupParser,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
         var isBlockStart = true;
         var lastDate = default(DateOnly);
+        // TODO: remove unused variables?
         var blockContentLength = 0;
         var blockLength = 0;
 
@@ -83,16 +77,11 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
-            var markup = entry.AudioEntryId == null
-                ? markupParser.Parse(entry.Content)
-                : new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
-            if (!chatEntryAttachments.TryGetValue(entry.Id, out var attachments))
-                attachments = ImmutableArray<TextEntryAttachment>.Empty;
             var isUnread = entry.Id > (lastReadEntryId ?? 0);
-            var model = new ChatMessageModel(entry, markup, attachments) {
+            var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
