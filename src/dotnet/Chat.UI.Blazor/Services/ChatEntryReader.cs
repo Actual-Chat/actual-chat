@@ -25,14 +25,14 @@ public sealed class ChatEntryReader
         return tile.Entries.SingleOrDefault(e => e.Id == id);
     }
 
-    public async Task<TextEntryAttachment> GetFirstAttachment(long id, CancellationToken cancellationToken)
+    public async Task<TextEntryAttachment> GetFirstAttachment(long entryId, CancellationToken cancellationToken)
     {
-        var all = await Chats.GetTextEntryAttachments(Session, ChatId, id, cancellationToken).ConfigureAwait(false);
+        var all = await Chats.GetTextEntryAttachments(Session, ChatId, entryId, cancellationToken).ConfigureAwait(false);
         return all.First();
     }
 
-    public Task<ImmutableArray<TextEntryAttachment>> GetAttachments(long id, CancellationToken cancellationToken)
-        => Chats.GetTextEntryAttachments(Session, ChatId, id, cancellationToken);
+    public Task<ImmutableArray<TextEntryAttachment>> GetAttachments(long entryId, CancellationToken cancellationToken)
+        => Chats.GetTextEntryAttachments(Session, ChatId, entryId, cancellationToken);
 
     public async Task<ChatEntry?> GetFirst(Range<long> idRange, CancellationToken cancellationToken)
     {
