@@ -226,7 +226,7 @@ public class ChatEntryReaderTest : AppHostTestBase
                 if (count-- <= 0)
                     return;
                 await chats
-                    .CreateTextEntry(new (session, chatId, text, null), CancellationToken.None)
+                    .CreateTextEntry(new (session, chatId, text), CancellationToken.None)
                     .ConfigureAwait(false);
             }
     }
