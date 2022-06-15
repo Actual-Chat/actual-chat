@@ -7,7 +7,11 @@
     var model = State.LatestNonErrorValue;
 }
 
-@if (model != null) {
+@if (model == null) {
+    return;
+}
+
+@{
     var message = model.Message;
     var entry = message.Entry;
     var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -18,81 +22,81 @@
     var mentionClass = model.IsMentioned ? "mention" : "";
     var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
     var quoteClass = message.IsQuote ? "chat-message-quoted" : "";
+}
 
-    @if (message.DateLine.HasValue) {
-        <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
-    }
-    @if (message.IsFirstUnread) {
-        <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
-    }
-    <div class="@quoteClass" @onclick="OnQuoteClick">
-        <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
-            @if (showPicture) {
-                <div class="m-1.5">
-                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-                </div>
-            } else {
-                <div class="w-10 mr-2 mt-1">
-                    <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
+@if (message.DateLine.HasValue) {
+    <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
+}
+@if (message.IsFirstUnread) {
+    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+}
+<div class="@quoteClass" @onclick="OnQuoteClick">
+    <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
+        @if (showPicture) {
+            <div class="m-1.5">
+                <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+            </div>
+        } else {
+            <div class="w-10 mr-2 mt-1">
+                <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
+            </div>
+        }
+        <div class="flex-1 overflow-hidden mb-1 mt-1">
+            @if (showHeader) {
+                <div class="header chat-message-header ml-1">
+                    <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary"/>
+                    <ChatMessageTimestamp Moment="entry.BeginsAt"/>
+                    &nbsp;
+                    <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
                 </div>
             }
-            <div class="flex-1 overflow-hidden mb-1 mt-1">
-                @if (showHeader) {
-                    <div class="header chat-message-header ml-1">
-                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary"/>
-                        <ChatMessageTimestamp Moment="entry.BeginsAt"/>
-                        &nbsp;
-                        <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
-                    </div>
-                }
-                @if (entry.RepliedChatEntryId != null && !message.IsQuote) {
-                    <ChatMessage Message="@model.RepliedChatMessage" />
-                }
-                <div class="content message-content rounded-sm">
-                    @if (entry.IsStreaming) {
-                        <ChatMessageTranscript Model="@message" Class="mx-1"/>
-                    } else {
-                        <p class="chat-message-markup mx-1">
-                            <CascadingValue Value="@entry">
-                                <MarkupView Markup="@model.Markup"/>
-                            </CascadingValue>
-                        </p>
-                    }
-                </div>
-                @if (model.Attachments.Length > 0) {
-                    <div class="message-attachments">
-                        @foreach (var attachment in model.Attachments) {
-                            var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
-                            @if (isImage) {
-                                <ImageAttachment Attachment="@attachment"/>
-                            } else {
-                                <FileAttachment Attachment="@attachment"/>
-                            }
-                        }
-                    </div>
+            @if (entry.RepliedChatEntryId != null && !message.IsQuote) {
+                <ChatMessage Message="@model.RepliedChatMessage" />
+            }
+            <div class="content message-content rounded-sm">
+                @if (entry.IsStreaming) {
+                    <ChatMessageTranscript Model="@message" Class="mx-1"/>
+                } else {
+                    <p class="chat-message-markup mx-1">
+                        <CascadingValue Value="@entry">
+                            <MarkupView Markup="@model.Markup"/>
+                        </CascadingValue>
+                    </p>
                 }
             </div>
-
-            @if (!message.IsQuote) {
-                <CascadingValue Value="@message">
-                    <ContextMenu
-                        Class="chat-message-menu "
-                        ButtonClass="show-on-hover message-menu-button"
-                        MenuClass="absolute z-10 right-16 -mt-3 -mr-2 rounded-l-md rounded-tr-md rounded-br-md shadow-context">
-                        <ButtonTemplate>
-                            <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                                <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-                            </svg>
-                        </ButtonTemplate>
-                        <MenuTemplate>
-                            <MessageContextMenu/>
-                        </MenuTemplate>
-                    </ContextMenu>
-                </CascadingValue>
+            @if (model.Attachments.Length > 0) {
+                <div class="message-attachments">
+                    @foreach (var attachment in model.Attachments) {
+                        var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                        @if (isImage) {
+                            <ImageAttachment Attachment="@attachment"/>
+                        } else {
+                            <FileAttachment Attachment="@attachment"/>
+                        }
+                    }
+                </div>
             }
         </div>
+
+        @if (!message.IsQuote) {
+            <CascadingValue Value="@message">
+                <ContextMenu
+                    Class="chat-message-menu "
+                    ButtonClass="show-on-hover message-menu-button"
+                    MenuClass="absolute z-10 right-16 -mt-3 -mr-2 rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+                    <ButtonTemplate>
+                        <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                            <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+                        </svg>
+                    </ButtonTemplate>
+                    <MenuTemplate>
+                        <MessageContextMenu/>
+                    </MenuTemplate>
+                </ContextMenu>
+            </CascadingValue>
+        }
     </div>
-}
+</div>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
