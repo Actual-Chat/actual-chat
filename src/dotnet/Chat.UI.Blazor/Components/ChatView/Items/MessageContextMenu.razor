@@ -84,7 +84,7 @@
 
     private async Task Reply(ChatEntry modelEntry) {
         ChatUI.RepliedChatEntry.Value = modelEntry;
-        await EventAggregator.Publish(new FocusChatMessageEditorEvent());
+        await EventAggregator.Publish(new FocusChatMessageEditor());
     }
 
 }

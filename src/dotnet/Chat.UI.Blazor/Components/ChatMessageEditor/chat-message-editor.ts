@@ -183,11 +183,6 @@ export class ChatMessageEditor {
         editorHandle.onHasContentChanged = () => this.changeMode();
     }
 
-    public focus = () => {
-        const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
-        input.focus();
-    }
-
     private editorHandle = () : SlateEditorHandle => {
         // @ts-ignore
         return this.input.editorHandle as SlateEditorHandle;
