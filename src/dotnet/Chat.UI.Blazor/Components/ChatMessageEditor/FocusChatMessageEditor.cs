@@ -1,3 +1,3 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public record FocusChatMessageEditorEvent();
+public record FocusChatMessageEditor;

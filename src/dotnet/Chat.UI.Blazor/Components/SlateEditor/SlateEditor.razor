@@ -97,6 +97,8 @@
         }
     }
 
+    public Task Focus(CancellationToken cancellationToken = default) => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
+
     private async Task SetPlaceholder(string placeholder) {
         _placeholder = placeholder;
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
@@ -109,7 +111,10 @@
         MentionCandidateListManager?.Hide();
         if (mentionCandidate == null)
             return;
-        await JSRef.InvokeVoidAsync("focus").ConfigureAwait(false);
-        await JSRef.InvokeVoidAsync("insertMention", mentionCandidate).ConfigureAwait(false);
+        await Focus();
+        await InsertMention(mentionCandidate);
     }
+
+    private Task InsertMention(MentionCandidate mentionCandidate) => JSRef.InvokeVoidAsync("insertMention", mentionCandidate).AsTask();
+
 }

@@ -232,9 +232,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         NavigateToEntryId.Invalidate();
     }
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
+    private Task OnNavigateToChatEntry(NavigateToChatEntry navigation, CancellationToken cancellationToken)
     {
-        NavigateToEntry(@event.ChatEntryId);
+        NavigateToEntry(navigation.ChatEntryId);
         return Task.CompletedTask;
     }
 }

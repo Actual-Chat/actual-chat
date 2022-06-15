@@ -109,7 +109,7 @@
         var chatId = Model.Entry.ChatId;
         PrincipalId = await ChatAuthor
             .GetOwnPrincipalId(Session, chatId, CancellationToken.None)
-            .ConfigureAwait(true);
+            .ConfigureAwait(false);
         if (Model.Entry.RepliedChatEntryId != null) {
             var repliedChatEntry = await Chats.NewEntryReader(Session, chatId, ChatEntryType.Text).Get(Model.Entry.RepliedChatEntryId.Value, CancellationToken.None).ConfigureAwait(false);
             // TODO: show 'message was deleted' if replied message was removed
@@ -131,7 +131,7 @@
 
     private async Task OnQuoteClick() {
         if (Model.IsQuote) {
-            await EventAggregator.Publish(new NavigateToChatEntryEvent(Model.Entry.Id)).ConfigureAwait(false);
+            await EventAggregator.Publish(new NavigateToChatEntry(Model.Entry.Id)).ConfigureAwait(false);
         }
     }
 

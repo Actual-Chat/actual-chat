@@ -98,11 +98,11 @@ public interface IChats
     public sealed record CreateTextEntryCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
-        [property: DataMember] string Text,
-        [property: DataMember] long? RepliedChatEntryId) : ISessionCommand<ChatEntry>
+        [property: DataMember] string Text) : ISessionCommand<ChatEntry>
     {
         [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
             ImmutableArray<TextEntryAttachmentUpload>.Empty;
+        [DataMember] public long? RepliedChatEntryId { get; set; }
     }
 
     [DataContract]

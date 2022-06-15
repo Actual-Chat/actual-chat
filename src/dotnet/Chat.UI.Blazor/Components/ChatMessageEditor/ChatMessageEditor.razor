@@ -8,7 +8,7 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
-<EventHandler TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusRequested" />
+<EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
 <div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
@@ -115,9 +115,7 @@
         }
     }
 
-    private async Task OnFocusRequested(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken) {
-        await Focus(cancellationToken).ConfigureAwait(false);
-    }
+    private Task OnFocusRequested(FocusChatMessageEditor @event, CancellationToken cancellationToken) => SlateEditorRef.Focus(cancellationToken);
 
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
@@ -133,10 +131,6 @@
 
     private async Task OnUploadFilesRequested() {
         await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
-    }
-
-    private async Task Focus(CancellationToken cancellationToken) {
-        await JSRef.InvokeVoidAsync("focus", cancellationToken).ConfigureAwait(true);
     }
 
 }
