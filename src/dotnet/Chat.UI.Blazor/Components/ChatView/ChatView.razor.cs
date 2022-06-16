@@ -40,7 +40,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposeToken.Cancel();
-        await LastReadEntryId.DisposeAsync().ConfigureAwait(false);
+        await LastReadEntryId.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 
     public async Task NavigateToUnreadEntry()
