@@ -101,6 +101,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         return avatar.Id;
     }
 
+    // [ComputeMethod]
     public virtual async Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
         var (userId1, user2Id) = await GetPeerChatUserIds(session, chatAuthorId, cancellationToken).ConfigureAwait(false);
@@ -110,6 +111,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         return contact == null;
     }
 
+    // [CommandHandler]
     public virtual async Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -121,6 +123,8 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         _ = await _userContactsBackend.GetOrCreate(userId1, user2Id, cancellationToken).ConfigureAwait(false);
         _ = await _userContactsBackend.GetOrCreate(user2Id, userId1, cancellationToken).ConfigureAwait(false);
     }
+
+    // Private methods
 
     private async Task<(string, string)> GetPeerChatUserIds(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
