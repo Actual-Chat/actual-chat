@@ -3,7 +3,7 @@
     var m = State.LatestNonErrorValue ?? Model.None;
     var mustPlayPinned = m.MustPlayPinned;
     var isPlaying = mustPlayPinned && m.IsPlaying;
-    var mustPlayPinnedClass = "pin-toggle transparent"
+    var mustPlayPinnedClass = "pin-toggle play-pinned"
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
 
@@ -73,8 +73,8 @@
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
                 return new ContactModel(userContact) {
                     IsOnline = presence is Presence.Online or Presence.Recording,
-                    FullChatId = ChatIdExt.FormatFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
-                    ShortChatId = ChatIdExt.FormatShortPeerChatId(userContact.TargetUserId),
+                    FullChatId = ChatId.FormatFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
+                    ShortChatId = ChatId.FormatShortPeerChatId(userContact.TargetUserId),
                 };
             });
         var contacts = await Task.WhenAll(contactTasks).ConfigureAwait(false);

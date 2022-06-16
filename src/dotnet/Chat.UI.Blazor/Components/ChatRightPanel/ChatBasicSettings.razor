@@ -6,8 +6,15 @@
 <Form Model="@_form" OnValidSubmit="@OnSave">
     <DataAnnotationsValidator/>
 
+    <div class="pb-2 mb-4 border-b border-accent">
+        <FormSection>
+            <ChatMuteToggle ChatId="@Chat.Id" />
+        </FormSection>
+    </div>
+
     <ChatIcon
         ShowImagePicker="true"
+        ImageUploadUrl="@_form.ImageUploadUrl"
         ImagePicked="OnImagePicked"
         PictureClick="OnPictureClick"
         Size="SquareSize.Size20"
@@ -16,10 +23,10 @@
     </ChatIcon>
 
     <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
-        <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true" Class="right-panel-input"/>
+        <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true" Class="right-panel-input"/>
     </FormSection>
 
-    <FormSection>
+    <FormSection Class="flex h-12 md:h-8 justify-center">
         <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
     </FormSection>
 
@@ -37,9 +44,6 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
-    [Inject] private IHttpClientFactory ClientFactory { get; init; } = null!;
-    [Inject] private UriMapper UriMapper { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
     [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
 
@@ -48,6 +52,7 @@
         _form.Title = Chat.Title;
         _form.Picture = Chat.Picture;
         _form.IsPublic = Chat.IsPublic;
+        _form.ImageUploadUrl = $"/api/chats/{Chat.Id}/upload-picture";
         return Task.CompletedTask;
     }
 
@@ -65,6 +70,7 @@
         [Required] public string Title { get; set; } = "";
         public string Picture { get; set; } = "";
         public bool IsPublic { get; set; }
+        public string ImageUploadUrl { get; set; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
@@ -79,24 +85,8 @@
         }
     }
 
-    private async Task OnImagePicked(InputFileChangeEventArgs e) {
-        if (e.File.Size > Constants.Chat.PictureFileSizeLimit) {
-            ErrorUI.ShowError("File is too big. Max file size: 1Mb.");
-            return;
-        }
-
-        using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(e.File.OpenReadStream(Constants.Chat.PictureFileSizeLimit));
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(e.File.ContentType);
-        content.Add(fileContent, "file", e.File.Name);
-        var client = ClientFactory.CreateClient();
-        var url = UriMapper.ToAbsolute($"/api/chats/{Chat.Id}/upload-picture");
-        var response = await client.PostAsync(url, content);
-        if (response.IsSuccessStatusCode) {
-            _form.Picture = await response.Content.ReadAsStringAsync();
-        } else {
-            ErrorUI.ShowError(response.ReasonPhrase ?? "Something went wrong");
-        }
+    private void OnImagePicked(string imageUrl) {
+        _form.Picture = imageUrl;
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {

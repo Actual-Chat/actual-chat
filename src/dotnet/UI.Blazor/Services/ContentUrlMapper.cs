@@ -9,9 +9,16 @@ public class ContentUrlMapper
     public ContentUrlMapper(NavigationManager nav)
     {
         var baseUri = new Uri(nav.BaseUri);
-        _transformUri = StringComparer.OrdinalIgnoreCase.Equals(baseUri.Host, "local.actual.chat");
+
+        _transformUri = baseUri.Host.EndsWith("actual.chat", StringComparison.OrdinalIgnoreCase);
         _contentBaseUri = _transformUri ? $"{baseUri.Scheme}://cdn.{baseUri.Host}/" : "";
         _mediaBaseUri = _transformUri ? $"{baseUri.Scheme}://media.{baseUri.Host}/" : "";
+
+        // TODO: remove this workaround when new cert is available
+        if (baseUri.Host.Equals("dev.actual.chat", StringComparison.OrdinalIgnoreCase)) {
+            _contentBaseUri = $"{baseUri.Scheme}://cdn-{baseUri.Host}/";
+            _mediaBaseUri = $"{baseUri.Scheme}://media-{baseUri.Host}/";
+        }
     }
 
     public string ContentUrl(string contentId)

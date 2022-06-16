@@ -10,6 +10,6 @@
     @apply invisible z-20 absolute;
 }
 
-.context-menu-button:hover .context-menu-button-inner {
-    @apply animate-scale-icon;
+.context-menu .context-menu-menu {
+    @apply bg-context-menu border border-primary;
 }

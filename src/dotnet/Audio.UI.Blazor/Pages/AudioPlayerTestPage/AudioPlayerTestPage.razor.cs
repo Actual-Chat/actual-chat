@@ -84,7 +84,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
-            var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
+            var frames = await audioSource.GetFrames(_cts.Token).ToListAsync(_cts.Token).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
@@ -104,7 +104,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
     {
-        if (_audioSource == null || !StringComparer.Ordinal.Equals(_audioBlobStreamUri, audioUri)) {
+        if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioUri)) {
             var audioDownloader = new AudioDownloader(Services);
             _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
             _audioBlobStreamUri = audioUri;

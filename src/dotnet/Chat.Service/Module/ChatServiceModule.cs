@@ -40,7 +40,9 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
             });
             dbContext.AddEntityResolver<string, DbChatAuthor>();
+            dbContext.AddEntityResolver<string, DbChatRole>();
             dbContext.AddShardLocalIdGenerator(db => db.ChatAuthors, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            dbContext.AddShardLocalIdGenerator(db => db.ChatRoles, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             dbContext.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
                 db => db.ChatEntries,
                 (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,

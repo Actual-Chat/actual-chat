@@ -50,9 +50,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
         // and set it as this server's content root.
- #pragma warning disable IL2026
-        Env.WebRootPath =  Cfg.GetValue<string?>("Hosting:WebRootPath").NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
- #pragma warning restore IL2026
+        Env.WebRootPath =  Settings.WebRootPath.NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
         Env.ContentRootPath = AppPathResolver.GetContentRootPath();
         Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
         Env.ContentRootFileProvider = new PhysicalFileProvider(Env.ContentRootPath);
@@ -136,11 +134,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
-        var dataProtection = Settings.DataProtection.IsNullOrEmpty()
-            ? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys")
-            : Settings.DataProtection;
+        var dataProtection = Settings.DataProtection.NullIfEmpty()
+            ?? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys");
         Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
-        if (dataProtection.StartsWith("gs://", StringComparison.OrdinalIgnoreCase)) {
+        if (dataProtection.OrdinalStartsWith("gs://")) {
             var bucket = dataProtection[5..dataProtection.IndexOf('/', 5)];
             var objectName = dataProtection[(6 + bucket.Length)..];
             services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);
@@ -150,7 +147,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         services.AddCors(options => {
-            options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
+            options.AddPolicy("Default", builder => {
+                builder.AllowAnyOrigin().WithFusionHeaders();
+                builder.WithOrigins("https://0.0.0.0")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
         });
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.All;

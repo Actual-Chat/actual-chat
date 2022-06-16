@@ -38,7 +38,7 @@ public class EbmlElementDescriptor
     {
         var result = 17;
         result = 37*result + Identifier.GetHashCode();
-        result = 37*result + (Name == null ? 0 : Name.GetHashCode(StringComparison.Ordinal));
+        result = 37*result + (Name == null ? 0 : Name.OrdinalHashCode());
         result = 37*result + (Type == EbmlElementType.None ? 0 : Type.GetHashCode());
         return result;
     }

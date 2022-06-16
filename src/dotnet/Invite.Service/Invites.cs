@@ -85,8 +85,8 @@ internal class Invites : IInvites
 
     private async Task AssertReadChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var permissions = await _chats.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
-        permissions.AssertHasPermissions(ChatPermissions.Invite);
+        var permissions = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        permissions.Demand(ChatPermissions.Invite);
     }
 
     private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
@@ -102,9 +102,9 @@ internal class Invites : IInvites
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
             var permissions = await _chats
-                .GetPermissions(session, chatInviteDetails.ChatId, cancellationToken)
+                .GetRules(session, chatInviteDetails.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            permissions.AssertHasPermissions(ChatPermissions.Invite);
+            permissions.Demand(ChatPermissions.Invite);
         }
 
         return userProfile;

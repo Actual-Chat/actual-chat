@@ -90,7 +90,7 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserContact = new DbUserContact() {
-            Id = DbUserContact.GetCompositeId(ownerUserId, contact.TargetUserId),
+            Id = DbUserContact.ComposeId(ownerUserId, contact.TargetUserId),
             Version = VersionGenerator.NextVersion(),
             OwnerUserId = ownerUserId,
             TargetUserId = contact.TargetUserId,

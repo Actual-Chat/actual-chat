@@ -63,7 +63,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         IDictionary<long, ImmutableArray<TextEntryAttachment>> chatEntryAttachments,
         long? lastReadEntryId,
         IMarkupParser markupParser,
-        DateTimeService dateTimeService)
+        TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -85,7 +85,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var markup = entry.AudioEntryId == null
                 ? markupParser.Parse(entry.Content)
                 : new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
-            var date = DateOnly.FromDateTime(dateTimeService.ToLocalTime(entry.BeginsAt));
+            var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             if (!chatEntryAttachments.TryGetValue(entry.Id, out var attachments))

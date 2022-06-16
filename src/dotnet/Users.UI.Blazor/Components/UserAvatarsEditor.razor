@@ -1,8 +1,11 @@
 ﻿@using System.Text.Encodings.Web
-@inherits ComputedStateComponent<string[]>
+@inherits ComputedStateComponent<ImmutableArray<Symbol>>
+@{
+    var m = State.LatestNonErrorValue;
+}
 
-<ul class="user-avatar-editor">
-    @foreach (var avatarId in State.LatestNonErrorValue) {
+<ul class="user-avatar-editor custom-scrollbar">
+    @foreach (var avatarId in m) {
         <li class="user-avatar-editor-item" @onclick="@(() => EditAvatar(avatarId))">
             <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" />
         </li>
@@ -21,11 +24,11 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override ComputedState<string[]>.Options GetStateOptions()
-        => new () { InitialValue = Array.Empty<string>() };
+    protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
+        => new () { InitialValue = ImmutableArray<Symbol>.Empty };
 
-    protected override Task<string[]> ComputeState(CancellationToken cancellationToken)
-        => UserAvatars.GetAvatarIds(Session, cancellationToken);
+    protected override Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
+        => UserAvatars.ListAvatarIds(Session, cancellationToken);
 
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);

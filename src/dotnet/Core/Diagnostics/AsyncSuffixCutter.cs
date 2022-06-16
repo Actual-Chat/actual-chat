@@ -8,7 +8,7 @@ public static class AsyncSuffixCutter
     {
         if (value.IsNullOrEmpty())
             return value;
-        if (value.Length > 5 && value.EndsWith("Async", StringComparison.Ordinal))
+        if (value.Length > 5 && value.OrdinalEndsWith("Async"))
             value = CutAsyncSuffixCache.GetOrAdd(value, n => n[..^5]);
         return value;
     }

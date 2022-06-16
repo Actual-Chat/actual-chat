@@ -9,12 +9,12 @@ public class ChatAuthorsTest : AppHostTestBase
     [Fact]
     public async Task NullAuthorResult()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var session = tester.Session;
 
         var chatAuthors = tester.ClientServices.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetChatAuthor(session, Constants.Chat.DefaultChatId, default);
+        var author = await chatAuthors.GetOwnAuthor(session, Constants.Chat.DefaultChatId, default);
         author.Should().BeNull();
     }
 }

@@ -41,11 +41,11 @@ public class DbModule : HostModule<DbSettings>
 
         // Creating DbInfo<TDbContext>
         var (dbKind, connectionStringSuffix) = connectionString switch {
-            { } s when s.HasPrefix("memory:", StringComparison.OrdinalIgnoreCase, out var suffix)
+            { } s when s.OrdinalHasPrefix("memory:", out var suffix)
                 => (DbKind.InMemory, suffix.Trim()),
-            { } s when s.HasPrefix("postgresql:", StringComparison.OrdinalIgnoreCase, out var suffix)
+            { } s when s.OrdinalHasPrefix("postgresql:", out var suffix)
                 => (DbKind.PostgreSql, suffix.Trim()),
-            { } s when s.HasPrefix("mysql:", StringComparison.OrdinalIgnoreCase, out var suffix)
+            { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
                 => (DbKind.MySql, suffix.Trim()),
             _ => throw new InvalidOperationException("Unrecognized database connection string"),
         };

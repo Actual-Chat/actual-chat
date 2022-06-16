@@ -4,13 +4,14 @@ namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 {
-    private static readonly byte[] ActualOpusStreamFormat = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x01 }; // A_OPUS_S + version = 1
+    private static readonly byte[] OpusStreamFormat = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x01 }; // A_OPUS_S + version = 1
+
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
     private bool ShouldStripWebM { get; init; }
 
-    public static AudioFormat DefaultFormat => new() {
-        CodecSettings = Convert.ToBase64String(ActualOpusStreamFormat),
+    public static AudioFormat DefaultFormat { get; } = new() {
+        CodecSettings = Convert.ToBase64String(OpusStreamFormat),
     };
 
     public AudioSource(

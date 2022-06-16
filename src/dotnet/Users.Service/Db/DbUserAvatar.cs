@@ -27,7 +27,7 @@ public class DbUserAvatar : IHasId<string>
     public DbUserAvatar() { }
     public DbUserAvatar(UserAvatar model) => UpdateFrom(model);
 
-    public static string GetCompositeId(string principalId, UserAvatarType avatarType, long localId)
+    public static string ComposeId(string principalId, UserAvatarType avatarType, long localId)
         => $"{avatarType:D}:{principalId}:{localId.ToString(CultureInfo.InvariantCulture)}";
 
     public UserAvatar ToModel()

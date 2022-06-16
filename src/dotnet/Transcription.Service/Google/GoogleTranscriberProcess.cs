@@ -4,7 +4,6 @@ using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Google;
@@ -131,7 +130,7 @@ public class GoogleTranscriberProcess : WorkerBase
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
-            if (State.LastStable.Text.Length != 0 && !text.StartsWith(" ", StringComparison.InvariantCulture)) {
+            if (State.LastStable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
                 // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);

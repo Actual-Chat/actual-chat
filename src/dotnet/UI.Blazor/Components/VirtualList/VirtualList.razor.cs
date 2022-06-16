@@ -50,7 +50,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxExpandBy { get; set; } = 256;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
-    [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
+    [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
 
     [JSInvokable]
     public Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)

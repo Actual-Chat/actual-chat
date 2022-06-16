@@ -16,12 +16,12 @@ public class UserAvatarsController : ControllerBase, IUserAvatars
         => _service.Get(session, avatarId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string[]> GetAvatarIds(Session session, CancellationToken cancellationToken)
-        => _service.GetAvatarIds(session, cancellationToken);
+    public Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
+        => _service.GetDefaultAvatarId(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
-        => _service.GetDefaultAvatarId(session, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
+        => _service.ListAvatarIds(session, cancellationToken);
 
     [HttpPost]
     public Task<UserAvatar> Create([FromBody] IUserAvatars.CreateCommand command, CancellationToken cancellationToken)

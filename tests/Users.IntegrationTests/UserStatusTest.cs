@@ -16,10 +16,8 @@ public class UserStatusTest : AppHostTestBase
 
     public override async Task InitializeAsync()
     {
-        _appHost = await TestHostFactory.NewAppHost(host => host.AppConfigurationBuilder = builder
-            => builder.AddInMemoryCollection(new Dictionary<string, string> {
-                ["UsersSettings:NewUserStatus"] = NewUserStatus.ToString(),
-            }));
+        _appHost = await NewAppHost(
+            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewUserStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
         _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
     }

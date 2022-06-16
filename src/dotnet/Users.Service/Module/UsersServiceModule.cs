@@ -102,7 +102,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
             if (commandAssembly == typeof(EditUserCommand).Assembly
-                && StringComparer.Ordinal.Equals(commandType.Namespace, typeof(EditUserCommand).Namespace))
+                && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
             if (commandAssembly == typeof(UserProfile).Assembly)
                 return true;

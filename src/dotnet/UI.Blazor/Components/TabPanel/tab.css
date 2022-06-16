@@ -1,23 +1,23 @@
 .tab-panel {
-    @apply flex flex-col h-full;
+    @apply flex-y h-full;
 }
 .tab-panel-tabs {
-    @apply flex flex-row flex-wrap;
-    @apply mb-2;
+    @apply mb-2.5 pb-1.5;
+    @apply flex-x;
 }
-.tab-panel-tabs button {
-    @apply px-2 py-1;
-    @apply border-0 border-b-2;
-    @apply cursor-pointer hover:bg-primary;
-    @apply text-secondary font-medium leading-tight uppercase;
+
+.tab-panel-tabs .btn.tab-btn {
+    @apply border-transparent border-0 border-b-2 rounded-none;
+    @apply uppercase text-secondary text-md font-medium leading-tight tracking-wider;
 }
-.tab-panel-tabs button.on {
+.tab-panel-tabs .btn.tab-btn.on {
     @apply border-success;
 }
-.tab-panel-tabs button.off {
-    @apply border-transparent;
+.tab-panel-tabs .btn.tab-btn.on .btn-content {
+    @apply text-secondary;
 }
 
 .tab-panel .tab {
-    @apply grow overflow-y-auto;
+    @apply grow overflow-y-auto px-2;
 }
+

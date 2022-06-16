@@ -57,7 +57,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = GetDevices(device.UserId, default);
+                _ = ListDevices(device.UserId, default);
             return;
         }
 
@@ -101,7 +101,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var invWasSubscribed = context.Operation().Items.GetOrDefault(false);
             if (invWasSubscribed != mustSubscribe) {
                 _ = GetStatus(session, chatId, default);
-                _ = GetSubscribers(chatId, default);
+                _ = ListSubscriberIds(chatId, default);
             }
             return;
         }

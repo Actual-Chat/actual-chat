@@ -49,7 +49,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (user == null)
             return null;
 
-        var userAuthor = new UserAuthor { Name = user.Name };
+        var userAuthor = new UserAuthor { Id = user.Id, Name = user.Name };
 
         var profile = await Get(userId, cancellationToken).ConfigureAwait(false);
         if (profile == null)
@@ -123,7 +123,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
 
         if (AdminEmails.Contains(email))
             return true; // Predefined admin email
-        if (HasGoogleIdentity(user) && StringComparer.Ordinal.Equals(emailAddress.Host, AdminEmailDomain))
+        if (HasGoogleIdentity(user) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
             return true; // actual.chat email
         return false;
     }

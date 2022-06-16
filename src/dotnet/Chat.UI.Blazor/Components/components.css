@@ -24,9 +24,9 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative z-20 p-1 pb-0.5;
+    @apply relative z-20 p-1 pb-0.25;
     @apply flex flex-row items-center justify-center;
-    @apply bg-accent shadow-lg;
+    @apply bg-accent shadow-lg text-primary;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
@@ -39,6 +39,10 @@
 .historical-playback-sub-header-content .c-moment {
     @apply font-normal;
 }
+.historical-playback-sub-header-content .c-stop .btn {
+    @apply bg-transparent;
+}
+
 
 .unread-messages-sub-header {
     @apply relative z-10 mx-4 px-2 pb-0.5;
@@ -63,13 +67,103 @@
     @apply font-semibold underline;
 }
 
+.chat-message-transcript {
+    @apply text-primary;
+    @apply underline decoration-dotted decoration-audio-message;
+}
+.chat-message-markup {
+    @apply text-primary;
+}
 .playable-text-markup {
-    @apply underline underline-offset-2 decoration-dashed decoration-audio-message;
+    @apply underline decoration-dotted decoration-audio-message;
 }
 
-form .right-panel-input,
-form .right-panel-input:active,
-form .right-panel-input:focus {
-    @apply ring-0 appearance-none;
+.btn-square.attach-btn {
+    @apply flex flex-1 min-h-footer ml-4;
+}
+.btn.btn-square.attach-btn:hover > .btn-content {
+    @apply bg-transparent;
+}
+
+.chat-header-panel-hint.btn.btn-square {
+    @apply flex-none hidden group-hover:flex font-light text-xs;
+    @apply bg-primary ring-2 ring-accent rounded;
+}
+.chat-header-panel-hint.btn.btn-square:focus .btn-content {
+    @apply bg-inherit;
+}
+
+.tab-panel .tab.people-tab {
+    @apply h-full overflow-y-hidden;
+}
+.right-panel-tabs .btn {
+    @apply min-w-1/2;
+}
+.chat-author-tab {
+    @apply flex-y w-full h-full space-y-3 overflow-hidden;
+}
+.people-group {
+    @apply gap-x-12;
+}
+.people-group .btn-square {
+    @apply min-w-12 bg-transparent rounded-none border-b-2 border-transparent;
+}
+.people-group .btn-square .btn-content {
+    @apply justify-center bg-transparent;
+}
+.people-group .btn-square:hover {
+    @apply text-accent border-success;
+}
+.people-group .btn-square:hover .btn-content {
+    @apply bg-transparent;
+}
+
+.btn-square.add-user-btn {
+    @apply min-w-8 bg-transparent rounded-none border-b-2 border-transparent flex-1 left-0;
+}
+.btn-square.add-user-btn .btn-content {
+    @apply justify-center bg-transparent;
+}
+.btn-square.add-user-btn:hover {
+    @apply text-accent border-success;
+}
+.btn-square.add-user-btn:hover .btn-content {
+    @apply bg-transparent;
+}
+.btn-square.add-user-btn:focus .btn-content {
+    @apply bg-transparent text-accent;
+}
+
+.search-contacts {
+    @apply flex-x items-center gap-x-1 border-b-2 border-transparent;
+}
+.search-contacts:hover {
+    @apply border-success;
+}
+.search-contacts input {
+    @apply flex-auto border-0 bg-transparent;
+}
+.search-contacts input:focus {
+    @apply outline-none ring-0;
+}
+
+.search-contacts .btn.btn-square {
+    @apply bg-transparent rounded-none;
+}
+.search-contacts .btn.btn-square .btn-content {
+    @apply bg-transparent;
+}
+
+.author-settings-modal {
+    @apply min-w-full md:min-w-modal max-w-full;
+}
+.author-settings-modal .user-avatar-editor {
+    @apply gap-x-2 overflow-y-auto max-h-96;
+}
+.author-settings-modal .dialog-body {
+    @apply m-4;
+}
+.author-settings-modal .dialog-buttons {
+    @apply m-0;
 }
 

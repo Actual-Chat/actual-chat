@@ -17,7 +17,7 @@ public class AdminGrantTest : AppHostTestBase
 
     public override async Task InitializeAsync()
     {
-        _appHost = await TestHostFactory.NewAppHost();
+        _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester();
         _userProfiles = _appHost.Services.GetRequiredService<IUserProfilesBackend>();
     }

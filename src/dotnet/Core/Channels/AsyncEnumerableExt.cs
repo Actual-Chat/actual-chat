@@ -202,10 +202,10 @@ public static class AsyncEnumerableExt
                     moveNextTasks[i] = enumerator.MoveNextAsync();
                 }
 
-                var whenAny = TaskExt.WhenAny(moveNextTasks);
+                var completedTask = TaskExt.WhenAny(moveNextTasks);
                 int active = count;
                 while (active > 0) {
-                    var index = await whenAny;
+                    var index = await completedTask;
                     var enumerator = enumerators[index];
                     var moveNextTask = moveNextTasks[index];
                     bool moved = false;
@@ -229,7 +229,7 @@ public static class AsyncEnumerableExt
                         if (enumerator == null) continue;
 
                         var item = enumerator.Current;
-                        whenAny.Replace(index, enumerator.MoveNextAsync());
+                        completedTask.Replace(index, enumerator.MoveNextAsync());
 
                         yield return item;
                     }
@@ -270,19 +270,21 @@ public static class AsyncEnumerableExt
         var buffer = new List<TSource>();
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
-        var moveNext = enumerator.MoveNextAsync();
+        var moveNextTask = enumerator.MoveNextAsync();
         var delayTask = clock.Delay(bufferDuration, cancellationToken);
         while (true) {
             if (buffer.Count > 0)
-                await Task.WhenAny(moveNext.AsTask(), delayTask).ConfigureAwait(false);
+                await Task.WhenAny(moveNextTask.AsTask(), delayTask).ConfigureAwait(false);
             else
-                await moveNext.ConfigureAwait(false);
+                await moveNextTask.ConfigureAwait(false);
 
-            if (moveNext.IsCompleted) {
-                var hasNext = await moveNext.ConfigureAwait(false);
+            if (moveNextTask.IsCompleted) {
+#pragma warning disable MA0004
+                var hasNext = await moveNextTask;
+#pragma warning restore MA0004
                 if (hasNext) {
                     buffer.Add(enumerator.Current);
-                    moveNext = enumerator.MoveNextAsync();
+                    moveNextTask = enumerator.MoveNextAsync();
                 }
                 else {
                     yield return buffer;
@@ -290,11 +292,16 @@ public static class AsyncEnumerableExt
                 }
             }
 
-            if (delayTask.IsCompleted && buffer.Count > 0) {
-                yield return buffer;
+            if (delayTask.IsCompleted) {
+#pragma warning disable MA0004
+                await delayTask; // Will throw an exception on cancellation
+#pragma warning restore MA0004
+                if (buffer.Count > 0) {
+                    yield return buffer;
 
-                buffer = new List<TSource>();
-                delayTask = clock.Delay(bufferDuration, cancellationToken);
+                    buffer = new List<TSource>();
+                    delayTask = clock.Delay(bufferDuration, cancellationToken);
+                }
             }
         }
     }

@@ -4,8 +4,9 @@
  * setTimeout which will be throttled in background tabs.
  */
 const channel = new MessageChannel();
-const callbacks : Array<() => void> = [];
+const callbacks: Array<() => void> = [];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 channel.port1.onmessage = _ => {
     const callback = callbacks.shift();
     callback();

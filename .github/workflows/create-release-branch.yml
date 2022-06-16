@@ -1,0 +1,63 @@
+name: Create release branch
+on: 
+  workflow_dispatch:
+    ref: dev
+    inputs:
+      create-rc:
+        description: Create release candidate
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  checks: write
+  statuses: write
+
+jobs:
+  create-release:
+    name: Create release branch
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: false
+
+      - name: ⚙️ Restore tools for nbgv
+        run: dotnet tool restore
+
+      - name: ⚙️ Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+      
+      - run: echo 'Current SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
+
+      - name: ⚙️ Setup CI GIT
+        run: |
+          git config user.name "actualchat bot"
+          git config user.email actualchat.bot@actual.chat
+
+      - name: 🛠️ Increment version.json on dev + create release branch
+        id: versions
+        run: |
+          nbgv prepare-release ${{ github.event.inputs.create-rc && 'rc' ||  '' }}
+          echo "::set-output name=MAIN_VERSION_COMMIT_MESSAGE::$(git log --format=%B -n 1 --skip 1)"
+          git checkout release/v$NBGV_MajorMinorVersion
+          echo "::set-output name=RELEASE_VERSION_COMMIT_MESSAGE::$(git log --format=%B -n 1)"
+          git checkout dev
+      
+      - name: ⏩ Push version.json updates to dev
+        run: git push origin dev
+
+      - name: ⏩ Push release branch to origin
+        env:
+          GITHUB_TOKEN: ${{ secrets.CREATE_RELEASE_GITHUB_TOKEN }} # trigger workflow on create release branch!
+        run: git push origin release/v$NBGV_MajorMinorVersion
+
+      - run: echo 'Branch release/v${NBGV_MajorMinorVersion} has been created'

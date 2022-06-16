@@ -1,5 +1,6 @@
 
 :root, .theme-light {
+    /* Main colors */
     --background-primary: #edf0f3;
     --background-secondary: #F9FAFB;
     --background-accent: #e2e7ec;
@@ -7,20 +8,43 @@
     --text-secondary: #4b5e71;
     --text-accent: #232c35;
 
+    /* Buttons */
+    --success: #0ea5e9;
+    --success-hover: #0284c7;
+    --success-title: #edf0f3;
+    --success-ring: #94d2fc;
+    --success-outline-hover: #e0f2fe;
+    --success-outline-title: #0284c7;
+
+    --cancel: #64748b;
+    --cancel-hover: #546174;
+    --cancel-title: #edf0f3;
+    --cancel-ring: #9aa6b7;
+    --cancel-outline-hover: #eef1f4;
+    --cancel-outline-title: #64748b;
+
+    --error: #ef4444;
+    --error-hover: #ec2020;
+    --error-title: #edf0f3;
+    --error-ring: #f47a7a;
+    --error-outline-hover: #fef4f4;
+    --error-outline-title: #ef4444;
+
+    --square: #e2e7ec;
+    --square-active: #e2e7ec;
+    --square-hover: #edf0f3;
+    --square-focus: #cad3dc;
+    --square-title: #4b5e71;
+
+    --shadow-main: #000000;
+
+    /* Utils colors */
     --online: #31d872;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
     --white: #ffffff;
     --rating: #fde047;
-    --error: #f87171;
-    --error-hover: #ef4444;
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
-    --success-outline: #F9FAFB;
-    --success-outline-hover: #e0f2fe;
-    --cancel: #64748b;
-    --cancel-hover: #475569;
     --code: #D83E52;
     --avatar: #5a7188;
     --recorder-on: #ef4444;
@@ -33,10 +57,19 @@
     --mention-message-hover: #fff7e5;
     --own-message: #f6f8f9;
     --own-message-hover: #cbd5e1;
-    --audio-message: #d2effc;
+    --audio-message: #0ea5e9;
+    --context-menu: #F9FAFB;
+    --context-border: #e2e7ec;
+    --selection: #cbd5e1;
+    --dot: #e2e7ec;
+    --dot-selected: #4b5e71;
+    --skeleton: #edf0f3;
+    --skeleton-border: #F9FAFB;
+    --scrollbar: #b3bfcc;
 
-    --error-toast-header: #feb7b7;
-    --error-toast-body: #fecaca;
+    --error-toast-header: #fd5757;
+    --error-toast-body: #fd6a6a;
+    --error-toast-text: #fafafa;
 
     --glow-max: rgb(255, 255, 255);
     --glow-mid: rgb(181, 240, 255);
@@ -47,27 +80,77 @@
 }
 
 .theme-dark {
-    --background-primary: #1a1f25;
-    --background-secondary: #222831;
-    --background-accent: #4b5666;
-    --background-strong-accent: #93c5fd;
-    --background-online: #31d872;
-    --background-message-hover: #1f2937;
+    /* Main colors */
+    --background-primary: #2F3136;
+    --background-secondary: #36393F;
+    --background-accent: #292B2F;
+    --text-primary: #fafafa;
+    --text-secondary: #e5e6e8;
+    --text-accent: #d0d2d6;
 
-    --text-color-primary: #f6f7f9;
-    --text-color-primary-muted: #d3d9e1;
-    --text-color-secondary: #bcc4d1;
-    --text-color-secondary-muted: #8e9cb1;
-    --text-color-accent: #d3d9e1;
-    --text-color-accent-muted: #e1e6eb;
-    --text-color-toggle-on: #31d872;
+    /* Buttons */
+    --success: #0ea5e9;
+    --success-hover: #0284c7;
+    --success-title: #edf0f3;
+    --success-ring: #94d2fc;
+    --success-outline-hover: #2F3136;
+    --success-outline-title: #0ea5e9;
 
-    --button-color-success: #27ce68;
-    --button-color-success-hover: #21ad58;
-    --button-color-error: #95211E;
-    --button-color-error-hover: #D94440;
+    --cancel: #64748b;
+    --cancel-hover: #546174;
+    --cancel-title: #edf0f3;
+    --cancel-ring: #9aa6b7;
+    --cancel-outline-hover: #2F3136;
+    --cancel-outline-title: #d7d8dc;
 
-    --glow-max: #fff;
+    --error: #ef4444;
+    --error-hover: #ec2020;
+    --error-title: #edf0f3;
+    --error-ring: #f47a7a;
+    --error-outline-hover: #2F3136;
+    --error-outline-title: #ef4444;
+
+    --square: #292b2f;
+    --square-active: #202125;
+    --square-hover: #202125;
+    --square-focus: #17181a;
+    --square-title: #edf0f3;
+
+    --shadow-main: #64748b;
+
+    /* Utils colors */
+    --online: #31d872;
+    --unread: #93c5fd;
+    --separator: #2b3641;
+    --placeholder: #788ea5;
+    --white: #ffffff;
+    --rating: #fde047;
+    --code: #D83E52;
+    --avatar: #5a7188;
+    --recorder-on: #ef4444;
+    --toggle-on: #52baf6;
+    --toggle-hover: #65c1f7;
+    --message-hover: #484c54;
+    --mention: #672d0d;
+    --mention-hover: #893d11;
+    --mention-message: #4e4039;
+    --mention-message-hover: #594941;
+    --own-message: #3f434a;
+    --own-message-hover: #484c54;
+    --audio-message: #d2effc;
+    --context-menu: #17181a;
+    --context-border: #17181a;
+    --selection: #484c54;
+    --dot: #292B2F;
+    --dot-selected: #fafafa;
+    --skeleton: #292B2F;
+    --skeleton-border: #2F3136;
+
+    --error-toast-header: #fc3030;
+    --error-toast-body: #fd5757;
+    --error-toast-text: #fafafa;
+
+    --glow-max: rgb(255, 255, 255);
     --glow-mid: rgb(181, 240, 255);
     --glow-min: rgb(0, 204, 255);
     --playing-glow-max: rgb(181, 240, 255);

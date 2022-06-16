@@ -23,6 +23,7 @@ module.exports = {
       colors: {
         'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
+        'error-toast-text': 'var(--error-toast-text)',
         'audio-message': 'var(--audio-message)',
         'online': 'var(--online)',
         'unread': 'var(--unread)',
@@ -30,14 +31,29 @@ module.exports = {
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'rating': 'var(--rating)',
-        'error': 'var(--error)',
-        'error-hover': 'var(--error-hover)',
         'success': 'var(--success)',
         'success-hover': 'var(--success-hover)',
-        'success-outline': 'var(--success-outline)',
+        'success-title': 'var(--success-title)',
+        'success-ring': 'var(--success-ring)',
         'success-outline-hover': 'var(--success-outline-hover)',
+        'success-outline-title': 'var(--success-outline-title)',
         'cancel': 'var(--cancel)',
         'cancel-hover': 'var(--cancel-hover)',
+        'cancel-title': 'var(--cancel-title)',
+        'cancel-ring': 'var(--cancel-ring)',
+        'cancel-outline-hover': 'var(--cancel-outline-hover)',
+        'cancel-outline-title': 'var(--cancel-outline-title)',
+        'error': 'var(--error)',
+        'error-hover': 'var(--error-hover)',
+        'error-title': 'var(--error-title)',
+        'error-ring': 'var(--error-ring)',
+        'error-outline-hover': 'var(--error-outline-hover)',
+        'error-outline-title': 'var(--error-outline-title)',
+        'square': 'var(--square)',
+        'square-hover': 'var(--square-hover)',
+        'square-active': 'var(--square-active)',
+        'square-focus': 'var(--square-focus)',
+        'square-title': 'var(--square-title)',
         'code': 'var(--code)',
         'avatar': 'var(--avatar)',
         'recorder-on': 'var(--recorder-on)',
@@ -50,6 +66,15 @@ module.exports = {
         'mention-message-hover': 'var(--mention-message-hover)',
         'own-message': 'var(--own-message)',
         'own-message-hover': 'var(--own-message-hover)',
+        'context-menu': 'var(--context-menu)',
+        'context-border': 'var(--context-border)',
+        'selection': 'var(--selection)',
+        'dot': 'var(--dot)',
+        'dot-selected': 'var(--dot-selected)',
+        'shadow-main': 'var(--shadow-main)',
+        'skeleton': 'var(--skeleton)',
+        'skeleton-border': 'var(--skeleton-border)',
+        'scrollbar': 'var(--scrollbar)',
       },
       textColor: {
         'primary': 'var(--text-primary)',
@@ -172,6 +197,7 @@ module.exports = {
       72: '18rem',
       80: '20rem',
       96: '24rem',
+      144: '36rem',
     },
     animation: {
       none: 'none',
@@ -198,6 +224,8 @@ module.exports = {
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
+      'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
+      'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -298,6 +326,8 @@ module.exports = {
       xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
       '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
       inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+      'inner-square': 'inset 0px 0px 4px 0px rgb(237 240 243 / 0.2)',
+      'recorder': '0 35px 60px -15px rgb(0 0 0 / 0.25)',
       none: 'none',
       context: '5px 5px 4px 0px rgba(34, 60, 80, 0.2);',
     },
@@ -674,6 +704,22 @@ module.exports = {
           animationTimingFunction: 'cubic-bezier(0,0,0.2,1)',
         },
       },
+      'checkbox-active-on': {
+        '0%': {
+          'box-shadow': '0 0 0 0 rgba(212,212,212, 0)',
+        },
+        '99%': {
+          'box-shadow': '0 0 0 7px rgba(212,212,212, 0.5)',
+        },
+      },
+      'checkbox-active-off': {
+        '0%': {
+          'box-shadow': '0 0 0 0 rgba(154,190,247, 0)',
+        },
+        '99%': {
+          'box-shadow': '0 0 0 7px rgba(154,190,247, 0.5)',
+        },
+      },
       'display-element-from-left': {
         from: {
           transform: 'translateX(-1rem) scale(.05)',
@@ -823,14 +869,18 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       'footer': '3.75rem',
+      'modal-header': '4rem',
+      'mobile-header': '3.5rem',
     }),
     minWidth: ({ theme }) => ({
       ...theme('spacing'),
       full: '100%',
+      '1/2': '50%',
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
+      'navbar': '3.5rem',
     }),
     objectPosition: {
       bottom: 'bottom',
@@ -1108,6 +1158,7 @@ module.exports = {
       30: '30',
       40: '40',
       50: '50',
+      'minus': '-1',
     },
   },
   variantOrder: [
@@ -1131,4 +1182,7 @@ module.exports = {
   plugins: [
       // require('@tailwindcss/forms'),
   ],
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
 };

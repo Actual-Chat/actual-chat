@@ -16,7 +16,7 @@
         </div>
     </Body>
     <Buttons>
-        <div class="btn-group btn-group-font-normal">
+        <div class="btn-group">
             @if (m.CanAddContact) {
                 <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
@@ -44,7 +44,7 @@
         => new() { InitialValue = ComputedModel.None };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        if (!ChatAuthor.TryGetChatId(AuthorId, out var chatId))
+        if (!ChatAuthor.TryParseId(AuthorId, out var chatId, out _))
             return ComputedModel.None;
 
         var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);

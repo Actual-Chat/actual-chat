@@ -17,6 +17,7 @@
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder.ts",
     "./../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts",
+    "./../dotnet/UI.Blazor/Layouts/base-layout.ts",
   ],
   "compilerOptions": {
     "alwaysStrict": true,
@@ -35,7 +36,8 @@
     "noImplicitAny": false,
     // change to true (?)
     "strictNullChecks": false,
-    // change to false (?)
+    // Tells TypeScript to read JS files, as
+    // normally they are ignored as source files
     "allowJs": true,
     "checkJs": false,
     "sourceMap": true,

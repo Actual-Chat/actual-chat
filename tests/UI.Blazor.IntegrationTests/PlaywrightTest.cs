@@ -10,7 +10,7 @@ public class PlaywrightTest : AppHostTestBase
     [Fact]
     public async Task CloseBrowserTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
         var browser = await tester.NewContext();
         await browser.CloseAsync();
@@ -20,7 +20,7 @@ public class PlaywrightTest : AppHostTestBase
     public async Task AddMessageTest()
     {
         const float timeout = 20_000f;
-        using var appHost = await TestHostFactory.NewAppHost().ConfigureAwait(false);
+        using var appHost = await NewAppHost().ConfigureAwait(false);
         using var tester = appHost.NewPlaywrightTester();
         var user = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
         var (page, _) = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
@@ -73,7 +73,7 @@ public class PlaywrightTest : AppHostTestBase
     [Fact]
     public async Task ChatPageTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
         var user = await tester.SignIn(new User("", "ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");

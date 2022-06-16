@@ -11,43 +11,40 @@
 </div>
 
 @code {
-    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    private IPersistentState<long>? LastReadEntryId { get; set; }
+    private UnreadMessages UnreadMessages { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
+    protected override async Task OnInitializedAsync() {
+
+        LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
+        UnreadMessages = new(Session, Chat.Id, LastReadEntryId, Chats);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        if (LastReadEntryId != null)
+            await LastReadEntryId.DisposeAsync();
+    }
+
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-
-            UpdateDelayer = new UpdateDelayer(UICommandTracker.None, 0.3),
+            UpdateDelayer = new UpdateDelayer(UICommandTracker.None, 2),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var clock = Clocks.CoarseCpuClock;
-        var count = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
+        var count = await UnreadMessages.GetCount(cancellationToken).ConfigureAwait(true);
         if (!count.HasValue)
             return Model.None;
-
-        var resultIsStable = false;
-        while (!resultIsStable) {
-            // wait for unread message invalidations
-            await clock.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
-
-            var count2 = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
-            if (!count2.HasValue )
-                return Model.None;
-
-            if (count.Value > count2.Value) {
-                count = count2;
-            } else {
-                count = count2;
-                resultIsStable = true;
-            }
-        }
 
         return new() {
             Count = count.Value,

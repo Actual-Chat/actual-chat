@@ -7,12 +7,16 @@ public interface IChatAuthorsBackend
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatAuthor?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<Symbol>> ListUserIds(string chatId, CancellationToken cancellationToken);
+    // TODO(AY): Move this method to IUsersBackend
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken);
+
+    // Non-compute methods
+
     Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<string>> GetAuthorIds(string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<string>> GetUserIds(string chatId, CancellationToken cancellationToken);
 
     // Commands
 

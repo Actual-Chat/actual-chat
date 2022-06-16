@@ -8,9 +8,9 @@
     var selection = Selection;
     if (selection == null || Array.IndexOf(candidates, selection) < 0)
         _selection = selection = candidates[0];
-    <div class="mb-1 p-1 border rounded-md overflow-y-auto max-h-96 w-full @Class">
+    <div class="mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full @Class">
         @foreach (var c in candidates) {
-            var cls = c == selection ? "bg-mention" : "";
+            var cls = c == selection ? "bg-accent" : "";
             <div class="px-1 rounded hover:cursor-pointer @cls"
                  @onmouseover="_ => Selection = c"
                  @onclick="@(_ => Manager.TriggerSelected(c))">

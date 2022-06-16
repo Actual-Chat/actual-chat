@@ -30,7 +30,7 @@ public class MarkupParser : IMarkupParser
             or 'w' // for www.
             ).Labelled("First URL character");
     private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%_.\\-~".Contains(c, StringComparison.Ordinal)).Labelled("URL character");
+        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%_.\\-~".OrdinalContains(c)).Labelled("URL character");
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
     private static readonly Parser<char, char> EndOfLineChar =
@@ -124,11 +124,11 @@ public class MarkupParser : IMarkupParser
 
     // Stylized text
     private static readonly Parser<char, Markup> BoldMarkup =
-        Rec(() => TextBlock).Between(Try(BoldToken))
+        Rec(() => TextBlock!).Between(Try(BoldToken))
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Bold))
             .Debug("**");
     private static readonly Parser<char, Markup> ItalicMarkup =
-        Rec(() => TextBlock).Between(ItalicToken)
+        Rec(() => TextBlock!).Between(ItalicToken)
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
             .Debug("*");
 

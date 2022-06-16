@@ -121,30 +121,31 @@ public sealed class AsyncMemoizer<T>
     {
         var closedTargets = new HashSet<ChannelWriter<T>>();
         var buffer = await SwitchToNewBuffer(null).ConfigureAwait(false);
-        var newTargetReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
-        var hasMoreNewTargets = true;
-        while (hasMoreNewTargets || !buffer.IsCompleted) {
-            if (hasMoreNewTargets) {
-                newTargetReadTask ??= _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
-                await Task.WhenAny(newTargetReadTask, buffer.WhenOutdatedTask).ConfigureAwait(false);
-            }
+        var newTargetsReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
+        while (newTargetsReadTask != null || !buffer.IsCompleted) {
+            if (newTargetsReadTask != null)
+                await Task.WhenAny(newTargetsReadTask, buffer.WhenOutdatedTask).ConfigureAwait(false);
             else
                 await buffer.WhenOutdatedTask.ConfigureAwait(false);
 
             if (buffer.WhenOutdatedTask.IsCompleted)
+                // No need to await for WhenOutdatedTask - it never fails or gets cancelled
                 buffer = await SwitchToNewBuffer(buffer).ConfigureAwait(false);
 
-            if (hasMoreNewTargets && newTargetReadTask!.IsCompleted) {
-                if ((await newTargetReadTask.ConfigureAwait(false)).IsSome(out var newTarget)) {
+            if (newTargetsReadTask is { IsCompleted: true }) {
+#pragma warning disable MA0004
+                var newTargetReads = await newTargetsReadTask;
+#pragma warning restore MA0004
+                if (newTargetReads.IsSome(out var newTarget)) {
                     var success = await buffer
                         .TryCopyTo(newTarget.Target, newTarget.CopiedItemCount, cancellationToken)
                         .ConfigureAwait(false);
                     if (success)
                         _targets.Add(newTarget.Target);
-                    newTargetReadTask = null;
+                    newTargetsReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
                 }
                 else
-                    hasMoreNewTargets = false;
+                    newTargetsReadTask = null;
             }
         }
 
@@ -176,7 +177,7 @@ public sealed class AsyncMemoizer<T>
 
     private class Buffer
     {
-        public ReadOnlyMemory<Result<T>> Items { get; private set; }
+        public ReadOnlyMemory<Result<T>> Items { get; }
         public Task<Unit> WhenOutdatedTask { get; }
         public bool IsCompleted => Items.Length > 0 && Items.Span[^1].HasError;
 

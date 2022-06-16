@@ -1,6 +1,5 @@
 ﻿using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
 using Stl.Fusion.Extensions;
@@ -17,25 +16,24 @@ public class CoreModule : HostModule<CoreSettings>
 
     public override void InjectServices(IServiceCollection services)
     {
+        base.InjectServices(services);
+
         var pluginAssemblies = Plugins.FoundPlugins.InfoByType
             .Select(c => c.Value.Type.TryResolve())
             .Where(c => c != null)
             .Select(c => c!.Assembly)
             .Distinct()
-            .ToArray();
+            .ToList();
+
         // Common services
         services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder(pluginAssemblies));
-        services.TryAddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
-        if (HostInfo.IsDevelopmentInstance) {
-            var descriptor = ServiceDescriptor.Singleton<ObjectPoolProvider>(
-                _ => new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
-            );
-            services.Replace(descriptor);
-        }
-        services.TryAddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
+        services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
+            ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
+            : new DefaultObjectPoolProvider());
+        services.AddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
+
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
-
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
     }

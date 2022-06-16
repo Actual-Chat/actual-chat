@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
+using ActualChat.Hosting;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -13,15 +14,22 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
 
     private IBlobStorageProvider Blobs { get; }
+    private HostInfo HostInfo { get; init; } = null!;
 
-    public ChatDbInitializer(IServiceProvider services, IBlobStorageProvider blobs) : base(services)
-        => Blobs = blobs;
+    public ChatDbInitializer(
+        IServiceProvider services,
+        IBlobStorageProvider blobs,
+        HostInfo hostInfo) : base(services)
+    {
+        Blobs = blobs;
+        HostInfo = hostInfo;
+    }
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
         await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dependencies = InitializeTasks
-            .Where(kv => kv.Key.GetType().Name.StartsWith("Users", StringComparison.Ordinal))
+            .Where(kv => kv.Key.GetType().Name.OrdinalStartsWith("Users"))
             .Select(kv => kv.Value)
             .ToArray();
         await Task.WhenAll(dependencies).ConfigureAwait(false);
@@ -30,7 +38,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        if (DbInfo.ShouldRecreateDb) {
+        var chatExists= await dbContext.Chats
+            .Where(c => c.Id == (string)Constants.Chat.DefaultChatId)
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if ((DbInfo.ShouldRecreateDb && HostInfo.IsDevelopmentInstance) || (!chatExists && HostInfo.IsDevelopmentInstance)) {
             Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
@@ -68,6 +81,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 // Looks like we're starting w/ existing DB
                 dbContext.ChangeTracker.Clear();
             }
+
+            await AddChatAuthors(dbContext, cancellationToken).ConfigureAwait(false);
 
             await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
                 .ConfigureAwait(false);
@@ -119,6 +134,30 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
     }
 
+    private async Task AddChatAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var defaultChatId = Constants.Chat.DefaultChatId;
+        for (int i = 1; i < 30; i++) {
+            var dbAuthor = new DbChatAuthor {
+                Id = DbChatAuthor.ComposeId(defaultChatId, i + 1),
+                ChatId = defaultChatId,
+                LocalId = i + 1,
+                Version = VersionGenerator.NextVersion(),
+                Name = $"User_{i}",
+                IsAnonymous = false,
+                UserId = $"user{i}",
+            };
+            dbContext.ChatAuthors.Add(dbAuthor);
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
+            }
+        }
+    }
+
     private async Task AddRandomEntries(
         ChatDbContext dbContext,
         DbChat dbChat,
@@ -165,7 +204,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 Type = ChatEntryType.Text,
                 ChatId = dbChat.Id,
                 Id = id,
@@ -194,7 +233,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Audio,
                 Id = id,
@@ -210,7 +249,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Text,
                 Id = id,
@@ -243,7 +282,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Audio,
                 Id = id,
@@ -259,7 +298,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
+                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
                 ChatId = dbChat.Id,
                 Type = ChatEntryType.Text,
                 Id = id,

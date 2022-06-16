@@ -37,7 +37,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 
     [ComputeMethod]
     public virtual Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken)
-        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).ToImmutableArray());
+        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
 
     [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken)
@@ -56,10 +56,10 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         var startEntry = await EntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
-        var startId = startEntry?.Id ?? idRange.End - 1;
+        var startId = startEntry?.Id ?? idRange.End;
 
-        var entries = EntryReader.ReadAllWaitingForNew(startId, cancellationToken);
-        await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        var entries = EntryReader.Observe(startId, cancellationToken);
+        await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsEmpty)
                 continue;
             AddActiveEntry(entry);
@@ -79,21 +79,23 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
                         _log.LogError(e, "Error while waiting for entry streaming completion");
                     // We should catch every exception here
                 }
-                RemoveActiveEntry(entry);
+                finally {
+                    RemoveActiveEntry(entry);
+                }
             }, CancellationToken.None);
         }
     }
 
     private void AddActiveEntry(ChatEntry entry)
     {
-        bool isAuthorSetChanged;
+        int thisAuthorEntryCount;
         lock (Lock) {
-            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != entry.AuthorId);
             _activeEntries = _activeEntries.Add(entry);
+            thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {
             _ = GetActiveChatEntries(default);
-            if (isAuthorSetChanged) {
+            if (thisAuthorEntryCount == 1) {
                 _ = GetActiveAuthorIds(default);
                 _ = IsAuthorActive(entry.AuthorId, default);
             }
@@ -102,14 +104,14 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 
     private void RemoveActiveEntry(ChatEntry entry)
     {
-        bool isAuthorSetChanged;
+        int thisAuthorEntryCount;
         lock (Lock) {
             _activeEntries = _activeEntries.Remove(entry);
-            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != entry.AuthorId);
+            thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {
             _ = GetActiveChatEntries(default);
-            if (isAuthorSetChanged) {
+            if (thisAuthorEntryCount == 0) {
                 _ = GetActiveAuthorIds(default);
                 _ = IsAuthorActive(entry.AuthorId, default);
             }

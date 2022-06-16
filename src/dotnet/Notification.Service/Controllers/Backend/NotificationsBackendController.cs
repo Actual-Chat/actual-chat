@@ -14,12 +14,12 @@ public class NotificationsBackendController : ControllerBase, INotificationsBack
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
-        => _service.GetDevices(userId, cancellationToken);
+    public Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken)
+        => _service.ListDevices(userId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken)
-        => _service.GetSubscribers(chatId, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListSubscriberIds(string chatId, CancellationToken cancellationToken)
+        => _service.ListSubscriberIds(chatId, cancellationToken);
 
     [HttpPost]
     public Task NotifySubscribers(

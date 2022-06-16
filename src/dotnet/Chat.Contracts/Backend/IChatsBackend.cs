@@ -5,7 +5,8 @@ public interface IChatsBackend
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<string[]> GetOwnedChatIds(string userId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListOwnedChatIds(string userId, CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(
         string chatId, ChatEntryType entryType, Range<long>? idTileRange,
@@ -30,11 +31,11 @@ public interface IChatsBackend
         string chatId, ChatEntryType entryType,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         Session session, string chatId,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]

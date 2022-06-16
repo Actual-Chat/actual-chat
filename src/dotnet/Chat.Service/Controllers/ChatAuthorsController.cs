@@ -14,32 +14,24 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<ChatAuthor?> GetChatAuthor(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetChatAuthor(session, chatId, cancellationToken);
+    public Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetOwnAuthor(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetChatPrincipalId(session, chatId, cancellationToken);
+    public Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetOwnPrincipalId(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken)
-        => _service.GetChatIds(session, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
+        => _service.ListOwnChatIds(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetChatAuthorAvatarId(session, chatId, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListAuthorIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
-        => _service.CanAddToContacts(session, chatPrincipalId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetAuthorIds(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetUserIds(session, chatId, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListUserIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
@@ -48,6 +40,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     [HttpGet, Publish]
     public Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken)
         => _service.GetAuthorPresence(chatId, authorId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+        => _service.CanAddToContacts(session, chatPrincipalId, cancellationToken);
 
     // Commands
 

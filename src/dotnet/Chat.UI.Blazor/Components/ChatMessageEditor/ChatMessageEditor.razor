@@ -15,9 +15,7 @@
                 <AttachmentListPreview @ref="AttachmentListPreviewRef"
                                        RemoveRequested="@(c => RemoveAttachment(c))" />
                 <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
-                    <div class="flex-none self-center m-3 mr-0 border-2 border-accent">
-                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
-                    </div>
+                    <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                  Class="message-input -flex-y"
                                  Placeholder="@("#" + Chat.Title)"
@@ -30,7 +28,7 @@
                     </button>
                 </label>
             </div>
-            <div class="recorder-buttons flex-x absolute right-2 bottom-2 md:right-4 md:bottom-4 z-40 shadow-[0_35px_35px_rgba(0,0,0,0.25)] animate-scale-from-right">
+            <div class="recorder-buttons flex-x absolute right-2 bottom-2 md:right-4 md:bottom-4 z-40 shadow-recorder shadow-shadow-main animate-scale-from-right">
                 <div class="language-button flex hidden">
                     <ChatLanguageToggle/>
                 </div>
@@ -45,6 +43,7 @@
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -57,8 +56,13 @@
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
+    private IPersistentState<long>? LastReadEntryId { get; set; }
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -66,6 +70,8 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+        if (LastReadEntryId != null)
+            await LastReadEntryId.DisposeAsync();
     }
 
     protected override void OnParametersSet()
@@ -89,11 +95,12 @@
             return;
 
         try {
-            await SlateEditorRef.Clear().ConfigureAwait(true);
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
-            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
+            var entryId = await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            if (LastReadEntryId != null)
+                LastReadEntryId.Value = entryId;
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);

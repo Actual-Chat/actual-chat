@@ -36,16 +36,17 @@ public interface IChats
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatPermissions> GetPermissions(
+    Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<bool> CheckCanJoin(
+    Task<bool> CanJoin(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,

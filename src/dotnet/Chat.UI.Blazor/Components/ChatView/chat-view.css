@@ -6,7 +6,7 @@
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-current break-words;
-    @apply border-l-2 border-transparent;
+    @apply border-l-2 border-secondary;
 }
 
 .chat-message:hover {
@@ -126,4 +126,14 @@
 
 .new-separator-title {
     @apply bg-accent text-accent rounded-md;
+}
+
+.message-menu-button {
+    @apply h-8 w-12 right-4 -mt-3 bg-secondary;
+    @apply rounded-r-lg rounded-l-lg border-r border-t border-b border-l;
+    @apply border-accent shadow-context;
+}
+
+.message-menu-button.show {
+    @apply visible z-20 absolute bg-context-menu ;
 }

@@ -1,12 +1,14 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
+@using Microsoft.JSInterop.Implementation
 @implements IDisposable
 @{
     var failures = UICommandFailureList.Items;
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
 
-<div class="absolute z-50">
+<div class="absolute z-50 min-h-mobile-header">
     <NavbarToggle/>
 </div>
 <div class="bg-primary flex-1 flex-x justify-items-stretch h-full max-h-full relative">
@@ -18,11 +20,11 @@
             </div>
             <div class="navbar-mobile-title md:hidden
                         flex-1 flex flex-row items-center justify-end px-4 py-3
-                        bg-accent font-semibold">
+                        bg-accent font-semibold min-h-mobile-header">
                 <NavbarMobileTitle/>
             </div>
             <div class="flex-x h-full overflow-y-hidden">
-                <div class="flex flex-1 flex-col text-secondary bg-accent">
+                <div class="navbar-group-toggles">
                     <NavbarGroupToggles/>
                 </div>
                 <div class="flex-y w-full h-full overflow-y-hidden">
@@ -38,7 +40,7 @@
                                 <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
                                 <div class="pt-0.5"><BlazorModeToggle/></div>
                             </div>
-                        <div class="flex-none flex-y justify-center items-start w-full py-2 px-2.5 border-t-2 border-accent min-h-footer">
+                        <div class="flex-y justify-center items-start w-full h-full px-2.5 border-t-2 border-accent min-h-footer">
                             <AccountDropdown/>
                         </div>
                     </div>
@@ -66,10 +68,17 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private UICommandFailureList UICommandFailureList { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     protected override void OnInitialized() {
         Nav.LocationChanged += OnLocationChanged;
         UICommandFailureList.Changed += OnCommandFailureListChanged;
+    }
+
+    protected override async Task OnInitializedAsync() {
+        if (BlazorModeHelper.IsServerSideBlazor) {
+            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
+        }
     }
 
     public void Dispose() {

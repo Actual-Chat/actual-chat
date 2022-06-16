@@ -108,10 +108,12 @@ internal static class Program
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "Host")),
+                    EnvironmentVariables = {
+                        ["ASPNETCORE_ENVIRONMENT"] = "Development",
+                        ["EnableAnalyzer"] = "false",
+                        ["EnableNETAnalyzers"] = "false"
+                    }
                 };
-                psiDotnet.EnvironmentVariables.Add("ASPNETCORE_ENVIRONMENT", "Development");
-                psiDotnet.EnvironmentVariables.Add("EnableAnalyzer", "false");
-                psiDotnet.EnvironmentVariables.Add("EnableNETAnalyzers", "false");
                 dotnetProcess.StartInfo = psiDotnet;
                 dotnetProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
                     if (e?.Data == null)
@@ -137,8 +139,10 @@ internal static class Program
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetFullPath(Path.Combine("src", "nodejs")),
+                    EnvironmentVariables = {
+                        ["CI"] = "true"
+                    }
                 };
-                psiNpm.EnvironmentVariables.Add("CI", "true");
                 npmProcess.StartInfo = psiNpm;
                 npmProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
                     if (e?.Data == null)
@@ -233,7 +237,7 @@ internal static class Program
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
         });
 
-        Target("generate-version", DependsOn("restore-tools"), async () => {
+        Target("generate-version", async () => {
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
@@ -303,7 +307,7 @@ internal static class Program
             await File.WriteAllTextAsync(".dockerignore", dockerIgnore).ConfigureAwait(false);
         });
 
-        Target("integration-tests", DependsOn("restore-tools"), async () => {
+        Target("integration-tests", async () => {
             await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +

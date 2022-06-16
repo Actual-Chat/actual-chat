@@ -32,6 +32,7 @@ services:
     volumes:
       - ./.config/local.actual.chat/ssl:/etc/ssl
       - ./.config/local.actual.chat/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./.config/local.actual.chat/nginx/nginx.proxy-headers.conf:/etc/nginx/nginx.proxy-headers.conf
       - ./.config/local.actual.chat/nginx/snippets:/etc/nginx/snippets
       - ./.config/local.actual.chat/nginx/dhparam.pem:/etc/nginx/dhparam.pem
     # To have logging, uncomment line below and adjust path to log file and ensure it exists

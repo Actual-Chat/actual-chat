@@ -50,11 +50,19 @@
     max-height: 200px;
 }
 
+.attach-dropdown-menu {
+    @apply rounded-md p-1 absolute bottom-5 -left-10 shadow-context;
+}
+
+.attach-dropdown-menu.menu {
+    @apply border border-context-border;
+}
+
 .recorder-buttons {
     @apply flex-none rounded-2xl bg-accent ml-3;
 }
 
-.btn.audio-recorder-toggle.on {
+.btn.audio-recorder-toggle.on .btn-content {
     @apply text-recorder-on;
 }
 

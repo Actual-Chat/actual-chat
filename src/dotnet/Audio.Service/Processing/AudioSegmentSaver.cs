@@ -14,8 +14,7 @@ public sealed class AudioSegmentSaver : AudioProcessorBase
         ClosedAudioSegment closedAudioSegment,
         CancellationToken cancellationToken)
     {
-        var streamIndex = closedAudioSegment.StreamId.Replace(
-            $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
+        var streamIndex = closedAudioSegment.StreamId.OrdinalReplace($"{closedAudioSegment.AudioRecord.Id}-", "");
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".opuss");
 
         var streamAdapter = new ActualOpusStreamAdapter(Log);

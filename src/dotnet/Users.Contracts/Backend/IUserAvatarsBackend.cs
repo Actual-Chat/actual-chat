@@ -4,10 +4,10 @@ public interface IUserAvatarsBackend
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserAvatar?> Get(string avatarId, CancellationToken cancellationToken);
-    Task<string> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetAvatarIds(string userId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListAvatarIds(string userId, CancellationToken cancellationToken);
 
+    Task<Symbol> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken);
     Task<UserAvatar> EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken);
 
     [CommandHandler]

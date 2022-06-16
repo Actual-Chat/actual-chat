@@ -1,12 +1,17 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="btn btn-square @Class" title="@Title" disabled="@IsDisabled"
+<button class="btn btn-square @Class" title="@Title"
         name="@Name" type="@GetButtonType()"
+        disabled="@IsDisabled"
+        autofocus="@IsAutofocused"
+        oncontextmenu="return false;"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
-    <div class="btn-content @ContentClass">
-        @ChildContent
+    <div class="btn-content @ContentClass" tabindex="-1">
+        <div class="btn-content-inner">
+            @ChildContent
+        </div>
     </div>
 </button>
 
@@ -17,9 +22,12 @@
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string GetButtonType()
         => Type.ToString().ToLower();

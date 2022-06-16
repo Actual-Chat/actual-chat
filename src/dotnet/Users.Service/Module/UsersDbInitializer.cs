@@ -64,6 +64,48 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 new SignInCommand(session, user, user.Identities.Keys.Single()),
                 cancellationToken).ConfigureAwait(false);
             UserConstants.Admin.Session = session;
+
+            await AddUsers(dbContext, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task AddUsers(UsersDbContext dbContext, CancellationToken cancellationToken)
+    {
+        for (int i = 1; i < 30; i++) {
+            var userId = $"user{i}";
+            var userName = $"User_{i}";
+            var userIdentity = new UserIdentity("internal", userId);
+            dbContext.Users.Add(new DbUser() {
+                Id = userId,
+                Name = userName,
+                Identities = {
+                    new DbUserIdentity<string>() {
+                        DbUserId = userId,
+                        Id = userIdentity.Id,
+                        Secret = "",
+                    },
+                },
+            });
+            var avatarId = Ulid.NewUlid().ToString();
+            dbContext.UserProfiles.Add(new DbUserProfile {
+                UserId = userId,
+                Status = UserStatus.Active,
+                AvatarId = avatarId,
+            });
+            dbContext.UserAvatars.Add(new DbUserAvatar() {
+                Id = avatarId,
+                UserId = userId,
+                Name = userName,
+                Picture = UserConstants.Admin.Picture,
+            });
+
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
+            }
         }
     }
 }

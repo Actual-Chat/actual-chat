@@ -3,7 +3,7 @@
 <CascadingValue TValue="MentionCandidateListManager" Value="@this" IsFixed="true">
     <div class="absolute left-0 right-0 px-1.5 z-50">
         <div class="relative w-full">
-            <div class="absolute bottom-0 w-full">
+            <div class="absolute bottom-0 w-full text-secondary">
                 <MentionCandidateListView Class="bg-secondary" @ref="ListView" />
             </div>
         </div>
@@ -37,7 +37,7 @@
     public async Task Show(string search)
     {
         var candidates = Candidates.Value;
-        if (candidates != null && StringComparer.Ordinal.Equals(_lastSearch, search))
+        if (candidates != null && OrdinalEquals(_lastSearch, search))
             return;
 
         Candidates.Value = await MentionCandidateProvider

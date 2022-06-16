@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
@@ -17,9 +15,11 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string Title { get; set; } = "";
-    public bool IsPublic { get; set; }
     public ChatType ChatType { get; set; }
     public string Picture { get; set; } = "";
+
+    // Permissions & Rules
+    public bool IsPublic { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
