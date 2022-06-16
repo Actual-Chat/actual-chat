@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Primitives;
+using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -98,8 +99,11 @@ public class MessageController : ControllerBase
                 var attributes = post.Payload.Attachments.First(c => c.Id == file.Id);
                 var fileName = attributes.FileName.IsNullOrEmpty() ? file.FileName : attributes.FileName;
                 var description = attributes.Description ?? "";
+                var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
                 var upload = new TextEntryAttachmentUpload(fileName, file.Content, file.ContentType) {
-                    Description = description
+                    Description = description,
+                    Width = imageInfo?.Width ?? 0,
+                    Height = imageInfo?.Height ?? 0,
                 };
                 uploads.Add(upload);
             }
@@ -112,6 +116,21 @@ public class MessageController : ControllerBase
         }
         catch {
             return BadRequest("Failed to process command");
+        }
+    }
+
+    private async Task<IImageInfo?> GetImageInfo(FileInfo file)
+    {
+        if (!file.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try {
+            using var stream = new MemoryStream(file.Content);
+            return await Image.IdentifyAsync(stream).ConfigureAwait(false);
+        }
+        catch (Exception exc) {
+            _log.LogError(exc, "Failed to extract image info from '{FileName}'", file.FileName);
+            throw;
         }
     }
 
