@@ -3,6 +3,7 @@
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
+
 @{
     var model = State.LatestNonErrorValue;
 }
@@ -22,6 +23,7 @@
     var mentionClass = model.IsMentioned ? "mention" : "";
     var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
     var quoteClass = message.IsQuote ? "chat-message-quoted" : "";
+    var highlightClass = model.IsHighlighted ? "chat-message-highlighted" : "";
 }
 
 @if (message.DateLine.HasValue) {
@@ -30,8 +32,9 @@
 @if (message.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
+@* TODO: more elegant way of quotation *@
 <div class="@quoteClass" @onclick="OnQuoteClick">
-    <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
+    <div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass @highlightClass">
         @if (showPicture) {
             <div class="m-1.5">
                 <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
@@ -99,6 +102,8 @@
 </div>
 
 @code {
+    private Task? _whenHighlighted;
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
@@ -107,6 +112,7 @@
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -120,6 +126,10 @@
         await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
+    }
+
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var principalId = await ChatAuthor
             .GetOwnPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
@@ -129,7 +139,8 @@
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
-        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage);
+        var isHighlighted = Message.Entry.Id == (await ChatUI.HighlightedChatEntry.Use(cancellationToken))?.Id;
+        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted);
     }
 
     private Markup GetMarkup()
@@ -162,6 +173,7 @@
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
             await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            ChatUI.HighlightedChatEntry.Value = Message.Entry;
         }
     }
 
@@ -181,6 +193,6 @@
         return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    public record Model(ChatMessageModel Message, Markup Markup, Symbol PrincipalId, ImmutableArray<TextEntryAttachment> Attachments, bool IsMentioned, ChatMessageModel? RepliedChatMessage);
+    public record Model(ChatMessageModel Message, Markup Markup, Symbol PrincipalId, ImmutableArray<TextEntryAttachment> Attachments, bool IsMentioned, ChatMessageModel? RepliedChatMessage, bool IsHighlighted);
 
 }

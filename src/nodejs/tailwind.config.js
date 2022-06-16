@@ -226,6 +226,7 @@ module.exports = {
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
+      'highlight': 'highlight 3s ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -793,6 +794,17 @@ module.exports = {
           transform: 'translate(0, -50%)',
           opacity: 1,
         },
+      },
+      'highlight': {
+          '0%': {
+              'background': '',
+          },
+          '5%': {
+              'background': 'var(--background-accent)',
+          },
+          '100%': {
+              'background': '',
+          },
       },
     },
     letterSpacing: {
