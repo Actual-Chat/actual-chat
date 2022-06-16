@@ -4,8 +4,6 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
-    // private static readonly int MaxBlockLength = 1_000;
-    // private static readonly int MaxBlockContentLength = 10_000;
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
 
     public Symbol Key { get; }
@@ -63,16 +61,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
         var isBlockStart = true;
         var lastDate = default(DateOnly);
-        // TODO: remove unused variables?
-        var blockContentLength = 0;
-        var blockLength = 0;
-
         var isPrevUnread = true;
         for (var index = 0; index < chatEntries.Count; index++) {
-            if (isBlockStart) {
-                blockContentLength = 0;
-                blockLength = 0;
-            }
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
@@ -92,8 +82,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
             isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
-            blockLength += 1;
-            blockContentLength += entry.Content.Length;
             lastDate = date;
         }
 
