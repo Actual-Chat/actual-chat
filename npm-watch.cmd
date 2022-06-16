@@ -1,2 +1,1 @@
-./Npm-Install.cmd
-npm run watch --prefix src/nodejs
+"./npm-install.cmd" && npm run watch --prefix src/nodejs

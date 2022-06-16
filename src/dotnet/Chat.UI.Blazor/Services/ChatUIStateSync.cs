@@ -44,7 +44,8 @@ public class ChatUIStateSync : WorkerBase
             SyncPlaybackState(cancellationToken),
             SyncRecordingState(cancellationToken),
             SyncKeepAwakeState(cancellationToken),
-            StopRecordingWhenInactive(cancellationToken));
+            StopRecordingWhenInactive(cancellationToken),
+            ResetHighlightedChatEntry(cancellationToken));
 
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
@@ -204,5 +205,20 @@ public class ChatUIStateSync : WorkerBase
             .GetIdRange(Session, recordingChatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
         return (recordingChatId, end);
+    }
+
+    private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
+    {
+        await foreach (var change in ChatUI.HighlightedChatEntry.Changes(cancellationToken).Where(x => x.Value != null).ConfigureAwait(false)) {
+            using var timeoutCts = new CancellationTokenSource(2000);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+            try {
+                await ChatUI.HighlightedChatEntry.When(x => x?.Id != change.Value!.Id, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
+                ChatUI.HighlightedChatEntry.Value = null;
+            }
+        }
     }
 }

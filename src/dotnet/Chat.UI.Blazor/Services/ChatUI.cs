@@ -20,6 +20,7 @@ public partial class ChatUI
     public IMutableState<bool> MustPlayPinnedContactChats { get; }
     public IMutableState<bool> IsPlaying { get; }
     public IMutableState<ChatEntry?> RepliedChatEntry { get; }
+    public IMutableState<ChatEntry?> HighlightedChatEntry { get; }
 
     public ChatUI(IServiceProvider services)
     {
@@ -36,6 +37,7 @@ public partial class ChatUI
         MustPlayPinnedContactChats = StateFactory.NewMutable<bool>();
         IsPlaying = StateFactory.NewMutable<bool>();
         RepliedChatEntry = StateFactory.NewMutable<ChatEntry?>();
+        HighlightedChatEntry = StateFactory.NewMutable<ChatEntry?>();
 
         _lastReadEntryIds = new SharedResourcePool<Symbol, IPersistentState<long>>(RestoreLastReadEntryId);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();

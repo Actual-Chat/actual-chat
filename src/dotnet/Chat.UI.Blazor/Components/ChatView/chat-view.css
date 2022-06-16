@@ -62,6 +62,15 @@
     @apply bg-message-hover;
 }
 
+.chat-message-quoted {
+    height: 100%;
+    border-left: 4px solid;
+    @apply border-accent cursor-pointer;
+}
+.chat-message-highlighted {
+    @apply animate-highlight;
+}
+
 .chat-message.own-message:hover .author-badge {
     @apply bg-message-hover;
 }
