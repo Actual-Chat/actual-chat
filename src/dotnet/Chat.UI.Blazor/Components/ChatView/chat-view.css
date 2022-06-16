@@ -149,3 +149,6 @@
 .message-menu-button.show {
     @apply visible z-20 absolute bg-context-menu ;
 }
+.message-attachment-image img.skeleton {
+    @apply bg-skeleton rounded-md animate-pulse;
+}
