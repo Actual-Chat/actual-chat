@@ -293,7 +293,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 EntryId = textEntry.Id,
                 ContentType = contentType,
                 FileName = fileName,
-                ContentId = contentId
+                ContentId = contentId,
+                Width = attachmentUpload.Width,
+                Height = attachmentUpload.Height,
             };
             var createAttachmentCommand = new IChatsBackend.CreateTextEntryAttachmentCommand(attachment);
             await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
