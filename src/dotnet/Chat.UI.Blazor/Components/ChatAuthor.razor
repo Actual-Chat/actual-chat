@@ -41,7 +41,7 @@
             chatId = AuthorId.Substring(0, i);
         }
 
-        var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);
+        var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken).ConfigureAwait(true);
         if (author == null)
             return Model.None;
 
@@ -54,7 +54,7 @@
         if (ChatRecordingActivity == null)
             return new(author, false);
 
-        var isRecording = await ChatRecordingActivity.IsAuthorActive(author.Id, cancellationToken);
+        var isRecording = await ChatRecordingActivity.IsAuthorActive(author.Id, cancellationToken).ConfigureAwait(true);
         return new(author,isRecording);
     }
 
