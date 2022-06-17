@@ -1,8 +1,28 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, GetTokenOptions, onMessage,  } from 'firebase/messaging';
 import { addInteractionHandler } from '../../nodejs/src/first-interaction';
 
 const LogScope = 'MessagingInit';
+
+enum MessageType {
+    NOTIFICATION_CLICKED = "notification-clicked"
+}
+
+export function registerNotificationClickHandler(): void {
+    window.addEventListener("message", ev => {
+        console.log('message !!!!')
+        if (ev.origin !== window.origin)
+            return;
+
+        const { type, link } = ev;
+        if (link && type == MessageType.NOTIFICATION_CLICKED) {
+            console.log(link);
+            window.location.href = link;
+        }
+    });
+
+    console.log('registered message handler!!!');
+}
 
 export async function getDeviceToken(): Promise<string | null> {
     try {
@@ -25,6 +45,7 @@ export async function getDeviceToken(): Promise<string | null> {
                     scope: '/dist/firebase-cloud-messaging-push-scope'
                 });
             }
+
             const tokenOptions: GetTokenOptions = {
                 vapidKey: publicKey,
                 serviceWorkerRegistration: workerRegistration,
@@ -37,6 +58,9 @@ export async function getDeviceToken(): Promise<string | null> {
     }
     catch(e) {
         console.error(e);
+    }
+    finally {
+        registerNotificationClickHandler();
     }
 }
 
