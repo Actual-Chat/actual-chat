@@ -32,7 +32,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
-    private IPersistentState<long> LastReadEntryId { get; set; } = null!;
+    private IPersistentState<long>? LastReadEntryId { get; set; }
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
@@ -46,7 +46,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public async Task NavigateToUnreadEntry()
     {
         long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryId.Value;
+        var lastReadEntryId = LastReadEntryId?.Value ?? 0;
         if (lastReadEntryId > 0)
             navigateToEntryId = lastReadEntryId;
         else {
@@ -72,8 +72,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                 .ConfigureAwait(true);
             _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
 
-                LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
-                _initialLastReadEntryId = LastReadEntryId.Value;
+            LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
+            _initialLastReadEntryId = LastReadEntryId.Value;
         }
         finally {
             await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
@@ -108,10 +108,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                 visibleEntryIds.Remove(minVisibleEntryId);
                 await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
 
-                if (LastReadEntryId.Value >= maxVisibleEntryId)
+                if (LastReadEntryId?.Value >= maxVisibleEntryId)
                     continue;
 
-                LastReadEntryId.Value = maxVisibleEntryId;
+                if (LastReadEntryId != null)
+                    LastReadEntryId.Value = maxVisibleEntryId;
             }
             catch (Exception e) when(e is not OperationCanceledException) {
                 Log.LogWarning(e,
@@ -130,7 +131,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chatId = chat.Id.Value;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(true);
-        var lastReadEntryId = LastReadEntryId.Value;
+        var lastReadEntryId = LastReadEntryId?.Value ?? 0;
         var entryId = lastReadEntryId;
         var mustScrollToEntry = query.IsNone && entryId != 0;
 
