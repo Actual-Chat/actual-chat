@@ -54,6 +54,9 @@ module.exports = {
         'square-active': 'var(--square-active)',
         'square-focus': 'var(--square-focus)',
         'square-title': 'var(--square-title)',
+        'recorder': 'var(--recorder)',
+        'recorder-hover': 'var(--recorder-hover)',
+        'recorder-title': 'var(--recorder-title)',
         'code': 'var(--code)',
         'avatar': 'var(--avatar)',
         'recorder-on': 'var(--recorder-on)',
@@ -849,6 +852,7 @@ module.exports = {
       fit: 'fit-content',
       '60': '60vh',
       '75': '75vh',
+      'footer': '3.75rem',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       ...theme('spacing'),

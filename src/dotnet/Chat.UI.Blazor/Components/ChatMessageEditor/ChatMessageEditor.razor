@@ -11,8 +11,8 @@
 <EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
 <div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
-            <div class="flex-y justify-between outline-none bg-accent w-full border-secondary">
+        <div class="flex-none -flex-y md:flex-x justify-items-stretch items-stretch w-full bg-secondary ">
+            <div class="post-panel flex-x justify-between outline-none bg-accent w-full border-secondary">
                 <input class="files-picker" type="file" hidden multiple/>
                 <ActiveReply />
                 <AttachmentListPreview @ref="AttachmentListPreviewRef"
@@ -32,14 +32,7 @@
                     </button>
                 </label>
             </div>
-            <div class="recorder-buttons flex-x absolute right-2 bottom-2 md:right-4 md:bottom-4 z-40 shadow-recorder shadow-shadow-main animate-scale-from-right">
-                <div class="language-button flex hidden">
-                    <ChatLanguageToggle/>
-                </div>
-                <div class="recorder-button flex">
-                    <ChatRecorderToggle ChatId="@Chat.Id"/>
-                </div>
-            </div>
+            <RecorderPanel />
         </div>
     </MentionCandidateListManager>
 </div>
