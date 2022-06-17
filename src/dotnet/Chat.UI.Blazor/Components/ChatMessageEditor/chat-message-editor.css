@@ -7,6 +7,12 @@
     @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3;
     @apply break-words outline-none hover:cursor-text text-primary;
 }
+.post-panel {
+    @apply md:rounded-r-2xl;
+}
+.text-mode .post-panel {
+    @apply rounded-none;
+}
 
 .not-recording {
     @apply text-secondary;
@@ -36,9 +42,7 @@
 .record-mode .post-message {
     @apply hidden;
 }
-.record-mode .recorder-buttons {
-    @apply flex-row;
-}
+
 .record-mode .language-button {
     @apply flex animate-scale-from-right;
 }
@@ -58,8 +62,49 @@
     @apply border border-context-border;
 }
 
+.recorder-panel {
+    @apply flex-x justify-center;
+    @apply bg-accent outline-none;
+    @apply px-0.5 py-0.5 md:p-0;
+    @apply max-h-footer h-12 md:h-auto;
+    @apply rounded-none;
+    @apply shadow-inner md:shadow-none;
+    @apply md:ml-1 border-secondary border-b;
+}
+.recorder-panel .playback-toggle .chat-playback-toggles {
+    @apply rounded-lg;
+}
+.recorder-panel .playback-toggle {
+    @apply flex md:hidden bg-secondary p-0.5 md:p-0 rounded-l-lg;
+}
+.recorder-panel .playback-toggle .chat-header-button button {
+    @apply rounded-lg bg-accent outline-none;
+    @apply flex-1 flex flex-row justify-center;
+}
+.recorder-panel .recorder-buttons .recorder-button {
+    @apply w-full;
+}
+.recorder-panel .chat-playback-toggles {
+    @apply mr-0.5;
+}
+
+.recorder-buttons .btn.btn-square .btn-content-inner {
+    @apply w-full flex justify-center;
+}
+
+.audio-recorder-toggle.btn.btn-square {
+    @apply w-full rounded-lg md:rounded-l-2xl md:rounded-r-none;
+}
+
 .recorder-buttons {
-    @apply flex-none rounded-2xl bg-accent ml-3;
+    @apply w-full flex-1 bg-secondary py-0.5 pr-0.5 md:p-0 rounded-r-lg md:rounded-none;
+}
+
+.recorder-buttons .btn.btn-square .btn-content {
+    @apply bg-recorder text-recorder-title;
+}
+.recorder-buttons .btn.btn-square:hover .btn-content {
+    @apply bg-recorder-hover;
 }
 
 .btn.audio-recorder-toggle.on .btn-content {
@@ -68,4 +113,10 @@
 
 .btn.audio-recorder-toggle.on svg {
     filter: drop-shadow(0px 0px 5px rgb(239 68 68 / 0.7));
+}
+
+.btn.chat-language-toggle {
+    @apply relative md:-right-4 md:-ml-4;
+    @apply rounded-lg md:rounded-2xl;
+    @apply w-10 md:w-auto mr-0.5 md:mr-0;
 }
