@@ -42,4 +42,7 @@
         min-width: -webkit-fill-available;
         min-width: -moz-available;
     }
+    .disabled {
+        @apply pointer-events-none opacity-70;
+    }
 }

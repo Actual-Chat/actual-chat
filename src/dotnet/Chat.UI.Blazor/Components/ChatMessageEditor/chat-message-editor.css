@@ -5,13 +5,10 @@
 
 .message-input {
     @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3;
-    @apply break-words outline-none hover:cursor-text text-primary;
+    @apply break-all outline-none hover:cursor-text text-primary;
 }
 .post-panel {
     @apply md:rounded-r-2xl;
-}
-.text-mode .post-panel {
-    @apply rounded-none;
 }
 
 .not-recording {
@@ -35,8 +32,8 @@
     @apply flex md:hidden animate-display-from-left md:animate-none;
 }
 
-.text-mode .recorder-buttons {
-    @apply hidden;
+.text-mode .recorder-buttons .btn {
+    @apply disabled;
 }
 
 .record-mode .post-message {
