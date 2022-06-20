@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, GetTokenOptions, onMessage,  } from 'firebase/messaging';
+import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { addInteractionHandler } from '../../nodejs/src/first-interaction';
 
 const LogScope = 'MessagingInit';
