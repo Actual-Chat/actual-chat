@@ -67,6 +67,7 @@
     @apply rounded-none;
     @apply shadow-inner md:shadow-none;
     @apply md:ml-1 border-secondary border-b;
+    @apply self-stretch md:self-end;
 }
 .recorder-panel .playback-toggle .chat-playback-toggles {
     @apply rounded-lg;
