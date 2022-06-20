@@ -346,9 +346,6 @@ jobs:
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
-      - build
-      - unit-tests
-      - integration-tests
       - deploy-dev
     environment: prod
     steps:
