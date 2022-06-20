@@ -1,18 +1,45 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Components.SideNav
+@inherits ComputedStateComponent<ChatRightPanel.Model>
 
-<div class="flex-y w-full h-full md:w-80 border-l border-accent p-3 animate-from-right">
-    <TabPanel TabsClass="right-panel-tabs">
-        <div class="overflow-y-hidden">
-            <Tab Title="People" Class="people-tab">
-                <ChatAuthorsTab/>
-            </Tab>
-            <Tab Title="Chat">
-                <ChatTab/>
-            </Tab>
-        </div>
-    </TabPanel>
-</div>
+<SideNav Direction="SideNavDirection.RightToLeft"
+         Open="() => RightPanelUI.IsVisible.Value = true"
+         Closed="() => RightPanelUI.IsVisible.Value = false"
+         IsOpen="@State.Value.IsRightPanelVisible">
+    <div class="flex-y w-full h-full md:w-80 border-l border-accent p-3">
+        <TabPanel TabsClass="right-panel-tabs">
+            <div class="overflow-y-hidden">
+                <Tab Title="People" Class="people-tab">
+                    <ChatAuthorsTab/>
+                </Tab>
+                <Tab Title="Chat">
+                    <ChatTab/>
+                </Tab>
+            </div>
+        </TabPanel>
+    </div>
+</SideNav>
 
 @code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        return new () {
+            IsRightPanelVisible = isRightPanelVisible,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+        public bool IsRightPanelVisible { get; init; }
+    }
 }

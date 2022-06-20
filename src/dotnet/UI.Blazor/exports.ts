@@ -11,6 +11,7 @@ import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/tooltip.css'
+import './Components/SideNav/side-nav.css'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';
@@ -21,6 +22,7 @@ export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/TextBox/text-box';
 export * from './Components/VirtualList/virtual-list';
+export * from './Components/SideNav/side-nav';
 
 export * from './Layouts/base-layout';
 
