@@ -1,10 +1,7 @@
-/// <reference no-default-lib="true"/>
-/// <reference lib="es2020" />
-/// <reference lib="WebWorker" />
-
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
+// @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 
 const configBase64 = new URL(location.href).searchParams.get('config');
@@ -31,6 +28,7 @@ onBackgroundMessage(messaging, payload => {
 });
 
 
+// @ts-ignore
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
     event.stopImmediatePropagation();
     event.notification.close();
@@ -43,6 +41,7 @@ const onNotificationClick = async function(event: NotificationEvent): Promise<an
     const href = url.href;
     const origin = url.origin;
     const hrefNotHashed = url.hash ? href.replace(url.hash, '') : href;
+    // @ts-ignore
     const clients: Clients = sw.clients;
 
     const windowsClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
