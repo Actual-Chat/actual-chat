@@ -4,26 +4,6 @@ import { addInteractionHandler } from '../../nodejs/src/first-interaction';
 
 const LogScope = 'MessagingInit';
 
-enum MessageType {
-    NOTIFICATION_CLICKED = "notification-clicked"
-}
-
-export function registerNotificationClickHandler(): void {
-    window.addEventListener("message", ev => {
-        console.log('message !!!!')
-        if (ev.origin !== window.origin)
-            return;
-
-        const { type, link } = ev;
-        if (link && type == MessageType.NOTIFICATION_CLICKED) {
-            console.log(link);
-            window.location.href = link;
-        }
-    });
-
-    console.log('registered message handler!!!');
-}
-
 export async function getDeviceToken(): Promise<string | null> {
     try {
         const response = await fetch('/dist/config/firebase.config.js');
@@ -37,13 +17,11 @@ export async function getDeviceToken(): Promise<string | null> {
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
-            const workerPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
+            const workerPath = new URL('/sw.js', origin).toString();
             const workerUrl = `${workerPath}?config=${configBase64}`;
             let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
             if (!workerRegistration) {
-                workerRegistration = await navigator.serviceWorker.register(workerUrl, {
-                    scope: '/dist/firebase-cloud-messaging-push-scope'
-                });
+                workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/' });
             }
 
             const tokenOptions: GetTokenOptions = {
@@ -58,9 +36,6 @@ export async function getDeviceToken(): Promise<string | null> {
     }
     catch(e) {
         console.error(e);
-    }
-    finally {
-        registerNotificationClickHandler();
     }
 }
 
