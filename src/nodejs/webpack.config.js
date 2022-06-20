@@ -5,6 +5,7 @@ const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require("copy-webpack-plugin");
 const FileManagerPlugin = require('filemanager-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 /**
  * @param {string} file
@@ -82,6 +83,11 @@ module.exports = (env, args) => {
       // removes '1.bundle.js' and other trash from emitting
       removeEmptyChunks: true,
       usedExports: true,
+      minimizer: [
+        new TerserPlugin({
+            exclude: 'config/firebase.config.js',
+        }),
+      ],
       splitChunks: {
         cacheGroups: {
           styles: {
