@@ -21,10 +21,6 @@
     @apply p-1 justify-center;
 }
 
-#navbar-toggle:checked~#navbar {
-    @apply translate-x-0;
-}
-
 .btn-square.navbar-group-toggle {
     @apply rounded-none;
 }
