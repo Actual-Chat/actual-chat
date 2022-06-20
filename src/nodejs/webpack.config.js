@@ -292,8 +292,8 @@ module.exports = (env, args) => {
           type: 'module',
         }
       },
-      messagingServiceWorker: {
-        import: './../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts',
+      sw: {
+        import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,

@@ -28,17 +28,12 @@ const app = initializeApp(config);
 const messaging = getMessaging(app);
 onBackgroundMessage(messaging, payload => {
     console.log('[messaging-service-worker.ts] Received background message ', payload);
-    // payload.
 });
 
 
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
-    console.log('shit 5');
-
     event.stopImmediatePropagation();
     event.notification.close();
-    // if (event.action === 'close')
-    //     return;
 
     const notificationUrl = event.notification?.data?.FCM_MSG?.notification?.click_action;
     if (!notificationUrl)
@@ -51,19 +46,14 @@ const onNotificationClick = async function(event: NotificationEvent): Promise<an
     const clients: Clients = sw.clients;
 
     const windowsClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-        // .claim()
     const samePathWindow = windowsClients.find(wc => wc.url.startsWith(hrefNotHashed));
     const sameOriginWindow = windowsClients.find(wc => wc.url.startsWith(origin));
 
     const existingClientWindow = samePathWindow ?? sameOriginWindow;
     if (existingClientWindow) {
-        // const client = await existingClientWindow.navigate(url);
-        // if (client)
-        //     await client.focus();
+        await clients.claim();
         const focusedWindow = await existingClientWindow.focus();
-        // await focusedWindow.navigate('https://local.actual.chat/dist/firebase-cloud-messaging-push-scope/1');
-        focusedWindow.postMessage({ type: 'notification-click', link: href });
-        // await existingClientWindow.navigate(url);
+        await focusedWindow.navigate(url);
         return;
     }
 
