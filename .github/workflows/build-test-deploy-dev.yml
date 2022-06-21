@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   build:
-    name: Build image with cache
+    name: Build image for ${{ github.ref }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
@@ -60,17 +60,6 @@ jobs:
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
 
-      - name: Build restore image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          target: all-restore
-          tags: |
-            ghcr.io/actual-chat/actual-chat-app-restore:latest
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
@@ -98,80 +87,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          tags: |
-            ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
-          push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-no-cache:
-    name: Build image without cache
-    if: |
-      always() &&
-      needs.build.result == 'failure' &&
-      ( github.ref == 'refs/heads/master'     ||
-        github.ref == 'refs/heads/dev'        ||
-        startsWith(github.ref, 'refs/pull/')  ||
-        startsWith(github.ref, 'refs/heads/release/'))
-    runs-on: ubuntu-latest
-    needs:
-      - build
-    outputs:
-      semver2: ${{ steps.nbgv.outputs.SemVer2 }}
-      version: ${{ steps.nbgv.outputs.Version }}
-      simple-version: ${{ steps.nbgv.outputs.SimpleVersion }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          # Avoid shallow clone for Nerdbank.GitVersioning
-          fetch-depth: 0
-          lfs: true
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          install: true
-
-      - name: Replace git+ssh://git@ to https://
-        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
-
-      - name: Replace npm creds
-        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
-
-      - name: Generate version variables
-        id: nbgv
-        uses: dotnet/nbgv@master
-        with:
-          setAllVars: true
-
-      - name: Restore tools for nbgv
-        run: dotnet tool restore
-
-      - name: Generate Nerdbank.GitVersioning files
-        run: dotnet run --project build -- generate-version
-
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v0.7.2
-        with:
-          token_format: access_token
-          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
-          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build image
+      - name: Build image 'actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}'
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -287,15 +203,12 @@ jobs:
   deploy-dev:
     name: Deploy dev
     if: |
-      always() &&
-      (needs.build.result == 'success' || needs.build-no-cache.result == 'success') &&
-      ( github.ref == 'refs/heads/master' ||
-        github.ref == 'refs/heads/dev'    ||
-        startsWith(github.ref, 'refs/heads/release/'))
+      github.ref == 'refs/heads/master' ||
+      github.ref == 'refs/heads/dev'    ||
+      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
       - build
-      - build-no-cache
       - unit-tests
       - integration-tests
     environment: dev
@@ -342,12 +255,11 @@ jobs:
   deploy-prod:
     name: Deploy prod
     if: |
-      always() &&
-      needs.deploy-dev.result == 'success' &&
-      ( github.ref == 'refs/heads/master' ||
-        startsWith(github.ref, 'refs/heads/release/'))
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
+      - build
       - deploy-dev
     environment: prod
     steps:
