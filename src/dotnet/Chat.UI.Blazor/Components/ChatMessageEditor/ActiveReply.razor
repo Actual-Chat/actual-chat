@@ -5,18 +5,12 @@
     var model = State.LatestNonErrorValue;
 }
 @if (model != null) {
-    <div class="flex-x">
-        <ChatMessage Message="@model"/>
-        <ButtonSquare Class="close-reply modal-close" Click="OnCancelClicked" tabindex="-1" aria-label="close">
-            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-1 -1 26 26">
-                <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"/>
-            </svg>
-        </ButtonSquare>
+    <div class="flex-x bg-quote md:mx-4 md:rounded-t-lg outline-none">
+        <Quote Message="@model"/>
     </div>
 }
 
 @code {
-
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
 
@@ -32,9 +26,4 @@
         };
         return chatMessage;
     }
-
-    private void OnCancelClicked() {
-        ChatUI.RepliedChatEntry.Value = null;
-    }
-
 }

@@ -62,6 +62,16 @@
     @apply bg-message-hover;
 }
 
+.message-quote {
+    @apply flex w-full bg-quote p-3 text-base md:rounded-t-lg;
+}
+.message-quote .btn.btn-square {
+    @apply bg-primary;
+}
+.message-quote .btn.btn-square:hover {
+    @apply bg-secondary;
+}
+
 .chat-message-quoted {
     height: 100%;
     border-left: 4px solid;

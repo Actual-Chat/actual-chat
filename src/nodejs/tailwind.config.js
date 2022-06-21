@@ -78,6 +78,7 @@ module.exports = {
         'skeleton': 'var(--skeleton)',
         'skeleton-border': 'var(--skeleton-border)',
         'scrollbar': 'var(--scrollbar)',
+        'quote': 'var(--quote)',
       },
       textColor: {
         'primary': 'var(--text-primary)',

@@ -11,28 +11,30 @@
 <EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
 <div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
-        <div class="flex-none -flex-y md:flex-x justify-items-stretch items-stretch w-full bg-secondary ">
-            <div class="post-panel flex-x justify-between outline-none bg-accent w-full border-secondary">
-                <input class="files-picker" type="file" hidden multiple/>
-                <ActiveReply />
-                <AttachmentListPreview @ref="AttachmentListPreviewRef"
-                                       RemoveRequested="@(RemoveAttachment)" />
-                <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
-                    <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
-                    <SlateEditor @ref="SlateEditorRef" Id="message-input"
-                                 Class="message-input -flex-y"
-                                 Autofocus="true"
-                                 Placeholder="@("#" + Chat.Title)"
-                                 Posted="OnPosted" Rendered="OnSlateEditorRendered"/>
-                    <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
-                            @onclick="_ => OnPosted()">
-                        <svg class="fill-current w-9 h-9 m-1" viewBox="0 0 30 30" id="icon" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
-                        </svg>
-                    </button>
-                </label>
+        <div class="flex-none -flex-y md:flex-x justify-items-stretch items-stretch w-full bg-secondary">
+            <div class="-flex-y w-full bg-secondary">
+                <div class="post-panel flex-x justify-between outline-none bg-accent w-full border-secondary">
+                    <input class="files-picker" type="file" hidden multiple/>
+                    <AttachmentListPreview @ref="AttachmentListPreviewRef"
+                                           RemoveRequested="@(RemoveAttachment)"/>
+                    <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
+                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
+                        <SlateEditor @ref="SlateEditorRef" Id="message-input"
+                                     Class="message-input -flex-y"
+                                     Autofocus="true"
+                                     Placeholder="@("#" + Chat.Title)"
+                                     Posted="OnPosted" Rendered="OnSlateEditorRendered"/>
+                        <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
+                                @onclick="_ => OnPosted()">
+                            <svg class="fill-current w-9 h-9 m-1" viewBox="0 0 30 30" id="icon" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
+                            </svg>
+                        </button>
+                    </label>
+                </div>
+                <ActiveReply/>
             </div>
-            <RecorderPanel />
+            <RecorderPanel/>
         </div>
     </MentionCandidateListManager>
 </div>
