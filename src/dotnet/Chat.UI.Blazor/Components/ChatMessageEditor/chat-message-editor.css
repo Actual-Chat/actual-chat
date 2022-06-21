@@ -62,7 +62,7 @@
 .recorder-panel {
     @apply flex-x justify-center;
     @apply bg-accent outline-none;
-    @apply px-0.5 py-0.5 md:p-0;
+    @apply p-0.5 md:p-0;
     @apply max-h-footer h-12 md:h-auto;
     @apply rounded-none;
     @apply shadow-inner md:shadow-none;
@@ -95,7 +95,7 @@
 }
 
 .recorder-buttons {
-    @apply w-full flex-1 bg-secondary py-0.5 pr-0.5 md:p-0 rounded-r-lg md:rounded-none;
+    @apply w-full flex-1 bg-secondary p-0.5 md:p-0 rounded-r-lg md:rounded-none;
 }
 
 .recorder-buttons .btn.btn-square .btn-content {
