@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   build:
-    name: Build image for ${{ github.ref }}
+    name: Build image for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
