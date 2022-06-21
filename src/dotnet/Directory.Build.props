@@ -40,8 +40,6 @@
     <PackageReference Include="Roslynator.Analyzers" />
     <PackageReference Include="Meziantou.Analyzer" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
-    <PackageReference Include="ActualLab.Generators" />
-    <PackageReference Include="ActualLab.Generators.Abstractions" />
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
@@ -52,7 +50,6 @@
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />
-    <Using Include="ActualLab.Generators" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Concurrent" />
     <Using Include="System.Collections.Immutable" />
@@ -86,6 +83,14 @@
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.Logging.Abstractions" />
     <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('ClientApp')))">
+    <PackageReference Include="ActualLab.Generators" />
+    <PackageReference Include="ActualLab.Generators.Abstractions" />
+
+    <!-- Global usings -->
+    <Using Include="ActualLab.Generators" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
