@@ -48,7 +48,7 @@ public static class MauiProgram
 
         services.TryAddSingleton(builder.Configuration);
         services.AddSingleton(c => new HostInfo() {
-            HostKind = HostKind.Blazor,
+            HostKind = HostKind.Maui,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
                 .Add(ServiceScope.BlazorUI),

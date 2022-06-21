@@ -1,4 +1,4 @@
-﻿using ActualChat.Hosting;
+using ActualChat.Hosting;
 using Stl.OS;
 using Stl.Plugins;
 
@@ -23,7 +23,7 @@ public class ChatModule : HostModule
                 return scopedParser;
             });
         }
-        else { // WASM host
+        else { // WASM host and MAUI host
             var rawParser = new MarkupParser();
             var sharedCache = new ThreadSafeLruCache<string, Markup>(4096);
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
