@@ -209,15 +209,15 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
     {
-        await foreach (var change in ChatUI.HighlightedChatEntry.Changes(cancellationToken).Where(x => x.Value != null).ConfigureAwait(false)) {
+        await foreach (var change in ChatUI.HighlightedChatEntryId.Changes(cancellationToken).Where(x => x.Value != 0).ConfigureAwait(false)) {
             using var timeoutCts = new CancellationTokenSource(2000);
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             try {
-                await ChatUI.HighlightedChatEntry.When(x => x?.Id != change.Value!.Id, cts.Token).ConfigureAwait(false);
+                await ChatUI.HighlightedChatEntryId.When(x => x != change.Value, cts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
-                ChatUI.HighlightedChatEntry.Value = null;
+                ChatUI.HighlightedChatEntryId.Value = 0;
             }
         }
     }

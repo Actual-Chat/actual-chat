@@ -139,7 +139,7 @@
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
-        var isHighlighted = Message.Entry.Id == (await ChatUI.HighlightedChatEntry.Use(cancellationToken))?.Id;
+        var isHighlighted = Message.Entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted);
     }
 
@@ -173,7 +173,7 @@
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
             await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
-            ChatUI.HighlightedChatEntry.Value = Message.Entry;
+            ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }
 

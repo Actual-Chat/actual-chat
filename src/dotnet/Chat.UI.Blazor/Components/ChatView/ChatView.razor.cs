@@ -34,13 +34,24 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
     private IPersistentState<long>? LastReadEntryId { get; set; }
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    [Parameter] public long ChatEntryId { get; set; }
 
     public async ValueTask DisposeAsync()
     {
         _disposeToken.Cancel();
         await LastReadEntryId.DisposeSilentlyAsync().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await WhenInitialized.ConfigureAwait(false);
+
+        if (ChatEntryId > 0)
+            NavigateToEntry(ChatEntryId);
+
+        ChatUI.HighlightedChatEntryId.Value = ChatEntryId;
     }
 
     public async Task NavigateToUnreadEntry()
@@ -64,7 +75,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         try {
-            NavigateToEntryId = StateFactory.NewMutable(0L);
+            NavigateToEntryId = StateFactory.NewMutable(ChatEntryId);
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 

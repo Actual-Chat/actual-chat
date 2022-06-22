@@ -1,5 +1,5 @@
 @page "/chat"
-@page "/chat/{ChatId}"
+@page "/chat/{ChatId}/{ChatEntryId:long?}"
 @page "/direct/{ContactId}"
 @using ActualChat.Notification.UI.Blazor
 @inherits ComputedStateComponent<ChatPage.Model>
@@ -60,7 +60,7 @@
 </RenderIntoSlot>
 
 <CascadingValue Value="chat" @key="chat.Id">
-    <ChatView @ref="_chatView" />
+    <ChatView @ref="_chatView" ChatEntryId="@ChatEntryId" />
 </CascadingValue>
 
 @code {
@@ -76,6 +76,7 @@
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public long ChatEntryId { get; set; }
     [Parameter] public string ContactId { get; set; } = "";
 
     protected override void OnParametersSet()
