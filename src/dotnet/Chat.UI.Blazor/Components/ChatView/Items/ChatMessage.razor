@@ -20,10 +20,12 @@
     var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionClass = model.IsMentioned ? "mention" : "";
     var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = model.IsHighlighted ? "chat-message-highlighted" : "";
     var isReply = entry.RepliedChatEntryId != null;
+    var selfQuoted = model.RepliedChatMessage?.Entry.AuthorId == model.Message.Entry.AuthorId;
+    var mentionClass = model.IsMentioned && !selfQuoted ? "mention" : "";
+
 }
 
 @if (message.DateLine.HasValue) {
@@ -35,7 +37,7 @@
 
 <div class="message-wrapper @ownMessageClass @mentionClass @marginClass @highlightClass">
 
-    <div class="flex-y">
+    <div class="flex-y truncate">
         @if (isReply) {
             <QuotedMessage Message="@model.RepliedChatMessage"/>
         }

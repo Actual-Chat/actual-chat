@@ -14,19 +14,19 @@
     var entry = message.Entry;
 }
 
-<div @onclick="OnQuoteClick" class="h-6">
-    <div class="quoted-message group px-1.5 relative opacity-75" @onclick="OnQuoteClick">
-        <div class="ml-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-10 h-5" viewBox="0 0 24 24">
+<div @onclick="OnQuoteClick" class="h-5">
+    <div class="quoted-message relative left-6 opacity-75" @onclick="OnQuoteClick">
+        <div class="mx-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 0 24 24">
                 <path d="M16 16v4l8-8-8-8v4h-8.929c-9.059 0-7.134 9.521-6.334 11.418.788-2.445 2.464-3.418 5.371-3.418h9.892z"/>
             </svg>
         </div>
         <QuotedMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-        <div class="flex-x overflow-hidden m-1 items-center">
+        <div class="flex-x items-end w-full overflow-hidden">
             <div class="mr-2">
                 <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base"/>
             </div>
-            <div class="chat-message-markup text-sm pointer-events-none mr-2">
+            <div class="text-sm pointer-events-none mr-12 w-full truncate">
                 @model.Quote
             </div>
             @if (model.HasAttachments) {
