@@ -4,8 +4,10 @@ public interface IChatRolesBackend
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, string authorId, CancellationToken cancellationToken);
 

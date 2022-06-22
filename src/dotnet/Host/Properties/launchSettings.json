@@ -2,7 +2,6 @@
   "profiles": {
     "Blazor Debug": {
       "commandName": "Project",
-      "launchBrowser": true,
       "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

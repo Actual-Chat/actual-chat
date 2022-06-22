@@ -43,6 +43,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Chat activity
         services.AddScoped<ChatActivity>();
+        services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
     }
 }

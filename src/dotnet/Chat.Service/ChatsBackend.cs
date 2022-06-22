@@ -182,6 +182,22 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
+    public virtual async Task<Range<long>> GetLastIdTile0(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
+    {
+        using var _ = ExecutionContextExt.SuppressFlow();
+        var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return IdTileStack.Layers[0].GetTile(maxId).Range;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Range<long>> GetLastIdTile1(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
+    {
+        using var _ = ExecutionContextExt.SuppressFlow();
+        var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return IdTileStack.Layers[1].GetTile(maxId).Range;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         string chatId,
         ChatEntryType entryType,
@@ -399,6 +415,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (!isUpdate) {
             _ = GetEntryCount(chatId, entryType, null, false, default);
             _ = GetEntryCount(chatId, entryType, null, true, default);
+            var tile0 = IdTileStack.Layers[0].GetTile(entryId);
+            var tile1 = IdTileStack.Layers[1].GetTile(entryId);
+            if (tile0.Start == entryId)
+                _ = GetLastIdTile0(chatId, entryType, default);
+            if (tile1.Start == entryId)
+                _ = GetLastIdTile1(chatId, entryType, default);
         }
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
             if (idTile.Layer.Smaller == null) {

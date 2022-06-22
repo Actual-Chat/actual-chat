@@ -48,6 +48,22 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Range<long>> GetLastIdTile0(
+        Session session,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken)
+        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<Range<long>> GetLastIdTile1(
+        Session session,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken)
+        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
