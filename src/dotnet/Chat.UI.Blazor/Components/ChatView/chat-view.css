@@ -2,15 +2,41 @@
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
+.message-wrapper {
+    @apply flex-x relative;
+    @apply border-l-2 border-secondary;
+}
+.message-wrapper:hover {
+    @apply bg-message-hover border-message-hover;
+}
+.message-wrapper:hover .author-badge {
+    @apply bg-message-hover;
+}
+.message-wrapper:hover .context-menu-button.show-on-hover {
+    @apply visible;
+}
+.message-wrapper.own-message {
+    @apply border-l-2 border-x-own-message-hover bg-own-message;
+}
+.message-wrapper.own-message:hover {
+    @apply bg-message-hover;
+}
+.message-wrapper.mention,
+.message-wrapper.own-message.mention {
+    @apply border-l-2 border-x-mention-hover bg-mention-message;
+}
+.message-wrapper.mention:hover,
+.message-wrapper.own-message.mention:hover {
+    @apply bg-mention-message-hover;
+}
+.message-wrapper.mention:hover,
+.message-wrapper.own-message.mention:hover .author-badge {
+    @apply bg-mention-message-hover;
+}
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-current break-words;
-    @apply border-l-2 border-secondary;
-}
-
-.chat-message:hover {
-    @apply bg-message-hover;
+    @apply text-current break-all;
 }
 
 .chat-message-modal .chat-message:hover {
@@ -32,44 +58,20 @@
     @apply cursor-default pointer-events-none;
 }
 
-.chat-message:hover .author-badge {
-    @apply bg-message-hover;
-}
-.chat-message:hover .btn.show-on-hover {
-    @apply visible;
-}
-
-.chat-message.mention,
-.chat-message.own-message.mention {
-    @apply border-l-2 border-x-mention-hover bg-mention-message;
-}
-
-.chat-message.mention:hover,
-.chat-message.own-message.mention:hover {
-    @apply bg-mention-message-hover;
-}
-
-.chat-message.mention:hover,
-.chat-message.own-message.mention:hover .author-badge {
-    @apply bg-mention-message-hover;
-}
-
-.chat-message.own-message {
-    @apply border-l-2 border-x-own-message-hover bg-own-message;
-}
-
-.chat-message.own-message:hover {
-    @apply bg-message-hover;
-}
-
-.message-quote {
+.chat-quote {
     @apply flex w-full bg-quote p-3 text-base md:rounded-t-lg;
 }
-.message-quote .btn.btn-square {
+.chat-quote .btn.btn-square {
     @apply bg-primary;
 }
-.message-quote .btn.btn-square:hover {
+.chat-quote .btn.btn-square:hover {
     @apply bg-secondary;
+}
+
+.quoted-message {
+    @apply flex-x items-center;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply text-secondary truncate cursor-pointer;
 }
 
 .chat-message-quoted {
