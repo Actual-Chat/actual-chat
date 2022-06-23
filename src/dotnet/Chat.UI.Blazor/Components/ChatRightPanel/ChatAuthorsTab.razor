@@ -4,7 +4,8 @@
 @inherits ComputedStateComponent<ChatAuthorsTab.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var isPeerChat = ChatId.GetChatType(Chat.Id) == ChatType.Peer;
+    var parsedChatId = new ParsedChatId(Chat.Id);
+    var isPeerChat = parsedChatId.IsValid && parsedChatId.Kind.IsPeer();
 }
 
 <div @ref="Ref" class="chat-author-tab">
@@ -60,6 +61,14 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync().ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+        // ReSharper disable once ConstantConditionalAccessQualifier
+        BlazorRef?.Dispose();
+    }
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
 
@@ -76,10 +85,13 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IRightPanelSearchBackend>(this);
+            // NOTE(AY): Commented out, coz it triggers JS errors in new peer chats with zero people
+            /*
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.RightPanelSearch.create",
                 Ref, BlazorRef
                 ).ConfigureAwait(true);
+            */
         }
     }
 

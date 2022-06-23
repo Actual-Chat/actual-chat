@@ -14,7 +14,7 @@ public sealed class RenderVars
             throw new ArgumentNullException(nameof(name));
         if (name.Length == 0)
             throw new ArgumentOutOfRangeException(nameof(name));
-        return (IMutableState<T>) _vars.GetOrAdd(name, static (_, self) => self._stateFactory.NewMutable<T>(), this);
+        return (IMutableState<T>)_vars.GetOrAdd(name, static (_, self) => self._stateFactory.NewMutable<T>(), this);
     }
 
     public IMutableState<T> Get<T>(string name, T @default)
@@ -23,7 +23,7 @@ public sealed class RenderVars
             throw new ArgumentNullException(nameof(name));
         if (name.Length == 0)
             throw new ArgumentOutOfRangeException(nameof(name));
-        return (IMutableState<T>) _vars.GetOrAdd(name,
+        return (IMutableState<T>)_vars.GetOrAdd(name,
             static (_, x) => x.Self._stateFactory.NewMutable(x.Default),
             (Self: this, Default: @default));
     }

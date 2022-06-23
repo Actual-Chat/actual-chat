@@ -1,4 +1,3 @@
-@using System.Net
 @using Stl.Extensibility
 @implements IModalView<ChatAuthorDialog.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -44,9 +43,11 @@
         => new() { InitialValue = ComputedModel.None };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        if (!ChatAuthor.TryParseId(AuthorId, out var chatId, out _))
+        var parsedAuthorId = new ParsedChatAuthorId(AuthorId);
+        if (!parsedAuthorId.IsValid)
             return ComputedModel.None;
 
+        var chatId = parsedAuthorId.ChatId.Id;
         var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return ComputedModel.None;

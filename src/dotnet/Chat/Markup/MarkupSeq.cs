@@ -23,7 +23,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
             return Items[0].Simplify();
 
         var items = new List<Markup>();
-        var lastPlainText = (PlainTextMarkup?) null;
+        var lastPlainText = (PlainTextMarkup?)null;
         var isSimplified = false;
         foreach (var originalItem in Items) {
             var item = originalItem.Simplify();

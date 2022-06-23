@@ -55,11 +55,10 @@
         if (!user.IsAuthenticated)
             return Model.None;
 
-        var (userId1, userId2) = ChatId.ParseFullPeerChatId(recordingChat.Id);
-        var peerUserId = user.Id.Value != userId1 ? userId1 : userId2;
+        var parsedChatId = new ParsedChatId(recordingChat.Id);
         return new Model() {
             RecordingChat = recordingChat,
-            RecordingChatUrl = $"/chat/{ChatId.FormatShortPeerChatId(peerUserId).UrlEncode()}",
+            RecordingChatUrl = $"/chat/{parsedChatId.Shorten(user.Id).Value.UrlEncode()}",
         };
     }
 

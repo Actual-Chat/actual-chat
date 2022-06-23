@@ -60,8 +60,8 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
             // Let's try to activate recording first
             if (state.IsPlayingActive || state.IsPlayingPinned) {
-                var permissions = await _chats.GetRules(_session, activeChatId, cancellationToken).ConfigureAwait(false);
-                if (permissions.CanRead) {
+                var rules = await _chats.GetRules(_session, activeChatId, cancellationToken).ConfigureAwait(false);
+                if (rules.CanRead) {
                     await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
                     _chatUI.IsPlaying.Value = state.IsPlayingActive;
                     _chatUI.MustPlayPinnedChats.Value = state.IsPlayingPinned;
@@ -87,14 +87,14 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
     private async Task<Symbol[]> Normalize(Symbol[] chatIds)
     {
-        var permissionTasks = chatIds.Select(async chatId => {
-            var permissions = await _chats.GetRules(_session, chatId, default).ConfigureAwait(false);
-            return (chatId, permissions);
+        var rulesTasks = chatIds.Select(async chatId => {
+            var rules = await _chats.GetRules(_session, chatId, default).ConfigureAwait(false);
+            return (chatId, rules);
         });
 
-        var permissionTuples = await Task.WhenAll(permissionTasks).ConfigureAwait(false);
+        var rulesTuples = await Task.WhenAll(rulesTasks).ConfigureAwait(false);
         var result = new List<Symbol>();
-        foreach (var (chatId, permissions) in permissionTuples) {
+        foreach (var (chatId, permissions) in rulesTuples) {
             if (!permissions.CanRead)
                 continue;
             result.Add(chatId);

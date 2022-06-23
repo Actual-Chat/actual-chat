@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public enum ChatIdType
+public enum ChatIdKind
 {
     Group,
     PeerShort,

@@ -61,7 +61,7 @@ public partial class ChatUI
         if (mustPlayPinnedChats || mustPlayPinnedContactChats) {
             var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
             foreach (var chatId in pinnedChatIds) {
-                var chatType = ChatId.GetChatType(chatId);
+                var chatType = new ParsedChatId(chatId).Kind.ToChatType();
                 var mustPlay = chatType switch {
                     ChatType.Group => mustPlayPinnedChats,
                     ChatType.Peer => mustPlayPinnedContactChats,

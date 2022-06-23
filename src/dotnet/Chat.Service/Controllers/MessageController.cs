@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
-using System.Text.Json;
 using Microsoft.Extensions.Primitives;
 using SixLabors.ImageSharp;
 

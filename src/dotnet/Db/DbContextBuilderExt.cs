@@ -38,7 +38,7 @@ public static class DbContextBuilderExt
             var idSequences = c.GetRequiredService<RedisSequenceSet<TEntity>>();
             var generator = new DbShardLocalIdGenerator<TDbContext, TEntity, TShardKey>(
                 idSequences, dbSetSelector, shardKeyFilter, localIdSelector, maxLocalIdCacheFactory);
-            return (IDbShardLocalIdGenerator<TEntity, TShardKey>) generator;
+            return (IDbShardLocalIdGenerator<TEntity, TShardKey>)generator;
         });
         return dbContext;
     }

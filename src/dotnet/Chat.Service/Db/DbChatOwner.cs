@@ -13,8 +13,6 @@ public class DbChatOwner
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatOwner>
     {
         public void Configure(EntityTypeBuilder<DbChatOwner> builder)
-        {
-            builder.HasKey(e => new { e.ChatId, e.UserId });
-        }
+            => builder.HasKey(e => new { e.ChatId, e.UserId });
     }
 }

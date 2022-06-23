@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 public record TextEntryAttachment
 {
@@ -18,7 +16,7 @@ public record TextEntryAttachment
         set => _metadata.Data = value;
     }
 
-    [JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ImmutableOptionSet Metadata {
         get => _metadata.Value;
         set => _metadata.Value = value;

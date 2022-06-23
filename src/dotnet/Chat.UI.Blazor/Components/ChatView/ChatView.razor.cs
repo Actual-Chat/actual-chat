@@ -32,7 +32,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
-    private IPersistentState<long>? LastReadEntryId { get; set; }
+    private IPersistentState<long> LastReadEntryId { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -128,7 +128,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             catch (Exception e) when(e is not OperationCanceledException) {
                 Log.LogWarning(e,
                     "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
-                    LastReadEntryId.Value);
+                    LastReadEntryId!.Value);
             }
     }
 

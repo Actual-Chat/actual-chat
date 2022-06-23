@@ -57,12 +57,6 @@ public interface IChatsBackend
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatAuthorRules> GetRules(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatAuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken);

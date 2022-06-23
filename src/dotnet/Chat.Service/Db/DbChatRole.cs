@@ -19,7 +19,7 @@ public class DbChatRole : IHasId<string>
     [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
-    public string PrincipalIds { get; set; } = "";
+    public string PrincipalIds { get; set; } = ""; // Space-separated
 
     public static string ComposeId(string chatId, long localId)
         => $"{chatId}:{localId.ToString(CultureInfo.InvariantCulture)}";
@@ -30,7 +30,7 @@ public class DbChatRole : IHasId<string>
             Version = Version,
             Name = Name,
             Picture = Picture,
-            AuthorIds = PrincipalIds.Split(" ").Select(x => new Symbol(x)).ToImmutableHashSet(),
+            PrincipalIds = PrincipalIds.Split(" ").Select(x => new Symbol(x)).ToImmutableHashSet(),
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>

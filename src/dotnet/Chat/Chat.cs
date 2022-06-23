@@ -12,7 +12,4 @@ public sealed record Chat
     public ChatType ChatType { get; init; } = ChatType.Group;
     public string Picture { get; init; } = "";
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
-
-    public static bool IsValidId(string chatId)
-        => chatId.Length > 0 && chatId.All(c => char.IsLetterOrDigit(c) || c == '-');
 }

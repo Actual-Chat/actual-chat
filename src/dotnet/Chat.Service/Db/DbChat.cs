@@ -55,4 +55,3 @@ public class DbChat : IHasId<string>, IHasVersion<long>
         }).ToList();
     }
 }
-

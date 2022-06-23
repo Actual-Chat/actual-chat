@@ -63,27 +63,21 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthorRules> GetRules(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken)
-    {
-        var chatPrincipalId = await ChatAuthors.GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await GetRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<ChatAuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var chatType = ChatId.GetChatType(chatId);
+        var parsedChatId = new ParsedChatId(chatId);
+        if (!parsedChatId.IsValid)
+            return ChatAuthorRules.None;
+
+        var chatType = parsedChatId.Kind.ToChatType();
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null) {
             if (chatType is ChatType.Peer)
                 return await GetDefaultPeerChatRules(chatId, chatPrincipalId, cancellationToken)
                     .ConfigureAwait(false);
-            return new(null, null);
+            return ChatAuthorRules.None;
         }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
@@ -337,7 +331,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
 
         var chatId = command.Entry.ChatId;
-        var isPeerChatId = ChatId.IsPeerChatId(chatId);
+        var parsedChatId = new ParsedChatId(chatId).AssertValid();
+        var isPeerChatId = parsedChatId.Kind.IsPeer();
         if (isPeerChatId)
             _ = await GetOrCreatePeerChat(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -503,25 +498,34 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        if (!ChatId.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
+        var parsedChatId = new ParsedChatId(chatId);
+        if (!(parsedChatId.IsValid && parsedChatId.Kind is ChatIdKind.PeerFull))
+            return ChatAuthorRules.None;
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+
+        var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
+        if (!parsedChatPrincipalId.IsValid)
             return ChatAuthorRules.None;
 
-        ParseChatPrincipalId(chatPrincipalId, out var chatAuthorId, out var userId);
-        var chatAuthor = chatAuthorId.IsNullOrEmpty()
-            ? null
-            : await ChatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor != null)
-            userId = chatAuthor.UserId;
+        var userId = parsedChatPrincipalId.UserId.Id;
+        var chatAuthor = (ChatAuthor)null!;
+        if (userId.IsEmpty) {
+            var chatAuthorId = parsedChatPrincipalId.AuthorId.Id;
+            if (!chatAuthorId.IsEmpty)
+                chatAuthor = await ChatAuthorsBackend
+                    .Get(chatId, chatAuthorId, false, cancellationToken)
+                    .ConfigureAwait(false);
+            userId = chatAuthor?.UserId ?? default;
+        }
 
-        if (!(OrdinalEquals(userId, userId1) || OrdinalEquals(userId, userId2))) // One of these users should be chatPrincipalId
+        var otherUserId = (userId1, userId2).OtherThan(userId);
+        if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be chatPrincipalId
             return ChatAuthorRules.None;
-        var user = userId.IsNullOrEmpty()
-            ? null
-            : await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
+
+        var user = await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return ChatAuthorRules.None;
 
-        var otherUserId = user.Id == userId1 ? userId2 : userId1;
         var otherUser = await AuthBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherUser == null)
             return ChatAuthorRules.None;
@@ -531,8 +535,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (!ChatId.TryParseFullPeerChatId(chatId, out var userId1, out var userId2))
-            return;
+        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         await UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
         await UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
     }
@@ -547,7 +551,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task<Chat> CreatePeerChat(Symbol chatId, CancellationToken cancellationToken)
     {
-        var (userId1, userId2) = ChatId.ParseFullPeerChatId(chatId);
+        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         var chat = new Chat {
             Id = chatId,
             OwnerIds = ImmutableArray<Symbol>.Empty.Add(userId1).Add(userId2),

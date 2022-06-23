@@ -51,14 +51,17 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             : await UserProfilesBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
 
         // TODO(AY): Add non-system role processing
-        var result = roleIds.Where(roleId => IsInSystemRole(roleId, chat, author, userProfile)).ToImmutableArray();
+        var result = roleIds
+            .Where(roleId => IsInSystemRole(roleId, chat, author, userProfile))
+            .ToImmutableArray();
         return result;
     }
 
     // [ComputeMethod]
     public virtual Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken)
     {
-        if (!(ChatRole.TryParseId(roleId, out var chatId1, out _) && OrdinalEquals(chatId, chatId1)))
+        var parsedChatRoleId = (ParsedChatRoleId)roleId;
+        if (!(parsedChatRoleId.IsValid && parsedChatRoleId.ChatId == chatId))
             return Task.FromResult((ChatRole?)null);
 
         // TODO(AY): Add non-system role processing

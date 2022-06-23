@@ -22,9 +22,8 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (!ChatAuthor.TryParseId(AuthorId, out var chatId, out _))
-            throw new InvalidOperationException("Invalid AuthorId");
-        ChatId = chatId;
+        var parsedChatAuthorId = new ParsedChatAuthorId(AuthorId).AssertValid();
+        ChatId = parsedChatAuthorId.ChatId.Id;
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite

@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using ActualChat.Comparison;
+﻿using ActualChat.Comparison;
 using Stl.Versioning;
 
 namespace ActualChat.Chat;

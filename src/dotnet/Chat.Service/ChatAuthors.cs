@@ -117,10 +117,10 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     public virtual async Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
-        var (userId1, userId2) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (userId2.IsNullOrEmpty())
+        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (otherUserId.IsEmpty)
             return false;
-        var contact = await UserContactsBackend.GetByTargetId(userId1, userId2, cancellationToken).ConfigureAwait(false);
+        var contact = await UserContactsBackend.Get(userId, otherUserId, cancellationToken).ConfigureAwait(false);
         return contact == null;
     }
 
@@ -130,11 +130,11 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
         var (session, chatPrincipalId) = command;
-        var (userId1, userId2) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (userId2.IsNullOrEmpty())
+        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (otherUserId.IsEmpty)
             return;
-        _ = await UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
-        _ = await UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
+        _ = await UserContactsBackend.GetOrCreate(userId, otherUserId, cancellationToken).ConfigureAwait(false);
+        _ = await UserContactsBackend.GetOrCreate(otherUserId, userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -156,19 +156,25 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     // Private methods
 
-    private async Task<(string, string)> GetPeerChatUserIds(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    private async Task<(Symbol UserId, Symbol OtherUserId)> GetPeerChatUserIds(
+        Session session, string chatPrincipalId,
+        CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return ("", "");
-        var userId2 = await Backend.GetUserIdFromPrincipalId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (userId2 == null)
-            return ("", "");
-        if (user.Id == userId2)
-            return ("", "");
-        var user2 = await AuthBackend.GetUser(userId2, cancellationToken).ConfigureAwait(false);
-        if (user2 == null)
-            return ("", "");
-        return (user.Id, user2.Id);
+            return default;
+
+        var otherUserId = await Backend.GetUserId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (otherUserId.IsEmpty)
+            return default;
+
+        if (user.Id == otherUserId)
+            return default;
+
+        var otherUser = await AuthBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
+        if (otherUser == null)
+            return default;
+
+        return (user.Id, otherUser.Id);
     }
 }

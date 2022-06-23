@@ -56,7 +56,7 @@ public class ChatPlayers : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         // TODO(AY): Implement _players cleanup here
-        var lastPlaybackState = (ChatPlaybackState?) null;
+        var lastPlaybackState = (ChatPlaybackState?)null;
         var cPlaybackState = ChatPlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
             if (!cPlaybackState.IsConsistent())
@@ -100,7 +100,7 @@ public class ChatPlayers : WorkerBase
             await EnterState(historical, cancellationToken).ConfigureAwait(false);
             break;
         case RealtimeChatPlaybackState realtime:
-            var lastRealtime = (RealtimeChatPlaybackState) lastPlaybackState!;
+            var lastRealtime = (RealtimeChatPlaybackState)lastPlaybackState!;
             var removedChatIds = lastRealtime.ChatIds.Except(realtime.ChatIds);
             var addedChatIds = realtime.ChatIds.Except(lastRealtime.ChatIds);
             await Stop(removedChatIds, ChatPlayerKind.Realtime, cancellationToken).ConfigureAwait(false);
