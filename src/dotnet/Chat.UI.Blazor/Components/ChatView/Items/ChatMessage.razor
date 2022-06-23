@@ -22,6 +22,7 @@
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
     var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = model.IsHighlighted ? "chat-message-highlighted" : "";
+    var repliedClass = model.isReplied ? "replied-message" : "";
     var isReply = entry.RepliedChatEntryId != null;
     var selfQuoted = model.RepliedChatMessage?.Entry.AuthorId == model.Message.Entry.AuthorId;
     var mentionClass = model.IsMentioned && !selfQuoted ? "mention" : "";
@@ -35,7 +36,7 @@
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
-<div class="message-wrapper @ownMessageClass @mentionClass @marginClass @highlightClass">
+<div class="message-wrapper @ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass">
 
     <div class="flex-y truncate">
         @if (isReply) {
@@ -144,8 +145,9 @@
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
+        var isReplied = Message.Entry == await ChatUI.RepliedChatEntry.Use(cancellationToken);
         var isHighlighted = Message.Entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
-        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted);
+        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted, isReplied);
     }
 
     private Markup GetMarkup()
@@ -198,6 +200,14 @@
         return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    public record Model(ChatMessageModel Message, Markup Markup, Symbol PrincipalId, ImmutableArray<TextEntryAttachment> Attachments, bool IsMentioned, ChatMessageModel? RepliedChatMessage, bool IsHighlighted);
+    public record Model(
+        ChatMessageModel Message,
+        Markup Markup,
+        Symbol PrincipalId,
+        ImmutableArray<TextEntryAttachment> Attachments,
+        bool IsMentioned,
+        ChatMessageModel? RepliedChatMessage,
+        bool IsHighlighted,
+        bool isReplied);
 
 }

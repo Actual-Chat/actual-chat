@@ -16,14 +16,14 @@
     @apply visible;
 }
 .message-wrapper.own-message {
-    @apply border-l-2 border-x-own-message-hover bg-own-message;
+    @apply border-l-2 border-own-message-hover bg-own-message;
 }
 .message-wrapper.own-message:hover {
     @apply bg-message-hover;
 }
 .message-wrapper.mention,
 .message-wrapper.own-message.mention {
-    @apply border-l-2 border-x-mention-hover bg-mention-message;
+    @apply border-l-2 border-mention-hover bg-mention-message;
 }
 .message-wrapper.mention:hover,
 .message-wrapper.own-message.mention:hover {
@@ -83,8 +83,19 @@
     @apply animate-highlight;
 }
 
-.chat-message.own-message:hover .author-badge {
-    @apply bg-message-hover;
+.message-wrapper:hover .author-badge {
+    @apply bg-inherit;
+}
+
+.message-wrapper.replied-message,
+.message-wrapper.own-message.replied-message,
+.message-wrapper.mention.replied-message {
+    @apply bg-replied-message border-l-2 border-replied-message-border;
+}
+.message-wrapper.replied-message:hover,
+.message-wrapper.own-message.replied-message:hover,
+.message-wrapper.mention.replied-message:hover {
+    @apply bg-replied-message-hover border-l-2 border-replied-message-border;
 }
 
 .author-image {

@@ -59,6 +59,7 @@
             .ConfigureAwait(false);
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
+        ChatUI.RepliedChatEntry.Value = Message.Entry;
         return new (Message, principalId, repliedChatMessage);
     }
 
