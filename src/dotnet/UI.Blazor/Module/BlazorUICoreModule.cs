@@ -2,6 +2,7 @@ using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
+using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -24,6 +25,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
 
         // Third-party Blazor components
+        services.AddBlazoredLocalStorage();
         services.AddBlazoredSessionStorage();
         services.AddBlazoredModal();
         services.AddBlazorContextMenu();
