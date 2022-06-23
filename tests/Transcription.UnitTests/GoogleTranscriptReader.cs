@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf.WellKnownTypes;
 
@@ -15,7 +14,10 @@ public static class GoogleTranscriptReader
         await using var fileStream = File.OpenRead(fileName);
         var responses = await JsonSerializer.DeserializeAsync<Response[]>(
                 fileStream,
-                new JsonSerializerOptions { AllowTrailingCommas = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase, })
+                new JsonSerializerOptions {
+                    AllowTrailingCommas = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                })
             .ConfigureAwait(false);
 
         foreach (var response in responses!) {

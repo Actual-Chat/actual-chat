@@ -203,7 +203,7 @@ public class ChatEntryReaderTest : AppHostTestBase
             var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, ChatId,
-                    (int) Constants.Chat.IdTileStack.MinTileSize));
+                    (int)Constants.Chat.IdTileStack.MinTileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
         }
