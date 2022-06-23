@@ -1,4 +1,5 @@
 using ActualChat.Host;
+using ActualChat.Interception;
 using ActualChat.Testing.Host;
 using Microsoft.Extensions.Configuration;
 
@@ -36,6 +37,7 @@ public class UserStatusTest : AppHostTestBase
 
         // act
         var userProfile = await GetUserProfile();
+        var commander = ProxyExt.GetServices(userProfile).Commander();
 
         // assert
         userProfile.Status.Should().Be(NewUserStatus);
@@ -46,7 +48,7 @@ public class UserStatusTest : AppHostTestBase
                      UserStatus.Suspended, UserStatus.Active,
                  }) {
             userProfile.Status = newStatus;
-            await _userProfiles.Update(new IUserProfiles.UpdateCommand(_tester.Session, userProfile), default);
+            await commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, userProfile));
 
             // assert
             userProfile = await GetUserProfile();
