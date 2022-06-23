@@ -87,12 +87,6 @@
             return Model.None;
 
         var chats = await Chats.GetChats(Session, cancellationToken).ConfigureAwait(false);
-        var mustAddDefaultChat = userProfile.IsAdmin && chats.All(c => c.Id != Constants.Chat.DefaultChatId);
-        if (mustAddDefaultChat) {
-            var defaultChat = await Chats.Get(Session, Constants.Chat.DefaultChatId, cancellationToken);
-            if (defaultChat != null)
-                chats = chats.Append(defaultChat).ToArray();
-        }
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats

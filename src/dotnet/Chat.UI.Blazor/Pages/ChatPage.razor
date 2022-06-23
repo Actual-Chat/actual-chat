@@ -1,7 +1,7 @@
-@page "/chat"
 @page "/chat/{ChatId}/{ChatEntryId:long?}"
-@page "/direct/{ContactId}"
+@page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
+@using Blazored.LocalStorage
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
@@ -65,7 +65,6 @@
 
 @code {
     private Model? _lastRenderedModel;
-    private IComputed? _activeChatIdComputed;
     private ChatView _chatView = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -74,13 +73,11 @@
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
+    [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public long ChatEntryId { get; set; }
-    [Parameter] public string ContactId { get; set; } = "";
 
-    protected override void OnParametersSet()
-        => _activeChatIdComputed = null;
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
@@ -102,16 +99,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        Chat? chat = null;
-        if (!ChatId.IsNullOrEmpty())
-            chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
+        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        if (_activeChatIdComputed == null) {
-            var activeChatIdState = ChatUI.ActiveChatId;
-            activeChatIdState.Value = chat.Id;
-            _activeChatIdComputed = activeChatIdState.Computed;
-        }
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
@@ -121,15 +111,13 @@
         };
     }
 
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        _ = BackgroundTask.Run(async () => {
-            await Task.Delay(TimeSpan.FromMilliseconds(50)).ConfigureAwait(false);
-            // We want to avoid unnecessarily frequent ActiveChatId changes
-            // (to Symbol.Empty on disposal & back on the next render)
-            if (ChatUI.ActiveChatId.Computed == _activeChatIdComputed)
-                ChatUI.ActiveChatId.Value = Symbol.Empty;
-        });
+    protected override async Task OnParametersSetAsync() {
+        if (ChatUI.ActiveChatId.Value != ChatId) {
+            ChatUI.ActiveChatId.Value = ChatId;
+            await LocalStorage.SetActiveChatId(ChatId).ConfigureAwait(false);
+        }
+
+        await base.OnParametersSetAsync();
     }
 
     private void OnUnreadMessagesClick()

@@ -1,36 +1,29 @@
-using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 {
-    // TODO: optimize WASM so it would restore chat id faster
-    private static TimeSpan ChatActivationTimeout { get; } = TimeSpan.FromSeconds(BlazorModeHelper.IsServerSideBlazor ? 1 : 3);
-
     private readonly Session _session;
     private readonly IChats _chats;
-    private readonly ChatPlayers _chatPlayers;
-    private readonly AudioRecorder _audioRecorder;
     private readonly ChatUI _chatUI;
     private readonly UserInteractionUI _userInteractionUI;
+    private readonly NavigationManager _nav;
 
     public ChatUIStatePersister(
         Session session,
         IChats chats,
-        ChatPlayers chatPlayers,
-        AudioRecorder audioRecorder,
         ChatUI chatUI,
         UserInteractionUI userInteractionUI,
+        NavigationManager nav,
         IServiceProvider services)
         : base(services)
     {
         _session = session;
         _chats = chats;
-        _chatPlayers = chatPlayers;
-        _audioRecorder = audioRecorder;
         _chatUI = chatUI;
         _userInteractionUI = userInteractionUI;
+        _nav = nav;
     }
 
     protected override Task Restore(Model? state, CancellationToken cancellationToken)
@@ -44,15 +37,10 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
             _chatUI.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
 
             // Let's wait for activation of the last active chat before any further actions
-            using var timoutCts = new CancellationTokenSource(ChatActivationTimeout);
-            try {
+            if (_nav.ToBaseRelativePath(_nav.Uri).StartsWith("chat", StringComparison.OrdinalIgnoreCase))
                 await _chatUI.ActiveChatId
-                    .When(chatId => chatId == state.ActiveChatId, timoutCts.Token)
+                    .When(chatId => !chatId.IsEmpty, cancellationToken)
                     .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException exc) {
-                Log.LogDebug(exc, "Failed to restore ActiveChatId due to timeout");
-            }
 
             var activeChatId = _chatUI.ActiveChatId.Value;
             if (activeChatId.IsEmpty || activeChatId != state.ActiveChatId)
@@ -104,6 +92,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
     public sealed record Model
     {
+        // TODO: remove it and use ActiveChatId from local storage instead
         public Symbol ActiveChatId { get; init; }
         public Symbol[] PinnedChatIds { get; init; } = Array.Empty<Symbol>();
         public bool IsPlayingActive { get; init; }

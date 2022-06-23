@@ -16,6 +16,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
     private IChatsBackend Backend { get; }
+    private IUserProfiles UserProfiles { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
@@ -25,6 +26,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
+        UserProfiles = Services.GetRequiredService<IUserProfiles>();
         Backend = Services.GetRequiredService<IChatsBackend>();
     }
 
@@ -77,6 +79,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (user.IsAuthenticated) {
             var ownedChatIds = await Backend.ListOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(ownedChatIds).ToImmutableArray();
+
+            var userProfile = await UserProfiles.Get(session, cancellationToken).ConfigureAwait(false) ?? throw new Exception("UserProfile not found for ");
+            if (userProfile.IsAdmin && !chatIds.Contains(Constants.Chat.DefaultChatId))
+                chatIds = chatIds.Add(Constants.Chat.DefaultChatId);
         }
 
         var chatTasks = await Task

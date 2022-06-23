@@ -1,14 +1,21 @@
 @page "/"
 @using ActualChat.Chat
+@using ActualChat.UI.Blazor.Services
+@using Blazored.LocalStorage
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        var chat = await Chats.Get(Session, Constants.Chat.DefaultChatId, default).ConfigureAwait(true);
-        if (chat != null)
-            Nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
+        var chatId = await LocalStorage.GetActiveChatId().ConfigureAwait(false);
+        if (chatId.IsNullOrEmpty()) {
+            var chats = await Chats.GetChats(Session, CancellationToken.None);
+            var defaultChat = chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
+            chatId = defaultChat?.Id ?? Symbol.Empty;
+        }
+        Nav.Chat(chatId);
     }
 }
