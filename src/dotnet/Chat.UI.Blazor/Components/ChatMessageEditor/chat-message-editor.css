@@ -44,11 +44,26 @@
     @apply flex animate-scale-from-right;
 }
 
+.attachment-list {
+    @apply flex justify-start ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto;
+}
+
 .attachment-item {
-    min-width: 200px;
-    max-width: 200px;
-    min-height: 200px;
-    max-height: 200px;
+    @apply p-1.5 bg-primary rounded-md grid;
+    min-width: 10rem;
+    min-height: 10rem;
+    max-width: 10rem;
+    max-width: 10rem;
+}
+
+.attachment-item .btn.btn-square {
+    @apply w-8 h-8 rounded-md ring-2 ring-accent;
+}
+.attachment-item .btn.btn-square .btn-content {
+    @apply bg-accent;
+}
+.attachment-item .btn.btn-square:hover .btn-content {
+    @apply text-error-ring;
 }
 
 .attach-dropdown-menu {

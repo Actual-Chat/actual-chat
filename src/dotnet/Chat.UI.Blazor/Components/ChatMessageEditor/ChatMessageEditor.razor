@@ -15,8 +15,6 @@
             <div class="-flex-y w-full bg-secondary">
                 <div class="post-panel flex-x justify-between outline-none bg-accent w-full border-secondary">
                     <input class="files-picker" type="file" hidden multiple/>
-                    <AttachmentListPreview @ref="AttachmentListPreviewRef"
-                                           RemoveRequested="@(RemoveAttachment)"/>
                     <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                         <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                         <SlateEditor @ref="SlateEditorRef" Id="message-input"
@@ -32,6 +30,8 @@
                         </button>
                     </label>
                 </div>
+                <AttachmentListPreview @ref="AttachmentListPreviewRef"
+                                       RemoveRequested="@(RemoveAttachment)"/>
                 <ActiveReply/>
             </div>
             <RecorderPanel/>

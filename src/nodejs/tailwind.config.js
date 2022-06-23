@@ -805,9 +805,11 @@ module.exports = {
       'highlight': {
           '0%': {
               'background': 'var(--replied-message-hover)',
+              'border-left': '2px solid var(--replied-message-border)',
           },
           '99%': {
               'background': '',
+              'border-left': '2px solid transparent',
           },
       },
     },
