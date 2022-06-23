@@ -6,18 +6,19 @@ namespace ActualChat.Testing.Host;
 
 public interface IWebTester : IDisposable, IAsyncDisposable
 {
-    public AppHost AppHost { get; }
-    public IServiceProvider AppServices { get; }
-    public UriMapper UriMapper { get; }
-    public IAuth Auth { get; }
-    public IAuthBackend AuthBackend { get; }
-    public Session Session { get; }
+    AppHost AppHost { get; }
+    IServiceProvider AppServices { get; }
+    ICommander Commander { get; }
+    UriMapper UriMapper { get; }
+    IAuth Auth { get; }
+    IAuthBackend AuthBackend { get; }
+    Session Session { get; }
 }
 
 public interface IWebClientTester : IWebTester
 {
-    public IServiceProvider ClientServices { get; }
-    public IAuth ClientAuth { get; }
+    IServiceProvider ClientServices { get; }
+    IAuth ClientAuth { get; }
 }
 
 public class WebClientTester : IWebClientTester
@@ -27,6 +28,7 @@ public class WebClientTester : IWebClientTester
 
     public AppHost AppHost { get; }
     public IServiceProvider AppServices => AppHost.Services;
+    public ICommander Commander => AppServices.Commander();
     public UriMapper UriMapper => AppServices.UriMapper();
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();

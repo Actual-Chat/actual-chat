@@ -37,7 +37,6 @@ public class UserStatusTest : AppHostTestBase
 
         // act
         var userProfile = await GetUserProfile();
-        var commander = ProxyExt.GetServices(userProfile).Commander();
 
         // assert
         userProfile.Status.Should().Be(NewUserStatus);
@@ -48,7 +47,7 @@ public class UserStatusTest : AppHostTestBase
                      UserStatus.Suspended, UserStatus.Active,
                  }) {
             userProfile.Status = newStatus;
-            await commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, userProfile));
+            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, userProfile));
 
             // assert
             userProfile = await GetUserProfile();
@@ -57,5 +56,6 @@ public class UserStatusTest : AppHostTestBase
     }
 
     private async Task<UserProfile> GetUserProfile()
-        => await _userProfiles.Get(_tester.Session, default) ?? throw new Exception("User profile not found");
+        => await _userProfiles.Get(_tester.Session, default)
+            ?? throw new Exception("User profile not found");
 }
