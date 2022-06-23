@@ -32,27 +32,33 @@ public class UnreadMessages : IAsyncDisposable
         var lastTile1 = await _chats.GetLastIdTile1(_session, _chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
         var unreadCount = Math.Max((int)(lastTile1.Start - lastReadEntryId), 0);
-        if (unreadCount > 100) {
-            using var __ = Computed.SuspendDependencyCapture();
+        switch (unreadCount) {
+        case > 100:
+        {
+            // using var _ = Computed.SuspendDependencyCapture();
+            using var _ = ExecutionContextExt.SuppressFlow();
             var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             unreadCount = Math.Max((int)(idRange.ToInclusive().End - lastReadEntryId), 0);
             return unreadCount;
         }
-        else if (unreadCount > 10) {
+        case > 10:
+        {
             var __ = await _chats.GetLastIdTile0(_session, _chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-            using var _ = Computed.SuspendDependencyCapture();
+            // using var _ = Computed.SuspendDependencyCapture();
+            using var _ = ExecutionContextExt.SuppressFlow();
             var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             unreadCount = Math.Max((int)(idRange.ToInclusive().End - lastReadEntryId), 0);
             return unreadCount;
         }
-        else {
+        default:
+        {
             var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             unreadCount = Math.Max((int)(idRange.ToInclusive().End - lastReadEntryId), 0);
             return unreadCount;
-        }
+        }}
     }
 
     public ValueTask DisposeAsync()
