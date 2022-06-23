@@ -9,15 +9,16 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     AppHost AppHost { get; }
     IServiceProvider AppServices { get; }
     ICommander Commander { get; }
-    UriMapper UriMapper { get; }
     IAuth Auth { get; }
     IAuthBackend AuthBackend { get; }
     Session Session { get; }
+    UriMapper UriMapper { get; }
 }
 
 public interface IWebClientTester : IWebTester
 {
     IServiceProvider ClientServices { get; }
+    ICommander ClientCommander { get; }
     IAuth ClientAuth { get; }
 }
 
@@ -29,12 +30,14 @@ public class WebClientTester : IWebClientTester
     public AppHost AppHost { get; }
     public IServiceProvider AppServices => AppHost.Services;
     public ICommander Commander => AppServices.Commander();
-    public UriMapper UriMapper => AppServices.UriMapper();
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
-    public IServiceProvider ClientServices => _clientServicesLazy.Value;
-    public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
     public Session Session { get; }
+    public UriMapper UriMapper => AppServices.UriMapper();
+
+    public IServiceProvider ClientServices => _clientServicesLazy.Value;
+    public ICommander ClientCommander => ClientServices.Commander();
+    public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
 
     public WebClientTester(AppHost appHost, IServiceProvider? clientServices = null)
     {
