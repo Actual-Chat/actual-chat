@@ -61,6 +61,9 @@
     --mention-message-hover: #fff7e5;
     --own-message: #f6f8f9;
     --own-message-hover: #cbd5e1;
+    --replied-message: #dbeafe;
+    --replied-message-hover: #bfdbfe;
+    --replied-message-border: #3b82f6;
     --audio-message: #0ea5e9;
     --context-menu: #F9FAFB;
     --context-border: #e2e7ec;

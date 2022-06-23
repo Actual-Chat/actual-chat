@@ -69,6 +69,9 @@ module.exports = {
         'mention-message-hover': 'var(--mention-message-hover)',
         'own-message': 'var(--own-message)',
         'own-message-hover': 'var(--own-message-hover)',
+        'replied-message': 'var(--replied-message)',
+        'replied-message-hover': 'var(--replied-message-hover)',
+        'replied-message-border': 'var(--replied-message-border)',
         'context-menu': 'var(--context-menu)',
         'context-border': 'var(--context-border)',
         'selection': 'var(--selection)',
@@ -230,7 +233,7 @@ module.exports = {
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
-      'highlight': 'highlight 3s ease-in-out forwards',
+      'highlight': 'highlight 1s ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -801,12 +804,9 @@ module.exports = {
       },
       'highlight': {
           '0%': {
-              'background': '',
+              'background': 'var(--replied-message-hover)',
           },
-          '5%': {
-              'background': 'var(--background-accent)',
-          },
-          '100%': {
+          '99%': {
               'background': '',
           },
       },
