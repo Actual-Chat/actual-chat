@@ -22,7 +22,7 @@
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
     var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = model.IsHighlighted ? "chat-message-highlighted" : "";
-    var repliedClass = model.isReplied ? "replied-message" : "";
+    var repliedClass = model.IsReplied ? "replied-message" : "";
     var isReply = entry.RepliedChatEntryId != null;
     var selfQuoted = model.RepliedChatMessage?.Entry.AuthorId == model.Message.Entry.AuthorId;
     var mentionClass = model.IsMentioned && !selfQuoted ? "mention" : "";
@@ -208,6 +208,6 @@
         bool IsMentioned,
         ChatMessageModel? RepliedChatMessage,
         bool IsHighlighted,
-        bool isReplied);
+        bool IsReplied);
 
 }
