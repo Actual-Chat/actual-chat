@@ -1,4 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Interception;
 using ActualChat.Testing.Host;
 using Stl.Mathematics;
 
@@ -220,14 +221,15 @@ public class ChatEntryReaderTest : AppHostTestBase
             "rape me rape me my friend",
             "it was a teenage wedding and the all folks wished them well",
         };
+        var commander = ProxyExt.GetServices(chats).Commander();
 
         while (true)
             foreach (var text in phrases) {
                 if (count-- <= 0)
                     return;
-                await chats
-                    .CreateTextEntry(new (session, chatId, text), CancellationToken.None)
-                    .ConfigureAwait(false);
+
+                var command = new IChats.CreateTextEntryCommand(session, chatId, text);
+                await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
             }
     }
 }
