@@ -178,7 +178,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetLastIdTile0(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
     {
-        using var _ = ExecutionContextExt.SuppressFlow();
+        using var _ = Computed.SuspendDependencyCapture();
         var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
         return IdTileStack.Layers[0].GetTile(maxId).Range;
     }
@@ -186,7 +186,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetLastIdTile1(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
     {
-        using var _ = ExecutionContextExt.SuppressFlow();
+        using var _ = Computed.SuspendDependencyCapture();
         var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
         return IdTileStack.Layers[1].GetTile(maxId).Range;
     }

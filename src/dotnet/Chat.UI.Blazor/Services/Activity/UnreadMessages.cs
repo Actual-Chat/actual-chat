@@ -35,8 +35,7 @@ public class UnreadMessages : IAsyncDisposable
         switch (unreadCount) {
         case > 100:
         {
-            // using var _ = Computed.SuspendDependencyCapture();
-            using var _ = ExecutionContextExt.SuppressFlow();
+            using var _ = Computed.SuspendDependencyCapture();
             var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             unreadCount = Math.Max((int)(idRange.ToInclusive().End - lastReadEntryId), 0);
@@ -45,8 +44,7 @@ public class UnreadMessages : IAsyncDisposable
         case > 10:
         {
             var __ = await _chats.GetLastIdTile0(_session, _chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-            // using var _ = Computed.SuspendDependencyCapture();
-            using var _ = ExecutionContextExt.SuppressFlow();
+            using var _ = Computed.SuspendDependencyCapture();
             var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             unreadCount = Math.Max((int)(idRange.ToInclusive().End - lastReadEntryId), 0);

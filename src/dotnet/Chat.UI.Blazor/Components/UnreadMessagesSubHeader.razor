@@ -7,15 +7,12 @@
 }
 
 <div class="unread-messages-sub-header" @onclick="Click">
-    @m.Count unread @PluralizeMessage(m.Count)
+    @GetUnreadCountMessage()
 </div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     private UnreadMessages UnreadMessages { get; set; } = null!;
 
@@ -53,6 +50,15 @@
         return count switch {
             1 => "message",
             _ => "messages",
+        };
+    }
+
+    private string GetUnreadCountMessage() {
+        var model = State.ValueOrDefault;
+        return model?.Count switch {
+            > 0 and < 10 => $"{ model.Count } unread { PluralizeMessage(model.Count) }",
+            > 0 => $"{ model.Count }+ unread messages",
+            _ => string.Empty
         };
     }
 
