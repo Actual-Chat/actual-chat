@@ -150,7 +150,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
                 continue;
 
             var createCommand = new IChatAuthorsBackend.CreateCommand(command.ChatId, userId);
-            await Backend.Create(createCommand, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(createCommand, cancellationToken).ConfigureAwait(false);
         }
     }
 

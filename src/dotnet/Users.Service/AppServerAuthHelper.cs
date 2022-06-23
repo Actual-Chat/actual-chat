@@ -17,8 +17,9 @@ public class AppServerAuthHelper : ServerAuthHelper
         ISessionResolver sessionResolver,
         AuthSchemasCache authSchemasCache,
         ClaimMapper claimMapper,
+        ICommander commander,
         MomentClockSet clocks)
-        : base(settings, auth, authBackend, sessionResolver, authSchemasCache, clocks)
+        : base(settings, auth, authBackend, sessionResolver, authSchemasCache, commander, clocks)
     {
         ClaimMapper = claimMapper;
         _closeWindowAppRequestPath = Settings.CloseWindowRequestPath + "-app";

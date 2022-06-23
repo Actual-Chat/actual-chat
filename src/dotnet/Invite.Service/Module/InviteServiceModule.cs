@@ -34,9 +34,9 @@ public class InviteServiceModule : HostModule<InviteSettings>
         dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<InviteDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -48,10 +48,14 @@ public class InviteServiceModule : HostModule<InviteSettings>
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
-        // module services
+        // Module's own services
         fusion.AddComputeService<IInvites, Invites>();
         fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

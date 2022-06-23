@@ -9,9 +9,13 @@ namespace ActualChat.Chat.Controllers;
 public class ChatRolesController : ControllerBase, IChatRoles
 {
     private readonly IChatRoles _service;
+    private readonly ICommander _commander;
 
-    public ChatRolesController(IChatRoles service)
-        => _service = service;
+    public ChatRolesController(IChatRoles service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken)
@@ -21,5 +25,5 @@ public class ChatRolesController : ControllerBase, IChatRoles
 
     [HttpPost]
     public Task Upsert(IChatRoles.UpsertCommand command, CancellationToken cancellationToken)
-        => _service.Upsert(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

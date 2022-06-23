@@ -9,9 +9,13 @@ namespace ActualChat.Chat.Controllers;
 public class ChatAuthorsController : ControllerBase, IChatAuthors
 {
     private readonly IChatAuthors _service;
+    private readonly ICommander _commander;
 
-    public ChatAuthorsController(IChatAuthors service)
-        => _service = service;
+    public ChatAuthorsController(IChatAuthors service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken)
@@ -49,9 +53,9 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
 
     [HttpPost]
     public Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
-        => _service.AddToContacts(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
-        => _service.CreateChatAuthors(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

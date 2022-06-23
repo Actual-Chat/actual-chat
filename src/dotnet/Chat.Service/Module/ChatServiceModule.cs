@@ -49,23 +49,22 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 e => e.Id);
         });
 
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
+            // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
+            if (handler is not InterfaceCommandHandler<ICommand> ich)
+                return true;
+            if (ich.ServiceType != typeof(DbOperationScopeProvider<ChatDbContext>))
+                return true;
+
+            // 2. Make sure it's intact only for local commands
+            var commandAssembly = commandType.Assembly;
+            return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
+                || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
+                || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
+        });
         var fusion = services.AddFusion();
-        services.AddCommander()
-            .AddHandlerFilter((handler, commandType) => {
-                // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
-                if (handler is not InterfaceCommandHandler<ICommand> ich)
-                    return true;
-                if (ich.ServiceType != typeof(DbOperationScopeProvider<ChatDbContext>))
-                    return true;
-
-                // 2. Make sure it's intact only for local commands
-                var commandAssembly = commandType.Assembly;
-                return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
-                    || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
-                    || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
-            });
-
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
 
         // Chats
         services.AddSingleton(c => {
@@ -85,7 +84,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // ContentSaver
         services.AddResponseCaching();
-        services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+        commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Events
         services.AddSingleton<IEventPublisher, LocalEventPublisher>();
@@ -93,5 +92,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
         services.AddSingleton(c => c.GetRequiredService<LocalEventHub<NewChatEntryEvent>>().Reader);
         services.AddSingleton<IEventHandler<NewChatEntryEvent>, NewChatEntryEventHandler>();
         services.AddHostedService<EventListener<NewChatEntryEvent>>();
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

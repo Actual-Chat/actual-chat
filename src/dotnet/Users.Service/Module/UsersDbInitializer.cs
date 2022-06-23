@@ -19,6 +19,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB...");
+            var commander = Services.Commander();
             var authBackend = Services.GetRequiredService<IAuthBackend>();
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
@@ -60,9 +61,10 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             var session = sessionFactory.CreateSession();
             var user = await authBackend.GetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("Failed to create 'admin' user.");
-            await authBackend.SignIn(
-                new SignInCommand(session, user, user.Identities.Keys.Single()),
-                cancellationToken).ConfigureAwait(false);
+            await commander.Call(
+                    new SignInCommand(session, user, user.Identities.Keys.Single()),
+                    cancellationToken)
+                .ConfigureAwait(false);
             UserConstants.Admin.Session = session;
 
             await AddUsers(dbContext, cancellationToken).ConfigureAwait(false);

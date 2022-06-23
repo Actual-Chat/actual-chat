@@ -57,7 +57,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
                 return avatar;
 
             var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatar.Id, name, avatar.Picture, avatar.Bio);
-            await _commander.Run(updateCommand, true, cancellationToken).ConfigureAwait(false);
+            await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else {
             var createCommand = new IUserAvatarsBackend.CreateCommand(chatAuthorId, name);

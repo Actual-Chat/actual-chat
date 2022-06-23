@@ -559,6 +559,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             ChatType = ChatType.Peer
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
-        return await CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(createChatCommand, cancellationToken).ConfigureAwait(false);
     }
 }

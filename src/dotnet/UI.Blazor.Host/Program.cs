@@ -70,6 +70,9 @@ public static class Program
         });
         services.AddSingleton(_ => new UriMapper(baseUri));
 
+        // Commander - it must be added first to make sure its options are set
+        var commander = services.AddCommander(new CommanderOptions() { AllowDirectCommandHandlerCalls = false });
+
         // Creating plugins
         var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
         // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly

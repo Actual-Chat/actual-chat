@@ -91,9 +91,9 @@ public class UsersServiceModule : HostModule<UsersSettings>
             });
         });
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -108,9 +108,9 @@ public class UsersServiceModule : HostModule<UsersSettings>
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
-
-        // Auth services
+        // Auth
         var fusionAuth = fusion.AddAuthentication();
         services.TryAddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
@@ -123,9 +123,12 @@ public class UsersServiceModule : HostModule<UsersSettings>
             serverAuthHelperSettingsFactory: _ => new() {
                 NameClaimKeys = Array.Empty<string>(),
             });
+        commander.AddCommandService<AuthCommandFilters>();
+        services.AddSingleton<ClaimMapper>();
+        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
+        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
 
         // Module's own services
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
@@ -137,11 +140,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
-        services.AddCommander()
-            .AddCommandService<AuthCommandFilters>();
-        services.AddSingleton<ClaimMapper>();
-        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
-        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
 
         // ChatUserSettings
         services.AddSingleton(c => {
@@ -151,5 +149,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<ChatUserSettingsService>();
         services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
         services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }
