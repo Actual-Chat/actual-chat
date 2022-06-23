@@ -1,4 +1,5 @@
 using ActualChat.Host;
+using ActualChat.Interception;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Http;
@@ -80,8 +81,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     {
         var userProfile = await _userProfiles.Get(_tester.Session, default);
         userProfile!.Status = newStatus;
-        await _userProfiles.Update(
-            new IUserProfiles.UpdateCommand(AdminSession, userProfile),
-            default);
+        var commander = ProxyExt.GetServices(userProfile).Commander();
+        await commander.Call(new IUserProfiles.UpdateCommand(AdminSession, userProfile));
     }
 }

@@ -45,6 +45,7 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
+        var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("", "Bob"));
@@ -54,9 +55,9 @@ public class AudioProcessorTest : AppHostTestBase
         var chatService = services.GetRequiredService<IChats>();
         var chatUserSettings = services.GetRequiredService<IChatUserSettings>();
 
-        var chat = await chatService.CreateChat(new(session, "Test"), default);
+        var chat = await commander.Call(new IChats.CreateChatCommand(session, "Test"));
         using var cts = new CancellationTokenSource();
-        await chatUserSettings.Set(new IChatUserSettings.SetCommand(session, chat.Id, new ChatUserSettings {
+        await commander.Call(new IChatUserSettings.SetCommand(session, chat.Id, new ChatUserSettings {
             Language = LanguageId.Russian,
         }), CancellationToken.None);
 
@@ -75,6 +76,7 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
+        var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("", "Bob"));
@@ -82,7 +84,7 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = audioProcessor.AudioStreamer;
         var chatService = services.GetRequiredService<IChats>();
 
-        var chat = await chatService.CreateChat(new(session, "Test"), default);
+        var chat = await commander.Call(new IChats.CreateChatCommand(session, "Test"));
         using var cts = new CancellationTokenSource();
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, session, chat.Id);
