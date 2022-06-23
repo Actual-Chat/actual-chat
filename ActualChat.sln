@@ -79,6 +79,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		Packages.props = Packages.props
 		README.md = README.md
 		version.json = version.json
+		add-hosts.cmd = add-hosts.cmd
+		clean.cmd = clean.cmd
+		docker-start.cmd = docker-start.cmd
+		ef-migrations.cmd = ef-migrations.cmd
+		npm-install.cmd = npm-install.cmd
+		npm-watch.cmd = npm-watch.cmd
+		rider-with-tiered-pgo.cmd = rider-with-tiered-pgo.cmd
+		run.cmd = run.cmd
+		run-build.cmd = run-build.cmd
+		run-prebuilt.cmd = run-prebuilt.cmd
+		run-published.cmd = run-published.cmd
+		run-watch.cmd = run-watch.cmd
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
