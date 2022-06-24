@@ -8,9 +8,13 @@ namespace ActualChat.Notification.Controllers;
 public class NotificationsController : ControllerBase, INotifications
 {
     private readonly INotifications _service;
+    private readonly ICommander _commander;
 
-    public NotificationsController(INotifications service)
-        => _service = service;
+    public NotificationsController(INotifications service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet]
     [Publish]
@@ -19,9 +23,9 @@ public class NotificationsController : ControllerBase, INotifications
 
     [HttpPost]
     public Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
-        => _service.RegisterDevice(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task SetStatus(INotifications.SetStatusCommand command, CancellationToken cancellationToken)
-        => _service.SetStatus(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

@@ -9,9 +9,13 @@ namespace ActualChat.Invite.Controllers;
 public class InvitesBackendController : ControllerBase, IInvitesBackend
 {
     private readonly IInvitesBackend _service;
+    private readonly ICommander _commander;
 
-    public InvitesBackendController(IInvitesBackend service)
-        => _service = service;
+    public InvitesBackendController(IInvitesBackend service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
@@ -23,9 +27,9 @@ public class InvitesBackendController : ControllerBase, IInvitesBackend
 
     [HttpPost]
     public Task<Invite> Generate(IInvitesBackend.GenerateCommand command, CancellationToken cancellationToken)
-        => _service.Generate(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task<Invite> Use(IInvitesBackend.UseCommand command, CancellationToken cancellationToken)
-        => _service.Use(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

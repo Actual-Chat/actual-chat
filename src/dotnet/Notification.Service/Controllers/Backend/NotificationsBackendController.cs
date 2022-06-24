@@ -9,9 +9,13 @@ namespace ActualChat.Notification.Controllers.Backend;
 public class NotificationsBackendController : ControllerBase, INotificationsBackend
 {
     private readonly INotificationsBackend _service;
+    private readonly ICommander _commander;
 
-    public NotificationsBackendController(INotificationsBackend service)
-        => _service = service;
+    public NotificationsBackendController(INotificationsBackend service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken)
@@ -25,5 +29,5 @@ public class NotificationsBackendController : ControllerBase, INotificationsBack
     public Task NotifySubscribers(
         INotificationsBackend.NotifySubscribersCommand subscribersCommand,
         CancellationToken cancellationToken)
-        => _service.NotifySubscribers(subscribersCommand, cancellationToken);
+        => _commander.Call(subscribersCommand, cancellationToken);
 }

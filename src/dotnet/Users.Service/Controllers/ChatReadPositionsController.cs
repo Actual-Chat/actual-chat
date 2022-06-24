@@ -8,9 +8,13 @@ namespace ActualChat.Users.Controllers;
 public class ChatReadPositionsController: ControllerBase, IChatReadPositions
 {
     private readonly IChatReadPositions _service;
+    private readonly ICommander _commander;
 
-    public ChatReadPositionsController(IChatReadPositions service)
-        => _service = service;
+    public ChatReadPositionsController(IChatReadPositions service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken)
@@ -18,5 +22,5 @@ public class ChatReadPositionsController: ControllerBase, IChatReadPositions
 
     [HttpPost]
     public Task UpdateReadPosition(IChatReadPositions.UpdateReadPositionCommand command, CancellationToken cancellationToken)
-        => _service.UpdateReadPosition(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

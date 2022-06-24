@@ -8,9 +8,13 @@ namespace ActualChat.Users.Controllers;
 public class UserProfilesBackendController : ControllerBase, IUserProfilesBackend
 {
     private readonly IUserProfilesBackend _service;
+    private readonly ICommander _commander;
 
-    public UserProfilesBackendController(IUserProfilesBackend service)
-        => _service = service;
+    public UserProfilesBackendController(IUserProfilesBackend service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
@@ -22,5 +26,5 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
 
     [HttpPost]
     public Task Update([FromBody] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken)
-        => _service.Update(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

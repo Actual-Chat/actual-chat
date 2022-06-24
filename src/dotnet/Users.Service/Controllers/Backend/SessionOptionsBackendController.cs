@@ -8,13 +8,17 @@ namespace ActualChat.Users.Controllers;
 public class SessionOptionsBackendController : ControllerBase, ISessionOptionsBackend
 {
     private readonly ISessionOptionsBackend _service;
+    private readonly ICommander _commander;
 
-    public SessionOptionsBackendController(ISessionOptionsBackend service)
-        => _service = service;
+    public SessionOptionsBackendController(ISessionOptionsBackend service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpPost]
     public Task Upsert(
         [FromBody] ISessionOptionsBackend.UpsertCommand command,
         CancellationToken cancellationToken)
-        => _service.Upsert(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }
