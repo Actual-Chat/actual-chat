@@ -69,6 +69,7 @@
         }
         finally {
             IsAddingContact = false;
+            await ModalInstance.CancelAsync();
             StateHasChanged();
         }
     }
