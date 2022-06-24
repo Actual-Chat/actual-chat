@@ -12,7 +12,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthors? _frontend;
 
-    private ICommander Commander { get; }
     private IAuth Auth { get; }
     private IUserProfilesBackend UserProfilesBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
@@ -25,7 +24,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
-        Commander = services.Commander();
         Auth = services.GetRequiredService<IAuth>();
         UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
         IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();

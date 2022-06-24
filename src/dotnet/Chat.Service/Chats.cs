@@ -9,7 +9,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    private ICommander Commander { get; }
     private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
     private IChatAuthors ChatAuthors { get; }
@@ -20,7 +19,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     public Chats(IServiceProvider services) : base(services)
     {
-        Commander = Services.Commander();
         Auth = Services.GetRequiredService<IAuth>();
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();

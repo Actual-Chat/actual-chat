@@ -10,7 +10,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthorsBackend? _backend;
 
-    private ICommander Commander { get; }
     private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
@@ -20,7 +19,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
-        Commander = services.Commander();
         Auth = Services.GetRequiredService<IAuth>();
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
         UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
