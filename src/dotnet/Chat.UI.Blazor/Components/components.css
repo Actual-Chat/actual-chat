@@ -171,7 +171,7 @@
     @apply m-0;
 }
 
-.invite-chat-author-modal .dialog-body input {
+.invite-chat-author-modal .dialog-body input:not([type='checkbox']) {
     @apply pl-8 py-2 w-full;
 }
 .people-tab .author-badge {

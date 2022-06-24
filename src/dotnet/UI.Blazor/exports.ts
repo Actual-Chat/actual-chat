@@ -2,6 +2,7 @@ import './Components/AccountDropdown/account-dropdown.css'
 import './Components/AuthorBadge/author-badge.css'
 import './Components/Button/button.css';
 import './Components/ChatIcon/chat-icon.css'
+import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
 import './Components/ContextMenu/context-menu.css';
 import './Components/Form/form.css'
