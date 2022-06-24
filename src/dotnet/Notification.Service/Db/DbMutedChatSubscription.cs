@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Notification.Db;
 
-[Table("DisabledChatSubscriptions")]
+[Table("MutedChatSubscriptions")]
 [Index(nameof(UserId), nameof(ChatId))]
-public class DbDisabledChatSubscription : IHasId<string>, IHasVersion<long>
+public class DbMutedChatSubscription : IHasId<string>, IHasVersion<long>
 {
-    public DbDisabledChatSubscription() { }
+    public DbMutedChatSubscription() { }
 
     [Key] public string Id { get; set; } = null!;
 

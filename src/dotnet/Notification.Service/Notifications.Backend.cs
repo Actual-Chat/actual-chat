@@ -29,12 +29,23 @@ public partial class Notifications
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var subscriberIds = await dbContext.DisabledChatSubscriptions
+        var mutedSubscribersTask = dbContext.MutedChatSubscriptions
             .Where(cs => cs.ChatId == chatId)
             .Select(cs => cs.UserId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return subscriberIds.Select(x => new Symbol(x)).ToImmutableArray();
+            .ToListAsync(cancellationToken);
+        var userIdsTask = _chatAuthorsBackend
+            .ListUserIds(chatId, cancellationToken);
+        await Task.WhenAll(mutedSubscribersTask, userIdsTask).ConfigureAwait(false);
+
+        var mutedSubscribersList = await mutedSubscribersTask.ConfigureAwait(false);
+        var mutedSubscribers = mutedSubscribersList
+            .Select(id => (Symbol)id)
+            .ToHashSet();
+
+        var userIds = await userIdsTask.ConfigureAwait(false);
+
+        var subscriberIds = userIds.Except(mutedSubscribers);
+        return subscriberIds.Select(id => id).ToImmutableArray();
     }
 
     // [CommandHandler]

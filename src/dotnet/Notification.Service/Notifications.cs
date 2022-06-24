@@ -1,4 +1,5 @@
-﻿using ActualChat.Notification.Backend;
+﻿using ActualChat.Chat;
+using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly IAuth _auth;
     private readonly MomentClockSet _clocks;
     private readonly FirebaseMessaging _firebaseMessaging;
+    private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
     private readonly UriMapper _uriMapper;
     private readonly ILogger<Notifications> _log;
@@ -20,6 +22,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         IAuth auth,
         MomentClockSet clocks,
         FirebaseMessaging firebaseMessaging,
+        IChatAuthorsBackend chatAuthorsBackend,
         IDbContextFactory<NotificationDbContext> dbContextFactory,
         UriMapper uriMapper,
         ILogger<Notifications> log) : base(services)
@@ -27,6 +30,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         _auth = auth;
         _clocks = clocks;
         _firebaseMessaging = firebaseMessaging;
+        _chatAuthorsBackend = chatAuthorsBackend;
         _dbContextFactory = dbContextFactory;
         _uriMapper = uriMapper;
         _log = log;
@@ -43,7 +47,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         await using var _ = dbContext.ConfigureAwait(false);
 
         string userId = user.Id;
-        var isDisabledSubscription = await dbContext.DisabledChatSubscriptions
+        var isDisabledSubscription = await dbContext.MutedChatSubscriptions
             .AnyAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
         return isDisabledSubscription ? ChatNotificationStatus.NotSubscribed : ChatNotificationStatus.Subscribed;
@@ -98,8 +102,8 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var context = CommandContext.GetCurrent();
         var (session, chatId, mustSubscribe) = command;
         if (Computed.IsInvalidating()) {
-            var invWasDisabled = context.Operation().Items.GetOrDefault(false);
-            if (invWasDisabled == mustSubscribe) {
+            var invWasMuted = context.Operation().Items.GetOrDefault(false);
+            if (invWasMuted == mustSubscribe) {
                 _ = GetStatus(session, chatId, default);
                 _ = ListSubscriberIds(chatId, default);
             }
@@ -114,28 +118,28 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbDisabledSubscription = await dbContext.DisabledChatSubscriptions
+        var dbMutedSubscription = await dbContext.MutedChatSubscriptions
             .ForUpdate()
             .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var isDisabledSubscription = dbDisabledSubscription != null;
-        context.Operation().Items.Set(isDisabledSubscription);
-        if (isDisabledSubscription != mustSubscribe)
+        var isMutedSubscription = dbMutedSubscription != null;
+        context.Operation().Items.Set(isMutedSubscription);
+        if (isMutedSubscription != mustSubscribe)
             return;
 
         if (mustSubscribe) {
-            dbContext.Remove(dbDisabledSubscription!);
+            dbContext.Remove(dbMutedSubscription!);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         else {
-            dbDisabledSubscription = new DbDisabledChatSubscription {
+            dbMutedSubscription = new DbMutedChatSubscription {
                 Id = Ulid.NewUlid().ToString(),
                 UserId = userId,
                 ChatId = chatId,
                 Version = VersionGenerator.NextVersion(),
             };
-            dbContext.Add(dbDisabledSubscription);
+            dbContext.Add(dbMutedSubscription);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
