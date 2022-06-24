@@ -29,7 +29,7 @@ public partial class Notifications
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var subscriberIds = await dbContext.ChatSubscriptions
+        var subscriberIds = await dbContext.DisabledChatSubscriptions
             .Where(cs => cs.ChatId == chatId)
             .Select(cs => cs.UserId)
             .ToListAsync(cancellationToken)

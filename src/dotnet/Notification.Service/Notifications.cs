@@ -43,10 +43,10 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         await using var _ = dbContext.ConfigureAwait(false);
 
         string userId = user.Id;
-        var isSubscribed = await dbContext.ChatSubscriptions
+        var isDisabledSubscription = await dbContext.DisabledChatSubscriptions
             .AnyAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
-        return isSubscribed ? ChatNotificationStatus.Subscribed : ChatNotificationStatus.NotSubscribed;
+        return isDisabledSubscription ? ChatNotificationStatus.NotSubscribed : ChatNotificationStatus.Subscribed;
     }
 
     // [CommandHandler]
@@ -98,8 +98,8 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var context = CommandContext.GetCurrent();
         var (session, chatId, mustSubscribe) = command;
         if (Computed.IsInvalidating()) {
-            var invWasSubscribed = context.Operation().Items.GetOrDefault(false);
-            if (invWasSubscribed != mustSubscribe) {
+            var invWasDisabled = context.Operation().Items.GetOrDefault(false);
+            if (invWasDisabled == mustSubscribe) {
                 _ = GetStatus(session, chatId, default);
                 _ = ListSubscriberIds(chatId, default);
             }
@@ -114,28 +114,28 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbSubscription = await dbContext.ChatSubscriptions
+        var dbDisabledSubscription = await dbContext.DisabledChatSubscriptions
             .ForUpdate()
             .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var isSubscribed = dbSubscription != null;
-        context.Operation().Items.Set(isSubscribed);
-        if (isSubscribed == mustSubscribe)
+        var isDisabledSubscription = dbDisabledSubscription != null;
+        context.Operation().Items.Set(isDisabledSubscription);
+        if (isDisabledSubscription != mustSubscribe)
             return;
 
         if (mustSubscribe) {
-            dbSubscription = new DbChatSubscription {
+            dbContext.Remove(dbDisabledSubscription!);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            dbDisabledSubscription = new DbDisabledChatSubscription {
                 Id = Ulid.NewUlid().ToString(),
                 UserId = userId,
                 ChatId = chatId,
                 Version = VersionGenerator.NextVersion(),
             };
-            dbContext.Add(dbSubscription);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else {
-            dbContext.Remove(dbSubscription!);
+            dbContext.Add(dbDisabledSubscription);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
