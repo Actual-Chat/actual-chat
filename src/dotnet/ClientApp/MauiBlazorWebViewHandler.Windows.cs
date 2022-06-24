@@ -24,7 +24,6 @@ public partial class MauiBlazorWebViewHandler
                             return;
                         switch (msg.type) {
                         case "_auth":
-                            var originalUri = sender.Source;
                             if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
                                 break;
                             var cookies = await GetRedirectSecret().ConfigureAwait(true);
@@ -39,7 +38,6 @@ public partial class MauiBlazorWebViewHandler
                                     await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
                                 }
                             }
-                            sender.Source = originalUri;
                             break;
                         default:
                             throw new InvalidOperationException($"Unknown message type: {msg.type}");
