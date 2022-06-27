@@ -43,6 +43,7 @@
 .attachment-list {
     @apply flex justify-start ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-accent divide-dashed;
+    @apply shadow-inner rounded-md;
 }
 .attachment-wrapper {
     @apply relative;
@@ -74,9 +75,8 @@
 
 .recorder-panel {
     @apply flex-x justify-center;
-    @apply bg-accent outline-none;
+    @apply bg-secondary outline-none;
     @apply rounded-none;
-    @apply shadow-inner md:shadow-none;
     @apply self-stretch md:self-end;
 }
 .recorder-panel .playback-toggle .chat-playback-toggles {
@@ -104,10 +104,6 @@
 
 .audio-recorder-toggle.btn.btn-square {
     @apply w-full rounded-lg md:rounded-l-2xl md:rounded-r-none;
-}
-
-.recorder-buttons {
-    @apply w-full flex-1 bg-secondary py-0.5 pr-0.5 md:p-0 rounded-r-lg md:rounded-none;
 }
 
 .btn.audio-recorder-toggle.on .btn-content {
