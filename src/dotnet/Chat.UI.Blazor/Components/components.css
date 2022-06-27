@@ -83,13 +83,7 @@
 }
 
 .btn-square.attach-btn {
-    @apply flex flex-1 rounded-full mr-1.5 w-fit h-fit self-end;
-}
-.btn-square.attach-btn .btn-content {
-    @apply bg-primary min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
-}
-.btn.btn-square.attach-btn:hover > .btn-content {
-    @apply bg-transparent;
+    @apply self-start;
 }
 
 .chat-header-panel-hint.btn.btn-square {

@@ -9,12 +9,12 @@
     --text-accent: #232c35;
 
     /* Buttons */
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
+    --success: #2970FF;
+    --success-hover: #3d7dff;
     --success-title: #edf0f3;
-    --success-ring: #94d2fc;
-    --success-outline-hover: #e0f2fe;
-    --success-outline-title: #0284c7;
+    --success-ring: #c6d9ff;
+    --success-outline-hover: #edf3ff;
+    --success-outline-title: #3d7dff;
 
     --cancel: #64748b;
     --cancel-hover: #546174;
@@ -35,6 +35,12 @@
     --square-hover: #edf0f3;
     --square-focus: #cad3dc;
     --square-title: #4b5e71;
+
+    --round: #F5F5F5;
+    --round-active: #E9E9E9;
+    --round-hover: #E9E9E9;
+    --round-focus: #cad3dc;
+    --round-title: #4b5e71;
 
     --recorder: #e2e7ec;
     --recorder-hover: #edf0f3;

@@ -181,6 +181,39 @@
     @apply p-1 self-center;
 }
 
+/*Button Round*/
+.btn.btn-round {
+    @apply flex overflow-hidden;
+    @apply p-0 mx-0 min-w-0 h-full min-h-0;
+    @apply border-0;
+    @apply text-base font-semibold text-square-title;
+    @apply rounded-full w-fit h-fit self-end;
+}
+.btn.btn-round:disabled {
+    @apply opacity-70;
+}
+.btn.btn-round.-disabled:disabled {
+    @apply opacity-100;
+}
+.btn.btn-round .btn-content {
+    @apply bg-round min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+}
+.btn.btn-round:focus > .btn-content {
+    @apply bg-round-focus;
+}
+.btn.btn-round:active > .btn-content {
+    @apply bg-round-active;
+}
+.btn.btn-round:hover > .btn-content {
+    @apply bg-round-hover;
+}
+.btn.btn-round.show-on-hover {
+    @apply invisible z-10 absolute;
+}
+.btn.btn-round .btn-content-inner {
+    @apply p-1 self-center;
+}
+
 /*Default horizontal*/
 .btn-group {
     @apply flex flex-row gap-x-4;
