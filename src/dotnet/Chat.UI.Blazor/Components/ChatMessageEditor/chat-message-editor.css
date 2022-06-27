@@ -45,12 +45,12 @@
 }
 
 .attachment-list {
-    @apply flex justify-start mx-2 my-2 py-2 px-2 gap-5 overflow-x-auto;
+    @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-accent divide-dashed;
-    @apply border-4 border-success rounded-lg;
+    @apply border-4 border-success rounded-xl;
 }
 .attachment-wrapper {
-    @apply relative;
+    @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
     max-width: 12rem;
     min-width: 12rem;
 }
