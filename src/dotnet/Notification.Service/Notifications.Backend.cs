@@ -53,8 +53,14 @@ public partial class Notifications
         INotificationsBackend.NotifySubscribersCommand notifyCommand,
         CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invUserIds = context.Operation().Items.Get<HashSet<string>>();
+            if (invUserIds is { Count: > 0 })
+                foreach (var invUserId in invUserIds)
+                    _ = ListDevices(invUserId, default);
             return;
+        }
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -111,26 +117,45 @@ public partial class Notifications
             .SelectMany(uid => GetDevicesInternal(uid, cancellationToken))
             .Chunk(200, cancellationToken);
 
+        var usersToInvalidate = new HashSet<string>();
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
             var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
                 .ConfigureAwait(false);
 
             if (batchResponse.FailureCount > 0) {
-                var errorInfoItems = await Task.WhenAll(batchResponse.Responses
-                    .Where(r => !r.IsSuccess)
-                    .Select(async r => new {
-                        r.Exception.MessagingErrorCode,
-                        r.Exception.HttpResponse.StatusCode,
-                        Content = await r.Exception.HttpResponse.Content.ReadAsStringAsync(cancellationToken)
-                            .ConfigureAwait(false),
-                    })).ConfigureAwait(false);
-                var errorDetails = errorInfoItems
-                    .Select(x => $"MessagingError = {x.MessagingErrorCode}; HttpCode = {x.StatusCode}; Content = {x.Content}")
-                    .Aggregate(new StringBuilder(), (sb, item) => sb.AppendLine(item))
-                    .ToString();
-                _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}; {Details}",
-                    batchResponse.FailureCount, errorDetails);
+                var responses = batchResponse.Responses
+                    .Zip(deviceGroup)
+                    .Select(p => new {
+                        p.Second.DeviceId,
+                        p.Second.UserId,
+                        p.First.IsSuccess,
+                        p.First.Exception?.MessagingErrorCode,
+                        p.First.Exception?.HttpResponse,
+                    })
+                    .ToList();
+                var responseGroups = responses
+                    .GroupBy(x => x.MessagingErrorCode);
+                foreach (var responseGroup in responseGroups)
+                    if (responseGroup.Key == MessagingErrorCode.Unregistered) {
+                        var tokensToRemove = responseGroup
+                            .Select(g => (g.DeviceId, g.UserId))
+                            .ToList();
+                        usersToInvalidate.AddRange(tokensToRemove.Select(p => p.UserId));
+                        _ = BackgroundTask.Run(
+                            () => RemoveOutdatedTokens(tokensToRemove, CancellationToken.None),
+                            CancellationToken.None);
+                    }
+                    else if (responseGroup.Key.HasValue) {
+                        var firstErrorItem = responseGroup.First();
+                        var errorContent = firstErrorItem.HttpResponse == null
+                            ? ""
+                            : await firstErrorItem.HttpResponse.Content
+                                .ReadAsStringAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                        _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                            responseGroup.Key, responseGroup.Count(), errorContent);
+                    }
             }
 
             if (batchResponse.SuccessCount > 0)
@@ -141,6 +166,8 @@ public partial class Notifications
                         batchResponse.Responses,
                         cancellationToken),
                     cancellationToken);
+
+            context.Operation().Items.Set(usersToInvalidate);
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
@@ -177,5 +204,21 @@ public partial class Notifications
             await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task RemoveOutdatedTokens(List<(string DeviceId, string UserId)> tokensToRemove, CancellationToken cancellationToken)
+    {
+        var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        foreach (var token in tokensToRemove) {
+            var dbDevice = await dbContext.Devices
+                .FindAsync(new object?[] { token.DeviceId }, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbDevice != null)
+                dbContext.Devices.Remove(dbDevice);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
