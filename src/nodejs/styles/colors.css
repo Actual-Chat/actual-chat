@@ -1,9 +1,9 @@
 
 :root, .theme-light {
     /* Main colors */
-    --background-primary: #edf0f3;
-    --background-secondary: #F9FAFB;
-    --background-accent: #e2e7ec;
+    --background-primary: #F5F5F5;
+    --background-secondary: #FFFFFF;
+    --background-accent: #E9E9E9;
     --text-primary: #2b3641;
     --text-secondary: #4b5e71;
     --text-accent: #232c35;

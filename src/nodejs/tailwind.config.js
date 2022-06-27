@@ -856,10 +856,12 @@ module.exports = {
       '60': '60vh',
       '75': '75vh',
       'footer': '3.75rem',
+      '3': '3rem',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       ...theme('spacing'),
       none: 'none',
+      '3': '3rem',
       xxs: '10rem',
       xs: '20rem',
       sm: '24rem',
@@ -890,6 +892,7 @@ module.exports = {
       'footer': '3.75rem',
       'modal-header': '4rem',
       'mobile-header': '3.5rem',
+      '3': '3rem',
     }),
     minWidth: ({ theme }) => ({
       ...theme('spacing'),
@@ -900,6 +903,7 @@ module.exports = {
       fit: 'fit-content',
       'modal': '480px',
       'navbar': '3.5rem',
+      '3': '3rem',
     }),
     objectPosition: {
       bottom: 'bottom',

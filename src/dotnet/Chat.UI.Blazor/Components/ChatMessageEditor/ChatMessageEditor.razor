@@ -9,14 +9,14 @@
 @using ActualChat.MediaPlayback
 
 <EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
-<div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
+<div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none -flex-y md:flex-x justify-items-stretch items-stretch w-full bg-secondary">
+            <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
             <div class="-flex-y w-full bg-secondary">
-                <div class="post-panel flex-x justify-between outline-none bg-accent w-full border-secondary">
+                <div class="post-panel flex-x justify-between outline-none bg-secondary w-full border-secondary">
                     <input class="files-picker" type="file" hidden multiple/>
                     <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
-                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                         <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                      Class="message-input -flex-y"
                                      Autofocus="true"
