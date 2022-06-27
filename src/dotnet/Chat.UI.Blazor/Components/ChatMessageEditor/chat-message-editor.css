@@ -4,11 +4,11 @@
 }
 
 .message-input {
-    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3;
-    @apply break-all outline-none hover:cursor-text text-primary;
+    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-4 mr-1 md:mx-3;
+    @apply break-all outline-none hover:cursor-text text-primary bg-primary;
 }
 .post-panel {
-    @apply md:rounded-r-2xl;
+    @apply bg-primary rounded-3xl min-h-3 py-2 outline-none;
 }
 
 .not-recording {
@@ -77,11 +77,8 @@
 .recorder-panel {
     @apply flex-x justify-center;
     @apply bg-accent outline-none;
-    @apply px-0.5 py-0.5 md:p-0;
-    @apply max-h-footer h-12 md:h-auto;
     @apply rounded-none;
     @apply shadow-inner md:shadow-none;
-    @apply md:ml-1 border-secondary border-b;
     @apply self-stretch md:self-end;
 }
 .recorder-panel .playback-toggle .chat-playback-toggles {
@@ -95,14 +92,16 @@
     @apply flex-1 flex flex-row justify-center;
 }
 .recorder-panel .recorder-buttons .recorder-button {
-    @apply w-full;
+    @apply flex flex-1 rounded-full w-fit h-fit self-end;
+}
+.recorder-panel .recorder-buttons .recorder-button .btn-square.audio-recorder-toggle {
+    @apply flex flex-1 rounded-full w-fit h-fit self-end;
+}
+.btn-square.audio-recorder-toggle .btn-content {
+    @apply bg-primary min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
 }
 .recorder-panel .chat-playback-toggles {
     @apply mr-0.5;
-}
-
-.recorder-buttons .btn.btn-square .btn-content-inner {
-    @apply w-full flex justify-center;
 }
 
 .audio-recorder-toggle.btn.btn-square {
