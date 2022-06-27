@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst</TargetFrameworks>
@@ -48,16 +48,6 @@
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
   </PropertyGroup>
-
-  <Target Name="TestMessage" AfterTargets="Build" >
-
-    <!-- Use $(Property Name) to reference a property -->
-    <Message Text="AppendTargetFrameworkToOutputPath" Importance="high"/>
-	<Message Text="$(AppendRuntimeIdentifierToOutputPath)" Importance="high"/>
-	<Message Text="AppendRuntimeIdentifierToOutputPath" Importance="high"/>
-	<Message Text="$(AppendRuntimeIdentifierToOutputPath)" Importance="high"/>
-
-  </Target>
 
   <ItemGroup>
     <!-- App Icon -->
