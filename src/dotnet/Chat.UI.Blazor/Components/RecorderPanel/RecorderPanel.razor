@@ -2,15 +2,15 @@
 @using ActualChat.Audio.UI.Blazor.Components
 
 <div class="recorder-panel">
-    <div class="playback-toggle">
-        <ChatPlaybackToggle/>
-    </div>
-    <div class="recorder-buttons -flex-x">
+    <div class="recorder-buttons -flex-x gap-x-1.5">
         <div class="recorder-button flex">
             <ChatRecorderToggle ChatId="@Chat.Id"/>
         </div>
         <div class="language-button flex hidden">
             <ChatLanguageToggle/>
+        </div>
+        <div class="playback-toggle">
+            <ChatPlaybackToggle/>
         </div>
     </div>
 </div>
