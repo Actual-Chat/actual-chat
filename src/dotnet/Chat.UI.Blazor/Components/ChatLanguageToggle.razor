@@ -3,13 +3,13 @@
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
 
-<ButtonSquare
+<ButtonRound
     Class="chat-language-toggle"
     Click="OnClick">
-    <span class="w-8 md:w-10 m-1">
+    <span class="w-8 h-8 m-1">
         @language.Shortcut
     </span>
-</ButtonSquare>
+</ButtonRound>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

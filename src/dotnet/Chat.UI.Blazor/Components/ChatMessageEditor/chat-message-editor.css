@@ -122,6 +122,4 @@
 
 .btn.chat-language-toggle {
     @apply relative md:-right-4 md:-ml-4;
-    @apply rounded-lg md:rounded-2xl;
-    @apply w-10 md:w-auto mr-0.5 md:mr-0;
 }
