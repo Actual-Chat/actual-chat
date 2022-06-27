@@ -33,7 +33,7 @@ appendIfNotExists() {
   LINE=$1
   FILE=$2
   sudo touch $FILE
-  sudo grep -qF -- "$LINE" "$FILE" || echo "$LINE" >> "$FILE"
+  sudo grep -qF -- "$LINE" "$FILE" || echo "$LINE" | sudo tee -a "$FILE"
 }
 
 trustCertificate() {
@@ -44,7 +44,7 @@ trustCertificate() {
       ;;
       Linux)
         # commands for Linux go here
-        cp $certPath /usr/local/share/ca-certificates/
+        sudo cp $certPath /usr/local/share/ca-certificates/
         sudo update-ca-certificates
       ;;
       *)
