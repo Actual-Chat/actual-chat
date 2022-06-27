@@ -21,9 +21,9 @@
                                      Class="message-input -flex-y"
                                      Autofocus="true"
                                      Placeholder="@("#" + Chat.Title)"
-                                     Posted="OnPosted" Rendered="OnSlateEditorRendered"/>
+                                     Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered"/>
                         <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
-                                @onclick="_ => OnPosted()">
+                                @onclick="_ => OnPosted(clearEditor: true)">
                             <svg class="fill-current w-9 h-9 m-1" viewBox="0 0 30 30" id="icon" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                             </svg>
@@ -87,7 +87,7 @@
         }
     }
 
-    private async Task OnPosted(string? text = null) {
+    private async Task OnPosted(string? text = null, bool clearEditor = false) {
         if (text == null)
             text = await SlateEditorRef.GetText().ConfigureAwait(true);
         var attachments = AttachmentListPreviewRef.GetAttachments();
@@ -95,6 +95,9 @@
             return;
 
         try {
+            if (clearEditor) {
+                await SlateEditorRef.Clear().ConfigureAwait(true);
+            }
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
             var repliedChatEntry = await ChatUI.RepliedChatEntry.Use().ConfigureAwait(false);
