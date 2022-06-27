@@ -24,7 +24,11 @@
     content:attr(data-text)
 }
 
-.text-mode .post-message {
+.btn.btn-round.post-message {
+    @apply sticky self-end outline-none text-round-title pr-1 mr-2 hidden;
+}
+
+.text-mode .btn.btn-round.post-message {
     @apply flex md:hidden animate-display-from-left md:animate-none;
 }
 
@@ -32,7 +36,7 @@
     @apply disabled;
 }
 
-.record-mode .post-message {
+.record-mode .btn.btn-round.post-message {
     @apply hidden;
 }
 
@@ -41,9 +45,9 @@
 }
 
 .attachment-list {
-    @apply flex justify-start ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto;
+    @apply flex justify-start mx-2 my-2 py-2 px-2 gap-5 overflow-x-auto;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-accent divide-dashed;
-    @apply shadow-inner rounded-md;
+    @apply border-4 border-success rounded-lg;
 }
 .attachment-wrapper {
     @apply relative;
@@ -64,7 +68,9 @@
 .attachment-wrapper .btn.btn-round:hover .btn-content {
     @apply bg-error-ring;
 }
-
+.attach-btn.btn.btn-round {
+    @apply self-start;
+}
 .attach-dropdown-menu {
     @apply rounded-md p-1 absolute bottom-2 shadow-context;
 }
