@@ -44,21 +44,23 @@
     @apply flex justify-start ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-accent divide-dashed;
 }
-
+.attachment-wrapper {
+    @apply relative;
+    max-width: 12rem;
+    min-width: 12rem;
+}
 .attachment-item {
     @apply relative p-3 rounded-none grid overflow-y-auto overflow-x-hidden;
-    min-width: 10rem;
     min-height: 10rem;
     max-height: 12rem;
-    max-width: 10rem;
 }
-.attachment-item .btn.btn-round {
-    @apply w-8 h-8 text-white ring-2 ring-white;
+.attachment-wrapper .btn.btn-round {
+    @apply w-7 h-7 text-white m-0 self-center;
 }
-.attachment-item .btn.btn-round .btn-content {
+.attachment-wrapper .btn.btn-round .btn-content {
     @apply bg-success;
 }
-.attachment-item .btn.btn-round:hover .btn-content {
+.attachment-wrapper .btn.btn-round:hover .btn-content {
     @apply bg-error-ring;
 }
 
