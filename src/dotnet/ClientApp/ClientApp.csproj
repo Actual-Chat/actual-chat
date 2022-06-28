@@ -43,11 +43,11 @@
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+  <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <ItemGroup>
     <!-- App Icon -->
@@ -109,9 +109,5 @@
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
-
-  <!--<ItemGroup>
-    <PackageReference Include="Serilog.AspNetCore" />
-  </ItemGroup>-->
 
 </Project>
