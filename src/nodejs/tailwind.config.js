@@ -16,6 +16,11 @@ const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
 
 module.exports = {
   content: dirs,
+  safelist: [
+    // using in Avatar Size
+    'w-9',
+    'h-9',
+  ],
   presets: [],
   darkMode: 'media',
   theme: {

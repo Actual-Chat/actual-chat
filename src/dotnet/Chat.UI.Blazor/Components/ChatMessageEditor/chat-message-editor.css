@@ -91,29 +91,39 @@
 .recorder-panel .playback-toggle {
     @apply flex flex-1 rounded-full w-fit h-fit self-end;
 }
-.playback-toggle .btn.btn-square {
+.playback-toggle .btn.btn-round {
     @apply rounded-full;
 }
-.playback-toggle .btn.btn-square .btn-content {
+.playback-toggle .btn.btn-round .btn-content {
     @apply bg-primary min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center rounded-full;
 }
 
-.recorder-panel .recorder-buttons .recorder-button .btn-square.audio-recorder-toggle {
+.recorder-panel .recorder-buttons .recorder-button .btn-round.audio-recorder-toggle {
     @apply flex flex-1 rounded-full w-fit h-fit self-end;
 }
-.btn-square.audio-recorder-toggle .btn-content {
-    @apply bg-primary min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+.btn-round.audio-recorder-toggle .btn-content {
+    @apply bg-success text-success-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
 }
+.btn-round.audio-recorder-toggle:hover .btn-content {
+    @apply bg-success-hover text-success-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+}
+.btn-round.audio-recorder-toggle.recorder-disabled .btn-content {
+    @apply bg-round;
+}
+.btn-round.audio-recorder-toggle.recorder-disabled:hover .btn-content {
+    @apply bg-round;
+}
+
 .recorder-panel .chat-playback-toggles {
     @apply mr-0.5;
 }
 
-.audio-recorder-toggle.btn.btn-square {
-    @apply w-full rounded-lg md:rounded-l-2xl md:rounded-r-none;
-}
+/*.audio-recorder-toggle.btn.btn-round {*/
+/*    @apply w-full rounded-lg md:rounded-l-2xl md:rounded-r-none;*/
+/*}*/
 
 .btn.audio-recorder-toggle.on .btn-content {
-    @apply text-recorder-on;
+    @apply bg-recorder-on;
 }
 
 .btn.audio-recorder-toggle.on svg {
