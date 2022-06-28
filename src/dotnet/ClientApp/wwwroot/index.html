@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Actual Chat</title>
     <base href="/" />
-    <link href="/dist/bundle.css" rel="stylesheet" />
     <link href="_content/Blazor.ContextMenu/blazorContextMenu.min.css" rel="stylesheet" />
     <link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />
+    <link href="/dist/bundle.css" rel="stylesheet" />
     <script>
         (function () {
             let openAuthWindow = function (action, flowName) {
@@ -36,11 +36,44 @@
                     let redirectUrl = new URL(this.closePath + "?flow=" + encode(flowName), window['_baseURI']).href;
                     console.log(`redirectUrl: ${redirectUrl} baseUri: ${window['_baseURI']}`);
                     let url = window['_baseURI'] + action + "?returnUrl=" + encode(redirectUrl);
-                    window.chrome.webview.postMessage(JSON.stringify({ type: '_auth', url }));
+                    window.chatApp.postMessage(JSON.stringify({ type: '_auth', url }));
                 }
             };
 
         })();
+    </script>
+    <script>
+        window.chatApp = {
+            debug: true,
+            initPage: function (data) {
+                const baseUri = data;
+                if (window.chatApp.debug) console.log('init page, base uri:' + baseUri);
+                window['_baseURI'] = baseUri;
+                audio.OpusMediaRecorder.origin = baseUri;
+            },
+            postMessage: function (data) {
+                try {
+                    if (window.Android) // post message to android webview
+                        window.Android.postMessage(data);
+                    if (window.chrome) // post message to windows webview
+                        window.chrome.webview.postMessage(data);
+                }
+                catch (e) {
+                    console.log(e);
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            if (window.chatApp.debug) console.log("DOM fully loaded and parsed");
+            try {
+                if (window.Android)
+                    window.Android.DOMContentLoaded();
+            }
+            catch (e) {
+                console.log(e);
+            }
+        });
     </script>
 </head>
 

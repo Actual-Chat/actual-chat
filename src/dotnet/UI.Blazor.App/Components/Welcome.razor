@@ -2,8 +2,19 @@
 @inherits ComputedStateComponent<Welcome.Model?>
 @{
     var m = State.LatestNonErrorValue;
-    if (m == null)
-        return;
+    var error = State.Error;
+}
+
+@if (error != null) {
+    <WhenError Error="error"/>
+    return;
+}
+@if (m == null) {
+    return;
+}
+@if (m.ByPass) {
+    @ChildContent
+    return;
 }
 
 @if (m.IsAuthenticated) {
@@ -37,15 +48,26 @@
 }
 
 @code {
+    private WelcomeOptions? _welcomeOptions;
+
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    protected override void OnInitialized()
+    {
+        _welcomeOptions = ServiceProvider.GetService<WelcomeOptions>();
+        base.OnInitialized();
+    }
+
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (_welcomeOptions != null && _welcomeOptions.ByPass)
+            return new Model(false) { ByPass = true };
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return new Model(false);
@@ -72,5 +94,6 @@
         public UserStatus UserStatus { get; init; } = UserStatus.Inactive;
         public bool ActivationWithInvite { get; init; }
         public bool RenderChildContent => UserStatus == UserStatus.Active || ActivationWithInvite;
+        public bool ByPass { get; init; }
     }
 }

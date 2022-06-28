@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net6.0-windows10.0.19041</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net6.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>ActualChat.ClientApp</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -36,7 +36,18 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     <Configurations>Debug;Release;Debug-maui</Configurations>
+
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
+    <IsPublishable>true</IsPublishable>
   </PropertyGroup>
+
+  <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
+  <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
+    <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
+    <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
+  </PropertyGroup>-->
 
   <ItemGroup>
     <!-- App Icon -->
@@ -53,6 +64,27 @@
     <MauiFont Include="Resources\Fonts\*" />
   </ItemGroup>
 
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-android')) != true">
+    <Compile Remove="**\**\*.Android.cs" />
+    <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Android\**\*.cs" />
+    <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-ios')) != true AND $(TargetFramework.StartsWith('net6.0-maccatalyst')) != true">
+    <Compile Remove="**\**\*.iOS.cs" />
+    <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\iOS\**\*.cs" />
+    <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true ">
+    <Compile Remove="**\*.Windows.cs" />
+    <None Include="**\*.Windows.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Windows\**\*.cs" />
+    <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <!--
@@ -64,22 +96,18 @@
     <Watch Include="wwwroot\dist\**" />
   </ItemGroup>
 
-
   <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />
-    <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
-    <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />
-    <ProjectReference Include="..\Chat.UI.Blazor\Chat.UI.Blazor.csproj" />
-    <ProjectReference Include="..\Feedback.Client\Feedback.Client.csproj" />
-    <ProjectReference Include="..\Users.Client\Users.Client.csproj" />
-    <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
-    <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
-    <ProjectReference Include="..\Notification.UI.Blazor\Notification.UI.Blazor.csproj" />
+    <Content Remove="appsettings.Development.json" />
+    <Content Remove="appsettings.json" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Serilog.AspNetCore" />
+    <EmbeddedResource Include="appsettings.Development.json" />
+    <EmbeddedResource Include="appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
 </Project>

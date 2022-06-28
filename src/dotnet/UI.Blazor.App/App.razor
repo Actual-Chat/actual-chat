@@ -12,7 +12,7 @@
 <CascadingAuthState SessionId="@SessionId">
     <Welcome>
         <CascadingBlazoredModal>
-            <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
+            <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="moduleAssemblies">
                 <Found>
                     <CascadingValue Value="@context">
                         <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>

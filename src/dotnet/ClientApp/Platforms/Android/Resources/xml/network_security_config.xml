@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config>
+    <trust-anchors>
+      <certificates src="@raw/dev_actual_chat"/>
+      <certificates src="@raw/local_actual_chat"/>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>
