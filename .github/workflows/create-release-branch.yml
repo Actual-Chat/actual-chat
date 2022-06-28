@@ -53,9 +53,6 @@ jobs:
           git checkout release/v$NBGV_MajorMinorVersion
           echo "::set-output name=RELEASE_VERSION_COMMIT_MESSAGE::$(git log --format=%B -n 1)"
           git checkout dev
-      
-      - name: ⏩ Push version.json updates to dev
-        run: git push origin dev
 
       - name: ⏩ Push version.json updates to dev
         uses: ad-m/github-push-action@master
