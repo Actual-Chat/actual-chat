@@ -90,7 +90,19 @@ There are some shortcuts in `*.cmd` files, you can use them too.
  ```
  - Run Actual-chat app.
  - Navigate with browser to https://local.actual.chat/
- 
+
+## Publish MAUI app
+### Windows platform
+- install certificate [sign app.cer](./.config/maui/sign app.cer) to "Trusted Root Certification Authorities" (required only once).
+- build solution:
+  - with IDE or,
+  - run `msbuild` from repo root or,
+  - run `dotnet build` from repo root;
+- publish with command:
+  - `dotnet publish src/dotnet/ClientApp/ClientApp.csproj -f net6.0-windows10.0.19041.0 -c Debug-Maui --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A`
+
+I build solution in front and `dotnet publish` with `--no-restore`, because otherwise I get an error:
+`'artefacts\obj\ClientApp\project.assets.json' doesn't have a target for 'net6.0-windows10.0.19041.0'`
 
 ## Conventions
 
