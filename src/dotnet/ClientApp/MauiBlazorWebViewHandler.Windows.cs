@@ -24,6 +24,7 @@ public partial class MauiBlazorWebViewHandler
                             return;
                         switch (msg.type) {
                         case "_auth":
+                            var originalUri = sender.Source;
                             if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
                                 break;
                             var cookies = await GetRedirectSecret().ConfigureAwait(true);
@@ -38,6 +39,10 @@ public partial class MauiBlazorWebViewHandler
                                     await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
                                 }
                             }
+                            // For now navigation may cause exception on circuit dispose,
+                            // so we need to refresh page manually after that.
+                            // TODO: rework sign in to work with specific fusion.sessionId.
+                            sender.Source = originalUri;
                             break;
                         default:
                             throw new InvalidOperationException($"Unknown message type: {msg.type}");
