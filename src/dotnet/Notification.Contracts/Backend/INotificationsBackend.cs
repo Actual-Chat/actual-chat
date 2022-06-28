@@ -24,6 +24,6 @@ public interface INotificationsBackend
 
     [DataContract]
     public sealed record RemoveDevicesCommand(
-        [property: DataMember] ImmutableArray<(string DeviceId, string UserId)> Devices
+        [property: DataMember] ImmutableArray<string> DeviceIds
     ) : ICommand<Unit>, IBackendCommand;
 }
