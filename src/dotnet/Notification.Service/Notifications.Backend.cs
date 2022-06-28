@@ -132,9 +132,7 @@ public partial class Notifications
                         var tokensToRemove = responseGroup
                             .Select(g => g.DeviceId)
                             .ToImmutableArray();
-                        _ = BackgroundTask.Run(
-                            () => _commander.Run(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None),
-                            CancellationToken.None);
+                        _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
                     }
                     else if (responseGroup.Key.HasValue) {
                         var firstErrorItem = responseGroup.First();
