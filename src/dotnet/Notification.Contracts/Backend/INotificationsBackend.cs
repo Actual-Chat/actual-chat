@@ -10,6 +10,9 @@ public interface INotificationsBackend
     [CommandHandler]
     Task NotifySubscribers(NotifySubscribersCommand subscribersCommand, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record NotifySubscribersCommand(
         [property: DataMember] string ChatId,
@@ -17,5 +20,10 @@ public interface INotificationsBackend
         [property: DataMember] string AuthorUserId,
         [property: DataMember] string Title,
         [property: DataMember] string Content
+    ) : ICommand<Unit>, IBackendCommand;
+
+    [DataContract]
+    public sealed record RemoveDevicesCommand(
+        [property: DataMember] ImmutableArray<(string DeviceId, string UserId)> Devices
     ) : ICommand<Unit>, IBackendCommand;
 }

@@ -30,4 +30,10 @@ public class NotificationsBackendController : ControllerBase, INotificationsBack
         INotificationsBackend.NotifySubscribersCommand subscribersCommand,
         CancellationToken cancellationToken)
         => _commander.Call(subscribersCommand, cancellationToken);
+
+    [HttpPost]
+    public Task RemoveDevices(
+        INotificationsBackend.RemoveDevicesCommand removeDevicesCommand,
+        CancellationToken cancellationToken)
+        => _commander.Call(removeDevicesCommand, cancellationToken);
 }

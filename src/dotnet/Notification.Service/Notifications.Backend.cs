@@ -1,4 +1,3 @@
-using System.Text;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -53,14 +52,8 @@ public partial class Notifications
         INotificationsBackend.NotifySubscribersCommand notifyCommand,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-            var invUserIds = context.Operation().Items.Get<HashSet<string>>();
-            if (invUserIds is { Count: > 0 })
-                foreach (var invUserId in invUserIds)
-                    _ = ListDevices(invUserId, default);
+        if (Computed.IsInvalidating())
             return;
-        }
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -117,7 +110,6 @@ public partial class Notifications
             .SelectMany(uid => GetDevicesInternal(uid, cancellationToken))
             .Chunk(200, cancellationToken);
 
-        var usersToInvalidate = new HashSet<string>();
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
             var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
@@ -140,10 +132,9 @@ public partial class Notifications
                     if (responseGroup.Key == MessagingErrorCode.Unregistered) {
                         var tokensToRemove = responseGroup
                             .Select(g => (g.DeviceId, g.UserId))
-                            .ToList();
-                        usersToInvalidate.AddRange(tokensToRemove.Select(p => p.UserId));
+                            .ToImmutableArray();
                         _ = BackgroundTask.Run(
-                            () => RemoveOutdatedTokens(tokensToRemove, CancellationToken.None),
+                            () => _commander.Run(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None),
                             CancellationToken.None);
                     }
                     else if (responseGroup.Key.HasValue) {
@@ -167,7 +158,6 @@ public partial class Notifications
                         cancellationToken),
                     cancellationToken);
 
-            context.Operation().Items.Set(usersToInvalidate);
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
@@ -206,19 +196,34 @@ public partial class Notifications
         }
     }
 
-    private async Task RemoveOutdatedTokens(List<(string DeviceId, string UserId)> tokensToRemove, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task RemoveDevices(INotificationsBackend.RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken)
     {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invUserIds = context.Operation().Items.Get<HashSet<string>>();
+            if (invUserIds is { Count: > 0 })
+                foreach (var invUserId in invUserIds)
+                    _ = ListDevices(invUserId, default);
+            return;
+        }
+        var affectedUserIds = new HashSet<string>();
         var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        foreach (var token in tokensToRemove) {
+        foreach (var (deviceId, userId) in removeDevicesCommand.Devices) {
+            affectedUserIds.Add(userId);
+
             var dbDevice = await dbContext.Devices
-                .FindAsync(new object?[] { token.DeviceId }, cancellationToken)
+                .FindAsync(new object?[] { deviceId }, cancellationToken)
                 .ConfigureAwait(false);
-            if (dbDevice != null)
-                dbContext.Devices.Remove(dbDevice);
+            if (dbDevice == null)
+                continue;
+
+            dbContext.Devices.Remove(dbDevice);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Items.Set(affectedUserIds);
     }
 }
