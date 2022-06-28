@@ -1,6 +1,6 @@
 .side-nav {
     @apply fixed md:static;
-    @apply h-full w-full md:w-80;
+    @apply h-full w-full md:w-120;
     @apply text-primary bg-primary;
     @apply top-0 bottom-0;
 }

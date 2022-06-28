@@ -1,0 +1,18 @@
+@{
+    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
+}
+
+<div class="flex-y w-full h-full overflow-y-hidden bg-primary">
+    <div class="flex-x justify-center mt-2">
+        <NavbarLogo/>
+    </div>
+    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar px-2 m-2">
+        <NavbarContent/>
+    </div>
+    <div class="flex-none flex-y">
+        <div class="flex-x text-xxs px-3 py-1 items-baseline border-t border-accent">
+            <div class="px-0.5 w-full"><b class="text-primary font-medium">@version</b></div>
+            <div class="pt-0.5 w-24"><BlazorModeToggle/></div>
+        </div>
+    </div>
+</div>
