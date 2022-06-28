@@ -120,7 +120,6 @@ public partial class Notifications
                     .Zip(deviceGroup)
                     .Select(p => new {
                         p.Second.DeviceId,
-                        p.Second.UserId,
                         p.First.IsSuccess,
                         p.First.Exception?.MessagingErrorCode,
                         p.First.Exception?.HttpResponse,
@@ -131,7 +130,7 @@ public partial class Notifications
                 foreach (var responseGroup in responseGroups)
                     if (responseGroup.Key == MessagingErrorCode.Unregistered) {
                         var tokensToRemove = responseGroup
-                            .Select(g => (g.DeviceId, g.UserId))
+                            .Select(g => g.DeviceId)
                             .ToImmutableArray();
                         _ = BackgroundTask.Run(
                             () => _commander.Run(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None),
@@ -211,9 +210,7 @@ public partial class Notifications
         var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        foreach (var (deviceId, userId) in removeDevicesCommand.Devices) {
-            affectedUserIds.Add(userId);
-
+        foreach (var deviceId in removeDevicesCommand.DeviceIds) {
             var dbDevice = await dbContext.Devices
                 .FindAsync(new object?[] { deviceId }, cancellationToken)
                 .ConfigureAwait(false);
@@ -221,9 +218,10 @@ public partial class Notifications
                 continue;
 
             dbContext.Devices.Remove(dbDevice);
+            affectedUserIds.Add(dbDevice.UserId);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Items.Set(affectedUserIds);
+        context.Operation().Items.Set(affectedUserIds);
     }
 }
