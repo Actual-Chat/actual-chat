@@ -1,3 +1,5 @@
+@using ActualChat.Hosting;
+
 @{
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
@@ -12,7 +14,14 @@
     <div class="flex-none flex-y">
         <div class="flex-x text-xxs px-3 py-1 items-baseline border-t border-accent">
             <div class="px-0.5 w-full"><b class="text-primary font-medium">@version</b></div>
-            <div class="pt-0.5 w-24"><BlazorModeToggle/></div>
+            @if (HostInfo.HostKind != HostKind.Maui)
+            {
+                <div class="pt-0.5 w-24"><BlazorModeToggle/></div>
+            }
         </div>
     </div>
 </div>
+
+@code {
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+}
