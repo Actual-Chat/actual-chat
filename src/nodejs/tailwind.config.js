@@ -214,6 +214,7 @@ module.exports = {
       72: '18rem',
       80: '20rem',
       96: '24rem',
+      120: '30rem',
       144: '36rem',
     },
     animation: {
@@ -912,7 +913,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
-      'navbar': '3.5rem',
+      'nav-left': '7.5rem',
       '3': '3rem',
     }),
     objectPosition: {

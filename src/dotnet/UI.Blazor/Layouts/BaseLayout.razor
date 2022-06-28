@@ -8,7 +8,6 @@
 @implements IBaseLayoutBackend
 @{
     var failures = UICommandFailureList.Items;
-    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
 
 <div class="absolute z-60 min-h-mobile-header">
@@ -29,31 +28,9 @@
                         bg-accent font-semibold min-h-mobile-header">
                 <NavbarMobileTitle/>
             </div>
-            <div class="flex-x h-full overflow-y-hidden">
-                <div class="navbar-group-toggles">
-                    <NavbarGroupToggles/>
-                </div>
-                <div class="flex-y w-full h-full overflow-y-hidden">
-                    <div class="flex-x justify-center mt-2">
-                        <NavbarLogo />
-                    </div>
-                    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar px-2 m-2">
-                        <NavbarContent />
-                    </div>
-                    @* Bottom sticky panel *@
-                    <div class="flex-none flex-y">
-                        <div class="flex-y text-xxs p-3">
-                            <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
-                            @if (HostInfo.HostKind != HostKind.Maui)
-                            {
-                                <div class="pt-0.5"><BlazorModeToggle/></div>
-                            }
-                        </div>
-                        <div class="flex-y justify-center items-start w-full h-full px-2.5 border-t-2 border-accent min-h-footer">
-                            <AccountDropdown/>
-                        </div>
-                    </div>
-                </div>
+            <div class="flex-x h-full overflow-y-hidden bg-accent">
+                <SideNavLeft />
+                <SideNavRight />
             </div>
         </div>
     </SideNav>

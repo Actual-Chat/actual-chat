@@ -6,13 +6,18 @@
     var isActive = NavbarUI.ActiveGroupId == Id;
     var cls = isActive ? "on" : "";
     var btnClass = $"navbar-group-toggle {cls} {Class}";
+    var lineClass = isActive ? "bg-success" : "bg-transparent";
 }
 
-<ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
-    <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
-        <path d="@IconPath"></path>
-    </svg>
-</ButtonSquare>
+<div class="flex-x">
+    <div class="h-8 w-1 mr-2 self-center rounded-lg @lineClass">
+    </div>
+    <ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
+        <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
+            <path d="@IconPath"></path>
+        </svg>
+    </ButtonSquare>
+</div>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
