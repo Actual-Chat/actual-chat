@@ -13,6 +13,7 @@ import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/tooltip.css'
 import './Components/SideNav/side-nav.css'
+import './Components/Search/search.css'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';

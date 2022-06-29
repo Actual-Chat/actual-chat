@@ -30,6 +30,7 @@ module.exports = {
         'error-toast-body': 'var(--error-toast-body)',
         'error-toast-text': 'var(--error-toast-text)',
         'audio-message': 'var(--audio-message)',
+        'chat-header': 'var(--chat-header)',
         'online': 'var(--online)',
         'unread': 'var(--unread)',
         'separator': 'var(--separator)',

@@ -1,6 +1,6 @@
 .side-nav {
     @apply fixed md:static;
-    @apply h-full w-full md:w-120;
+    @apply h-full w-full;
     @apply text-primary bg-primary;
     @apply top-0 bottom-0;
 }
@@ -10,12 +10,14 @@
     @apply left-0;
     @apply top-[49px];
     @apply z-40;
+    @apply md:w-80
 }
 
 .side-nav-left {
     @apply -translate-x-full;
     @apply left-0;
     @apply z-60;
+    @apply md:w-120;
 }
 
 .side-nav-drawer {

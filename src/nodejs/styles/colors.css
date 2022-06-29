@@ -49,6 +49,7 @@
     --shadow-main: #000000;
 
     /* Utils colors */
+    --chat-header: #FDFDFD;
     --online: #31d872;
     --unread: #93c5fd;
     --separator: #2b3641;
