@@ -3,11 +3,12 @@
 }
 
 .menu-item {
-    @apply text-secondary hover:bg-primary rounded-sm min-w-max;
+    @apply text-secondary items-center;
+    @apply flex-x w-full;
 }
 
-.menu-item:hover {
-    @apply text-primary;
+.menu-item:hover > * {
+    @apply text-success;
 }
 
 .menu-item:hover .horizontal-item {
