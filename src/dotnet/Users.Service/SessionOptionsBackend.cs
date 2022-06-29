@@ -1,5 +1,6 @@
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -7,12 +8,12 @@ namespace ActualChat.Users;
 public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOptionsBackend
 {
     private readonly IAuth _auth;
-    private readonly IAuthBackend _authBackend;
+    private readonly ICommander _commander;
 
-    public SessionOptionsBackend(IAuth auth, IAuthBackend authBackend, IServiceProvider services) : base(services)
+    public SessionOptionsBackend(IAuth auth, ICommander commander, IServiceProvider services) : base(services)
     {
         _auth = auth;
-        _authBackend = authBackend;
+        _commander = commander;
     }
 
     // [CommandHandler]
@@ -25,8 +26,8 @@ public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOpti
             throw new KeyNotFoundException();
 
         var options = sessionInfo.Options.Set(command.Option.Key, command.Option.Value);
-        await _authBackend.SetOptions(new(command.Session, options, sessionInfo.Version), cancellationToken)
-            .ConfigureAwait(false);
+        var setOptionsCommand = new SetSessionOptionsCommand(command.Session, options, sessionInfo.Version);
+        await _commander.Call(setOptionsCommand, cancellationToken).ConfigureAwait(false);
 
         // Old implementation:
         /*
