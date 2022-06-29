@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Cysharp.Text;
 
 namespace ActualChat.Users;
 
@@ -13,25 +14,30 @@ public class UserNamer
         if (!char.IsLetter(name[0]))
             return new ValidationException("Name must start with a letter.");
         foreach (var c in name[1..]) {
-            if (!(char.IsLetterOrDigit(c) || c == '_' || c == '-'))
-                return new ValidationException("Name may contain only letters, digits, '-' and '_'.");
+            if (!IsValidCharacter(c))
+                return new ValidationException("Name may contain only letters, digits, '-', '_' and spaces.");
         }
         return null;
     }
 
-    public virtual ReadOnlySpan<char> ParseName(ReadOnlySpan<char> text)
+    public virtual string NormalizeName(string name)
     {
-        if (text.Length < 4)
-            return ReadOnlySpan<char>.Empty;
-        if (!char.IsLetter(text[0]))
-            return ReadOnlySpan<char>.Empty;
-        var i = 1;
-        for (; i < text.Length; i++) {
-            var c = text[i];
-            if (!(char.IsLetterOrDigit(c) || c == '_' || c == '-'))
-                return ReadOnlySpan<char>.Empty;
+        if (ValidateName(name) == null)
+            return name;
+        // Normalizing name
+        using var sb = ZString.CreateStringBuilder();
+        foreach (var c in name) {
+            if (IsValidCharacter(c))
+                sb.Append(c);
+            else if (sb.Length == 0 || char.IsLetterOrDigit(sb.AsSpan()[^1]))
+                sb.Append('_');
         }
-        var name = text[..i];
-        return ValidateName(name) == null ? name : ReadOnlySpan<char>.Empty;
+        name = sb.ToString();
+        if (name.Length < 4 || !char.IsLetter(name[0]))
+            name = "user-" + name;
+        return name;
     }
+
+    private static bool IsValidCharacter(char c)
+        => char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == ' ';
 }

@@ -22,7 +22,7 @@ public class ClaimMapper
 
         var name = (httpClaims.GetValueOrDefault(NicknameClaim) ?? "").Trim();
         if (name.IsNullOrEmpty())
-            name = fullName.OrdinalReplace(" ", "_").ToLowerInvariant();
+            name = fullName;
 
         var userClaims = user.Claims;
         if (!name.IsNullOrEmpty()) {

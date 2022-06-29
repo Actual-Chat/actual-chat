@@ -1,5 +1,4 @@
 using ActualChat.Users.Db;
-using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
@@ -77,9 +76,8 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
 
-
         // Let's try to fix auto-generated user name here
-        var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
+        var newName = UserNamer.NormalizeName(dbUser.Name);
         if (!OrdinalEquals(newName, dbUser.Name)) {
             dbUser.Name = newName;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -101,22 +99,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             var error = UserNamer.ValidateName(command.Name);
             if (error != null)
                 throw error;
-
-            var user = await Auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
-            var userId = (string)user.Id;
-
-            var dbContext = CreateDbContext();
-            await using var _ = dbContext.ConfigureAwait(false);
-
-            var isNameUsed = await dbContext.Users.AsQueryable()
-                .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken)
-                .ConfigureAwait(false);
-            if (isNameUsed)
-                throw new InvalidOperationException("This name is already used by someone else.");
-
-            context.Operation().Items.Set(user); // Let's store old user to invalidate its name
         }
-
         // Invoke command handler(s) with lower priority
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
     }
@@ -167,47 +150,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         userState.OnlineCheckInAt = Clocks.SystemClock.Now;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<string> NormalizeName(
-        UsersDbContext dbContext,
-        string name,
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        // Normalizing name
-        using var sb = ZString.CreateStringBuilder();
-        foreach (var c in name) {
-            if (char.IsLetterOrDigit(c) || c == '_' || c == '-')
-                sb.Append(c);
-            else if (sb.Length == 0 || char.IsLetterOrDigit(sb.AsSpan()[^1]))
-                sb.Append('_');
-        }
-        name = sb.ToString();
-        if (name.Length < 4 || !char.IsLetter(name[0]))
-            name = "user-" + name;
-
-        // Finding the number @ the tail
-        var numberStartIndex = name.Length;
-        for (; numberStartIndex >= 1; numberStartIndex--) {
-            if (!char.IsNumber(name[numberStartIndex - 1]))
-                break;
-        }
-
-        // Iterating through these tail numbers to get the unique user name
-        var namePrefix = name.Substring(0, numberStartIndex);
-        var nameSuffix = name.Substring(numberStartIndex);
-        var nextNumber = long.TryParse(nameSuffix, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number + 1 : 1;
-        while (true) {
-            var isNameUsed = await dbContext.Users.AsQueryable()
-                .AnyAsync(u => u.Name == name && u.Id != userId, cancellationToken)
-                .ConfigureAwait(false);
-            if (!isNameUsed)
-                break;
-            name = namePrefix + nextNumber.ToString(CultureInfo.InvariantCulture);
-            ++nextNumber;
-        }
-        return name;
     }
 
     private async Task ResetSessionOptions(Session session, CancellationToken cancellationToken)

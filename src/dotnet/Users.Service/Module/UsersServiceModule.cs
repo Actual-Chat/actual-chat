@@ -77,7 +77,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
                 MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
             });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
-            services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
             dbContext.AddEntityResolver<string, DbUserPresence>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
