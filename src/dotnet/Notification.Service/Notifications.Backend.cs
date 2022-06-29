@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -56,12 +58,17 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
+        var toStringVisitor = new ToStringVisitor(
+            AuthorNameResolver,
+            UserNameResolver,
+            100);
+        var formattedContent = await toStringVisitor.ToString(MarkupParser.ParseRaw(content), cancellationToken);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = content,
+                Body = formattedContent,
                 // ImageUrl = ??? TODO(AK): set image url
             },
             Android = new AndroidConfig {
@@ -154,6 +161,18 @@ public partial class Notifications
                         cancellationToken),
                     cancellationToken);
 
+        }
+
+        async Task<string> AuthorNameResolver(string authorId)
+        {
+            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+            return author?.Name ?? "";
+        }
+
+        async Task<string> UserNameResolver(string userId1)
+        {
+            var author = await _userProfilesBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
+            return author?.Name ?? "";
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(

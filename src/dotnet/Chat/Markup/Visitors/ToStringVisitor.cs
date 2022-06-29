@@ -1,49 +1,110 @@
+using System.Text;
+
 namespace ActualChat.Chat;
 
-public class ToStringVisitor : AsyncMarkupVisitor<string>
+public class ToStringVisitor : AsyncMarkupVisitor<Unit>
 {
     public Func<string, Task<string>> AuthorNameResolver { get; init; }
     public Func<string, Task<string>> UserNameResolver { get; init; }
+    public StringBuilder Builder { get; set; }
+    public int MaxLength { get; init; }
 
     public ToStringVisitor(
         Func<string,Task<string>> authorNameResolver,
-        Func<string,Task<string>> userNameResolver)
+        Func<string,Task<string>> userNameResolver,
+        int maxLength = int.MaxValue)
     {
         AuthorNameResolver = authorNameResolver;
         UserNameResolver = userNameResolver;
+        MaxLength = maxLength;
+        Builder = new StringBuilder();
     }
 
-    protected override async ValueTask<string> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken)
+    public async Task<string> ToString(Markup markup, CancellationToken cancellationToken)
     {
-        var items = await Task.WhenAll(markup.Items.Select(m => Visit(m, cancellationToken).AsTask()));
-        return string.Join(", ", items);
+        await Visit(markup, cancellationToken).ConfigureAwait(false);
+        return Builder.ToString();
     }
 
-    protected override ValueTask<string> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
+    protected override async ValueTask<Unit> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken)
+    {
+        foreach (var markupItem in markup.Items) {
+            if (Builder.Length >= MaxLength)
+                return Unit.Default;
+
+            await Visit(markupItem, cancellationToken).ConfigureAwait(false);
+        }
+        return Unit.Default;
+    }
+
+    protected override ValueTask<Unit> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
         => Visit(markup.Content, cancellationToken);
 
-    protected override ValueTask<string> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Url);
+    protected override ValueTask<Unit> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
 
-    protected override async ValueTask<string> VisitMention(Mention markup, CancellationToken cancellationToken)
-        => await (markup.Kind switch {
-            MentionKind.AuthorId => AuthorNameResolver(markup.Target),
-            MentionKind.UserId => UserNameResolver(markup.Target),
-            _ => Task.FromResult(markup.Target),
-        });
+        Builder.Append(markup.Url);
+        return ValueTask.FromResult(Unit.Default);
+    }
 
-    protected override ValueTask<string> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Code);
+    protected override async ValueTask<Unit> VisitMention(Mention markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return Unit.Default;
 
-    protected override ValueTask<string> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Text);
+        Builder.Append("@");
+        Builder.Append(await (markup.Kind switch {
+                MentionKind.AuthorId => AuthorNameResolver(markup.Target),
+                MentionKind.UserId => UserNameResolver(markup.Target),
+                _ => Task.FromResult(markup.Target),
+            }));
+        return Unit.Default;
+    }
 
-    protected override ValueTask<string> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Text);
+    protected override ValueTask<Unit> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
 
-    protected override ValueTask<string> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Text);
+        Builder.Append(markup.Code);
+        return ValueTask.FromResult(Unit.Default);
+    }
 
-    protected override ValueTask<string> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult(markup.Text);
+    protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
+
+        Builder.Append(markup.Text);
+        return ValueTask.FromResult(Unit.Default);
+    }
+
+    protected override ValueTask<Unit> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
+
+        Builder.Append(markup.Text);
+        return ValueTask.FromResult(Unit.Default);
+    }
+
+    protected override ValueTask<Unit> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
+
+        Builder.Append(markup.Text);
+        return ValueTask.FromResult(Unit.Default);
+    }
+
+    protected override ValueTask<Unit> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
+    {
+        if (Builder.Length >= MaxLength)
+            return ValueTask.FromResult(Unit.Default);
+
+        Builder.Append(markup.Text);
+        return ValueTask.FromResult(Unit.Default);
+    }
 }
