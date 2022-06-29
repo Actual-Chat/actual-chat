@@ -61,8 +61,11 @@ export class ChatMessageEditor {
     })
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filesPicker.files)
-            await this.addAttachment(file);
+        for (const file of this.filesPicker.files) {
+            const added : boolean = await this.addAttachment(file);
+            if (!added)
+                break;
+        }
         this.filesPicker.value = '';
     })
 
@@ -104,11 +107,11 @@ export class ChatMessageEditor {
         return editorHandle.getText();
     }
 
-    private async addAttachment(file: File): Promise<void> {
+    private async addAttachment(file: File): Promise<boolean> {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added = await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
+        const added : boolean = await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!added) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -118,6 +121,7 @@ export class ChatMessageEditor {
             this.attachments.set(attachment.Id, attachment);
             this.changeMode();
         }
+        return added;
     }
 
     public removeAttachment(id: number) {
