@@ -116,3 +116,10 @@
 .navbar-item .pin-toggle.recording-in-chat svg {
     filter: drop-shadow(0px 0px 3px rgb(239 68 68 / 0.7));
 }
+
+.add-to-chat.btn.btn-round {
+    @apply h-10 min-w-full self-center rounded-3xl;
+}
+.add-to-chat.btn.btn-round .btn-content {
+    @apply bg-white text-success;
+}
