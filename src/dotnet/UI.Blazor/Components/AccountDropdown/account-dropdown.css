@@ -5,7 +5,7 @@
   }
 
 .account-dropdown-menu {
-    @apply rounded-md p-1 ml-2 absolute bottom-6 -left-12 w-48 shadow-context;
+    @apply absolute bottom-6 -left-12;
 }
 
 .account-dropdown-menu.menu {
