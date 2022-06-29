@@ -72,11 +72,7 @@
     @apply self-start;
 }
 .attach-dropdown-menu {
-    @apply rounded-md p-1 absolute bottom-2 shadow-context;
-}
-
-.attach-dropdown-menu.menu {
-    @apply border border-context-border;
+    @apply absolute bottom-2;
 }
 
 .recorder-panel {
