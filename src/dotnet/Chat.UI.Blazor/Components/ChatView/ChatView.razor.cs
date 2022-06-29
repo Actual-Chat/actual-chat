@@ -36,10 +36,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    [Parameter] public long ChatEntryId { get; set; }
-
     public async ValueTask DisposeAsync()
     {
+        Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
         await LastReadEntryId.DisposeSilentlyAsync().ConfigureAwait(false);
     }
@@ -48,10 +47,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         await WhenInitialized.ConfigureAwait(false);
 
-        if (ChatEntryId > 0)
-            NavigateToEntry(ChatEntryId);
-
-        ChatUI.HighlightedChatEntryId.Value = ChatEntryId;
+        TryNavigateToEntryIfExists();
     }
 
     public async Task NavigateToUnreadEntry()
@@ -74,8 +70,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
+        Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable(ChatEntryId);
+            NavigateToEntryId = StateFactory.NewMutable(0L);
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
@@ -219,9 +216,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         return result;
     }
 
-    private void NavigateToEntry(long navigateToEntryId)
+    public void NavigateToEntry(long navigateToEntryId)
     {
-        // TODO: navigate to chat entry even if it's from another tile
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = 0;
         NavigateToEntryId.Value = navigateToEntryId;
@@ -232,5 +228,18 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         NavigateToEntry(navigation.ChatEntryId);
         return Task.CompletedTask;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => TryNavigateToEntryIfExists();
+
+    private void TryNavigateToEntryIfExists()
+    {
+        var currentUri = new Uri(Nav.Uri);
+        var entryIdString = currentUri.Fragment?.TrimStart('#');
+        if (long.TryParse(entryIdString, out var entryId) && entryId > 0) {
+            NavigateToEntry(entryId);
+            ChatUI.HighlightedChatEntryId.Value = entryId;
+        }
     }
 }

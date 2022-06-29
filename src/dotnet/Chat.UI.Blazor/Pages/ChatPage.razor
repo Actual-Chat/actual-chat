@@ -1,4 +1,3 @@
-@page "/chat/{ChatId}/{ChatEntryId:long?}"
 @page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
 @using Blazored.LocalStorage
@@ -60,7 +59,7 @@
 </RenderIntoSlot>
 
 <CascadingValue Value="chat" @key="chat.Id">
-    <ChatView @ref="_chatView" ChatEntryId="@ChatEntryId" />
+    <ChatView @ref="_chatView" />
 </CascadingValue>
 
 @code {
@@ -76,8 +75,6 @@
     [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
-    [Parameter] public long ChatEntryId { get; set; }
-
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
