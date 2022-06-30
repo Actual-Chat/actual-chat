@@ -35,7 +35,7 @@ public static class TestAuthExt
 
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         sessionInfo = sessionInfo.MustBeAuthenticated();
-        user = (await authBackend.GetUser(sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
+        user = (await authBackend.GetUser(default, sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
 
         // Let's wait a bit to ensure all invalidations go through
         await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
