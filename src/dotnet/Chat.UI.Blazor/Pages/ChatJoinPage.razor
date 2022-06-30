@@ -28,6 +28,9 @@
             return;
         var invite = useResult.Value;
         var uri = $"/chat/{invite.Details!.Chat!.ChatId}";
+        // Wait till subsequent commands that set session options are executed.
+        // TODO(AY): provide a durable way to wait for subsequent commands completion.
+        await Task.Delay(1000);
         Nav.NavigateTo(uri);
     }
 }
