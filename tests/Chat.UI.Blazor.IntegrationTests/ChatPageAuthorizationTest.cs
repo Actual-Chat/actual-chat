@@ -1,10 +1,9 @@
 using ActualChat.Host;
-using ActualChat.Interception;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 

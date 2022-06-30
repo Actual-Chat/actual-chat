@@ -1,4 +1,4 @@
-using ActualChat.Interception;
+using Stl.Interception;
 
 namespace ActualChat.Users;
 

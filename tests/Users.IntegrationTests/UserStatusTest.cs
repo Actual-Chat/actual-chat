@@ -1,7 +1,5 @@
 using ActualChat.Host;
-using ActualChat.Interception;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Users.IntegrationTests;
 
