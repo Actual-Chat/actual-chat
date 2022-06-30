@@ -8,13 +8,13 @@
 
 .tab-panel-tabs .btn.tab-btn {
     @apply border-transparent border-0 border-b-2 rounded-none;
-    @apply uppercase text-secondary text-md font-medium leading-tight tracking-wider;
+    @apply uppercase text-03 text-md font-medium leading-tight tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.on {
     @apply border-success;
 }
 .tab-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-secondary;
+    @apply text-03;
 }
 
 .tab-panel .tab {

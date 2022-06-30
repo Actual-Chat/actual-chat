@@ -1,14 +1,14 @@
 /* Navbar */
 .navbar-content .btn.btn-square {
     @apply p-0 rounded;
-    @apply bg-transparent hover:bg-accent;
+    @apply bg-transparent hover:bg-04;
 }
 .navbar-content .btn.btn-square:hover {
     @apply text-toggle-hover;
 }
 
 .navbar-group-toggles {
-    @apply flex-y items-end text-square-title bg-accent min-w-nav-left px-4 gap-y-2;
+    @apply flex-y items-end text-square-title bg-04 min-w-nav-left px-4 gap-y-2;
 }
 .navbar-group-toggles .btn.btn-square {
     @apply h-auto rounded-xl;
@@ -24,7 +24,7 @@
 }
 
 .navbar-pinned-chats {
-    @apply flex-y items-end text-square-title bg-accent min-w-nav-left px-4 gap-y-2;
+    @apply flex-y items-end text-square-title bg-04 min-w-nav-left px-4 gap-y-2;
 }
 .navbar-pinned-chats .btn.btn-square {
     @apply h-auto rounded-xl;
@@ -45,7 +45,7 @@
 
 /* Mobile title */
 .navbar-mobile-title .btn {
-    @apply p-0.5 text-base bg-transparent hover:bg-secondary;
+    @apply p-0.5 text-base bg-transparent hover:bg-01;
 }
 
 /* Navgar subgroup */
@@ -57,12 +57,12 @@
     @apply pt-0;
 }
 .navbar-subgroup .navbar-subgroup-content {
-    @apply text-secondary text-xs font-semibold uppercase opacity-75;
+    @apply text-03 text-xs font-semibold uppercase opacity-75;
 }
 .navbar-subgroup .navbar-subgroup-ending {
     @apply flex-1 justify-self-end;
     @apply flex flex-row justify-end gap-x-1;
-    @apply text-secondary text-xs font-light;
+    @apply text-03 text-xs font-light;
 }
 
 /* Navbar item */
@@ -70,7 +70,7 @@
     @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-item .navbar-item-content {
-    @apply text-primary overflow-hidden mb-1;
+    @apply text-02 overflow-hidden mb-1;
 }
 .navbar-item.active .navbar-item-content {
     @apply font-semibold;
@@ -87,7 +87,7 @@
     @apply bg-online;
 }
 .navbar-item.status-offline .navbar-item-status {
-    @apply border border-primary-inverted;
+    @apply border border-text-02;
 }
 
 .navbar-item .navbar-item-ending {

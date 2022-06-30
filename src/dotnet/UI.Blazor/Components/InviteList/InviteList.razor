@@ -4,7 +4,7 @@
 
 @if (Invites.Length > 0) {
     @foreach (var invite in Invites) {
-        <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-primary">
+        <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-02">
             <CopyToClipboard
                 Class="flex-auto"
                 Text="@invite.Id" CopyText="@GenerateLink(invite)"/>

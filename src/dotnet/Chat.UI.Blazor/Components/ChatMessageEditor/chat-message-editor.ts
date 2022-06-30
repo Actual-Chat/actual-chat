@@ -132,6 +132,16 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
+    public clearAttachments() {
+        const attachments = this.attachments;
+        this.attachments.clear();
+        attachments.forEach(a => {
+            if (a && a.Url)
+                URL.revokeObjectURL(a.Url);
+        })
+        this.changeMode();
+    }
+
     public postMessage = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachmentsList = [];

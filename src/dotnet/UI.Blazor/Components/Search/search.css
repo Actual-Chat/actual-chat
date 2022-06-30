@@ -2,7 +2,7 @@
     @apply w-full;
 }
 .input-search input {
-    @apply h-10 rounded-full px-2 text-center bg-accent;
+    @apply h-10 rounded-full px-2 text-center bg-04;
 }
 .input-search .btn.btn-round {
     @apply w-10 h-10 absolute right-0 self-center;

@@ -5,14 +5,14 @@
 
 .message-input {
     @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-4 mr-1 md:mx-3;
-    @apply break-all outline-none hover:cursor-text text-primary bg-primary;
+    @apply break-all outline-none hover:cursor-text text-02 bg-03;
 }
 .post-panel {
-    @apply bg-primary rounded-3xl min-h-3 py-2 outline-none;
+    @apply bg-03 rounded-3xl min-h-3 py-2 outline-none;
 }
 
 .not-recording {
-    @apply text-secondary;
+    @apply text-03;
 }
 
 .recording {
@@ -45,9 +45,15 @@
 }
 
 .attachment-list {
-    @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto;
-    @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-accent divide-dashed;
+    @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto w-full;
+    @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-bg-04 divide-dashed;
     @apply border-4 border-success rounded-xl;
+}
+.clear-attachments-btn.btn.btn-round {
+    @apply relative min-w-12 self-center;
+}
+.clear-attachments-btn.btn.btn-round .btn-content {
+    @apply bg-error text-error-title min-w-full;
 }
 .attachment-wrapper {
     @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
@@ -60,7 +66,7 @@
     max-height: 12rem;
 }
 .attachment-wrapper .btn.btn-round {
-    @apply w-7 h-7 text-white m-0 self-center;
+    @apply w-8 h-8 text-white m-0 self-center;
 }
 .attachment-wrapper .btn.btn-round .btn-content {
     @apply bg-success;
@@ -77,7 +83,7 @@
 
 .recorder-panel {
     @apply flex-x justify-center;
-    @apply bg-secondary outline-none;
+    @apply bg-01 outline-none;
     @apply rounded-none;
     @apply self-stretch md:self-end;
 }
@@ -91,7 +97,7 @@
     @apply rounded-full;
 }
 .playback-toggle .btn.btn-round .btn-content {
-    @apply bg-primary min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center rounded-full;
+    @apply min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center rounded-full;
 }
 
 .recorder-panel .recorder-buttons .recorder-button .btn-round.audio-recorder-toggle {

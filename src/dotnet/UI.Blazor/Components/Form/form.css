@@ -9,7 +9,7 @@
 }
 
 .form label {
-    @apply font-medium text-secondary;
+    @apply font-medium text-03;
 }
 .form input:not([type='checkbox']) {
     @apply border rounded-md outline-none p-1 px-2;

@@ -10,7 +10,7 @@
         _selection = selection = candidates[0];
     <div class="mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full @Class">
         @foreach (var c in candidates) {
-            var cls = c == selection ? "bg-accent" : "";
+            var cls = c == selection ? "bg-04" : "";
             <div class="px-1 rounded hover:cursor-pointer @cls"
                  @onmouseover="_ => Selection = c"
                  @onclick="@(_ => Manager.TriggerSelected(c))">

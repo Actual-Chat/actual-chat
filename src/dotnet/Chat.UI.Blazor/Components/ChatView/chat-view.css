@@ -4,7 +4,7 @@
 
 .message-wrapper {
     @apply flex-x relative;
-    @apply border-l-2 border-secondary;
+    @apply border-l-2 border-bg-01;
 }
 .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
@@ -40,10 +40,10 @@
 }
 
 .chat-message-modal .chat-message:hover {
-    @apply bg-secondary;
+    @apply bg-01;
 }
 .chat-message-modal .chat-message:hover .author-badge {
-    @apply bg-secondary;
+    @apply bg-01;
 }
 
 .chat-message-modal .message-attachment-file a {
@@ -62,22 +62,22 @@
     @apply flex w-full bg-quote p-3 text-base md:rounded-t-lg;
 }
 .chat-quote .btn.btn-square {
-    @apply bg-primary;
+    @apply bg-02;
 }
 .chat-quote .btn.btn-square:hover {
-    @apply bg-secondary;
+    @apply bg-01;
 }
 
 .quoted-message {
     @apply flex-x items-center mt-1;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-secondary cursor-pointer;
+    @apply text-03 cursor-pointer;
 }
 
 .chat-message-quoted {
     height: 100%;
     border-left: 4px solid;
-    @apply border-accent cursor-pointer;
+    @apply border-bg-03 cursor-pointer;
 }
 .chat-message-highlighted {
     @apply animate-highlight;
@@ -107,7 +107,7 @@
 }
 
 .author-not-recording {
-    @apply border-secondary;
+    @apply border-bg-01;
 }
 
 .chat-message:hover .author-recording {
@@ -148,25 +148,25 @@
 }
 
 .chat-message-menu .menu-item {
-    @apply hover:bg-primary;
+    @apply hover:bg-02;
 }
 
 .chat-header-title:hover {
-    @apply text-accent;
+    @apply text-02;
 }
 
 .new-separator {
-    @apply bg-accent;
+    @apply bg-04;
 }
 
 .new-separator-title {
-    @apply bg-accent text-accent rounded-md;
+    @apply bg-04 text-02 rounded-md;
 }
 
 .message-menu-button {
-    @apply h-8 w-12 right-4 -mt-3 bg-secondary;
+    @apply h-8 w-12 right-4 -mt-3 bg-01;
     @apply rounded-r-lg rounded-l-lg border-r border-t border-b border-l;
-    @apply border-accent shadow-context;
+    @apply border-bg-03 shadow-context;
 }
 
 .message-menu-button.show {

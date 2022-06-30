@@ -3,7 +3,7 @@
 }
 
 .chat-icon-picker {
-    @apply absolute bg-secondary rounded-md right-0 bottom-0;
+    @apply absolute bg-01 rounded-md right-0 bottom-0;
 }
 
 .chat-icon-generated {

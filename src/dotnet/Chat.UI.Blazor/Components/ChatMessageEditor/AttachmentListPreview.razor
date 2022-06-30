@@ -1,36 +1,43 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @if (_attachments.Length > 0) {
-    <ul class="attachment-list custom-scrollbar-x">
-        @foreach (var attachment in _attachments) {
-            <li class="attachment-wrapper">
-                <div class="flex-y relative">
-                    <div class="-flex-x overflow-hidden h-8 bg-accent rounded-full m-1">
-                        <ButtonRound Click="@(() => OnRemoveItemClicked(attachment))" Class="remove-attachment-btn">
-                            <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
-                                <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M10 16C10 16.55 9.55 17 9 17C8.45 17 8 16.55 8 16V12C8 11.45 8.45 11 9 11C9.55 11 10 11.45 10 12V16ZM16 16C16 16.55 15.55 17 15 17C14.45 17 14 16.55 14 16V12C14 11.45 14.45 11 15 11C15.55 11 16 11.45 16 12V16ZM18 19C18 19.551 17.552 20 17 20H7C6.448 20 6 19.551 6 19V8H18V19ZM10 4.328C10 4.173 10.214 4 10.5 4H13.5C13.786 4 14 4.173 14 4.328V6H10V4.328ZM21 6H20H16V4.328C16 3.044 14.879 2 13.5 2H10.5C9.121 2 8 3.044 8 4.328V6H4H3C2.45 6 2 6.45 2 7C2 7.55 2.45 8 3 8H4V19C4 20.654 5.346 22 7 22H17C18.654 22 20 20.654 20 19V8H21C21.55 8 22 7.55 22 7C22 6.45 21.55 6 21 6Z"/>
-                            </svg>
-                        </ButtonRound>
-                        <div class="flex-1 float-left truncate text-secondary text-sm text-center self-center w-full m-2 cursor-default" title="@attachment.FileName">
-                            @attachment.FileName
-                        </div>
-
-                    </div>
-                    <div class="mt-auto flex justify-center relative min-h-0 attachment-item custom-scrollbar">
-                        @if (attachment.IsImage) {
-                            <img class="object-contain rounded-md" src="@attachment.Url" alt="image"/>
-                        } else {
-                            <div class="justify-center">
-                                <svg class="text-secondary fill-current h-24 w-24 self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path d="M11.362 2c4.156 0 2.638 6 2.638 6s6-1.65 6 2.457v11.543h-16v-20h7.362zm.827-2h-10.189v24h20v-14.386c0-2.391-6.648-9.614-9.811-9.614zm4.811 13h-3v-1h3v1zm0 2h-3v1h3v-1zm0 3h-10v1h10v-1zm-5-6h-5v4h5v-4z"/>
+    <div class="relative flex-x">
+        <ul class="attachment-list custom-scrollbar-x">
+            @foreach (var attachment in _attachments) {
+                <li class="attachment-wrapper">
+                    <div class="flex-y relative">
+                        <div class="-flex-x overflow-hidden h-8 bg-04 rounded-full m-1">
+                            <ButtonRound Click="@(() => OnRemoveItemClicked(attachment))" Class="remove-attachment-btn">
+                                <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
+                                    <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M10 16C10 16.55 9.55 17 9 17C8.45 17 8 16.55 8 16V12C8 11.45 8.45 11 9 11C9.55 11 10 11.45 10 12V16ZM16 16C16 16.55 15.55 17 15 17C14.45 17 14 16.55 14 16V12C14 11.45 14.45 11 15 11C15.55 11 16 11.45 16 12V16ZM18 19C18 19.551 17.552 20 17 20H7C6.448 20 6 19.551 6 19V8H18V19ZM10 4.328C10 4.173 10.214 4 10.5 4H13.5C13.786 4 14 4.173 14 4.328V6H10V4.328ZM21 6H20H16V4.328C16 3.044 14.879 2 13.5 2H10.5C9.121 2 8 3.044 8 4.328V6H4H3C2.45 6 2 6.45 2 7C2 7.55 2.45 8 3 8H4V19C4 20.654 5.346 22 7 22H17C18.654 22 20 20.654 20 19V8H21C21.55 8 22 7.55 22 7C22 6.45 21.55 6 21 6Z"/>
                                 </svg>
+                            </ButtonRound>
+                            <div class="flex-1 float-left truncate text-03 text-sm text-center self-center w-full m-2 cursor-default" title="@attachment.FileName">
+                                @attachment.FileName
                             </div>
-                        }
+
+                        </div>
+                        <div class="mt-auto flex justify-center relative min-h-0 attachment-item custom-scrollbar">
+                            @if (attachment.IsImage) {
+                                <img class="object-contain rounded-md" src="@attachment.Url" alt="image"/>
+                            } else {
+                                <div class="justify-center">
+                                    <svg class="text-03 fill-current h-24 w-24 self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M11.362 2c4.156 0 2.638 6 2.638 6s6-1.65 6 2.457v11.543h-16v-20h7.362zm.827-2h-10.189v24h20v-14.386c0-2.391-6.648-9.614-9.811-9.614zm4.811 13h-3v-1h3v1zm0 2h-3v1h3v-1zm0 3h-10v1h10v-1zm-5-6h-5v4h5v-4z"/>
+                                    </svg>
+                                </div>
+                            }
+                        </div>
                     </div>
-                </div>
-            </li>
-        }
-    </ul>
+                </li>
+            }
+        </ul>
+        <ButtonRound Click="@(OnClearAllClicked)" Class="clear-attachments-btn" Title="Clear All">
+            <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
+                <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M10 16C10 16.55 9.55 17 9 17C8.45 17 8 16.55 8 16V12C8 11.45 8.45 11 9 11C9.55 11 10 11.45 10 12V16ZM16 16C16 16.55 15.55 17 15 17C14.45 17 14 16.55 14 16V12C14 11.45 14.45 11 15 11C15.55 11 16 11.45 16 12V16ZM18 19C18 19.551 17.552 20 17 20H7C6.448 20 6 19.551 6 19V8H18V19ZM10 4.328C10 4.173 10.214 4 10.5 4H13.5C13.786 4 14 4.173 14 4.328V6H10V4.328ZM21 6H20H16V4.328C16 3.044 14.879 2 13.5 2H10.5C9.121 2 8 3.044 8 4.328V6H4H3C2.45 6 2 6.45 2 7C2 7.55 2.45 8 3 8H4V19C4 20.654 5.346 22 7 22H17C18.654 22 20 20.654 20 19V8H21C21.55 8 22 7.55 22 7C22 6.45 21.55 6 21 6Z"/>
+            </svg>
+        </ButtonRound>
+    </div>
 }
 
 @code {
@@ -38,9 +45,15 @@
 
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Parameter] public EventCallback<Attachment> RemoveRequested { get; set; }
+    [Parameter] public EventCallback<ImmutableArray<Attachment>> ClearAllRequested { get; set; }
 
     public IReadOnlyCollection<Attachment> GetAttachments()
         => _attachments;
+
+    public void OnClearAllClicked() {
+        ClearAllRequested.InvokeAsync(_attachments);
+        Clear();
+    }
 
     public void Clear() {
         if (_attachments.Length == 0)
