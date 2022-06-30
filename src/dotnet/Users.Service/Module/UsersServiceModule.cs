@@ -85,8 +85,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
             // DB authentication services
-            dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
-                options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
+            dbContext.AddAuthentication<DbSessionInfo, DbUser, string>(_ => new() {
+                MinUpdatePresencePeriod = TimeSpan.FromSeconds(55),
             });
         });
 
@@ -113,13 +113,13 @@ public class UsersServiceModule : HostModule<UsersSettings>
         var fusionAuth = fusion.AddAuthentication();
         services.TryAddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
-            signInControllerSettingsFactory: _ => SignInController.DefaultSettings with {
+            signInControllerOptionsFactory: _ => new() {
                 DefaultScheme = GoogleDefaults.AuthenticationScheme,
                 SignInPropertiesBuilder = (_, properties) => {
                     properties.IsPersistent = true;
                 },
             },
-            serverAuthHelperSettingsFactory: _ => new() {
+            serverAuthHelperOptionsFactory: _ => new() {
                 NameClaimKeys = Array.Empty<string>(),
             });
         commander.AddCommandService<AuthCommandFilters>();

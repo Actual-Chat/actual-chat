@@ -199,7 +199,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
         else {
             var userId2 = parsedChatPrincipalId.UserId.Id;
-            var user2 = await AuthBackend.GetUser(userId2, cancellationToken).ConfigureAwait(false);
+            var user2 = await AuthBackend.GetUser(default, userId2, cancellationToken).ConfigureAwait(false);
             if (user2 == null || !user2.IsAuthenticated || user2.Id == user.Id)
                 return false;
         }

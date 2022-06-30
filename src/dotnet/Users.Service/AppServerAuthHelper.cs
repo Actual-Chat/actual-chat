@@ -10,18 +10,10 @@ public class AppServerAuthHelper : ServerAuthHelper
     private readonly string _closeWindowAppRequestPath;
     private ClaimMapper ClaimMapper { get; }
 
-    public AppServerAuthHelper(
-        Options? settings,
-        IAuth auth,
-        IAuthBackend authBackend,
-        ISessionResolver sessionResolver,
-        AuthSchemasCache authSchemasCache,
-        ClaimMapper claimMapper,
-        ICommander commander,
-        MomentClockSet clocks)
-        : base(settings, auth, authBackend, sessionResolver, authSchemasCache, commander, clocks)
+    public AppServerAuthHelper(Options settings, IServiceProvider services)
+        : base(settings, services)
     {
-        ClaimMapper = claimMapper;
+        ClaimMapper = Services.GetRequiredService<ClaimMapper>();
         _closeWindowAppRequestPath = Settings.CloseWindowRequestPath + "-app";
     }
 

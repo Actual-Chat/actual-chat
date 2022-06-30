@@ -6,6 +6,7 @@ using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
+using Stl.Multitenancy;
 using Stl.Versioning;
 
 namespace ActualChat.Chat;
@@ -89,7 +90,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
 
         var user = !userId.IsNullOrEmpty()
-            ? await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false)
+            ? await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false)
             : null;
 
         if (user != null && chat.OwnerIds.Contains(user.Id))
@@ -522,11 +523,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be chatPrincipalId
             return ChatAuthorRules.None;
 
-        var user = await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return ChatAuthorRules.None;
 
-        var otherUser = await AuthBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
+        var otherUser = await AuthBackend.GetUser(default, otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherUser == null)
             return ChatAuthorRules.None;
 

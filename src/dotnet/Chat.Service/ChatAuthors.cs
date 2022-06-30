@@ -169,7 +169,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (user.Id == otherUserId)
             return default;
 
-        var otherUser = await AuthBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
+        var otherUser = await AuthBackend.GetUser(default, otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherUser == null)
             return default;
 

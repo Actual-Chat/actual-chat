@@ -36,8 +36,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         services.AddDbContextServices<ChatDbContext>(dbContext => {
-            dbContext.AddEntityResolver<string, DbChat>((_, options) => {
-                options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
+            dbContext.AddEntityResolver<string, DbChat>(_ => new() {
+                QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners),
             });
             dbContext.AddEntityResolver<string, DbChatAuthor>();
             dbContext.AddEntityResolver<string, DbChatRole>();

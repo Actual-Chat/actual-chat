@@ -24,7 +24,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     // [ComputeMethod]
     public virtual async Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
     {
-        var user = await AuthBackend.GetUser(id, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
         if (user == null || !user.IsAuthenticated)
             return null;
 
@@ -45,7 +45,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (userId.IsNullOrEmpty())
             return null;
 
-        var user = await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return null;
 

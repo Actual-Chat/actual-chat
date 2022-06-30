@@ -61,10 +61,10 @@ namespace ActualChat.UI.Blazor.App
 
             // Fusion services
             var fusion = services.AddFusion();
-            var fusionClient = fusion.AddRestEaseClient((_, o) => {
-                o.BaseUri = baseUri;
-                o.IsLoggingEnabled = true;
-                o.IsMessageLoggingEnabled = false;
+            var fusionClient = fusion.AddRestEaseClient(_ => new() {
+                BaseUri = baseUri,
+                LogLevel = LogLevel.Information,
+                MessageLogLevel = LogLevel.None,
             });
             fusionClient.ConfigureHttpClientFactory((c, name, o) => {
                 var uriMapper = c.GetRequiredService<UriMapper>();
