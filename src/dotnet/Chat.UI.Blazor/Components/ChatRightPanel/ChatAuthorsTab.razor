@@ -26,7 +26,7 @@
                 </div>
         </div>
     }
-    <div class="border-t-2 border-accent"></div>
+    <div class="border-t-2 border-bg-03"></div>
     @if (m.RequestAuthor is {Id.IsEmpty: false }) {
         <div class="py-2">
             <ChatAuthorBadge
@@ -34,7 +34,7 @@
                 Size="SquareSize.Size9"
                 ShowsPresence="true"
                 Click="OnSelfClick"
-                TextClass="font-medium text-primary select-none"/>
+                TextClass="font-medium text-02 select-none"/>
         </div>
         }
         <div class="flex-auto flex-y overflow-y-auto custom-scrollbar">
@@ -44,7 +44,7 @@
                 Size="SquareSize.Size9"
                 ShowsPresence="true"
                 Click="() => OnChatAuthorClick(authorId)"
-                TextClass="font-medium text-primary select-none"/>
+                TextClass="font-medium text-02 select-none"/>
         }
     </div>
 </div>

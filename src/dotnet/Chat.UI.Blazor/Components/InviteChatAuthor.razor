@@ -23,7 +23,7 @@
         </div>
         <div class="flex-1 overflow-y-auto custom-scrollbar mt-2 max-h-[60vh] min-h-[60vh]">
             @foreach (var contact in FilteredChatContacts) {
-                <div class="flex-x w-full gap-x-2 hover:bg-primary"
+                <div class="flex-x w-full gap-x-2 hover:bg-02"
                      @key="@contact.Author.Id"
                      @onclick="() => OnContactClick(contact)">
                     @if (contact.IsExisting) {

@@ -50,16 +50,16 @@
                 </div>
             } else {
                 <div class="w-10 mr-2 mt-1">
-                    <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
+                    <span class="chat-message-timestamp-secondary text-03 text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
                 </div>
             }
             <div class="flex-1 overflow-hidden mb-1 mt-1">
                 @if (showHeader || isReply) {
                     <div class="header chat-message-header ml-1">
-                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary"/>
+                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-03"/>
                         <ChatMessageTimestamp Moment="entry.BeginsAt"/>
                         &nbsp;
-                        <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
+                        <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span>
                     </div>
                 }
                 <div class="content message-content rounded-sm">

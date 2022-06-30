@@ -1,9 +1,9 @@
 ﻿.menu {
-    @apply bg-secondary min-w-max;
+    @apply bg-01 min-w-max;
 }
 
 .menu-item {
-    @apply text-secondary items-center;
+    @apply text-03 items-center;
     @apply flex-x w-full;
 }
 

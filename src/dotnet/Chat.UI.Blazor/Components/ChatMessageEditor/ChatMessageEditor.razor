@@ -12,11 +12,12 @@
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"
-                               RemoveRequested="@(RemoveAttachment)"/>
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary">
+                               RemoveRequested="@(RemoveAttachment)"
+                               ClearAllRequested="@(ClearAttachments)"/>
+        <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-01">
             <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
-            <div class="-flex-y w-full bg-secondary mx-1.5 overflow-x-hidden">
-                <div class="post-panel flex-x justify-between outline-none bg-secondary w-full border-secondary">
+            <div class="-flex-y w-full bg-01 mx-1.5 overflow-x-hidden">
+                <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
                     <input class="files-picker" type="file" hidden multiple/>
                     <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                         <SlateEditor @ref="SlateEditorRef" Id="message-input"
@@ -125,6 +126,10 @@
 
     private async Task RemoveAttachment(Attachment attachment) {
         await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
+    }
+
+    private async Task ClearAttachments(ImmutableArray<Attachment> attachments) {
+        await JSRef.InvokeVoidAsync("clearAttachments", attachments).ConfigureAwait(true);
     }
 
     private async Task OnUploadFilesRequested() {

@@ -1,7 +1,7 @@
 .side-nav {
     @apply fixed md:static;
     @apply h-full w-full;
-    @apply text-primary bg-primary;
+    @apply text-02 bg-02;
     @apply top-0 bottom-0;
 }
 
