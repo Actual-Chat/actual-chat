@@ -213,6 +213,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             adjustedRange.End + 1 >= chatIdRange.End,
             scrollToKey);
 
+        if (mustScrollToEntry)
+            // highlight entry when it has already been loaded
+            ChatUI.HighlightedChatEntryId.Value = entryId;
+
         return result;
     }
 
@@ -235,11 +239,13 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     private void TryNavigateToEntryIfExists()
     {
+        // ignore location changed events if already disposed
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
         var currentUri = new Uri(Nav.Uri);
         var entryIdString = currentUri.Fragment?.TrimStart('#');
-        if (long.TryParse(entryIdString, out var entryId) && entryId > 0) {
+        if (long.TryParse(entryIdString, out var entryId) && entryId > 0)
             NavigateToEntry(entryId);
-            ChatUI.HighlightedChatEntryId.Value = entryId;
-        }
     }
 }
