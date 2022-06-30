@@ -101,7 +101,7 @@
     @apply min-w-1/2;
 }
 .chat-author-tab {
-    @apply flex-y w-full h-full space-y-3 overflow-hidden;
+    @apply flex flex-col w-full h-full space-y-3 overflow-hidden;
 }
 .people-group {
     @apply gap-x-12;
@@ -136,7 +136,7 @@
 }
 
 .search-contacts {
-    @apply flex-x items-center gap-x-1 border-b-2 border-transparent;
+    @apply flex flex-row items-center gap-x-1 border-b-2 border-transparent;
 }
 .search-contacts:hover {
     @apply border-success;
