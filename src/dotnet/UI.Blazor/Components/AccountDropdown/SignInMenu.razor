@@ -1,4 +1,5 @@
-﻿@namespace ActualChat.UI.Blazor.Components
+﻿@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
 @{
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
@@ -24,6 +25,7 @@
 
 @code {
     [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
     private User User => AuthState.User;
@@ -46,5 +48,5 @@
     }
 
     private void SignIn(string name)
-        => ClientAuthHelper.SignIn(name);
+        => ClientAuth.SignIn(name);
 }
