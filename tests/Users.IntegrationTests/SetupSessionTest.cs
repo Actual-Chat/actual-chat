@@ -14,7 +14,7 @@ public class SetupSessionTest : AppHostTestBase
         var services = appHost.Services;
         var commander = services.Commander();
 
-        using var tester = appHost.NewWebClientTester();
+        await using var tester = appHost.NewWebClientTester();
         var session = tester.Session;
 
         var tasks = Enumerable.Range(0, 10)

@@ -4,9 +4,7 @@ namespace ActualChat.UI.Blazor.IntegrationTests;
 
 public class ExampleTest : AppHostTestBase
 {
-    private readonly TestSettings _testSettings;
-    public ExampleTest(ITestOutputHelper @out, TestSettings testSettings) : base(@out)
-        => _testSettings = testSettings;
+    public ExampleTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task SessionTest()

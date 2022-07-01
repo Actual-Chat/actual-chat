@@ -222,7 +222,7 @@ public partial class Notifications
                     _ = ListDevices(invUserId, default);
             return;
         }
-        var affectedUserIds = new HashSet<string>();
+        var affectedUserIds = new HashSet<string>(StringComparer.Ordinal);
         var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
         await using var __ = dbContext.ConfigureAwait(false);
 

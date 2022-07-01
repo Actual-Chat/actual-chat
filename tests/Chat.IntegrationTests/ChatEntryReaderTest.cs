@@ -154,19 +154,19 @@ public class ChatEntryReaderTest : AppHostTestBase
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None).ConfigureAwait(false);
 
         { // Test 1
-            using var cts = new CancellationTokenSource(2000);
+            using var cts = new CancellationTokenSource(500);
             var result = await reader.Observe(idRange.End, cts.Token).TrimOnCancellation().ToListAsync();
             result.Count.Should().Be(0);
         }
 
         { // Test 2
-            using var cts = new CancellationTokenSource(2000);
+            using var cts = new CancellationTokenSource(500);
             var result = await reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             result.Count.Should().Be(1);
         }
 
         { // Test 3 + entry creation
-            using var cts = new CancellationTokenSource(2000);
+            using var cts = new CancellationTokenSource(1000);
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     tester.AppServices.GetRequiredService<IChats>(), session, ChatId,
@@ -200,7 +200,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
 
         { // Test 1
-            using var cts = new CancellationTokenSource(2000);
+            using var cts = new CancellationTokenSource(1000);
             var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, ChatId,

@@ -26,7 +26,10 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
-        services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder(pluginAssemblies));
+        services.AddSingleton(new MatchingTypeFinder.Options() {
+            ScannedAssemblies = pluginAssemblies,
+        });
+        services.AddSingleton<IMatchingTypeFinder, MatchingTypeFinder>();
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
             : new DefaultObjectPoolProvider());

@@ -20,7 +20,7 @@
     <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.pdb</AllowedReferenceRelatedFileExtensions>
     <UseDefaultStartup>true</UseDefaultStartup>
     <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
-    <XunitStartupFullName>$(BaseName).Testing.StartupBase</XunitStartupFullName>
+    <XunitStartupFullName>$(BaseName).Testing.DefaultStartup</XunitStartupFullName>
   </PropertyGroup>
 
   <ItemGroup>

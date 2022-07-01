@@ -61,17 +61,18 @@ namespace ActualChat.UI.Blazor.App
 
             // Fusion services
             var fusion = services.AddFusion();
-            var fusionClient = fusion.AddRestEaseClient(_ => new() {
-                BaseUri = baseUri,
-                LogLevel = LogLevel.Information,
-                MessageLogLevel = LogLevel.None,
-            });
-            fusionClient.ConfigureHttpClientFactory((c, name, o) => {
+            var fusionClient = fusion.AddRestEaseClient();
+            fusionClient.ConfigureHttpClient((c, name, o) => {
                 var uriMapper = c.GetRequiredService<UriMapper>();
                 var apiBaseUri = uriMapper.ToAbsolute("api/");
                 var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                 var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
                 o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
+            });
+            fusionClient.ConfigureWebSocketChannel(_ => new() {
+                BaseUri = baseUri,
+                LogLevel = LogLevel.Information,
+                MessageLogLevel = LogLevel.Information,
             });
 
             // Injecting plugin services

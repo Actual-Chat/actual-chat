@@ -22,14 +22,10 @@
     "Db": "",
     "Redis": ""
   },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft": "Warning",
-      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
-      "Microsoft.EntityFrameworkCore.Database": "Warning",
-      "Stl": "Warning",
-      "Microsoft.Hosting.Lifetime": "Warning"
+  "TestSettings": {
+    "User1": {
+      "Email": "test@test.com",
+      "Password": "no password"
     }
   }
 }
