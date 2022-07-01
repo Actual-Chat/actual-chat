@@ -5,10 +5,11 @@ namespace ActualChat.ClientApp;
 
 partial class MauiBlazorWebViewHandler
 {
-    protected override Android.Webkit.WebView CreatePlatformView()
+    protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        var webView = base.CreatePlatformView();
-        webView.Settings.JavaScriptEnabled = true;
+        base.ConnectHandler(platformView);
+
+        platformView.Settings.JavaScriptEnabled = true;
         var cookieManager = CookieManager.Instance!;
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
@@ -38,7 +39,7 @@ partial class MauiBlazorWebViewHandler
         [Export("DOMContentLoaded")]
         public void OnDOMContentLoaded()
         {
-            _webView.Post(() => { 
+            _webView.Post(() => {
                 try {
                     var script = $"window.chatApp.initPage('{_handler.BaseUri}')";
                     _webView.EvaluateJavascript(script, null);
