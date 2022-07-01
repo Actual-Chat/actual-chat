@@ -4,18 +4,18 @@ namespace ActualChat.Chat;
 
 public class ToStringVisitor : AsyncMarkupVisitor<Unit>
 {
-    public Func<string, Task<string>> AuthorNameResolver { get; init; }
-    public Func<string, Task<string>> UserNameResolver { get; init; }
+    public Func<string, Task<string>> GetAuthorName { get; init; }
+    public Func<string, Task<string>> GetUserName { get; init; }
     public StringBuilder Builder { get; set; }
     public int MaxLength { get; init; }
 
     public ToStringVisitor(
-        Func<string,Task<string>> authorNameResolver,
-        Func<string,Task<string>> userNameResolver,
+        Func<string,Task<string>> getAuthorName,
+        Func<string,Task<string>> getUserName,
         int maxLength = int.MaxValue)
     {
-        AuthorNameResolver = authorNameResolver;
-        UserNameResolver = userNameResolver;
+        GetAuthorName = getAuthorName;
+        GetUserName = getUserName;
         MaxLength = maxLength;
         Builder = new StringBuilder();
     }
@@ -56,8 +56,8 @@ public class ToStringVisitor : AsyncMarkupVisitor<Unit>
 
         Builder.Append("@");
         Builder.Append(await (markup.Kind switch {
-                MentionKind.AuthorId => AuthorNameResolver(markup.Target),
-                MentionKind.UserId => UserNameResolver(markup.Target),
+                MentionKind.AuthorId => GetAuthorName(markup.Target),
+                MentionKind.UserId => GetUserName(markup.Target),
                 _ => Task.FromResult(markup.Target),
             }));
         return Unit.Default;
