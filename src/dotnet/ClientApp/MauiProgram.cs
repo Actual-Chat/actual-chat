@@ -68,8 +68,12 @@ public static class MauiProgram
 
         ConfigureServices(services, new Uri(settings.BaseUri));
 
+        SessionId = new SessionFactory().CreateSession().Id;
+
         return builder.Build();
     }
+
+    public static string SessionId {  get; set; }
 
     private static string GetBackendUrl()
     {
