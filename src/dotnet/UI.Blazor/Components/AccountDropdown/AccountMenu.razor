@@ -29,7 +29,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
@@ -41,6 +41,6 @@
 
     private async Task OnSignOutClick() {
         IsOpen = false;
-        await ClientAuthHelper.SignOut();
+        await ClientAuth.SignOut();
     }
 }

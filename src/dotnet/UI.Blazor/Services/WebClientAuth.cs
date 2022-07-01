@@ -9,4 +9,7 @@ internal sealed class WebClientAuth : IClientAuth
 
     public ValueTask SignIn(string scheme)
         => _clientAuthHelper.SignIn(scheme);
+
+    public ValueTask SignOut()
+        => _clientAuthHelper.SignOut();
 }

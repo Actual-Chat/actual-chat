@@ -22,10 +22,14 @@ public class MobileAuthController : Controller
     const string callbackScheme = "xamarinessentials";
 
     private readonly IServiceProvider _services;
+    private readonly IAuth _auth;
+    private readonly ICommander _commander;
 
-    public MobileAuthController(IServiceProvider services)
+    public MobileAuthController(IServiceProvider services, IAuth auth, ICommander commander)
     {
         _services = services;
+        _auth = auth;
+        _commander = commander;
     }
 
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
@@ -65,7 +69,7 @@ public class MobileAuthController : Controller
     }
 
     [HttpGet("signIn/{sessionId}/{scheme}")]
-    public async Task SignIn(string sessionId, string scheme)
+    public async Task SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
     {
         if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
@@ -80,30 +84,29 @@ public class MobileAuthController : Controller
                _services.GetRequiredService<ICommander>(),
                _services.GetRequiredService<MomentClockSet>()
             );
-            await helper.UpdateAuthState(HttpContext).ConfigureAwait(false);
+            await helper.UpdateAuthState(HttpContext, cancellationToken).ConfigureAwait(false);
 
-            string responseString = "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
-            HttpContext.Response.ContentType = "text/html; charset=utf-8";
-            await HttpContext.Response.WriteAsync(responseString).ConfigureAwait(false);
+            await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
         }
     }
 
     [HttpGet("signOut/{sessionId}")]
-    public async Task SignOut(string sessionId)
+    public async Task SignOut(string sessionId, CancellationToken cancellationToken)
     {
-        // TODO: test
-        var auth = _services.GetRequiredService<IAuth>();
-        var commander = _services.GetRequiredService<ICommander>();
         var session = new Session(sessionId);
-        var command = new SignOutCommand(session);
-        try {
-            var signOutCommand = new SignOutCommand(session);
-            await commander.Call(signOutCommand).ConfigureAwait(false);
-        }
-        finally {
-            // Ideally this should be done once important things are completed
-            _ = Task.Run(() => auth.UpdatePresence(session, default), default);
-        }
+        // Ideally updatePresence should be done once important things are completed
+        await using var _ = AsyncDisposable.New(() => _auth.UpdatePresence(session, cancellationToken).ToValueTask()).ConfigureAwait(false);
+        await _commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
+
+        await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task WriteAutoClosingMessage(CancellationToken cancellationToken)
+    {
+        string responseString =
+            "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
+        HttpContext.Response.ContentType = "text/html; charset=utf-8";
+        await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private class SimpleSessionResolver : ISessionResolver

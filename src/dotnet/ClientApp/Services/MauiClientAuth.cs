@@ -19,6 +19,12 @@ internal sealed class MauiClientAuth : IClientAuth
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
+    public async ValueTask SignOut()
+    {
+        var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signout/{MauiProgram.SessionId}";
+        await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
+    }
+
     private async Task OpenSystemBrowserForSignIn(string url)
     {
         try {
