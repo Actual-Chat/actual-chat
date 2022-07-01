@@ -1,7 +1,5 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.ClientApp;
@@ -11,19 +9,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
     private const string loopbackUrl = "http://127.0.0.1:57348/";
     private record JsMessage(string type, string url);
 
-    private string? _baseUri;
-
-    public string BaseUri {
-        get {
-            if (_baseUri == null) { 
-                var settings = MauiContext!.Services.GetRequiredService<ClientAppSettings>();
-                _baseUri = settings.BaseUri!;
-                if (!_baseUri.EndsWith('/'))
-                    _baseUri += '/';
-            }
-            return _baseUri;
-        }
-    }
+    public string BaseUri => MauiContext?.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureSuffix("/") ?? throw new Exception("Failed to retrieve base url from client app settings");
 
     public MauiBlazorWebViewHandler()
     {
