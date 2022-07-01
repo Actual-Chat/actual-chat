@@ -3,7 +3,9 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Components.SideNav
 @using ActualChat.Hosting;
+@using System.Text.RegularExpressions
 @implements IDisposable
+@implements IBaseLayoutBackend
 @{
     var failures = UICommandFailureList.Items;
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
@@ -72,6 +74,8 @@
 </div>
 
 @code {
+    private DotNetObjectReference<IBaseLayoutBackend> BlazorRef { get; set; } = null!;
+
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private UICommandFailureList UICommandFailureList { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
@@ -79,6 +83,7 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     protected override void OnInitialized() {
+        BlazorRef = DotNetObjectReference.Create<IBaseLayoutBackend>(this);
         Nav.LocationChanged += OnLocationChanged;
         UICommandFailureList.Changed += OnCommandFailureListChanged;
     }
@@ -87,11 +92,30 @@
         if (BlazorModeHelper.IsServerSideBlazor) {
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
         }
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
     }
 
     public void Dispose() {
         Nav.LocationChanged -= OnLocationChanged;
         UICommandFailureList.Changed -= OnCommandFailureListChanged;
+    }
+
+    [JSInvokable]
+    public Task NavigateTo(string url) {
+        var origin = Nav.BaseUri.TrimEnd('/');
+        if (url.IsNullOrEmpty() || !url.StartsWith(origin))
+            return Task.CompletedTask;
+
+        var chatPageRe = new Regex($"^{origin}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
+        var match = chatPageRe.Match(url);
+        if (!match.Success)
+            return Task.CompletedTask;
+
+        var chatIdGroup = match.Groups["chatid"];
+        if (chatIdGroup.Success) {
+            Nav.NavigateTo(url, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
+        }
+        return Task.CompletedTask;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
