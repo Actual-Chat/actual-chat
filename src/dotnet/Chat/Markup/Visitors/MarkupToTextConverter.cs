@@ -74,33 +74,18 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
     }
 
     protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
-    {
-        if (Builder.Length >= MaxLength)
-            return ValueTask.FromResult(Unit.Default);
-
-        Builder.Append(markup.Text);
-        return ValueTask.FromResult(Unit.Default);
-    }
+        => VisitText(markup, cancellationToken);
 
     protected override ValueTask<Unit> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
-    {
-        if (Builder.Length >= MaxLength)
-            return ValueTask.FromResult(Unit.Default);
-
-        Builder.Append(markup.Text);
-        return ValueTask.FromResult(Unit.Default);
-    }
+        => VisitText(markup, cancellationToken);
 
     protected override ValueTask<Unit> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
-    {
-        if (Builder.Length >= MaxLength)
-            return ValueTask.FromResult(Unit.Default);
-
-        Builder.Append(markup.Text);
-        return ValueTask.FromResult(Unit.Default);
-    }
+        => VisitText(markup, cancellationToken);
 
     protected override ValueTask<Unit> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
+        => VisitText(markup, cancellationToken);
+
+    protected override ValueTask<Unit> VisitText(TextMarkup markup, CancellationToken cancellationToken)
     {
         if (Builder.Length >= MaxLength)
             return ValueTask.FromResult(Unit.Default);
