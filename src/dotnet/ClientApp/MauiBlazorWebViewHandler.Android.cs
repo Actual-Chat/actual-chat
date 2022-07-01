@@ -14,40 +14,6 @@ partial class MauiBlazorWebViewHandler
         //cookieManager.SetAcceptThirdPartyCookies(webView, true);
         var jsInterface = new JavascriptInterface(this, webView);
         webView.AddJavascriptInterface(jsInterface, "Android");
-#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
-        jsInterface.MessageReceived += async json => {
-            if (!string.IsNullOrWhiteSpace(json) && json.Length > 10 && json[0] == '{') {
-                try {
-                    var msg = System.Text.Json.JsonSerializer.Deserialize<JsMessage>(json);
-                    if (msg == null)
-                        return;
-                    var sender = webView;
-                    switch (msg.type) {
-                    case "_auth":
-                        var originalUri = sender.OriginalUrl;
-                        if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
-                            break;
-                        var cookies = await GetRedirectSecret().ConfigureAwait(true);
-                        foreach (var (key, value) in cookies) {
-                            cookieManager.SetCookie("0.0.0.0", $"{key}={value}");
-                            cookieManager.SetCookie(new Uri(BaseUri).Host, $"{key}={value}");
-
-                            if (string.Equals(key, "FusionAuth.SessionId", StringComparison.Ordinal)) {
-                                string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
-                                await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
-                            }
-                        }
-                        sender.LoadUrl(originalUri);
-                        break;
-                    default:
-                        throw new InvalidOperationException($"Unknown message type: {msg.type}");
-                    }
-                }
-                catch (Exception ex) {
-                    Debug.WriteLine(ex.ToString());
-                }
-            }
-        };
         return webView;
     }
 

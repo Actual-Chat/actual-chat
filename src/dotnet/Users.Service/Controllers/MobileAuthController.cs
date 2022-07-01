@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Threading;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -31,33 +32,31 @@ public class MobileAuthController : Controller
     [HttpGet("{scheme}")]
     public async Task Get([FromRoute] string scheme)
     {
-        var auth = await Request.HttpContext.AuthenticateAsync(scheme);
+        var auth = await Request.HttpContext.AuthenticateAsync(scheme).ConfigureAwait(false);
 
         if (!auth.Succeeded
-            || auth?.Principal == null
+            || auth.Principal == null
             || !auth.Principal.Identities.Any(id => id.IsAuthenticated)
             || string.IsNullOrEmpty(auth.Properties.GetTokenValue("access_token"))) {
             // Not authenticated, challenge
-            await Request.HttpContext.ChallengeAsync(scheme);
+            await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         }
         else {
             var claims = auth.Principal.Identities.FirstOrDefault()?.Claims;
-            var email = string.Empty;
-            email = claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value;
+            var email = claims?.FirstOrDefault(c => string.Equals(c.Type, ClaimTypes.Email, StringComparison.Ordinal))?.Value;
 
             // Get parameters to send back to the callback
-            var qs = new Dictionary<string, string>
-            {
-                { "access_token", auth.Properties.GetTokenValue("access_token") },
-                { "refresh_token", auth.Properties.GetTokenValue("refresh_token") ?? string.Empty },
-                { "expires_in", (auth.Properties.ExpiresUtc?.ToUnixTimeSeconds() ?? -1).ToString() },
-                { "email", email }
+            (string Key, string? Value)[] qs = {
+                ("access_token", auth.Properties.GetTokenValue("access_token")),
+                ("refresh_token", auth.Properties.GetTokenValue("refresh_token")),
+                ("expires_in", auth.Properties.ExpiresUtc?.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)),
+                ("email", email),
             };
 
             // Build the result url
             var url = callbackScheme + "://#" + string.Join(
                 "&",
-                qs.Where(kvp => !string.IsNullOrEmpty(kvp.Value) && kvp.Value != "-1")
+                qs.Where(kvp => !string.IsNullOrEmpty(kvp.Value))
                 .Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));
 
             // Redirect to final url
@@ -68,11 +67,8 @@ public class MobileAuthController : Controller
     [HttpGet("signIn/{sessionId}/{scheme}")]
     public async Task SignIn(string sessionId, string scheme)
     {
-        if (HttpContext.User == null
-            || !HttpContext.User.Identities.Any(id => id.IsAuthenticated)) {
-            // Not authenticated, challenge
+        if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
-        }
         else {
             var sessionResolver = new SimpleSessionResolver(new Session(sessionId));
             var helper = new ServerAuthHelper(

@@ -14,49 +14,6 @@ public partial class MauiBlazorWebViewHandler
         var webview = new WebView2Control();
         webview.EnsureCoreWebView2Async().AsTask().ContinueWith((t, state) => {
             var ctrl = (WebView2Control)state!;
-#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
-            ctrl.WebMessageReceived += async (WebView2Control sender, CoreWebView2WebMessageReceivedEventArgs args) => {
-                var json = args.TryGetWebMessageAsString();
-                if (!string.IsNullOrWhiteSpace(json) && json.Length > 10 && json[0] == '{') {
-                    try {
-                        var msg = JsonSerializer.Deserialize<JsMessage>(json);
-                        if (msg == null)
-                            return;
-                        switch (msg.type) {
-                        case "_auth":
-                            //var originalUri = sender.Source;
-                            //if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
-                            //    break;
-                            //var cookies = await GetRedirectSecret().ConfigureAwait(true);
-                            //foreach (var (key, value) in cookies) {
-                            //    var cookie = sender.CoreWebView2.CookieManager.CreateCookie(key, value, "0.0.0.0", "/");
-                            //    sender.CoreWebView2.CookieManager.AddOrUpdateCookie(cookie);
-                            //    cookie = sender.CoreWebView2.CookieManager.CreateCookie(key, value, new Uri(BaseUri).Host, "/");
-                            //    sender.CoreWebView2.CookieManager.AddOrUpdateCookie(cookie);
-
-                            //    if (string.Equals(key, "FusionAuth.SessionId", StringComparison.Ordinal)) {
-                            //        string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
-                            //        await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
-                            //    }
-                            //}
-                            //// For now navigation may cause exception on circuit dispose,
-                            //// so we need to refresh page manually after that.
-                            //// TODO: rework sign in to work with specific fusion.sessionId.
-                            //sender.Source = originalUri;
-                            var uri = $"{BaseUri}mobileauth/signin/{MauiProgram.SessionId}/Google";
-                            await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
-                            break;
-                        default:
-                            throw new InvalidOperationException($"Unknown message type: {msg.type}");
-                        }
-                    }
-                    catch (Exception ex) {
-                        Debug.WriteLine(ex.ToString());
-                    }
-                }
-            };
-
-
             ctrl.CoreWebView2.DOMContentLoaded += async (_, __) => {
                 try {
                     var script = $"window.chatApp.initPage('{this.BaseUri}')";
