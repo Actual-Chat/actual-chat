@@ -27,5 +27,15 @@
       "Email": "test@test.com",
       "Password": "no password"
     }
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
+      "Microsoft.EntityFrameworkCore.Database": "Warning",
+      "Stl": "Warning",
+      "Microsoft.Hosting.Lifetime": "Warning"
+    }
   }
 }
