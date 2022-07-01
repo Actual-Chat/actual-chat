@@ -1,19 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Security.Claims;
-using System.Threading;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Stl.CommandR.Internal;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Server.Internal;
 
-namespace ActualChat.Chat.Controllers;
+namespace ActualChat.Users.Controllers;
 
 [Route("mobileauth")]
 [ApiController]
