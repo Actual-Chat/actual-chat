@@ -24,7 +24,6 @@
 </Dropdown>
 
 @code {
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
@@ -41,8 +40,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-    // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await ClientAuthHelper.GetSchemas();
+    // GetSchemas requires JS interop for web version, so it can be called only at this point
+            AuthSchemas = await ClientAuth.GetSchemas();
             StateHasChanged();
         }
     }

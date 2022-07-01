@@ -25,6 +25,9 @@ internal sealed class MauiClientAuth : IClientAuth
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
+    public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
+        => ValueTask.FromResult(new[]{ ("Google", "Google") });
+
     private async Task OpenSystemBrowserForSignIn(string url)
     {
         try {

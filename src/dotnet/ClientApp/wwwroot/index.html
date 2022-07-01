@@ -9,39 +9,7 @@
     <link href="_content/Blazor.ContextMenu/blazorContextMenu.min.css" rel="stylesheet" />
     <link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />
     <link href="/dist/bundle.css" rel="stylesheet" />
-    <script>
-        (function () {
-            let openAuthWindow = function (action, flowName) {
-                return FusionAuth.openAuthWindow(action, flowName);
-            };
-            window.FusionAuth = {
-                schemas: 'Google|Google|Microsoft|Microsoft',
-                signInPath: "signIn",
-                signOutPath: "signOut",
-                closePath: "fusion/close-app",
 
-                signIn: function (schema) {
-                    if (schema === undefined || schema === null || schema === "") {
-                        openAuthWindow(this.signInPath, "Sign-in");
-                    } else {
-                        openAuthWindow(this.signInPath + "/" + schema, "Sign-in");
-                    }
-                },
-                signOut: function () {
-                    openAuthWindow(this.signOutPath, "Sign-out");
-                },
-
-                openAuthWindow: function (action, flowName) {
-                    let encode = encodeURIComponent;
-                    let redirectUrl = new URL(this.closePath + "?flow=" + encode(flowName), window['_baseURI']).href;
-                    console.log(`redirectUrl: ${redirectUrl} baseUri: ${window['_baseURI']}`);
-                    let url = window['_baseURI'] + action + "?returnUrl=" + encode(redirectUrl);
-                    window.chatApp.postMessage(JSON.stringify({ type: '_auth', url }));
-                }
-            };
-
-        })();
-    </script>
     <script>
         window.chatApp = {
             debug: true,

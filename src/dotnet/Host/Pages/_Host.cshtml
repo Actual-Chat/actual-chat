@@ -1,22 +1,17 @@
 @page "/"
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
-@using ActualChat.Host.Module
 @using ActualChat.Hosting
-@using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
 @using System.Text.Json
 @using System.Text
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
-@inject HostSettings HostSettings
-@inject BlazorCircuitContext CircuitContext
 @inject HostInfo HostInfo
 @{
     await ServerAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var sessionId = ServerAuthHelper.Session.Id.Value;
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
@@ -39,7 +34,6 @@
     <script>
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
-        window.FusionAuth.sessionId = "@sessionId";
     </script>
 </head>
 <body>
