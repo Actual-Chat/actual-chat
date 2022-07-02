@@ -117,6 +117,9 @@ public interface IChatAuthorsClientDef
 [BasePath("chatRoles")]
 public interface IChatRolesClientDef
 {
+    [Get(nameof(Get))]
+    Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken);
+
     [Get(nameof(ListOwnRoleIds))]
     Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken);
 

@@ -1,6 +1,6 @@
 namespace ActualChat.Invite.Backend;
 
-public interface IInvitesBackend
+public interface IInvitesBackend : IComputeService
 {
     [ComputeMethod]
     Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);

@@ -20,7 +20,7 @@
 
     protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
         => new() {
-            InitialValue = ChatAuthorRules.None,
+            InitialValue = ChatAuthorRules.None(Chat.Id),
             UpdateDelayer = UpdateDelayer.MinDelay,
         };
 

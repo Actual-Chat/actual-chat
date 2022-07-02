@@ -79,7 +79,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     {
         var userProfile = await _userProfiles.Get(_tester.Session, default);
         userProfile!.Status = newStatus;
-        var commander = ProxyExt.GetServices(userProfile).Commander();
+        var commander = _userProfiles.GetCommander();
         await commander.Call(new IUserProfiles.UpdateCommand(_adminSession, userProfile));
     }
 }

@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public interface IChatAuthorsBackend
+public interface IChatAuthorsBackend : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatAuthor?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);

@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Users;
 
-public interface IUserAvatars
+public interface IUserAvatars : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);

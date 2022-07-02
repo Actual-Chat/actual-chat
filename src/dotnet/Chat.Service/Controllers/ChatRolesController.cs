@@ -1,4 +1,3 @@
-using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 
@@ -16,6 +15,10 @@ public class ChatRolesController : ControllerBase, IChatRoles
         _service = service;
         _commander = commander;
     }
+
+    [HttpGet, Publish]
+    public Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+        => _service.Get(session, chatId, roleId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken)

@@ -75,19 +75,15 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
     private async Task<Symbol[]> Normalize(Symbol[] chatIds)
     {
-        var rulesTasks = chatIds.Select(async chatId => {
-            var rules = await _chats.GetRules(_session, chatId, default).ConfigureAwait(false);
-            return (chatId, rules);
-        });
-
-        var rulesTuples = await Task.WhenAll(rulesTasks).ConfigureAwait(false);
-        var result = new List<Symbol>();
-        foreach (var (chatId, permissions) in rulesTuples) {
-            if (!permissions.CanRead)
-                continue;
-            result.Add(chatId);
-        }
-        return result.ToArray();
+        var rules = await chatIds
+            .Select(chatId => _chats.GetRules(_session, chatId, default))
+            .Collect()
+            .ConfigureAwait(false);
+        var filteredChatIds = rules
+            .Where(r => r.CanRead)
+            .Select(r => r.ChatId)
+            .ToArray();
+        return filteredChatIds;
     }
 
     public sealed record Model

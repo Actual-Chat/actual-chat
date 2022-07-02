@@ -1,7 +1,10 @@
 namespace ActualChat.Chat;
 
-public interface IChatRoles
+public interface IChatRoles : IComputeService
 {
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken);
+
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken);
 

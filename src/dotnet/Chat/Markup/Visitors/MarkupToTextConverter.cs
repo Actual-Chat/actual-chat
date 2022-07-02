@@ -2,14 +2,14 @@ using System.Text;
 
 namespace ActualChat.Chat;
 
-public class ToStringVisitor : AsyncMarkupVisitor<Unit>
+public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
 {
     public Func<string, Task<string>> GetAuthorName { get; init; }
     public Func<string, Task<string>> GetUserName { get; init; }
     public StringBuilder Builder { get; set; }
     public int MaxLength { get; init; }
 
-    public ToStringVisitor(
+    public MarkupToTextConverter(
         Func<string,Task<string>> getAuthorName,
         Func<string,Task<string>> getUserName,
         int maxLength = int.MaxValue)
@@ -20,7 +20,7 @@ public class ToStringVisitor : AsyncMarkupVisitor<Unit>
         Builder = new StringBuilder();
     }
 
-    public async Task<string> ToString(Markup markup, CancellationToken cancellationToken)
+    public async Task<string> Apply(Markup markup, CancellationToken cancellationToken)
     {
         await Visit(markup, cancellationToken).ConfigureAwait(false);
         return Builder.ToString();
@@ -55,11 +55,12 @@ public class ToStringVisitor : AsyncMarkupVisitor<Unit>
             return Unit.Default;
 
         Builder.Append("@");
-        Builder.Append(await (markup.Kind switch {
+        Builder.Append(
+            await (markup.Kind switch {
                 MentionKind.AuthorId => GetAuthorName(markup.Target),
                 MentionKind.UserId => GetUserName(markup.Target),
                 _ => Task.FromResult(markup.Target),
-            }));
+            }).ConfigureAwait(false));
         return Unit.Default;
     }
 

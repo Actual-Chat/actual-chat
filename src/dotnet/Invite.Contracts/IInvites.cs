@@ -1,6 +1,6 @@
 namespace ActualChat.Invite;
 
-public interface IInvites
+public interface IInvites : IComputeService
 {
     [ComputeMethod]
     Task<IImmutableList<Invite>> GetUserInvites(Session session, CancellationToken cancellationToken);

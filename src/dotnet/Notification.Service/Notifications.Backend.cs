@@ -58,17 +58,17 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
-        var toStringVisitor = new ToStringVisitor(
-            AuthorNameResolver,
-            UserNameResolver,
-            100);
-        var formattedContent = await toStringVisitor.ToString(MarkupParser.ParseRaw(content), cancellationToken);
+        var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
+        var textContent = await markupToTextConverter.Apply(
+            MarkupParser.ParseRaw(content),
+            cancellationToken
+            ).ConfigureAwait(false);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = formattedContent,
+                Body = textContent,
                 // ImageUrl = ??? TODO(AK): set image url
             },
             Android = new AndroidConfig {

@@ -183,15 +183,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
         var adjustedRange = queryRange.Clamp(chatIdRange);
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
-        var chatTiles = await Task
-            .WhenAll(idTiles.Select(
-                idTile => Chats.GetTile(Session,
-                    chatId,
-                    ChatEntryType.Text,
-                    idTile.Range,
-                    cancellationToken)))
+        var chatTiles = await idTiles
+            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
-
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
@@ -244,8 +239,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             return;
 
         var currentUri = new Uri(Nav.Uri);
-        var entryIdString = currentUri.Fragment?.TrimStart('#');
-        if (long.TryParse(entryIdString, out var entryId) && entryId > 0)
+        var entryIdString = currentUri.Fragment.TrimStart('#');
+        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
             NavigateToEntry(entryId);
     }
 }

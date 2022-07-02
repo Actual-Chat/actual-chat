@@ -221,7 +221,7 @@ public class ChatEntryReaderTest : AppHostTestBase
             "rape me rape me my friend",
             "it was a teenage wedding and the all folks wished them well",
         };
-        var commander = ProxyExt.GetServices(chats).Commander();
+        var commander = chats.GetCommander();
 
         while (true)
             foreach (var text in phrases) {

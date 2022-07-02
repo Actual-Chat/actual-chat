@@ -68,7 +68,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userContacts = await Contacts.GetAll(Session, cancellationToken).ConfigureAwait(false);
-        var contactTasks = userContacts
+        var contacts = await userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
                 return new ContactModel(userContact) {
@@ -76,8 +76,9 @@
                     FullChatId = ParsedChatId.FormatFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
                     ShortChatId = ParsedChatId.FormatShortPeerChatId(userContact.TargetUserId),
                 };
-            });
-        var contacts = await Task.WhenAll(contactTasks).ConfigureAwait(false);
+            })
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts

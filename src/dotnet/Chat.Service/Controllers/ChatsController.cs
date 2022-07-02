@@ -1,4 +1,3 @@
-using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 

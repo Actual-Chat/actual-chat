@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IUserContactsBackend
+public interface IUserContactsBackend : IComputeService
 {
     public Task<UserContact> GetOrCreate(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
     [ComputeMethod]

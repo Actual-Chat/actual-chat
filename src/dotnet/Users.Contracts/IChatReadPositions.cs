@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IChatReadPositions
+public interface IChatReadPositions : IComputeService
 {
     [ComputeMethod]
     Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken);

@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public interface IChatAuthors
+public interface IChatAuthors : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);

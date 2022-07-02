@@ -83,8 +83,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 chatIds = chatIds.Add(Constants.Chat.DefaultChatId);
         }
 
-        var chatTasks = await Task
-            .WhenAll(chatIds.Select(id => Get(session, id, cancellationToken)))
+        var chatTasks = await chatIds
+            .Select(id => Get(session, id, cancellationToken))
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
         return chatTasks.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
     }
@@ -225,9 +226,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await DemandPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
-        var authorTasks = await Task
-            .WhenAll(chatAuthorIds.Select(id
-                => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
+        var authorTasks = await chatAuthorIds
+            .Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken))
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
         var items = authorTasks
             .Where(c => c != null)

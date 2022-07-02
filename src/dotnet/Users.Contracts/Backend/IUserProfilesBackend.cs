@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IUserProfilesBackend
+public interface IUserProfilesBackend : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserProfile?> Get(string id, CancellationToken cancellationToken);

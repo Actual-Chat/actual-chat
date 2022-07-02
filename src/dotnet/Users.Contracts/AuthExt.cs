@@ -12,7 +12,7 @@ public static class AuthExt
 
     public static async ValueTask<User> RequireActiveUser(this IAuth auth, Session session, CancellationToken cancellationToken)
     {
-        var userProfiles = ProxyExt.GetServices(auth).GetRequiredService<IUserProfiles>();
+        var userProfiles = auth.GetServices().GetRequiredService<IUserProfiles>();
         var userProfile = await userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
         return userProfile.User;
     }

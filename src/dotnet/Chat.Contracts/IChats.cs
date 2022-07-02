@@ -1,8 +1,6 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
-public interface IChats
+public interface IChats : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
