@@ -191,9 +191,6 @@
     /*Remove this classes*/
     @apply overflow-y-hidden;
 }
-.wide-left-panel-tabs.tab-panel-tabs .tab {
-    @apply !p-0;
-}
 .wide-left-panel-tabs .btn-group {
     @apply min-h-mobile-header;
 }
@@ -202,7 +199,7 @@
 }
 
 .pinned-chats {
-    @apply border-b border-bg-04 p-3;
+    @apply border-b border-bg-04 px-3 py-2;
 }
 .pinned-chats .btn-round {
     @apply w-6 h-6;
@@ -215,5 +212,5 @@
 }
 
 .unpinned-chats {
-    @apply border-b border-bg-04 p-3;
+    @apply px-3 pt-3 pb-1;
 }
