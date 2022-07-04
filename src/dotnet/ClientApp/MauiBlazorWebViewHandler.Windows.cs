@@ -28,6 +28,8 @@ public partial class MauiBlazorWebViewHandler
         var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", MauiProgram.SessionId, "0.0.0.0", "/");
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
         cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", MauiProgram.SessionId, new Uri(BaseUri).Host, "/");
+        cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
+        cookie.IsSecure = true;
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
 
         ctrl.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
@@ -56,10 +58,10 @@ public partial class MauiBlazorWebViewHandler
         /// <see href="https://github.com/MicrosoftEdge/WebView2Feedback/issues/685" />
         var uri = args.Request.Uri;
         if (uri.StartsWith("https://0.0.0.0/api/", StringComparison.Ordinal)) {
-            args.Request.Uri = uri.Replace("https://0.0.0.0/", BaseUri, StringComparison.Ordinal);
-            args.Request.Headers.SetHeader("Origin", BaseUri);
-            args.Request.Headers.SetHeader("Referer", BaseUri);
-            Debug.WriteLine($"webview.WebResourceRequested: rewrited to {args.Request.Uri}");
+            //args.Request.Uri = uri.Replace("https://0.0.0.0/", BaseUri, StringComparison.Ordinal);
+            //args.Request.Headers.SetHeader("Origin", BaseUri);
+            //args.Request.Headers.SetHeader("Referer", BaseUri);
+            //Debug.WriteLine($"webview.WebResourceRequested: rewrited to {args.Request.Uri}");
         }
         // workaround of 'This browser or app may not be secure.'
         else if (uri.StartsWith("https://accounts.google.com", StringComparison.Ordinal)) {

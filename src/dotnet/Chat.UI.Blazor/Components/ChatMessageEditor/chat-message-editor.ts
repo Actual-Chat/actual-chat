@@ -149,8 +149,11 @@ export class ChatMessageEditor {
         formData.append("payload_json", payloadJson);
 
         console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
-        const url = "api/chats/" + chatId + "/message";
-        const response = await fetch(url, { method: 'POST', body: formData });
+        let url = "api/chats/" + chatId + "/message";
+        const baseUri = window["_baseURI"];
+        if (baseUri)
+            url = new URL(url, baseUri).toString();
+        const response = await fetch(url, { method: 'POST', body: formData, credentials: 'include' });
 
         if (!response.ok) {
             let reason = response.statusText;
