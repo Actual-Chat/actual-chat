@@ -1,5 +1,6 @@
-@using ActualChat.Hosting;
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Hosting;
+@using ActualChat.UI.Blazor.Services
 
 @{
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
@@ -16,7 +17,7 @@
             </ButtonRound>
         </div>
     </div>
-    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar px-2 m-2">
+    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar">
         <NavbarContent/>
     </div>
     <div class="flex-none flex-y">
@@ -32,6 +33,12 @@
 
 @code {
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private void Click() {}
+    private void Click() {
+        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction)) {
+            addAction();
+        }
+    }
 }
