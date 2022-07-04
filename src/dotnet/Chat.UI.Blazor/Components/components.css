@@ -100,6 +100,9 @@
 .right-panel-tabs .btn {
     @apply min-w-1/2;
 }
+.chat-settings-tab.tab {
+    @apply px-2;
+}
 .chat-author-tab {
     @apply flex flex-col w-full h-full space-y-3 overflow-hidden;
 }
@@ -183,3 +186,34 @@
     @apply bg-02;
 }
 
+.wide-left-panel-tabs {
+    @apply border-b border-bg-04 pb-0 mb-0;
+    /*Remove this classes*/
+    @apply overflow-y-hidden;
+}
+.wide-left-panel-tabs.tab-panel-tabs .tab {
+    @apply !p-0;
+}
+.wide-left-panel-tabs .btn-group {
+    @apply min-h-mobile-header;
+}
+.wide-left-panel-tabs .btn {
+    @apply min-w-0;
+}
+
+.pinned-chats {
+    @apply border-b border-bg-04 p-3;
+}
+.pinned-chats .btn-round {
+    @apply w-6 h-6;
+}
+.pinned-chats .btn.btn-round .btn-content {
+    @apply bg-01;
+}
+.pinned-chats .btn.btn-round.pin-toggle.play-pinned.on {
+    @apply text-success;
+}
+
+.unpinned-chats {
+    @apply border-b border-bg-04 p-3;
+}
