@@ -101,7 +101,7 @@
     }
 
     [JSInvokable]
-    public Task NavigateTo(string url) {
+    public Task HandleNotificationNavigation(string url) {
         var origin = Nav.BaseUri.TrimEnd('/');
         if (url.IsNullOrEmpty() || !url.StartsWith(origin))
             return Task.CompletedTask;
