@@ -158,9 +158,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             mustScrollToEntry = true;
         }
 
+        var isHighlighted = false;
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken).ConfigureAwait(true);
         if (!mustScrollToEntry) {
             if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
+                isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
                 entryId = navigateToEntryId;
                 mustScrollToEntry = true;
@@ -208,7 +210,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             adjustedRange.End + 1 >= chatIdRange.End,
             scrollToKey);
 
-        if (mustScrollToEntry)
+        if (isHighlighted)
             // highlight entry when it has already been loaded
             ChatUI.HighlightedChatEntryId.Value = entryId;
 
