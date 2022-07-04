@@ -12,8 +12,8 @@
 BATCH
 
 #!/bin/sh
-ASPNETCORE_ENVIRONMENT=Development
-ASPNETCORE_URLS=https://localhost:7080;https://localhost:7081
+export ASPNETCORE_ENVIRONMENT=Development
+export ASPNETCORE_URLS="https://localhost:7080;https://localhost:7081"
 
 (sleep 5 && open https://localhost:7081 || xdbg-open https://localhost:7081) &
 
