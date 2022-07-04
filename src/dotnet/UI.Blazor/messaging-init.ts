@@ -78,7 +78,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
                 return;
 
             const url = evt.data?.url;
-            await baseLayoutRef.invokeMethodAsync('NavigateTo', url);
+            await baseLayoutRef.invokeMethodAsync('HandleNotificationNavigation', url);
         });
     }
 }
