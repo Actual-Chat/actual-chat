@@ -11,6 +11,7 @@ import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
 import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
 import './Components/Modal/modal.css' // based on BlazoredModal
+import './Components/Toast/toast.css'
 import './Components/Navbar/navbar.css'
 import './Components/Pic/pic.css'
 import './Components/PicUpload/pic-upload.css'

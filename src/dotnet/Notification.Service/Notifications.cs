@@ -33,6 +33,20 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         return isDisabledSubscription ? ChatNotificationStatus.NotSubscribed : ChatNotificationStatus.Subscribed;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
+        return await Backend.ListRecentNotificationIds(user.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
+        return await Backend.GetNotification(user.Id, notificationId, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {

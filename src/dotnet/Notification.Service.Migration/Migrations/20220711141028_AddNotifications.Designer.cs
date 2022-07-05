@@ -3,6 +3,7 @@ using System;
 using ActualChat.Notification.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Notification.Migrations
 {
     [DbContext(typeof(NotificationDbContext))]
-    partial class NotificationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220711141028_AddNotifications")]
+    partial class AddNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -59,6 +61,42 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("devices");
                 });
 
+            modelBuilder.Entity("ActualChat.Notification.Db.DbMessage", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AccessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accessed_at");
+
+                    b.Property<long?>("ChatEntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("chat_entry_id");
+
+                    b.Property<string>("ChatId")
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("device_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_messages");
+
+                    b.HasIndex("DeviceId")
+                        .HasDatabaseName("ix_messages_device_id");
+
+                    b.ToTable("messages");
+                });
+
             modelBuilder.Entity("ActualChat.Notification.Db.DbMutedChatSubscription", b =>
                 {
                     b.Property<string>("Id")
@@ -95,10 +133,6 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<string>("ChatAuthorId")
-                        .HasColumnType("text")
-                        .HasColumnName("chat_author_id");
-
                     b.Property<long?>("ChatEntryId")
                         .HasColumnType("bigint")
                         .HasColumnName("chat_entry_id");
@@ -106,6 +140,10 @@ namespace ActualChat.Notification.Migrations
                     b.Property<string>("ChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
+
+                    b.Property<string>("ChatUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("chat_user_id");
 
                     b.Property<string>("Content")
                         .IsRequired()

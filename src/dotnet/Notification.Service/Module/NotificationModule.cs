@@ -60,6 +60,7 @@ public class NotificationModule : HostModule<NotificationSettings>
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
         services.AddSingleton(firebaseMessaging);
+        services.AddSingleton<FirebaseMessagingClient>();
 
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);
