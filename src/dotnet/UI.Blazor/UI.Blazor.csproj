@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="Blazor.ContextMenu" />
+    <PackageReference Include="Blazored.Toast" />
     <PackageReference Include="Blazored.Modal" />
     <PackageReference Include="Blazored.LocalStorage" />
     <PackageReference Include="Blazored.SessionStorage" />

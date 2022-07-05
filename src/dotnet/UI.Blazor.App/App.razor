@@ -2,10 +2,20 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
 @using Blazored.Modal
+@using Blazored.Toast
+@using Blazored.Toast.Configuration
 @using Stl.OS
 @using Stl.Plugins
 @using System.Reflection
 @implements IDisposable
+
+
+<BlazoredToasts Position="ToastPosition.BottomRight"
+                Timeout="30"
+                IconType="IconType.FontAwesome"
+                ShowProgressBar="true"
+                ErrorIcon="fa fa-bug"
+                SuccessIcon="fa fa-thumbs-up"/>
 
 <CascadingAuthState>
     <CascadingBlazoredModal>
