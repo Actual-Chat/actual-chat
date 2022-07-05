@@ -38,49 +38,68 @@
                 <UnreadMessageCounter ChatId="@c.Id"/>
             </Ending>
         </NavbarItem>;
+
+    RenderFragment RenderListened(Chat c) =>
+        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
+            <ChildContent>
+                <div class="flex-x items-center">
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
+                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                </div>
+            </ChildContent>
+            <Ending>
+                <ChatListPinToggle ChatId="@c.Id"/>
+                <ChatListRecordingToggle ChatId="@c.Id"/>
+                <UnreadMessageCounter ChatId="@c.Id"/>
+            </Ending>
+        </NavbarItem>;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
-        <div class="flex-y w-full h-full border-l border-bg-03">
+        <div class="flex-y w-full h-full">
             <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
-                <div class="overflow-y-hidden">
-                    <Tab Title="All" Class="">
+                <Tab Title="All" Class="relative !overflow-y-hidden h-full -flex-y">
+                    @if (m.PinnedChats.Length > 0) {
+                        <div class="listened-chats">
+                            @foreach (var c in m.PinnedChats) {
+                                @RenderListened(c)
+                            }
+                        </div>
+                    }
+                    <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
                         @if (m.PinnedChats.Length > 0) {
                             <div class="pinned-chats">
-                                <div class="flex-x h-4 w-full justify-center my-1 px-1 items-center">
-                                    <div class="uppercase text-xs text-02">Pinned</div>
-                                </div>
                                 @foreach (var c in m.PinnedChats) {
                                     @RenderPinned(c)
                                 }
                             </div>
 
                             if (m.UnpinnedChats.Length > 0) {
-                                <div class="unpinned-chats">
+                                <div class="unpinned-chats custom-scrollbar">
                                     @foreach (var c in m.UnpinnedChats) {
                                         @RenderUnpinned(c)
                                     }
                                 </div>
                             }
                         } else {
-                            <div class="unpinned-chats">
+                            <div class="unpinned-chats custom-scrollbar">
                                 @foreach (var c in m.UnpinnedChats) {
                                     @RenderUnpinned(c)
                                 }
                             </div>
                         }
-                    </Tab>
-                    <Tab Title="Family">
-                        <div>Family Tab</div>
-                    </Tab>
-                    <Tab Title="Friends">
-                        <div>Friends Tab</div>
-                    </Tab>
-                    <Tab Title="Work">
-                        <div>Work Tab</div>
-                    </Tab>
-                </div>
+                    </div>
+                </Tab>
+                <Tab Title="Family">
+                    <div>Family Tab</div>
+                </Tab>
+                <Tab Title="Friends">
+                    <div>Friends Tab</div>
+                </Tab>
+                <Tab Title="Work">
+                    <div>Work Tab</div>
+                </Tab>
             </TabPanel>
         </div>
     </ChildContent>
