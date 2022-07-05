@@ -188,8 +188,6 @@
 
 .wide-left-panel-tabs {
     @apply border-b border-bg-04 pb-0 mb-0;
-    /*Remove this classes*/
-    @apply overflow-y-hidden;
 }
 .wide-left-panel-tabs .btn-group {
     @apply min-h-mobile-header;
@@ -198,8 +196,12 @@
     @apply min-w-0;
 }
 
+.navbar-chats {
+    @apply overflow-hidden border-r-2 border-bg-03;
+}
+
 .pinned-chats {
-    @apply border-b border-bg-04 px-3 py-2;
+    @apply border-b border-bg-04 px-3;
 }
 .pinned-chats .btn-round {
     @apply w-6 h-6;
@@ -212,5 +214,10 @@
 }
 
 .unpinned-chats {
-    @apply px-3 pt-3 pb-1;
+    @apply p-3 flex-y h-full;
+}
+
+.listened-chats {
+    @apply py-2 relative bottom-0 flex-y;
+    @apply border-t-8 border-bg-04 bg-01 p-3;
 }
