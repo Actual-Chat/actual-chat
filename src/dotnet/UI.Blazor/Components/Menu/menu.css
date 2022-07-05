@@ -4,7 +4,7 @@
 
 .menu-item {
     @apply text-03 items-center;
-    @apply flex-x w-full;
+    @apply flex-x;
 }
 
 .menu-item:hover > * {
