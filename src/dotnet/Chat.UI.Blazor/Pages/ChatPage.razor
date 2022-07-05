@@ -7,6 +7,8 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
+    if (!m.NavigateToChatId.IsNullOrEmpty())
+        Nav.Chat(m.NavigateToChatId);
     if (m.IsUnavailable)
         Nav.Unavailable("chat");
     if (m.MustLogin)
@@ -97,8 +99,17 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
-        if (chat == null)
-            return new () { IsUnavailable = true };
+        if (chat == null) {
+            if (_lastRenderedModel?.Chat != null && _lastRenderedModel.Chat.Id == ChatId) {
+                // Chat became unavailable. Apparently user left the chat.
+                // Try to redirect user to first available chat.
+                var chats = await Chats.GetChats(Session, CancellationToken.None);
+                var chat1 = chats.FirstOrDefault();
+                if (chat1 != null)
+                    return new Model() { NavigateToChatId = chat1.Id };
+            }
+            return new() {IsUnavailable = true};
+        }
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
@@ -124,6 +135,7 @@
         public static Model None { get; } = new();
 
         public bool IsUnavailable { get; init; }
+        public string? NavigateToChatId { get; init; }
         public bool MustLogin { get; init; }
         public Chat? Chat { get; init; }
     }

@@ -116,4 +116,8 @@ public class ChatsController : ControllerBase, IChats
     [HttpPost]
     public Task RemoveTextEntry([FromBody] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task LeaveChat([FromBody] IChats.LeaveChatCommand command, CancellationToken cancellationToken)
+        => _commander.Call(command, cancellationToken);
 }
