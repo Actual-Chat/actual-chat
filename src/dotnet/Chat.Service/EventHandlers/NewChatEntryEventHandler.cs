@@ -31,7 +31,7 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
         var title = GetTitle(chat, chatAuthor);
         var iconUrl = GetIconUrl(chat, chatAuthor);
         var content = GetContent(@event.Content);
-        var command = new INotificationsBackend.NotifySubscribersCommand(
+        var command = new INotificationsBackend.NotifyNewChatEntryCommand(
             @event.ChatId,
             @event.Id,
             chatAuthor.UserId,

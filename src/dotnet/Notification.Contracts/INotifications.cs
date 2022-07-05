@@ -5,6 +5,12 @@ public interface INotifications : IComputeService
     [ComputeMethod]
     Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task SetStatus(SetStatusCommand command, CancellationToken cancellationToken);
 

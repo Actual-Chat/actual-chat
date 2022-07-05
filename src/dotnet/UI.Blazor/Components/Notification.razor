@@ -1,0 +1,71 @@
+@using ActualChat.Notification
+@using ActualChat.Users
+@* @using ActualChat.Chat.UI.Blazor.Components *@
+@inherits ComputedStateComponent<Notification.Model>
+
+@{
+    var model = State.Value;
+    var title = model.Title;
+    var content = model.Content;
+    var authorId = model.AuthorId;
+}
+
+<div class="p-3 mb-3 mr-3 bg-02 rounded-xl shadow-context border border-context-border" role="alert">
+    <div class="flex items-center mb-3">
+        <span class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">@title</span>
+        <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" data-dismiss-target="#toast-notification" aria-label="Close">
+            <span class="sr-only">Close</span>
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+        </button>
+    </div>
+    <div class="flex items-center">
+        <div class="inline-block relative shrink-0">
+            @* <ChatAuthorBadge  /> *@
+        </div>
+        <div class="ml-3 text-sm font-normal">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Bonnie Green</h4>
+            <div class="text-sm font-normal">@content</div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private INotifications Notifications { get; set; } = null!;
+    [Inject] private UriMapper UriMapper { get; set; } = null!;
+
+    [Parameter] public NotificationEntry NotificationEntry { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() => new () {
+        InitialValue = Model.None,
+    };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var notification = NotificationEntry;
+        var chatId = notification.Message?.ChatId ?? notification.Chat?.ChatId;
+        var entryId = notification.Message?.EntryId;
+        var authorId = notification.Message?.AuthorId;
+        var author = null as Author;
+        if (chatId != null) {
+            // TODO(AK): Unread message counter
+        }
+        return new() {
+            Title = notification.Title,
+            Content = notification.Content,
+            NavigateToUrl = chatId.IsNullOrEmpty()
+                ? null
+                : UriMapper.GetChatUrl(chatId, entryId).ToString(),
+            AuthorId = authorId,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public string Title { get; init; } = "";
+        public string Content { get; init; } = "";
+        public string? NavigateToUrl { get; init; }
+        public string? AuthorId { get; init; }
+    }
+}

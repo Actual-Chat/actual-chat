@@ -9,7 +9,7 @@ public class NotificationDbContext : DbContextBase
 {
     public DbSet<DbDevice> Devices { get; protected set; } = null!;
     public DbSet<DbMutedChatSubscription> MutedChatSubscriptions { get; protected set; } = null!;
-    public DbSet<DbMessage> Messages { get; protected set; } = null!;
+    public DbSet<DbNotification> Notifications { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
