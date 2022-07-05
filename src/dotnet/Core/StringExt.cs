@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace ActualChat;
@@ -79,15 +78,6 @@ public static class StringExt
 
         port = portValue;
         return true;
-    }
-
-    // ReSharper disable once InconsistentNaming
-    public static string GetMD5HashCode(this string input)
-    {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var inputBytes = Encoding.ASCII.GetBytes(input);
-        var hashBytes = md5.ComputeHash(inputBytes);
-        return Convert.ToHexString(hashBytes);
     }
 
     public static string UrlEncode(this string input)
