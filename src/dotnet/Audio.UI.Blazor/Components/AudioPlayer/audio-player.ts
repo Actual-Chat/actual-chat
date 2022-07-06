@@ -29,6 +29,7 @@ export class AudioPlayer {
     private initPromise?: Promise<void> = null;
     /** we can do this with state, but it's clearer */
     private isBufferFull = false;
+    private updateOffsetTickIntervalId?: number = null;
 
 
     public static async create(blazorRef: DotNet.DotNetObject, debug: boolean, id: string): Promise<AudioPlayer> {
@@ -72,25 +73,35 @@ export class AudioPlayer {
             onStartPlaying: () => {
                 if (debug)
                     console.debug(`[AudioTrackPlayer #${this.id}] onStartPlaying, controllerId:${this.controller.id}`);
+                if (this.state === 'playing'){
+                    console.warn("Unexpected onStartPlaying since audio player is already in playing state");
+                    return;
+                }
                 this.state = 'playing';
                 if (this.onStartPlaying !== null)
                     this.onStartPlaying();
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+                this.updateOffsetTickIntervalId = self.setInterval(this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onStopped: async () => {
                 if (debug)
                     console.debug(`[AudioTrackPlayer #${this.id}] onStopped, controllerId:${this.controller.id}`);
-                // after shop we should notify about the real playback time
+                if (this.state === 'stopped')
+                    console.error('Unexpected onStopped since audio player is already in stopped state')
+                // after stop we should notify about the real playback time
                 await this.onUpdateOffsetTick();
+                self.clearInterval(this.updateOffsetTickIntervalId);
                 this.state = 'stopped';
             },
             onStarving: async () => {
                 if (debug)
                     console.warn(`[AudioTrackPlayer #${this.id}] onStarving, controllerId:${this.controller.id}`);
-                await this.onUpdateOffsetTick();
-                // doesn't change anything (because onBufferLow should do the call), but we can try to ping server
-                await this.invokeOnChangeReadiness(true);
+                if (this.isBufferFull) {
+                    this.isBufferFull = false;
+                    if (debug)
+                        console.debug(`[AudioTrackPlayer #${this.id}] onStarving, controllerId:${this.controller.id}`);
+                    await this.invokeOnChangeReadiness(true);
+                }
             },
             onEnded: async () => {
                 this.state = 'ended';
@@ -151,9 +162,6 @@ export class AudioPlayer {
                         `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
                 }
                 await this.invokeOnPlayTimeChanged(state.playbackTime);
-
-                // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             }
         }
         catch (error) {
