@@ -4,13 +4,13 @@
 @inject BlazorCircuitContext CircuitContext
 @{
     string GetButtonClass(bool isActive)
-        => isActive ? "on bg-04 -disabled" : "bg-04 hover:bg-02";
+        => isActive ? "is-active" : "";
 
-    var serverClass = $"!h-5 !text-xxs !rounded-r-none !border-r !border-r-primary {GetButtonClass(IsServerSideBlazor)}";
-    var wasmClass = $"!h-5 !text-xxs !rounded-l-none {GetButtonClass(!IsServerSideBlazor)}";
+    var serverClass = $"{GetButtonClass(IsServerSideBlazor)}";
+    var wasmClass = $"{GetButtonClass(!IsServerSideBlazor)}";
 }
 
-<div class="flex-x rounded-sm overflow-hidden w-max">
+<div class="blazor-mode-toggle">
     <ButtonSquare Class="@serverClass" Click="_ => BlazorModeHelper.ChangeMode(true)" IsDisabled="@IsServerSideBlazor">Server</ButtonSquare>
     <ButtonSquare Class="@wasmClass" Click="_ => BlazorModeHelper.ChangeMode(false)" IsDisabled="@(!IsServerSideBlazor)">WASM</ButtonSquare>
 </div>

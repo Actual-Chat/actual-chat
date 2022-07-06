@@ -1,0 +1,22 @@
+.blazor-mode-toggle {
+    @apply flex-x overflow-hidden w-max;
+}
+.blazor-mode-toggle .btn.btn-square {
+    @apply h-5 text-xxs rounded-sm;
+}
+.blazor-mode-toggle .btn.btn-square .btn-content {
+    @apply bg-01 text-02 subpixel-antialiased rounded-sm;
+}
+.blazor-mode-toggle .btn.btn-square.is-active .btn-content {
+    @apply text-success;
+}
+.blazor-mode-toggle .btn.btn-square:disabled .btn-content,
+.blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
+    @apply underline decoration-success bg-01;
+}
+.blazor-mode-toggle .btn.btn-square:disabled {
+    @apply opacity-90;
+}
+.blazor-mode-toggle .btn.btn-square:hover .btn-content {
+    @apply bg-square-hover;
+}

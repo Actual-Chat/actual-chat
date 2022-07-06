@@ -59,12 +59,14 @@
     <ChildContent>
         <div class="flex-y w-full h-full">
             <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
-                <Tab Title="All" Class="relative !overflow-y-hidden h-full -flex-y">
-                    @if (m.PinnedChats.Length > 0) {
+                <Tab Title="All" Class="-flex-y relative overflow-y-hidden h-full chats-tab">
+                    @if (m.ListenedChats.Count > 0) {
                         <div class="listened-chats">
-                            @foreach (var c in m.PinnedChats) {
+                            <div class="flex-x text-base font-medium my-1">Actual chats</div>
+                            @foreach (var c in m.ListenedChats) {
                                 @RenderListened(c)
                             }
+                            <div class="mx-1 mt-1 h-0 border-b border-bg-04"></div>
                         </div>
                     }
                     <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
@@ -135,6 +137,16 @@
             .OrderBy(c => c.Title)
             .ToArray();
 
+        var listenedChatIds = await ChatUI.ListenedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChats = new List<Chat>();
+        foreach (var t in listenedChatIds)
+        {
+            var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
+            if (chat != null)
+                listenedChats.Add(chat);
+        }
+        listenedChats.Reverse();
+
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var mustPlayPinned = await ChatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
@@ -143,6 +155,7 @@
             CanCreateChat = true,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
+            ListenedChats = listenedChats,
             ActiveChatId = activeChatId,
             IsPlaying = isPlaying,
             MustPlayPinned = mustPlayPinned,
@@ -158,6 +171,7 @@
         public bool CanCreateChat { get; init; }
         public Chat[] PinnedChats { get; init; } = Array.Empty<Chat>();
         public Chat[] UnpinnedChats { get; init; } = Array.Empty<Chat>();
+        public List<Chat> ListenedChats { get; init; } = new ();
         public Symbol ActiveChatId { get; init; }
         public bool IsPlaying { get; init; }
         public bool MustPlayPinned { get; init; }
