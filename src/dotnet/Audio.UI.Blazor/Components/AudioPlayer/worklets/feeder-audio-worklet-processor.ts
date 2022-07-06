@@ -89,16 +89,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     break;
                 }
                 else {
-                    if (this.isStarving) {
-                        this.isStarving = false;
-                        const message: StateChangedProcessorMessage = {
-                            type: 'stateChanged',
-                            state: 'playing',
-                        };
-                        this.port.postMessage(message);
-                    }
-
-                    this.isStarving = false;
                     const chunkAvailable = chunk.length - chunkOffset;
                     const remaining = channel.length - offset;
 
@@ -152,6 +142,18 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     state: 'playingWithTooMuchBuffer',
                 };
                 this.port.postMessage(message);
+            }
+        } else if (this.isStarving) {
+            if (sampleCount > samplesLowThreshold) {
+                this.isStarving = false;
+
+                if (this.isPlaying) {
+                    const message: StateChangedProcessorMessage = {
+                        type: 'stateChanged',
+                        state: 'playing',
+                    };
+                    this.port.postMessage(message);
+                }
             }
         }
         return true;
@@ -233,7 +235,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         if (!this.isPlaying) {
             const bufferedDuration = this.bufferedSampleCount / SAMPLE_RATE;
             if (bufferedDuration >= this.enoughToStartPlaying) {
-                this.isStarving = true;
                 this.isPlaying = true;
                 this.playbackTime = 0;
             }
