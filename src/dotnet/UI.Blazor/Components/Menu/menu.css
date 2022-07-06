@@ -4,13 +4,11 @@
 
 .menu-item {
     @apply text-03 items-center;
-    @apply flex-x;
+    @apply flex-x w-full;
 }
-
 .menu-item:hover > * {
     @apply text-success;
 }
-
 .menu-item:hover .horizontal-item {
     @apply transition duration-300 ease-in-out scale-110;
 }

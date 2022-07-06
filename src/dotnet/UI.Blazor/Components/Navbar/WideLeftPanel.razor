@@ -1,10 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Hosting;
 @using ActualChat.UI.Blazor.Services
-
-@{
-    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
-}
 
 <div class="flex-y w-full h-full overflow-y-hidden bg-03">
     <div class="flex-x justify-center items-center min-h-mobile-header border-b border-bg-04 px-4 gap-x-2">
@@ -20,19 +15,9 @@
     <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full">
         <NavbarContent/>
     </div>
-    <div class="flex-none flex-y">
-        <div class="flex-x text-xxs px-3 py-1 items-baseline border-t border-bg-03">
-            <div class="px-0.5 w-full"><b class="text-02 font-medium">@version</b></div>
-            @if (HostInfo.HostKind != HostKind.Maui)
-            {
-                <div class="pt-0.5 w-24"><BlazorModeToggle/></div>
-            }
-        </div>
-    </div>
 </div>
 
 @code {
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 

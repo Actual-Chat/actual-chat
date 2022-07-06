@@ -244,7 +244,7 @@
 /* Suffixes */
 
 button.on, .btn.on, .btn.btn-square.on {
-    @apply text-toggle-on;
+    @apply text-success;
 }
 button.off, .btn.off, .btn.btn-square.off {
     @apply text-03;

@@ -16,6 +16,7 @@ public partial class ChatUI
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<Symbol> RecordingChatId { get; }
     public IMutableState<ImmutableHashSet<Symbol>> PinnedChatIds { get; }
+    public IMutableState<List<Symbol>> ListenedChatIds { get; }
     public IMutableState<bool> MustPlayPinnedChats { get; }
     public IMutableState<bool> MustPlayPinnedContactChats { get; }
     public IMutableState<bool> IsPlaying { get; }
@@ -33,6 +34,7 @@ public partial class ChatUI
         ActiveChatId = StateFactory.NewMutable<Symbol>();
         RecordingChatId = StateFactory.NewMutable<Symbol>();
         PinnedChatIds = StateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
+        ListenedChatIds = StateFactory.NewMutable(new List<Symbol>());
         MustPlayPinnedChats = StateFactory.NewMutable<bool>();
         MustPlayPinnedContactChats = StateFactory.NewMutable<bool>();
         IsPlaying = StateFactory.NewMutable<bool>();
