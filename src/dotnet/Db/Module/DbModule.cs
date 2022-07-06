@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
@@ -58,8 +59,52 @@ public class DbModule : HostModule<DbSettings>
         };
 
         // Adding services
+        services.TryAddSingleton<OutstandingDbConnectionsCounter>();
         services.AddSingleton(dbInfo);
-        services.AddDbContextFactory<TDbContext>(builder => {
+        services.AddDbContextFactory<TDbContext>((svp, builder) => {
+            var counter = svp.GetRequiredService<OutstandingDbConnectionsCounter>();
+            var logger = svp.GetRequiredService<ILogger<DbModule>>();
+            // builder.LogTo(
+            //     data => logger.LogInformation(data),
+            //     new[] {
+            //         // CoreEventId.ContextInitialized,
+            //         // CoreEventId.ContextInitialized,
+            //         RelationalEventId.ConnectionOpened,
+            //         RelationalEventId.ConnectionClosed
+            //     });
+            builder.LogTo(
+                (eventId, level) =>
+                        eventId.Id == RelationalEventId.ConnectionOpened ||
+                        eventId.Id == RelationalEventId.ConnectionClosed ||
+                        eventId.Id == RelationalEventId.ConnectionError ||
+                        eventId.Id == RelationalEventId.ConnectionOpening ||
+                        eventId.Id == RelationalEventId.ConnectionClosing
+                ,data => {
+                    string message = string.Empty;
+                    if (data is ConnectionEndEventData endEventData) {
+                        var connectionId = endEventData.ConnectionId;
+                        var dbName = endEventData.Connection.Database;
+                        if (endEventData.EventId == RelationalEventId.ConnectionOpened.Id) {
+                            var count = counter.Increment(dbName);
+                            message = $"Connection Opened ({connectionId}). Db: '{dbName}' ({count})";
+                        }
+                        else if (endEventData.EventId == RelationalEventId.ConnectionClosed.Id) {
+                            var count = counter.Decrement(dbName);
+                            message = $"Connection Closed ({connectionId}). Db: '{dbName}' ({count})";
+                        }
+                        else if (endEventData.EventId == RelationalEventId.ConnectionError.Id) {
+                            var errorEventData = (ConnectionErrorEventData)endEventData;
+                            message = $"Connection Error ({connectionId}). Db: '{dbName}'. Error details: {errorEventData.Exception}";
+                        }
+                        else {
+
+                        }
+                    }
+                    else {
+
+                    }
+                    logger.LogInformation(!message.IsNullOrEmpty() ? message : data.ToString());
+                });
             switch (dbKind) {
             case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).Name);
