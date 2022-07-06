@@ -214,13 +214,11 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+            .FirstOrDefaultAsync(a => a.Id == authorId, cancellationToken)
             .ConfigureAwait(false);
         if (dbChatAuthor == null)
             throw new InvalidOperationException("Chat author missing");
         dbChatAuthor.HasLeft = hasLeft;
-
-        //throw new InvalidOperationException("something went wrong");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var chatAuthor = dbChatAuthor.ToModel();
