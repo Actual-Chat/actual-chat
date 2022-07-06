@@ -76,6 +76,8 @@ public class DbModule : HostModule<DbSettings>
             //     });
             builder.LogTo(
                 (eventId, level) =>
+                        eventId.Id == CoreEventId.ContextInitialized ||
+                        eventId.Id == CoreEventId.ContextDisposed ||
                         eventId.Id == RelationalEventId.ConnectionOpened ||
                         eventId.Id == RelationalEventId.ConnectionClosed ||
                         eventId.Id == RelationalEventId.ConnectionError ||
