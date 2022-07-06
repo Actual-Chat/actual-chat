@@ -4,6 +4,7 @@ public class OutstandingDbConnectionsCounter
 {
     private readonly object _syncObject = new object();
     private readonly Dictionary<string, int> _counters = new ();
+    private int _index;
 
     public int Increment(string dbName)
     {
@@ -24,6 +25,18 @@ public class OutstandingDbConnectionsCounter
             value--;
             _counters[dbName] = value;
             return value;
+        }
+    }
+
+    public bool CheckDump()
+    {
+        lock (_syncObject) {
+            _index++;
+            if (_index >= 20) {
+                _index = 0;
+                return true;
+            }
+            return false;
         }
     }
 }

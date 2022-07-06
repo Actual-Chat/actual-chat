@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Text;
 using ActualChat.Configuration;
 using ActualChat.Db.MySql;
 using ActualChat.Hosting;
@@ -81,12 +83,17 @@ public class DbModule : HostModule<DbSettings>
                         eventId.Id == RelationalEventId.ConnectionClosing
                 ,data => {
                     string message = string.Empty;
+                    string extraMessage = string.Empty;
                     if (data is ConnectionEndEventData endEventData) {
                         var connectionId = endEventData.ConnectionId;
                         var dbName = endEventData.Connection.Database;
                         if (endEventData.EventId == RelationalEventId.ConnectionOpened.Id) {
                             var count = counter.Increment(dbName);
                             message = $"Connection Opened ({connectionId}). Db: '{dbName}' ({count})";
+                            if (counter.CheckDump()) {
+                                var dbConnection = endEventData.Connection;
+                                extraMessage += DumpConnections(dbConnection);
+                            }
                         }
                         else if (endEventData.EventId == RelationalEventId.ConnectionClosed.Id) {
                             var count = counter.Decrement(dbName);
@@ -104,6 +111,8 @@ public class DbModule : HostModule<DbSettings>
 
                     }
                     logger.LogInformation(!message.IsNullOrEmpty() ? message : data.ToString());
+                    if (!extraMessage.IsNullOrEmpty())
+                        logger.LogInformation(extraMessage);
                 });
             switch (dbKind) {
             case DbKind.InMemory:
@@ -153,6 +162,51 @@ public class DbModule : HostModule<DbSettings>
             dbContext.AddRedisOperationLogChangeTracking();
         });
     }
+
+    private static string DumpConnections(DbConnection dbConnection)
+    {
+        var sb = new StringBuilder();
+        using (var cmd = dbConnection.CreateCommand()) {
+            cmd.CommandText = "SELECT * FROM pg_stat_activity";
+            using (var reader = cmd.ExecuteReader()) {
+                if (reader.HasRows) {
+                    var line = string.Empty;
+                    var queryIndex = -1;
+                    for (int i = 0; i < reader.FieldCount; i++) {
+                        var columnName = reader.GetName(i);
+                        if (columnName == "query")
+                            queryIndex = i;
+                        if (!line.IsNullOrEmpty())
+                            line += "\t";
+                        line += columnName;
+                    }
+                    sb.AppendLine(line);
+
+                    var rowsNumber = 0;
+                    while (reader.Read()) {
+                        line = String.Empty;
+                        for (int i = 0; i < reader.FieldCount; i++) {
+                            var cellValue = reader.IsDBNull(i) ? "<null>" : reader.GetValue(i).ToString();
+                            if (queryIndex >= 0 && queryIndex == i)
+                                cellValue = LinerizeQuery(cellValue);
+                            if (!line.IsNullOrEmpty())
+                                line += "\t";
+                            line += cellValue;
+                        }
+                        sb.AppendLine(line);
+                        rowsNumber++;
+                    }
+                    sb.AppendLine("Total rows: " + rowsNumber);
+                }
+            }
+        }
+        return sb.ToString();
+    }
+
+    private static string LinerizeQuery(string query)
+        => query
+            .Replace(Environment.NewLine, " ")
+            .Replace("\n", " ");
 
     public override void InjectServices(IServiceCollection services)
     {
