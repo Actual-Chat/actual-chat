@@ -101,7 +101,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return new(chatId, author, user, userProfile?.IsAdmin == true ? ChatPermissions.Owner : 0);
         }
 
-        if (author != null)
+        if (author != null && !author.HasLeft)
             return new(chatId, author, user, ChatPermissions.ReadWrite);
         if (chat.IsPublic)
             return new(chatId, author, user, ChatPermissions.Read);

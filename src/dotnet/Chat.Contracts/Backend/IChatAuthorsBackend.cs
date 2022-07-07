@@ -23,9 +23,18 @@ public interface IChatAuthorsBackend : IComputeService
     [CommandHandler]
     Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task<ChatAuthor> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record CreateCommand(
         [property: DataMember] string ChatId,
         [property: DataMember] string UserId
         ) : ICommand<ChatAuthor>, IBackendCommand;
+
+    [DataContract]
+    public sealed record ChangeHasLeftCommand(
+        [property: DataMember] string AuthorId,
+        [property: DataMember] bool HasLeft
+    ) : ICommand<ChatAuthor>, IBackendCommand;
 }

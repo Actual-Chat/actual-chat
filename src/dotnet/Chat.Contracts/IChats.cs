@@ -85,6 +85,9 @@ public interface IChats : IComputeService
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record CreateChatCommand(
         [property: DataMember] Session Session,
@@ -123,4 +126,10 @@ public interface IChats : IComputeService
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record LeaveChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+    ) : ISessionCommand<Unit>;
 }
