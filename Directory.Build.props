@@ -66,7 +66,7 @@
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
-    <NoWarn>$(NoWarn);CS1591;CS8669;MA0009;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD110</NoWarn>
+<!--    <NoWarn>$(NoWarn);CS1591;CS8669;MA0009;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD110</NoWarn>-->
 
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>

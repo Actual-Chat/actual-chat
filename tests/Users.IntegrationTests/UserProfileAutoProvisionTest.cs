@@ -32,7 +32,7 @@ public class UserProfileAutoProvisionTest : AppHostTestBase
     public async Task ShouldCreateProfileForNewUser()
     {
         // arrange
-        var user = await _tester.SignIn(new User("", "Bob"));
+        var user = await _tester.SignIn(new User("Bob"));
 
         // act
         var userProfile = (await _userProfiles.Get(_tester.Session, default))!;
@@ -47,7 +47,7 @@ public class UserProfileAutoProvisionTest : AppHostTestBase
     public async Task ShouldNotTouchProfileForExistingUser()
     {
         // arrange
-        var user = await _tester.SignIn(new User("", "Bob"));
+        var user = await _tester.SignIn(new User("Bob"));
         var expected = (await _userProfiles.Get(_tester.Session, default))!;
         await _tester.SignOut();
 

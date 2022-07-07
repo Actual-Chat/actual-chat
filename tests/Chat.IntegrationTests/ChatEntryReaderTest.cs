@@ -17,7 +17,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -57,7 +57,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 
@@ -100,7 +100,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -134,7 +134,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -179,7 +179,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();

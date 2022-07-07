@@ -43,7 +43,7 @@ public class RemoteInvalidationBugTest : AppHostTestBase
         i1a.Should().Be(i1bb);
         c1bb.Should().BeSameAs(c1a);
 
-        await t.SignIn(new User("", "Bob"));
+        await t.SignIn(new User("Bob"));
         await Task.Delay(100);
 
         var c2a = await Computed.Capture(_ => t.Auth.GetUser(t.Session));

@@ -28,7 +28,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
         _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
         _adminSession = _sessionFactory.CreateSession();
 
-        await _tester.AppHost.SignIn(_adminSession, new User("", "BobAdmin"));
+        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
     public override async Task DisposeAsync()
