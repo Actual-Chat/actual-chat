@@ -56,6 +56,7 @@ public static class TestHostFactory
                 });
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
+                services.AddSingleton<PostgreSqlPoolCleaner>();
             },
             AppConfigurationBuilder = builder => {
                 ConfigureTestApp(builder, output);
@@ -64,6 +65,7 @@ public static class TestHostFactory
         };
         await appHost.Build();
         await appHost.Initialize();
+        _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // force service instantiation
         await appHost.Start();
         return appHost;
     }
@@ -150,6 +152,13 @@ public static class TestHostFactory
     {
         var test = output.GetTest();
         // Postgres identifier limit is 63 bytes
-        return FilePath.GetHashedName(test.TestCase.UniqueID, test.DisplayName);
+        var displayName = test.DisplayName;
+        // On build server displayName is generated based on class full name and method name,
+        // while in Rider only method name is used.
+        // Drop namespace to have more readable instance name (with test method name) after length is truncated.
+        var classNamespace = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
+        if (displayName.StartsWith(classNamespace))
+            displayName = displayName.Substring(classNamespace.Length + 1);
+        return FilePath.GetHashedName(test.TestCase.UniqueID, displayName);
     }
 }
