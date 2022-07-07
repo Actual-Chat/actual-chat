@@ -55,11 +55,11 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     private DotNetObjectReference<IRightPanelSearchBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     public override async ValueTask DisposeAsync()
     {

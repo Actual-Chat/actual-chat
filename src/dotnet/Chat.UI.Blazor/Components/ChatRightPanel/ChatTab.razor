@@ -16,6 +16,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()

@@ -30,7 +30,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
         await PseudoGetAll(searchKey, cancellationToken).ConfigureAwait(false);
 
@@ -148,8 +148,10 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             // If we're here, the command has completed w/o an error
 
             if (userInviteDetails != null) {
-                userProfile.Status = UserStatus.Active;
-                await _commander.Call(new IUserProfilesBackend.UpdateCommand(userProfile), true, cancellationToken)
+                 var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile with {
+                     Status = UserStatus.Active,
+                 });
+                 await _commander.Call(updateCommand, true, cancellationToken)
                     .ConfigureAwait(false);
                 return;
             }

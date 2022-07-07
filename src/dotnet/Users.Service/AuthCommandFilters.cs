@@ -113,8 +113,9 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>();
-        if (sessionInfo?.IsAuthenticated != true)
+        if (sessionInfo?.IsAuthenticated() != true)
             return;
+
         var userId = sessionInfo.UserId;
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }

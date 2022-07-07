@@ -44,8 +44,8 @@ public class UserStatusTest : AppHostTestBase
                      UserStatus.Inactive, UserStatus.Suspended, UserStatus.Active, UserStatus.Inactive,
                      UserStatus.Suspended, UserStatus.Active,
                  }) {
-            userProfile.Status = newStatus;
-            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, userProfile));
+            var newUserProfile = userProfile with { Status = newStatus };
+            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, newUserProfile));
 
             // assert
             userProfile = await GetUserProfile();

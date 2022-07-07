@@ -1,6 +1,5 @@
 using System.Security;
 using ActualChat.Users.Db;
-using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -22,7 +21,7 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
     public virtual async Task<UserProfile?> Get(Session session, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return null;
 
         return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);

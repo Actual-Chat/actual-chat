@@ -22,8 +22,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -106,8 +105,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -141,8 +139,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -187,8 +184,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();

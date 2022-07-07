@@ -93,12 +93,12 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return chatAuthor;
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
+        var userId = user?.Id ?? Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
-        if (!user.IsAuthenticated) {
+        if (user == null) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));

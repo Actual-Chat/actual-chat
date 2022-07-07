@@ -1,7 +1,9 @@
-@using Stl.Plugins
-@using Blazored.Modal
+@using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
+@using Blazored.Modal
+@using Stl.OS
+@using Stl.Plugins
 @implements IDisposable
 @{
     var moduleAssemblies = Plugins.GetPlugins<IBlazorUIModule>()
@@ -9,7 +11,7 @@
         .ToArray();
 }
 
-<CascadingAuthState SessionId="@SessionId">
+<CascadingAuthState>
     <Welcome>
         <CascadingBlazoredModal>
             <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="moduleAssemblies">
@@ -44,7 +46,7 @@
     protected override Task OnInitializedAsync()
     {
         if (!SessionId.IsNullOrEmpty()) {
-            var session = new Session(SessionId);
+            var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
             if (SessionProvider.HasSession) {
                 if (SessionProvider.Session != session)
                     // No way to change Session other than page reload

@@ -64,9 +64,10 @@
     [Inject] private NavigationManager Nav { get; set; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; set; } = null!;
 
+    private ChatAuthor RequestAuthor { get; set; } = null!;
+
     [CascadingParameter] public ChatMessageModel Model { get; set; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-    private ChatAuthor RequestAuthor { get; set; } = null!;
 
     private bool _isJoined;
     private bool _isEntryAuthor;

@@ -28,7 +28,7 @@ public class TranscriptStreamer : ITranscriptStreamer
         IAsyncEnumerable<Transcript> diffs,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new () { ExpirationPeriod = Settings.EndedStreamTtl });
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new () { ExpirationPeriod = Settings.StreamExpirationPeriod });
         return streamer.Write(diffs, cancellationToken);
     }
 

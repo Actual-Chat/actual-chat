@@ -20,7 +20,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
     public virtual async Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return null;
 
         var compositeId = DbChatReadPosition.ComposeId(user.Id, chatId);
@@ -38,7 +38,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
         }
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);

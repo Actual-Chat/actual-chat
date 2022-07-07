@@ -3,7 +3,7 @@ namespace ActualChat.Invite.Backend;
 public interface IInvitesBackend : IComputeService
 {
     [ComputeMethod]
-    Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
+    Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite?> Get(string id, CancellationToken cancellationToken);
 

@@ -62,7 +62,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return chatId;
         case ChatIdKind.PeerShort:
             var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-            user.MustBeAuthenticated();
+            user = user.AssertAuthenticated();
             return ParsedChatId.FormatFullPeerChatId(user.Id, parsedChatId.UserId1);
         default:
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -74,7 +74,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var chatIds = await ChatAuthors.ListOwnChatIds(session, cancellationToken).ConfigureAwait(false);
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user.IsAuthenticated) {
+        if (user != null) {
             var ownedChatIds = await Backend.ListOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(ownedChatIds).ToImmutableArray();
 
@@ -180,7 +180,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return false;
 
         var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
@@ -201,7 +201,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         else {
             var userId2 = parsedChatPrincipalId.UserId.Id;
             var user2 = await AuthBackend.GetUser(default, userId2, cancellationToken).ConfigureAwait(false);
-            if (user2 == null || !user2.IsAuthenticated || user2.Id == user.Id)
+            if (user2 == null || user2.Id == user.Id)
                 return false;
         }
         return true;
@@ -380,7 +380,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             Id = chatId,
             ChatType = ChatType.Peer,
         };
+
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        user = user.AssertAuthenticated();
+
         var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;

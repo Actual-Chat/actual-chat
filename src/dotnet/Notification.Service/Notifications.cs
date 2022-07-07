@@ -48,7 +48,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return ChatNotificationStatus.NotSubscribed;
 
         var dbContext = CreateDbContext();
@@ -75,7 +75,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
 
         var (session, deviceId, deviceType) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -119,7 +119,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         }
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return;
 
         string userId = user.Id;

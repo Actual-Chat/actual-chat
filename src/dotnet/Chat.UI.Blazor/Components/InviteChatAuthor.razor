@@ -65,8 +65,8 @@
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
     private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();

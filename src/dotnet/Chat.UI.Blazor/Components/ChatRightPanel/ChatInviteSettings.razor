@@ -9,7 +9,7 @@
     <h4 class="section">Public join link</h4>
     <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl"/>
 }
-@if (m.Invites.Count > 0 || m.PublicUrl.IsNullOrEmpty()) {
+@if (m.Invites.Length > 0 || m.PublicUrl.IsNullOrEmpty()) {
     <h4 class="section">Private join links</h4>
     <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
     <div class="mt-2 @(new FlexMode(FlexAlignment.End))">
@@ -18,13 +18,13 @@
 }
 
 @code {
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -55,6 +55,6 @@
         public static Model None { get; } = new();
 
         public string PublicUrl { get; set; } = "";
-        public IImmutableList<Invite> Invites { get; set; } = ImmutableArray.Create<Invite>();
+        public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray.Create<Invite>();
     }
 }

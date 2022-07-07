@@ -72,7 +72,7 @@ namespace ActualChat.UI.Blazor.App
             fusionClient.ConfigureWebSocketChannel(_ => new() {
                 BaseUri = baseUri,
                 LogLevel = LogLevel.Information,
-                MessageLogLevel = LogLevel.Information,
+                MessageLogLevel = LogLevel.None,
             });
 
             // Injecting plugin services

@@ -18,7 +18,7 @@ public class InvitesBackendController : ControllerBase, IInvitesBackend
     }
 
     [HttpGet, Publish]
-    public Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
         => _service.GetAll(searchKey, minRemaining, cancellationToken);
 
     [HttpGet, Publish]

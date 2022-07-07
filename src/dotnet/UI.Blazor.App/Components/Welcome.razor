@@ -68,9 +68,11 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         if (_welcomeOptions != null && _welcomeOptions.ByPass)
             return new Model(false) { ByPass = true };
+
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return new Model(false);
+
         var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
         var userStatus = userProfile?.Status ?? UserStatus.Inactive;
         bool activate = false;

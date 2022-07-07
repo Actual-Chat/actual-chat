@@ -52,7 +52,7 @@
             };
 
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return Model.None;
 
         var parsedChatId = new ParsedChatId(recordingChat.Id);

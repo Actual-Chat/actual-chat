@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @{
-    var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var buttonClass = "btn-success " + ButtonClass;
 }
@@ -15,8 +15,8 @@
     <MenuTemplate>
         <Menu Class="rounded-md border border-accent p-1 mt-1" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
             @foreach (var (name, displayName) in unusedAuthSchemas) {
-                MenuItemTitle = "Sign in with " + displayName;
-                <MenuItem Title="@MenuItemTitle" Click="(() => SignIn(name))"/>
+                var title = "Sign in with " + displayName;
+                <MenuItem Title="@title" Click="(() => SignIn(name))"/>
             }
         </Menu>
     </MenuTemplate>
@@ -25,21 +25,21 @@
 @code {
     [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
 
-    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
-    private User User => AuthState.User;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-    private string MenuItemTitle { get; set; } = "";
+    private User? User { get; set; }
 
     [CascadingParameter] private Task<AuthState> AuthStateTask { get; set; } = null!;
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string ContentPositionClass { get; set; } = "";
 
-    protected override async Task OnParametersSetAsync()
-        => AuthState = await AuthStateTask;
+    protected override async Task OnParametersSetAsync() {
+        User = (await AuthStateTask).User;
+        StateHasChanged();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-    // GetSchemas requires JS interop, so it can be called only at this point
+            // GetSchemas requires JS interop, so it can be called only at this point
             AuthSchemas = await ClientAuthHelper.GetSchemas();
             StateHasChanged();
         }

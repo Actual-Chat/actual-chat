@@ -19,7 +19,7 @@ public class AudioProcessorTest : AppHostTestBase
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
 

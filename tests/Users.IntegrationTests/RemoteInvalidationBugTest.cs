@@ -17,7 +17,7 @@ public class RemoteInvalidationBugTest : AppHostTestBase
 
         var c1a = await Computed.Capture(_ => t.Auth.GetUser(t.Session));
         var u1a = c1a.Value;
-        u1a.IsAuthenticated.Should().BeFalse();
+        u1a.Should().BeNull();
 
         // var altAuth = (DbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>) t.Auth;
         // var c1aa = await Computed.Capture(_ => altAuth.GetUser(t.Session));
@@ -25,7 +25,7 @@ public class RemoteInvalidationBugTest : AppHostTestBase
 
         var c1b = await Computed.Capture(_ => t.ClientAuth.GetUser(t.Session));
         var u1b = c1b.Value;
-        u1b.IsAuthenticated.Should().BeFalse();
+        u1b.Should().BeNull();
 
         var r1 = ((IReplicaMethodComputed)c1b).Replica!;
         var publisher = t.AppServices.GetRequiredService<IPublisher>();
@@ -48,9 +48,9 @@ public class RemoteInvalidationBugTest : AppHostTestBase
 
         var c2a = await Computed.Capture(_ => t.Auth.GetUser(t.Session));
         var u2a = c2a.Value;
-        u2a.IsAuthenticated.Should().BeTrue();
+        u2a.Should().NotBeNull();
         var c2b = await Computed.Capture(_ => t.ClientAuth.GetUser(t.Session));
         var u2b = c2b.Value;
-        u2b.IsAuthenticated.Should().BeTrue();
+        u2b.Should().NotBeNull();
     }
 }

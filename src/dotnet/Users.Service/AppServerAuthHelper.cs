@@ -28,9 +28,9 @@ public class AppServerAuthHelper : ServerAuthHelper
         return isCloseWindowRequest;
     }
 
-    protected override (User User, UserIdentity AuthenticatedIdentity) UpsertUser(User user, ClaimsPrincipal httpUser, string schema)
+    protected override (User User, UserIdentity AuthenticatedIdentity) CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema)
     {
-        var (newUser, userIdentity) = base.UpsertUser(user, httpUser, schema);
+        var (newUser, userIdentity) = base.CreateOrUpdateUser(user, httpUser, schema);
         var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
         newUser = ClaimMapper.UpdateClaims(newUser, httpClaims);
         return (newUser, userIdentity);
