@@ -369,12 +369,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (chat.OwnerIds.Contains(user.Id)) {
-            throw new InvalidOperationException(
-                    "You are the last owner of the chat. At the moment delete and leave feature is missing.");
+            throw new NotSupportedException("The very last owner of the chat can't leave it.");
             // TODO: managing ownership functionality is required
             // check if there are other owners
             // if yes, remove current user from owners
-            // otherwise block operation
+            // otherwise delete the chat (telegram does it that way)
         }
 
         var leaveAuthorCommand = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, true);

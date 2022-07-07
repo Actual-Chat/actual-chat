@@ -17,7 +17,7 @@
 @code {
     [Inject] Session Session { get; init; } = null!;
     [Inject] UICommandRunner Commander { get; init; } = null!;
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnCancel()
