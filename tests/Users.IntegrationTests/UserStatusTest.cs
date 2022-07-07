@@ -46,7 +46,6 @@ public class UserStatusTest : AppHostTestBase
         // assert
         userProfile.Status.Should().Be(NewUserStatus);
 
-
         // act
         var newStatuses = new[] {
             UserStatus.Inactive, UserStatus.Suspended,
