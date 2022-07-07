@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20220704184725_ChatAuthorHasLeft")]
+    [Migration("20220707183828_ChatAuthorHasLeft")]
     partial class ChatAuthorHasLeft
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
