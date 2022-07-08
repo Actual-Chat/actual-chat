@@ -34,13 +34,13 @@ export class ChatMessageEditor {
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
-        this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
+        this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
         this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
         const recordButtonObserverConfig = {
             attributes: true,
             childList: false,
-            subtree: false
+            subtree: false,
         };
         this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
         this.changeMode();
@@ -58,7 +58,7 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
-    })
+    });
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
         for (const file of this.filesPicker.files) {
@@ -67,13 +67,13 @@ export class ChatMessageEditor {
                 break;
         }
         this.filesPicker.value = '';
-    })
+    });
 
     private postClickListener = ((event: MouseEvent & { target: Element; }) => {
         const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
         input.focus();
         this.changeMode();
-    })
+    });
 
     private syncLanguageButtonVisibility = () => {
         const isRecording = this.recordButton.classList.contains('on');
@@ -85,11 +85,11 @@ export class ChatMessageEditor {
         } else {
             this.editorDiv.classList.remove('record-mode');
         }
-    }
+    };
 
     private changeMode() {
         const text = this.getText();
-        const isTextMode = text != "" || this.attachments.size > 0;
+        const isTextMode = text != '' || this.attachments.size > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -111,7 +111,7 @@ export class ChatMessageEditor {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added : boolean = await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
+        const added : boolean = await this.blazorRef.invokeMethodAsync('AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!added) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -134,11 +134,11 @@ export class ChatMessageEditor {
 
     public clearAttachments() {
         const attachments = this.attachments;
-        this.attachments.clear();
         attachments.forEach(a => {
             if (a && a.Url)
                 URL.revokeObjectURL(a.Url);
-        })
+        });
+        this.attachments.clear();
         this.changeMode();
     }
 
@@ -148,19 +148,19 @@ export class ChatMessageEditor {
         if (this.attachments.size > 0) {
             let i = 0;
             this.attachments.forEach(attachment => {
-                formData.append("files[" + i + "]", attachment.File);
-                attachmentsList.push({ "id": i, "filename": attachment.File.name, "description": '' });
+                formData.append('files[' + i + ']', attachment.File);
+                attachmentsList.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
                 i++;
-            })
+            });
         }
 
-        const payload = { "text": text, "attachments": attachmentsList, "repliedChatEntryId": repliedChatEntryId };
+        const payload = { 'text': text, 'attachments': attachmentsList, 'repliedChatEntryId': repliedChatEntryId };
         const payloadJson = JSON.stringify(payload);
-        formData.append("payload_json", payloadJson);
+        formData.append('payload_json', payloadJson);
 
         console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
-        let url = "api/chats/" + chatId + "/message";
-        const baseUri = window["_baseURI"]; // web api _baseURI when running in MAUI
+        let url = 'api/chats/' + chatId + '/message';
+        const baseUri = window['_baseURI']; // web api _baseURI when running in MAUI
         if (baseUri)
             url = new URL(url, baseUri).toString();
         const response = await fetch(url, {
@@ -172,12 +172,12 @@ export class ChatMessageEditor {
         if (!response.ok) {
             let reason = response.statusText;
             if (!reason)
-                reason = "unknown";
+                reason = 'unknown';
             throw new Error('Failed to send message. Reason: ' + reason);
         }
         const entryId = await response.text();
         return Number(entryId);
-    }
+    };
 
     public onPostSucceeded = () => {
         for (const attachment of this.attachments.values()) {
@@ -187,18 +187,18 @@ export class ChatMessageEditor {
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
         this.changeMode();
-    }
+    };
 
     public showFilesPicker = () => {
         this.filesPicker.click();
-    }
+    };
 
     public onSlateEditorRendered()
     {
         const editorHandle = this.editorHandle();
         if (!editorHandle) {
             console.error('SlateEditorHandle is undefined');
-            return
+            return;
         }
         this.changeMode();
         editorHandle.onHasContentChanged = () => this.changeMode();
@@ -207,11 +207,11 @@ export class ChatMessageEditor {
     private editorHandle = () : SlateEditorHandle => {
         // @ts-ignore
         return this.input.editorHandle as SlateEditorHandle;
-    }
+    };
 
     public dispose() {
         this.input.removeEventListener('paste', this.inputPasteListener);
-        this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
+        this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButtonObserver.disconnect();
     }
