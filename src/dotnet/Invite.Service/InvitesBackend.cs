@@ -130,11 +130,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var chatInviteDetails = invite.Details?.Chat;
-        if (chatInviteDetails != null) {
-            var chat = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                throw new KeyNotFoundException("Chat not found.");
-        }
+        if (chatInviteDetails != null)
+            _ = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Required().ConfigureAwait(false);
 
         dbInvite.UpdateFrom(invite);
 
