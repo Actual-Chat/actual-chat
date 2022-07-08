@@ -27,7 +27,9 @@
         <NavbarItem Url="/test/slate-editor">Slate Editor</NavbarItem>
         <NavbarItem Url="/test/fusion">Fusion</NavbarItem>
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
-        <NavbarItem Url="/test/maui">Maui</NavbarItem>
+        @if (HostInfo.HostKind == HostKind.Maui) {
+            <NavbarItem Url="/test/maui">Maui</NavbarItem>
+        }
     </NavbarGroup>
 }
 
