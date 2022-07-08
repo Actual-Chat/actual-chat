@@ -11,5 +11,5 @@
 }
 
 .context-menu .context-menu-menu {
-    @apply bg-context-menu border border-bg-02;
+    @apply bg-context-menu border border-bg-02 py-1.5;
 }
