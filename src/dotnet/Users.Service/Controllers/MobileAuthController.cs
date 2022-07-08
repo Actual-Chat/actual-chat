@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Internal;
 
 namespace ActualChat.Users.Controllers;
 
@@ -69,15 +68,10 @@ public class MobileAuthController : Controller
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         else {
             var sessionResolver = new SimpleSessionResolver(new Session(sessionId));
+            var customServiceProvider = new CustomServiceProvider(_services, sessionResolver);
             var helper = new ServerAuthHelper(
-               _services.GetService<ServerAuthHelper.Options>(),
-               _services.GetRequiredService<IAuth>(),
-               _services.GetRequiredService<IAuthBackend>(),
-               sessionResolver,
-               _services.GetRequiredService<AuthSchemasCache>(),
-               _services.GetRequiredService<ICommander>(),
-               _services.GetRequiredService<MomentClockSet>()
-            );
+                _services.GetRequiredService<ServerAuthHelper.Options>(),
+                customServiceProvider);
             await helper.UpdateAuthState(HttpContext, cancellationToken).ConfigureAwait(false);
 
             await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
@@ -101,6 +95,21 @@ public class MobileAuthController : Controller
             "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
         HttpContext.Response.ContentType = "text/html; charset=utf-8";
         await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private class CustomServiceProvider : IServiceProvider
+    {
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ISessionResolver _sessionResolver;
+
+        public CustomServiceProvider(IServiceProvider serviceProvider, ISessionResolver sessionResolver)
+        {
+            _serviceProvider = serviceProvider;
+            _sessionResolver = sessionResolver;
+        }
+
+        public object? GetService(Type serviceType)
+            => serviceType == typeof(ISessionResolver) ? _sessionResolver : _serviceProvider.GetService(serviceType);
     }
 
     private class SimpleSessionResolver : ISessionResolver
