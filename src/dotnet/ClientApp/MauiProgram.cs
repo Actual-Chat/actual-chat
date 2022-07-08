@@ -63,7 +63,7 @@ public static class MauiProgram
         //var settings = builder.Configuration.Get<ClientAppSettings>();
         var settings = new ClientAppSettings { BaseUri = GetBackendUrl() };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
-            throw new Exception("Wrong configuration, base uri can't be empty");
+            throw new Exception("Wrong configuration, base uri can't be empty.");
         services.TryAddSingleton<ClientAppSettings>(settings);
 
         ConfigureServices(services, new Uri(settings.BaseUri));

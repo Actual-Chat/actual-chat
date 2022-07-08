@@ -80,7 +80,7 @@ internal class Invites : IInvites
     private async Task AssertCanGetUserInvites(Session session, CancellationToken cancellationToken)
     {
         if (!await _auth.IsAdmin(session, cancellationToken).ConfigureAwait(false))
-            throw new SecurityException("Not allowed to read user invites");
+            throw new SecurityException("Not allowed to read user invites.");
     }
 
     private async Task AssertReadChatInvites(Session session, string chatId, CancellationToken cancellationToken)
@@ -96,7 +96,7 @@ internal class Invites : IInvites
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
             if (!userProfile.IsAdmin)
-                throw new SecurityException("Only admins can generate user invites");
+                throw new SecurityException("Only admins can generate user invites.");
         }
 
         var chatInviteDetails = invite.Details?.Chat;

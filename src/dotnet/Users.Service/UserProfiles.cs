@@ -57,7 +57,7 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
         if (profileToUpdate.User.Id == profile.Id) {
             if (profile.Status != profileToUpdate.Status)
-                throw new SecurityException("Users cannot change their own statuses");
+                throw new SecurityException("Users cannot change their own statuses.");
 
             return;
         }
@@ -79,6 +79,6 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
             return;
         if (profile.Status == UserStatus.Active)
             return;
-        throw new SecurityException("User cannot read other profiles");
+        throw new SecurityException("User cannot read other profiles.");
     }
 }

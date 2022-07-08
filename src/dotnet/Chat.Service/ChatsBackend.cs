@@ -301,11 +301,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         var dbChat = await dbContext.Chats
             .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
+            .Required()
             .ConfigureAwait(false);
-        if (dbChat == null)
-            throw new InvalidOperationException("chat does not exists");
         if (dbChat.Version != chat.Version)
-            throw new InvalidOperationException("chat has been modified already");
+            throw new InvalidOperationException("chat has been modified already.");
 
         dbChat.Title = chat.Title;
         dbChat.Picture = chat.Picture;

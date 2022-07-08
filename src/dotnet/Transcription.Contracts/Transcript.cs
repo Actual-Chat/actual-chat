@@ -57,7 +57,7 @@ public sealed class Transcript
         var textRange = TextToTimeMap.XRange;
         TextRange = ((int)textRange.Start, (int)textRange.End);
         if (TextRange.Size() != Text.Length)
-            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
+            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length.");
         TimeRange = TextToTimeMap.YRange;
         Flags = flags;
     }

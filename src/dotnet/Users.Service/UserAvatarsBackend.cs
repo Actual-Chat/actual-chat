@@ -127,9 +127,8 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
 
         var dbUserAvatar = await dbContext.UserAvatars
             .SingleOrDefaultAsync(a => a.Id == avatarId, cancellationToken)
+            .Required()
             .ConfigureAwait(false);
-        if (dbUserAvatar == null)
-            throw new InvalidOperationException("user avatar does not exists");
 
         dbUserAvatar.Name = command.Name;
         dbUserAvatar.Picture = command.Picture;

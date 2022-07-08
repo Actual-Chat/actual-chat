@@ -155,11 +155,12 @@ public static class TaskExt
         CancellationToken cancellationToken = default)
         => Task.WhenAll(tasks);
 
-    public static async Task<T> Required<T>(this Task<T?> source)
-        => await source.ConfigureAwait(false) ?? throw new NotFoundException($"{typeof(T).Name} not found");
+    public static async Task<T> Required<T>(this Task<T?> source, string? messageOverride = null)
+        => await source.ConfigureAwait(false)
+            ?? throw new NotFoundException(messageOverride.NullIfEmpty() ?? $"{typeof(T).Name} not found.");
 
-    public static async ValueTask<T> Required<T>(this ValueTask<T?> source)
-        => await source.ConfigureAwait(false) ?? throw new NotFoundException($"{typeof(T).Name} not found");
+    public static async ValueTask<T> Required<T>(this ValueTask<T?> source, string? messageOverride = null)
+        => await source.ConfigureAwait(false) ?? throw new NotFoundException(messageOverride.NullIfEmpty() ?? $"{typeof(T).Name} not found.");
 
     // WhenAny
 

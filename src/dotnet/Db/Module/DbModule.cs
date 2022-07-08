@@ -47,7 +47,7 @@ public class DbModule : HostModule<DbSettings>
                 => (DbKind.PostgreSql, suffix.Trim()),
             { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
                 => (DbKind.MySql, suffix.Trim()),
-            _ => throw new InvalidOperationException("Unrecognized database connection string"),
+            _ => throw new InvalidOperationException("Unrecognized database connection string."),
         };
         var dbInfo = new DbInfo<TDbContext> {
             DbKind = dbKind,
