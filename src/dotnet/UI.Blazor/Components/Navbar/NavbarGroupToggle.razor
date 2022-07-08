@@ -14,7 +14,7 @@
     </div>
     <ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
         <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
-            <path d="@IconPath"></path>
+            @IconSvg
         </svg>
     </ButtonSquare>
 </div>
@@ -25,12 +25,12 @@
     private EventHandler? _onActiveGroupChanged;
 
     [Parameter] public string? Class { get; set; } = "";
-    [Parameter] public string? IconPath { get; set; }
     [Parameter] public int IconHeight { get; set; } = 8;
     [Parameter] public int IconWidth { get; set; } = 8;
     [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public RenderFragment IconSvg { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
