@@ -23,13 +23,13 @@
     @apply bg-white;
 }
 
-.navbar-pinned-chats {
+.navbar-places {
     @apply flex-y items-end text-square-title bg-04 min-w-nav-left px-4 gap-y-2;
 }
-.navbar-pinned-chats .btn.btn-square {
+.navbar-places .btn.btn-square {
     @apply h-auto rounded-xl;
 }
-.navbar-pinned-chats .btn.btn-square .btn-content {
+.navbar-places .btn.btn-square .btn-content {
     @apply h-12 w-12 justify-center bg-white;
 }
 .first-pinned.btn.btn-square .btn-content {
