@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<Welcome.Model?>
 @{
@@ -53,7 +54,7 @@
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
 
@@ -88,7 +89,7 @@
     }
 
     private async Task OnSignOutClick() {
-        await ClientAuthHelper.SignOut();
+        await ClientAuth.SignOut();
     }
 
     public record Model(bool IsAuthenticated) {
