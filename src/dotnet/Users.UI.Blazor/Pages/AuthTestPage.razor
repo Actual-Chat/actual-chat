@@ -131,6 +131,7 @@
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private UICommandRunner Commander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnInitializedAsync()
@@ -182,7 +183,7 @@
             return;
 
         var newUserProfile = userProfile with { Status = newStatus };
-        await UserProfiles.Update(new IUserProfiles.UpdateCommand(Session, newUserProfile), default);
+        await Commander.Run(new IUserProfiles.UpdateCommand(Session, newUserProfile));
     }
 
     public sealed record SessionModel
