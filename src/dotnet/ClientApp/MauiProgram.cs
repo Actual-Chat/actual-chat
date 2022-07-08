@@ -61,19 +61,19 @@ public static class MauiProgram
         });
 
         //var settings = builder.Configuration.Get<ClientAppSettings>();
-        var settings = new ClientAppSettings { BaseUri = GetBackendUrl() };
+        var sessionId = new SessionFactory().CreateSession().Id;
+        var settings = new ClientAppSettings {
+            BaseUri = GetBackendUrl(),
+            SessionId = sessionId
+        };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
             throw new Exception("Wrong configuration, base uri can't be empty");
         services.TryAddSingleton<ClientAppSettings>(settings);
 
         ConfigureServices(services, new Uri(settings.BaseUri));
 
-        SessionId = new SessionFactory().CreateSession().Id;
-
         return builder.Build();
     }
-
-    public static string SessionId {  get; set; }
 
     private static string GetBackendUrl()
     {

@@ -5,9 +5,10 @@
 
 @code {
     private string _sessionId = Session.Default.Id.Value;
+    [Inject] private ClientAppSettings ClientAppSettings { get; init; } = null!;
 
     protected override void OnInitialized()
     {
-        _sessionId = MauiProgram.SessionId;
-	}
+        _sessionId = ClientAppSettings.SessionId;
+    }
 }

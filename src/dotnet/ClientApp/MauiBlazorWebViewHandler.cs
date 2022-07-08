@@ -6,7 +6,11 @@ namespace ActualChat.ClientApp;
 
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
-    public string BaseUri => MauiContext?.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureSuffix("/") ?? throw new Exception("Failed to retrieve base url from client app settings");
+    public string BaseUri
+        => MauiContext!.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureSuffix("/")
+           ?? throw new Exception("Failed to retrieve base url from client app settings");
+    public string SessionId
+        => MauiContext!.Services.GetRequiredService<ClientAppSettings>().SessionId;
 
     public MauiBlazorWebViewHandler()
     {

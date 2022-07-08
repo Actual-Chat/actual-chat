@@ -24,9 +24,9 @@ public partial class MauiBlazorWebViewHandler
     {
         var ctrl = sender.CoreWebView2;
 
-        var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", MauiProgram.SessionId, "0.0.0.0", "/");
+        var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", SessionId, "0.0.0.0", "/");
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
-        cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", MauiProgram.SessionId, new Uri(BaseUri).Host, "/");
+        cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", SessionId, new Uri(BaseUri).Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
         cookie.IsSecure = true;
         ctrl.CookieManager.AddOrUpdateCookie(cookie);

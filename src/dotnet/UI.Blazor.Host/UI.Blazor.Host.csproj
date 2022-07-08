@@ -19,8 +19,4 @@
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Auth" />
-  </ItemGroup>
-
 </Project>

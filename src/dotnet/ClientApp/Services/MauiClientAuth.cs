@@ -15,13 +15,13 @@ internal sealed class MauiClientAuth : IClientAuth
 
     public async ValueTask SignIn(string scheme)
     {
-        var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signin/{MauiProgram.SessionId}/{scheme}";
+        var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signin/{_clientAppSettings.SessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
     public async ValueTask SignOut()
     {
-        var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signout/{MauiProgram.SessionId}";
+        var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signout/{_clientAppSettings.SessionId}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 

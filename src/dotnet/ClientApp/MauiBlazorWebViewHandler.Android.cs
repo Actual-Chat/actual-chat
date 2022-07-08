@@ -14,7 +14,7 @@ partial class MauiBlazorWebViewHandler
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(platformView, true);
-        var sessionCookieValue = $"FusionAuth.SessionId={MauiProgram.SessionId}; path=/; secure; samesite=none; httponly";
+        var sessionCookieValue = $"FusionAuth.SessionId={SessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
         cookieManager.SetCookie("https://" + new Uri(BaseUri).Host, sessionCookieValue);
         var jsInterface = new JavascriptInterface(this, platformView);
