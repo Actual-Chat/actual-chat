@@ -67,7 +67,7 @@
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row justify-start items-center gap-x-1 w-full;
+    @apply flex flex-row justify-start items-center gap-x-1 w-full px-2 py-1;
 }
 .navbar-item .navbar-item-content {
     @apply text-02 overflow-hidden my-0.5;
@@ -110,13 +110,18 @@
     @apply visible;
 }
 
-.navbar-item .pin-toggle.recording-in-chat,
-.navbar-item:hover .pin-toggle.recording-in-chat {
-    @apply text-recorder-on;
+.navbar-item .btn.btn-round.pin-toggle,
+.navbar-item:hover .btn.btn-round.pin-toggle {
+    @apply text-icons-01 bg-transparent;
+}
+.navbar-item .btn.btn-round.pin-toggle.recording-in-chat.on,
+.navbar-item:hover .btn.btn-round.pin-toggle.recording-in-chat.on {
+    @apply text-recorder-on bg-transparent;
 }
 
-.navbar-item .pin-toggle.recording-in-chat svg {
-    filter: drop-shadow(0px 0px 3px rgb(239 68 68 / 0.7));
+.listened-chats .navbar-subgroup .pin-toggle,
+.listened-chats .navbar-item .pin-toggle {
+    @apply visible;
 }
 
 .add-to-chat.btn.btn-round {

@@ -197,30 +197,42 @@
 }
 
 .navbar-chats {
-    @apply overflow-hidden border-r-2 border-bg-03 h-full;
+    @apply overflow-hidden h-full pr-0.5;
 }
 .chats-tab .btn-round {
     @apply w-6 h-6;
 }
 .chats-tab .btn.btn-round .btn-content {
-    @apply bg-03;
+    @apply bg-transparent;
+}
+.chats-tab .btn.btn-round.pin-toggle.btn-content {
+    @apply bg-transparent;
 }
 .chats-tab .btn.btn-round.pin-toggle.play-pinned.on {
     @apply text-success;
 }
 
 .pinned-chats {
-    @apply border-b border-bg-04 px-3 pb-2 mb-2;
+    @apply pb-2 px-2;
 }
 .pinned-chats .btn.btn-round .btn-content {
     @apply opacity-40;
 }
 
 .unpinned-chats {
-    @apply px-3 flex-y h-full;
+    @apply flex-y h-full px-2;
 }
 
 .listened-chats {
-    @apply px-3 py-1 relative bottom-0 flex-y;
+    @apply py-1 relative bottom-0 flex-y px-2;
     @apply border-t-8 border-bg-04 bg-01;
+}
+.listened-chats .navbar-item.active {
+    @apply bg-04 rounded-lg;
+}
+.listened-chats .navbar-item.active .navbar-item-content {
+    @apply font-normal;
+}
+.listened-chats .navbar-item-ending {
+    @apply gap-x-3;
 }
