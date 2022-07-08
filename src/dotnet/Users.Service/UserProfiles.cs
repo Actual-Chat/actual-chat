@@ -51,22 +51,25 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
     private async Task AssertCanUpdateUserProfile(
         Session session,
-        UserProfile profileToUpdate,
+        UserProfile update,
         CancellationToken cancellationToken)
     {
         var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
-        if (profileToUpdate.User.Id == profile.Id) {
-            if (profile.Status != profileToUpdate.Status)
-                throw new SecurityException("Users cannot change their own statuses.");
+        if (profile.Id != update.Id && profile.IsAdmin)
+            throw new UnauthorizedAccessException("Users can only update their own profiles.");
 
+        AssertCanUpdateStatus(profile, update);
+    }
+
+    private void AssertCanUpdateStatus(UserProfile profile, UserProfile update)
+    {
+        if (update.Status == profile.Status)
             return;
-        }
 
         if (profile.IsAdmin)
             return;
 
-        throw new UnauthorizedAccessException(
-            $"User id='{profile.User.Id}' is not allowed to update status of user id='{profileToUpdate.Id}'");
+        throw new UnauthorizedAccessException("User is not allowed to update status.");
     }
 
     private async Task AssertCanReadUserProfile(
@@ -79,6 +82,6 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
             return;
         if (profile.Status == UserStatus.Active)
             return;
-        throw new SecurityException("User cannot read other profiles.");
+        throw new UnauthorizedAccessException("User cannot read other profiles.");
     }
 }
