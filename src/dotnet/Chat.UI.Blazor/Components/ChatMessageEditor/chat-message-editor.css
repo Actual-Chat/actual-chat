@@ -55,6 +55,12 @@
 .clear-attachments-btn.btn.btn-round .btn-content {
     @apply bg-error text-error-title min-w-full;
 }
+.post-attachments-btn.btn.btn-round {
+    @apply hidden md:flex relative min-w-12 self-center;
+}
+.post-attachments-btn.btn.btn-round .btn-content {
+    @apply bg-success text-success-title min-w-full;
+}
 .attachment-wrapper {
     @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
     max-width: 12rem;
