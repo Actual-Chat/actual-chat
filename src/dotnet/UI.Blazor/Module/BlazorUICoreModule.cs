@@ -58,6 +58,10 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<RenderVars>();
         services.AddScoped<ContentUrlMapper>();
 
+        if (HostInfo.HostKind != HostKind.Maui) {
+            services.TryAddScoped<IClientAuth, WebClientAuth>();
+        }
+
         // Misc. UI services
         services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();

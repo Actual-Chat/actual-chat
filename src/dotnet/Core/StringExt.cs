@@ -85,4 +85,7 @@ public static class StringExt
 
     public static string UrlDecode(this string input)
         => WebUtility.UrlDecode(input);
+
+    public static string EnsureSuffix(this string input, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        => input.EndsWith(suffix, comparison) ? input : input + suffix;
 }

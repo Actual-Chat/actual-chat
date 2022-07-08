@@ -149,8 +149,15 @@ export class ChatMessageEditor {
         formData.append("payload_json", payloadJson);
 
         console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
-        const url = "api/chats/" + chatId + "/message";
-        const response = await fetch(url, { method: 'POST', body: formData });
+        let url = "api/chats/" + chatId + "/message";
+        const baseUri = window["_baseURI"]; // web api _baseURI when running in MAUI
+        if (baseUri)
+            url = new URL(url, baseUri).toString();
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include' // required to include third-party cookies in cross origin request when running in MAUI
+        });
 
         if (!response.ok) {
             let reason = response.statusText;

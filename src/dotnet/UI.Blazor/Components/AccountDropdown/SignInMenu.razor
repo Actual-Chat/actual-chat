@@ -1,4 +1,5 @@
-﻿@namespace ActualChat.UI.Blazor.Components
+﻿@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
 @{
     var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
@@ -23,7 +24,7 @@
 </Dropdown>
 
 @code {
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
     private User? User { get; set; }
@@ -39,12 +40,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await ClientAuthHelper.GetSchemas();
+    // GetSchemas requires JS interop for web version, so it can be called only at this point
+            AuthSchemas = await ClientAuth.GetSchemas();
             StateHasChanged();
         }
     }
 
     private void SignIn(string name)
-        => ClientAuthHelper.SignIn(name);
+        => ClientAuth.SignIn(name);
 }

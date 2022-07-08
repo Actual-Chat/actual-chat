@@ -5,16 +5,10 @@
 
 @code {
     private string _sessionId = Session.Default.Id.Value;
+    [Inject] private ClientAppSettings ClientAppSettings { get; init; } = null!;
 
     protected override void OnInitialized()
-	{
-		// TODO: make it better
-		if (_sessionId == Session.Default.Id.Value){
-			string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
-			if (File.Exists(path)){
-                // read synchronously on purpose: to avoid preliminary rendering
-                _sessionId = File.ReadAllText(path);
-            }
-		}
-	}
+    {
+        _sessionId = ClientAppSettings.SessionId;
+    }
 }
