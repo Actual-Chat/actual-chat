@@ -51,23 +51,22 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
     private async Task AssertCanUpdateUserProfile(
         Session session,
-        UserProfile userProfileToUpdate,
+        UserProfile profileToUpdate,
         CancellationToken cancellationToken)
     {
-        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
-            ?? throw new Exception("User profile not found");
-        if (userProfileToUpdate.User.Id == currentUserProfile.Id) {
-            if (currentUserProfile.Status != userProfileToUpdate.Status)
-                throw new SecurityException("User cannot update it's own status");
+        var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
+        if (profileToUpdate.User.Id == profile.Id) {
+            if (profile.Status != profileToUpdate.Status)
+                throw new SecurityException("Users cannot change their own statuses");
 
             return;
         }
 
-        if (currentUserProfile.IsAdmin)
+        if (profile.IsAdmin)
             return;
 
         throw new UnauthorizedAccessException(
-            $"User id='{currentUserProfile.User.Id}' is not allowed to update status of user id='{userProfileToUpdate.Id}'");
+            $"User id='{profile.User.Id}' is not allowed to update status of user id='{profileToUpdate.Id}'");
     }
 
     private async Task AssertCanReadUserProfile(
@@ -75,11 +74,10 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         string userId,
         CancellationToken cancellationToken)
     {
-        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
-            ?? throw new Exception("User profile not found");
-        if (currentUserProfile.User.Id == userId)
+        var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
+        if (profile.User.Id == userId)
             return;
-        if (currentUserProfile.Status == UserStatus.Active)
+        if (profile.Status == UserStatus.Active)
             return;
         throw new SecurityException("User cannot read other profiles");
     }

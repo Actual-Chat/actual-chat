@@ -155,6 +155,12 @@ public static class TaskExt
         CancellationToken cancellationToken = default)
         => Task.WhenAll(tasks);
 
+    public static async Task<T> Required<T>(this Task<T?> source)
+        => await source.ConfigureAwait(false) ?? throw new NotFoundException($"{typeof(T).Name} not found");
+
+    public static async ValueTask<T> Required<T>(this ValueTask<T?> source)
+        => await source.ConfigureAwait(false) ?? throw new NotFoundException($"{typeof(T).Name} not found");
+
     // WhenAny
 
     // Copied from https://github.com/dotnet/reactive/blob/93386a90d9e7a78c2a0c3aaa16d31e1328f71b72/Ix.NET/Source/System.Interactive.Async/TaskExt.cs#L16

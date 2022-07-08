@@ -1,6 +1,5 @@
 using System.Net.Mail;
 using ActualChat.Users.Db;
-using ActualChat.Users.Module;
 using Microsoft.AspNetCore.Authentication.Google;
 using Stl.Fusion.EntityFramework;
 
@@ -87,14 +86,11 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
 
     // Private methods
 
-    private async Task<DbUserProfile> GetDbUserProfile(
+    private ValueTask<DbUserProfile> GetDbUserProfile(
         UsersDbContext context,
         string userId,
         CancellationToken cancellationToken)
-        => await context.UserProfiles
-                .FindAsync(DbKey.Compose(userId), cancellationToken)
-                .ConfigureAwait(false)
-            ?? throw new KeyNotFoundException($"User profile id='{userId}' not found");
+        => context.UserProfiles.FindAsync(DbKey.Compose(userId), cancellationToken).Required();
 
     private string GetDefaultPicture(User? user, int size = 80)
     {
