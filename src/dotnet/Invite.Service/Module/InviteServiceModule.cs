@@ -31,8 +31,8 @@ public class InviteServiceModule : HostModule<InviteSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
+        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
 
         // Commander & Fusion
         var commander = services.AddCommander();

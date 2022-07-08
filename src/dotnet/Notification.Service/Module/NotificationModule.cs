@@ -33,8 +33,8 @@ public class NotificationModule : HostModule<NotificationSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
+        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
 
         // Commander & Fusion
         var commander = services.AddCommander();

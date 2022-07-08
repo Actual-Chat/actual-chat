@@ -31,7 +31,9 @@ namespace ActualChat.UI.Blazor.App
             services.AddSingleton(_ => new UriMapper(baseUri));
 
             // Commander - it must be added first to make sure its options are set
-            var commander = services.AddCommander(new CommanderOptions() { AllowDirectCommandHandlerCalls = false });
+            var commander = services.AddCommander().Configure(new CommanderOptions() {
+                AllowDirectCommandHandlerCalls = false,
+            });
 
             // Creating plugins
             var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));

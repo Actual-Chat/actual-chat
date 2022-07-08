@@ -30,8 +30,8 @@ public class FeedbackModule : HostModule<FeedbackSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<FeedbackDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, FeedbackDbInitializer>();
+        dbModule.AddDbContextServices<FeedbackDbContext>(services, Settings.Db);
 
         // Commander & Fusion
         var commander = services.AddCommander();
