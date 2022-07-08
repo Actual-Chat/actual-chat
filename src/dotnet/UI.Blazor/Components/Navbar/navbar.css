@@ -125,8 +125,8 @@
 }
 
 .add-to-chat.btn.btn-round {
-    @apply h-10 min-w-full self-center rounded-3xl;
+    @apply h-10 w-10 self-center rounded-3xl ml-3;
 }
-.add-to-chat.btn.btn-round .btn-content {
-    @apply bg-white text-success;
+.add-to-chat.btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
 }

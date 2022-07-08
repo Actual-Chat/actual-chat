@@ -82,7 +82,7 @@
     @apply underline decoration-dotted decoration-audio-message;
 }
 
-.btn-square.attach-btn {
+.btn-round.attach-btn {
     @apply self-start;
 }
 
