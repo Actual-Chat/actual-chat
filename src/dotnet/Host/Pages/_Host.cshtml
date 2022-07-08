@@ -81,22 +81,11 @@
 </div>
 
 @if (isCloseWindowRequest) {
-    @if (OrdinalEquals(HttpContext.Request.Path.Value, "/fusion/close-app")) {
-    	var cookies = HttpContext.Request.Cookies.Where(x => x.Key != "_ssb_").Append(KeyValuePair.Create("_ssb_", "0")).ToArray();
-    	var secret= Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(cookies)));
-    	var appUrl = $"http://127.0.0.1:57348/?secret={secret}";
-
-    	<script>
-    		window.location = '@appUrl';
-    	</script>
-    }
-    else {
-    	<script>
-    		setTimeout(function () {
-    			window.close();
-    		}, 500)
-    	</script>
-    }
+    <script>
+    	setTimeout(function () {
+    		window.close();
+    	}, 500)
+    </script>
     <div class="alert alert-primary">
     	@(closeWindowFlowName) completed, you can close this window.
     </div>
