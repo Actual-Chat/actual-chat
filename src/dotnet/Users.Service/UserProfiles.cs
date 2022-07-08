@@ -29,7 +29,7 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
     public virtual async Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
     {
-        await AssertCanReadUserProfile(session, userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, userId, cancellationToken).ConfigureAwait(false);
         return await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -44,44 +44,8 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
         var (session, userProfile) = command;
 
-        await AssertCanUpdateUserProfile(session, userProfile, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanUpdate(session, userProfile, cancellationToken).ConfigureAwait(false);
         await _commander.Call(new IUserProfilesBackend.UpdateCommand(command.UserProfile), cancellationToken)
             .ConfigureAwait(false);
-    }
-
-    private async Task AssertCanUpdateUserProfile(
-        Session session,
-        UserProfile update,
-        CancellationToken cancellationToken)
-    {
-        var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
-        if (profile.Id != update.Id && profile.IsAdmin)
-            throw new UnauthorizedAccessException("Users can only update their own profiles.");
-
-        AssertCanUpdateStatus(profile, update);
-    }
-
-    private void AssertCanUpdateStatus(UserProfile profile, UserProfile update)
-    {
-        if (update.Status == profile.Status)
-            return;
-
-        if (profile.IsAdmin)
-            return;
-
-        throw new UnauthorizedAccessException("User is not allowed to update status.");
-    }
-
-    private async Task AssertCanReadUserProfile(
-        Session session,
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        var profile = await Get(session, cancellationToken).Required().ConfigureAwait(false);
-        if (profile.User.Id == userId)
-            return;
-        if (profile.Status == UserStatus.Active)
-            return;
-        throw new UnauthorizedAccessException("User cannot read other profiles.");
     }
 }
