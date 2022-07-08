@@ -13,7 +13,8 @@
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"
                                RemoveRequested="@(RemoveAttachment)"
-                               ClearAllRequested="@(ClearAttachments)"/>
+                               ClearAllRequested="@(ClearAttachments)"
+                               Post="@(_ => OnPosted(clearEditor:true))"/>
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-01">
             <div class="-flex-y w-full bg-01 mr-1.5 overflow-x-hidden">
                 <div class="flex-x gap-x-1.5">
