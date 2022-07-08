@@ -14,7 +14,7 @@ public class UserContacts : IUserContacts
     public virtual async Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return ImmutableArray<UserContact>.Empty;
 
         var contactIds = await _contactsBackend.GetContactIds(user.Id, cancellationToken).ConfigureAwait(false);

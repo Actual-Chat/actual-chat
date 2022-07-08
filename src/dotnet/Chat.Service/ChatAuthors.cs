@@ -32,7 +32,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user.IsAuthenticated)
+        if (user != null)
             return await Backend.GetByUserId(chatId, user.Id, false, cancellationToken).ConfigureAwait(false);
 
         var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
@@ -51,14 +51,14 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (author != null)
             return author.Id;
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user.IsAuthenticated ? user.Id : "";
+        return user?.Id.Value ?? "";
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return ImmutableArray<Symbol>.Empty;
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -68,7 +68,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     public virtual async Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return ImmutableArray<Symbol>.Empty;
 
         return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -78,7 +78,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     public virtual async Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user.IsAuthenticated)
+        if (user != null)
             return await Backend.ListUserChatIds(user.Id, cancellationToken).ConfigureAwait(false);
 
         var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
@@ -159,7 +159,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return default;
 
         var otherUserId = await Backend.GetUserId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
@@ -169,7 +169,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (user.Id == otherUserId)
             return default;
 
-        var otherUser = await AuthBackend.GetUser(otherUserId, cancellationToken).ConfigureAwait(false);
+        var otherUser = await AuthBackend.GetUser(default, otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherUser == null)
             return default;
 

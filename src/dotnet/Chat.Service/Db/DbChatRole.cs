@@ -19,10 +19,10 @@ public class DbChatRole : IHasId<string>
     [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
-    public string PrincipalIds { get; set; } = ""; // Space-separated
+    public string AuthorIds { get; set; } = ""; // Space-separated
 
-    public static string ComposeId(string chatId, long localId)
-        => $"{chatId}:{localId.ToString(CultureInfo.InvariantCulture)}";
+    public DbChatRole() { }
+    public DbChatRole(ChatRole model) => UpdateFrom(model);
 
     public ChatRole ToModel()
         => new(Id) {
@@ -30,8 +30,22 @@ public class DbChatRole : IHasId<string>
             Version = Version,
             Name = Name,
             Picture = Picture,
-            PrincipalIds = PrincipalIds.Split(" ").Select(x => new Symbol(x)).ToImmutableHashSet(),
+            AuthorIds = AuthorIds.Split(" ").Select(x => new Symbol(x)).ToImmutableHashSet(),
         };
+
+    public void UpdateFrom(ChatRole model)
+    {
+        if (!model.IsPersistent)
+            throw new InvalidOperationException("Can't persist non-persistent chat role.");
+        var parsedRoleId = new ParsedChatRoleId(model.Id).AssertValid();
+        Id = model.Id;
+        ChatId = parsedRoleId.ChatId;
+        LocalId = parsedRoleId.LocalId;
+        Version = model.Version;
+        Name = model.Name;
+        Picture = model.Picture;
+        AuthorIds = model.AuthorIds.ToDelimitedString(" ");
+    }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
     {

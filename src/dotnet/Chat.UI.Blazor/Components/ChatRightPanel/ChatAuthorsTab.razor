@@ -55,11 +55,11 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     private DotNetObjectReference<IRightPanelSearchBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     public override async ValueTask DisposeAsync()
     {
@@ -76,6 +76,8 @@
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
         var requestAuthor = await Authors.GetOwnAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         var authorIds = requestAuthor == null ? allAuthorIds : allAuthorIds.Remove(requestAuthor.Id.ToString());
+        if (requestAuthor != null && requestAuthor.HasLeft)
+            requestAuthor = null;
         return new() {
             AuthorIds = authorIds,
             RequestAuthor = requestAuthor,

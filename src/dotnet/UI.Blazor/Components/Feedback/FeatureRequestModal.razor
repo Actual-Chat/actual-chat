@@ -52,7 +52,7 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public async ValueTask DisposeAsync()

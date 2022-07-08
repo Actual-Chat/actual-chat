@@ -130,8 +130,34 @@ public static class TaskExt
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
+    // Collect - a bit more user-friendly Task.WhenAll
+
+    public static Task<List<T>> Collect<T>(
+        this IEnumerable<Task<T>> tasks,
+        CancellationToken cancellationToken = default)
+        => tasks.Collect(64, cancellationToken);
+
+    public static async Task<List<T>> Collect<T>(
+        this IEnumerable<Task<T>> tasks,
+        int chunkSize,
+        CancellationToken cancellationToken = default)
+    {
+        var results = new List<T>();
+        foreach (var chunk in tasks.Chunk(chunkSize)) {
+            var chunkResults = await Task.WhenAll(chunk).ConfigureAwait(false);
+            results.AddRange(chunkResults);
+        }
+        return results;
+    }
+
+    public static Task Collect(
+        this IEnumerable<Task> tasks,
+        CancellationToken cancellationToken = default)
+        => Task.WhenAll(tasks);
+
     // WhenAny
-    // copied from https://github.com/dotnet/reactive/blob/93386a90d9e7a78c2a0c3aaa16d31e1328f71b72/Ix.NET/Source/System.Interactive.Async/TaskExt.cs#L16
+
+    // Copied from https://github.com/dotnet/reactive/blob/93386a90d9e7a78c2a0c3aaa16d31e1328f71b72/Ix.NET/Source/System.Interactive.Async/TaskExt.cs#L16
     // refactored later
     public static WhenAnyValueTask<T> WhenAny<T>(ValueTask<T>[] tasks)
     {

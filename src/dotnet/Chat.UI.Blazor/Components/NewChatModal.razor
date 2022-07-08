@@ -28,7 +28,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()

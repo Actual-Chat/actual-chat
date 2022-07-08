@@ -8,9 +8,13 @@ namespace ActualChat.Users.Controllers;
 public class UserContactsController : ControllerBase, IUserContacts
 {
     private readonly IUserContacts _service;
+    private readonly ICommander _commander;
 
-    public UserContactsController(IUserContacts service)
-        => _service = service;
+    public UserContactsController(IUserContacts service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)

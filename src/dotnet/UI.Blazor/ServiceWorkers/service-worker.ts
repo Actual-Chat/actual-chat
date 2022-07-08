@@ -52,7 +52,10 @@ const onNotificationClick = async function(event: NotificationEvent): Promise<an
     if (existingClientWindow) {
         await clients.claim();
         const focusedWindow = await existingClientWindow.focus();
-        await focusedWindow.navigate(url);
+        focusedWindow.postMessage({
+            type: 'NOTIFICATION_CLICK',
+            url: url.href,
+        });
         return;
     }
 

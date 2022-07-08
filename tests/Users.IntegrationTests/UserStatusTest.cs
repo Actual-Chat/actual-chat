@@ -1,7 +1,5 @@
 using ActualChat.Host;
-using ActualChat.Interception;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -11,6 +9,8 @@ public class UserStatusTest : AppHostTestBase
     private WebClientTester _tester = null!;
     private IUserProfiles _userProfiles = null!;
     private AppHost _appHost = null!;
+    private ISessionFactory _sessionFactory = null!;
+    private Session _adminSession = null!;
 
     public UserStatusTest(ITestOutputHelper @out) : base(@out)
     { }
@@ -21,6 +21,10 @@ public class UserStatusTest : AppHostTestBase
             builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewUserStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
         _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
+        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _adminSession = _sessionFactory.CreateSession();
+
+        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
     public override async Task DisposeAsync()
@@ -33,7 +37,8 @@ public class UserStatusTest : AppHostTestBase
     public async Task ShouldUpdateStatus()
     {
         // arrange
-        await _tester.SignIn(new User("", "Bob"));
+        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
+        await _tester.SignIn(new User("Bob"));
 
         // act
         var userProfile = await GetUserProfile();
@@ -42,12 +47,14 @@ public class UserStatusTest : AppHostTestBase
         userProfile.Status.Should().Be(NewUserStatus);
 
         // act
-        foreach (var newStatus in new[] {
-                     UserStatus.Inactive, UserStatus.Suspended, UserStatus.Active, UserStatus.Inactive,
-                     UserStatus.Suspended, UserStatus.Active,
-                 }) {
-            userProfile.Status = newStatus;
-            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_tester.Session, userProfile));
+        var newStatuses = new[] {
+            UserStatus.Inactive, UserStatus.Suspended,
+            UserStatus.Active, UserStatus.Inactive,
+            UserStatus.Suspended, UserStatus.Active,
+        };
+        foreach (var newStatus in newStatuses) {
+            var newUserProfile = userProfile with { Status = newStatus };
+            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_adminSession, newUserProfile));
 
             // assert
             userProfile = await GetUserProfile();

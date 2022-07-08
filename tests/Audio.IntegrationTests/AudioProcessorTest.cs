@@ -10,10 +10,7 @@ namespace ActualChat.Audio.IntegrationTests;
 
 public class AudioProcessorTest : AppHostTestBase
 {
-    private readonly ILogger _log;
-
-    public AudioProcessorTest(ITestOutputHelper @out, ILogger log) : base(@out)
-        => _log = log;
+    public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task EmptyRecordingTest()
@@ -22,7 +19,7 @@ public class AudioProcessorTest : AppHostTestBase
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
 
@@ -48,7 +45,7 @@ public class AudioProcessorTest : AppHostTestBase
         var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
         var transcriptStreamer = audioProcessor.TranscriptStreamer;
@@ -79,7 +76,7 @@ public class AudioProcessorTest : AppHostTestBase
         var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
         var chatService = services.GetRequiredService<IChats>();
@@ -138,6 +135,7 @@ public class AudioProcessorTest : AppHostTestBase
         string fileName = "file.webm",
         bool webMStream = true)
     {
+        var log = audioProcessor.Commander.Services.LogFor(GetType());
         var record = new AudioRecord(
             session.Id, chatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
@@ -146,8 +144,8 @@ public class AudioProcessorTest : AppHostTestBase
         var fileSize = (int)filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(_log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_log);
+            ? new WebMStreamAdapter(log)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);

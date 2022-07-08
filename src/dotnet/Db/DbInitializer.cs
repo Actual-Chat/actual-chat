@@ -17,7 +17,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
     public virtual async Task Initialize(CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.DbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var dbContext = DbHub.CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var db = dbContext.Database;

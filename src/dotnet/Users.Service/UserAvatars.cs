@@ -26,9 +26,12 @@ public class UserAvatars : IUserAvatars
             return null;
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user == null)
+            return null;
+
         var userAvatarRequested = avatarId.OrdinalStartsWith("0:");
         if (userAvatarRequested)
-            user.MustBeAuthenticated();
+            user.AssertAuthenticated();
 
         var userAvatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)

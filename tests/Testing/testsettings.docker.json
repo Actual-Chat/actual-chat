@@ -4,7 +4,7 @@
   },
   "DbSettings": {
     // "DefaultDb": "mysql:Server=mariadb;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
-    "DefaultDb": "postgresql:Server=postgres;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
+    "DefaultDb": "postgresql:Server=postgres;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
     // "DefaultDb": "memory:ac_test_{instance_}{context}",
     "OverrideDb": "",
     // OverrideDb": "memory:ac_test_{instance_}{context}",
@@ -21,6 +21,12 @@
   "UsersSettings": {
     "Db": "",
     "Redis": ""
+  },
+  "TestSettings": {
+    "User1": {
+      "Email": "test@test.com",
+      "Password": "no password"
+    }
   },
   "Logging": {
     "LogLevel": {

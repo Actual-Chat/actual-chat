@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Notification;
 
-public interface INotifications
+public interface INotifications : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken);

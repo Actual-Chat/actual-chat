@@ -1,6 +1,6 @@
 namespace ActualChat.Notification.Backend;
 
-public interface INotificationsBackend
+public interface INotificationsBackend : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken);

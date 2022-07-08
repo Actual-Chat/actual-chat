@@ -45,7 +45,7 @@ public class Startup
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026
             logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Debug : LogLevel.Warning);
-            // use appsettings*.json to configure logging filters
+            // Use appsettings*.json to configure logging filters
         });
 
         // HostInfo

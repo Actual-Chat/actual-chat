@@ -1,4 +1,4 @@
-using ActualChat.Interception;
+using Stl.Interception;
 
 namespace ActualChat.Users;
 
@@ -7,12 +7,12 @@ public static class AuthExt
     public static async ValueTask<User> RequireUser(this IAuth auth, Session session, CancellationToken cancellationToken)
     {
         var user = await auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user.MustBeAuthenticated();
+        return user.AssertAuthenticated();
     }
 
     public static async ValueTask<User> RequireActiveUser(this IAuth auth, Session session, CancellationToken cancellationToken)
     {
-        var userProfiles = ProxyExt.GetServices(auth).GetRequiredService<IUserProfiles>();
+        var userProfiles = auth.GetServices().GetRequiredService<IUserProfiles>();
         var userProfile = await userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
         return userProfile.User;
     }

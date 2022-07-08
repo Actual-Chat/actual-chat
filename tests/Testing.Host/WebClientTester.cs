@@ -64,9 +64,11 @@ public class WebClientTester : IWebClientTester
 
     protected virtual IServiceProvider CreateClientServices()
     {
+        var output = AppHost.Services.GetRequiredService<ITestOutputHelper>();
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
         Program.ConfigureServices(services, configuration, UriMapper.BaseUri).Wait();
+        TestHostFactory.ConfigureLogging(services, output); // Override logging
 
         var serviceProvider = services.BuildServiceProvider();
         serviceProvider.HostedServices().Start().Wait();

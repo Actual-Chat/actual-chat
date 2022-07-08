@@ -1,3 +1,4 @@
+using System.Security;
 using ActualChat.Chat.Db;
 using Stl.Fusion.EntityFramework;
 
@@ -19,6 +20,28 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
     }
 
     // [ComputeMethod]
+    public async Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+    {
+        var author = await ChatAuthors.GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author == null)
+            return null;
+
+        var ownRoleIds = await Backend.ListRoleIds(chatId, author.Id, cancellationToken).ConfigureAwait(false);
+        var isOwner = ownRoleIds.Any(x => x == ChatRole.Owners.Id);
+
+        if (!isOwner && !ownRoleIds.Contains(roleId))
+            throw new SecurityException("You must be in the Owners role to access other chat roles.");
+
+        var role = await Backend.Get(chatId, roleId, cancellationToken).ConfigureAwait(false);
+        if (role == null)
+            return null;
+
+        if (!isOwner)
+            role = role with { AuthorIds = ImmutableHashSet<Symbol>.Empty.Add(author.Id) };
+        return role;
+    }
+
+    // [ComputeMethod]
     public async Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken)
     {
         var author = await ChatAuthors.GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -26,7 +49,6 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
             return ImmutableArray<Symbol>.Empty;
 
         return await Backend.ListRoleIds(chatId, author.Id, cancellationToken).ConfigureAwait(false);
-
     }
 
     // [CommandHandler]

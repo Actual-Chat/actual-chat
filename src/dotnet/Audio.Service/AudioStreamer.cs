@@ -62,11 +62,12 @@ public class AudioStreamer : AudioProcessorBase, IAudioStreamer
     {
         var streamer = RedisDb.GetStreamer<byte[]>(streamId, new() {
             MaxStreamLength = 10 * 1024,
+            ExpirationPeriod = _settings.StreamExpirationPeriod,
         });
         var audioStream = audio
             .GetFrames(cancellationToken)
             .Select(f => f.Data);
-        return streamer.Write(audioStream, _settings.EndedStreamTtl, Log, cancellationToken);
+        return streamer.Write(audioStream, cancellationToken);
     }
 
     /// <summary>

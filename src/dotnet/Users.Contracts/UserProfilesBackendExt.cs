@@ -5,12 +5,12 @@ public static class UserProfilesBackendExt
     public static async ValueTask<UserProfile> Require(this IUserProfilesBackend userProfiles, string userId, CancellationToken cancellationToken)
     {
         var userProfile = await userProfiles.Get(userId, cancellationToken).ConfigureAwait(false);
-        return userProfile.MustBeAuthenticated();
+        return userProfile.AssertAuthenticated();
     }
 
     public static async ValueTask<UserProfile> RequireActive(this IUserProfilesBackend userProfiles, string userId, CancellationToken cancellationToken)
     {
         var userProfile = await userProfiles.Get(userId, cancellationToken).ConfigureAwait(false);
-        return userProfile.MustBeActive();
+        return userProfile.AssertActive();
     }
 }

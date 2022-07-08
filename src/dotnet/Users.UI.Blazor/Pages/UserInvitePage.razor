@@ -1,6 +1,6 @@
 @page "/user/invite"
 @using ActualChat.Invite
-@inherits ComputedStateComponent<IImmutableList<Invite>>
+@inherits ComputedStateComponent<ImmutableArray<Invite>>
 @attribute [Authorize(Policy = KnownPolicies.IsAdmin)]
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
@@ -19,10 +19,10 @@
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    protected override ComputedState<IImmutableList<Invite>>.Options GetStateOptions()
+    protected override ComputedState<ImmutableArray<Invite>>.Options GetStateOptions()
         => new() { InitialValue = ImmutableArray<Invite>.Empty };
 
-    protected override Task<IImmutableList<Invite>> ComputeState(CancellationToken cancellationToken)
+    protected override Task<ImmutableArray<Invite>> ComputeState(CancellationToken cancellationToken)
         => Invites.GetUserInvites(Session, cancellationToken);
 
     private async Task OnNewInviteClick() {

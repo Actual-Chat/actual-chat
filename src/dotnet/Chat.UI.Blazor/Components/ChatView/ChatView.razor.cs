@@ -36,10 +36,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    [Parameter] public long ChatEntryId { get; set; }
-
     public async ValueTask DisposeAsync()
     {
+        Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
         await LastReadEntryId.DisposeSilentlyAsync().ConfigureAwait(false);
     }
@@ -48,10 +47,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         await WhenInitialized.ConfigureAwait(false);
 
-        if (ChatEntryId > 0)
-            NavigateToEntry(ChatEntryId);
-
-        ChatUI.HighlightedChatEntryId.Value = ChatEntryId;
+        TryNavigateToEntryIfExists();
     }
 
     public async Task NavigateToUnreadEntry()
@@ -74,8 +70,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
+        Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable(ChatEntryId);
+            NavigateToEntryId = StateFactory.NewMutable(0L);
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
@@ -161,9 +158,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             mustScrollToEntry = true;
         }
 
+        var isHighlighted = false;
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken).ConfigureAwait(true);
         if (!mustScrollToEntry) {
             if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
+                isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
                 entryId = navigateToEntryId;
                 mustScrollToEntry = true;
@@ -186,15 +185,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
         var adjustedRange = queryRange.Clamp(chatIdRange);
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
-        var chatTiles = await Task
-            .WhenAll(idTiles.Select(
-                idTile => Chats.GetTile(Session,
-                    chatId,
-                    ChatEntryType.Text,
-                    idTile.Range,
-                    cancellationToken)))
+        var chatTiles = await idTiles
+            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
+            .Collect(cancellationToken)
             .ConfigureAwait(false);
-
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
@@ -216,12 +210,15 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             adjustedRange.End + 1 >= chatIdRange.End,
             scrollToKey);
 
+        if (isHighlighted)
+            // highlight entry when it has already been loaded
+            ChatUI.HighlightedChatEntryId.Value = entryId;
+
         return result;
     }
 
-    private void NavigateToEntry(long navigateToEntryId)
+    public void NavigateToEntry(long navigateToEntryId)
     {
-        // TODO: navigate to chat entry even if it's from another tile
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = 0;
         NavigateToEntryId.Value = navigateToEntryId;
@@ -232,5 +229,20 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         NavigateToEntry(navigation.ChatEntryId);
         return Task.CompletedTask;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => TryNavigateToEntryIfExists();
+
+    private void TryNavigateToEntryIfExists()
+    {
+        // ignore location changed events if already disposed
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
+        var currentUri = new Uri(Nav.Uri);
+        var entryIdString = currentUri.Fragment.TrimStart('#');
+        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
+            NavigateToEntry(entryId);
     }
 }

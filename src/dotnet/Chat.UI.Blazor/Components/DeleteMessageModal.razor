@@ -53,12 +53,12 @@
     [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; set; } = null!;
 
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
-
-    [Parameter] public Model ModalModel { get; set; } = null!;
     private TextEntryAttachment? FirstAttachment { get; set; }
     private Markup Markup { get; set; } = Markup.Empty;
     private ChatEntry ChatEntry => ModalModel.MessageModel.Entry;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();

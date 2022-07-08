@@ -1,8 +1,6 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
-public interface IChats
+public interface IChats : IComputeService
 {
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
@@ -87,6 +85,9 @@ public interface IChats
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record CreateChatCommand(
         [property: DataMember] Session Session,
@@ -125,4 +126,10 @@ public interface IChats
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record LeaveChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+    ) : ISessionCommand<Unit>;
 }

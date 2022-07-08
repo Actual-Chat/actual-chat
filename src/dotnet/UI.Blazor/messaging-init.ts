@@ -65,6 +65,25 @@ export async function requestNotificationPermission(): Promise<boolean> {
     }
 }
 
+let baseLayoutRef: DotNet.DotNetObject = null;
+
+export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): void {
+    const isAlreadyRegistered = baseLayoutRef !== null;
+    baseLayoutRef = blazorRef;
+    if (!isAlreadyRegistered) {
+        navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
+            if (evt.origin !== window.location.origin)
+                return;
+            if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
+                return;
+
+            const url = evt.data?.url;
+            await baseLayoutRef.invokeMethodAsync('HandleNotificationNavigation', url);
+        });
+    }
+}
+
+
 function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {

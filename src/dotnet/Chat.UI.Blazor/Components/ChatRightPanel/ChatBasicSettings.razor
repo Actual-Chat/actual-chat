@@ -36,16 +36,16 @@
 </Form>
 
 @code {
-    private FormModel _form = null!;
-
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
     [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+
+    private FormModel _form = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override Task OnParametersSetAsync() {
         _form ??= new(ComponentIdGenerator);

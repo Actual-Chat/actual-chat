@@ -40,7 +40,7 @@ public class AdminGrantTest : AppHostTestBase
         var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
+        user.Should().NotBeNull();
         userProfile!.IsAdmin.Should().BeTrue();
     }
 
@@ -56,7 +56,7 @@ public class AdminGrantTest : AppHostTestBase
         var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
+        user.Should().NotBeNull();
         userProfile!.IsAdmin.Should().BeFalse();
     }
 
@@ -71,7 +71,7 @@ public class AdminGrantTest : AppHostTestBase
         var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
+        user.Should().NotBeNull();
         userProfile!.IsAdmin.Should().BeFalse();
     }
 }

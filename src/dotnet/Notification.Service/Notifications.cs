@@ -1,6 +1,7 @@
 ﻿using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
+using ActualChat.Users;
 using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -14,9 +15,11 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly FirebaseMessaging _firebaseMessaging;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly ICommander _commander;
+    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
     private readonly UriMapper _uriMapper;
     private readonly ILogger<Notifications> _log;
+
 
     public Notifications(
         IServiceProvider services,
@@ -25,6 +28,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         FirebaseMessaging firebaseMessaging,
         IChatAuthorsBackend chatAuthorsBackend,
         ICommander commander,
+        IUserProfilesBackend userProfilesBackend,
         IDbContextFactory<NotificationDbContext> dbContextFactory,
         UriMapper uriMapper,
         ILogger<Notifications> log) : base(services)
@@ -34,6 +38,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         _firebaseMessaging = firebaseMessaging;
         _chatAuthorsBackend = chatAuthorsBackend;
         _commander = commander;
+        _userProfilesBackend = userProfilesBackend;
         _dbContextFactory = dbContextFactory;
         _uriMapper = uriMapper;
         _log = log;
@@ -43,7 +48,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return ChatNotificationStatus.NotSubscribed;
 
         var dbContext = CreateDbContext();
@@ -70,7 +75,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
 
         var (session, deviceId, deviceType) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -114,7 +119,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         }
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        if (user == null)
             return;
 
         string userId = user.Id;

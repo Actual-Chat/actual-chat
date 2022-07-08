@@ -78,7 +78,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.ChatAuthors
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId && !a.HasLeft)
             .Select(a => a.ChatId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -93,12 +93,12 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return chatAuthor;
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
+        var userId = user?.Id ?? Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
-        if (!user.IsAuthenticated) {
+        if (user == null) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));
@@ -117,7 +117,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authorIds = await dbContext.ChatAuthors
-            .Where(a => a.ChatId == chatId)
+            .Where(a => a.ChatId == chatId && !a.HasLeft)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -134,7 +134,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.ChatAuthors
-            .Where(a => a.ChatId == chatId && a.UserId != null)
+            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -186,6 +186,43 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var chatAuthor = dbChatAuthor.ToModel();
         CommandContext.GetCurrent().Items.Set(chatAuthor);
+        return chatAuthor;
+    }
+
+    public virtual async Task<ChatAuthor> ChangeHasLeft(IChatAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        var (authorId, hasLeft) = command;
+        if (Computed.IsInvalidating()) {
+            var invChatAuthor = context.Operation().Items.Get<ChatAuthor>()!;
+            var userId = (string)invChatAuthor.UserId;
+            var chatId = (string)invChatAuthor.ChatId;
+            if (!userId.IsNullOrEmpty()) {
+                _ = GetByUserId(chatId, userId, true, default);
+                _ = GetByUserId(chatId, userId, false, default);
+                _ = ListUserIds(chatId, default);
+                _ = ListUserChatIds(userId, default);
+            }
+            _ = Get(invChatAuthor.ChatId, invChatAuthor.Id, false, default);
+            _ = Get(invChatAuthor.ChatId, invChatAuthor.Id, true, default);
+            _ = ListAuthorIds(chatId, default);
+
+            return default!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .FirstOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChatAuthor == null)
+            throw new InvalidOperationException("Chat author missing");
+        dbChatAuthor.HasLeft = hasLeft;
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var chatAuthor = dbChatAuthor.ToModel();
+        context.Operation().Items.Set(chatAuthor);
         return chatAuthor;
     }
 

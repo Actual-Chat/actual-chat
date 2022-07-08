@@ -1,6 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Interception;
 using ActualChat.Testing.Host;
+using Stl.Interception;
 using Stl.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -17,13 +17,12 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -58,7 +57,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 
@@ -101,13 +100,12 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -136,13 +134,12 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -165,11 +162,11 @@ public class ChatEntryReaderTest : AppHostTestBase
             result.Count.Should().Be(1);
         }
 
-        { // Test 3
+        { // Test 3 + entry creation
             using var cts = new CancellationTokenSource(1000);
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
-                    chats, session, ChatId,
+                    tester.AppServices.GetRequiredService<IChats>(), session, ChatId,
                     (int)Constants.Chat.IdTileStack.MinTileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
@@ -182,13 +179,12 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -221,7 +217,7 @@ public class ChatEntryReaderTest : AppHostTestBase
             "rape me rape me my friend",
             "it was a teenage wedding and the all folks wished them well",
         };
-        var commander = ProxyExt.GetServices(chats).Commander();
+        var commander = chats.GetCommander();
 
         while (true)
             foreach (var text in phrases) {

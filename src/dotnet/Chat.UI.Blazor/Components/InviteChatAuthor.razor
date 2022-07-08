@@ -65,8 +65,8 @@
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
     private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();
@@ -80,12 +80,11 @@
                 .ConfigureAwait(true));
 
         var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
-        var chatContacts = new ConcurrentBag<Contact>();
-        var resolveChatContacts = contacts
+        var resolvedContacts = await contacts
             .Select(async userContact => {
                 var userAuthor = await UserProfiles.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 if (userAuthor == null)
-                    return;
+                    return null;
 
                 if (string.IsNullOrWhiteSpace(userAuthor.Picture)) {
                     userAuthor = userAuthor with {
@@ -94,12 +93,12 @@
                 }
 
                 var presence = await UserPresences.Get(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
-                chatContacts.Add(new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id)));
+                return new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id));
             })
-            .ToList();
-        await Task.WhenAll(resolveChatContacts).ConfigureAwait(false);
+            .Collect()
+            .ConfigureAwait(false);
 
-        AllChatContacts = chatContacts.OrderBy(x => x.Author.Name).ToArray();
+        AllChatContacts = resolvedContacts.SkipNullItems().OrderBy(x => x.Author.Name).ToArray();
         FilteredChatContacts = AllChatContacts;
     }
 

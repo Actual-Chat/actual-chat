@@ -8,9 +8,13 @@ namespace ActualChat.Users.Controllers;
 public class UserPresencesController : ControllerBase, IUserPresences
 {
     private readonly IUserPresences _service;
+    private readonly ICommander _commander;
 
-    public UserPresencesController(IUserPresences service)
-        => _service = service;
+    public UserPresencesController(IUserPresences service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<Presence> Get(string userId, CancellationToken cancellationToken)

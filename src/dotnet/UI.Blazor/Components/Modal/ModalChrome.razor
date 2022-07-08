@@ -8,7 +8,7 @@
 </div>
 
 @code {
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 

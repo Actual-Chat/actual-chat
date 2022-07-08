@@ -127,7 +127,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
-        services.AddSingleton(new Publisher.Options { Id = hostName });
+        services.AddSingleton(new PublisherOptions { Id = hostName });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();

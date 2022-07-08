@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -58,15 +59,36 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken)
+    public virtual async Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken)
     {
         var parsedChatRoleId = (ParsedChatRoleId)roleId;
         if (!(parsedChatRoleId.IsValid && parsedChatRoleId.ChatId == chatId))
-            return Task.FromResult((ChatRole?)null);
+            return null;
 
-        // TODO(AY): Add non-system role processing
         var role = ChatRole.SystemRoles.GetValueOrDefault(roleId);
-        return Task.FromResult(role);
+        if (role is { IsPersistent: false })
+            return role;
+
+        var dbRole = await DbChatRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
+        if (dbRole != null)
+            return dbRole.ToModel();
+
+        if (ChatRole.Owners.Id != roleId)
+            return null;
+
+        // Fallback (dual read) for Owners role
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+        var authors = await chat.OwnerIds
+            .Select(userId => ChatAuthorsBackend.GetByUserId(chatId, userId, true, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var authorIds = authors
+            .SkipNullItems()
+            .Select(a => a.Id)
+            .ToImmutableHashSet();
+        return ChatRole.Owners with { AuthorIds = authorIds };
     }
 
     // [CommandHandler]

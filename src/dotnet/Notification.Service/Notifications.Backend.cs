@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -56,12 +58,17 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
+        var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
+        var textContent = await markupToTextConverter.Apply(
+            MarkupParser.ParseRaw(content),
+            cancellationToken
+            ).ConfigureAwait(false);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = content,
+                Body = textContent,
                 // ImageUrl = ??? TODO(AK): set image url
             },
             Android = new AndroidConfig {
@@ -97,10 +104,9 @@ public partial class Notifications
                     // Icon = ??? TODO(AK): Set icon
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    // Link = ??? TODO(AK): Set anchor to open particular entry
                     Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
                         ? null
-                        : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString(),
+                        : _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
                 }
             },
         };
@@ -157,6 +163,18 @@ public partial class Notifications
 
         }
 
+        async Task<string> AuthorNameResolver(string authorId)
+        {
+            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+            return author?.Name ?? "";
+        }
+
+        async Task<string> UserNameResolver(string userId1)
+        {
+            var author = await _userProfilesBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
+            return author?.Name ?? "";
+        }
+
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
             string userId1,
             [EnumeratorCancellation] CancellationToken cancellationToken1)
@@ -204,7 +222,7 @@ public partial class Notifications
                     _ = ListDevices(invUserId, default);
             return;
         }
-        var affectedUserIds = new HashSet<string>();
+        var affectedUserIds = new HashSet<string>(StringComparer.Ordinal);
         var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
         await using var __ = dbContext.ConfigureAwait(false);
 

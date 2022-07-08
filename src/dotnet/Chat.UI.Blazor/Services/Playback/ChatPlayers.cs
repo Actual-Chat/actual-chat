@@ -191,9 +191,11 @@ public class ChatPlayers : WorkerBase
 
     private async Task<Task> ResumeRealtimePlayback(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
     {
-        var tasks = chatIds.Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken));
-        var playTasks = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return Task.WhenAll(playTasks);
+        var resultPlayingTasks = await chatIds
+            .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return Task.WhenAll(resultPlayingTasks);
     }
 
     private Task<Task> StartHistoricalPlayback(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
@@ -212,15 +214,13 @@ public class ChatPlayers : WorkerBase
     }
 
     private Task Stop(IEnumerable<Symbol> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
-    {
-        var tasks = chatIds.Select(chatId => Stop(chatId, playerKind, cancellationToken));
-        return Task.WhenAll(tasks);
-    }
+        => chatIds
+            .Select(chatId => Stop(chatId, playerKind, cancellationToken))
+            .Collect(cancellationToken);
 
     private Task Stop(CancellationToken cancellationToken)
-    {
         // ReSharper disable once InconsistentlySynchronizedField
-        var playerStopTasks = _players.Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken));
-        return Task.WhenAll(playerStopTasks);
-    }
+        => _players
+            .Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken))
+            .Collect(cancellationToken);
 }

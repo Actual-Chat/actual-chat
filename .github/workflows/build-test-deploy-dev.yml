@@ -184,7 +184,7 @@ jobs:
           TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
-          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
@@ -218,7 +218,7 @@ jobs:
         with:
           fetch-depth: 1
           lfs: false
-      
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v0.7.2

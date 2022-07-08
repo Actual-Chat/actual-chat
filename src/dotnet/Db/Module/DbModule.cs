@@ -95,15 +95,15 @@ public class DbModule : HostModule<DbSettings>
         });
         services.AddDbContextServices<TDbContext>(dbContext => {
             services.AddSingleton(new CompletionProducer.Options {
-                IsLoggingEnabled = true,
+                LogLevel = LogLevel.Information,
             });
             /*
             services.AddTransient(c => new DbOperationScope<TDbContext>(c) {
                 IsolationLevel = IsolationLevel.RepeatableRead,
             });
             */
-            dbContext.AddOperations((_, o) => {
-                o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
+            dbContext.AddOperations(_ => new() {
+                UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
             });
             dbContext.AddRedisOperationLogChangeTracking();
         });

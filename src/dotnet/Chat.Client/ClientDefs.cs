@@ -55,8 +55,8 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
-    [Get(nameof(CheckCanJoin))]
-    Task<bool> CheckCanJoin(
+    [Get(nameof(CanJoin))]
+    Task<bool> CanJoin(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
@@ -85,6 +85,8 @@ public interface IChatsClientDef
     Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(LeaveChat))]
+    Task LeaveChat([Body] IChats.LeaveChatCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatAuthors")]
@@ -117,6 +119,9 @@ public interface IChatAuthorsClientDef
 [BasePath("chatRoles")]
 public interface IChatRolesClientDef
 {
+    [Get(nameof(Get))]
+    Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken);
+
     [Get(nameof(ListOwnRoleIds))]
     Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken);
 

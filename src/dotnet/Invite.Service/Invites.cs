@@ -28,7 +28,7 @@ internal class Invites : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetUserInvites(
+    public virtual async Task<ImmutableArray<Invite>> GetUserInvites(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -39,7 +39,7 @@ internal class Invites : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetChatInvites(
+    public virtual async Task<ImmutableArray<Invite>> GetChatInvites(
         Session session,
         string chatId,
         CancellationToken cancellationToken)

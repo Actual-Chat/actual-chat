@@ -17,11 +17,11 @@ public class InvitesController : ControllerBase, IInvites
     }
 
     [HttpGet, Publish]
-    public Task<IImmutableList<Invite>> GetUserInvites(Session session, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Invite>> GetUserInvites(Session session, CancellationToken cancellationToken)
         => _service.GetUserInvites(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<IImmutableList<Invite>> GetChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Invite>> GetChatInvites(Session session, string chatId, CancellationToken cancellationToken)
         => _service.GetChatInvites(session, chatId, cancellationToken);
 
     [HttpPost]

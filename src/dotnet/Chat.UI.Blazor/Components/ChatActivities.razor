@@ -35,6 +35,7 @@
 @code {
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
+
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;

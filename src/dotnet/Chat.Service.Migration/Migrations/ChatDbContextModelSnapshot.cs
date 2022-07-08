@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("ProductVersion", "6.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -71,6 +71,10 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
+
+                    b.Property<bool>("HasLeft")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_left");
 
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("boolean")
@@ -238,6 +242,11 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<string>("AuthorIds")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("author_ids");
+
                     b.Property<string>("ChatId")
                         .IsRequired()
                         .HasColumnType("text")
@@ -256,11 +265,6 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("picture");
-
-                    b.Property<string>("PrincipalIds")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("principal_ids");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()

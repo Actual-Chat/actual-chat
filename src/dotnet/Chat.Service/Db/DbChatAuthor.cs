@@ -20,6 +20,7 @@ public class DbChatAuthor : IHasId<string>
     public string Name { get; set; } = "";
     public bool IsAnonymous { get; set; }
     public string? UserId { get; set; }
+    public bool HasLeft { get; set; }
 
     public static string ComposeId(string chatId, long localId)
         => $"{chatId}:{localId.ToString(CultureInfo.InvariantCulture)}";
@@ -32,6 +33,7 @@ public class DbChatAuthor : IHasId<string>
             Name = Name,
             IsAnonymous = IsAnonymous,
             UserId = UserId ?? "",
+            HasLeft = HasLeft
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
