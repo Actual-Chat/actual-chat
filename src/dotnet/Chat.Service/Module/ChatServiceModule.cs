@@ -7,7 +7,6 @@ using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
@@ -40,10 +39,12 @@ public class ChatServiceModule : HostModule<ChatSettings>
             });
             db.AddEntityResolver<string, DbChatAuthor>();
             db.AddEntityResolver<string, DbChatRole>();
-            db.AddShardLocalIdGenerator(db => db.ChatAuthors, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            db.AddShardLocalIdGenerator(db => db.ChatRoles, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatRoles,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
-                db => db.ChatEntries,
+                dbContext => dbContext.ChatEntries,
                 (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
                 e => e.Id);
         });

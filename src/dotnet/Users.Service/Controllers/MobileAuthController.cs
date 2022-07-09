@@ -118,7 +118,9 @@ public class MobileAuthController : Controller
             => SessionTask = Task.FromResult(session);
 
         public Session Session {
+#pragma warning disable VSTHRD002
             get => SessionTask.Result;
+#pragma warning restore VSTHRD002
             set => throw new NotSupportedException();
         }
 

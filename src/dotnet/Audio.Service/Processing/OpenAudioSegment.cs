@@ -61,8 +61,8 @@ public sealed class OpenAudioSegment
         TaskSource.For(RecordedAtTask).TrySetResult(null);
         TaskSource.For(AudibleDurationTask).TrySetResult(duration);
 
-        var recordedAt = RecordedAtTask.ToResult().IsValue(out var r) ? r : null;
-        var audibleDuration = AudibleDurationTask.ToResult().IsValue(out var d) ? d : duration;
+        var recordedAt = RecordedAtTask.ToResultSynchronously().IsValue(out var r) ? r : null;
+        var audibleDuration = AudibleDurationTask.ToResultSynchronously().IsValue(out var d) ? d : duration;
         var audioSegment = new ClosedAudioSegment(this, recordedAt, duration, audibleDuration);
         TaskSource.For(ClosedSegmentTask).SetResult(audioSegment);
     }

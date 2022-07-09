@@ -91,7 +91,7 @@ internal class Invites : IInvites
 
     private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var userProfile = await _userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfiles.DemandActive(session, cancellationToken).ConfigureAwait(false);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {

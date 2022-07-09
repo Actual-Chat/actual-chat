@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<ChatAuthorDialog.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
-    var title = $"User: {m.Author?.Name ?? ""}";
+    var title = $"User: {m.Author.Name}";
 }
 
 <DialogFrame Title="@title">
@@ -64,14 +64,12 @@
             return;
         IsAddingContact = true;
         StateHasChanged();
-        try {
-            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
-        }
-        finally {
-            IsAddingContact = false;
-            await ModalInstance.CancelAsync();
-            StateHasChanged();
-        }
+
+        await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId)).ConfigureAwait(true);
+
+        IsAddingContact = false;
+        await ModalInstance.CancelAsync().ConfigureAwait(true);
+        StateHasChanged();
     }
 
     private async Task OnSendMessageClick() {
@@ -84,7 +82,7 @@
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new();
 
-        public Author Author { get; init; } = null!;
+        public Author Author { get; init; } = Author.None;
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }

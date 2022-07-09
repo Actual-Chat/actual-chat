@@ -248,7 +248,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, title) = command;
-        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.DemandUser(session, cancellationToken).ConfigureAwait(false);
         var chat = new Chat() {
             Title = title,
             IsPublic = command.IsPublic,
@@ -368,6 +368,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return;
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        user = user.AssertNotNull();
         if (chat.OwnerIds.Contains(user.Id)) {
             throw new NotSupportedException("The very last owner of the chat can't leave it.");
             // TODO: managing ownership functionality is required

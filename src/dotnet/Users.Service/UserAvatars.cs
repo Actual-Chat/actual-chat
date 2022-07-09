@@ -45,7 +45,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.DemandUser(session, cancellationToken).ConfigureAwait(false);
         var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
         return profile?.AvatarId ?? Symbol.Empty;
     }
@@ -53,7 +53,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.DemandUser(session, cancellationToken).ConfigureAwait(false);
         return await _userAvatarsBackend.ListAvatarIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -63,7 +63,7 @@ public class UserAvatars : IUserAvatars
         if (Computed.IsInvalidating())
             return;
 
-        var user = await _auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.DemandUser(command.Session, cancellationToken).ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
@@ -86,7 +86,7 @@ public class UserAvatars : IUserAvatars
             return default!;
 
         var session = command.Session;
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.DemandUser(session, cancellationToken).ConfigureAwait(false);
         var cmd = new IUserAvatarsBackend.CreateCommand( user.Id, user.Name);
         var userAvatar = await _commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return userAvatar;

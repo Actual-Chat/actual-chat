@@ -1,6 +1,5 @@
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
-using ActualChat.Redis;
 using Stl.Redis;
 
 namespace ActualChat.Audio;

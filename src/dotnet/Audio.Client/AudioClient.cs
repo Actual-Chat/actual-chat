@@ -22,8 +22,8 @@ public class AudioClient : HubClientBase,
         CancellationToken cancellationToken)
     {
         Log.LogDebug("GetAudio: StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
-        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var opusPacketStream = HubConnection
+        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var opusPacketStream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
         var frameStream = opusPacketStream
@@ -46,8 +46,8 @@ public class AudioClient : HubClientBase,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId);
-        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var updates = HubConnection
+        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var updates = connection
             .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
         await foreach (var update in updates.ConfigureAwait(false))

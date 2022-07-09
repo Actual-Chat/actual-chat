@@ -26,7 +26,8 @@ public static class AsyncEnumerableExt
         _ = source.CopyTo(c, ChannelCompletionMode.Full, cancellationToken);
         await foreach (var item in c.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
             yield return item;
-            await clock.Delay(minUpdateDelay, cancellationToken).ConfigureAwait(false);
+            if (minUpdateDelay > TimeSpan.Zero)
+                await clock.Delay(minUpdateDelay, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -123,19 +124,6 @@ public static class AsyncEnumerableExt
         }, cancellationToken);
 
         return (matched.Reader.ReadAllAsync(cancellationToken), notMatched.Reader.ReadAllAsync(cancellationToken));
-    }
-
-    public static async IAsyncEnumerable<TSource> Delay<TSource>(
-        this IAsyncEnumerable<TSource> source,
-        TimeSpan eachItemDelay,
-        IMomentClock clock,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        await foreach (var item in source.ConfigureAwait(false)) {
-            await clock.Delay(eachItemDelay, cancellationToken).ConfigureAwait(false);
-
-            yield return item;
-        }
     }
 
     public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(
@@ -267,6 +255,7 @@ public static class AsyncEnumerableExt
         IMomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        bufferDuration = bufferDuration.Positive();
         var buffer = new List<TSource>();
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
@@ -288,6 +277,7 @@ public static class AsyncEnumerableExt
                 }
                 else {
                     yield return buffer;
+
                     break;
                 }
             }

@@ -107,7 +107,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var userProfile = await _userProfiles.Require(command.Session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfiles.Demand(command.Session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

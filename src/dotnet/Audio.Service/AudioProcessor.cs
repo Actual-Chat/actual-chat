@@ -181,14 +181,21 @@ public sealed class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
-        DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
         var beginsAt = now;
-        // Any delay here contributes to the overall delay,
-        // so we don't want to wait for too long for RecordedAtTask
-        var recordedAtOpt = await audioSegment.RecordedAtTask
-            .WithTimeout(TimeSpan.FromMilliseconds(25), cancellationToken)
-            .ConfigureAwait(false);
-        var recordedAt = (recordedAtOpt.IsSome(out var v) ? v : null) ?? beginsAt;
+        var recordedAt = beginsAt;
+        try {
+            DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
+            recordedAt = await audioSegment.RecordedAtTask
+                .WaitAsync(TimeSpan.FromMilliseconds(25), cancellationToken)
+                .ConfigureAwait(false)
+                ?? recordedAt;
+        }
+        catch (TimeoutException) {
+            // In case of delay recordedAt = beginsAt.
+            // Any delay here contributes to the overall delay,
+            // so we don't want to wait for too long for RecordedAtTask.
+        }
+
         var delay = now - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 

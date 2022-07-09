@@ -6,13 +6,7 @@
 
 You must sign in @(Reason.NullIfEmpty() ?? "to use this page").
 
-<AuthorizeView>
-    <NotAuthorized>
-        <SignInDropdown/>
-    </NotAuthorized>
-    <Authorized>
-    </Authorized>
-</AuthorizeView>
+<SignInDropdown/>
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;
