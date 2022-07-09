@@ -28,23 +28,23 @@ internal class Invites : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> GetUserInvites(
+    public virtual async Task<ImmutableArray<Invite>> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)
     {
-        await AssertCanGetUserInvites(session, cancellationToken).ConfigureAwait(false);
+        await AssertCanListUserInvites(session, cancellationToken).ConfigureAwait(false);
 
         var details = new InviteDetails() { User = new UserInviteDetails() };
         return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> GetChatInvites(
+    public virtual async Task<ImmutableArray<Invite>> ListChatInvites(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
     {
-        await AssertReadChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
+        await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var details = new InviteDetails() { Chat = new ChatInviteDetails(chatId) };
         return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
@@ -77,13 +77,10 @@ internal class Invites : IInvites
         return invite.Mask();
     }
 
-    private async Task AssertCanGetUserInvites(Session session, CancellationToken cancellationToken)
-    {
-        if (!await _auth.IsAdmin(session, cancellationToken).ConfigureAwait(false))
-            throw new SecurityException("Not allowed to read user invites");
-    }
+    private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
+        => await _auth.RequireAdminUser(session, cancellationToken).ConfigureAwait(false);
 
-    private async Task AssertReadChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
         var rules = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Demand(ChatPermissions.Invite);
@@ -91,7 +88,7 @@ internal class Invites : IInvites
 
     private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var userProfile = await _userProfiles.DemandActive(session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {

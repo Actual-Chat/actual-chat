@@ -15,7 +15,8 @@ public class IsUserActiveRequirementHandler : AuthorizationHandler<IsUserActiveR
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, IsUserActiveRequirement requirement)
     {
-        if (await _userProfiles.IsActive(_session, default).ConfigureAwait(false))
+        var userProfile = await _userProfiles.Get(_session, default).ConfigureAwait(false);
+        if (userProfile.IsActive())
             context.Succeed(requirement);
         else
             context.Fail();

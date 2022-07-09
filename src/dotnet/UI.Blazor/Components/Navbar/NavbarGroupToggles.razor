@@ -14,7 +14,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (m.UserProfile.Status == UserStatus.Active) {
+@if (m.UserProfile.IsActive()) {
     <NavbarGroupToggle IconPath="@chatsToggle" Title="Chats" Id="chats"/>
     <NavbarGroupToggle IconPath="@contactsToggle" Title="Contacts" Id="contacts"/>
 }

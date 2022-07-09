@@ -23,7 +23,7 @@
         => new() { InitialValue = ImmutableArray<Invite>.Empty };
 
     protected override Task<ImmutableArray<Invite>> ComputeState(CancellationToken cancellationToken)
-        => Invites.GetUserInvites(Session, cancellationToken);
+        => Invites.ListUserInvites(Session, cancellationToken);
 
     private async Task OnNewInviteClick() {
         var invite = new Invite {

@@ -54,20 +54,14 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         UserProfile userProfileToUpdate,
         CancellationToken cancellationToken)
     {
-        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
-            ?? throw new Exception("User profile not found");
-        if (userProfileToUpdate.User.Id == currentUserProfile.Id) {
-            if (currentUserProfile.Status != userProfileToUpdate.Status)
-                throw new SecurityException("User cannot update it's own status");
-
+        var userProfile = await this.Require(session, cancellationToken).ConfigureAwait(false);
+        if (userProfileToUpdate.User.Id == userProfile.Id) {
+            if (userProfile.Status != userProfileToUpdate.Status)
+                throw new SecurityException("You can't update your own status.");
             return;
         }
 
-        if (currentUserProfile.IsAdmin)
-            return;
-
-        throw new UnauthorizedAccessException(
-            $"User id='{currentUserProfile.User.Id}' is not allowed to update status of user id='{userProfileToUpdate.Id}'");
+        userProfile.AssertAdmin();
     }
 
     private async Task AssertCanReadUserProfile(
@@ -75,12 +69,12 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         string userId,
         CancellationToken cancellationToken)
     {
-        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
-            ?? throw new Exception("User profile not found");
-        if (currentUserProfile.User.Id == userId)
+        var userProfile = await this.Require(session, cancellationToken).ConfigureAwait(false);
+        if (userProfile.User.Id == userId)
             return;
-        if (currentUserProfile.Status == UserStatus.Active)
+        if (userProfile.IsActive())
             return;
-        throw new SecurityException("User cannot read other profiles");
+
+        throw new SecurityException("You can't access the profile of another user.");
     }
 }

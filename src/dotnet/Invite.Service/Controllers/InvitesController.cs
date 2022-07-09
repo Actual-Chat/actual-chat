@@ -17,12 +17,12 @@ public class InvitesController : ControllerBase, IInvites
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Invite>> GetUserInvites(Session session, CancellationToken cancellationToken)
-        => _service.GetUserInvites(session, cancellationToken);
+    public Task<ImmutableArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken)
+        => _service.ListUserInvites(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Invite>> GetChatInvites(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetChatInvites(session, chatId, cancellationToken);
+    public Task<ImmutableArray<Invite>> ListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListChatInvites(session, chatId, cancellationToken);
 
     [HttpPost]
     public Task<Invite> Generate(IInvites.GenerateCommand command, CancellationToken cancellationToken)
