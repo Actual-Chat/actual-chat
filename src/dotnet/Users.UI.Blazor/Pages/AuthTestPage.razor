@@ -178,7 +178,7 @@
 
     private async Task OnStatusSelected(UserStatus newStatus) {
         var userProfile = await UserProfiles.Get(Session, default);
-        userProfile = userProfile.AssertAuthenticated();
+        userProfile = userProfile.AssertExists();
         if (newStatus == userProfile.Status)
             return;
 

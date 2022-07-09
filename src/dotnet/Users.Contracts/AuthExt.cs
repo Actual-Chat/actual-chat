@@ -7,7 +7,7 @@ public static class AuthExt
     public static async ValueTask<User> DemandUser(this IAuth auth, Session session, CancellationToken cancellationToken)
     {
         var user = await auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user.AssertAuthenticated();
+        return user.AssertNotNull();
     }
 
     public static async ValueTask<UserProfile> DemandUserProfile(this IAuth auth, Session session, CancellationToken cancellationToken)
