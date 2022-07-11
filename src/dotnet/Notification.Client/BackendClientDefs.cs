@@ -14,6 +14,6 @@ public interface INotificationsBackendClientDef
 
     [Post(nameof(NotifySubscribers))]
     public Task NotifySubscribers(
-        [Body]INotificationsBackend.NotifySubscribersCommand subscribersCommand,
+        [Body]INotificationsBackend.NotifyNewChatEntryCommand newChatEntryCommand,
         CancellationToken cancellationToken);
 }

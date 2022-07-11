@@ -24,7 +24,7 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 
         var title = await GetTitle(@event.ChatId, cancellationToken).ConfigureAwait(false);
         var content = GetContent(@event.Content);
-        var command = new INotificationsBackend.NotifySubscribersCommand(
+        var command = new INotificationsBackend.NotifyNewChatEntryCommand(
             @event.ChatId,
             @event.Id,
             userId,

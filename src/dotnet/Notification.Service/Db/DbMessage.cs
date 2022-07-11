@@ -9,7 +9,7 @@ namespace ActualChat.Notification.Db;
 public class DbMessage : IHasId<string>
 {
     private DateTime _createdAt;
-    private DateTime _accessedAt;
+    private DateTime? _accessedAt;
 
     [Key] public string Id { get; set; } = null!;
 
@@ -25,7 +25,7 @@ public class DbMessage : IHasId<string>
     }
 
     public DateTime? AccessedAt {
-        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
+        get => _accessedAt?.DefaultKind(DateTimeKind.Utc);
         set => _accessedAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
     }
 }

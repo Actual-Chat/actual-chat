@@ -25,11 +25,21 @@ public class NotificationsBackendController : ControllerBase, INotificationsBack
     public Task<ImmutableArray<Symbol>> ListSubscriberIds(string chatId, CancellationToken cancellationToken)
         => _service.ListSubscriberIds(chatId, cancellationToken);
 
+    [HttpGet]
+    [Publish]
+    public Task<NotificationEntry> GetNotification(string userId, string notificationId, CancellationToken cancellationToken)
+        => _service.GetNotification(userId, notificationId, cancellationToken);
+
+    [HttpGet]
+    [Publish]
+    public Task<ImmutableArray<string>> ListRecentNotificationIds(string userId, CancellationToken cancellationToken)
+        => _service.ListRecentNotificationIds(userId, cancellationToken);
+
     [HttpPost]
-    public Task NotifySubscribers(
-        INotificationsBackend.NotifySubscribersCommand subscribersCommand,
+    public Task NotifyNewChatEntry(
+        INotificationsBackend.NotifyNewChatEntryCommand newChatEntryCommand,
         CancellationToken cancellationToken)
-        => _commander.Call(subscribersCommand, cancellationToken);
+        => _commander.Call(newChatEntryCommand, cancellationToken);
 
     [HttpPost]
     public Task RemoveDevices(

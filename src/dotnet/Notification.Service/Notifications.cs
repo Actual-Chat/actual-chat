@@ -18,6 +18,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly IAccountsBackend _accountsBackend;
     private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
     private readonly UriMapper _uriMapper;
+    private readonly FirebaseMessagingClient _firebaseMessagingClient;
     private readonly ILogger<Notifications> _log;
 
 
@@ -31,6 +32,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         IAccountsBackend accountsBackend,
         IDbContextFactory<NotificationDbContext> dbContextFactory,
         UriMapper uriMapper,
+        FirebaseMessagingClient firebaseMessagingClient,
         ILogger<Notifications> log) : base(services)
     {
         _auth = auth;
@@ -41,6 +43,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         _accountsBackend = accountsBackend;
         _dbContextFactory = dbContextFactory;
         _uriMapper = uriMapper;
+        _firebaseMessagingClient = firebaseMessagingClient;
         _log = log;
     }
 
@@ -60,6 +63,14 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             .ConfigureAwait(false);
         return isDisabledSubscription ? ChatNotificationStatus.NotSubscribed : ChatNotificationStatus.Subscribed;
     }
+
+    // [ComputeMethod]
+    public Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+        => throw new NotImplementedException();
+
+    // [ComputeMethod]
+    public Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
+        => throw new NotImplementedException();
 
     // [CommandHandler]
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
