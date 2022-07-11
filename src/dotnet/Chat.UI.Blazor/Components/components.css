@@ -197,7 +197,7 @@
 }
 
 .navbar-chats {
-    @apply overflow-hidden h-full pr-0.5;
+    @apply overflow-hidden h-full;
 }
 .chats-tab .btn-round {
     @apply w-6 h-6;
