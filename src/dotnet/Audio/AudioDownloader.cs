@@ -42,7 +42,7 @@ public class AudioDownloader
         else if (head.StartsWith(ActualOpusStreamHeader))
             streamAdapter = new ActualOpusStreamAdapter(audioLog);
         else
-            throw new InvalidOperationException("Unsupported audio stream container");
+            throw new InvalidOperationException("Unsupported audio stream container.");
 
         var restoredByteStream = tail.Prepend(head, cancellationToken);
         return await streamAdapter.Read(restoredByteStream, cancellationToken).ConfigureAwait(false);

@@ -68,7 +68,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 switch (command) {
                 case PlayCommand:
                     if (_jsRef != null)
-                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Repeated PlayCommand");
+                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await _js.InvokeAsync<IJSObjectReference>(

@@ -29,7 +29,7 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
     public virtual async Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
     {
-        await AssertCanReadUserProfile(session, userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, userId, cancellationToken).ConfigureAwait(false);
         return await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -44,7 +44,7 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
         var (session, userProfile) = command;
 
-        await AssertCanUpdateUserProfile(session, userProfile, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanUpdate(session, userProfile, cancellationToken).ConfigureAwait(false);
         await _commander.Call(new IUserProfilesBackend.UpdateCommand(command.UserProfile), cancellationToken)
             .ConfigureAwait(false);
     }

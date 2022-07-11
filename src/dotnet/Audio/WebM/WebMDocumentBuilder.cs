@@ -32,8 +32,8 @@ public sealed class WebMDocumentBuilder
 
     public WebMDocument ToDocument()
     {
-        var ebml = _ebml ?? throw new InvalidOperationException("EBML header is null");
-        var segment = _segment ?? throw new InvalidOperationException("Segment is null");
+        var ebml = _ebml ?? throw new InvalidOperationException("EBML header is null.");
+        var segment = _segment ?? throw new InvalidOperationException("Segment is null.");
 
         return new WebMDocument(ebml, segment, _clusters);
     }

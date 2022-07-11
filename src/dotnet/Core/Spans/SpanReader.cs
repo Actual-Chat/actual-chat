@@ -156,7 +156,7 @@ public ref struct SpanReader
         case 8:
             return (float?)new Union { ULong = num.Value }.Double;
         default:
-            throw new InvalidOperationException("Incorrect float length");
+            throw new InvalidOperationException("Incorrect float length.");
         }
     }
 

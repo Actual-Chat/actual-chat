@@ -93,7 +93,7 @@ internal class Invites : IInvites
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
             if (!userProfile.IsAdmin)
-                throw new SecurityException("Only admins can generate user invites");
+                throw new SecurityException("Only admins can generate user invites.");
         }
 
         var chatInviteDetails = invite.Details?.Chat;

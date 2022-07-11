@@ -68,12 +68,10 @@ public class UserAvatars : IUserAvatars
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
             if (avatar == null || avatar.UserId != user.Id)
-                throw new InvalidOperationException("Invalid AvatarId");
+                throw new InvalidOperationException("Invalid AvatarId.");
         }
 
-        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-        if (userProfile == null)
-            throw new InvalidOperationException("User profile does not exist");
+        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).Required().ConfigureAwait(false);
         userProfile = userProfile with { AvatarId = avatarId };
         var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
@@ -99,9 +97,7 @@ public class UserAvatars : IUserAvatars
             return;
 
         var avatarId = command.AvatarId;
-        var avatar = await Get(command.Session, avatarId, cancellationToken).ConfigureAwait(false);
-        if (avatar == null)
-            throw new InvalidOperationException("Invalid avatar id");
+        _ = await Get(command.Session, avatarId, cancellationToken).Required("Invalid avatar id").ConfigureAwait(false);
 
         var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatarId, command.Name, command.Picture, command.Bio);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);

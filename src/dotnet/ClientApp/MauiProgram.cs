@@ -67,7 +67,7 @@ public static class MauiProgram
             SessionId = sessionId
         };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
-            throw new Exception("Wrong configuration, base uri can't be empty");
+            throw new Exception("Wrong configuration, base uri can't be empty.");
         services.TryAddSingleton<ClientAppSettings>(settings);
 
         ConfigureServices(services, new Uri(settings.BaseUri));
