@@ -152,7 +152,7 @@
             .OrderBy(c => c.Title)
             .ToArray();
 
-        var listenedChatIds = await ChatUI.ListenedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
         var listenedChats = new List<Chat>();
         foreach (var t in listenedChatIds)
         {
