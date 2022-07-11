@@ -15,7 +15,7 @@ using System.Collections.Generic;
 using View = Android.Views.View;
 using WebView = Android.Webkit.WebView;
 
-namespace ActualChat.ClientApp;
+namespace ActualChat.ClientApp.Platforms.Android;
 
 internal class PermissionManagingBlazorWebChromeClient : WebChromeClient, IActivityResultCallback
 {

@@ -1,3 +1,4 @@
+using ActualChat.ClientApp.Platforms.Android;
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;
