@@ -33,7 +33,7 @@
                 IsPlayingHistorical = isPlayingHistorical,
             };
 
-        ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken);
+        ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken).ConfigureAwait(false);
 
         return new Model() {
             IsPlayingActive = isPlayingActive,
