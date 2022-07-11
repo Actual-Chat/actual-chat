@@ -67,12 +67,11 @@ public class MobileAuthController : Controller
         if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         else {
-            var sessionResolver = new SimpleSessionResolver(new Session(sessionId));
-            var customServiceProvider = new CustomServiceProvider(_services, sessionResolver);
-            var helper = new ServerAuthHelper(
-                _services.GetRequiredService<ServerAuthHelper.Options>(),
-                customServiceProvider);
-            await helper.UpdateAuthState(HttpContext, cancellationToken).ConfigureAwait(false);
+            var helper = _services.GetRequiredService<ServerAuthHelper>();
+            await helper.UpdateAuthState(
+                new Session(sessionId),
+                HttpContext,
+                cancellationToken).ConfigureAwait(false);
 
             await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
         }
@@ -95,39 +94,5 @@ public class MobileAuthController : Controller
             "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
         HttpContext.Response.ContentType = "text/html; charset=utf-8";
         await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
-    }
-
-    private class CustomServiceProvider : IServiceProvider
-    {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ISessionResolver _sessionResolver;
-
-        public CustomServiceProvider(IServiceProvider serviceProvider, ISessionResolver sessionResolver)
-        {
-            _serviceProvider = serviceProvider;
-            _sessionResolver = sessionResolver;
-        }
-
-        public object? GetService(Type serviceType)
-            => serviceType == typeof(ISessionResolver) ? _sessionResolver : _serviceProvider.GetService(serviceType);
-    }
-
-    private class SimpleSessionResolver : ISessionResolver
-    {
-        public SimpleSessionResolver(Session session)
-            => SessionTask = Task.FromResult(session);
-
-        public Session Session {
-#pragma warning disable VSTHRD002
-            get => SessionTask.Result;
-#pragma warning restore VSTHRD002
-            set => throw new NotSupportedException();
-        }
-
-        public Task<Session> SessionTask { get; }
-
-        public bool HasSession => true;
-
-        public Task<Session> GetSession(CancellationToken cancellationToken = default) => SessionTask;
     }
 }
