@@ -16,13 +16,13 @@
     [Parameter] public string ChatId { get; set; } = "";
 
     private void OnClick() {
-        var listened = ChatUI.ListenedChatIds.ValueOrDefault;
-        ChatUI.ListenedChatIds.Value = listened.Remove(ChatId);
+        var listened = ChatUI.ListeningChatIds.ValueOrDefault;
+        ChatUI.ListeningChatIds.Value = listened.Remove(ChatId);
     }
 
     protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
-        => await ChatUI.ListenedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        => await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
 }

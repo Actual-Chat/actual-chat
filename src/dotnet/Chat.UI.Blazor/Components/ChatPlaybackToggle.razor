@@ -32,25 +32,13 @@
                 IsPlayingActive = isPlayingActive,
                 IsPlayingHistorical = isPlayingHistorical,
             };
-        var listenedChatIds = await ChatUI.ListenedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        ChatUI.ListenedChatIds.Value = AddToListened(listenedChatIds);
+
+        ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken);
 
         return new Model() {
             IsPlayingActive = isPlayingActive,
             IsPlayingHistorical = isPlayingHistorical,
         };
-    }
-
-    private ImmutableArray<Symbol> AddToListened(ImmutableArray<Symbol> lastListened) {
-        var contains = lastListened.Contains(ChatId);
-        var count = lastListened.Length;
-
-        if (count >= 4)
-            lastListened = contains ? lastListened.Remove(ChatId) : lastListened.RemoveAt(0);
-        else
-            lastListened = contains ? lastListened.Remove(ChatId) : lastListened;
-        lastListened = lastListened.Add(ChatId);
-        return lastListened;
     }
 
     public sealed record Model {
