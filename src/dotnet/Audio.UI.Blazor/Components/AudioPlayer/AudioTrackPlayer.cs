@@ -150,7 +150,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         try {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null
+            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null!
                 ? Task.FromResult(default(TResult?))
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }

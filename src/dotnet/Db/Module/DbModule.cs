@@ -21,7 +21,8 @@ public class DbModule : HostModule<DbSettings>
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
-        string? connectionString)
+        string? connectionString,
+        Action<DbContextBuilder<TDbContext>>? configure = null)
         where TDbContext : DbContext
     {
         if (connectionString.IsNullOrEmpty())
@@ -93,7 +94,7 @@ public class DbModule : HostModule<DbSettings>
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
         });
-        services.AddDbContextServices<TDbContext>(dbContext => {
+        services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
                 LogLevel = LogLevel.Information,
             });
@@ -102,10 +103,14 @@ public class DbModule : HostModule<DbSettings>
                 IsolationLevel = IsolationLevel.RepeatableRead,
             });
             */
-            dbContext.AddOperations(_ => new() {
-                UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
+            db.AddOperations(operations => {
+                operations.ConfigureOperationLogReader(_ => new() {
+                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
+                });
+                operations.AddRedisOperationLogChangeTracking();
             });
-            dbContext.AddRedisOperationLogChangeTracking();
+
+            configure?.Invoke(db);
         });
     }
 

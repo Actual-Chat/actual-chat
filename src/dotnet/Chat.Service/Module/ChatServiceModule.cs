@@ -7,7 +7,6 @@ using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
@@ -33,18 +32,19 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
-        services.AddDbContextServices<ChatDbContext>(dbContext => {
-            dbContext.AddEntityResolver<string, DbChat>(_ => new() {
+        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
+            db.AddEntityResolver<string, DbChat>(_ => new() {
                 QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners),
             });
-            dbContext.AddEntityResolver<string, DbChatAuthor>();
-            dbContext.AddEntityResolver<string, DbChatRole>();
-            dbContext.AddShardLocalIdGenerator(db => db.ChatAuthors, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            dbContext.AddShardLocalIdGenerator(db => db.ChatRoles, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            dbContext.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
-                db => db.ChatEntries,
+            db.AddEntityResolver<string, DbChatAuthor>();
+            db.AddEntityResolver<string, DbChatRole>();
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatRoles,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
+                dbContext => dbContext.ChatEntries,
                 (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
                 e => e.Id);
         });

@@ -3,15 +3,15 @@
 }
 
 .chat-icon-picker {
-    @apply absolute bg-secondary rounded-md right-0 bottom-0;
+    @apply absolute bg-01 rounded-full right-0 bottom-0;
 }
 
 .chat-icon-generated {
-    @apply flex items-center justify-center rounded-md cursor-default pointer-events-none;
+    @apply flex items-center justify-center rounded-full cursor-default pointer-events-none;
 }
 
 .chat-icon-image {
-    @apply rounded-md;
+    @apply rounded-full;
 }
 
 .chat-icon-show-cursor .chat-icon-image {
@@ -21,11 +21,12 @@
 .chat-icon-size-6 {
     @apply w-6 h-6;
 }
-
+.chat-icon-size-8 {
+    @apply w-8 h-8;
+}
 .chat-icon-size-9 {
     @apply w-9 h-9;
 }
-
 .chat-icon-size-20 {
     @apply w-20 h-20 text-2xl;
 }

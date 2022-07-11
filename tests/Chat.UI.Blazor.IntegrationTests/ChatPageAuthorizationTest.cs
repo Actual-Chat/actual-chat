@@ -2,7 +2,6 @@ using ActualChat.Host;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Http;
-using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -77,9 +76,8 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
     private async Task UpdateStatus(UserStatus newStatus)
     {
-        var userProfile = await _userProfiles.Get(_tester.Session, default);
-        userProfile = userProfile.AssertAuthenticated()
-            with { Status = newStatus };
+        var userProfile = await _userProfiles.Require(_tester.Session, default);
+        userProfile = userProfile with { Status = newStatus };
         await _userProfiles.GetCommander().Call(new IUserProfiles.UpdateCommand(_adminSession, userProfile));
     }
 }

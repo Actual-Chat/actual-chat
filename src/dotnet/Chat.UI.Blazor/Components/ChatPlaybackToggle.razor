@@ -15,6 +15,8 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
+    [Parameter] public string ChatId { get; set; } = "";
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
@@ -25,6 +27,13 @@
         var isPlayingActive = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
+        if (!isPlayingActive)
+            return new Model() {
+                IsPlayingActive = isPlayingActive,
+                IsPlayingHistorical = isPlayingHistorical,
+            };
+
+        ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken).ConfigureAwait(false);
 
         return new Model() {
             IsPlayingActive = isPlayingActive,

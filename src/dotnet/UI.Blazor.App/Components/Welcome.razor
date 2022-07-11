@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<Welcome.Model?>
 @{
@@ -22,11 +23,11 @@
         @ChildContent
     } else {
         <WelcomeLayout>
-            <h1 class="text-primary">Welcome to Actual Chat!</h1>
-            <p class="text-primary mt-5">
+            <h1 class="text-02">Welcome to Actual Chat!</h1>
+            <p class="text-02 mt-5">
                 Hello, <span class="font-semibold">@(m.UserName)!</span>
             </p>
-            <p class="text-primary">
+            <p class="text-02">
                 @if (m.UserStatus == UserStatus.Suspended) {
                     <span>Your account is suspended. Please feel free to contact Actual.chat team to clarify what happened.</span>
                 } else {
@@ -40,7 +41,7 @@
     }
 } else {
     <WelcomeLayout>
-        <h1 class="text-primary">Welcome to Actual Chat!</h1>
+        <h1 class="text-02">Welcome to Actual Chat!</h1>
         <div class="relative mt-5">
             <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="bottom-8"/>
         </div>
@@ -53,7 +54,7 @@
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
 
@@ -88,7 +89,7 @@
     }
 
     private async Task OnSignOutClick() {
-        await ClientAuthHelper.SignOut();
+        await ClientAuth.SignOut();
     }
 
     public record Model(bool IsAuthenticated) {

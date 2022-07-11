@@ -8,13 +8,12 @@
 @implements IBaseLayoutBackend
 @{
     var failures = UICommandFailureList.Items;
-    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
 
 <div class="absolute z-60 min-h-mobile-header">
     <NavbarToggle/>
 </div>
-<div class="bg-primary flex-1 flex-x justify-items-stretch h-full max-h-full relative">
+<div class="bg-02 flex-1 flex-x justify-items-stretch h-full max-h-full relative">
     <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <SideNav Direction="SideNavDirection.LeftToRight"
              Open="() => NavbarUI.IsVisible = true"
@@ -26,39 +25,17 @@
             </div>
             <div class="navbar-mobile-title md:hidden
                         flex-1 flex flex-row items-center justify-end px-4 py-3
-                        bg-accent font-semibold min-h-mobile-header">
+                        bg-04 font-semibold min-h-mobile-header">
                 <NavbarMobileTitle/>
             </div>
-            <div class="flex-x h-full overflow-y-hidden">
-                <div class="navbar-group-toggles">
-                    <NavbarGroupToggles/>
-                </div>
-                <div class="flex-y w-full h-full overflow-y-hidden">
-                    <div class="flex-x justify-center mt-2">
-                        <NavbarLogo />
-                    </div>
-                    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar px-2 m-2">
-                        <NavbarContent />
-                    </div>
-                    @* Bottom sticky panel *@
-                    <div class="flex-none flex-y">
-                        <div class="flex-y text-xxs p-3">
-                            <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
-                            @if (HostInfo.HostKind != HostKind.Maui)
-                            {
-                                <div class="pt-0.5"><BlazorModeToggle/></div>
-                            }
-                        </div>
-                        <div class="flex-y justify-center items-start w-full h-full px-2.5 border-t-2 border-accent min-h-footer">
-                            <AccountDropdown/>
-                        </div>
-                    </div>
-                </div>
+            <div class="flex-x h-full overflow-y-hidden bg-04">
+                <ThinLeftPanel/>
+                <WideLeftPanel/>
             </div>
         </div>
     </SideNav>
     <div class="flex-1 overflow-y-auto flex-y relative float-left">
-        <div class="bg-secondary flex-1 overflow-y-auto">
+        <div class="bg-01 flex-1 overflow-y-auto">
             @if (failures.Count != 0) {
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
                     @foreach (var failure in failures) {

@@ -7,6 +7,8 @@ public record Author : IAuthorLike
     private static IEqualityComparer<Author> EqualityComparer { get; } =
         VersionBasedEqualityComparer<Author, Symbol>.Instance;
 
+    public static Author None { get; } = new();
+
     public Symbol Id { get; init; } = Symbol.Empty;
     public long Version { get; init; }
     public string Name { get; init; } = "";

@@ -48,4 +48,33 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         await _commander.Call(new IUserProfilesBackend.UpdateCommand(command.UserProfile), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private async Task AssertCanUpdateUserProfile(
+        Session session,
+        UserProfile userProfileToUpdate,
+        CancellationToken cancellationToken)
+    {
+        var userProfile = await this.Require(session, cancellationToken).ConfigureAwait(false);
+        if (userProfileToUpdate.User.Id == userProfile.Id) {
+            if (userProfile.Status != userProfileToUpdate.Status)
+                throw new SecurityException("You can't update your own status.");
+            return;
+        }
+
+        userProfile.AssertAdmin();
+    }
+
+    private async Task AssertCanReadUserProfile(
+        Session session,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var userProfile = await this.Require(session, cancellationToken).ConfigureAwait(false);
+        if (userProfile.User.Id == userId)
+            return;
+        if (userProfile.IsActive())
+            return;
+
+        throw new SecurityException("You can't access the profile of another user.");
+    }
 }

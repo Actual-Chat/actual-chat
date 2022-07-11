@@ -21,7 +21,7 @@ a {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 a {
-    @apply bg-inherit text-primary;
+    @apply bg-inherit text-02;
 }
 a:focus {
     @apply outline-none underline underline-offset-1 decoration-success;
@@ -32,26 +32,26 @@ a.unfocusable:focus {
 
 input,
 textarea {
-    @apply bg-secondary text-primary border-accent;
+    @apply bg-01 text-02 border-bg-03;
 }
 input {
     @apply h-12 md:h-8;
 }
 
 input:focus {
-    @apply bg-primary;
+    @apply bg-03;
     @apply rounded-sm border-0 outline-none;
     @apply ring-2 ring-success;
 }
 input:focus[type="text"]::selection {
-    @apply bg-selection text-accent;
+    @apply bg-selection text-02;
 }
 
 code {
     @apply px-0.5;
-    @apply rounded-sm border border-accent;
+    @apply rounded-sm border border-bg-03;
     /* @apply rounded-sm border-0 ring ring-1 ring-accent; */
-    @apply bg-secondary;
+    @apply bg-01;
     @apply font-mono;
 }
 
@@ -73,8 +73,8 @@ h3 {
 
 h1.section, h2.section, h3.section, h4.section {
     @apply mt-4 pt-1;
-    @apply border-0 border-t-2 border-accent;
-    @apply text-secondary subpixel-antialiased;
+    @apply border-0 border-t-2 border-bg-03;
+    @apply text-03 subpixel-antialiased;
 }
 
 h1.section-top, h2.section-top, h3.section-top, h4.section-top,
@@ -86,7 +86,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 /* Other inputs */
 
 input.input-imprinted {
-    @apply border-0 bg-accent;
+    @apply border-0 bg-04;
 }
 
 input.input-underlined {

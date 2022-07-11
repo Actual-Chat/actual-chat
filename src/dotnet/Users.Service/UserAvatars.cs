@@ -31,7 +31,7 @@ public class UserAvatars : IUserAvatars
 
         var userAvatarRequested = avatarId.OrdinalStartsWith("0:");
         if (userAvatarRequested)
-            user.AssertAuthenticated();
+            user.Required();
 
         var userAvatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)

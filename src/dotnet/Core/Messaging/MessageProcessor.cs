@@ -54,7 +54,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         Start();
         Queue!.Writer.TryComplete();
-        return WhenRunning == null ? Task.CompletedTask : WhenRunning.WithFakeCancellation(cancellationToken);
+        return WhenRunning == null ? Task.CompletedTask : WhenRunning.WaitAsync(cancellationToken);
     }
 
     protected abstract Task<object?> Process(TMessage message, CancellationToken cancellationToken);

@@ -63,8 +63,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         case ChatIdKind.PeerFull:
             return chatId;
         case ChatIdKind.PeerShort:
-            var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-            user = user.AssertAuthenticated();
+            var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
             return ParsedChatId.FormatFullPeerChatId(user.Id, parsedChatId.UserId1);
         default:
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -367,7 +366,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chat == null)
             return;
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
         if (chat.OwnerIds.Contains(user.Id)) {
             throw new NotSupportedException("The very last owner of the chat can't leave it.");
             // TODO: managing ownership functionality is required
@@ -409,9 +408,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.Peer,
         };
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user = user.AssertAuthenticated();
-
+        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
         var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;

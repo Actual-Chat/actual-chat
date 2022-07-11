@@ -125,7 +125,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             if (userProfile.Status == UserStatus.Suspended)
                 throw new SecurityException(
                     "Your account cannot be activated because your current status is suspended.");
-            if (userProfile.Status == UserStatus.Active)
+            if (userProfile.IsActive())
                 throw new InvalidOperationException("Your account is already active.");
         }
 

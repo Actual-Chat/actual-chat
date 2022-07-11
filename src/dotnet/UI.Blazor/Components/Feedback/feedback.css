@@ -1,5 +1,5 @@
 ﻿.feedback-textarea {
-    @apply border-accent p-1;
+    @apply border-bg-03 p-1;
 }
 
 .feedback-textarea:focus {

@@ -110,12 +110,12 @@
 @if (user != null) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
-        <Button Click="_ => AuthHelper.SignOut()">Sign out</Button>
+        <Button Click="_ => ClientAuth.SignOut()">Sign out</Button>
         <Button Click="_ => AuthHelper.SignOutEverywhere()">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
             @foreach (var (name, displayName) in unusedAuthSchemas) {
-                <Button Click="_ => AuthHelper.SignIn(name)">@displayName</Button>
+                <Button Click="_ => ClientAuth.SignIn(name)">@displayName</Button>
             }
         }
     </FormButtons>
@@ -128,6 +128,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
@@ -141,7 +142,7 @@
     {
         if (firstRender) {
             // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await AuthHelper.GetSchemas();
+            AuthSchemas = await ClientAuth.GetSchemas();
             StateHasChanged();
         }
     }
@@ -177,8 +178,7 @@
     }
 
     private async Task OnStatusSelected(UserStatus newStatus) {
-        var userProfile = await UserProfiles.Get(Session, default);
-        userProfile = userProfile.AssertAuthenticated();
+        var userProfile = await UserProfiles.Require(Session, default);
         if (newStatus == userProfile.Status)
             return;
 

@@ -36,11 +36,11 @@
 
 .custom-scrollbar::-webkit-scrollbar-track,
 .custom-scrollbar-x::-webkit-scrollbar-track {
-    @apply bg-secondary rounded-full;
+    @apply bg-transparent rounded-full;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .custom-scrollbar-x::-webkit-scrollbar-thumb {
-    @apply bg-accent rounded-full;
+    @apply bg-04 rounded-full;
     @apply border border-scrollbar;
     @apply shadow-inner shadow-scrollbar;
 }

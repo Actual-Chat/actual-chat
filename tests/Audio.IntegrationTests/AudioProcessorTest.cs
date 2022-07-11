@@ -29,11 +29,9 @@ public class AudioProcessorTest : AppHostTestBase
         await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
-        var readSizeOpt = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
-            .WithTimeout(TimeSpan.FromSeconds(1), CancellationToken.None);
-
-        readSizeOpt.HasValue.Should().BeTrue();
-        readSizeOpt.Value.Should().Be(0);
+        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
+            .WaitAsync(TimeSpan.FromSeconds(1), cts.Token);
+        readSize.Should().Be(0);
         cts.Cancel();
     }
 

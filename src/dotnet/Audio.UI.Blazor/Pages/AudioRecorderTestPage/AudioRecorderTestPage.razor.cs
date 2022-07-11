@@ -14,9 +14,9 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
 
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
-    private IJSObjectReference? _jsRef = null;
+    private IJSObjectReference? _jsRef;
     private ElementReference _recordsRef;
-    private int _recordNumber = 0;
+    private int _recordNumber;
 
     private string ChatId => "the-actual-one";
     private bool DebugMode { get; set; } = true;
@@ -45,7 +45,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                     blazorRef.Dispose();
                 }
                 catch (Exception ex) {
-                    Log.LogError(ex, "Unhandled exception during cancelling recording.");
+                    Log.LogError(ex, "Unhandled exception during cancelling recording");
                 }
                 finally {
                     IsRecording = false;

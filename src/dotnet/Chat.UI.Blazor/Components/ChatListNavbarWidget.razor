@@ -9,62 +9,116 @@
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
 
-    RenderFragment RenderItem(Chat c) =>
+    RenderFragment RenderUnpinned(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
             <ChildContent>
                 <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size6"/>
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
+                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                </div>
+            </ChildContent>
+            <Ending>
+                <UnreadMessageCounter ChatId="@c.Id"/>
+                <ChatListPinToggle ChatId="@c.Id"/>
+            </Ending>
+        </NavbarItem>;
+
+    RenderFragment RenderPinned(Chat c) =>
+        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
+            <ChildContent>
+                <div class="flex-x items-center">
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
                     <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
                 </div>
             </ChildContent>
             <Ending>
                 <ChatListPinToggle ChatId="@c.Id"/>
-                <ChatListRecordingToggle ChatId="@c.Id"/>
                 <UnreadMessageCounter ChatId="@c.Id"/>
+            </Ending>
+        </NavbarItem>;
+
+    RenderFragment RenderListened(Chat c) =>
+        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
+            <ChildContent>
+                <div class="flex-x items-center">
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
+                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                </div>
+            </ChildContent>
+            <Ending>
+                <ChatListPlaybackListened ChatId="@c.Id"/>
+                <ChatListRecordingToggle ChatId="@c.Id"/>
+                <ListeningChatRemoveButton ChatId="@c.Id"/>
             </Ending>
         </NavbarItem>;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
-    <Icons>
-        @if (m.CanCreateChat) {
-            <ButtonSquare Title="Create new chat" Click="OnCreateNewChatClick">
-                <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-2 -2 28 28">
-                    <path d="M24 9h-9v-9h-6v9h-9v6h9v9h6v-9h9z"/>
-                </svg>
-            </ButtonSquare>
-        }
-    </Icons>
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
-        @if (m.PinnedChats.Length > 0) {
-            <NavbarSubgroup Class="first">
-                <ChildContent>Pinned</ChildContent>
-                <Ending>
-                    <ButtonSquare
-                        Class="@mustPlayPinnedClass"
-                        Click="@(() => ChatUI.MustPlayPinnedChats.Value = !mustPlayPinned)"
-                        Title="When listening, also listen all pinned chats">
-                        <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-                            @if (mustPlayPinned) {
-                                <path d="M 0 24 C 0 17.021 7.555 12.66 13.599 16.149 C 16.403 17.768 18.131 20.762 18.131 24 L 0 24 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 23.285 -0.042 C 24.371 2.147 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z" style=""></path>
-                            } else {
-                                <path d="M 23.285 -0.042 C 24.371 2.1470000000000002 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 11.428 15.146 L 11.428 24 L 0 24 C -0.001 18.022 5.639 13.651 11.428 15.146 Z M 9.142 13.714 C 5.355 13.714 2.286 10.645 2.286 6.8580000000000005 C 2.286 3.069 5.355 0 9.142 0 C 12.931000000000001 0 15.999 3.069 15.999 6.8580000000000005 C 15.999 10.645 12.931000000000001 13.714 9.142 13.714 Z M 15.999 18.286 L 15.999 14.857 L 18.284 14.857 L 18.284 18.286 L 21.713 18.286 L 21.713 20.571 L 18.284 20.571 L 18.284 24 L 15.999 24 L 15.999 20.571 L 12.571 20.571 L 12.571 18.286 L 15.999 18.286 Z" style=""></path>
+        <div class="flex-y w-full h-full">
+            <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
+                <Tab Title="All" Class="-flex-y relative overflow-y-hidden h-full chats-tab">
+                    @if (m.ListenedChats.Count > 0) {
+                        <div class="listened-chats">
+                            <div class="flex-x h-6 px-2 text-sm font-medium my-1 items-center gap-x-4">
+                                <div>Actual chats</div>
+                                <ButtonRound
+                                    Class="@mustPlayPinnedClass"
+                                    Click="@(() => ChatUI.MustPlayPinnedChats.Value = !mustPlayPinned)"
+                                    Title="When listening, also listen all pinned chats">
+                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
+                                        @if (mustPlayPinned) {
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M18 19C16.897 19 16 18.103 16 17C16 15.897 16.897 15 18 15C19.103 15 20 15.897 20 17C20 18.103 19.103 19 18 19ZM6 15C7.103 15 8 15.897 8 17C8 18.103 7.103 19 6 19C4.897 19 4 18.103 4 17C4 15.897 4.897 15 6 15ZM12 2C6.486 2 2 6.65 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 7.753 7.589 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C15.794 13 14 14.794 14 17C14 19.206 15.794 21 18 21C20.206 21 22 19.206 22 17V12.366C22 6.65 17.514 2 12 2Z"/>
+                                        } else {
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.72434 6.55256C2.63637 8.21149 2 10.2131 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 10.7689 4.4302 9.27487 5.17578 8.004L3.72434 6.55256ZM14.0035 16.8317C14.0012 16.8875 14 16.9436 14 17C14 19.206 15.794 21 18 21C18.0564 21 18.1125 20.9988 18.1683 20.9965L14.0035 16.8317ZM20.9529 19.6957C20.5188 20.1709 19.9719 20.5412 19.3548 20.7639C19.3336 20.746 19.313 20.727 19.293 20.707L17.5303 18.9443C17.681 18.9807 17.8383 19 18 19C18.6569 19 19.2407 18.6819 19.6055 18.1915L20.707 19.293C20.824 19.41 20.906 19.5485 20.9529 19.6957ZM21.5831 18.7776C21.8499 18.2418 22 17.6382 22 17V12.366C22 6.65 17.514 2 12 2C9.98007 2 8.09809 2.62401 6.52406 3.69585L7.96956 5.14135C9.15383 4.41604 10.5314 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C17.3679 13 16.7696 13.1473 16.2376 13.4094L17.835 15.0067C17.8894 15.0023 17.9444 15 18 15C19.103 15 20 15.897 20 17C20 17.0556 19.9977 17.1106 19.9933 17.165L21.4141 18.5859C21.4752 18.647 21.5315 18.711 21.5831 18.7776ZM16.8085 15.3945L15.3873 13.9733C14.8713 14.4193 14.4701 14.9948 14.2348 15.6488L16.0557 17.4697C16.0193 17.319 16 17.1617 16 17C16 16.3431 16.3181 15.7593 16.8085 15.3945ZM7.13939 5.72539C6.62041 6.1418 6.15144 6.62314 5.74368 7.15768L4.32 5.734C4.7403 5.21187 5.20912 4.7331 5.71921 4.30521L7.13939 5.72539ZM8 17C8 15.897 7.103 15 6 15C4.897 15 4 15.897 4 17C4 18.103 4.897 19 6 19C7.103 19 8 18.103 8 17Z"/>
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M20.707 19.293L4.70701 3.29301C4.31601 2.90201 3.68401 2.90201 3.29301 3.29301C2.90201 3.68401 2.90201 4.31601 3.29301 4.70701L19.293 20.707C19.488 20.902 19.744 21 20 21C20.256 21 20.512 20.902 20.707 20.707C21.098 20.316 21.098 19.684 20.707 19.293Z"/>}
+                                    </svg>
+                                </ButtonRound>
+                            </div>
+
+                            @foreach (var c in m.ListenedChats) {
+                                @RenderListened(c)
                             }
-                        </svg>
-                    </ButtonSquare>
-                </Ending>
-            </NavbarSubgroup>
-            foreach (var c in m.PinnedChats)
-                @RenderItem(c)
-            if (m.UnpinnedChats.Length > 0) {
-                <NavbarSubgroup>Unpinned</NavbarSubgroup>
-                foreach (var c in m.UnpinnedChats)
-                    @RenderItem(c)
-            }
-        } else {
-            foreach (var c in m.UnpinnedChats)
-                @RenderItem(c)
-        }
+                            <div class="mx-1 mt-1 h-0 border-b border-bg-04"></div>
+                        </div>
+                    }
+                    <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+                        @if (m.PinnedChats.Length > 0) {
+                            <div class="pinned-chats">
+                                @foreach (var c in m.PinnedChats) {
+                                    @RenderPinned(c)
+                                }
+                            </div>
+
+                            <div class="mx-4 mb-2 border-b border-bg-04"></div>
+
+                            if (m.UnpinnedChats.Length > 0) {
+                                <div class="unpinned-chats custom-scrollbar">
+                                    @foreach (var c in m.UnpinnedChats) {
+                                        @RenderUnpinned(c)
+                                    }
+                                </div>
+                            }
+                        } else {
+                            <div class="unpinned-chats custom-scrollbar">
+                                @foreach (var c in m.UnpinnedChats) {
+                                    @RenderUnpinned(c)
+                                }
+                            </div>
+                        }
+                    </div>
+                </Tab>
+                <Tab Title="Family">
+                    <div>Family Tab</div>
+                </Tab>
+                <Tab Title="Friends">
+                    <div>Friends Tab</div>
+                </Tab>
+                <Tab Title="Work">
+                    <div>Work Tab</div>
+                </Tab>
+            </TabPanel>
+        </div>
     </ChildContent>
 </NavbarGroup>
 
@@ -98,6 +152,16 @@
             .OrderBy(c => c.Title)
             .ToArray();
 
+        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChats = new List<Chat>();
+        foreach (var t in listenedChatIds)
+        {
+            var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
+            if (chat != null)
+                listenedChats.Add(chat);
+        }
+        listenedChats.Reverse();
+
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var mustPlayPinned = await ChatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
@@ -106,6 +170,7 @@
             CanCreateChat = true,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
+            ListenedChats = listenedChats,
             ActiveChatId = activeChatId,
             IsPlaying = isPlaying,
             MustPlayPinned = mustPlayPinned,
@@ -121,6 +186,7 @@
         public bool CanCreateChat { get; init; }
         public Chat[] PinnedChats { get; init; } = Array.Empty<Chat>();
         public Chat[] UnpinnedChats { get; init; } = Array.Empty<Chat>();
+        public List<Chat> ListenedChats { get; init; } = new ();
         public Symbol ActiveChatId { get; init; }
         public bool IsPlaying { get; init; }
         public bool MustPlayPinned { get; init; }

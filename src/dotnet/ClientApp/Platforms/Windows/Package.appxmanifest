@@ -22,7 +22,14 @@
 
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-      <uap:VisualElements />
+        <uap:VisualElements />
+        <Extensions>
+          <uap:Extension Category="windows.protocol">
+              <uap:Protocol Name="myapp">
+                  <uap:DisplayName>My App</uap:DisplayName>
+              </uap:Protocol>
+          </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

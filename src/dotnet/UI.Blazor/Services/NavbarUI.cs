@@ -5,6 +5,7 @@ public class NavbarUI
     public bool IsVisible { get; set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
+    public Dictionary<string, Action> AddButtonAction { get; } = new (StringComparer.Ordinal);
     public event EventHandler? ActiveGroupChanged;
 
     public void ActivateGroup(string id, string title)

@@ -5,50 +5,20 @@ namespace ActualChat.ClientApp;
 
 partial class MauiBlazorWebViewHandler
 {
-    protected override Android.Webkit.WebView CreatePlatformView()
+    protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        var webView = base.CreatePlatformView();
-        webView.Settings.JavaScriptEnabled = true;
+        base.ConnectHandler(platformView);
+
+        platformView.Settings.JavaScriptEnabled = true;
         var cookieManager = CookieManager.Instance!;
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
-        //cookieManager.SetAcceptThirdPartyCookies(webView, true);
-        var jsInterface = new JavascriptInterface(this, webView);
-        webView.AddJavascriptInterface(jsInterface, "Android");
-#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
-        jsInterface.MessageReceived += async json => {
-            if (!string.IsNullOrWhiteSpace(json) && json.Length > 10 && json[0] == '{') {
-                try {
-                    var msg = System.Text.Json.JsonSerializer.Deserialize<JsMessage>(json);
-                    if (msg == null)
-                        return;
-                    var sender = webView;
-                    switch (msg.type) {
-                    case "_auth":
-                        var originalUri = sender.OriginalUrl;
-                        if (!await OpenSystemBrowserForSignIn(msg.url).ConfigureAwait(true))
-                            break;
-                        var cookies = await GetRedirectSecret().ConfigureAwait(true);
-                        foreach (var (key, value) in cookies) {
-                            cookieManager.SetCookie("0.0.0.0", $"{key}={value}");
-                            cookieManager.SetCookie(new Uri(BaseUri).Host, $"{key}={value}");
-
-                            if (string.Equals(key, "FusionAuth.SessionId", StringComparison.Ordinal)) {
-                                string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
-                                await File.WriteAllTextAsync(path, value).ConfigureAwait(true);
-                            }
-                        }
-                        sender.LoadUrl(originalUri);
-                        break;
-                    default:
-                        throw new InvalidOperationException($"Unknown message type: {msg.type}");
-                    }
-                }
-                catch (Exception ex) {
-                    Debug.WriteLine(ex.ToString());
-                }
-            }
-        };
-        return webView;
+        cookieManager.SetAcceptCookie(true);
+        cookieManager.SetAcceptThirdPartyCookies(platformView, true);
+        var sessionCookieValue = $"FusionAuth.SessionId={SessionId}; path=/; secure; samesite=none; httponly";
+        cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
+        cookieManager.SetCookie("https://" + new Uri(BaseUri).Host, sessionCookieValue);
+        var jsInterface = new JavascriptInterface(this, platformView);
+        platformView.AddJavascriptInterface(jsInterface, "Android");
     }
 
     private class JavascriptInterface : Java.Lang.Object
@@ -68,7 +38,7 @@ partial class MauiBlazorWebViewHandler
         [Export("DOMContentLoaded")]
         public void OnDOMContentLoaded()
         {
-            _webView.Post(() => { 
+            _webView.Post(() => {
                 try {
                     var script = $"window.chatApp.initPage('{_handler.BaseUri}')";
                     _webView.EvaluateJavascript(script, null);

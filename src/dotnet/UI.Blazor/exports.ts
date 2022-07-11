@@ -13,6 +13,9 @@ import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/tooltip.css'
 import './Components/SideNav/side-nav.css'
+import './Components/Search/search.css'
+import './Components/Dropdown/dropdown.css'
+import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';

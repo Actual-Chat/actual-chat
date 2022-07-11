@@ -59,7 +59,9 @@ public class Startup
         });
 
         // Commander - it must be added first to make sure its options are set
-        var commander = services.AddCommander(new CommanderOptions() { AllowDirectCommandHandlerCalls = false });
+        var commander = services.AddCommander().Configure(new CommanderOptions() {
+            AllowDirectCommandHandlerCalls = false,
+        });
 
         // Creating plugins & host modules
         var pluginServices = new ServiceCollection()

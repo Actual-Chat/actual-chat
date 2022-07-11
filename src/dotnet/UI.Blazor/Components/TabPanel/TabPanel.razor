@@ -3,13 +3,19 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="tab-panel @Class">
         <div class="tab-panel-tabs @TabsClass" role="tablist">
-            <div class="relative btn-group min-w-full right-1">
+            <div class="relative btn-group min-w-full">
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
-                var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")}";
-                <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                    @tab.Title
-                </Button>
+                var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
+                <div class="flex-y">
+                    <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
+                        @tab.Title
+                    </Button>
+                    @if (BottomHill) {
+                        var lineCls = isActive ? "bg-success" : "bg-transparent";
+                        <div class="shape -mt-2 @lineCls"></div>
+                    }
+                </div>
             }
             </div>
         </div>
@@ -23,6 +29,8 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string TabsClass { get; set; } = "";
+    [Parameter] public bool BottomHill { get; set; }
+    [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab> ActiveTabChanged { get; set; }
 

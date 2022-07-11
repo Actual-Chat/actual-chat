@@ -26,6 +26,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        'icons-01': 'var(--icons-01)',
+        'icons-02': 'var(--icons-02)',
         'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
         'error-toast-text': 'var(--error-toast-text)',
@@ -94,23 +96,26 @@ module.exports = {
         'quote': 'var(--quote)',
       },
       textColor: {
-        'primary': 'var(--text-primary)',
-        'primary-inverted': 'var(--background-primary)',
-        'secondary': 'var(--text-secondary)',
-        'accent': 'var(--text-accent)',
+        '01': 'var(--text-01)',
+        '02': 'var(--text-02)',
+        '03': 'var(--text-03)',
+        '04': 'var(--text-04)',
       },
       borderColor: {
-        'primary': 'var(--background-primary)',
-        'primary-inverted': 'var(--text-primary)',
-        'secondary': 'var(--background-secondary)',
-        'secondary-inverted': 'var(--text-secondary)',
-        'accent': 'var(--background-accent)',
-        'accent-inverted': 'var(--text-accent)',
+        'bg-01': 'var(--background-01)',
+        'text-01': 'var(--text-01)',
+        'bg-02': 'var(--background-02)',
+        'text-02': 'var(--text-02)',
+        'bg-03': 'var(--background-03)',
+        'text-03': 'var(--text-03)',
+        'bg-04': 'var(--background-04)',
+        'text-04': 'var(--text-04)',
       },
       backgroundColor: {
-        'primary': 'var(--background-primary)',
-        'secondary': 'var(--background-secondary)',
-        'accent': 'var(--background-accent)',
+        '01': 'var(--background-01)',
+        '02': 'var(--background-02)',
+        '03': 'var(--background-03)',
+        '04': 'var(--background-04)',
       },
     },
     screens: {
@@ -214,6 +219,7 @@ module.exports = {
       72: '18rem',
       80: '20rem',
       96: '24rem',
+      120: '30rem',
       144: '36rem',
     },
     animation: {
@@ -912,7 +918,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
-      'navbar': '3.5rem',
+      'nav-left': '7.5rem',
       '3': '3rem',
     }),
     objectPosition: {

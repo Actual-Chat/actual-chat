@@ -1,12 +1,18 @@
 
 :root, .theme-light {
     /* Main colors */
-    --background-primary: #F5F5F5;
-    --background-secondary: #FFFFFF;
-    --background-accent: #E9E9E9;
-    --text-primary: #2b3641;
-    --text-secondary: #4b5e71;
-    --text-accent: #232c35;
+    --background-01: #FFFFFF;
+    --background-02: #FDFDFD;
+    --background-03: #F5F5F5;
+    --background-04: #E7E7E7;
+
+    --text-01: #000000;
+    --text-02: #444444;
+    --text-03: #626262;
+    --text-04: #FFFFFF;
+
+    --icons-01: #898989;
+    --icons-02: #B9B9B9;
 
     /* Buttons */
     --success: #2970FF;
@@ -32,14 +38,14 @@
 
     --square: #e2e7ec;
     --square-active: #e2e7ec;
-    --square-hover: #edf0f3;
+    --square-hover: #E1E9FA;
     --square-focus: #cad3dc;
     --square-title: #4b5e71;
 
     --round: #F5F5F5;
     --round-active: #E9E9E9;
-    --round-hover: #E9E9E9;
-    --round-focus: #cad3dc;
+    --round-hover: #E1E9FA;
+    --round-focus: #2970FF;
     --round-title: #4b5e71;
 
     --recorder: #e2e7ec;
@@ -49,7 +55,7 @@
     --shadow-main: #000000;
 
     /* Utils colors */
-    --online: #31d872;
+    --online: #0AA489;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
@@ -95,12 +101,14 @@
 
 .theme-dark {
     /* Main colors */
-    --background-primary: #2F3136;
-    --background-secondary: #36393F;
-    --background-accent: #292B2F;
-    --text-primary: #fafafa;
-    --text-secondary: #e5e6e8;
-    --text-accent: #d0d2d6;
+    --background-01: #36393F;
+    --background-02: #2F3136;
+    --background-03: #292B2F;
+    --background-04: #292B2F;
+    --text-01: #fafafa;
+    --text-02: #e5e6e8;
+    --text-03: #d0d2d6;
+    --text-04: #d0d2d6;
 
     /* Buttons */
     --success: #0ea5e9;

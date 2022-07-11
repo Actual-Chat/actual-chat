@@ -30,7 +30,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var invites = await Invites.GetChatInvites(Session, Chat.Id, cancellationToken);
+        var invites = await Invites.ListChatInvites(Session, Chat.Id, cancellationToken);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)

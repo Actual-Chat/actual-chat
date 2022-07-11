@@ -4,14 +4,14 @@
 @inherits ComputedStateComponent<ChatAuthorDialog.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
-    var title = $"User: {m.Author?.Name ?? ""}";
+    var title = $"User: {m.Author.Name}";
 }
 
 <DialogFrame Title="@title">
     <Body>
         <div class="flex-x items-center gap-x-3">
             <ChatAuthorCircle AuthorId="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
-            <ChatAuthorName AuthorId="@AuthorId" Class="text-primary font-semibold text-lg"/>
+            <ChatAuthorName AuthorId="@AuthorId" Class="text-02 font-semibold text-lg"/>
         </div>
     </Body>
     <Buttons>
@@ -64,14 +64,12 @@
             return;
         IsAddingContact = true;
         StateHasChanged();
-        try {
-            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
-        }
-        finally {
-            IsAddingContact = false;
-            await ModalInstance.CancelAsync();
-            StateHasChanged();
-        }
+
+        await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId)).ConfigureAwait(true);
+
+        IsAddingContact = false;
+        await ModalInstance.CancelAsync().ConfigureAwait(true);
+        StateHasChanged();
     }
 
     private async Task OnSendMessageClick() {
@@ -84,7 +82,7 @@
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new();
 
-        public Author Author { get; init; } = null!;
+        public Author Author { get; init; } = Author.None;
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }

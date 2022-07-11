@@ -25,7 +25,7 @@
 
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
-    @apply bg-primary text-secondary;
+    @apply bg-02 text-03;
     @apply overflow-hidden;
     @apply z-10;
 }

@@ -120,21 +120,25 @@ public abstract class TrackPlayer : ProcessorBase
             // We should send stop command & await it even if thread is aborted,
             // that's why the exception handling is in the finally block
             if (exception != null && !WhenCompleted.IsCompleted) {
+                var clock = MomentClockSet.Default.CpuClock;
+                var stopTime = clock.Now + StopTimeout;
                 try {
                     if (!isPlayCommandProcessed)
                         await playTask.AsTask()
-                            .WithTimeout(StopTimeout, CancellationToken.None)
+                            .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
-                    var isStopCompleted = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
-                        .WithTimeout(StopTimeout, CancellationToken.None)
+                    var stopResult = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
+                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
-                    if (!isStopCompleted)
-                        OnStopped(exception);
-                    await WhenCompleted.WaitAsync(StopTimeout, default).ConfigureAwait(false);
+                    if (stopResult.HasError)
+                        OnStopped(stopResult.Error);
+                    await WhenCompleted
+                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception ex) {
                     if (ex is not JSDisconnectedException)
-                        Log.LogError(ex, $"Unhandled exception in {nameof(TrackPlayer)}, while sending stop command");
+                        Log.LogError(ex, $"Unhandled exception in {nameof(TrackPlayer)} while sending Stop command");
                 }
             }
         }

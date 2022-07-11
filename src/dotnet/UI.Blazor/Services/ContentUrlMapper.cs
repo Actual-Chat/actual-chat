@@ -6,9 +6,9 @@ public class ContentUrlMapper
     private readonly string _contentBaseUri;
     private readonly string _mediaBaseUri;
 
-    public ContentUrlMapper(NavigationManager nav)
+    public ContentUrlMapper(UriMapper uriMapper)
     {
-        var baseUri = new Uri(nav.BaseUri);
+        var baseUri = uriMapper.BaseUri;
 
         _transformUri = baseUri.Host.EndsWith("actual.chat", StringComparison.OrdinalIgnoreCase);
         _contentBaseUri = _transformUri ? $"{baseUri.Scheme}://cdn.{baseUri.Host}/" : "";

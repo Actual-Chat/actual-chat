@@ -69,24 +69,25 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
-        services.AddDbContextServices<UsersDbContext>(dbContext => {
+        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton(_ => new DbAuthService<UsersDbContext>.Options() {
                 MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
             });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
-            dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
-            dbContext.AddEntityResolver<string, DbUserPresence>();
-            dbContext.AddEntityResolver<string, DbUserAvatar>();
-            dbContext.AddEntityResolver<string, DbUserContact>();
-            dbContext.AddEntityResolver<string, DbChatReadPosition>();
-            dbContext.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
+            db.AddEntityResolver<string, DbUserIdentity<string>>();
+            db.AddEntityResolver<string, DbUserPresence>();
+            db.AddEntityResolver<string, DbUserAvatar>();
+            db.AddEntityResolver<string, DbUserContact>();
+            db.AddEntityResolver<string, DbChatReadPosition>();
+            db.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
             // DB authentication services
-            dbContext.AddAuthentication<DbSessionInfo, DbUser, string>(_ => new() {
-                MinUpdatePresencePeriod = TimeSpan.FromSeconds(55),
+            db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
+                auth.ConfigureAuthService(_ => new() {
+                    MinUpdatePresencePeriod = TimeSpan.FromSeconds(55),
+                });
             });
         });
 

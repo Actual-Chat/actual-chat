@@ -36,7 +36,7 @@
 
 /* Success outline */
 .btn.btn-success-outline {
-    @apply bg-secondary border-success text-success-outline-title;
+    @apply bg-01 border-success text-success-outline-title;
 }
 .btn.btn-success-outline:hover,
 .btn.btn-success-outline:focus:hover {
@@ -44,10 +44,10 @@
 }
 .btn.btn-success-outline:active,
 .btn.btn-success-outline:focus:active {
-    @apply outline-none ring-2 ring-success-ring bg-secondary border-success-ring;
+    @apply outline-none ring-2 ring-success-ring bg-01 border-success-ring;
 }
 .btn.btn-success-outline:focus {
-    @apply outline-none ring-1 ring-success-ring bg-secondary border-success-ring;
+    @apply outline-none ring-1 ring-success-ring bg-01 border-success-ring;
 }
 
 /* Cancel */
@@ -68,7 +68,7 @@
 
 /* Cancel outline */
 .btn.btn-cancel-outline {
-    @apply bg-secondary border-cancel text-cancel-outline-title;
+    @apply bg-01 border-cancel text-cancel-outline-title;
 }
 .btn.btn-cancel-outline:hover,
 .btn.btn-cancel-outline:focus:hover {
@@ -76,10 +76,10 @@
 }
 .btn.btn-cancel-outline:active,
 .btn.btn-cancel-outline:focus:active {
-    @apply outline-none ring-2 ring-cancel-ring bg-secondary border-cancel-ring;
+    @apply outline-none ring-2 ring-cancel-ring bg-01 border-cancel-ring;
 }
 .btn.btn-cancel-outline:focus {
-    @apply outline-none ring-1 ring-cancel-ring bg-secondary border-cancel-ring;
+    @apply outline-none ring-1 ring-cancel-ring bg-01 border-cancel-ring;
 }
 
 /* Error */
@@ -100,7 +100,7 @@
 
 /* Error outline */
 .btn.btn-error-outline {
-    @apply bg-secondary border-error text-error-outline-title;
+    @apply bg-01 border-error text-error-outline-title;
 }
 .btn.btn-error-outline:hover,
 .btn.btn-error-outline:focus:hover {
@@ -108,25 +108,25 @@
 }
 .btn.btn-error-outline:active,
 .btn.btn-error-outline:focus:active {
-    @apply outline-none ring-2 ring-error-ring bg-secondary border-error-ring;
+    @apply outline-none ring-2 ring-error-ring bg-01 border-error-ring;
 }
 .btn.btn-error-outline:focus {
-    @apply outline-none ring-1 ring-error-ring bg-secondary border-error-ring;
+    @apply outline-none ring-1 ring-error-ring bg-01 border-error-ring;
 }
 
 .btn.btn-text {
-    @apply bg-transparent border-transparent font-semibold text-primary;
+    @apply bg-transparent border-transparent font-semibold text-02;
 }
 .btn.btn-text:hover,
 .btn.btn-text:focus:hover {
-    @apply bg-accent border-accent;
+    @apply bg-04 border-bg-03;
 }
 .btn.btn-text:active,
 .btn.btn-text:focus:active {
-    @apply outline-none ring-2 ring-accent bg-transparent border-accent;
+    @apply outline-none ring-2 ring-bg-04 bg-transparent border-bg-03;
 }
 .btn.btn-text:focus {
-    @apply outline-none ring-2 ring-accent bg-transparent border-accent;
+    @apply outline-none ring-2 ring-bg-04 bg-transparent border-bg-03;
 }
 
 .btn.btn-transparent {
@@ -153,8 +153,8 @@
 .btn.btn-square {
     @apply inline-block overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-full min-h-0;
-    @apply border-0 bg-square;
-    @apply text-base font-semibold text-square-title;
+    @apply border-0;
+    @apply text-base font-semibold text-icons-01;
 }
 .btn.btn-square:disabled {
     @apply opacity-70;
@@ -186,7 +186,7 @@
     @apply flex overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-full min-h-0;
     @apply border-0;
-    @apply text-base font-semibold text-round-title;
+    @apply text-base font-semibold text-icons-01;
     @apply rounded-full w-fit h-fit self-end;
 }
 .btn.btn-round:disabled {
@@ -243,10 +243,10 @@
 
 /* Suffixes */
 
-button.on, .btn.on, .btn.btn-square.on {
-    @apply text-toggle-on;
+button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
+    @apply text-success;
 }
-button.off, .btn.off, .btn.btn-square.off {
-    @apply text-secondary;
+button.off, .btn.off, .btn.btn-square.off, .btn.btn-round.off {
+    @apply text-icons-01;
 }
 

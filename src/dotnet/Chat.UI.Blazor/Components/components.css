@@ -1,12 +1,12 @@
 .chat-header-button button {
-    @apply rounded-md bg-accent outline-none;
+    @apply rounded-md bg-04 outline-none;
     @apply flex-1 flex flex-row justify-center;
 }
 .chat-header-button:hover {
     @apply z-10;
 }
 .chat-header-button:hover button {
-    @apply bg-primary z-10;
+    @apply bg-02 z-10;
 }
 
 .chat-playback-toggles .btn.btn-square {
@@ -30,7 +30,7 @@
 .historical-playback-sub-header {
     @apply relative z-20 p-1 pb-0.25;
     @apply flex flex-row items-center justify-center;
-    @apply bg-accent shadow-lg text-primary;
+    @apply bg-04 shadow-lg text-02;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
@@ -51,14 +51,14 @@
 .unread-messages-sub-header {
     @apply relative z-10 mx-4 px-2 pb-0.5;
     @apply bg-unread rounded-b-lg shadow;
-    @apply text-primary-inverted font-semibold;
+    @apply text-04 font-semibold;
     @apply animate-display-from-top-slow hover:cursor-pointer;
 }
 
 .recording-elsewhere-sub-header {
     @apply relative z-20 p-0.5 mx-4 rounded-t-lg;
     @apply flex flex-row items-center justify-center;
-    @apply bg-error text-primary-inverted shadow-lg opacity-75;
+    @apply bg-error text-04 shadow-lg opacity-75;
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
@@ -72,23 +72,23 @@
 }
 
 .chat-message-transcript {
-    @apply text-primary;
+    @apply text-02;
     @apply underline decoration-dotted decoration-audio-message;
 }
 .chat-message-markup {
-    @apply text-primary;
+    @apply text-02;
 }
 .playable-text-markup {
     @apply underline decoration-dotted decoration-audio-message;
 }
 
-.btn-square.attach-btn {
+.btn-round.attach-btn {
     @apply self-start;
 }
 
 .chat-header-panel-hint.btn.btn-square {
     @apply flex-none hidden group-hover:flex font-light text-xs;
-    @apply bg-primary ring-2 ring-accent rounded;
+    @apply bg-02 ring-2 ring-bg-04 rounded;
 }
 .chat-header-panel-hint.btn.btn-square:focus .btn-content {
     @apply bg-inherit;
@@ -99,6 +99,9 @@
 }
 .right-panel-tabs .btn {
     @apply min-w-1/2;
+}
+.chat-settings-tab.tab {
+    @apply px-2;
 }
 .chat-author-tab {
     @apply flex flex-col w-full h-full space-y-3 overflow-hidden;
@@ -113,7 +116,7 @@
     @apply justify-center bg-transparent;
 }
 .people-group .btn-square:hover {
-    @apply text-accent border-success;
+    @apply text-02 border-success;
 }
 .people-group .btn-square:hover .btn-content {
     @apply bg-transparent;
@@ -126,13 +129,13 @@
     @apply justify-center bg-transparent;
 }
 .btn-square.add-user-btn:hover {
-    @apply text-accent border-success;
+    @apply text-02 border-success;
 }
 .btn-square.add-user-btn:hover .btn-content {
     @apply bg-transparent;
 }
 .btn-square.add-user-btn:focus .btn-content {
-    @apply bg-transparent text-accent;
+    @apply bg-transparent text-02;
 }
 
 .search-contacts {
@@ -180,6 +183,56 @@
 .people-tab .author-badge:hover .author-badge-name {
 }
 .people-tab .author-badge:hover {
-    @apply bg-primary;
+    @apply bg-02;
 }
 
+.wide-left-panel-tabs {
+    @apply border-b border-bg-04 pb-0 mb-0;
+}
+.wide-left-panel-tabs .btn-group {
+    @apply min-h-mobile-header;
+}
+.wide-left-panel-tabs .btn {
+    @apply min-w-0;
+}
+
+.navbar-chats {
+    @apply overflow-hidden h-full;
+}
+.chats-tab .btn-round {
+    @apply w-6 h-6;
+}
+.chats-tab .btn.btn-round .btn-content {
+    @apply bg-transparent;
+}
+.chats-tab .btn.btn-round.pin-toggle.btn-content {
+    @apply bg-transparent;
+}
+.chats-tab .btn.btn-round.pin-toggle.play-pinned.on {
+    @apply text-success;
+}
+
+.pinned-chats {
+    @apply pb-2 px-2;
+}
+.pinned-chats .btn.btn-round .btn-content {
+    @apply opacity-40;
+}
+
+.unpinned-chats {
+    @apply flex-y h-full px-2;
+}
+
+.listened-chats {
+    @apply py-1 relative bottom-0 flex-y px-2;
+    @apply border-t-8 border-bg-04 bg-01;
+}
+.listened-chats .navbar-item.active {
+    @apply bg-04 rounded-lg;
+}
+.listened-chats .navbar-item.active .navbar-item-content {
+    @apply font-normal;
+}
+.listened-chats .navbar-item-ending {
+    @apply gap-x-3;
+}

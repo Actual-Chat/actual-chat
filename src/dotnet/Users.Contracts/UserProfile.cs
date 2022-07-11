@@ -6,6 +6,6 @@ public sealed record UserProfile(Symbol Id, User User)
 
     public long Version { get; init; }
     public UserStatus Status { get; init; }
-    public bool IsAdmin { get; init; }
     public Symbol AvatarId { get; init; }
+    public bool IsAdmin { get; init; }
 }

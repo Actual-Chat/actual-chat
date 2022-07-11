@@ -9,22 +9,19 @@
         @if (m.CanPost) {
             <ChatMessageEditor/>
         } else if (m.CanJoin) {
-            <div class="bg-secondary rounded-md mx-3 py-1.5 px-2 flex justify-center">
-                <AuthorizeView>
-                    <Authorized>
-                        <div>
-                            <span class="inline-flex">To post or talk,</span>
-                            <Button Click="@OnJoin">Join this chat</Button>
-                        </div>
-                    </Authorized>
-                    <NotAuthorized>
-                        <div>
-                            <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="bottom-14"/></div>
-                            <span class="inline-flex mx-1">or</span>
-                            <Button Click="@OnJoin" Class="btn-cancel">Join this chat anonymously</Button>
-                        </div>
-                    </NotAuthorized>
-                </AuthorizeView>
+            <div class="bg-01 rounded-md mx-3 py-1.5 px-2 flex justify-center">
+                @if (m.IsAuthenticated) {
+                    <div>
+                        <span class="inline-flex">To post or talk,</span>
+                        <Button Click="@OnJoin">Join this chat</Button>
+                    </div>
+                } else {
+                    <div>
+                        <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="bottom-14"/></div>
+                        <span class="inline-flex mx-1">or</span>
+                        <Button Click="@OnJoin" Class="btn-cancel">Join this chat anonymously</Button>
+                    </div>
+                }
             </div>
         }
     </div>
@@ -41,13 +38,18 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var permissions = await Chats.GetRules(Session, chatId, cancellationToken);
+        var permissions = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
         var canSend = permissions.CanWrite;
         var canJoin = false;
         if (!canSend) {
-            canJoin = await Chats.CanJoin(Session, chatId, cancellationToken);
+            canJoin = await Chats.CanJoin(Session, chatId, cancellationToken).ConfigureAwait(false);
         }
-        return new () { CanPost = canSend, CanJoin = canJoin, };
+        return new () {
+            CanPost = canSend,
+            CanJoin = canJoin,
+            IsAuthenticated = user != null,
+        };
     }
 
     private async Task OnJoin() {
@@ -60,5 +62,6 @@
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
         public bool HasFooter => CanPost || CanJoin;
+        public bool IsAuthenticated { get; init; }
     }
 }
