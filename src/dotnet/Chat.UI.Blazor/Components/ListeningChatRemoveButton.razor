@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ImmutableArray<Symbol>>
 @{
     var cls = "pin-toggle";
 }
@@ -19,10 +18,4 @@
         var listened = ChatUI.ListeningChatIds.ValueOrDefault;
         ChatUI.ListeningChatIds.Value = listened.Remove(ChatId);
     }
-
-    protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
-
-    protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
-        => await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
 }
