@@ -36,7 +36,7 @@
 
 .custom-scrollbar::-webkit-scrollbar-track,
 .custom-scrollbar-x::-webkit-scrollbar-track {
-    @apply bg-01 rounded-full;
+    @apply bg-transparent rounded-full;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .custom-scrollbar-x::-webkit-scrollbar-thumb {

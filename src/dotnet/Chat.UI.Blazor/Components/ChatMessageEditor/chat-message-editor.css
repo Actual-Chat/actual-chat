@@ -4,7 +4,7 @@
 }
 
 .message-input {
-    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-4 mr-1 md:mx-3;
+    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-6 mr-2;
     @apply break-all outline-none hover:cursor-text text-02 bg-03;
 }
 .post-panel {
