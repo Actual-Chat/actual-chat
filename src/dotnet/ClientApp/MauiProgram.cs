@@ -72,8 +72,19 @@ public static class MauiProgram
 
         ConfigureServices(services, new Uri(settings.BaseUri));
 
-        return builder.Build();
+        var mauiApp = builder.Build();
+
+        // MAUI does not start HostedServices.
+        // https://github.com/dotnet/maui/issues/2244
+        // Let's do it manually.
+        StartHostedServices(mauiApp);
+
+        return mauiApp;
     }
+
+    private static void StartHostedServices(MauiApp mauiApp)
+        => mauiApp.Services.HostedServices().Start()
+            .Wait(); // wait on purpose, CreateMauiApp is synchronous.
 
     private static string GetBackendUrl()
     {
@@ -91,7 +102,8 @@ public static class MauiProgram
         // 10.0.2.2		local.actual.chat
         // Emulator has to be started with -writable-system flag every time to see hosts changes
         // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
-        return "https://local.actual.chat";
+        //return "https://local.actual.chat";
+        return "https://dev.actual.chat";
     }
 
     private static void ConfigureServices(IServiceCollection services, Uri baseUri)
