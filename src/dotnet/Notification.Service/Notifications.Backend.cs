@@ -1,9 +1,6 @@
-using System.Text;
-using ActualChat;
 using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
-using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -224,14 +221,12 @@ public partial class Notifications
             var existingEntry = await dbContext.Notifications.Get(entry1.NotificationId, cancellationToken1)
                 .ConfigureAwait(false);
 
-            if (existingEntry != null) {
+            if (existingEntry is { HandledAt: { } }) {
                 existingEntry.Title = entry1.Title;
                 existingEntry.Content = entry1.Content;
                 existingEntry.ChatEntryId = entry1.Message?.EntryId;
                 existingEntry.ChatUserId = entry1.Message?.UserId;
                 existingEntry.ModifiedAt = entry1.NotificationTime;
-                existingEntry.HandledAt = null;
-                existingEntry.ModifiedAt = null;
                 context.Operation().Items.Set(entry1.NotificationId);
             }
             else {
