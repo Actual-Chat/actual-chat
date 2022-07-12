@@ -41,7 +41,7 @@ public static class UserProfilesExt
         CancellationToken cancellationToken)
     {
         var profile = await userProfiles.Get(session, cancellationToken).Required().ConfigureAwait(false);
-        if (profile.Id != update.Id && profile.IsAdmin)
+        if (profile.Id != update.Id && !profile.IsAdmin)
             throw new UnauthorizedAccessException("Users can only update their own profiles.");
 
         AssertCanUpdateStatus(profile, update);
