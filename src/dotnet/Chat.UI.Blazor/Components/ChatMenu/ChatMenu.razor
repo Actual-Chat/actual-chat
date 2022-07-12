@@ -1,0 +1,57 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<bool>
+
+<MenuItem Title="Pin" Name="Pin Chat" Click="@Toggle">
+    <Icon>
+        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M16.4014 4.6733L13.3375 7.73719C13.1947 7.88003 13.0152 7.97914 12.8238 8.02398L6.94955 9.3636L14.8593 17.2734L16.1989 11.3991C16.2438 11.2077 16.3429 11.0282 16.4857 10.8854L19.5496 7.82151L16.4014 4.6733ZM4.36401 8.19227C4.50402 8.05226 4.68162 7.94985 4.87696 7.90619L12.2603 6.22162L15.8121 2.66983C16.2025 2.2795 16.809 2.25246 17.1674 2.6109L21.612 7.05548C21.9704 7.41392 21.9434 8.02044 21.5531 8.41077L18.0013 11.9626L16.3174 19.3466C16.2378 19.6984 15.972 19.994 15.6266 20.1139C15.2832 20.2343 14.9165 20.1589 14.676 19.9185L4.30509 9.54756C4.06461 9.30708 3.98925 8.94039 4.10904 8.59632C4.16237 8.44318 4.25088 8.30541 4.36401 8.19227Z"/>
+            <rect x="3.12622" y="19.6825" width="9" height="2" transform="rotate(-45 3.12622 19.6825)"/>
+        </svg>
+    </Icon>
+</MenuItem>
+<MenuItem Title="Listen" Name="Listen Chat" Click="@OnClick">
+    <Icon>
+        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M18 19C16.897 19 16 18.103 16 17C16 15.897 16.897 15 18 15C19.103 15 20 15.897 20 17C20 18.103 19.103 19 18 19ZM6 15C7.103 15 8 15.897 8 17C8 18.103 7.103 19 6 19C4.897 19 4 18.103 4 17C4 15.897 4.897 15 6 15ZM12 2C6.486 2 2 6.65 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 7.753 7.589 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C15.794 13 14 14.794 14 17C14 19.206 15.794 21 18 21C20.206 21 22 19.206 22 17V12.366C22 6.65 17.514 2 12 2Z"></path>
+        </svg>
+    </Icon>
+</MenuItem>
+<MenuItem Title="Open" Name="Open Chat" Click="@OnClick">
+    <Icon>
+        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M17 4H19C19.55 4 20 4.45 20 5V19C20 19.55 19.55 20 19 20H17C16.45 20 16 19.55 16 19C16 18.45 16.45 18 17 18H18V6H17C16.45 6 16 5.55 16 5C16 4.45 16.45 4 17 4ZM10.3998 7.2004C10.8438 6.8694 11.4688 6.9594 11.7998 7.4004L14.7998 11.4004C15.0598 11.7464 15.0678 12.2204 14.8178 12.5754L12.0038 16.5754C11.8088 16.8524 11.4998 17.0004 11.1848 17.0004C10.9868 17.0004 10.7858 16.9414 10.6108 16.8184C10.1588 16.5004 10.0498 15.8764 10.3678 15.4244L12.0858 12.9824C12.0723 12.9837 12.0596 12.9875 12.047 12.9913C12.0316 12.9958 12.0163 13.0004 11.9998 13.0004H3.99976C3.44776 13.0004 2.99976 12.5524 2.99976 12.0004C2.99976 11.4474 3.44776 11.0004 3.99976 11.0004H11.9998H12.0008L10.1998 8.5994C9.86876 8.1584 9.95776 7.5314 10.3998 7.2004Z"/>
+        </svg>
+    </Icon>
+</MenuItem>
+<MenuItem Title="Leave" Name="Leave Chat" Click="@OnClick">
+    <Icon>
+        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M8 5C8 5.55 7.55 6 7 6H6V18H7C7.55 18 8 18.45 8 19C8 19.55 7.55 20 7 20H5C4.45 20 4 19.55 4 19V5C4 4.45 4.45 4 5 4H7C7.55 4 8 4.45 8 5ZM18.0039 7.4248L20.8179 11.4248C21.0679 11.7788 21.0599 12.2538 20.7999 12.5998L17.7999 16.5998C17.6039 16.8618 17.3029 16.9998 16.9989 16.9998C16.7909 16.9998 16.5799 16.9348 16.3999 16.7998C15.9579 16.4688 15.8689 15.8418 16.1999 15.4008L18.0009 12.9998H17.9999H9.9999C9.4479 12.9998 8.9999 12.5528 8.9999 11.9998C8.9999 11.4468 9.4479 10.9998 9.9999 10.9998H17.9999C18.0164 10.9998 18.0317 11.0044 18.0472 11.0089C18.0598 11.0127 18.0724 11.0165 18.0859 11.0178L16.3679 8.5748C16.0499 8.1238 16.1589 7.4998 16.6109 7.1818C17.0619 6.8628 17.6859 6.9728 18.0039 7.4248Z"/>
+        </svg>
+    </Icon>
+</MenuItem>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        return pinnedChatIds.Contains(Chat.Id);
+    }
+
+    private Task Toggle() {
+        var pinnedChatIds = ChatUI.PinnedChatIds.Value;
+        pinnedChatIds = pinnedChatIds.Contains(Chat.Id)
+            ? pinnedChatIds.Remove(Chat.Id)
+            : pinnedChatIds.Add(Chat.Id);
+        ChatUI.PinnedChatIds.Value = pinnedChatIds;
+        return Task.CompletedTask;
+    }
+
+    private void OnClick() {}
+}

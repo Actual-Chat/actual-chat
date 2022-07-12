@@ -3,12 +3,16 @@
 }
 
 .menu-item {
-    @apply text-03 items-center;
-    @apply flex-x w-full;
+    @apply text-03 items-center text-md;
+    @apply flex-x w-full whitespace-nowrap gap-x-2;
+    @apply h-8 mx-2;
 }
 .menu-item:hover > * {
     @apply text-success;
 }
 .menu-item:hover .horizontal-item {
     @apply transition duration-300 ease-in-out scale-110;
+}
+.menu-item-text {
+    @apply w-full text-02 font-medium ml-2 mr-6;
 }

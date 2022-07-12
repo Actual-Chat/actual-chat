@@ -65,7 +65,8 @@ export class ContextMenu {
     }
 
     private updatePosition(menu: HTMLDivElement) {
-        const maxBottom = document.documentElement.clientHeight - 90
+        const editor = document.querySelector('.chat-message-editor');
+        const maxBottom = document.documentElement.clientHeight - editor.clientHeight - 16;
         const maxTop = 60
         const size = this._menu.getBoundingClientRect();
         const bottom = size.bottom;
