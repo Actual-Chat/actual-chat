@@ -1,5 +1,3 @@
-@using ActualChat.UI.Blazor.Components.ChatIcon
-
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
@@ -8,49 +6,6 @@
     var mustPlayPinnedClass = "pin-toggle play-pinned"
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
-
-    RenderFragment RenderUnpinned(Chat c) =>
-        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
-            <ChildContent>
-                <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
-                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
-            </ChildContent>
-            <Ending>
-                <UnreadMessageCounter ChatId="@c.Id"/>
-                <ChatListPinToggle ChatId="@c.Id"/>
-            </Ending>
-        </NavbarItem>;
-
-    RenderFragment RenderPinned(Chat c) =>
-        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
-            <ChildContent>
-                <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
-                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
-            </ChildContent>
-            <Ending>
-                <ChatListPinToggle ChatId="@c.Id"/>
-                <UnreadMessageCounter ChatId="@c.Id"/>
-            </Ending>
-        </NavbarItem>;
-
-    RenderFragment RenderListened(Chat c) =>
-        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
-            <ChildContent>
-                <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
-                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
-            </ChildContent>
-            <Ending>
-                <ChatListPlaybackListened ChatId="@c.Id"/>
-                <ChatListRecordingToggle ChatId="@c.Id"/>
-                <ListeningChatRemoveButton ChatId="@c.Id"/>
-            </Ending>
-        </NavbarItem>;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
@@ -76,35 +31,22 @@
                                 </ButtonRound>
                             </div>
 
-                            @foreach (var c in m.ListenedChats) {
-                                @RenderListened(c)
-                            }
+                            <ChatsTab ChatList="@m.ListenedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Listening"/>
+
                             <div class="mx-1 mt-1 h-0 border-b border-bg-04"></div>
                         </div>
                     }
                     <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
                         @if (m.PinnedChats.Length > 0) {
-                            <div class="pinned-chats">
-                                @foreach (var c in m.PinnedChats) {
-                                    @RenderPinned(c)
-                                }
-                            </div>
+                            <ChatsTab ChatList="@m.PinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Pinned"/>
 
                             <div class="mx-4 mb-2 border-b border-bg-04"></div>
 
                             if (m.UnpinnedChats.Length > 0) {
-                                <div class="unpinned-chats custom-scrollbar">
-                                    @foreach (var c in m.UnpinnedChats) {
-                                        @RenderUnpinned(c)
-                                    }
-                                </div>
+                                <ChatsTab ChatList="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Unpinned"/>
                             }
                         } else {
-                            <div class="unpinned-chats custom-scrollbar">
-                                @foreach (var c in m.UnpinnedChats) {
-                                    @RenderUnpinned(c)
-                                }
-                            </div>
+                            <ChatsTab ChatList="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Unpinned"/>
                         }
                     </div>
                 </Tab>

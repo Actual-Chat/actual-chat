@@ -1,0 +1,14 @@
+.chat-menu {
+    @apply absolute right-0 top-0;
+}
+.chat-menu .context-menu-menu {
+    @apply absolute right-0 top-8 p-0;
+}
+
+.chat-menu-button {
+    @apply invisible relative right-1 top-0;
+}
+
+.navbar-item:hover .context-menu-button.show-on-hover {
+    @apply visible;
+}

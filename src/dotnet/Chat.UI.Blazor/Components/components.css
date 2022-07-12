@@ -199,6 +199,9 @@
 .navbar-chats {
     @apply overflow-hidden h-full;
 }
+.tab-panel .chats-tab.tab .navbar-item {
+    @apply relative;
+}
 .chats-tab .btn-round {
     @apply w-6 h-6;
 }
