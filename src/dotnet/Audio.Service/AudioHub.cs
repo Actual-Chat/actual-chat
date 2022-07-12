@@ -9,20 +9,17 @@ public class AudioHub : Hub
     private readonly IAudioProcessor _audioProcessor;
     private readonly AudioStreamer _audioStreamer;
     private readonly TranscriptStreamer _transcriptStreamer;
-    private readonly ISessionResolver _sessionResolver;
     private readonly SessionMiddleware _sessionMiddleware;
 
     public AudioHub(
         IAudioProcessor audioProcessor,
         AudioStreamer audioStreamer,
         TranscriptStreamer transcriptStreamer,
-        ISessionResolver sessionResolver,
         SessionMiddleware sessionMiddleware)
     {
         _audioProcessor = audioProcessor;
         _audioStreamer = audioStreamer;
         _transcriptStreamer = transcriptStreamer;
-        _sessionResolver = sessionResolver;
         _sessionMiddleware = sessionMiddleware;
     }
 
