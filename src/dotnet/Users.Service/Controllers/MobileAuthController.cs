@@ -8,11 +8,11 @@ using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Users.Controllers;
 
-[Route("mobileauth")]
+[Route("mobileAuth")]
 [ApiController]
 public class MobileAuthController : Controller
 {
-    const string callbackScheme = "xamarinessentials";
+    private const string CallbackScheme = "xamarinessentials";
 
     private readonly IServiceProvider _services;
     private readonly IAuth _auth;
@@ -51,7 +51,7 @@ public class MobileAuthController : Controller
             };
 
             // Build the result url
-            var url = callbackScheme + "://#" + string.Join(
+            var url = CallbackScheme + "://#" + string.Join(
                 "&",
                 qs.Where(kvp => !string.IsNullOrEmpty(kvp.Value))
                 .Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));

@@ -5,7 +5,7 @@ using Stl.Fusion.Server;
 namespace ActualChat.Invite.Controllers;
 
 [Route("api/[controller]/[action]")]
-[ApiController, JsonifyErrors]
+[ApiController, JsonifyErrors, UseDefaultSession]
 public class InvitesBackendController : ControllerBase, IInvitesBackend
 {
     private readonly IInvitesBackend _service;

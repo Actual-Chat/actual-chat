@@ -4,7 +4,7 @@ using Stl.Fusion.Server;
 namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
-[ApiController, JsonifyErrors]
+[ApiController, JsonifyErrors, UseDefaultSession]
 public class UserProfilesController : ControllerBase, IUserProfiles
 {
     private readonly IUserProfiles _service;

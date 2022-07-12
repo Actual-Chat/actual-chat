@@ -4,7 +4,7 @@ using Stl.Fusion.Server;
 namespace ActualChat.Notification.Controllers;
 
 [Route("api/[controller]/[action]")]
-[ApiController, JsonifyErrors]
+[ApiController, JsonifyErrors, UseDefaultSession]
 public class NotificationsController : ControllerBase, INotifications
 {
     private readonly INotifications _service;

@@ -42,6 +42,7 @@ public abstract class HubClientBase : WorkerBase
 
     protected async ValueTask<HubConnection> GetHubConnection(CancellationToken cancellationToken)
     {
+        Start();
         while (true) {
             var connectTask = ConnectTask;
             if (connectTask != null) {
