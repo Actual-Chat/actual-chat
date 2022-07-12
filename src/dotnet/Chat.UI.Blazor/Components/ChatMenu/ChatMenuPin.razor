@@ -1,0 +1,34 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<bool>
+
+<MenuItem Title="Pin" Name="Pin Chat" Click="@Toggle">
+    <Icon>
+        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M16.4014 4.6733L13.3375 7.73719C13.1947 7.88003 13.0152 7.97914 12.8238 8.02398L6.94955 9.3636L14.8593 17.2734L16.1989 11.3991C16.2438 11.2077 16.3429 11.0282 16.4857 10.8854L19.5496 7.82151L16.4014 4.6733ZM4.36401 8.19227C4.50402 8.05226 4.68162 7.94985 4.87696 7.90619L12.2603 6.22162L15.8121 2.66983C16.2025 2.2795 16.809 2.25246 17.1674 2.6109L21.612 7.05548C21.9704 7.41392 21.9434 8.02044 21.5531 8.41077L18.0013 11.9626L16.3174 19.3466C16.2378 19.6984 15.972 19.994 15.6266 20.1139C15.2832 20.2343 14.9165 20.1589 14.676 19.9185L4.30509 9.54756C4.06461 9.30708 3.98925 8.94039 4.10904 8.59632C4.16237 8.44318 4.25088 8.30541 4.36401 8.19227Z"/>
+            <rect x="3.12622" y="19.6825" width="9" height="2" transform="rotate(-45 3.12622 19.6825)"/>
+        </svg>
+    </Icon>
+</MenuItem>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        return pinnedChatIds.Contains(Chat.Id);
+    }
+
+    private Task Toggle() {
+        var pinnedChatIds = ChatUI.PinnedChatIds.Value;
+        pinnedChatIds = pinnedChatIds.Contains(Chat.Id)
+            ? pinnedChatIds.Remove(Chat.Id)
+            : pinnedChatIds.Add(Chat.Id);
+        ChatUI.PinnedChatIds.Value = pinnedChatIds;
+        return Task.CompletedTask;
+    }
+}

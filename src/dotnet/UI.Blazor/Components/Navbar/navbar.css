@@ -67,7 +67,7 @@
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row justify-start items-center gap-x-1 w-full px-2 py-1;
+    @apply flex flex-row justify-start items-center gap-x-1 w-full px-2 py-1 rounded-lg;
 }
 .navbar-item .navbar-item-content {
     @apply text-02 overflow-hidden my-0.5;
@@ -92,7 +92,7 @@
 
 .navbar-item .navbar-item-ending {
     @apply flex-1 justify-self-end;
-    @apply flex flex-row justify-end gap-x-0.5;
+    @apply flex flex-row justify-end gap-x-3 w-fit;
 }
 
 .navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
@@ -117,6 +117,10 @@
 .navbar-item .btn.btn-round.pin-toggle.recording-in-chat.on,
 .navbar-item:hover .btn.btn-round.pin-toggle.recording-in-chat.on {
     @apply text-recorder-on bg-transparent;
+}
+
+.navbar-item:hover {
+    @apply bg-round-hover;
 }
 
 .listened-chats .navbar-subgroup .pin-toggle,
