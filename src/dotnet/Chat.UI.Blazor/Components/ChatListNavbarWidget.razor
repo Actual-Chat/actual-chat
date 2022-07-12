@@ -33,16 +33,16 @@
 
                             <ChatsTab ChatList="@m.ListenedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Listening"/>
 
-                            <div class="mx-1 mt-1 h-0 border-b border-bg-04"></div>
+                            <Divider Class="mx-4 mb-2 border-b border-bg-04"/>
                         </div>
                     }
                     <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
-                        @if (m.PinnedChats.Length > 0) {
+                        @if (m.PinnedChats.Count > 0) {
                             <ChatsTab ChatList="@m.PinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Pinned"/>
 
                             <div class="mx-4 mb-2 border-b border-bg-04"></div>
 
-                            if (m.UnpinnedChats.Length > 0) {
+                            if (m.UnpinnedChats.Count > 0) {
                                 <ChatsTab ChatList="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Unpinned"/>
                             }
                         } else {
@@ -88,11 +88,11 @@
         var pinnedChats = chats
             .Where(c => pinnedChatIds.Contains(c.Id))
             .OrderBy(c => c.Title)
-            .ToArray();
+            .ToList();
         var unpinnedChats = chats
             .Where(c => !pinnedChatIds.Contains(c.Id))
             .OrderBy(c => c.Title)
-            .ToArray();
+            .ToList();
 
         var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
         var listenedChats = new List<Chat>();
@@ -126,8 +126,8 @@
         public static Model None { get; } = new();
 
         public bool CanCreateChat { get; init; }
-        public Chat[] PinnedChats { get; init; } = Array.Empty<Chat>();
-        public Chat[] UnpinnedChats { get; init; } = Array.Empty<Chat>();
+        public List<Chat> PinnedChats { get; init; } = new ();
+        public List<Chat> UnpinnedChats { get; init; } = new ();
         public List<Chat> ListenedChats { get; init; } = new ();
         public Symbol ActiveChatId { get; init; }
         public bool IsPlaying { get; init; }

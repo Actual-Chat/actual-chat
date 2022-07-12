@@ -8,7 +8,7 @@
     @apply w-10 h-10 absolute right-0 self-center;
 }
 .input-search .btn.btn-round .btn-content {
-    @apply bg-success text-success-title;
+    @apply bg-transparent text-icons-01;
 }
 .input-search label {
     @apply relative flex-x;

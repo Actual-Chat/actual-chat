@@ -202,6 +202,9 @@
 .tab-panel .chats-tab.tab .navbar-item {
     @apply relative;
 }
+.tab-panel .chats-tab.tab .navbar-item-content {
+    @apply w-full;
+}
 .chats-tab .btn-round {
     @apply w-6 h-6;
 }
@@ -231,7 +234,7 @@
     @apply border-t-8 border-bg-04 bg-01;
 }
 .listened-chats .navbar-item.active {
-    @apply bg-04 rounded-lg;
+    @apply bg-round-active;
 }
 .listened-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
