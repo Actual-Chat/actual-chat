@@ -1,0 +1,41 @@
+@using ActualChat.Notification
+@using ActualChat.UI.Blazor.Services
+@using Blazored.Toast.Services
+@inherits ComputedStateComponent<NotificaitonHub.Model>
+
+@code {
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; set; } = null!;
+    [Inject] private ToastUI ToastUI { get; set; } = null!;
+
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
+        var lastNotificationId = State.ValueOrDefault?.LastNotificationId ?? "";
+        var isFirstRun = lastNotificationId == "";
+        var newNotificationIds = notificationIds
+            .Where(id => string.CompareOrdinal(id, lastNotificationId) > 0)
+            .ToList();
+
+        if (newNotificationIds.Count == 0)
+            return State.LatestNonErrorValue;
+
+        if (!isFirstRun) {
+            foreach (var notificationId in newNotificationIds) {
+                ToastUI.ShowToast(ToastLevel.Info, "sdfsdfdsf");
+            }
+        }
+
+        return new Model {
+            LastNotificationId = notificationIds.Max()!,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public string LastNotificationId { get; init; } = "";
+    }
+
+}
