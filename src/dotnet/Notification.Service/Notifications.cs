@@ -65,12 +65,18 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     }
 
     // [ComputeMethod]
-    public Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+    {
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        return await ListRecentNotificationIds(user.Id, cancellationToken).ConfigureAwait(false);
+    }
 
     // [ComputeMethod]
-    public Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    public virtual async Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        return await GetNotification(user.Id, notificationId, cancellationToken).ConfigureAwait(false);
+    }
 
     // [CommandHandler]
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)

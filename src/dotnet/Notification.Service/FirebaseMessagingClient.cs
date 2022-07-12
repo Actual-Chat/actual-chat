@@ -1,3 +1,4 @@
+using ActualChat.Notification.Backend;
 using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notification;
@@ -5,9 +6,21 @@ namespace ActualChat.Notification;
 public class FirebaseMessagingClient
 {
     private readonly UriMapper _uriMapper;
+    private readonly FirebaseMessaging _firebaseMessaging;
+    private readonly ICommander _commander;
+    private readonly ILogger<FirebaseMessagingClient> _log;
 
-    public FirebaseMessagingClient(UriMapper uriMapper)
-        => _uriMapper = uriMapper;
+    public FirebaseMessagingClient(
+        UriMapper uriMapper,
+        FirebaseMessaging firebaseMessaging,
+        ICommander commander,
+        ILogger<FirebaseMessagingClient> log)
+    {
+        _uriMapper = uriMapper;
+        _firebaseMessaging = firebaseMessaging;
+        _commander = commander;
+        _log = log;
+    }
 
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
@@ -50,7 +63,10 @@ public class FirebaseMessagingClient
         }
 
         var multicastMessage = new MulticastMessage {
-            Tokens = null,
+            Tokens = deviceIds,
+            Data = new Dictionary<string, string> {
+                { "notificationId", notificationId },
+            },
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
                 Body = content,
@@ -95,5 +111,38 @@ public class FirebaseMessagingClient
                 }
             },
         };
+        var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (batchResponse.FailureCount > 0) {
+            var responses = batchResponse.Responses
+                .Zip(deviceIds)
+                .Select(p => new {
+                    DeviceId = p.Second,
+                    p.First.IsSuccess,
+                    p.First.Exception?.MessagingErrorCode,
+                    p.First.Exception?.HttpResponse,
+                })
+                .ToList();
+            var responseGroups = responses
+                .GroupBy(x => x.MessagingErrorCode);
+            foreach (var responseGroup in responseGroups)
+                if (responseGroup.Key == MessagingErrorCode.Unregistered) {
+                    var tokensToRemove = responseGroup
+                        .Select(g => g.DeviceId)
+                        .ToImmutableArray();
+                    _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
+                }
+                else if (responseGroup.Key.HasValue) {
+                    var firstErrorItem = responseGroup.First();
+                    var errorContent = firstErrorItem.HttpResponse == null
+                        ? ""
+                        : await firstErrorItem.HttpResponse.Content
+                            .ReadAsStringAsync(cancellationToken)
+                            .ConfigureAwait(false);
+                    _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                        responseGroup.Key, responseGroup.Count(), errorContent);
+                }
+        }
     }
 }

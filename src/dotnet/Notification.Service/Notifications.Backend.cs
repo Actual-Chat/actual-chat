@@ -1,4 +1,5 @@
 using System.Text;
+using ActualChat;
 using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
@@ -71,7 +72,7 @@ public partial class Notifications
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbNotification = await dbContext.Notifications.FindAsync(notificationId, cancellationToken);
+        var dbNotification = await dbContext.Notifications.Get(notificationId, cancellationToken);
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
@@ -114,7 +115,7 @@ public partial class Notifications
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         foreach (var userIdGroup in userIds.Where(uid => !OrdinalEquals(uid, userId)).Chunk(200))
             await Task.WhenAll(userIdGroup.Select(uid
-                    => NotifyUser(
+                    => _commander.Call(
                         new NotifyUserCommand(
                             new NotificationEntry(
                                 Ulid.NewUlid().ToString(),
@@ -128,60 +129,6 @@ public partial class Notifications
                         cancellationToken)))
                 .ConfigureAwait(false);
 
-        // var deviceIds = userIds
-        //     .Where(uid => !OrdinalEquals(uid, userId))
-        //     .ToAsyncEnumerable()
-        //     .SelectMany(uid => GetDevicesInternal(uid, cancellationToken));
-        // var deviceIdGroups = deviceIds
-        //     .Chunk(200, cancellationToken);
-
-        // await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
-        //     multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
-        //     var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
-        //         .ConfigureAwait(false);
-        //
-        //     if (batchResponse.FailureCount > 0) {
-        //         var responses = batchResponse.Responses
-        //             .Zip(deviceGroup)
-        //             .Select(p => new {
-        //                 p.Second.DeviceId,
-        //                 p.First.IsSuccess,
-        //                 p.First.Exception?.MessagingErrorCode,
-        //                 p.First.Exception?.HttpResponse,
-        //             })
-        //             .ToList();
-        //         var responseGroups = responses
-        //             .GroupBy(x => x.MessagingErrorCode);
-        //         foreach (var responseGroup in responseGroups)
-        //             if (responseGroup.Key == MessagingErrorCode.Unregistered) {
-        //                 var tokensToRemove = responseGroup
-        //                     .Select(g => g.DeviceId)
-        //                     .ToImmutableArray();
-        //                 _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
-        //             }
-        //             else if (responseGroup.Key.HasValue) {
-        //                 var firstErrorItem = responseGroup.First();
-        //                 var errorContent = firstErrorItem.HttpResponse == null
-        //                     ? ""
-        //                     : await firstErrorItem.HttpResponse.Content
-        //                         .ReadAsStringAsync(cancellationToken)
-        //                         .ConfigureAwait(false);
-        //                 _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
-        //                     responseGroup.Key, responseGroup.Count(), errorContent);
-        //             }
-        //     }
-        //
-        //     if (batchResponse.SuccessCount > 0)
-        //         _ = Task.Run(
-        //             () => PersistMessages(chatId,
-        //                 entryId,
-        //                 deviceGroup,
-        //                 batchResponse.Responses,
-        //                 cancellationToken),
-        //             cancellationToken);
-
-        // }
-
         async Task<string> AuthorNameResolver(string authorId)
         {
             var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
@@ -193,41 +140,6 @@ public partial class Notifications
             var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
             return author?.Name ?? "";
         }
-        //
-        // async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
-        //     string userId1,
-        //     [EnumeratorCancellation] CancellationToken cancellationToken1)
-        // {
-        //     var devices = await ListDevices(userId1, cancellationToken1).ConfigureAwait(false);
-        //     foreach (var device in devices)
-        //         yield return (device.DeviceId, userId1);
-        // }
-        //
-        // async Task PersistMessages(
-        //     string chatId1,
-        //     long entryId1,
-        //     IReadOnlyList<(string DeviceId, string UserId)> devices,
-        //     IReadOnlyList<SendResponse> responses,
-        //     CancellationToken cancellationToken1)
-        // {
-        //     // TODO(AK): sharding by userId - code is running at a sharded service already
-        //     var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
-        //     await using var __ = dbContext.ConfigureAwait(false);
-        //
-        //     var dbMessages = responses
-        //         .Zip(devices)
-        //         .Where(pair => pair.First.IsSuccess)
-        //         .Select(pair => new DbMessage {
-        //             Id = pair.First.MessageId,
-        //             DeviceId = pair.Second.DeviceId,
-        //             ChatId = chatId1,
-        //             ChatEntryId = entryId1,
-        //             CreatedAt = _clocks.SystemClock.Now,
-        //         });
-        //
-        //     await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
-        //     await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        // }
     }
 
     // [CommandHandler]
@@ -247,7 +159,7 @@ public partial class Notifications
 
         foreach (var deviceId in removeDevicesCommand.DeviceIds) {
             var dbDevice = await dbContext.Devices
-                .FindAsync(new object?[] { deviceId }, cancellationToken)
+                .Get(deviceId, cancellationToken)
                 .ConfigureAwait(false);
             if (dbDevice == null)
                 continue;
@@ -309,7 +221,7 @@ public partial class Notifications
             var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
             await using var __ = dbContext.ConfigureAwait(false);
 
-            var existingEntry = await dbContext.Notifications.FindAsync(entry1.NotificationId, cancellationToken1)
+            var existingEntry = await dbContext.Notifications.Get(entry1.NotificationId, cancellationToken1)
                 .ConfigureAwait(false);
 
             if (existingEntry != null) {
@@ -345,6 +257,9 @@ public partial class Notifications
         async Task SendSystemNotification(NotificationEntry entry1, CancellationToken cancellationToken1)
         {
             var deviceIds = await GetDevicesInternal(entry1.UserId, cancellationToken1).ConfigureAwait(false);
+            if (deviceIds.Count <= 0)
+                return;
+
             await _firebaseMessagingClient.SendMessage(entry1, deviceIds, cancellationToken1).ConfigureAwait(false);
         }
 
@@ -360,7 +275,7 @@ public partial class Notifications
     }
 
     [DataContract]
-    protected sealed record NotifyUserCommand(
+    public sealed record NotifyUserCommand(
         [property: DataMember] NotificationEntry Entry
     ) : ICommand<Unit>, IBackendCommand;
 }
