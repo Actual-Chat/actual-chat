@@ -4,7 +4,7 @@ public class VirtualListData<TItem>
     where TItem : IVirtualListItem
 {
 #pragma warning disable MA0018
-    public static VirtualListData<TItem> None { get; } = new(VirtualListDataQuery.None, Array.Empty<TItem>());
+    public static VirtualListData<TItem> None { get; } = new(null, Array.Empty<TItem>());
 #pragma warning restore MA0018
 
     public VirtualListDataQuery Query { get; }

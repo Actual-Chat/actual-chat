@@ -34,3 +34,7 @@ export * from './messaging-init';
 export * from './theme';
 
 export * from './Components/FileUpload/file-upload';
+export { ClientSideState } from './Components/VirtualList/client-side-state';
+export { VirtualListEdge } from './Components/VirtualList/virtual-list-edge';
+export { StickyEdgeState } from './Components/VirtualList/sticky-edge-state';
+export { RenderState } from './Components/VirtualList/render-state';

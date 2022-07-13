@@ -26,7 +26,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Singletons
         services.TryAddSingleton<IChatMediaResolver, ChatMediaResolver>();
-        fusion.AddComputeService<VirtualListTestService>();
 
         // Navbar widgets
         services.RegisterNavbarWidget<ChatListNavbarWidget>();

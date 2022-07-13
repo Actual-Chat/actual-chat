@@ -17,17 +17,4 @@ public class VirtualListDataQuery
 
     public override string ToString()
         => $"⁇(-{ExpandStartBy} | {InclusiveRange} | +{ExpandEndBy}) => {ScrollToKey ?? "No scroll"}";
-
-    public bool IsSimilarTo(VirtualListDataQuery other)
-    {
-        const int epsilon = 10;
-        if (ReferenceEquals(this, other))
-            return true;
-
-        if (InclusiveRange != other.InclusiveRange)
-            return false;
-
-        return !(Math.Abs(ExpandStartBy - other.ExpandStartBy) > epsilon)
-            && !(Math.Abs(ExpandEndBy - other.ExpandEndBy) > epsilon);
-    }
 }
