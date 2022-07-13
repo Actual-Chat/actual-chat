@@ -221,9 +221,6 @@
 .pinned-chats {
     @apply pb-2 px-2;
 }
-.pinned-chats .btn.btn-round .btn-content {
-    @apply opacity-40;
-}
 
 .unpinned-chats {
     @apply flex-y h-full px-2;
