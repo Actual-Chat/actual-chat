@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <TypeScriptCompile Include="Components\VirtualList\ts\math.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\range-ext.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-data-ext.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-edge-ext.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-statistics.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-accessor.ts" />
     <TypeScriptCompile Include="Layouts\base-layout.ts" />
     <TypeScriptCompile Include="theme.ts" />
   </ItemGroup>

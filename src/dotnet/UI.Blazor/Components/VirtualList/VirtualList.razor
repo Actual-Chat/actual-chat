@@ -3,50 +3,56 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
-    var plan = LastPlan = Plan;
-    DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
+    // var plan = LastPlan = Plan;
+    // DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
 
-    var isEndAligned = plan.AlignmentEdge.IsEnd();
+    var isEndAligned = false;
     var flexBase = "flex flex-nowrap items-stretch content-start justify-start";
     var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     var flexClass = $"{flexBase} flex-col";
     var invFlexClass = $"{flexBase} flex-col-reverse";
-    var renderState = new VirtualListRenderState {
-        RenderIndex = plan.RenderIndex,
-        SpacerSize = plan.SpacerSize,
-        EndSpacerSize = plan.EndSpacerSize,
-        ScrollHeight = plan.ClientSideState?.ScrollHeight,
-        ScrollTop = plan.ClientSideState?.ScrollTop,
-        ViewportHeight = plan.ClientSideState?.ViewportHeight,
-        HasVeryFirstItem = plan.Data.HasVeryFirstItem,
-        HasVeryLastItem = plan.Data.HasVeryLastItem,
-        ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
-            ? null
-            : Query.ScrollToKey,
-        UseSmoothScroll = plan.UseSmoothScroll,
-        ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
-        HasUnmeasuredItems = plan.HasUnmeasuredItems,
-        StickyEdge = plan.StickyEdge,
-    };
-    ClientSideState = plan.ClientSideState ?? ClientSideState;
-    RequestDataUpdate();
+    // var renderState = new VirtualListRenderState {
+    //     RenderIndex = plan.RenderIndex,
+    //     SpacerSize = plan.SpacerSize,
+    //     EndSpacerSize = plan.EndSpacerSize,
+    //     ScrollHeight = plan.ClientSideState?.ScrollHeight,
+    //     ScrollTop = plan.ClientSideState?.ScrollTop,
+    //     ViewportHeight = plan.ClientSideState?.ViewportHeight,
+    //     HasVeryFirstItem = plan.Data.HasVeryFirstItem,
+    //     HasVeryLastItem = plan.Data.HasVeryLastItem,
+    //     ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
+    //         ? null
+    //         : Query.ScrollToKey,
+    //     UseSmoothScroll = plan.UseSmoothScroll,
+    //     ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
+    //     HasUnmeasuredItems = plan.HasUnmeasuredItems,
+    //     StickyEdge = plan.StickyEdge,
+    // };
+    // ClientSideState = plan.ClientSideState ?? ClientSideState;
+    // RequestDataUpdate();
+    var renderIndex = RenderIndex;
+    var items = isEndAligned ? Data.Items.Reverse() : Data.Items;
+    var spacerSize = 2000;
+    var endSpacerSize = 2000;
 }
 
 <div @ref="Ref"
      class="virtual-list @scrollContainerFlexClass @Class"
      style="@Style">
     <div class="data render-state hidden @flexClass flex-none">
-        <div @key="@("<RenderState>:" + renderState.RenderIndex)"
+        <div @key="@("<RenderState>:" + renderIndex)"
              class="data render-state-data">
-            @SystemJsonSerializer.Default.Write(renderState)
+            @SystemJsonSerializer.Default.Write(new {
+                query = Query,
+            })
         </div>
     </div>
 
     @if (!isEndAligned) {
         <div @key="@("<Spacer>")"
              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-             style="height: @(Plan.SpacerSize)px">
+             style="height: @(spacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton">
@@ -58,7 +64,7 @@
     } else {
         <div @key="@("<EndSpacer>")"
              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-             style="height: @(Plan.EndSpacerSize)px">
+             style="height: @(endSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     <div @key="@i" class="skeleton">
@@ -69,18 +75,18 @@
         </div>
     }
 
-    @foreach (var item in isEndAligned ? plan.ReversedItems : plan.Items) {
+    @foreach (var item in items) {
         <div @key="item.Key"
              class="item flex-none"
              data-key="@item.Key">
-            @Item(item.Item)
+            @Item(item)
         </div>
     }
 
     @if (isEndAligned) {
         <div @key="@("<Spacer>")"
              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-             style="height: @(Plan.SpacerSize)px">
+             style="height: @(spacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton">
@@ -92,7 +98,7 @@
     } else {
         <div @key="@("<EndSpacer>")"
              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-             style="height: @(Plan.EndSpacerSize)px">
+             style="height: @(endSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     <div @key="@i" class="skeleton">
@@ -104,7 +110,7 @@
     }
 
     <div @key="@("<RenderIndex>")"
-         data-render-index="@renderState.RenderIndex"
+         data-render-index="@renderIndex"
          class="data render-index hidden @flexClass flex-none">
     </div>
 </div>

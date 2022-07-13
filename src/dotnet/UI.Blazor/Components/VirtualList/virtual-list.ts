@@ -1,5 +1,18 @@
 import './virtual-list.css';
 import { delayAsync } from 'delay';
+import { VirtualListClientSideState } from './ts/virtual-list-client-side-state';
+import { VirtualListEdge } from './ts/virtual-list-edge';
+import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
+import { VirtualListRenderState } from './ts/virtual-list-render-state';
+import { VirtualListRenderPlan } from './ts/virtual-list-render-plan';
+import { VirtualListDataQuery } from './ts/virtual-list-data-query';
+import { VirtualListItem } from './ts/virtual-list-item';
+import { Range } from './ts/range';
+import { VirtualListStatistics } from './ts/virtual-list-statistics';
+import { VirtualListAccessor } from './ts/virtual-list-accessor';
+import { VirtualListData } from './ts/virtual-list-data';
+import { Clamp } from './ts/math';
+import { RangeExt } from './ts/range-ext';
 
 const LogScope: string = 'VirtualList';
 const ScrollStoppedTimeout: number = 64;
@@ -10,8 +23,7 @@ const ItemSizeEpsilon: number = 1;
 const MoveSizeEpsilon: number = 28;
 const EdgeEpsilon: number = 4;
 
-
-export class VirtualList {
+export class VirtualList implements VirtualListAccessor<VirtualListItem> {
     private readonly _debugMode: boolean = false;
     private readonly _isEndAligned: boolean = false;
     /** ref to div.virtual-list */
@@ -27,9 +39,9 @@ export class VirtualList {
     private _scrollTopPivotRef?: HTMLElement;
     private _scrollTopPivotOffset?: number;
     private _scrollTopPivotLocation?: 'visible' | 'top' | 'bottom' = 'visible';
-    private _stickyEdge?: Required<IStickyEdgeState> = null;
+    private _stickyEdge?: Required<VirtualListStickyEdgeState> = null;
 
-    private _renderState: Required<IRenderState>;
+    private _renderState: Required<VirtualListRenderState>;
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _onScrollStoppedTimeout: any = null;
@@ -37,6 +49,21 @@ export class VirtualList {
     private _updateClientSideStateTimeout: number = null;
     private _updateClientSideStateTasks: Promise<void>[] = [];
     private _updateClientSideStateRenderIndex = -1;
+
+    private LastPlan?: VirtualListRenderPlan<VirtualListItem> = null;
+    private Plan: VirtualListRenderPlan<VirtualListItem> = new VirtualListRenderPlan<VirtualListItem>(this);
+    private LastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
+    private Query: VirtualListDataQuery = VirtualListDataQuery.None;
+    private VisibleKeysState: string[] = [];
+    private MaxExpandBy: number = 256;
+
+    public ClientSideState: VirtualListClientSideState = null;
+    public Statistics: VirtualListStatistics = new VirtualListStatistics();
+    public SpacerSize: number = 4000;
+    public LoadZoneSize: number = 2000;
+    public BufferZoneSize: number = 2000;
+    public AlignmentEdge: VirtualListEdge = VirtualListEdge.End;
+    public Data: VirtualListData<VirtualListItem> = null;
 
     public constructor(
         ref: HTMLElement,
@@ -121,7 +148,7 @@ export class VirtualList {
         if (rsJson == null || rsJson === '')
             return;
 
-        const rs = JSON.parse(rsJson) as Required<IRenderState>;
+        const rs = JSON.parse(rsJson) as Required<VirtualListRenderState>;
         if (rs.renderIndex <= this._renderState.renderIndex)
             return;
 
@@ -135,7 +162,7 @@ export class VirtualList {
         void this.onRenderEnd(rs);
     };
 
-    private async onRenderEnd(rs: Required<IRenderState>): Promise<void> {
+    private async onRenderEnd(rs: Required<VirtualListRenderState>): Promise<void> {
         this._isRendering = true;
         try {
             this._renderState = rs;
@@ -154,13 +181,13 @@ export class VirtualList {
                 this._scrollTopPivotOffset = null;
             } else if (this.isSafeToScroll && this._stickyEdge != null) {
                 // Sticky edge scroll
-                const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start
+                const itemKey = this._stickyEdge?.Edge === VirtualListEdge.Start
                     ? this.getFirstItemKey()
                     : this.getLastItemKey();
                 if (itemKey == null) {
                     this.setStickyEdge(null);
-                } else if (itemKey !== this._stickyEdge.itemKey) {
-                    this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
+                } else if (itemKey !== this._stickyEdge.ItemKey) {
+                    this.setStickyEdge({ ItemKey: itemKey, Edge: this._stickyEdge.Edge });
                     let itemRef = this.getItemRef(itemKey);
                     this.scrollTo(itemRef, true);
                     isScrollHappened = true;
@@ -300,8 +327,8 @@ export class VirtualList {
             if (this._debugMode)
                 console.log(`${LogScope}.updateClientSideStateImpl: #${rs.renderIndex}`);
 
-            const state = await new Promise<IClientSideState | null>(resolve => {
-                let state: IClientSideState = null;
+            const state = await new Promise<VirtualListClientSideState | null>(resolve => {
+                let state: VirtualListClientSideState = null;
                 requestAnimationFrame(time => {
                     try {
                         const spacerRect = this._spacerRef.getBoundingClientRect();
@@ -411,8 +438,8 @@ export class VirtualList {
                         if (state.isUserScrollDetected || isFirstRender || endSpacerSize == 0 || spacerSize == 0)
                             this.renewStickyEdge();
                         state.isStickyEdgeChanged =
-                            rs.stickyEdge?.itemKey !== state.stickyEdge?.itemKey
-                            || rs.stickyEdge?.edge !== state.stickyEdge?.edge;
+                            rs.stickyEdge?.ItemKey !== state.stickyEdge?.ItemKey
+                            || rs.stickyEdge?.Edge !== state.stickyEdge?.Edge;
 
                         if (this._debugMode) {
                             console.log(`${LogScope}.updateClientSideStateImpl: changes:` +
@@ -452,9 +479,11 @@ export class VirtualList {
             if (state) {
                 if (this._debugMode)
                     console.log(`${LogScope}.updateClientSideStateImpl: server call, state:`, state);
-                const result: number = await this._blazorRef.invokeMethodAsync('UpdateClientSideState', state);
+                const result: number = await this.UpdateClientSideState(state);
                 if (result > this._updateClientSideStateRenderIndex)
+                {
                     this._updateClientSideStateRenderIndex = result;
+                }
             }
         } finally {
             this._isUpdatingClientState = false;
@@ -577,9 +606,9 @@ export class VirtualList {
             });
     }
 
-    private setStickyEdge(stickyEdge: IStickyEdgeState): boolean {
+    private setStickyEdge(stickyEdge: VirtualListStickyEdgeState): boolean {
         const old = this._stickyEdge;
-        if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
+        if (old?.ItemKey !== stickyEdge?.ItemKey || old?.Edge !== stickyEdge?.Edge) {
             if (this._debugMode)
                 console.warn(`${LogScope}.setStickyEdge:`, stickyEdge);
             this._stickyEdge = stickyEdge;
@@ -593,83 +622,138 @@ export class VirtualList {
         if (this._debugMode)
             console.info(`${LogScope}.renewStickyEdge`);
         for (const stickyEdge of this.getStickyEdgeCandidates()) {
-            if (stickyEdge.itemKey == null)
+            if (stickyEdge.ItemKey == null)
                 return;
-            const itemRef = this.getItemRef(stickyEdge.itemKey);
+            const itemRef = this.getItemRef(stickyEdge.ItemKey);
             if (isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect))
                 return this.setStickyEdge(stickyEdge);
         }
         return this.setStickyEdge(null);
     }
 
-    private* getStickyEdgeCandidates(): IterableIterator<IStickyEdgeState> {
+    private* getStickyEdgeCandidates(): IterableIterator<VirtualListStickyEdgeState> {
         const rs = this._renderState;
         if (!this._isEndAligned) {
             if (rs.hasVeryFirstItem)
-                yield { itemKey: this.getFirstItemKey(), edge: VirtualListEdge.Start };
+                yield { ItemKey: this.getFirstItemKey(), Edge: VirtualListEdge.Start };
             if (rs.hasVeryLastItem)
-                yield { itemKey: this.getLastItemKey(), edge: VirtualListEdge.End };
+                yield { ItemKey: this.getLastItemKey(), Edge: VirtualListEdge.End };
         } else {
             if (rs.hasVeryLastItem)
-                yield { itemKey: this.getLastItemKey(), edge: VirtualListEdge.End };
+                yield { ItemKey: this.getLastItemKey(), Edge: VirtualListEdge.End };
             if (rs.hasVeryFirstItem)
-                yield { itemKey: this.getFirstItemKey(), edge: VirtualListEdge.Start };
+                yield { ItemKey: this.getFirstItemKey(), Edge: VirtualListEdge.Start };
         }
+    }
+
+    private async UpdateClientSideState(clientSideState: VirtualListClientSideState): Promise<number>
+    {
+        const plan = this.LastPlan;
+        const expectedRenderIndex = plan?.RenderIndex ?? 0;
+        if (clientSideState.renderIndex != expectedRenderIndex) {
+            return expectedRenderIndex;
+        }
+
+        this.ClientSideState = clientSideState;
+        const newVisibleKeys = clientSideState.visibleKeys;
+        if (newVisibleKeys?.length > 0 && this.VisibleKeysState != null)
+            this.VisibleKeysState = newVisibleKeys;
+
+        return expectedRenderIndex;
+    }
+
+    private ShouldRender(): boolean {
+        if (this.LastPlan == null) {
+            return true;
+        }
+        const isSameState = this.LastPlan.Data === this.Data && this.LastPlan.ClientSideState === this.ClientSideState;
+        if (isSameState) {
+            return false;
+        }
+        this.Plan = this.LastPlan.Next();
+        return true;
+    }
+
+    private RequestDataUpdate(): void {
+        if (this.Plan.IsFullyLoaded == true && this.Data.ScrollToKey != null && this.Data.ScrollToKey.trim().length > 0)
+            return;
+
+        this.Query = this.GetDataQuery(this.Plan);
+        if (this.Query.IsSimilarTo(this.LastQuery))
+            return;
+
+        if (!this.LastQuery.IsNone)
+        {
+            // Data update
+            // _ = State.Recompute();
+        }
+        this.LastQuery = this.Query;
+    }
+
+    private GetDataQuery<TItem extends VirtualListItem>(plan: VirtualListRenderPlan<TItem>): VirtualListDataQuery {
+        const itemSize = this.Statistics.ItemSize;
+        const responseFulfillmentRatio = this.Statistics.ResponseFulfillmentRatio;
+
+        if (plan.ClientSideState?.scrollAnchorKey != null) {
+            // we should load data near the last available item on scroll into skeleton area
+            const key = plan.ClientSideState?.scrollAnchorKey!;
+            const avgItemsPerLoadZone = this.LoadZoneSize / itemSize;
+            const anchorKeyRange = new Range(key, key);
+            const anchorQuery = new VirtualListDataQuery(anchorKeyRange);
+            anchorQuery.ExpandStartBy = avgItemsPerLoadZone / responseFulfillmentRatio;
+            anchorQuery.ExpandEndBy = avgItemsPerLoadZone / responseFulfillmentRatio
+            return anchorQuery;
+        }
+        if (plan.HasUnmeasuredItems) // Let's wait for measurement to complete first
+            return this.LastQuery;
+        if (plan.Items.length == 0) // No entries -> nothing to "align" the query to
+            return this.LastQuery;
+        if (plan.Viewport == null)
+            return this.LastQuery;
+
+        const viewport = plan.Viewport;
+        const loadZone = new Range(viewport.Start - this.LoadZoneSize, viewport.End + this.LoadZoneSize);
+        const bufferZone = new Range(viewport.Start - this.BufferZoneSize, viewport.End + this.BufferZoneSize);
+        let startIndex = -1;
+        let endIndex = -1;
+        const items = plan.Items;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.IsMeasured && RangeExt.Size(RangeExt.IntersectWith(item.Range, bufferZone)) > 0) {
+                endIndex = i;
+                if (startIndex < 0)
+                    startIndex = i;
+            }
+            else if (startIndex >= 0) {
+                break;
+            }
+        }
+        if (startIndex < 0) {
+            // No items inside the bufferZone, so we'll take the first or the last item
+            startIndex = endIndex = items[0].Range.End < bufferZone.Start ? 0 : items.length - 1;
+        }
+
+        const firstItem = items[startIndex];
+        const lastItem = items[endIndex];
+        const startGap = Math.max(0, firstItem.Range.Start - loadZone.Start);
+        const endGap = Math.max(0, loadZone.End - lastItem.Range.End);
+
+        const expandStartBy = plan.Data.HasVeryFirstItem
+            ? 0
+            : Clamp(Math.ceil(startGap / itemSize), 0, this.MaxExpandBy);
+        const expandEndBy = plan.Data.HasVeryLastItem
+            ? 0
+            : Clamp(Math.ceil(endGap / itemSize), 0, this.MaxExpandBy);
+        const keyRange = new Range(firstItem.Key, lastItem.Key);
+        const query = new VirtualListDataQuery(keyRange);
+        query.ExpandStartBy = expandStartBy / responseFulfillmentRatio;
+        query.ExpandEndBy = expandEndBy / responseFulfillmentRatio;
+
+        return query;
     }
 }
 
-/** same as VirtualListRenderInfo */
-interface IRenderState {
-    renderIndex: number;
-
-    spacerSize: number;
-    endSpacerSize: number;
-    scrollHeight?: number;
-    scrollTop?: number;
-    viewportHeight?: number;
-    hasVeryFirstItem?: boolean;
-    hasVeryLastItem?: boolean;
-
-    scrollToKey?: string;
-    useSmoothScroll: boolean;
-
-    itemSizes: Record<string, number>;
-    hasUnmeasuredItems: boolean;
-    stickyEdge?: Required<IStickyEdgeState>;
-}
-
-/** same as VirtualListClientSideState */
-interface IClientSideState {
-    renderIndex: number;
-
-    spacerSize: number;
-    endSpacerSize: number;
-    scrollHeight: number;
-    scrollTop: number;
-    viewportHeight: number;
-    stickyEdge?: Required<IStickyEdgeState>;
-    scrollAnchorKey?: string,
-
-    itemSizes: Record<string, number>;
-    visibleKeys: string[];
-
-    isViewportChanged: boolean;
-    isStickyEdgeChanged: boolean;
-    isUserScrollDetected: boolean;
-}
-
-interface IStickyEdgeState {
-    itemKey: string;
-    edge: VirtualListEdge;
-}
-
-enum VirtualListEdge {
-    Start = 0,
-    End = 1,
-}
-
 // Helper functions
-
 function getItemKey(itemRef?: HTMLElement): string | null {
     return itemRef?.dataset['key'];
 }
@@ -677,9 +761,3 @@ function getItemKey(itemRef?: HTMLElement): string | null {
 function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect): boolean {
     return rect.bottom > viewRect.top && rect.top < viewRect.bottom;
 }
-
-function isFullyVisible(rect: DOMRect, viewRect: DOMRect): boolean {
-    return rect.top >= viewRect.top && rect.top <= viewRect.bottom
-        && rect.bottom >= viewRect.top && rect.bottom <= viewRect.bottom;
-}
-
