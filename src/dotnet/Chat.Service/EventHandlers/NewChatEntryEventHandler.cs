@@ -17,17 +17,12 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 
     public async Task Handle(NewChatEntryEvent @event, ICommander commander, CancellationToken cancellationToken)
     {
-        var chatAuthor = await _chatAuthorsBackend.Get(@event.ChatId, @event.AuthorId, false, cancellationToken).ConfigureAwait(false);
-        var userId = chatAuthor?.UserId;
-        if (userId == null)
-            return;
-
         var title = await GetTitle(@event.ChatId, cancellationToken).ConfigureAwait(false);
         var content = GetContent(@event.Content);
         var command = new INotificationsBackend.NotifyNewChatEntryCommand(
             @event.ChatId,
             @event.Id,
-            userId,
+            @event.AuthorId,
             title,
             content);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);

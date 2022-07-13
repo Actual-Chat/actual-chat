@@ -24,7 +24,7 @@ public class FirebaseMessagingClient
 
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
-        var (notificationId, _, notificationType, title, content, _) = entry;
+        var (notificationId, notificationType, title, content, _) = entry;
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
@@ -33,9 +33,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = entryId.HasValue
-                    ? _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString()
-                    : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString();
+                link = _uriMapper.GetChatUrl(chatId, entryId).ToString();
             }
             break;
         }
@@ -44,9 +42,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = entryId.HasValue
-                    ? _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString()
-                    : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString();
+                link = _uriMapper.GetChatUrl(chatId, entryId).ToString();
             }
             break;
         }
@@ -54,7 +50,7 @@ public class FirebaseMessagingClient
             var chatId = entry.Chat?.ChatId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = _uriMapper.ToAbsolute($"/chat/{chatId}").ToString();
+                link = _uriMapper.GetChatUrl(chatId).ToString();
             }
             break;
         }

@@ -73,16 +73,16 @@ public partial class Notifications
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
-        return new NotificationEntry(dbNotification.Id,
-            dbNotification.UserId,
+        return new NotificationEntry(
+            dbNotification.Id,
             dbNotification.NotificationType,
             dbNotification.Title,
             dbNotification.Content,
             dbNotification.ModifiedAt ?? dbNotification.CreatedAt) {
             Message = dbNotification.NotificationType switch {
                 NotificationType.Invitation => null,
-                NotificationType.Message => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatUserId!),
-                NotificationType.Reply => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatUserId!),
+                NotificationType.Message => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
+                NotificationType.Reply => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
                 _ => throw new ArgumentOutOfRangeException(),
             },
             Chat = dbNotification.NotificationType switch {
@@ -102,7 +102,10 @@ public partial class Notifications
         if (Computed.IsInvalidating())
             return;
 
-        var (chatId, entryId, userId, title, content) = notifyCommand;
+        var (chatId, entryId, authorId, title, content) = notifyCommand;
+        var chatAuthor = await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+        var userId = chatAuthor?.UserId.Value;
+
         var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
         var textContent = await markupToTextConverter.Apply(
             MarkupParser.ParseRaw(content),
@@ -110,25 +113,25 @@ public partial class Notifications
             ).ConfigureAwait(false);
         var notificationTime = DateTime.UtcNow;
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
-        foreach (var userIdGroup in userIds.Where(uid => !OrdinalEquals(uid, userId)).Chunk(200))
+        foreach (var userIdGroup in userIds.Where(uid => userId == null || !OrdinalEquals(uid, userId)).Chunk(200))
             await Task.WhenAll(userIdGroup.Select(uid
                     => _commander.Call(
                         new NotifyUserCommand(
+                            uid,
                             new NotificationEntry(
                                 Ulid.NewUlid().ToString(),
-                                uid,
                                 NotificationType.Message,
                                 title,
                                 textContent,
                                 notificationTime) {
-                                Message = new MessageNotificationEntry(chatId, entryId, userId),
+                                Message = new MessageNotificationEntry(chatId, entryId, authorId),
                             }),
                         cancellationToken)))
                 .ConfigureAwait(false);
 
-        async Task<string> AuthorNameResolver(string authorId)
+        async Task<string> AuthorNameResolver(string authorId1)
         {
-            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+            var author = await _chatAuthorsBackend.Get(chatId, authorId1, true, cancellationToken).ConfigureAwait(false);
             return author?.Name ?? "";
         }
 
@@ -173,8 +176,9 @@ public partial class Notifications
     protected virtual async Task NotifyUser(NotifyUserCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+        var userId = command.UserId;
         var entry = command.Entry;
-        var (_, userId, notificationType, _, _, _) = entry;
+        var notificationType = entry.Type;
         if (Computed.IsInvalidating()) {
             var invNotificationId = context.Operation().Items.Get<string>();
             if (invNotificationId.IsNullOrEmpty())
@@ -210,10 +214,10 @@ public partial class Notifications
             throw new ArgumentOutOfRangeException();
         }
 
-        await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
-        await SendSystemNotification(entry, cancellationToken);
+        await UpsertEntry(userId, entry, cancellationToken).ConfigureAwait(false);
+        await SendSystemNotification(userId, entry, cancellationToken);
 
-        async Task UpsertEntry(NotificationEntry entry1, CancellationToken cancellationToken1)
+        async Task UpsertEntry(string userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
         {
             var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
             await using var __ = dbContext.ConfigureAwait(false);
@@ -225,20 +229,20 @@ public partial class Notifications
                 existingEntry.Title = entry1.Title;
                 existingEntry.Content = entry1.Content;
                 existingEntry.ChatEntryId = entry1.Message?.EntryId;
-                existingEntry.ChatUserId = entry1.Message?.UserId;
+                existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
                 existingEntry.ModifiedAt = entry1.NotificationTime;
                 context.Operation().Items.Set(entry1.NotificationId);
             }
             else {
                 existingEntry = new DbNotification {
                     Id = entry1.NotificationId,
-                    UserId = entry1.UserId,
+                    UserId = userId1,
                     NotificationType = entry1.Type,
                     Title = entry1.Title,
                     Content = entry1.Content,
                     ChatId = entry1.Message?.ChatId ?? entry1.Chat?.ChatId,
                     ChatEntryId = entry1.Message?.EntryId,
-                    ChatUserId = entry1.Message?.UserId,
+                    ChatAuthorId = entry1.Message?.AuthorId,
                     CreatedAt = _clocks.CoarseSystemClock.Now,
                     HandledAt = null,
                     ModifiedAt = null,
@@ -249,9 +253,9 @@ public partial class Notifications
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        async Task SendSystemNotification(NotificationEntry entry1, CancellationToken cancellationToken1)
+        async Task SendSystemNotification(string userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
         {
-            var deviceIds = await GetDevicesInternal(entry1.UserId, cancellationToken1).ConfigureAwait(false);
+            var deviceIds = await GetDevicesInternal(userId1, cancellationToken1).ConfigureAwait(false);
             if (deviceIds.Count <= 0)
                 return;
 
@@ -271,6 +275,7 @@ public partial class Notifications
 
     [DataContract]
     public sealed record NotifyUserCommand(
+        [property: DataMember] string UserId,
         [property: DataMember] NotificationEntry Entry
     ) : ICommand<Unit>, IBackendCommand;
 }

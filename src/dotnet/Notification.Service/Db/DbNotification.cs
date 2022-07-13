@@ -25,7 +25,7 @@ public class DbNotification : IHasId<string>
 
     public long? ChatEntryId { get; set; }
 
-    public string? ChatUserId { get; set; }
+    public string? ChatAuthorId { get; set; }
 
     [NotMapped] public bool IsActive => _handledAt != null;
 

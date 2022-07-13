@@ -24,7 +24,7 @@ public interface INotificationsBackend : IComputeService
     public sealed record NotifyNewChatEntryCommand(
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId,
-        [property: DataMember] string AuthorUserId,
+        [property: DataMember] string AuthorId,
         [property: DataMember] string Title,
         [property: DataMember] string Content
     ) : ICommand<Unit>, IBackendCommand;

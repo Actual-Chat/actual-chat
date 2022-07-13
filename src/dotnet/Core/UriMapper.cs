@@ -9,4 +9,9 @@ public class UriMapper
 
     public virtual Uri ToAbsolute(string relativeUri)
         => new(BaseUri, relativeUri);
+
+    public virtual Uri GetChatUrl(string chatId, long? entryId = null)
+        => entryId.HasValue
+            ? new Uri(BaseUri, $"/chat/{chatId}#{entryId}")
+            : new Uri(BaseUri, $"/chat/{chatId}");
 }

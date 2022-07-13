@@ -1,7 +1,7 @@
 @using ActualChat.Notification
 @using ActualChat.UI.Blazor.Services
-@using Blazored.Toast.Services
-@inherits ComputedStateComponent<NotificaitonHub.Model>
+@using Blazored.Toast
+@inherits ComputedStateComponent<NotificationHub.Model>
 
 @code {
 
@@ -9,11 +9,15 @@
     [Inject] private INotifications Notifications { get; set; } = null!;
     [Inject] private ToastUI ToastUI { get; set; } = null!;
 
+    protected override ComputedState<Model>.Options GetStateOptions() => new () {
+        InitialValue = Model.None,
+    };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
-        var lastNotificationId = State.ValueOrDefault?.LastNotificationId ?? "";
+        var lastNotificationId = State.Value.LastNotificationId;
         var isFirstRun = lastNotificationId == "";
+        isFirstRun = false;
         var newNotificationIds = notificationIds
             .Where(id => string.CompareOrdinal(id, lastNotificationId) > 0)
             .ToList();
@@ -21,13 +25,16 @@
         if (newNotificationIds.Count == 0)
             return State.LatestNonErrorValue;
 
+        var toastInstanceSettings = new ToastInstanceSettings(10, true);
         if (!isFirstRun) {
             foreach (var notificationId in newNotificationIds) {
-                ToastUI.ShowToast(ToastLevel.Info, "sdfsdfdsf");
+                var parameters = new ToastParameters();
+                parameters.Add("NotificationId", notificationId);
+                ToastUI.ShowToast<Notification>(parameters, toastInstanceSettings);
             }
         }
 
-        return new Model {
+        return new () {
             LastNotificationId = notificationIds.Max()!,
         };
     }
