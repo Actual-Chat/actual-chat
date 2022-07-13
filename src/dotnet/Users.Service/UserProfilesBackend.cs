@@ -79,7 +79,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserProfile = await dbContext.UserProfiles
-            .FindAsync(DbKey.Compose(userProfile.Id), cancellationToken)
+            .FindAsync(DbKey.Compose((string)userProfile.Id), cancellationToken)
             .ConfigureAwait(false)
             ?? new DbUserProfile();
         dbUserProfile.UpdateFrom(userProfile);
