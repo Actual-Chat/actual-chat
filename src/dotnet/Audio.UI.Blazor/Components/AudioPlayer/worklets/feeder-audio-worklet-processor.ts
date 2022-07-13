@@ -237,6 +237,11 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             if (bufferedDuration >= this.enoughToStartPlaying) {
                 this.isPlaying = true;
                 this.playbackTime = 0;
+                const message: StateChangedProcessorMessage = {
+                    type: 'stateChanged',
+                    state: 'playing',
+                };
+                this.port.postMessage(message);
             }
         }
     }
