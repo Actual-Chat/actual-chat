@@ -17,7 +17,6 @@
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
         var lastNotificationId = State.Value.LastNotificationId;
         var isFirstRun = lastNotificationId == "";
-        isFirstRun = false;
         var newNotificationIds = notificationIds
             .Where(id => string.CompareOrdinal(id, lastNotificationId) > 0)
             .ToList();
