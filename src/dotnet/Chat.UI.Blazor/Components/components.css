@@ -192,8 +192,20 @@
 .wide-left-panel-tabs .btn-group {
     @apply min-h-mobile-header;
 }
+.wide-left-panel-tabs .btn-group .btn-group-container {
+    @apply self-center;
+}
 .wide-left-panel-tabs .btn {
-    @apply min-w-0;
+    @apply min-w-0 min-h-0 rounded-lg p-0;
+}
+.wide-left-panel-tabs .btn.tab-btn.on .btn-content {
+    @apply text-03;
+}
+.wide-left-panel-tabs .tab-btn:hover .btn-content {
+    @apply bg-round-hover text-success;
+}
+.wide-left-panel-tabs .tab-btn .btn-content {
+    @apply p-1.5 rounded-xl;
 }
 
 .navbar-chats {

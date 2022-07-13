@@ -4,7 +4,7 @@
 @{
     var m = State.ValueOrDefault ?? Model.None;
     var playingHistoricalClass = m.IsPlayingHistorical ? " opacity-60" : "";
-    var cls = "play " + (m.IsPlayingActive ? "on" : "off") + playingHistoricalClass;
+    var cls = $"play {(m.IsPlayingActive ? "on" : "off")} {playingHistoricalClass} {Class}";
 }
 
 <ButtonRound Class="@cls" Click="@(_ => ChatUI.IsPlaying.Value = !m.IsPlayingActive)">
@@ -19,6 +19,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
