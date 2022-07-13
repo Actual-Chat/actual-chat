@@ -20,6 +20,7 @@ module.exports = {
     // using in Avatar Size
     'w-9',
     'h-9',
+    '-r-46',
   ],
   presets: [],
   darkMode: 'media',
@@ -211,6 +212,7 @@ module.exports = {
       36: '9rem',
       40: '10rem',
       44: '11rem',
+      46: '11.5rem',
       48: '12rem',
       52: '13rem',
       56: '14rem',

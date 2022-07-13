@@ -5,7 +5,7 @@
 .menu-item {
     @apply text-03 items-center text-md;
     @apply flex-x w-full whitespace-nowrap gap-x-2;
-    @apply h-8 mx-2;
+    @apply h-8 px-2 rounded-lg;
 }
 .menu-item:hover > * {
     @apply text-success;

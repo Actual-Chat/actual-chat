@@ -12,7 +12,7 @@
                 @ButtonTemplate
             </Button>
             <div class="dropdown-menu absolute z-50 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">
-                <div class="dropdown-menu relative @(_isOpen ? "" : "hidden")">
+                <div class="dropdown-menu-inner relative @(_isOpen ? "" : "hidden")">
                     @MenuTemplate
                 </div>
             </div>

@@ -7,3 +7,18 @@
 .chat-menu-btn.btn.btn-round:hover {
     @apply text-02;
 }
+.chat-menu .dropdown-menu {
+    @apply fixed md:-right-46 -mt-2;
+}
+.chat-menu .menu-item:hover {
+    @apply bg-round-hover;
+}
+.chat-menu .menu-item:hover > * {
+    @apply text-03;
+}
+.chat-menu .chat-menu-record-toggle > * {
+    @apply text-success;
+}
+.chat-menu .chat-menu-record-toggle:hover > * {
+    @apply text-success;
+}
