@@ -55,12 +55,12 @@ public class FirebaseMessagingClient
             break;
         }
         default:
-            throw new ArgumentOutOfRangeException();
+            throw new InvalidOperationException("NotificationType is not supported.");
         }
 
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds,
-            Data = new Dictionary<string, string> {
+            Data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) {
                 { "notificationId", notificationId },
             },
             Notification = new FirebaseAdmin.Messaging.Notification {

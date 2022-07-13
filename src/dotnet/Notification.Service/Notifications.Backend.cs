@@ -69,7 +69,7 @@ public partial class Notifications
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbNotification = await dbContext.Notifications.Get(notificationId, cancellationToken);
+        var dbNotification = await dbContext.Notifications.Get(notificationId, cancellationToken).ConfigureAwait(false);
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
@@ -83,13 +83,13 @@ public partial class Notifications
                 NotificationType.Invitation => null,
                 NotificationType.Message => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
                 NotificationType.Reply => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
-                _ => throw new ArgumentOutOfRangeException(),
+                _ => throw new InvalidOperationException("NotificationType is not supported."),
             },
             Chat = dbNotification.NotificationType switch {
                 NotificationType.Invitation => new ChatNotificationEntry(dbNotification.ChatId!),
                 NotificationType.Message => null,
                 NotificationType.Reply => null,
-                _ => throw new ArgumentOutOfRangeException(),
+                _ => throw new InvalidOperationException("NotificationType is not supported."),
             }
         };
     }
@@ -202,7 +202,7 @@ public partial class Notifications
 
                 var chatId = messageDetails.ChatId;
                 var existingChatId = existingMessageDetails.ChatId;
-                if (chatId != existingChatId)
+                if (!string.Equals(chatId, existingChatId, StringComparison.InvariantCultureIgnoreCase))
                     continue;
 
                 entry = entry with { NotificationId = existingEntry.NotificationId };
@@ -211,11 +211,11 @@ public partial class Notifications
             if (notificationType is NotificationType.Reply or NotificationType.Invitation)
                 continue;
 
-            throw new ArgumentOutOfRangeException();
+            throw new InvalidOperationException("NotificationType is not supported.");
         }
 
         await UpsertEntry(userId, entry, cancellationToken).ConfigureAwait(false);
-        await SendSystemNotification(userId, entry, cancellationToken);
+        await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
 
         async Task UpsertEntry(string userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
         {
