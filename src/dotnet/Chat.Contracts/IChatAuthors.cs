@@ -4,22 +4,22 @@ namespace ActualChat.Chat;
 
 public interface IChatAuthors : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     // Commands

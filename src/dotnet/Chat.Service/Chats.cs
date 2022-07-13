@@ -63,9 +63,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         case ChatIdKind.PeerFull:
             return chatId;
         case ChatIdKind.PeerShort:
-            var user = await Auth.GetUser(session, cancellationToken)
-                .Require()
-                .ConfigureAwait(false);
+            var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
             return ParsedChatId.FormatFullPeerChatId(user.Id, parsedChatId.UserId1);
         default:
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -414,9 +412,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.Peer,
         };
 
-        var user = await Auth.GetUser(session, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;

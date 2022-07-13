@@ -2,16 +2,16 @@ namespace ActualChat.Chat;
 
 public interface IChatAuthorsBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatAuthor?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatAuthor?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserIds(string chatId, CancellationToken cancellationToken);
     // TODO(AY): Move this method to IUsersBackend
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken);
 
     // Non-compute methods

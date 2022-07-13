@@ -2,7 +2,7 @@ namespace ActualChat.Users;
 
 public interface IChatUserSettingsBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatUserSettings?> Get(string userId, string chatId, CancellationToken cancellationToken);
 
     // Commands

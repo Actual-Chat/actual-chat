@@ -2,13 +2,13 @@ namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -17,21 +17,21 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetLastIdTile0(
         Session session,
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetLastIdTile1(
         Session session,
         string chatId,
@@ -39,7 +39,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Client-side method always skips entries with IsRemoved flag
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ChatTile> GetTile(
         Session session,
         string chatId,
@@ -47,27 +47,27 @@ public interface IChats : IComputeService
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<bool> CanJoin(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);

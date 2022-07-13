@@ -41,7 +41,7 @@ public class UserStatusTest : AppHostTestBase
         await _tester.SignIn(new User("Bob"));
 
         // act
-        var userProfile = await GetUserProfile();
+        var userProfile = await RequireUserProfile();
 
         // assert
         userProfile.Status.Should().Be(NewUserStatus);
@@ -57,11 +57,11 @@ public class UserStatusTest : AppHostTestBase
             await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_adminSession, newUserProfile));
 
             // assert
-            userProfile = await GetUserProfile();
+            userProfile = await RequireUserProfile();
             userProfile.Status.Should().Be(newStatus);
         }
     }
 
-    private Task<UserProfile> GetUserProfile()
+    private Task<UserProfile> RequireUserProfile()
         => _userProfiles.Get(_tester.Session, default).Require();
 }

@@ -11,7 +11,7 @@ public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
         : base(services)
         => DbUserPresenceResolver = services.DbEntityResolver<string, DbUserPresence>();
 
-    [ComputeMethod(AutoInvalidateTime = 61)]
+    [ComputeMethod(AutoInvalidationDelay = 61)]
     public virtual async Task<Presence> Get(string userId, CancellationToken cancellationToken)
     {
         var cutoffTime = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);

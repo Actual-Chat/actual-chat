@@ -2,13 +2,13 @@ namespace ActualChat.Chat;
 
 public interface IChatsBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListOwnedChatIds(string userId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<long> GetEntryCount(
         string chatId,
         ChatEntryType entryType,
@@ -16,7 +16,7 @@ public interface IChatsBackend : IComputeService
         bool includeRemoved,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ChatTile> GetTile(
         string chatId,
         ChatEntryType entryType,
@@ -25,43 +25,43 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetIdRange(
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetLastIdTile0(
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<Range<long>> GetLastIdTile1(
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<long> GetMinId(
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<long> GetMaxId(
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ChatAuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         string chatId,
         long entryId,

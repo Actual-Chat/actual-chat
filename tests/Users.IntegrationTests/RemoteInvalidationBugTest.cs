@@ -37,8 +37,8 @@ public class RemoteInvalidationBugTest : AppHostTestBase
         i1a.GetType().Should().BeSameAs(i1bb.GetType());
         i1a.Arguments[0].Should().Be(i1bb.Arguments[0]);
         i1a.Target.Should().BeSameAs(i1bb.Target);
-        var i1aCopy = new ComputeMethodInput(i1a.Function, i1a.Method, i1a.Invocation);
-        var i1bbCopy = new ComputeMethodInput(i1bb.Function, i1bb.Method, i1bb.Invocation);
+        var i1aCopy = new ComputeMethodInput(i1a.Function, i1a.MethodDef, i1a.Invocation);
+        var i1bbCopy = new ComputeMethodInput(i1bb.Function, i1bb.MethodDef, i1bb.Invocation);
         i1aCopy.Should().Be(i1bbCopy);
         i1a.Should().Be(i1bb);
         c1bb.Should().BeSameAs(c1a);

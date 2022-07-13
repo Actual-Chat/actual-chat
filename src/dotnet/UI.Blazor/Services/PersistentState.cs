@@ -17,8 +17,6 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
     public new record Options : MutableState<T>.Options
     {
         public TimeSpan PersistDelay { get; init; } = TimeSpan.FromMilliseconds(1000);
-        public Options()
-            => ComputedOptions = ComputedOptions.NoAutoInvalidateOnError;
     }
 
     protected internal PersistentState(

@@ -2,9 +2,9 @@ namespace ActualChat.Users;
 
 public interface IUserProfilesBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<UserProfile?> Get(string id, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
 
     [CommandHandler]

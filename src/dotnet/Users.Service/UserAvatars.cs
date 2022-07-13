@@ -31,7 +31,7 @@ public class UserAvatars : IUserAvatars
 
         var userAvatarRequested = avatarId.OrdinalStartsWith("0:");
         if (userAvatarRequested)
-            user.RequireResult();
+            user.Require();
 
         var userAvatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)
@@ -45,7 +45,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).RequireResult().ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
         return profile?.AvatarId ?? Symbol.Empty;
     }
@@ -53,7 +53,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).RequireResult().ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         return await _userAvatarsBackend.ListAvatarIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 

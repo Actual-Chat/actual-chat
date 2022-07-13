@@ -2,13 +2,13 @@ namespace ActualChat.Chat;
 
 public interface IChatRolesBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, string authorId, CancellationToken cancellationToken);
 
     [CommandHandler]
