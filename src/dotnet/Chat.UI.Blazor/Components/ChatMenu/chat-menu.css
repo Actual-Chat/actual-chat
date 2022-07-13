@@ -5,7 +5,7 @@
     @apply visible;
 }
 .chat-menu-btn.btn.btn-round:hover {
-    @apply text-02;
+    @apply text-03;
 }
 .chat-menu .dropdown-menu {
     @apply fixed md:-right-46 -mt-2;

@@ -7,13 +7,13 @@
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
                 var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
-                <div class="flex-y">
+                <div class="flex-y btn-group-container">
                     <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
                         @tab.Title
                     </Button>
                     @if (BottomHill) {
                         var lineCls = isActive ? "bg-success" : "bg-transparent";
-                        <div class="shape -mt-2 @lineCls"></div>
+                        <div class="shape absolute bottom-0 @lineCls"></div>
                     }
                 </div>
             }

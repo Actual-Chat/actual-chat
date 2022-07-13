@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Symbol>
 @{
     var isRecording = RecordingChatId == ChatId;
-    var cls = "pin-toggle recording-in-chat " + (isRecording ? "on" : "off");
+    var cls = $"recording-in-chat {(isRecording ? "on" : "off")} {Class}";
 }
 
 @if (isRecording) {
@@ -27,6 +27,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
 
     private Symbol RecordingChatId {
         get => State.ValueOrDefault;

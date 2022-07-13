@@ -72,14 +72,9 @@
 .navbar-item .navbar-item-content {
     @apply text-02 overflow-hidden my-0.5;
 }
-.navbar-item.active .navbar-item-content {
-    @apply font-semibold;
-}
-
 .navbar-item .navbar-item-status {
     @apply rounded-full block w-2 h-2 mr-2;
 }
-
 .navbar-item.status-unknown .navbar-item-status {
     @apply hidden;
 }
@@ -89,7 +84,6 @@
 .navbar-item.status-offline .navbar-item-status {
     @apply border border-text-02;
 }
-
 .navbar-item .navbar-item-ending {
     @apply flex-1 justify-self-end;
     @apply flex flex-row justify-end gap-x-3 w-fit;
@@ -114,13 +108,16 @@
 .navbar-item:hover .btn.btn-round.pin-toggle {
     @apply text-icons-01 bg-transparent;
 }
-.navbar-item .btn.btn-round.pin-toggle.recording-in-chat.on,
-.navbar-item:hover .btn.btn-round.pin-toggle.recording-in-chat.on {
+.navbar-item .btn.btn-round.recording-in-chat.on,
+.navbar-item:hover .btn.btn-round.recording-in-chat.on {
     @apply text-recorder-on bg-transparent;
 }
 
 .navbar-item:hover {
     @apply bg-round-hover;
+}
+.navbar-item.active {
+    @apply bg-round-active;
 }
 
 .listened-chats .navbar-subgroup .pin-toggle,

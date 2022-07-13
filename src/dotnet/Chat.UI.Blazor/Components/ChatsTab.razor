@@ -16,6 +16,8 @@
                     <ChatListRecordingToggle ChatId="@c.Id"/>
                     <ListeningChatRemoveButton ChatId="@c.Id"/>
                 } else {
+                    <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn"/>
+                    <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn"/>
                     <CascadingValue Value="@c">
                         <Dropdown ButtonClass="btn-round chat-menu-btn" Class="flex chat-menu">
                             <ButtonTemplate>
