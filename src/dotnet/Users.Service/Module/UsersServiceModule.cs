@@ -77,11 +77,13 @@ public class UsersServiceModule : HostModule<UsersSettings>
             });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
+            db.AddEntityResolver<string, DbUserProfile>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbUserAvatar>();
             db.AddEntityResolver<string, DbUserContact>();
             db.AddEntityResolver<string, DbChatReadPosition>();
-            db.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator(dbContext => dbContext.UserAvatars,
+                (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {

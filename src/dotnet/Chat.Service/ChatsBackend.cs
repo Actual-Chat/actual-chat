@@ -300,8 +300,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
-            .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
-            .Required()
+            .SingleAsync(a => a.Id == chatId, cancellationToken)
             .ConfigureAwait(false);
         if (dbChat.Version != chat.Version)
             throw new InvalidOperationException("chat has been modified already.");

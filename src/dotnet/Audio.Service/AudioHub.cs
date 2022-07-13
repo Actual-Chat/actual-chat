@@ -40,13 +40,7 @@ public class AudioHub : Hub
 
         var httpContext = Context.GetHttpContext()!;
         var cancellationToken = httpContext.RequestAborted;
-        var session = new Session(sessionId);
-        if (session.IsDefault()) {
-            var cookies = httpContext.Request.Cookies;
-            var cookieName = _sessionMiddleware.Settings.Cookie.Name ?? "no-session-cookie";
-            cookies.TryGetValue(cookieName, out var cookieBasedSessionId);
-            session = new Session(cookieBasedSessionId ?? "");
-        }
+        var session = _sessionMiddleware.GetSession(httpContext).Require();
 
         var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
         var frameStream = opusPacketStream

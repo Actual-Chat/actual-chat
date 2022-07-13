@@ -21,7 +21,7 @@ public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOpti
     {
         if (Computed.IsInvalidating()) return;
 
-        var sessionInfo = await _auth.GetSessionInfo(command.Session, cancellationToken).Required().ConfigureAwait(false);
+        var sessionInfo = await _auth.GetSessionInfo(command.Session, cancellationToken).Require().ConfigureAwait(false);
         var options = sessionInfo.Options.Set(command.Option.Key, command.Option.Value);
         var setOptionsCommand = new SetSessionOptionsCommand(command.Session, options, sessionInfo.Version);
         await _commander.Call(setOptionsCommand, cancellationToken).ConfigureAwait(false);

@@ -2,7 +2,7 @@
 
 namespace ActualChat.Chat;
 
-public sealed record Chat
+public sealed record Chat : IRequirementTarget
 {
     public Symbol Id { get; init; } = "";
     public long Version { get; init; }

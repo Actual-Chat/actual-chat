@@ -178,7 +178,9 @@
     }
 
     private async Task OnStatusSelected(UserStatus newStatus) {
-        var userProfile = await UserProfiles.Require(Session, default);
+        var userProfile = await UserProfiles.Get(Session, default)
+            .Require()
+            .ConfigureAwait(true);
         if (newStatus == userProfile.Status)
             return;
 

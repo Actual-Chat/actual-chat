@@ -10,8 +10,8 @@ internal class Invites : IInvites
     private readonly IInvitesBackend _backend;
     private readonly ICommander _commander;
     private readonly IAuth _auth;
-    private readonly IChats _chats;
     private readonly IUserProfiles _userProfiles;
+    private readonly IChats _chats;
 
     public Invites(
         IInvitesBackend backend,
@@ -77,18 +77,21 @@ internal class Invites : IInvites
         return invite.Mask();
     }
 
-    private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
-        => await _auth.RequireAdminUser(session, cancellationToken).ConfigureAwait(false);
+    private Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
+        => _userProfiles.Get(session, cancellationToken)
+            .Require(UserProfile.MustBeAdmin);
 
     private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
         var rules = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        rules.Demand(ChatPermissions.Invite);
+        rules.Require(ChatPermissions.Invite);
     }
 
     private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var userProfile = await _userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfiles.Get(session, cancellationToken)
+            .Require(UserProfile.MustBeActive)
+            .ConfigureAwait(false);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
@@ -101,7 +104,7 @@ internal class Invites : IInvites
             var rules = await _chats
                 .GetRules(session, chatInviteDetails.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            rules.Demand(ChatPermissions.Invite);
+            rules.Require(ChatPermissions.Invite);
         }
 
         return userProfile;

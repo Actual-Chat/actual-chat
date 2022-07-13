@@ -21,7 +21,7 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
 
         var isAdmin = UserProfilesBackend.IsAdmin(user);
         var dbUserProfile = new DbUserProfile {
-            UserId = user.Id,
+            Id = user.Id,
             Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
             Version = VersionGenerator.NextVersion(),
         };

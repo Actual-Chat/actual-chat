@@ -18,6 +18,6 @@ public record ChatAuthorRules(
 
     public bool Has(ChatPermissions required)
         => Permissions.Has(required);
-    public void Demand(ChatPermissions required)
-        => Permissions.Demand(required);
+    public void Require(ChatPermissions required)
+        => Permissions.Require(required);
 }

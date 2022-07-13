@@ -3,7 +3,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Users;
 
-public record UserAvatar : IHasId<Symbol>, IHasVersion<long>
+public record UserAvatar : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     private static IEqualityComparer<UserAvatar> EqualityComparer { get; } =
         VersionBasedEqualityComparer<UserAvatar, Symbol>.Instance;

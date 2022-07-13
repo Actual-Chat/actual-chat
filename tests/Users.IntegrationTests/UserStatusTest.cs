@@ -63,5 +63,5 @@ public class UserStatusTest : AppHostTestBase
     }
 
     private Task<UserProfile> GetUserProfile()
-        => _userProfiles.Get(_tester.Session, default).Required();
+        => _userProfiles.Get(_tester.Session, default).Require();
 }

@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
@@ -29,8 +28,9 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
     public virtual async Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
     {
-        await this.AssertCanRead(session, userId, cancellationToken).ConfigureAwait(false);
-        return await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, userProfile, cancellationToken).ConfigureAwait(false);
+        return userProfile;
     }
 
     public virtual Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)

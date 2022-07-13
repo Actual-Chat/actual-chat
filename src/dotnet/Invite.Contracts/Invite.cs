@@ -3,7 +3,7 @@ using Stl.Versioning;
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 namespace ActualChat.Invite;
 
-public sealed record Invite : IHasId<Symbol>
+public sealed record Invite : IHasId<Symbol>, IRequirementTarget
 {
     public Symbol Id { get; init; } = "";
     public long Version { get; init; }

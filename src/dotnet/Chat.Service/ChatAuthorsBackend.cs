@@ -214,8 +214,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatAuthor = await dbContext.ChatAuthors
-            .FirstOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-            .Required()
+            .SingleAsync(a => a.Id == authorId, cancellationToken)
             .ConfigureAwait(false);
         dbChatAuthor.HasLeft = hasLeft;
 

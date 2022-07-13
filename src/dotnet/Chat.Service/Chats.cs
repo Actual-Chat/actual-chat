@@ -13,20 +13,20 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
+    private IUserProfiles UserProfiles { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
     private IChatsBackend Backend { get; }
-    private IUserProfiles UserProfiles { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
         Auth = Services.GetRequiredService<IAuth>();
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
+        UserProfiles = Services.GetRequiredService<IUserProfiles>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
-        UserProfiles = Services.GetRequiredService<IUserProfiles>();
         Backend = Services.GetRequiredService<IChatsBackend>();
     }
 
@@ -63,7 +63,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         case ChatIdKind.PeerFull:
             return chatId;
         case ChatIdKind.PeerShort:
-            var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+            var user = await Auth.GetUser(session, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
             return ParsedChatId.FormatFullPeerChatId(user.Id, parsedChatId.UserId1);
         default:
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -247,16 +249,18 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, title) = command;
-        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await UserProfiles.Get(session, cancellationToken)
+            .Require(UserProfile.MustBeActive)
+            .ConfigureAwait(false);
         var chat = new Chat() {
             Title = title,
             IsPublic = command.IsPublic,
-            OwnerIds = ImmutableArray.Create(user.Id),
+            OwnerIds = ImmutableArray.Create(userProfile.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         chat = await Commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, user.Id);
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, userProfile.Id);
         _ = await Commander.Call(createAuthorCommand, cancellationToken).ConfigureAwait(false);
         return chat;
     }
@@ -366,8 +370,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chat == null)
             return;
 
-        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
-        if (chat.OwnerIds.Contains(user.Id)) {
+        var userProfile = await UserProfiles.Get(session, cancellationToken)
+            .Require(UserProfile.MustBeActive)
+            .ConfigureAwait(false);
+        if (chat.OwnerIds.Contains(userProfile.Id)) {
             throw new NotSupportedException("The very last owner of the chat can't leave it.");
             // TODO: managing ownership functionality is required
             // check if there are other owners
@@ -408,7 +414,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.Peer,
         };
 
-        var user = await Auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;

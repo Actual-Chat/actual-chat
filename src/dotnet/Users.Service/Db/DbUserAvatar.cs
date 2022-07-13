@@ -11,7 +11,7 @@ public enum UserAvatarType { User = 0, AnonymousChatAuthor = 1 }
 /// User avatar. <br />
 /// </summary>
 [Table("UserAvatars")]
-public class DbUserAvatar : IHasId<string>
+public class DbUserAvatar : IHasId<string>, IRequirementTarget
 {
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;

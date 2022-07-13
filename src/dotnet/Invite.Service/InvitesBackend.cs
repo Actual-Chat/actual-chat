@@ -107,7 +107,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var userProfile = await _userProfiles.Require(command.Session, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfiles.Get(command.Session, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -131,7 +133,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null)
-            _ = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Required().ConfigureAwait(false);
+            _ = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
 
         dbInvite.UpdateFrom(invite);
 

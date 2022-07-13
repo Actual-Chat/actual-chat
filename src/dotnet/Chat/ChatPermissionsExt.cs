@@ -7,7 +7,7 @@ public static class ChatPermissionsExt
     public static bool Has(this ChatPermissions available, ChatPermissions required)
         => (available & required) == required;
 
-    public static void Demand(this ChatPermissions available, ChatPermissions required)
+    public static void Require(this ChatPermissions available, ChatPermissions required)
     {
         if (!Has(available, required))
             throw NotEnoughPermissions(required);

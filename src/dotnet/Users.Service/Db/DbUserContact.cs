@@ -7,7 +7,7 @@ namespace ActualChat.Users.Db;
 
 [Table("UserContacts")]
 [Index(nameof(OwnerUserId))]
-public class DbUserContact : IHasId<string>
+public class DbUserContact : IHasId<string>, IRequirementTarget
 {
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;

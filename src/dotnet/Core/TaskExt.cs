@@ -36,38 +36,6 @@ public static class TaskExt
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
-    // Collect - a bit more user-friendly Task.WhenAll
-
-    public static Task<List<T>> Collect<T>(
-        this IEnumerable<Task<T>> tasks,
-        CancellationToken cancellationToken = default)
-        => tasks.Collect(64, cancellationToken);
-
-    public static async Task<List<T>> Collect<T>(
-        this IEnumerable<Task<T>> tasks,
-        int chunkSize,
-        CancellationToken cancellationToken = default)
-    {
-        var results = new List<T>();
-        foreach (var chunk in tasks.Chunk(chunkSize)) {
-            var chunkResults = await Task.WhenAll(chunk).ConfigureAwait(false);
-            results.AddRange(chunkResults);
-        }
-        return results;
-    }
-
-    public static Task Collect(
-        this IEnumerable<Task> tasks,
-        CancellationToken cancellationToken = default)
-        => Task.WhenAll(tasks);
-
-    public static async Task<T> Required<T>(this Task<T?> source, string? messageOverride = null)
-        => await source.ConfigureAwait(false)
-            ?? throw new NotFoundException(messageOverride.NullIfEmpty() ?? $"{typeof(T).Name} not found.");
-
-    public static async ValueTask<T> Required<T>(this ValueTask<T?> source, string? messageOverride = null)
-        => await source.ConfigureAwait(false) ?? throw new NotFoundException(messageOverride.NullIfEmpty() ?? $"{typeof(T).Name} not found.");
-
     // WhenAny
 
     // Source (with some refactorings):

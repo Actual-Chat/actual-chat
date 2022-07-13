@@ -31,7 +31,7 @@ public class UserAvatars : IUserAvatars
 
         var userAvatarRequested = avatarId.OrdinalStartsWith("0:");
         if (userAvatarRequested)
-            user.Required();
+            user.RequireResult();
 
         var userAvatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)
@@ -45,7 +45,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).RequireResult().ConfigureAwait(false);
         var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
         return profile?.AvatarId ?? Symbol.Empty;
     }
@@ -53,7 +53,7 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).RequireResult().ConfigureAwait(false);
         return await _userAvatarsBackend.ListAvatarIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -63,7 +63,7 @@ public class UserAvatars : IUserAvatars
         if (Computed.IsInvalidating())
             return;
 
-        var user = await _auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(command.Session, cancellationToken).Require().ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
@@ -71,7 +71,7 @@ public class UserAvatars : IUserAvatars
                 throw new InvalidOperationException("Invalid AvatarId.");
         }
 
-        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).Required().ConfigureAwait(false);
+        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).Require().ConfigureAwait(false);
         userProfile = userProfile with { AvatarId = avatarId };
         var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
@@ -84,7 +84,7 @@ public class UserAvatars : IUserAvatars
             return default!;
 
         var session = command.Session;
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         var cmd = new IUserAvatarsBackend.CreateCommand( user.Id, user.Name);
         var userAvatar = await _commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return userAvatar;
@@ -97,7 +97,7 @@ public class UserAvatars : IUserAvatars
             return;
 
         var avatarId = command.AvatarId;
-        _ = await Get(command.Session, avatarId, cancellationToken).Required("Invalid avatar id").ConfigureAwait(false);
+        _ = await Get(command.Session, avatarId, cancellationToken).Require().ConfigureAwait(false);
 
         var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatarId, command.Name, command.Picture, command.Bio);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);

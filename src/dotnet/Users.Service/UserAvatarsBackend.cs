@@ -126,8 +126,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserAvatar = await dbContext.UserAvatars
-            .SingleOrDefaultAsync(a => a.Id == avatarId, cancellationToken)
-            .Required()
+            .SingleAsync(a => a.Id == avatarId, cancellationToken)
             .ConfigureAwait(false);
 
         dbUserAvatar.Name = command.Name;

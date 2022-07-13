@@ -32,8 +32,9 @@ public static class TestAuthExt
         var command = new SignInCommand(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        sessionInfo = sessionInfo.AssertAuthenticated();
+        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken)
+            .Require(SessionInfo.MustBeAuthenticated)
+            .ConfigureAwait(false);
         user = (await authBackend.GetUser(default, sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
 
         // Let's wait a bit to ensure all invalidations go through
