@@ -34,7 +34,7 @@ internal static class AppPathResolver
     private static string SearchWebRootDirectory()
     {
         var probeDirectories = new List<string>(4) { AppDomain.CurrentDomain.BaseDirectory!, };
-        var developerMachineClientWebRootProbeDirectory = GetDeveloperMachineWebRootProbeDirectory("UI.Blazor.Host");
+        var developerMachineClientWebRootProbeDirectory = GetDeveloperMachineWebRootProbeDirectory("App.Wasm");
         if (!string.IsNullOrWhiteSpace(developerMachineClientWebRootProbeDirectory)) {
             probeDirectories.Add(developerMachineClientWebRootProbeDirectory);
         }

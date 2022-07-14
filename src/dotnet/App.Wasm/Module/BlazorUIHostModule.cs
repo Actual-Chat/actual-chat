@@ -1,7 +1,8 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 using Stl.Plugins;
 
-namespace ActualChat.UI.Blazor.Host.Module;
+namespace ActualChat.App.Wasm.Module;
 
 public class BlazorUIHostModule : HostModule, IBlazorUIModule
 {

@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Host;
+using ActualChat.App.Wasm;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Stl.Fusion.Blazor;

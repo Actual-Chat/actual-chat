@@ -34,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor", "src\dotne
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor", "src\dotnet\UI.Blazor\UI.Blazor.csproj", "{ECBC1E77-D8BB-424B-83AB-61F039D5C512}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.Host", "src\dotnet\UI.Blazor.Host\UI.Blazor.Host.csproj", "{F32DB753-635A-4702-98C7-5DF2ED90045A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Wasm", "src\dotnet\App.Wasm\App.Wasm.csproj", "{F32DB753-635A-4702-98C7-5DF2ED90045A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Contracts", "src\dotnet\Audio.Contracts\Audio.Contracts.csproj", "{8462C6EB-95F5-4E02-951F-9D791B123D8A}"
 EndProject

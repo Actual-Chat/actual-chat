@@ -1,5 +1,5 @@
 *settings.local.json
-src/dotnet/UI.Blazor.Host/wwwroot/dist/
+src/dotnet/App.Wasm/wwwroot/dist/
 src/dotnet/ClientApp/wwwroot/dist/
 build/Build.sln
 Nerdbank.GitVersioning.*

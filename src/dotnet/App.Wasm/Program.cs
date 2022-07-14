@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualChat.UI.Blazor.App;
 
-namespace ActualChat.UI.Blazor.Host;
+namespace ActualChat.App.Wasm;
 
 public static class Program
 {
