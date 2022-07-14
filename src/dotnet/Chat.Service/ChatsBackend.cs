@@ -88,24 +88,23 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             userId = author?.UserId;
         }
 
-        var user = !userId.IsNullOrEmpty()
-            ? await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false)
-            : null;
+        var account = userId.IsNullOrEmpty() ? null
+            : await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var rules = new ChatAuthorRules(chatId, author, account);
 
-        if (user != null && chat.OwnerIds.Contains(user.Id))
-            return new(chatId, author, user, ChatPermissions.Owner);
-
-        if (Constants.Chat.DefaultChatId == chatId) {
-            var account = user == null ? null
-                : await AccountsBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-            return new(chatId, author, user, account?.IsAdmin == true ? ChatPermissions.Owner : 0);
+        if (account != null) {
+            if (chat.OwnerIds.Contains(account.Id))
+                return rules.With(ChatPermissions.Owner);
+            if (Constants.Chat.DefaultChatId == chatId && account.IsAdmin)
+                return rules.With(ChatPermissions.Owner);
         }
 
-        if (author != null && !author.HasLeft)
-            return new(chatId, author, user, ChatPermissions.ReadWrite);
+        if (author is { HasLeft: false })
+            return rules.With(ChatPermissions.ReadWrite);
         if (chat.IsPublic)
-            return new(chatId, author, user, ChatPermissions.Read);
-        return new(chatId, author, user);
+            return rules.With(ChatPermissions.Read);
+
+        return rules;
     }
 
     // [ComputeMethod]
@@ -520,15 +519,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be chatPrincipalId
             return ChatAuthorRules.None(chatId);
 
-        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return ChatAuthorRules.None(chatId);
 
-        var otherUser = await AuthBackend.GetUser(default, otherUserId, cancellationToken).ConfigureAwait(false);
-        if (otherUser == null)
+        var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+        if (otherAccount == null)
             return ChatAuthorRules.None(chatId);
 
-        return new(chatId, chatAuthor, user, ChatPermissions.ReadWrite);
+        return new(chatId, chatAuthor, account, ChatPermissions.ReadWrite);
     }
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)

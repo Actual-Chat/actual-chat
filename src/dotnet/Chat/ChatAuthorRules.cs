@@ -1,10 +1,12 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 [DataContract]
 public record ChatAuthorRules(
     [property: DataMember] Symbol ChatId,
     [property: DataMember] ChatAuthor? Author,
-    [property: DataMember] User? User,
+    [property: DataMember] Account? Account,
     [property: DataMember] ChatPermissions Permissions = 0)
 {
     public bool CanRead => Permissions.Has(ChatPermissions.Read);
@@ -20,4 +22,7 @@ public record ChatAuthorRules(
         => Permissions.Has(required);
     public void Require(ChatPermissions required)
         => Permissions.Require(required);
+
+    public ChatAuthorRules With(ChatPermissions permissions)
+        => this with { Permissions = permissions };
 }
