@@ -1,20 +1,22 @@
-import { VirtualListStickyEdgeState } from './virtual-list-sticky-edge-state';
+import { VirtualListDataQuery } from './virtual-list-data-query';
 
 export interface VirtualListRenderState {
     renderIndex: number;
 
+    query: VirtualListDataQuery;
     spacerSize: number;
     endSpacerSize: number;
-    scrollHeight?: number;
-    scrollTop?: number;
-    viewportHeight?: number;
-    hasVeryFirstItem?: boolean;
-    hasVeryLastItem?: boolean;
+    startExpansion: number;
+    endExpansion: number;
+    hasVeryFirstItem: boolean;
+    hasVeryLastItem: boolean;
 
     scrollToKey?: string;
     useSmoothScroll: boolean;
+    items: Record<string, VirtualListRenderItem>;
+}
 
-    itemSizes: Record<string, number>;
-    hasUnmeasuredItems: boolean;
-    stickyEdge?: Required<VirtualListStickyEdgeState>;
+export interface VirtualListRenderItem {
+    countAs: number;
+    dataHash: number;
 }

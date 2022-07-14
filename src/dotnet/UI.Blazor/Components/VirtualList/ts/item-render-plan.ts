@@ -1,16 +1,13 @@
 import { VirtualListItem } from './virtual-list-item';
 import { Range} from './range';
 import { RangeExt } from './range-ext';
+import { VirtualListRenderItem } from './virtual-list-render-state';
 
-export class ItemRenderPlan<TItem extends VirtualListItem> {
-    constructor(public Item: TItem) {
+export class ItemRenderPlan {
+    constructor(public Key: string, public Item: VirtualListRenderItem) {
     }
 
     Range: Range<number> = new Range(-1, -2);
-
-    get Key(): string {
-        return this.Item.Key;
-    }
 
     get Size(): number {
         return RangeExt.Size(this.Range);

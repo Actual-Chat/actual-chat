@@ -1,0 +1,22 @@
+@inherits ComputedStateComponent<TestListItem>
+@inject VirtualListTestService Service
+
+@{
+    var item = State.ValueOrDefault ?? new(0, "Loading...");
+}
+
+<div class="m-1" style="font-size: @(item.FontSize)em">
+    <div style="font-weight: bold">@item.Title</div>
+    <div>@item.Description</div>
+</div>
+
+@code {
+    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
+    public TestListItemRef ItemRef { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
+        => Service.GetItem(ItemRef, cancellationToken);
+}
