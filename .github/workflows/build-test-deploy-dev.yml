@@ -174,7 +174,7 @@ jobs:
       - name: Run integration tests
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{github.workspace}}/.config/gcp-key.json
-          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/UI.Blazor.Host/wwwroot/
+          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/App.Wasm/wwwroot/
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
           USERSSETTINGS__GOOGLECLIENTID: ${{secrets.USERSSETTINGS__GOOGLECLIENTID}}
