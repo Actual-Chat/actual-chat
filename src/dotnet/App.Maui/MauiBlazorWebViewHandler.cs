@@ -15,7 +15,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
     public MauiBlazorWebViewHandler()
     {
         // Intentionally use parameterless constructor.
-        // Consturctor with parameters causes Exception on Android platform:
+        // Constructor with parameters causes Exception on Android platform:
         // Microsoft.Maui.Platform.ToPlatformException
         // Message = Microsoft.Maui.Handlers.PageHandler found for ActualChat.App.Maui.MainPage is incompatible
     }

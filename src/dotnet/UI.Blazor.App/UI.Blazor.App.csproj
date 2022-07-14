@@ -1,10 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />

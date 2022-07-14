@@ -20,7 +20,7 @@ using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App
 {
-    public static class Startup
+    public static class AppConfigurator
     {
         public static async Task ConfigureServices(IServiceCollection services, Uri baseUri, params Type[] platformPluginTypes)
         {

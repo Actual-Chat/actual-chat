@@ -6,15 +6,17 @@
 @using Stl.Plugins
 @implements IDisposable
 @{
+    var appAssembly = typeof(App).Assembly;
     var moduleAssemblies = Plugins.GetPlugins<IBlazorUIModule>()
         .Select(p => p.GetType().Assembly)
+        .Where(a => a != appAssembly)
         .ToArray();
 }
 
 <CascadingAuthState>
     <Welcome>
         <CascadingBlazoredModal>
-            <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="moduleAssemblies">
+            <Router AppAssembly="@appAssembly" AdditionalAssemblies="moduleAssemblies">
                 <Found>
                     <CascadingValue Value="@context">
                         <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>

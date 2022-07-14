@@ -16,7 +16,7 @@ public static class HtmlHelperExt
         var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(httpContext);
         var sessionId = serverAuthHelper.Session.Id.Value;
 
-        return html.RenderComponentAsync<Main>(
+        return html.RenderComponentAsync<ActualChat.App.Wasm.App>(
             isServerSideBlazor ? RenderMode.Server : RenderMode.WebAssembly,
             new { SessionId = sessionId });
     }
@@ -34,7 +34,7 @@ public static class HtmlHelperExt
         while (true) {
             // Workaround for https://github.com/dotnet/aspnetcore/issues/26966
             try {
-                return await html.RenderComponentAsync<Main>(
+                return await html.RenderComponentAsync<ActualChat.App.Wasm.App>(
                     isServerSideBlazor ? RenderMode.ServerPrerendered : RenderMode.WebAssemblyPrerendered,
                     new { SessionId = sessionId }
                     ).ConfigureAwait(false);

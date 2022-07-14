@@ -2,10 +2,10 @@ namespace ActualChat.App.Maui
 {
     public partial class App : Application
     {
-        public App()
+        public App(MainPage mainPage)
         {
             InitializeComponent();
-            MainPage = new MainPage();
+            MainPage = mainPage;
         }
     }
 }

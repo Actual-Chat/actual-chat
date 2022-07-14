@@ -5,11 +5,5 @@
              xmlns:local="clr-namespace:ActualChat.App.Maui"
              x:Class="ActualChat.App.Maui.MainPage"
              BackgroundColor="{DynamicResource PageBackgroundColor}">
-
-    <b:BlazorWebView x:Name="_blazorWebView" HostPage="wwwroot/index.html">
-        <b:BlazorWebView.RootComponents>
-            <b:RootComponent Selector="#app" ComponentType="{x:Type local:Main}" />
-        </b:BlazorWebView.RootComponents>
-    </b:BlazorWebView>
-
+    <b:BlazorWebView x:Name="_blazorWebView" HostPage="wwwroot/index.html" />
 </ContentPage>

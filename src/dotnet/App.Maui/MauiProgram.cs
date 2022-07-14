@@ -4,6 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
+using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
@@ -19,22 +22,20 @@ public static class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
-        // TODO: use resources + new EmbeddedFileProvider(typeof(MauiProgram).Assembly) ?
 
         var fileprovider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
         var files = fileprovider.GetDirectoryContents("").ToArray();
         builder.Configuration.AddJsonFile(
             fileprovider,
             "appsettings.Development.json",
-            // TODO: fix android fs access
             optional: true,
             reloadOnChange: false);
         builder.Configuration.AddJsonFile(
             fileprovider,
-            // TODO: fix android fs access
             "appsettings.json",
             optional: true,
             reloadOnChange: false);
+
         var services = builder.Services;
         services.AddMauiBlazorWebView();
 
@@ -53,7 +54,7 @@ public static class MauiProgram
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
                 .Add(ServiceScope.BlazorUI),
-            Environment = "Development", // not hosting environment service, TODO: use configuration
+            Environment = "Development", // there is hosting environment service, TODO: use configuration
             Configuration = c.GetRequiredService<IConfiguration>()
         });
 
@@ -109,7 +110,17 @@ public static class MauiProgram
     }
 
     private static void ConfigureServices(IServiceCollection services, Uri baseUri)
-        => Startup
+    {
+        AppConfigurator
             .ConfigureServices(services, baseUri, typeof(Module.BlazorUIClientAppModule))
             .Wait();
+
+        services.AddTransient<MainPage>();
+
+        // Host-specific service overrides
+        services.AddSingleton(new WelcomeOptions() { MustBypass = true });
+
+        // Auth
+        services.AddScoped<IClientAuth, MauiClientAuth>();
+    }
 }

@@ -54,8 +54,8 @@ public static class Program
             Configuration = c.GetRequiredService<IConfiguration>(),
         });
 
-        await Startup
-            .ConfigureServices(services, baseUri, typeof(Module.BlazorUIHostModule))
+        await AppConfigurator
+            .ConfigureServices(services, baseUri)
             .ConfigureAwait(false);
     }
 }
