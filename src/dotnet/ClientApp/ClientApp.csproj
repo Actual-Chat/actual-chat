@@ -1,8 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
+    <BuilderOS>other</BuilderOS>
+    <BuilderOS Condition="'$(OS)' == 'Windows_NT'">windows</BuilderOS>
+    <BuilderOS Condition="$([MSBuild]::IsOSPlatform('windows'))">windows</BuilderOS>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net6.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(BuilderOS)' == 'windows'">$(TargetFrameworks);net6.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>ActualChat.ClientApp</RootNamespace>
     <UseMaui>true</UseMaui>

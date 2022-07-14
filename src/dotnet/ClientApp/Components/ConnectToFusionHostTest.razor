@@ -2,17 +2,17 @@
 @using Stl.Fusion.Client.Internal
 @using RestEase;
 
-<h3>Connect to fusion host test:</h3>
+<h3>Connect to Fusion host test:</h3>
 
 @if(_isLoading) {
     <h4>Loading ***</h4>
     return;
 }
-@if (_user != null) {
-    <h4>User 1 id: @_user.Id</h4>
+@if (_restEaseUser != null) {
+    <h4>RestEase User.Id: @_restEaseUser.Id</h4>
 }
-@if (_user2 != null) {
-    <h4>User 2 id: @_user2.Id</h4>
+@if (_fusionUser != null) {
+    <h4>Fusion User.Id: @_fusionUser.Id</h4>
 }
 @if (_error != null) {
     <h4>Error: @_error</h4>
@@ -21,8 +21,8 @@
 @code {
     private bool _isLoading = true;
     private Exception? _error;
-    private User? _user;
-    private User? _user2;
+    private User? _restEaseUser;
+    private User? _fusionUser;
 
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -30,23 +30,23 @@
 
     protected override async Task OnInitializedAsync()
     {
-        using (var cts = new CancellationTokenSource(5000)) {
-            try {
-                // gets user with rest ease client like fusion replica service does it underline
-                var clientName = typeof(IAuthClientDef).FullName;
-                var httpClientFactory = Services.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(clientName!);
-                var client = new RestClient(httpClient) {
-                    RequestBodySerializer = Services.GetRequiredService<RequestBodySerializer>(),
-                    ResponseDeserializer = Services.GetRequiredService<ResponseDeserializer>()
-                }.For<IAuthClientDef>();
-                _user = await client.GetUser(Session, cts.Token).ConfigureAwait(true);
-                // gets user with fusion itself
-                _user2 = await Auth.GetUser(Session, cts.Token).ConfigureAwait(true);
-            }
-            catch(Exception e) {
-                _error = e;
-            }
+        using var cts = new CancellationTokenSource(5000);
+        try {
+            // Gets user using RestEase client
+            var clientName = typeof(IAuthClientDef).FullName;
+            var httpClientFactory = Services.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient(clientName!);
+            var client = new RestClient(httpClient) {
+                RequestBodySerializer = Services.GetRequiredService<RequestBodySerializer>(),
+                ResponseDeserializer = Services.GetRequiredService<ResponseDeserializer>()
+            }.For<IAuthClientDef>();
+            _restEaseUser = await client.GetUser(Session, cts.Token).ConfigureAwait(true);
+
+            // Gets user using Fusion service
+            _fusionUser = await Auth.GetUser(Session, cts.Token).ConfigureAwait(true);
+        }
+        catch(Exception e) {
+            _error = e;
         }
         _isLoading = false;
     }
