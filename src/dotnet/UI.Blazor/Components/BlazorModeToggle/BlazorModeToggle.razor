@@ -6,8 +6,8 @@
     string GetButtonClass(bool isActive)
         => isActive ? "is-active" : "";
 
-    var serverClass = $"{GetButtonClass(IsServerSideBlazor)}";
-    var wasmClass = $"{GetButtonClass(!IsServerSideBlazor)}";
+    var serverClass = $"{GetButtonClass(IsServerSideBlazor)} left";
+    var wasmClass = $"{GetButtonClass(!IsServerSideBlazor)} right";
 }
 
 <div class="blazor-mode-toggle">

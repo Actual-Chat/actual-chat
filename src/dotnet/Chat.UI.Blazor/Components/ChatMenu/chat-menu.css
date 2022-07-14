@@ -1,8 +1,8 @@
 .navbar-item .chat-menu-btn {
-    @apply invisible;
+    @apply hidden;
 }
 .navbar-item:hover .chat-menu-btn {
-    @apply visible;
+    @apply flex;
 }
 .chat-menu-btn.btn.btn-round:hover {
     @apply text-03;
@@ -21,4 +21,10 @@
 }
 .chat-menu .chat-menu-record-toggle:hover > * {
     @apply text-success;
+}
+.message-counter-badge {
+    @apply flex;
+}
+.navbar-item:hover .message-counter-badge {
+    @apply hidden;
 }
