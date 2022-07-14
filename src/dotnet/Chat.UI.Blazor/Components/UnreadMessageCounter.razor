@@ -7,12 +7,14 @@
         return;
 
     var bgColor = m.IsSubscribed
-        ? "bg-unread"
-        : "bg-square-focus";
+        ? "bg-success"
+        : "bg-counter";
 }
 
-<div class="rounded-full @bgColor min-w-8  px-2 justify-center items-center flex-x text-04 font-semibold">
-    @GetUnreadCountValue()
+<div class="flex-x justify-center items-center rounded-full @bgColor text-04 text-base min-w-8 message-counter-badge">
+    <div class="h-6 py-0.5 rounded-full">
+        @GetUnreadCountValue()
+    </div>
 </div>
 
 @code {

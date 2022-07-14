@@ -72,7 +72,7 @@
 }
 
 .chat-message-transcript {
-    @apply text-02;
+    @apply text-02 whitespace-normal;
     @apply underline decoration-dotted decoration-audio-message;
 }
 .chat-message-markup {
@@ -204,6 +204,9 @@
 .wide-left-panel-tabs .tab-btn:hover .btn-content {
     @apply bg-round-hover text-success;
 }
+.wide-left-panel-tabs .tab-btn.on:hover .btn-content {
+    @apply bg-transparent cursor-default;
+}
 .wide-left-panel-tabs .tab-btn .btn-content {
     @apply p-1.5 rounded-xl;
 }
@@ -231,15 +234,15 @@
 }
 
 .pinned-chats {
-    @apply pb-2 px-2;
+    @apply flex-y pb-2 px-2 gap-y-0.5;
 }
 
 .unpinned-chats {
-    @apply flex-y h-full px-2;
+    @apply flex-y h-full px-2 gap-y-0.5;
 }
 
 .listened-chats {
-    @apply py-1 relative bottom-0 flex-y px-2;
+    @apply py-1 relative bottom-0 flex-y px-2 gap-y-0.5;
     @apply border-t-8 border-bg-04 bg-01;
 }
 .listened-chats .navbar-item.active {

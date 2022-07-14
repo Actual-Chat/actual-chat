@@ -10,11 +10,11 @@
     <MenuTemplate>
         <Menu Class="account-dropdown-menu" ItemClass="text-left">
             <div class="flex-y bg-01 rounded-t-xl">
-                <div class="flex-x text-xxs py-0.5 items-baseline border-b-2 border-bg-04 opacity-75">
+                <div class="flex-x text-xxs py-1 items-baseline border-b border-bg-04">
                     <div class="px-4"><b class="text-03 font-medium">@Version</b></div>
                     @if (HostInfo.HostKind != HostKind.Maui)
                     {
-                        <div class="pt-0.5 px-4 border-l-2 border-bg-04"><BlazorModeToggle/></div>
+                        <div class="pl-4"><BlazorModeToggle/></div>
                     }
                 </div>
             </div>

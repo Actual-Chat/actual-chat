@@ -27,6 +27,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        'counter': 'var(--counter)',
         'icons-01': 'var(--icons-01)',
         'icons-02': 'var(--icons-02)',
         'error-toast-header': 'var(--error-toast-header)',
