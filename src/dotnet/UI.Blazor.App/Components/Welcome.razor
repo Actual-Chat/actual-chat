@@ -49,8 +49,6 @@
 }
 
 @code {
-    private WelcomeOptions? _welcomeOptions;
-
     [Inject] private WelcomeOptions WelcomeOptions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -60,7 +58,7 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (_welcomeOptions is { MustBypass: true })
+        if (WelcomeOptions is { MustBypass: true })
             return Model.Bypassing;
 
         var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
