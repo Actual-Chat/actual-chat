@@ -1,4 +1,4 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;

@@ -1,4 +1,4 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;

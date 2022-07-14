@@ -1,6 +1,6 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;

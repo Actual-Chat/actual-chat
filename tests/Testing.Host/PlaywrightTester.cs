@@ -1,4 +1,4 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Microsoft.Playwright;
 
 namespace ActualChat.Testing.Host;

@@ -1,5 +1,5 @@
 using ActualChat.App.Wasm;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;

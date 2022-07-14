@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;

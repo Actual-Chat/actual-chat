@@ -1,4 +1,4 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Bunit;
 
 namespace ActualChat.Testing.Host;

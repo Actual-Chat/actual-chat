@@ -1,4 +1,4 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Collections;
 using Microsoft.Extensions.Configuration;
 
