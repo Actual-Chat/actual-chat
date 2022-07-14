@@ -12,7 +12,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthors? _frontend;
 
-    private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
     private RedisSequenceSet<ChatAuthor> IdSequences { get; }
@@ -24,7 +24,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
-        Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
@@ -92,13 +92,13 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         if (chatAuthor != null)
             return chatAuthor;
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user?.Id ?? Symbol.Empty;
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var userId = account?.Id ?? Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
-        if (user == null) {
+        if (account == null) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));

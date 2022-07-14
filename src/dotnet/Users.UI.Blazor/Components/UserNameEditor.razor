@@ -16,7 +16,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
@@ -24,8 +24,8 @@
 
     protected override async Task OnInitializedAsync() {
         M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        var user = await Auth.GetUser(Session).ConfigureAwait(true);
-        M.Name = user?.Name ?? "";
+        var account = await Accounts.Get(Session, default).ConfigureAwait(true);
+        M.Name = account?.User.Name ?? "";
         M.CopyToBase();
     }
 

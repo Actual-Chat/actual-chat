@@ -14,6 +14,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
     private IAccounts Accounts { get; }
+    private IAccountsBackend AccountsBackend { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
@@ -24,6 +25,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Auth = Services.GetRequiredService<IAuth>();
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
         Accounts = Services.GetRequiredService<IAccounts>();
+        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
@@ -40,16 +42,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual async Task<string> GetPeerChatTitle(string chatId, User user, CancellationToken cancellationToken)
+    protected virtual async Task<string> GetPeerChatTitle(string chatId, Account account, CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
 
-        var otherUserId = (userId1, userId2).OtherThan(user.Id);
+        var otherUserId = (userId1, userId2).OtherThan(account.Id);
         if (otherUserId.IsEmpty)
             throw new InvalidOperationException("Specified peer chat doesn't belong to the current user.");
 
-        var contact = await UserContactsBackend.Get(user.Id, otherUserId, cancellationToken).ConfigureAwait(false);
+        var contact = await UserContactsBackend.Get(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
         if (contact != null)
             return contact.Name;
         return await UserContactsBackend.SuggestContactName(otherUserId, cancellationToken).ConfigureAwait(false);
@@ -63,8 +65,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         case ChatIdKind.PeerFull:
             return chatId;
         case ChatIdKind.PeerShort:
-            var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-            return ParsedChatId.FormatFullPeerChatId(user.Id, parsedChatId.UserId1);
+            var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+            return ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1);
         default:
             throw new ArgumentOutOfRangeException(nameof(chatId));
         }
@@ -74,12 +76,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public virtual async Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
     {
         var chatIds = await ChatAuthors.ListOwnChatIds(session, cancellationToken).ConfigureAwait(false);
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user != null) {
-            var ownedChatIds = await Backend.ListOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account != null) {
+            var ownedChatIds = await Backend.ListOwnedChatIds(account.Id, cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(ownedChatIds).ToImmutableArray();
-
-            var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
             if (account.IsAdmin && !chatIds.Contains(Constants.Chat.DefaultChatId))
                 chatIds = chatIds.Add(Constants.Chat.DefaultChatId);
         }
@@ -180,8 +180,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return false;
 
         var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
@@ -196,13 +196,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
             var chatAuthor = await ChatAuthorsBackend.Get(chatId, chatPrincipalId, false, cancellationToken)
                 .ConfigureAwait(false);
-            if (chatAuthor == null || chatAuthor.UserId.IsEmpty || chatAuthor.UserId == user.Id)
+            if (chatAuthor == null || chatAuthor.UserId.IsEmpty || chatAuthor.UserId == account.Id)
                 return false;
         }
         else {
-            var userId2 = parsedChatPrincipalId.UserId.Id;
-            var user2 = await AuthBackend.GetUser(default, userId2, cancellationToken).ConfigureAwait(false);
-            if (user2 == null || user2.Id == user.Id)
+            var otherUserId = parsedChatPrincipalId.UserId.Id;
+            var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+            if (otherAccount == null || otherAccount.Id == account.Id)
                 return false;
         }
         return true;
@@ -412,8 +412,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.Peer,
         };
 
-        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        var title = await GetPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        var title = await GetPeerChatTitle(chatId, account, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;
     }
@@ -500,9 +500,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-
-        if (!options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId))
-            return false;
-        return OrdinalEquals(chatId, inviteChatId as string);
+        return options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId)
+            && OrdinalEquals(chatId, inviteChatId as string);
     }
 }

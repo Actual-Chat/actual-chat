@@ -24,7 +24,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
@@ -51,14 +51,14 @@
                 RecordingChatUrl = $"/chat/{recordingChat.Id.Value.UrlEncode()}",
             };
 
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return Model.None;
 
         var parsedChatId = new ParsedChatId(recordingChat.Id);
         return new Model() {
             RecordingChat = recordingChat,
-            RecordingChatUrl = $"/chat/{parsedChatId.Shorten(user.Id).Value.UrlEncode()}",
+            RecordingChatUrl = $"/chat/{parsedChatId.Shorten(account.Id).Value.UrlEncode()}",
         };
     }
 

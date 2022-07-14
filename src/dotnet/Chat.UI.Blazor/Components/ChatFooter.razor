@@ -29,7 +29,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -39,7 +39,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
         var permissions = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
         var canSend = permissions.CanWrite;
         var canJoin = false;
         if (!canSend) {
@@ -48,7 +48,7 @@
         return new () {
             CanPost = canSend,
             CanJoin = canJoin,
-            IsAuthenticated = user != null,
+            IsAuthenticated = account.IsAuthenticated(),
         };
     }
 
