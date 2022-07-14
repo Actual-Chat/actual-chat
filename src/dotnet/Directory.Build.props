@@ -85,7 +85,7 @@
     <Using Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('ClientApp')))">
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('App.Maui')))">
     <PackageReference Include="ActualLab.Generators" />
     <PackageReference Include="ActualLab.Generators.Abstractions" />
 

@@ -206,7 +206,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Service.Migration", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Client", "src\dotnet\Invite.Client\Invite.Client.csproj", "{7C181A66-C2AC-4CBB-8B4E-EECB675653A6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientApp", "src\dotnet\ClientApp\ClientApp.csproj", "{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Maui", "src\dotnet\App.Maui\App.Maui.csproj", "{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.App", "src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj", "{C9869B09-9993-4BB2-9235-D2435B313685}"
 EndProject

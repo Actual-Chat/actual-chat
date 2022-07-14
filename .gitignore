@@ -1,6 +1,6 @@
 *settings.local.json
 src/dotnet/App.Wasm/wwwroot/dist/
-src/dotnet/ClientApp/wwwroot/dist/
+src/dotnet/App.Maui/wwwroot/dist/
 build/Build.sln
 Nerdbank.GitVersioning.*
 

@@ -50,7 +50,7 @@ class WatchRunPlugin {
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const outputPath = _('./../dotnet/App.Wasm/wwwroot/dist');
-const mauiOutputPath = _('./../dotnet/ClientApp/wwwroot/dist');
+const mauiOutputPath = _('./../dotnet/App.Maui/wwwroot/dist');
 
 module.exports = (env, args) => {
 
