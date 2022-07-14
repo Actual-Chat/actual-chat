@@ -10,7 +10,7 @@ services:
       - ${GOOGLE_APPLICATION_CREDENTIALS:-PLEASE_SET_GOOGLE_APPLICATION_CREDENTIALS_ENV_VAR}:/etc/.gcp/key.json
       - ./artifacts:/artifacts
     environment:
-      HostSettings__WebRootPath: /src/src/dotnet/UI.Blazor.Host/wwwroot/
+      HostSettings__WebRootPath: /src/src/dotnet/App.Wasm/wwwroot/
       GOOGLE_APPLICATION_CREDENTIALS: /etc/.gcp/key.json
       NPM_READ_TOKEN: ${NPM_READ_TOKEN}
       GITHUB_ACTIONS: ${GITHUB_ACTIONS}
