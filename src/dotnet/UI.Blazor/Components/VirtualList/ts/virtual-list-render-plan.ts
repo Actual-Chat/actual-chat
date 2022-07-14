@@ -18,15 +18,13 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
     public UseSmoothScroll: boolean = false;
     public VirtualList?: VirtualListAccessor<TItem> = null;
     public ClientSideState?: VirtualListClientSideState = null;
-    public Data?: VirtualListData<TItem> = null;
-    public ItemByKey: Record<string,  ItemRenderPlan<TItem>> = null;
-    public Items: ItemRenderPlan<TItem>[] = null;
+    public ItemByKey: Record<string,  ItemRenderPlan> = null;
+    public Items: ItemRenderPlan[] = null;
     public IsDataChanged: boolean = false;
 
     constructor(virtualList: VirtualListAccessor<TItem>) {
         this.VirtualList = virtualList;
         this.RenderIndex = 1;
-        this.Data = VirtualListData.None;
         this.IsDataChanged = true;
         this.Update(null);
     }
@@ -45,15 +43,11 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
         return !this.ItemRange;
     }
 
-    public get ReversedItems(): ItemRenderPlan<TItem>[] {
-        return this.Items.reverse();
-    }
-
-    public get FirstItem(): ItemRenderPlan<TItem> | null {
+    public get FirstItem(): ItemRenderPlan | null {
         return  this.Items.length > 0 ? this.Items[0] : null;
     }
 
-    public get LastItem(): ItemRenderPlan<TItem> | null {
+    public get LastItem(): ItemRenderPlan | null {
         return this.Items.length > 0 ? this.Items[this.Items.length - 1] : null;
     }
 
@@ -62,11 +56,11 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
     }
 
     public get SpacerSize(): number {
-        return this.Data.HasVeryFirstItem ? 0 : this.VirtualList.SpacerSize;
+        return this.VirtualList.RenderState.spacerSize;
     }
 
     public get EndSpacerSize(): number {
-        return this.Data.HasVeryLastItem ? 0 : this.VirtualList.SpacerSize
+        return this.VirtualList.RenderState.endSpacerSize;
     }
 
     public get StickyEdge(): VirtualListStickyEdgeState | null {
@@ -81,13 +75,13 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
         if (!this.ItemRange || !this.TrimmedLoadZoneRange)
             return null;
 
-        return this.Data.HasAllItems || RangeExt.Contains(this.ItemRange, this.TrimmedLoadZoneRange);
+        return (this.VirtualList.RenderState.hasVeryFirstItem && this.VirtualList.RenderState.hasVeryLastItem)
+            || RangeExt.Contains(this.ItemRange, this.TrimmedLoadZoneRange);
     }
 
     public Next(): VirtualListRenderPlan<TItem> {
         const plan = this.Clone();
         plan.RenderIndex++;
-        plan.Data = this.VirtualList.Data;
         plan.ClientSideState = this.VirtualList.ClientSideState;
         plan.Update(this);
         return plan;
@@ -95,35 +89,36 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
 
     public GetTrimmedLoadZoneRange(viewport: Range<number>): Range<number> {
         return new Range(
-            viewport.Start - (this.Data.HasVeryFirstItem ? 0 : this.VirtualList.LoadZoneSize),
-            viewport.End + (this.Data.HasVeryLastItem ? 0 : this.VirtualList.LoadZoneSize)
+            viewport.Start - (this.VirtualList.RenderState.hasVeryFirstItem ? 0 : this.VirtualList.LoadZoneSize),
+            viewport.End + (this.VirtualList.RenderState.hasVeryLastItem ? 0 : this.VirtualList.LoadZoneSize)
         );
     }
 
     private Update(lastPlan?: VirtualListRenderPlan<TItem>): void {
         const statistics = this.Statistics;
-        const newItemSizes = this.ClientSideState?.itemSizes;
+        const clientSideItems = this.ClientSideState?.items;
         const prevItemByKey = lastPlan?.ItemByKey;
 
-        this.IsDataChanged = lastPlan?.Data != this.Data;
+        this.IsDataChanged = true;
         this.ItemByKey = {};
         this.Items = [];
         let hasUnmeasuredItems: boolean = false;
         let itemRange = new Range(0, 0);
 
-        for (const item of this.Data.Items) {
-            const newItem = new ItemRenderPlan(item);
-            if (newItemSizes != null && newItemSizes[item.Key] != null) {
-                const newSize = newItemSizes[item.Key];
-                statistics.AddItem(newSize, item.CountAs);
-                newItem.Range = new Range(0, newSize);
-            } else if (prevItemByKey != null && prevItemByKey[item.Key] != null) {
-                const oldItem = prevItemByKey[item.Key];
+        for (const [key, item] of Object.entries(this.VirtualList.RenderState.items)) {
+            const newItem = new ItemRenderPlan(key, item);
+            if (clientSideItems != null && clientSideItems[key] != null) {
+                const clientSideItem = clientSideItems[key];
+                const size = clientSideItem.size;
+                statistics.AddItem(size, item.countAs);
+                newItem.Range = new Range(0, size);
+            } else if (prevItemByKey != null && prevItemByKey[key] != null) {
+                const oldItem = prevItemByKey[key];
                 newItem.Range = oldItem.Range;
             }
 
             this.Items.push(newItem);
-            this.ItemByKey[item.Key] = newItem;
+            this.ItemByKey[key] = newItem;
             if (newItem.IsMeasured) {
                 itemRange = new Range(itemRange.End, itemRange.End + newItem.Size);
                 newItem.Range = itemRange;
@@ -138,7 +133,7 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
 
     private UpdateViewport(): void
     {
-        const result = this.TryGetClientSideViewport(this.ClientSideState);
+        const result = VirtualListRenderPlan.TryGetClientSideViewport(this.ClientSideState);
         if (!result.success) {
             if (this.Viewport == null) {
                 return;
@@ -172,7 +167,7 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
             viewportHeight: this.ClientSideState.viewportHeight,
             stickyEdge: this.ClientSideState.stickyEdge,
             scrollAnchorKey: this.ClientSideState.scrollAnchorKey,
-            itemSizes: this.ClientSideState.itemSizes,
+            items: this.ClientSideState.items,
             visibleKeys: this.ClientSideState.visibleKeys,
             isViewportChanged: this.ClientSideState.isViewportChanged,
             isStickyEdgeChanged: this.ClientSideState.isStickyEdgeChanged,
@@ -188,7 +183,7 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
         this.ClientSideState = newClientSideState;
     }
 
-    private TryGetClientSideViewport(
+    private static TryGetClientSideViewport(
         clientSideState?: VirtualListClientSideState): { success: boolean, viewport?: Range<number> } {
         if (clientSideState?.viewportHeight == null || clientSideState?.scrollTop == null)
             return { success: false };

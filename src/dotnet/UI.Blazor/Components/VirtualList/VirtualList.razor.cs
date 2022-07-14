@@ -7,27 +7,27 @@ public delegate Task<VirtualListData<TItem>> VirtualListDataSource<TItem>(
     VirtualListDataQuery query,
     CancellationToken cancellationToken) where TItem : IVirtualListItem;
 
-public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
+public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
-    [Inject] protected IJSRuntime JS { get; init; } = null!;
-    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
 
-    protected internal bool DebugMode => Constants.DebugMode.VirtualList;
+    private bool DebugMode => Constants.DebugMode.VirtualList;
 
-    protected ElementReference Ref { get; set; }
-    protected IJSObjectReference JSRef { get; set; } = null!;
-    protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     // ReSharper disable once StaticMemberInGenericType
     // protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
     // protected VirtualListRenderPlan<TItem> Plan { get; set; } = null!;
-    protected VirtualListDataQuery? LastQuery { get; set; } = null;
-    protected VirtualListDataQuery? Query { get; set; } = null;
+    private VirtualListDataQuery LastQuery { get; set; } = VirtualListDataQuery.None;
+    private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     // protected internal VirtualListClientSideState ClientSideState { get; set; } = null!;
     // protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
-    protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? VirtualListData<TItem>.None;
+    private VirtualListData<TItem> Data => State.LatestNonErrorValue ?? VirtualListData<TItem>.None;
 
     private int RenderIndex { get; set; } = 0;
 
@@ -74,6 +74,13 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [JSInvokable]
     public Task RequestNewData(VirtualListDataQuery query)
     {
+        Query = query;
+        //     if (Query.IsSimilarTo(LastQuery))
+        //         return;
+        //
+        if (LastQuery is not { IsNone: true })
+            // Data update
+            _ = State.Recompute();
         return Task.CompletedTask;
     }
 

@@ -6,35 +6,45 @@
     // var plan = LastPlan = Plan;
     // DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
 
-    var isEndAligned = false;
-    var flexBase = "flex flex-nowrap items-stretch content-start justify-start";
-    var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
-    var scrollContainerFlexClass = $"{flexBase} {flexDir}";
-    var flexClass = $"{flexBase} flex-col";
-    var invFlexClass = $"{flexBase} flex-col-reverse";
-    // var renderState = new VirtualListRenderState {
-    //     RenderIndex = plan.RenderIndex,
-    //     SpacerSize = plan.SpacerSize,
-    //     EndSpacerSize = plan.EndSpacerSize,
-    //     ScrollHeight = plan.ClientSideState?.ScrollHeight,
-    //     ScrollTop = plan.ClientSideState?.ScrollTop,
-    //     ViewportHeight = plan.ClientSideState?.ViewportHeight,
-    //     HasVeryFirstItem = plan.Data.HasVeryFirstItem,
-    //     HasVeryLastItem = plan.Data.HasVeryLastItem,
-    //     ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
-    //         ? null
-    //         : Query.ScrollToKey,
-    //     UseSmoothScroll = plan.UseSmoothScroll,
-    //     ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
-    //     HasUnmeasuredItems = plan.HasUnmeasuredItems,
-    //     StickyEdge = plan.StickyEdge,
-    // };
+    const bool isEndAligned = false;
+    const string flexBase = "flex flex-nowrap items-stretch content-start justify-start";
+    const string flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
+    const string scrollContainerFlexClass = $"{flexBase} {flexDir}";
+    const string flexClass = $"{flexBase} flex-col";
+    const string invFlexClass = $"{flexBase} flex-col-reverse";
+
+    var renderIndex = RenderIndex++;
+    var spacerSize = Data.HasVeryFirstItem ? 0 : SpacerSize;
+    var endSpacerSize = Data.HasVeryLastItem ? 0 : SpacerSize;
+    var startExpansion = Data.Items
+        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.Start) < 0)
+        .Sum(i => i.CountAs);
+    var endExpansion = Data.Items
+        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.End) <= 0)
+        .Sum(i => i.CountAs);
+    var renderState = new VirtualListRenderState {
+        RenderIndex = renderIndex,
+        Query = Query,
+        SpacerSize = spacerSize,
+        EndSpacerSize = endSpacerSize,
+        StartExpansion = startExpansion,
+        EndExpansion = endExpansion,
+        // ScrollHeight = plan.ClientSideState?.ScrollHeight,
+        // ScrollTop = plan.ClientSideState?.ScrollTop,
+        // ViewportHeight = plan.ClientSideState?.ViewportHeight,
+        HasVeryFirstItem = Data.HasVeryFirstItem,
+        HasVeryLastItem = Data.HasVeryLastItem,
+        ScrollToKey = Data.ScrollToKey,
+        // UseSmoothScroll = UseSmoothScroll,
+        // ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
+        // HasUnmeasuredItems = plan.HasUnmeasuredItems,
+        // StickyEdge = plan.StickyEdge,
+        RenderItems = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
+    };
     // ClientSideState = plan.ClientSideState ?? ClientSideState;
     // RequestDataUpdate();
-    var renderIndex = RenderIndex;
     var items = isEndAligned ? Data.Items.Reverse() : Data.Items;
-    var spacerSize = 2000;
-    var endSpacerSize = 2000;
+
 }
 
 <div @ref="Ref"
@@ -43,9 +53,7 @@
     <div class="data render-state hidden @flexClass flex-none">
         <div @key="@("<RenderState>:" + renderIndex)"
              class="data render-state-data">
-            @SystemJsonSerializer.Default.Write(new {
-                query = Query,
-            })
+            @SystemJsonSerializer.Default.Write(renderState)
         </div>
     </div>
 
@@ -111,6 +119,6 @@
 
     <div @key="@("<RenderIndex>")"
          data-render-index="@renderIndex"
-         class="data render-index hidden @flexClass flex-none">
+         class="data render-index hidden flex-none">
     </div>
 </div>
