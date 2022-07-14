@@ -1,0 +1,66 @@
+@using ActualChat.Notification
+@using ActualChat.UI.Blazor.Services
+@using Blazored.Toast
+@inherits ComputedStateComponent<NotificationStack.Model>
+
+@{
+    var model = State.Value;
+    var notifications = model.Notifications;
+}
+
+<div class="flex-y z-90 fixed bottom-16 right-0 min-w-[16%]">
+    @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {
+        var notificationId = notification.NotificationId;
+        <Notification @key="@notificationId"
+                      NotificationEntry="@notification"/>
+    }
+</div>
+
+@code {
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; set; } = null!;
+    [Inject] private ToastUI ToastUI { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() => new () {
+        InitialValue = Model.None,
+    };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
+        var notifications = new List<NotificationEntry>();
+        foreach (var notificationId in notificationIds) {
+            var notification = await Notifications.GetNotification(Session, notificationId, cancellationToken);
+            notifications.Add(notification);
+        }
+
+        // var lastNotificationId = State.Value.LastNotificationId;
+        // var isFirstRun = lastNotificationId == "";
+        // var newNotificationIds = notificationIds
+        //     .Where(id => string.CompareOrdinal(id, lastNotificationId) > 0)
+        //     .ToList();
+
+        // if (newNotificationIds.Count == 0)
+        //     return State.LatestNonErrorValue;
+
+        // var toastInstanceSettings = new ToastInstanceSettings(10, true);
+        // if (!isFirstRun) {
+        //     foreach (var notificationId in newNotificationIds) {
+        //         var parameters = new ToastParameters();
+        //         parameters.Add("NotificationId", notificationId);
+        //         ToastUI.ShowToast<Notification>(parameters, toastInstanceSettings);
+        //     }
+        // }
+
+        return new () {
+            Notifications = notifications.ToImmutableArray(),
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ImmutableArray<NotificationEntry> Notifications { get; init; } = ImmutableArray<NotificationEntry>.Empty;
+    }
+
+}
