@@ -27,23 +27,16 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     // [ComputeMethod]
     public virtual async Task<Account?> Get(string id, CancellationToken cancellationToken)
     {
+        // We _must_ have a dependency on AuthBackend.GetUser here
         var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return null;
 
-        var isAdmin = IsAdmin(user);
-        var account =  new Account(user.Id, user) {
-            IsAdmin = isAdmin,
-            Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
-        };
-
-        var dbAccount = await DbAccountResolver.Get(id, cancellationToken).ConfigureAwait(false);
-        if (dbAccount != null)
-            return dbAccount.ToModel(account);
-
-        // Let's create account on demand
-        _ = Commander.Call(new IAccountsBackend.UpdateCommand(account), true, CancellationToken.None);
-        return account;
+        var dbAccount = await DbAccountResolver.Get(id, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var account =  new Account(user.Id, user) { IsAdmin = IsAdmin(user) };
+        return dbAccount.ToModel(account);
     }
 
     public virtual async Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)

@@ -27,51 +27,58 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
-    /// <summary> The filter which clears Sessions.OptionsJson field in the database </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
     {
+        // This command filter takes the following actions on sign-out:
+        // - Resets session options & invalidates Auth.GetOptions
+
         var context = CommandContext.GetCurrent();
         var session = command.Session;
 
-        // Invoke command handlers with lower priority
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
             _ = Auth.GetOptions(session, default);
             return;
         }
-
-        await ResetSessionOptions(session, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary> Takes care of invalidation of IsOnlineAsync once user signs in. </summary>
-    [CommandHandler(IsFilter = true, Priority = 1)]
-    public virtual async Task OnSignInMarkOnline(SignInCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        var session = command.Session;
-
-        // Invoke command handlers with lower priority
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        if (Computed.IsInvalidating()) {
-            _ = Auth.GetOptions(session, default);
-            var invUserId = context.Operation().Items.Get<string>();
-            if (!invUserId.IsNullOrEmpty())
-                _ = UserPresences.Get(invUserId, default);
-            return;
-        }
-
-        await ResetSessionOptions(command.Session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        await ResetSessionOptions(dbContext, session, cancellationToken).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
+    {
+        // This command filter takes the following actions on sign-in:
+        // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
+        // - Updates UserPresence.Get & invalidates it if it's not computed or offline
+        // - Resets session options & invalidates Auth.GetOptions
+
+        var context = CommandContext.GetCurrent();
+        var session = command.Session;
+
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw Errors.InternalError("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
+
+        if (Computed.IsInvalidating()) {
+            _ = Auth.GetOptions(session, default);
+            InvalidateUserPresenceIfOffline(userId);
+            if (context.Operation().Items.Get<UserNameChangedTag>() != null)
+                _ = AuthBackend.GetUser(default, userId, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
         var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
@@ -79,95 +86,115 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         // Let's try to fix auto-generated user name here
         var newName = UserNamer.NormalizeName(dbUser.Name);
         if (!OrdinalEquals(newName, dbUser.Name)) {
+            context.Operation().Items.Set(new UserNameChangedTag());
             dbUser.Name = newName;
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        context.Operation().Items.Set(dbUser.Id);
-        await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
+
+        await ResetSessionOptions(dbContext, session, cancellationToken).ConfigureAwait(false);
+        await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {
-        // This command filter validates user name on edit
+        // This command filter takes the following actions on user name edit:
+        // - Validates user name
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;
         }
+
         if (command.Name != null) {
             var error = UserNamer.ValidateName(command.Name);
             if (error != null)
                 throw error;
         }
-        // Invoke command handler(s) with lower priority
+
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
     }
 
-    // Updates online presence state
     [CommandHandler(IsFilter = true, Priority = 1)]
-    public virtual async Task SetupSession(
-        SetupSessionCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSetupSession(SetupSessionCommand command, CancellationToken cancellationToken)
     {
+        // This command filter takes the following actions when session gets "touched" or setup:
+        // - Updates UserPresence.Get & invalidates it if it's not computed or offline
+
         var context = CommandContext.GetCurrent();
+
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = context.Operation().Items.Get<SessionInfo>();
-        if (sessionInfo?.IsAuthenticated() != true)
+        var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
+        var userId = sessionInfo?.UserId;
+        if (userId == null)
             return;
 
-        var userId = sessionInfo.UserId;
-        await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
+        if (Computed.IsInvalidating()) {
+            InvalidateUserPresenceIfOffline(userId);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task MarkOnline(string userId, CancellationToken cancellationToken)
+    private async Task UpdateUserPresence(
+        UsersDbContext dbContext,
+        string userId,
+        CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
-            var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
-            if (c?.IsConsistent() != true)
-                return;
-            if (c.IsValue(out var v) && v is Presence.Online or Presence.Recording)
-                return;
-            // We invalidate only when there is a cached value, and it is
-            // either false or an error, because the only change that may happen
-            // due to sign-in is that this value becomes true.
-            _ = UserPresences.Get(userId, default);
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var userState = await dbContext.UserPresences
+        var dbUserPresence = await dbContext.UserPresences
             .ForUpdate()
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
-        if (userState == null) {
-            userState = new DbUserPresence() { UserId = userId };
-            dbContext.Add(userState);
+        if (dbUserPresence == null) {
+            dbUserPresence = new DbUserPresence() { UserId = userId };
+            dbContext.Add(dbUserPresence);
         }
-        userState.OnlineCheckInAt = Clocks.SystemClock.Now;
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;
     }
 
-    private async Task ResetSessionOptions(Session session, CancellationToken cancellationToken)
+    private void InvalidateUserPresenceIfOffline(string userId)
     {
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        if (userId.IsNullOrEmpty())
+            return;
 
+        var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
+        if (c?.IsConsistent() != true)
+            return;
+        if (c.IsValue(out var v) && v is not Presence.Offline)
+            return;
+
+        // We invalidate only when there is a cached value, and it is
+        // either false or an error, because the only change that may happen
+        // due to sign-in is that this value becomes true.
+        _ = UserPresences.Get(userId, default);
+    }
+
+    private async Task ResetSessionOptions(
+        UsersDbContext dbContext,
+        Session session,
+        CancellationToken cancellationToken)
+    {
         var dbSession = await dbContext.Sessions
             .ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == session.Id.Value, cancellationToken)
             .ConfigureAwait(false);
-        if (dbSession != null) {
-            dbSession.Options = new ImmutableOptionSet();
-            dbSession.Version = VersionGenerator.NextVersion(dbSession.Version);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
+        if (dbSession == null)
+            return;
+
+        dbSession.Options = new ImmutableOptionSet();
+        dbSession.Version = VersionGenerator.NextVersion(dbSession.Version);
     }
 
+    // Nested types
+
+    private record UserNameChangedTag;
 }
