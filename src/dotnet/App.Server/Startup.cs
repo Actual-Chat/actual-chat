@@ -1,25 +1,11 @@
-using ActualChat.Audio.Module;
-using ActualChat.Audio.UI.Blazor.Module;
-using ActualChat.Chat.Module;
-using ActualChat.Chat.UI.Blazor;
-using ActualChat.Chat.UI.Blazor.Module;
-using ActualChat.Db.Module;
-using ActualChat.Host.Module;
+using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
-using ActualChat.MediaPlayback.Module;
-using ActualChat.Module;
-using ActualChat.Transcription.Module;
-using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.Module;
-using ActualChat.Users.Module;
-using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Stl.Plugins;
 
-namespace ActualChat.Host;
+namespace ActualChat.App.Server;
 
 public class Startup
 {

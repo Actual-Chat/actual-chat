@@ -1,4 +1,4 @@
-namespace ActualChat.Host.Module;
+namespace ActualChat.App.Server.Module;
 
 public static class ApplicationBuilderExt
 {

@@ -5,7 +5,7 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Server.Controllers;
 
-namespace ActualChat.Host.Pages;
+namespace ActualChat.App.Server.Pages;
 
 public static class HtmlHelperExt
 {

@@ -1,4 +1,4 @@
-namespace ActualChat.Host;
+namespace ActualChat.App.Server;
 
 /// <summary>
 /// Searches wwwroot folder path

@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service", "src\dotnet\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "src\dotnet\Core\Core.csproj", "{5D6530AD-4640-488B-9FA9-B63BC5AFB872}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Host", "src\dotnet\Host\Host.csproj", "{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Server", "src\dotnet\App.Server\App.Server.csproj", "{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service", "src\dotnet\Users.Service\Users.Service.csproj", "{AA165163-F9A3-4910-9DD3-59543948BCA0}"
 EndProject

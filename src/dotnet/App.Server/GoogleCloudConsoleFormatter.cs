@@ -1,12 +1,11 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using ActualChat.Host.Module;
-using Microsoft.Extensions.Logging.Abstractions;
+using ActualChat.App.Server.Module;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 
-namespace ActualChat.Host;
+namespace ActualChat.App.Server;
 
 /// <summary>
 /// Console formatter for use with Google Cloud Logging. <br/>

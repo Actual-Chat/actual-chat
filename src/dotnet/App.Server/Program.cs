@@ -3,7 +3,7 @@ using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using Grpc.Core;
 
-namespace ActualChat.Host;
+namespace ActualChat.App.Server;
 
 internal static class Program
 {

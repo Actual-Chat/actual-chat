@@ -25,7 +25,7 @@ using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Stl.Plugins;
 
-namespace ActualChat.Host.Module;
+namespace ActualChat.App.Server.Module;
 
 public class AppHostModule : HostModule<HostSettings>, IWebModule
 {

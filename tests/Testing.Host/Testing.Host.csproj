@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Host\Host.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\App.Server\App.Server.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 

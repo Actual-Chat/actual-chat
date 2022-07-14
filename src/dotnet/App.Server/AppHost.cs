@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 
-namespace ActualChat.Host;
+namespace ActualChat.App.Server;
 
 public class AppHost : IDisposable
 {
