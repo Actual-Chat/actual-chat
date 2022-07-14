@@ -81,9 +81,9 @@ COPY *.props *.targets ./
 RUN dotnet msbuild /t:GenerateAssemblyVersionInfo ActualChat.sln
 
 FROM base as dotnet-build
-RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
+RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj
 
 FROM runtime as app
 COPY --from=dotnet-build /app .
-COPY --from=nodejs-build /src/src/dotnet/UI.Blazor.Host/wwwroot/ /app/wwwroot/
-ENTRYPOINT ["dotnet", "ActualChat.Host.dll"]
+COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /app/wwwroot/
+ENTRYPOINT ["dotnet", "ActualChat.App.Server.dll"]
