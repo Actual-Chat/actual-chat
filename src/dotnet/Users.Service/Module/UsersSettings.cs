@@ -12,5 +12,5 @@ public class UsersSettings
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
 
-    public UserStatus NewUserStatus { get; set; } = UserStatus.Inactive;
+    public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Inactive;
 }

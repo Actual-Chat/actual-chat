@@ -13,7 +13,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private IChatAuthors? _frontend;
 
     private IAuth Auth { get; }
-    private IUserProfilesBackend UserProfilesBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
     private RedisSequenceSet<ChatAuthor> IdSequences { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
@@ -25,7 +25,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
         Auth = services.GetRequiredService<IAuth>();
-        UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
@@ -165,7 +165,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             };
         }
         else {
-            var userAuthor = await UserProfilesBackend.GetUserAuthor(userId, cancellationToken).ConfigureAwait(false)
+            var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             dbChatAuthor = new DbChatAuthor() {
                 IsAnonymous = userAuthor.IsAnonymous,
@@ -259,7 +259,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
                 return chatAuthor.InheritFrom(avatar);
             }
 
-            var userAuthor = await UserProfilesBackend.GetUserAuthor(chatAuthor.UserId, cancellationToken)
+            var userAuthor = await AccountsBackend.GetUserAuthor(chatAuthor.UserId, cancellationToken)
                 .ConfigureAwait(false);
             return chatAuthor.InheritFrom(userAuthor);
         }

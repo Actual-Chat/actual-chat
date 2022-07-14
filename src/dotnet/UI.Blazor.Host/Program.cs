@@ -54,9 +54,8 @@ public static class Program
             Configuration = c.GetRequiredService<IConfiguration>(),
         });
 
-        await Startup.ConfigureServices(services,
-            baseUri,
-            typeof(Module.BlazorUIHostModule) // required to enable pages discovery from this project
-        ).ConfigureAwait(false);
+        await Startup
+            .ConfigureServices(services, baseUri, typeof(Module.BlazorUIHostModule))
+            .ConfigureAwait(false);
     }
 }

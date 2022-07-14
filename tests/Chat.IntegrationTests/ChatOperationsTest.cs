@@ -179,16 +179,16 @@ public class ChatOperationsTest : AppHostTestBase
         // TODO(AY): provide a durable way to wait for subsequent commands completion.
         => await Task.Delay(1000);
 
-    private static async Task AssertUserJoined(IServiceProvider serviceProvider, Session session, Symbol chatId, User user)
+    private static async Task AssertUserJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
-        var chats = serviceProvider.GetRequiredService<IChats>();
+        var chats = services.GetRequiredService<IChats>();
 
         var permissions = await chats.GetRules(session, chatId, default);
         permissions.CanReadWrite.Should().BeTrue();
 
         var chat = await chats.Get(session, chatId, default);
         chat.Should().NotBeNull();
-        var chatAuthors = serviceProvider.GetRequiredService<IChatAuthors>();
+        var chatAuthors = services.GetRequiredService<IChatAuthors>();
         var author = await chatAuthors.GetOwnAuthor(session, chatId, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
@@ -203,9 +203,9 @@ public class ChatOperationsTest : AppHostTestBase
         authorIds.Should().Contain(author.Id);
     }
 
-    private static async Task AssertUserNotJoined(IServiceProvider serviceProvider, Session session, Symbol chatId, User user)
+    private static async Task AssertUserNotJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
-        var chatAuthors = serviceProvider.GetRequiredService<IChatAuthors>();
+        var chatAuthors = services.GetRequiredService<IChatAuthors>();
         var author = await chatAuthors.GetOwnAuthor(session, chatId, default);
         author!.HasLeft.Should().BeTrue();
 

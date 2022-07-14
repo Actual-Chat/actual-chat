@@ -4,17 +4,17 @@ using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
-public class DbUserProfile : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     [Column(TypeName = "smallint")]
-    public UserStatus Status { get; set; }
+    public AccountStatus Status { get; set; }
 
     public string AvatarId { get; set; } = "";
 
-    public UserProfile ToModel(UserProfile model)
+    public Account ToModel(Account model)
         => model with {
             Id = Id,
             Status = Status,
@@ -22,7 +22,7 @@ public class DbUserProfile : IHasId<string>, IHasVersion<long>, IRequirementTarg
             Version = Version,
         };
 
-    public void UpdateFrom(UserProfile model)
+    public void UpdateFrom(Account model)
     {
         Id = model.Id;
         Version = model.Version;

@@ -16,16 +16,16 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
     private readonly ILogger _log;
     private readonly ICommander _commander;
-    private readonly IUserProfiles _userProfiles;
-    private readonly IUserProfilesBackend _userProfilesBackend;
+    private readonly IAccounts _accounts;
+    private readonly IAccountsBackend _accountsBackend;
     private readonly IChatsBackend _chatsBackend;
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
         _log = services.LogFor(GetType());
         _commander = services.Commander();
-        _userProfiles = services.GetRequiredService<IUserProfiles>();
-        _userProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
+        _accounts = services.GetRequiredService<IAccounts>();
+        _accountsBackend = services.GetRequiredService<IAccountsBackend>();
         _chatsBackend = services.GetRequiredService<IChatsBackend>();
     }
 
@@ -107,7 +107,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var userProfile = await _userProfiles.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await _accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -122,10 +122,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
-            if (userProfile.Status == UserStatus.Suspended)
-                throw new SecurityException(
-                    "Your account cannot be activated because your current status is suspended.");
-            if (userProfile.IsActive())
+            if (account.Status == AccountStatus.Suspended)
+                throw new SecurityException("A suspended account cannot be re-activated via invite code.");
+            if (account.IsActive())
                 throw new InvalidOperationException("Your account is already active.");
         }
 
@@ -145,8 +144,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             // If we're here, the command has completed w/o an error
 
             if (userInviteDetails != null) {
-                 var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile with {
-                     Status = UserStatus.Active,
+                 var updateCommand = new IAccountsBackend.UpdateCommand(account with {
+                     Status = AccountStatus.Active,
                  });
                  await _commander.Call(updateCommand, true, cancellationToken)
                     .ConfigureAwait(false);

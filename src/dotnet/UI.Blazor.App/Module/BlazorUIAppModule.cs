@@ -1,7 +1,9 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Components;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
-namespace ActualChat.UI.Blazor.Module;
+namespace ActualChat.UI.Blazor.App.Module;
 
 public class BlazorUIAppModule : HostModule, IBlazorUIModule
 {
@@ -11,5 +13,7 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
+        // Host-specific services
+        services.TryAddSingleton(new WelcomeOptions());
     }
 }

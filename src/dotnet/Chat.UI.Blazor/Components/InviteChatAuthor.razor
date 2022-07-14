@@ -60,7 +60,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
@@ -82,7 +82,7 @@
         var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
         var resolvedContacts = await contacts
             .Select(async userContact => {
-                var userAuthor = await UserProfiles.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
+                var userAuthor = await Accounts.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 if (userAuthor == null)
                     return null;
 

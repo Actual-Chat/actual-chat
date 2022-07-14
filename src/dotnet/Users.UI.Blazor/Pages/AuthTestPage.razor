@@ -1,12 +1,9 @@
 @page "/test/auth"
 @inherits ComputedStateComponent<AuthTestPage.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.LatestNonErrorValue ?? Model.None;
     var error = State.Error;
-    var sessionInfo = m.SessionInfo;
-    var user = m.User;
-    var userProfile = m.UserProfile;
-    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
@@ -17,56 +14,51 @@
 <h3 class="section border-0">Session</h3>
 <ul>
     <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
-    <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(sessionInfo!))</pre></li>
+    <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 
-@if (user != null) {
-    <h3 class="section">User</h3>
-    <ul>
-        <li><code>User.Id</code>: <b><code>@user.Id.Value</code></b></li>
-        <li><code>User.Name</code>: <b><code>@user.Name</code></b></li>
-        <li><code>User.Version</code>: <b><code>@user.Version.ToString()</code></b></li>
-        @if (userProfile != null) {
-            <li><code>UserProfile.IsAdmin</code>: <b><code>@userProfile.IsAdmin.ToString()</code></b></li>
-        }
-    </ul>
-    <h4>Claims:</h4>
-    <ul>
-        @foreach (var (key, value) in user.Claims) {
-            <li><code>@key</code>: <b><code>@value</code></b></li>
-        }
-    </ul>
-    <h4>Identities:</h4>
-    <ul>
-        @foreach (var ((schema, schemaBoundId), _) in user.Identities) {
-            <li><code>@schema</code>: <b><code>@schemaBoundId</code></b></li>
-        }
-    </ul>
-
-    @if (userProfile != null) {
-        <h3 class="section">User profile</h3>
-        <pre>@(JsonFormatter.Format(userProfile))</pre>
-
-        @if (userProfile.IsAdmin) {
-            <div class="flex-x">
-                <span>Status:</span>
-                <Dropdown>
-                    <ButtonTemplate>
-                        <div class="px-2 inline-flex">
-                            <span class="float-left text-secondary font-semibold chat-header-title">@userProfile.Status</span>
-                        </div>
-                    </ButtonTemplate>
-                    <MenuTemplate>
-                        <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
-                            @foreach (var value in Enum.GetValues<UserStatus>()) {
-                                <MenuItem Title="@value.ToString()" Click="_ => OnStatusSelected(value)"></MenuItem>
-                            }
-                        </Menu>
-                    </MenuTemplate>
-                </Dropdown>
-            </div>
-        }
+<h3 class="section">User</h3>
+<ul>
+    <li><code>Id</code>: <b><code>@m.User.Id.Value</code></b></li>
+    <li><code>Name</code>: <b><code>@m.User.Name</code></b></li>
+    <li><code>Version</code>: <b><code>@m.User.Version.ToString()</code></b></li>
+    <li><code>Account.IsAdmin</code>: <b><code>@m.Account.IsAdmin.ToString()</code></b></li>
+    <li><code>Account.Version</code>: <b><code>@m.Account.Version.ToString()</code></b></li>
+</ul>
+<h4>Claims:</h4>
+<ul>
+    @foreach (var (key, value) in m.User.Claims) {
+        <li><code>@key</code>: <b><code>@value</code></b></li>
     }
+</ul>
+<h4>Identities:</h4>
+<ul>
+    @foreach (var ((schema, schemaBoundId), _) in m.User.Identities) {
+        <li><code>@schema</code>: <b><code>@schemaBoundId</code></b></li>
+    }
+</ul>
+
+<h3 class="section">Account</h3>
+<pre>@(JsonFormatter.Format(m.Account))</pre>
+
+@if (m.Account.IsAdmin) {
+    <div class="flex-x">
+        <span>Status:</span>
+        <Dropdown>
+            <ButtonTemplate>
+                <div class="px-2 inline-flex">
+                    <span class="float-left text-secondary font-semibold chat-header-title">@m.Account.Status</span>
+                </div>
+            </ButtonTemplate>
+            <MenuTemplate>
+                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
+                    @foreach (var value in Enum.GetValues<AccountStatus>()) {
+                        <MenuItem Title="@value.ToString()" Click="_ => OnStatusSelected(value)"></MenuItem>
+                    }
+                </Menu>
+            </MenuTemplate>
+        </Dropdown>
+    </div>
 }
 
 @if (m.Sessions.Count != 0) {
@@ -107,7 +99,7 @@
     </div>
 }
 
-@if (user != null) {
+@if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
         <Button Click="_ => ClientAuth.SignOut()">Sign out</Button>
@@ -131,7 +123,7 @@
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommandRunner Commander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
@@ -152,8 +144,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false) ?? UserProfile.Guest;
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false) ?? Account.Guest;
         var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
         var sessionList = new List<SessionModel>();
 
@@ -171,21 +162,15 @@
         }
         return new Model() {
             SessionInfo = sessionInfo,
-            User = user,
-            UserProfile = userProfile,
+            Account = account,
             Sessions = sessionList.ToImmutableList(),
         };
     }
 
-    private async Task OnStatusSelected(UserStatus newStatus) {
-        var userProfile = await UserProfiles.Get(Session, default)
-            .Require()
-            .ConfigureAwait(true);
-        if (newStatus == userProfile.Status)
-            return;
-
-        var newUserProfile = userProfile with { Status = newStatus };
-        await Commander.Run(new IUserProfiles.UpdateCommand(Session, newUserProfile));
+    private async Task OnStatusSelected(AccountStatus newStatus) {
+        var account = await Accounts.Get(Session, default).Require().ConfigureAwait(true);
+        var updatedAccount = account with { Status = newStatus };
+        await Commander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }
 
     public sealed record SessionModel
@@ -200,11 +185,11 @@
     }
 
     public sealed record Model {
-        public static Model None { get; } = new() { UserProfile = UserProfile.Guest, User = UserProfile.Guest.User };
+        public static Model None { get; } = new() { Account = Account.Guest };
 
         public SessionInfo? SessionInfo { get; init; }
-        public User? User { get; init; }
-        public UserProfile? UserProfile { get; init; }
+        public Account Account { get; init; } = null!;
+        public User User => Account.User;
         public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
     }
 }

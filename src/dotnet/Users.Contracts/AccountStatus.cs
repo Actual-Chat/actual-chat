@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public enum UserStatus
+public enum AccountStatus
 {
     Active = 0,
     Inactive = 1,

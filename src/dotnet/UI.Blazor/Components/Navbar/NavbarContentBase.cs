@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Components;
 public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBase.Model>
 {
     [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] protected IAccounts Accounts { get; init; } = null!;
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected IEnumerable<NavbarWidget> Widgets { get; init; } = null!;
 
@@ -17,13 +17,13 @@ public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBa
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
-        return userProfile == null ? Model.Guest : new Model(userProfile);
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        return account == null ? Model.Guest : new Model(account);
     }
 
-    public record Model(UserProfile UserProfile) {
-        public static Model Guest { get; } = new(UserProfile.Guest);
-        public User User => UserProfile.User;
+    public record Model(Account Account) {
+        public static Model Guest { get; } = new(Account.Guest);
+
+        public User User => Account.User;
     }
 }
-

@@ -5,18 +5,18 @@ namespace ActualChat.Users.UI.Blazor.Authorization;
 public class IsAdminRequirementHandler : AuthorizationHandler<IsAdminRequirement>
 {
     private readonly Session _session;
-    private readonly IUserProfiles _userProfiles;
+    private readonly IAccounts _accounts;
 
-    public IsAdminRequirementHandler(Session session, IUserProfiles userProfiles)
+    public IsAdminRequirementHandler(Session session, IAccounts accounts)
     {
         _session = session;
-        _userProfiles = userProfiles;
+        _accounts = accounts;
     }
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, IsAdminRequirement requirement)
     {
-        var userProfile = await _userProfiles.Get(_session, default).ConfigureAwait(false);
-        if (userProfile?.IsAdmin == true)
+        var account = await _accounts.Get(_session, default).ConfigureAwait(false);
+        if (account is { IsAdmin: true })
             context.Succeed(requirement);
         else
             context.Fail();

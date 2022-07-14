@@ -12,7 +12,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     private PlaywrightTester _tester = null!;
     private AppHost _appHost = null!;
     private TestSettings _testSettings = null!;
-    private IUserProfiles _userProfiles = null!;
+    private IAccounts _accounts = null!;
     private ISessionFactory _sessionFactory = null!;
     private Session _adminSession = null!;
 
@@ -22,7 +22,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     {
         _appHost = await NewAppHost( serverUrls: "http://localhost:7080");
         _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
-        _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
+        _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _tester = _appHost.NewPlaywrightTester();
         _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
         _adminSession = _sessionFactory.CreateSession();
@@ -44,7 +44,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
         // act
         await page.ClientSignInWithGoogle(_testSettings.User1.Email, _testSettings.User1.Password);
-        await UpdateStatus(UserStatus.Inactive);
+        await UpdateStatus(AccountStatus.Inactive);
 
         var response = await page.GotoAsync($"/chat/{ChatId}");
 
@@ -63,7 +63,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
         // act
         await page.ClientSignInWithGoogle(_testSettings.User1.Email, _testSettings.User1.Password);
-        await UpdateStatus(UserStatus.Active);
+        await UpdateStatus(AccountStatus.Active);
 
         var response = await page.GotoAsync($"/chat/{ChatId}");
 
@@ -74,10 +74,10 @@ public class ChatPageAuthorizationTest : AppHostTestBase
         noChatFoundView.Should().NotBeNull();
     }
 
-    private async Task UpdateStatus(UserStatus newStatus)
+    private async Task UpdateStatus(AccountStatus newStatus)
     {
-        var userProfile = await _userProfiles.Get(_tester.Session, default).Require();
-        userProfile = userProfile with { Status = newStatus };
-        await _userProfiles.GetCommander().Call(new IUserProfiles.UpdateCommand(_adminSession, userProfile));
+        var account = await _accounts.Get(_tester.Session, default).Require();
+        account = account with { Status = newStatus };
+        await _accounts.GetCommander().Call(new IAccounts.UpdateCommand(_adminSession, account));
     }
 }

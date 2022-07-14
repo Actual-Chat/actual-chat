@@ -5,19 +5,19 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class UserProfilesBackendController : ControllerBase, IUserProfilesBackend
+public class AccountsBackendController : ControllerBase, IAccountsBackend
 {
-    private readonly IUserProfilesBackend _service;
+    private readonly IAccountsBackend _service;
     private readonly ICommander _commander;
 
-    public UserProfilesBackendController(IUserProfilesBackend service, ICommander commander)
+    public AccountsBackendController(IAccountsBackend service, ICommander commander)
     {
         _service = service;
         _commander = commander;
     }
 
     [HttpGet, Publish]
-    public Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
+    public Task<Account?> Get(string id, CancellationToken cancellationToken)
         => _service.Get(id, cancellationToken);
 
     [HttpGet, Publish]
@@ -25,6 +25,6 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
         => _service.GetUserAuthor(userId, cancellationToken);
 
     [HttpPost]
-    public Task Update([FromBody] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken)
+    public Task Update([FromBody] IAccountsBackend.UpdateCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

@@ -5,9 +5,10 @@ namespace ActualChat.Users.IntegrationTests;
 
 public class UserStatusTest : AppHostTestBase
 {
-    private static readonly UserStatus NewUserStatus = UserStatus.Active;
+    private const AccountStatus NewAccountStatus = AccountStatus.Active;
+
     private WebClientTester _tester = null!;
-    private IUserProfiles _userProfiles = null!;
+    private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
     private ISessionFactory _sessionFactory = null!;
     private Session _adminSession = null!;
@@ -18,9 +19,9 @@ public class UserStatusTest : AppHostTestBase
     public override async Task InitializeAsync()
     {
         _appHost = await NewAppHost(
-            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewUserStatus.ToString())));
+            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
-        _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
+        _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
         _adminSession = _sessionFactory.CreateSession();
 
@@ -41,27 +42,27 @@ public class UserStatusTest : AppHostTestBase
         await _tester.SignIn(new User("Bob"));
 
         // act
-        var userProfile = await RequireUserProfile();
+        var account = await RequireAccount();
 
         // assert
-        userProfile.Status.Should().Be(NewUserStatus);
+        account.Status.Should().Be(NewAccountStatus);
 
         // act
         var newStatuses = new[] {
-            UserStatus.Inactive, UserStatus.Suspended,
-            UserStatus.Active, UserStatus.Inactive,
-            UserStatus.Suspended, UserStatus.Active,
+            AccountStatus.Inactive, AccountStatus.Suspended,
+            AccountStatus.Active, AccountStatus.Inactive,
+            AccountStatus.Suspended, AccountStatus.Active,
         };
         foreach (var newStatus in newStatuses) {
-            var newUserProfile = userProfile with { Status = newStatus };
-            await _tester.Commander.Call(new IUserProfiles.UpdateCommand(_adminSession, newUserProfile));
+            var newAccount = account with { Status = newStatus };
+            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount));
 
             // assert
-            userProfile = await RequireUserProfile();
-            userProfile.Status.Should().Be(newStatus);
+            account = await RequireAccount();
+            account.Status.Should().Be(newStatus);
         }
     }
 
-    private Task<UserProfile> RequireUserProfile()
-        => _userProfiles.Get(_tester.Session, default).Require();
+    private Task<Account> RequireAccount()
+        => _accounts.Get(_tester.Session, default).Require();
 }

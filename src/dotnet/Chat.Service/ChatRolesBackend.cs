@@ -9,7 +9,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
 {
     private static ImmutableArray<Symbol> SystemRoleIds { get; } = ChatRole.SystemRoles.Keys.ToImmutableArray();
 
-    private IUserProfilesBackend UserProfilesBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IDbEntityResolver<string, DbChatRole> DbChatRoleResolver { get; }
@@ -17,7 +17,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
 
     public ChatRolesBackend(IServiceProvider services) : base(services)
     {
-        UserProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
+        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         ChatsBackend = Services.GetRequiredService<IChatsBackend>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         DbChatRoleResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChatRole>>();
@@ -46,13 +46,13 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         if (author == null)
             return ImmutableArray<Symbol>.Empty;
 
-        var userProfile = author.UserId.IsEmpty
+        var account = author.UserId.IsEmpty
             ? null
-            : await UserProfilesBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            : await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
 
         // TODO(AY): Add non-system role processing
         var result = roleIds
-            .Where(roleId => IsInSystemRole(roleId, chat, author, userProfile))
+            .Where(roleId => IsInSystemRole(roleId, chat, author, account))
             .ToImmutableArray();
         return result;
     }
@@ -96,14 +96,14 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
 
     // Private methods
 
-    private static bool IsInSystemRole(Symbol systemRoleId, Chat chat, ChatAuthor author, UserProfile? userProfile)
+    private static bool IsInSystemRole(Symbol systemRoleId, Chat chat, ChatAuthor author, Account? account)
         => systemRoleId switch {
             var id when id == ChatRole.Everyone.Id => true,
-            var id when id == ChatRole.UnauthenticatedUsers.Id => userProfile == null,
-            var id when id == ChatRole.Users.Id => userProfile != null,
-            var id when id == ChatRole.Owners.Id => userProfile != null && (
-                chat.OwnerIds.Contains(userProfile.Id)
-                || (chat.ChatType == ChatType.Group && userProfile.IsAdmin)),
+            var id when id == ChatRole.UnauthenticatedUsers.Id => account == null,
+            var id when id == ChatRole.Users.Id => account != null,
+            var id when id == ChatRole.Owners.Id => account != null && (
+                chat.OwnerIds.Contains(account.Id)
+                || (chat.ChatType == ChatType.Group && account.IsAdmin)),
             _ => false,
         };
 }

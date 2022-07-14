@@ -1,9 +1,9 @@
 namespace ActualChat.Users;
 
-public interface IUserProfilesBackend : IComputeService
+public interface IAccountsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<UserProfile?> Get(string id, CancellationToken cancellationToken);
+    Task<Account?> Get(string id, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
 
@@ -12,6 +12,6 @@ public interface IUserProfilesBackend : IComputeService
 
     [DataContract]
     public sealed record UpdateCommand(
-        [property: DataMember] UserProfile UserProfile
+        [property: DataMember] Account Account
         ) : ICommand<Unit>, IBackendCommand;
 }

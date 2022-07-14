@@ -19,7 +19,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IAuthBackend AuthBackend { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private IUserProfilesBackend UserProfilesBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
@@ -30,7 +30,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        UserProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
+        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         DbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
@@ -96,9 +96,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return new(chatId, author, user, ChatPermissions.Owner);
 
         if (Constants.Chat.DefaultChatId == chatId) {
-            var userProfile = user == null ? null
-                : await UserProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-            return new(chatId, author, user, userProfile?.IsAdmin == true ? ChatPermissions.Owner : 0);
+            var account = user == null ? null
+                : await AccountsBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+            return new(chatId, author, user, account?.IsAdmin == true ? ChatPermissions.Owner : 0);
         }
 
         if (author != null && !author.HasLeft)

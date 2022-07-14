@@ -11,7 +11,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 {
     protected IAuth Auth { get; }
     protected IAuthBackend AuthBackend { get; }
-    protected IUserProfilesBackend UserProfilesBackend { get; }
+    protected IAccountsBackend AccountsBackend { get; }
     protected UserNamer UserNamer { get; }
     protected IUserPresences UserPresences { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
@@ -21,7 +21,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     {
         Auth = services.GetRequiredService<IAuth>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
-        UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         UserNamer = services.GetRequiredService<UserNamer>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
@@ -86,10 +86,11 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary> Validates user name on edit + makes sure user edits invalidate UserProfiles </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {
+        // This command filter validates user name on edit
+
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);

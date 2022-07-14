@@ -9,7 +9,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class AdminGrantTest : AppHostTestBase
 {
     private WebClientTester _tester = null!;
-    private IUserProfilesBackend _userProfiles = null!;
+    private IAccountsBackend _accounts = null!;
     private AppHost _appHost = null!;
 
     public AdminGrantTest(ITestOutputHelper @out) : base(@out)
@@ -19,7 +19,7 @@ public class AdminGrantTest : AppHostTestBase
     {
         _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester();
-        _userProfiles = _appHost.Services.GetRequiredService<IUserProfilesBackend>();
+        _accounts = _appHost.Services.GetRequiredService<IAccountsBackend>();
     }
 
     public override async Task DisposeAsync()
@@ -37,11 +37,11 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
         user.Should().NotBeNull();
-        userProfile!.IsAdmin.Should().BeTrue();
+        account!.IsAdmin.Should().BeTrue();
     }
 
     [Fact]
@@ -53,11 +53,11 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
         user.Should().NotBeNull();
-        userProfile!.IsAdmin.Should().BeFalse();
+        account!.IsAdmin.Should().BeFalse();
     }
 
     [Fact]
@@ -68,10 +68,10 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
         user.Should().NotBeNull();
-        userProfile!.IsAdmin.Should().BeFalse();
+        account!.IsAdmin.Should().BeFalse();
     }
 }

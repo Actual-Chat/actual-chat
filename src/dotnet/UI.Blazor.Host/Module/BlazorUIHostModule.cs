@@ -10,6 +10,5 @@ public class BlazorUIHostModule : HostModule, IBlazorUIModule
     public BlazorUIHostModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
-    {
-    }
+    { }
 }

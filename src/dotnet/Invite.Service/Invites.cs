@@ -10,7 +10,7 @@ internal class Invites : IInvites
     private readonly IInvitesBackend _backend;
     private readonly ICommander _commander;
     private readonly IAuth _auth;
-    private readonly IUserProfiles _userProfiles;
+    private readonly IAccounts _accounts;
     private readonly IChats _chats;
 
     public Invites(
@@ -18,13 +18,13 @@ internal class Invites : IInvites
         ICommander commander,
         IAuth auth,
         IChats chats,
-        IUserProfiles userProfiles)
+        IAccounts accounts)
     {
         _backend = backend;
         _commander = commander;
         _auth = auth;
         _chats = chats;
-        _userProfiles = userProfiles;
+        _accounts = accounts;
     }
 
     // [ComputeMethod]
@@ -57,9 +57,9 @@ internal class Invites : IInvites
             return default!;
 
         var (session, invite) = command;
-        var userProfile = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
+        var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
-        invite = command.Invite with { CreatedBy = userProfile.Id };
+        invite = command.Invite with { CreatedBy = account.Id };
         return await _commander.Call(new IInvitesBackend.GenerateCommand(invite), cancellationToken)
             .ConfigureAwait(false);
     }
@@ -77,9 +77,11 @@ internal class Invites : IInvites
         return invite.Mask();
     }
 
+    // Assertions
+
     private Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
-        => _userProfiles.Get(session, cancellationToken)
-            .Require(UserProfile.MustBeAdmin);
+        => _accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeAdmin);
 
     private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
@@ -87,15 +89,15 @@ internal class Invites : IInvites
         rules.Require(ChatPermissions.Invite);
     }
 
-    private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
+    private async Task<Account> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var userProfile = await _userProfiles.Get(session, cancellationToken)
-            .Require(UserProfile.MustBeActive)
+        var account = await _accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeActive)
             .ConfigureAwait(false);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
-            if (!userProfile.IsAdmin)
+            if (!account.IsAdmin)
                 throw new SecurityException("Only admins can generate user invites.");
         }
 
@@ -107,6 +109,6 @@ internal class Invites : IInvites
             rules.Require(ChatPermissions.Invite);
         }
 
-        return userProfile;
+        return account;
     }
 }

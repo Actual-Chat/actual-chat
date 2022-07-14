@@ -15,7 +15,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly FirebaseMessaging _firebaseMessaging;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly ICommander _commander;
-    private readonly IUserProfilesBackend _userProfilesBackend;
+    private readonly IAccountsBackend _accountsBackend;
     private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
     private readonly UriMapper _uriMapper;
     private readonly ILogger<Notifications> _log;
@@ -28,7 +28,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         FirebaseMessaging firebaseMessaging,
         IChatAuthorsBackend chatAuthorsBackend,
         ICommander commander,
-        IUserProfilesBackend userProfilesBackend,
+        IAccountsBackend accountsBackend,
         IDbContextFactory<NotificationDbContext> dbContextFactory,
         UriMapper uriMapper,
         ILogger<Notifications> log) : base(services)
@@ -38,7 +38,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         _firebaseMessaging = firebaseMessaging;
         _chatAuthorsBackend = chatAuthorsBackend;
         _commander = commander;
-        _userProfilesBackend = userProfilesBackend;
+        _accountsBackend = accountsBackend;
         _dbContextFactory = dbContextFactory;
         _uriMapper = uriMapper;
         _log = log;

@@ -37,9 +37,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 },
             });
             var avatarId = Ulid.NewUlid().ToString();
-            dbContext.UserProfiles.Add(new DbUserProfile {
+            dbContext.Accounts.Add(new DbAccount {
                 Id = UserConstants.Admin.UserId,
-                Status = UserStatus.Active,
+                Status = AccountStatus.Active,
                 AvatarId = avatarId,
             });
             dbContext.UserAvatars.Add(new DbUserAvatar() {
@@ -89,9 +89,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 },
             });
             var avatarId = Ulid.NewUlid().ToString();
-            dbContext.UserProfiles.Add(new DbUserProfile {
+            dbContext.Accounts.Add(new DbAccount {
                 Id = userId,
-                Status = UserStatus.Active,
+                Status = AccountStatus.Active,
                 AvatarId = avatarId,
             });
             dbContext.UserAvatars.Add(new DbUserAvatar() {

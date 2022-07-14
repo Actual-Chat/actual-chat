@@ -39,7 +39,7 @@
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
-    [Inject] public IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] public IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -56,12 +56,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userProfile = await UserProfiles.GetByUserId(Session, UserId, cancellationToken);
-        if (userProfile == null)
+        var account = await Accounts.GetByUserId(Session, UserId, cancellationToken);
+        if (!account.IsActive())
             return Model.Unavailable;
 
         return new Model {
-            User = userProfile.User,
+            User = account!.User,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
             CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
         };

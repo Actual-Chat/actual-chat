@@ -2,17 +2,17 @@ using RestEase;
 
 namespace ActualChat.Users.Client;
 
-[BasePath("userProfiles")]
-public interface IUserProfilesClientDef
+[BasePath("accounts")]
+public interface IAccountsClientDef
 {
     [Get(nameof(Get))]
-    Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, CancellationToken cancellationToken);
     [Get(nameof(GetByUserId))]
-    Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
+    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
     [Get(nameof(GetUserAuthor))]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
-    Task Update([Body] IUserProfiles.UpdateCommand command, CancellationToken cancellationToken);
+    Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]

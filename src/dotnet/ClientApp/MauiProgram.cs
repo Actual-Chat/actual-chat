@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
-using Stl.Fusion.Extensions;
 using ActualChat.UI.Blazor.App;
 
 namespace ActualChat.ClientApp;
+
+ #pragma warning disable VSTHRD002
 
 public static class MauiProgram
 {
@@ -74,9 +75,8 @@ public static class MauiProgram
 
         var mauiApp = builder.Build();
 
-        // MAUI does not start HostedServices.
+        // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
-        // Let's do it manually.
         StartHostedServices(mauiApp);
 
         return mauiApp;
@@ -88,36 +88,28 @@ public static class MauiProgram
 
     private static string GetBackendUrl()
     {
-        // host address for local debugging
+        // Host address for local debugging
         // https://devblogs.microsoft.com/xamarin/debug-local-asp-net-core-web-apis-android-emulators/
         // https://developer.android.com/studio/run/emulator-networking.html
-        // Unfortunately, this base address does not work WSA.
+        // Unfortunately, this base address does not work in WSA.
         // TODO(DF): find solution for WSA
         var ipAddress = DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
         var backendUrl = $"http://{ipAddress}:7080";
+
         // To use BaseUri : https://local.actual.chat
-        // We need to modify hosts file on android emulator similar how we did it for windows hosts.
-        // Using instrunctions from https://csimpi.medium.com/android-emulator-add-hosts-file-f4c73447453e,
+        // We need to modify hosts file on Android emulator similarly to how we did it for Windows hosts.
+        // Using instructions from https://csimpi.medium.com/android-emulator-add-hosts-file-f4c73447453e,
         // add line to the hosts file:
         // 10.0.2.2		local.actual.chat
         // Emulator has to be started with -writable-system flag every time to see hosts changes
         // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
+
         //return "https://local.actual.chat";
         return "https://dev.actual.chat";
     }
 
     private static void ConfigureServices(IServiceCollection services, Uri baseUri)
-    {
-        Startup.ConfigureServices(services,
-            baseUri,
-            typeof(Module.BlazorUIClientAppModule) // required to enable pages discovery from this project
-        ).Wait(); // wait on purpose, CreateMauiApp is synchronous.
-
-        // Fusion services
-        var fusion = services.AddFusion();
-        fusion.AddBackendStatus();
-
-        // discards Welcome screen
-        services.AddSingleton(new WelcomeOptions { ByPass = true });
-    }
+        => Startup
+            .ConfigureServices(services, baseUri, typeof(Module.BlazorUIClientAppModule))
+            .Wait();
 }

@@ -13,7 +13,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
-    private IUserProfiles UserProfiles { get; }
+    private IAccounts Accounts { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
@@ -23,7 +23,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         Auth = Services.GetRequiredService<IAuth>();
         AuthBackend = Services.GetRequiredService<IAuthBackend>();
-        UserProfiles = Services.GetRequiredService<IUserProfiles>();
+        Accounts = Services.GetRequiredService<IAccounts>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
@@ -79,16 +79,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var ownedChatIds = await Backend.ListOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(ownedChatIds).ToImmutableArray();
 
-            var userProfile = await UserProfiles.Get(session, cancellationToken).ConfigureAwait(false) ?? throw new Exception("UserProfile not found for ");
-            if (userProfile.IsAdmin && !chatIds.Contains(Constants.Chat.DefaultChatId))
+            var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+            if (account.IsAdmin && !chatIds.Contains(Constants.Chat.DefaultChatId))
                 chatIds = chatIds.Add(Constants.Chat.DefaultChatId);
         }
 
-        var chatTasks = await chatIds
+        var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        return chatTasks.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
+        return chats.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
     }
 
     // [ComputeMethod]
@@ -247,18 +247,18 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, title) = command;
-        var userProfile = await UserProfiles.Get(session, cancellationToken)
-            .Require(UserProfile.MustBeActive)
+        var account = await Accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeActive)
             .ConfigureAwait(false);
         var chat = new Chat() {
             Title = title,
             IsPublic = command.IsPublic,
-            OwnerIds = ImmutableArray.Create(userProfile.Id),
+            OwnerIds = ImmutableArray.Create(account.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         chat = await Commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, userProfile.Id);
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, account.Id);
         _ = await Commander.Call(createAuthorCommand, cancellationToken).ConfigureAwait(false);
         return chat;
     }
@@ -368,10 +368,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chat == null)
             return;
 
-        var userProfile = await UserProfiles.Get(session, cancellationToken)
-            .Require(UserProfile.MustBeActive)
+        var account = await Accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeActive)
             .ConfigureAwait(false);
-        if (chat.OwnerIds.Contains(userProfile.Id)) {
+        if (chat.OwnerIds.Contains(account.Id)) {
             throw new NotSupportedException("The very last owner of the chat can't leave it.");
             // TODO: managing ownership functionality is required
             // check if there are other owners

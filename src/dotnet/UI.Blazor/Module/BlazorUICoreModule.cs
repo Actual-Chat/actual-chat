@@ -37,6 +37,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
         // Fusion
         var fusion = services.AddFusion();
+        fusion.AddBackendStatus();
         var fusionAuth = fusion.AddAuthentication().AddBlazor();
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.2));
@@ -58,10 +59,6 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<RenderVars>();
         services.AddScoped<ContentUrlMapper>();
 
-        if (HostInfo.HostKind != HostKind.Maui) {
-            services.TryAddScoped<IClientAuth, WebClientAuth>();
-        }
-
         // Misc. UI services
         services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();
@@ -78,5 +75,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
         // UI events
         services.AddScoped<IEventAggregator, EventAggregator>();
+
+        // Host-specific services
+        services.TryAddScoped<IClientAuth, WebClientAuth>();
     }
 }

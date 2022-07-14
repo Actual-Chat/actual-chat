@@ -11,11 +11,8 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     private readonly IAuth _auth;
     private readonly ICommander _commander;
 
-    public ChatUserSettingsService(
-        IAuth auth,
-        ICommander commander,
-        IServiceProvider serviceProvider
-    ) : base(serviceProvider)
+    public ChatUserSettingsService(IAuth auth, ICommander commander)
+        : base(commander.Services)
     {
         _auth = auth;
         _commander = commander;

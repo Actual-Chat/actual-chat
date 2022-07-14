@@ -171,7 +171,7 @@ public partial class Notifications
 
         async Task<string> UserNameResolver(string userId1)
         {
-            var author = await _userProfilesBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
+            var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
             return author?.Name ?? "";
         }
 

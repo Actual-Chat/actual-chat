@@ -77,7 +77,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
-            db.AddEntityResolver<string, DbUserProfile>();
+            db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbUserAvatar>();
             db.AddEntityResolver<string, DbUserContact>();
@@ -106,7 +106,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             if (commandAssembly == typeof(EditUserCommand).Assembly
                 && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
-            if (commandAssembly == typeof(UserProfile).Assembly)
+            if (commandAssembly == typeof(Account).Assembly)
                 return true;
             return false;
         });
@@ -133,8 +133,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         // Module's own services
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IUserProfiles, UserProfiles>();
-        fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
+        fusion.AddComputeService<IAccounts, Accounts>();
+        fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();
         fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();

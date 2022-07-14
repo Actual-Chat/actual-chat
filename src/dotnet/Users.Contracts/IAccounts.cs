@@ -1,11 +1,11 @@
 namespace ActualChat.Users;
 
-public interface IUserProfiles : IComputeService
+public interface IAccounts : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
+    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
 
@@ -15,6 +15,6 @@ public interface IUserProfiles : IComputeService
     [DataContract]
     public sealed record UpdateCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] UserProfile UserProfile
+        [property: DataMember] Account Account
         ) : ISessionCommand<Unit>;
 }

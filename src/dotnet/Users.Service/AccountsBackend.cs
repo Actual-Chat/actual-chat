@@ -1,41 +1,49 @@
 using System.Net.Mail;
 using ActualChat.Users.Db;
+using ActualChat.Users.Module;
 using Microsoft.AspNetCore.Authentication.Google;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesBackend
+public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 {
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
+    private UsersSettings UsersSettings { get; }
     private IAuthBackend AuthBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
-    private IDbEntityResolver<string, DbUserProfile> DbUserProfileResolver { get; }
+    private IDbEntityResolver<string, DbAccount> DbAccountResolver { get; }
 
-    public UserProfilesBackend(IServiceProvider services) : base(services)
+    public AccountsBackend(IServiceProvider services) : base(services)
     {
+        UsersSettings = services.GetRequiredService<UsersSettings>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
-        DbUserProfileResolver = services.GetRequiredService<IDbEntityResolver<string, DbUserProfile>>();
+        DbAccountResolver = services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
+    public virtual async Task<Account?> Get(string id, CancellationToken cancellationToken)
     {
         var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return null;
 
-        var dbUserProfile = await DbUserProfileResolver.Get(id, cancellationToken).ConfigureAwait(false);
         var isAdmin = IsAdmin(user);
-        var userProfile =  new UserProfile(user.Id, user) {
+        var account =  new Account(user.Id, user) {
             IsAdmin = isAdmin,
-            Status = isAdmin ? UserStatus.Active : UserStatus.Inactive,
+            Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
         };
-        userProfile = dbUserProfile?.ToModel(userProfile);
-        return userProfile;
+
+        var dbAccount = await DbAccountResolver.Get(id, cancellationToken).ConfigureAwait(false);
+        if (dbAccount != null)
+            return dbAccount.ToModel(account);
+
+        // Let's create account on demand
+        _ = Commander.Call(new IAccountsBackend.UpdateCommand(account), true, CancellationToken.None);
+        return account;
     }
 
     public virtual async Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
@@ -49,12 +57,12 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
 
         var userAuthor = new UserAuthor { Id = user.Id, Name = user.Name };
 
-        var profile = await Get(userId, cancellationToken).ConfigureAwait(false);
-        if (profile == null)
+        var account = await Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return userAuthor;
 
-        if (!profile.AvatarId.IsEmpty) {
-            var avatar = await UserAvatarsBackend.Get(profile.AvatarId, cancellationToken).ConfigureAwait(false);
+        if (!account.AvatarId.IsEmpty) {
+            var avatar = await UserAvatarsBackend.Get(account.AvatarId, cancellationToken).ConfigureAwait(false);
             if (avatar != null) {
                 userAuthor = userAuthor with { Picture = avatar.Picture };
             }
@@ -66,23 +74,23 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
 
     // [CommandHandler]
     public virtual async Task Update(
-        IUserProfilesBackend.UpdateCommand command,
+        IAccountsBackend.UpdateCommand command,
         CancellationToken cancellationToken)
     {
-        var userProfile = command.UserProfile;
+        var account = command.Account;
         if (Computed.IsInvalidating()) {
-            _ = Get(userProfile.Id, default);
+            _ = Get(account.Id, default);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUserProfile = await dbContext.UserProfiles
-            .FindAsync(DbKey.Compose((string)userProfile.Id), cancellationToken)
+        var dbAccount = await dbContext.Accounts
+            .FindAsync(DbKey.Compose((string)account.Id), cancellationToken)
             .ConfigureAwait(false)
-            ?? new DbUserProfile();
-        dbUserProfile.UpdateFrom(userProfile);
+            ?? new DbAccount();
+        dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

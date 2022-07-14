@@ -41,7 +41,7 @@
         "v" + (typeof(SignedInMenu).Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;

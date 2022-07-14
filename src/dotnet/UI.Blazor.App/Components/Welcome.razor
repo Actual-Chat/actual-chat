@@ -13,22 +13,22 @@
 @if (m == null) {
     return;
 }
-@if (m.ByPass) {
+@if (m.MustBypass) {
     @ChildContent
     return;
 }
 
-@if (m.IsAuthenticated) {
-    if (m.RenderChildContent) {
+@if (m.Account.IsAuthenticated()) {
+    if (m.Account.IsActive() || m.IsActivating) {
         @ChildContent
     } else {
         <WelcomeLayout>
             <h1 class="text-02">Welcome to Actual Chat!</h1>
             <p class="text-02 mt-5">
-                Hello, <span class="font-semibold">@(m.UserName)!</span>
+                Hello, <span class="font-semibold">@(m.Account.User.Name)!</span>
             </p>
             <p class="text-02">
-                @if (m.UserStatus == UserStatus.Suspended) {
+                @if (m.Account.Status == AccountStatus.Suspended) {
                     <span>Your account is suspended. Please feel free to contact Actual.chat team to clarify what happened.</span>
                 } else {
                     <span>Please wait for your approval or use invite code.</span>
@@ -51,52 +51,43 @@
 @code {
     private WelcomeOptions? _welcomeOptions;
 
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private WelcomeOptions WelcomeOptions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    protected override void OnInitialized()
-    {
-        _welcomeOptions = ServiceProvider.GetService<WelcomeOptions>();
-        base.OnInitialized();
-    }
-
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (_welcomeOptions != null && _welcomeOptions.ByPass)
-            return new Model(false) { ByPass = true };
+        if (_welcomeOptions is { MustBypass: true })
+            return Model.Bypassing;
 
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return new Model(false);
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return Model.Unauthenticated;
 
-        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
-        var userStatus = userProfile?.Status ?? UserStatus.Inactive;
-        bool activate = false;
-        if (userStatus == UserStatus.Inactive) {
+        var isActivating = false;
+        if (account.Status == AccountStatus.Inactive) {
             var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
             const string activationPath = "user/activate/";
             if (relativePath.StartsWith(activationPath, StringComparison.OrdinalIgnoreCase)
                 && relativePath.Length > activationPath.Length) {
-                activate = true;
+                isActivating = true;
             }
         }
-        return new Model(true) { UserName = user.Name, UserStatus = userStatus, ActivationWithInvite = activate };
+        return new Model(account) { IsActivating = isActivating };
     }
 
     private async Task OnSignOutClick() {
         await ClientAuth.SignOut();
     }
 
-    public record Model(bool IsAuthenticated) {
-        public string UserName { get; init; } = "";
-        public UserStatus UserStatus { get; init; } = UserStatus.Inactive;
-        public bool ActivationWithInvite { get; init; }
-        public bool RenderChildContent => UserStatus == UserStatus.Active || ActivationWithInvite;
-        public bool ByPass { get; init; }
+    public record Model(Account Account) {
+        public static Model Unauthenticated { get; } = new(Account.Guest);
+        public static Model Bypassing { get; } = new(Account.Guest) { MustBypass = true };
+
+        public bool IsActivating { get; init; }
+        public bool MustBypass { get; init; }
     }
 }

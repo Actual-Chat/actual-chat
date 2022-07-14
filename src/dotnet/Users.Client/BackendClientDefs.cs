@@ -4,15 +4,15 @@ namespace ActualChat.Users.Client;
 
 // All backend clients & controllers are unused for now
 
-[BasePath("userProfilesBackend")]
-public interface IUserProfilesBackendClientDef
+[BasePath("accountsBackend")]
+public interface IAccountsBackendClientDef
 {
     [Get(nameof(Get))]
-    Task<UserProfile?> Get(string userId, CancellationToken cancellationToken);
+    Task<Account?> Get(string userId, CancellationToken cancellationToken);
     [Get(nameof(GetUserAuthor))]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
-    Task Update([Body] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken);
+    Task Update([Body] IAccountsBackend.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("sessionOptionsBackend")]

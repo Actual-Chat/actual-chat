@@ -3,19 +3,22 @@
 public class UserAvatars : IUserAvatars
 {
     private readonly IAuth _auth;
+    private readonly IAccounts _accounts;
+    private readonly IAccountsBackend _accountsBackend;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
-    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly ICommander _commander;
 
     public UserAvatars(
         IAuth auth,
+        IAccounts accounts,
+        IAccountsBackend accountsBackend,
         IUserAvatarsBackend userAvatarsBackend,
-        IUserProfilesBackend userProfilesBackend,
         ICommander commander)
     {
         _auth = auth;
+        _accounts = accounts;
+        _accountsBackend = accountsBackend;
         _userAvatarsBackend = userAvatarsBackend;
-        _userProfilesBackend = userProfilesBackend;
         _commander = commander;
     }
 
@@ -45,9 +48,8 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-        return profile?.AvatarId ?? Symbol.Empty;
+        var account = await _accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        return account.AvatarId;
     }
 
     // [ComputeMethod]
@@ -63,17 +65,16 @@ public class UserAvatars : IUserAvatars
         if (Computed.IsInvalidating())
             return;
 
-        var user = await _auth.GetUser(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await _accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
-            if (avatar == null || avatar.UserId != user.Id)
+            if (avatar == null || avatar.UserId != account.Id)
                 throw new InvalidOperationException("Invalid AvatarId.");
         }
 
-        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).Require().ConfigureAwait(false);
-        userProfile = userProfile with { AvatarId = avatarId };
-        var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile);
+        account = account with { AvatarId = avatarId };
+        var updateCommand = new IAccountsBackend.UpdateCommand(account);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

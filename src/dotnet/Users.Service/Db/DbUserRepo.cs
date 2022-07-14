@@ -19,13 +19,13 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         user = UserConverter.ToModel(dbUser);
 
-        var isAdmin = UserProfilesBackend.IsAdmin(user);
-        var dbUserProfile = new DbUserProfile {
+        var isAdmin = AccountsBackend.IsAdmin(user);
+        var dbAccount = new DbAccount {
             Id = user.Id,
-            Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
+            Status = isAdmin ? AccountStatus.Active : _usersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
         };
-        dbContext.UserProfiles.Add(dbUserProfile);
+        dbContext.Accounts.Add(dbAccount);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;
