@@ -1,6 +1,7 @@
 :<<BATCH
     rem call "./npm-install.cmd"
     pushd src\nodejs
+    call npm ci
     call npx webpack --config webpack.config.js --mode development
     popd
 
@@ -10,5 +11,6 @@ BATCH
 #!/bin/sh
 # "./npm-install.cmd"
 pushd src/nodejs
-npm run build --prefix src/nodejs
+npm ci
+npx webpack --config webpack.config.js --mode development
 popd
