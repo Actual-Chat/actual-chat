@@ -16,6 +16,12 @@
 .chat-menu .menu-item:hover > * {
     @apply text-03;
 }
+.chat-menu .menu-item.error-menu-item:hover {
+    @apply bg-error-hover;
+}
+.chat-menu .menu-item.error-menu-item:hover > * {
+    @apply text-error;
+}
 .chat-menu .chat-menu-record-toggle > * {
     @apply text-success;
 }
