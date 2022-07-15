@@ -10,9 +10,9 @@ function _(file) {
 }
 
 const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
-  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0 && d.name !== "UI.Blazor.Host")
+  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0)
   .map(d => _(`./../dotnet/${d.name}`) + path.sep)
-  .concat(_(`./../dotnet/Host`) + path.sep);
+  .concat(_(`./../dotnet/App.Server`) + path.sep);
 
 module.exports = (opts = {}) => {
   return {
