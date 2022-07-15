@@ -8,11 +8,11 @@
     <button @onclick="OnClick" disabled="@IsDisabled"
         class="menu-item @cls" name="@Name">
         @if (Icon != null) {
-            <div class="text-icons-01 menu-item-icon">
+            <div class="menu-item-icon">
                 @Icon
             </div>
         }
-        <div class="menu-item-text w-full text-02 font-medium mx-2">
+        <div class="menu-item-text">
             @Title
         </div>
     </button>

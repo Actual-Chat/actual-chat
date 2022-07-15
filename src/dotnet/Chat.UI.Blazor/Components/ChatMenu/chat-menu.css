@@ -10,24 +10,7 @@
 .chat-menu .dropdown-menu {
     @apply fixed md:-right-46 -mt-2;
 }
-.chat-menu .menu-item:hover {
-    @apply bg-round-hover;
-}
-.chat-menu .menu-item:hover > * {
-    @apply text-03;
-}
-.chat-menu .menu-item.error-menu-item:hover {
-    @apply bg-error-hover;
-}
-.chat-menu .menu-item.error-menu-item:hover > * {
-    @apply text-error;
-}
-.chat-menu .chat-menu-record-toggle > * {
-    @apply text-success;
-}
-.chat-menu .chat-menu-record-toggle:hover > * {
-    @apply text-success;
-}
+
 .message-counter-badge {
     @apply flex-x justify-center items-center rounded-full text-04 text-base min-w-8;
 }

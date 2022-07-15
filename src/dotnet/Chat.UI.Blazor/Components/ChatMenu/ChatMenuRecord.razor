@@ -3,16 +3,14 @@
 
 @{
     var isRecording = RecordingChatId == Chat.Id;
-    var cls = "chat-menu-record-toggle " + (isRecording ? "on" : "off");
+    var cls = "important-item " + (isRecording ? "on" : "off");
 }
 
 @if (isRecording) {
-    <MenuItem Title="Start talking" Name="Start Talking" Click="@(_ => RecordingChatId = Symbol.Empty)" Class="@cls">
+    <MenuItem Title="Stop talking" Name="Start Talking" Click="@(_ => RecordingChatId = Symbol.Empty)" Class="@cls">
         <Icon>
-            <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
-                <path d="M12.4 15.9C14.4 15.9 16.1 14.3 16.1 12.2V7.7C16.1 5.7 14.5 4 12.4 4C10.3 4 8.7 5.7 8.7 7.7V12.3C8.7 14.3 10.4 15.9 12.4 15.9ZM10.6 7.7C10.6 6.7 11.4 5.9 12.4 5.9C13.4 5.9 14.2 6.7 14.2 7.7V12.3C14.2 13.3 13.4 14.1 12.4 14.1C11.4 14.1 10.6 13.3 10.6 12.3V7.7Z"/>
-                <path d="M18.8 12.3C18.8 11.8 18.4 11.4 17.9 11.4C17.4 11.4 17 11.8 17 12.3C17 14.8 14.9 16.9 12.4 16.9C9.9 16.9 7.8 14.8 7.8 12.3C7.8 11.8 7.4 11.4 6.9 11.4C6.4 11.4 6 11.8 6 12.3C6 15.5 8.4 18.2 11.5 18.6V20.5H13.3V18.6C16.4 18.2 18.8 15.5 18.8 12.3Z"/>
-                <path d="M11.5 17.5V20.9C11.5 21.4 11.9 21.7 12.3 21.7H12.5C13 21.7 13.3 21.3 13.3 20.9V19V17.6H11.5V17.5Z"/>
+            <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path id="Verctor" fill-rule="evenodd" clip-rule="evenodd" d="M17.3333 4H6.66667C5.19644 4 4 5.19644 4 6.66667V17.3333C4 18.8036 5.19644 20 6.66667 20H17.3333C18.8036 20 20 18.8036 20 17.3333V6.66667C20 5.19644 18.8036 4 17.3333 4Z"/>
             </svg>
         </Icon>
     </MenuItem>
