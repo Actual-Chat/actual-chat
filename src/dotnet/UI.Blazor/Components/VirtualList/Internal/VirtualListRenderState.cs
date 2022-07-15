@@ -25,5 +25,5 @@ public class VirtualListRenderState
 //     public bool HasUnmeasuredItems { get; set; }
 //     public VirtualListStickyEdgeState? StickyEdge { get; set; }
 
-     public Dictionary<string, VirtualListRenderItem> RenderItems { get; set; } = null!;
+     public Dictionary<string, VirtualListRenderItem> Items { get; set; } = null!;
 }

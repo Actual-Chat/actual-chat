@@ -39,12 +39,12 @@
         // ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
         // HasUnmeasuredItems = plan.HasUnmeasuredItems,
         // StickyEdge = plan.StickyEdge,
-        RenderItems = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
+        Items = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
     };
     // ClientSideState = plan.ClientSideState ?? ClientSideState;
     // RequestDataUpdate();
     var items = isEndAligned ? Data.Items.Reverse() : Data.Items;
-
+    LastData = Data;
 }
 
 <div @ref="Ref"

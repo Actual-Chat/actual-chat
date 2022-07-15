@@ -1,8 +1,6 @@
-import { VirtualListItem } from './virtual-list-item';
 import { ItemRenderPlan } from './item-render-plan';
 import { Range } from './range';
 import { VirtualListEdge } from './virtual-list-edge';
-import { VirtualListData } from './virtual-list-data';
 import { VirtualListClientSideState } from './virtual-list-client-side-state';
 import { VirtualListStickyEdgeState } from './virtual-list-sticky-edge-state';
 import { VirtualListStatistics } from './virtual-list-statistics';
@@ -10,23 +8,21 @@ import { RangeExt } from './range-ext';
 import { VirtualListEdgeExt } from './virtual-list-edge-ext';
 import { VirtualListAccessor } from './virtual-list-accessor';
 
-export class VirtualListRenderPlan<TItem extends VirtualListItem>
+export class VirtualListRenderPlan
 {
-    public RenderIndex: number = 0;
     public Viewport?: Range<number> = null;
     public ItemRange?: Range<number> = null;
-    public UseSmoothScroll: boolean = false;
-    public VirtualList?: VirtualListAccessor<TItem> = null;
-    public ClientSideState?: VirtualListClientSideState = null;
-    public ItemByKey: Record<string,  ItemRenderPlan> = null;
-    public Items: ItemRenderPlan[] = null;
-    public IsDataChanged: boolean = false;
+    public VirtualList: VirtualListAccessor;
+    public ClientSideState: VirtualListClientSideState;
+    public ItemByKey: Record<string,  ItemRenderPlan>;
+    public Items: ItemRenderPlan[];
 
-    constructor(virtualList: VirtualListAccessor<TItem>) {
+    constructor(virtualList: VirtualListAccessor, lastPlan?: VirtualListRenderPlan) {
         this.VirtualList = virtualList;
-        this.RenderIndex = 1;
-        this.IsDataChanged = true;
-        this.Update(null);
+        this.ClientSideState = virtualList.ClientSideState;
+        this.ItemByKey = {};
+        this.Items = [];
+        this.Update(lastPlan);
     }
 
     public get FullRange(): Range<number> | null {
@@ -79,11 +75,9 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
             || RangeExt.Contains(this.ItemRange, this.TrimmedLoadZoneRange);
     }
 
-    public Next(): VirtualListRenderPlan<TItem> {
-        const plan = this.Clone();
-        plan.RenderIndex++;
+    public Next(): VirtualListRenderPlan {
+        const plan = new VirtualListRenderPlan(this.VirtualList, this);
         plan.ClientSideState = this.VirtualList.ClientSideState;
-        plan.Update(this);
         return plan;
     }
 
@@ -94,14 +88,11 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
         );
     }
 
-    private Update(lastPlan?: VirtualListRenderPlan<TItem>): void {
+    private Update(lastPlan?: VirtualListRenderPlan): void {
         const statistics = this.Statistics;
         const clientSideItems = this.ClientSideState?.items;
         const prevItemByKey = lastPlan?.ItemByKey;
 
-        this.IsDataChanged = true;
-        this.ItemByKey = {};
-        this.Items = [];
         let hasUnmeasuredItems: boolean = false;
         let itemRange = new Range(0, 0);
 
@@ -191,9 +182,5 @@ export class VirtualListRenderPlan<TItem extends VirtualListItem>
             clientSideState.scrollTop,
             clientSideState.scrollTop + clientSideState.viewportHeight);
         return { success: true, viewport: viewport };
-    }
-
-    private Clone(): VirtualListRenderPlan<TItem> {
-        return JSON.parse(JSON.stringify(this));
     }
 }
