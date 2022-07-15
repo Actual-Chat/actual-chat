@@ -23,7 +23,7 @@
     @apply text-success;
 }
 .message-counter-badge {
-    @apply flex;
+    @apply flex-x justify-center items-center rounded-full text-04 text-base min-w-8;
 }
 .navbar-item:hover .message-counter-badge {
     @apply hidden;
