@@ -27,7 +27,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     // protected internal VirtualListClientSideState ClientSideState { get; set; } = null!;
     // protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
-    private VirtualListData<TItem> Data => State.LatestNonErrorValue ?? VirtualListData<TItem>.None;
+    private VirtualListData<TItem> Data => State.LatestNonErrorValue;
+    private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
 
     private int RenderIndex { get; set; } = 0;
 
@@ -100,7 +101,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override bool ShouldRender()
-    {
         // if (LastPlan == null) {
         //     DebugLog?.LogDebug(nameof(ShouldRender) + ": true (no LastPlan)");
         //     return true;
@@ -113,8 +113,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         // }
         // Plan = LastPlan.Next();
         // DebugLog?.LogDebug(nameof(ShouldRender) + ": true");
-        return true;
-    }
+        => !ReferenceEquals(Data, LastData);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -155,7 +154,10 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     // }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
-        => new () { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new () {
+            UpdateDelayer = UpdateDelayer.MinDelay,
+            InitialValue = VirtualListData<TItem>.None,
+        };
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {

@@ -1,4 +1,3 @@
-import { VirtualListItem } from './virtual-list-item';
 import { Range} from './range';
 import { RangeExt } from './range-ext';
 import { VirtualListRenderItem } from './virtual-list-render-state';

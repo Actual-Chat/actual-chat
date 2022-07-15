@@ -6,11 +6,9 @@ import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state'
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
 import { VirtualListRenderPlan } from './ts/virtual-list-render-plan';
 import { VirtualListDataQuery } from './ts/virtual-list-data-query';
-import { VirtualListItem } from './ts/virtual-list-item';
 import { Range } from './ts/range';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
-import { VirtualListData } from './ts/virtual-list-data';
 import { Clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
 
@@ -23,7 +21,7 @@ const ItemSizeEpsilon: number = 1;
 const MoveSizeEpsilon: number = 28;
 const EdgeEpsilon: number = 4;
 
-export class VirtualList implements VirtualListAccessor<VirtualListItem> {
+export class VirtualList implements VirtualListAccessor {
     private readonly _debugMode: boolean = false;
     private readonly _isEndAligned: boolean = false;
     /** ref to div.virtual-list */
@@ -49,8 +47,8 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
     private _updateClientSideStateTasks: Promise<void>[] = [];
     private _updateClientSideStateRenderIndex = -1;
 
-    private LastPlan?: VirtualListRenderPlan<VirtualListItem> = null;
-    private Plan: VirtualListRenderPlan<VirtualListItem>;
+    private LastPlan?: VirtualListRenderPlan = null;
+    private Plan: VirtualListRenderPlan;
     private LastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
     private Query: VirtualListDataQuery = VirtualListDataQuery.None;
     private VisibleKeysState: string[] = [];
@@ -108,9 +106,24 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
             useSmoothScroll: false,
             items: {}
         };
+        this.ClientSideState = {
+            renderIndex: 0,
+            spacerSize: 0,
+            endSpacerSize: 0,
+            scrollTop: 0,
+            scrollHeight: 0,
+            viewportHeight: 0,
 
-        this.Plan = new VirtualListRenderPlan<VirtualListItem>(this);
-        this.maybeOnRenderEnd([], this._renderEndObserver);
+            isStickyEdgeChanged: false,
+            isUserScrollDetected: false,
+            isViewportChanged: false,
+
+            visibleKeys: [],
+            items: {}
+        }
+
+        this.Plan = new VirtualListRenderPlan(this);
+        // this.maybeOnRenderEnd([], this._renderEndObserver);
     };
 
     get isSafeToScroll(): boolean {
@@ -310,6 +323,7 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
         if (this._isDisposed || this._isUpdatingClientState)
             return;
 
+        this.LastPlan = this.Plan;
         try {
             this._isUpdatingClientState = true;
             const rs = this.RenderState;
@@ -485,10 +499,24 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
             if (state) {
                 if (this._debugMode)
                     console.log(`${LogScope}.updateClientSideStateImpl: server call, state:`, state);
-                const result: number = await this.UpdateClientSideState(state);
-                if (result > this._updateClientSideStateRenderIndex)
+                const expectedRenderIndex = this.RenderState.renderIndex;
+                if (state.renderIndex != expectedRenderIndex) {
+                    return;
+                }
+
+                this.ClientSideState = state;
+                const newVisibleKeys = state.visibleKeys;
+                if (newVisibleKeys?.length > 0 && this.VisibleKeysState != null)
+                    // TODO(AK): Push visible keys to Blazor
+                    this.VisibleKeysState = newVisibleKeys;
+
+                const plan = this.Plan = this.LastPlan.Next();
+                if (!plan.IsFullyLoaded) {
+                    await this.requestData();
+                }
+                if (state.renderIndex > this._updateClientSideStateRenderIndex)
                 {
-                    this._updateClientSideStateRenderIndex = result;
+                    this._updateClientSideStateRenderIndex = state.renderIndex;
                 }
             }
         } finally {
@@ -499,6 +527,7 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
     // Event handlers
 
     private onScroll = (): void => {
+        return;
         if (this._isRendering || this._isDisposed)
             return;
 
@@ -652,43 +681,11 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
         }
     }
 
-    private async UpdateClientSideState(clientSideState: VirtualListClientSideState): Promise<number>
-    {
-        const plan = this.LastPlan;
-        const expectedRenderIndex = plan?.RenderIndex ?? 0;
-        if (clientSideState.renderIndex != expectedRenderIndex) {
-            return expectedRenderIndex;
-        }
-
-        this.ClientSideState = clientSideState;
-        const newVisibleKeys = clientSideState.visibleKeys;
-        if (newVisibleKeys?.length > 0 && this.VisibleKeysState != null)
-            // TODO(AK): Push visible keys to Blazor
-            this.VisibleKeysState = newVisibleKeys;
-
-        if (this.ShouldRequestDataUpdate()) {
-            await this.RequestDataUpdate();
-        }
-        return expectedRenderIndex;
-    }
-
-    private ShouldRequestDataUpdate(): boolean {
-        if (this.LastPlan == null) {
-            return true;
-        }
-        // const isSameState = this.LastPlan.Data === this.Data && this.LastPlan.ClientSideState === this.ClientSideState;
-        // if (isSameState) {
-        //     return false;
-        // }
-        this.Plan = this.LastPlan.Next();
-        return true;
-    }
-
-    private async RequestDataUpdate(): Promise<void> {
+    private async requestData(): Promise<void> {
         if (this.Plan.IsFullyLoaded /*&& this.Data.ScrollToKey != null && this.Data.ScrollToKey.trim().length > 0*/)
             return;
 
-        this.Query = this.GetDataQuery(this.Plan);
+        this.Query = this.getDataQuery(this.Plan);
         if (this.Query.IsSimilarTo(this.LastQuery))
             return;
 
@@ -701,7 +698,7 @@ export class VirtualList implements VirtualListAccessor<VirtualListItem> {
         this.LastQuery = this.Query;
     }
 
-    private GetDataQuery<TItem extends VirtualListItem>(plan: VirtualListRenderPlan<TItem>): VirtualListDataQuery {
+    private getDataQuery(plan: VirtualListRenderPlan): VirtualListDataQuery {
         const itemSize = this.Statistics.ItemSize;
         const responseFulfillmentRatio = this.Statistics.ResponseFulfillmentRatio;
 
