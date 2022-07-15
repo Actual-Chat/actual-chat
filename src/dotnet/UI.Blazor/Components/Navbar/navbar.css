@@ -85,7 +85,7 @@
     @apply border border-text-02;
 }
 .navbar-item .navbar-item-ending {
-    @apply flex-1 justify-self-end;
+    @apply flex-1 justify-self-end h-6;
     @apply flex flex-row justify-end gap-x-3 w-fit;
 }
 

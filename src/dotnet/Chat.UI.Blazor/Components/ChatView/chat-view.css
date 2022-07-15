@@ -59,7 +59,7 @@
 }
 
 .chat-quote {
-    @apply flex w-full bg-04 p-2 text-base rounded-t-xl;
+    @apply flex w-full bg-04 py-2 px-6 text-base rounded-full;
 }
 .chat-quote .btn.btn-square {
     @apply bg-02;

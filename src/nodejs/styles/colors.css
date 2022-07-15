@@ -31,8 +31,8 @@
     --cancel-outline-hover: #eef1f4;
     --cancel-outline-title: #64748b;
 
-    --error: #ef4444;
-    --error-hover: #ec2020;
+    --error: #FF7070;
+    --error-hover: #FFE4E4;
     --error-title: #edf0f3;
     --error-ring: #f47a7a;
     --error-outline-hover: #fef4f4;
@@ -65,7 +65,7 @@
     --rating: #fde047;
     --code: #D83E52;
     --avatar: #5a7188;
-    --recorder-on: #CC6868;
+    --recorder-on: #FF7070;
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
     --message-hover: #f3f4f6;
