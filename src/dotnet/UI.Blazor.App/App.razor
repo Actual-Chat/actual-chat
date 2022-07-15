@@ -4,19 +4,15 @@
 @using Blazored.Modal
 @using Stl.OS
 @using Stl.Plugins
+@using System.Reflection
 @implements IDisposable
 @{
-    var appAssembly = typeof(App).Assembly;
-    var moduleAssemblies = Plugins.GetPlugins<IBlazorUIModule>()
-        .Select(p => p.GetType().Assembly)
-        .Where(a => a != appAssembly)
-        .ToArray();
 }
 
 <CascadingAuthState>
-    <Welcome>
-        <CascadingBlazoredModal>
-            <Router AppAssembly="@appAssembly" AdditionalAssemblies="moduleAssemblies">
+    <CascadingBlazoredModal>
+        <Welcome>
+            <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
                 <Found>
                     <CascadingValue Value="@context">
                         <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
@@ -28,11 +24,14 @@
                     </LayoutView>
                 </NotFound>
             </Router>
-        </CascadingBlazoredModal>
-    </Welcome>
+        </Welcome>
+    </CascadingBlazoredModal>
 </CascadingAuthState>
 
 @code {
+    private static Assembly? UIAssembly { get; set; }
+    private static Assembly[]? UIModuleAssemblies { get; set; }
+
     [Parameter] public string SessionId { get; set; } = Symbol.Empty;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
@@ -63,6 +62,13 @@
             // This method should be called only when ISessionProvider.Session is set!
             _ = StateRestore.Restore(CancellationToken.None);
         }
+
+        UIAssembly ??= typeof(App).Assembly;
+        UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
+            .Select(p => p.GetType().Assembly)
+            .Where(a => a != UIAssembly)
+            .ToArray();
+
         return Task.CompletedTask;
     }
 
