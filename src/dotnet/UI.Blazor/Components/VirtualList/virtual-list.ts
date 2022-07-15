@@ -123,7 +123,7 @@ export class VirtualList implements VirtualListAccessor {
         }
 
         this.Plan = new VirtualListRenderPlan(this);
-        // this.maybeOnRenderEnd([], this._renderEndObserver);
+        this.maybeOnRenderEnd([], this._renderEndObserver);
     };
 
     get isSafeToScroll(): boolean {
@@ -169,15 +169,15 @@ export class VirtualList implements VirtualListAccessor {
         const ri = Number.parseInt(riText);
         if (ri != rs.renderIndex)
             return;
-        void this.onRenderEnd(rs);
+        void this.onRenderEnd(rs, mutations.length == 0);
     };
 
-    private async onRenderEnd(rs: Required<VirtualListRenderState>): Promise<void> {
+    private async onRenderEnd(rs: Required<VirtualListRenderState>, isFirstRender: boolean): Promise<void> {
         this._isRendering = true;
         try {
             this.RenderState = rs;
             if (this._debugMode)
-                console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}`);
+                console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
 
             let isScrollHappened = false;
             let scrollToItemRef = this.getItemRef(rs.scrollToKey);
@@ -275,7 +275,9 @@ export class VirtualList implements VirtualListAccessor {
                 // such an update will be ignored anyway
             }
             else {
-                this.updateClientSideStateDebounced(true);
+                 if (!isFirstRender) {
+                    this.updateClientSideStateDebounced(true);
+                 }
             }
         }
     }
@@ -320,14 +322,14 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private async updateClientSideStateImpl(): Promise<void> {
-        if (this._isDisposed || this._isUpdatingClientState)
+        const rs = this.RenderState;
+        const cs = this.ClientSideState;
+        if (this._isDisposed || this._isUpdatingClientState /*|| rs.renderIndex === 0*/)
             return;
 
         this.LastPlan = this.Plan;
         try {
             this._isUpdatingClientState = true;
-            const rs = this.RenderState;
-            const cs = this.ClientSideState;
             if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
                 // This update will be dropped by server
                 if (this._debugMode)
@@ -498,7 +500,7 @@ export class VirtualList implements VirtualListAccessor {
 
             if (state) {
                 if (this._debugMode)
-                    console.log(`${LogScope}.updateClientSideStateImpl: server call, state:`, state);
+                    console.log(`${LogScope}.updateClientSideStateImpl: state:`, state);
                 const expectedRenderIndex = this.RenderState.renderIndex;
                 if (state.renderIndex != expectedRenderIndex) {
                     return;
@@ -527,7 +529,6 @@ export class VirtualList implements VirtualListAccessor {
     // Event handlers
 
     private onScroll = (): void => {
-        return;
         if (this._isRendering || this._isDisposed)
             return;
 
@@ -685,26 +686,28 @@ export class VirtualList implements VirtualListAccessor {
         if (this.Plan.IsFullyLoaded /*&& this.Data.ScrollToKey != null && this.Data.ScrollToKey.trim().length > 0*/)
             return;
 
-        this.Query = this.getDataQuery(this.Plan);
+        this.Query = this.getDataQuery();
         if (this.Query.IsSimilarTo(this.LastQuery))
             return;
 
         if (!this.LastQuery.IsNone)
         {
-            // Data update
-            await this._blazorRef.invokeMethodAsync('RequestNewData', this.Query);
-            // _ = State.Recompute();
+            if (this._debugMode)
+                console.log(`${LogScope}.requestData: query:`, this.Query);
+            await this._blazorRef.invokeMethodAsync('RequestData', this.Query);
         }
         this.LastQuery = this.Query;
     }
 
-    private getDataQuery(plan: VirtualListRenderPlan): VirtualListDataQuery {
+    private getDataQuery(): VirtualListDataQuery {
+        const plan = this.Plan;
+        const lastPlan = this.LastPlan;
         const itemSize = this.Statistics.ItemSize;
         const responseFulfillmentRatio = this.Statistics.ResponseFulfillmentRatio;
 
-        if (plan.ClientSideState?.scrollAnchorKey != null) {
+        if (this.ClientSideState.scrollAnchorKey != null) {
             // we should load data near the last available item on scroll into skeleton area
-            const key = plan.ClientSideState?.scrollAnchorKey!;
+            const key = this.ClientSideState.scrollAnchorKey!;
             const avgItemsPerLoadZone = this.LoadZoneSize / itemSize;
             const anchorKeyRange = new Range(key, key);
             const anchorQuery = new VirtualListDataQuery(anchorKeyRange);
@@ -720,8 +723,13 @@ export class VirtualList implements VirtualListAccessor {
             return this.LastQuery;
 
         const viewport = plan.Viewport;
+        const viewportSize = RangeExt.Size(viewport);
         const loadZone = new Range(viewport.Start - this.LoadZoneSize, viewport.End + this.LoadZoneSize);
         const bufferZone = new Range(viewport.Start - this.BufferZoneSize, viewport.End + this.BufferZoneSize);
+        const ignoreZone = new Range(viewport.Start - 2*viewportSize, viewport.End + 2*viewportSize);
+        if (RangeExt.Contains(loadZone, ignoreZone))
+            return this.LastQuery;
+
         let startIndex = -1;
         let endIndex = -1;
         const items = plan.Items;

@@ -73,15 +73,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     // }
 
     [JSInvokable]
-    public Task RequestNewData(VirtualListDataQuery query)
+    public Task RequestData(VirtualListDataQuery query)
     {
         Query = query;
-        //     if (Query.IsSimilarTo(LastQuery))
+        //     if (Query.IsSimilarTo(LastQuery))ё
         //         return;
         //
-        if (LastQuery is not { IsNone: true })
+        // if (LastQuery is not { IsNone: true })
             // Data update
-            _ = State.Recompute();
+        _ = State.Recompute();
         return Task.CompletedTask;
     }
 

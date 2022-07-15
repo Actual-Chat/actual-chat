@@ -22,7 +22,7 @@ export class VirtualListDataQuery
         if (this === other)
             return true;
 
-        if (this.InclusiveRange.Equals(other.InclusiveRange))
+        if (!this.InclusiveRange.Equals(other.InclusiveRange))
             return false;
 
         const epsilon: number = 10;
