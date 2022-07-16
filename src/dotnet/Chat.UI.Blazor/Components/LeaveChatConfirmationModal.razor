@@ -15,8 +15,9 @@
 </DialogFrame>
 
 @code {
-    [Inject] Session Session { get; init; } = null!;
-    [Inject] UICommandRunner Commander { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -25,7 +26,7 @@
 
     private async Task OnLeave(MouseEventArgs arg) {
         var command = new IChats.LeaveChatCommand(Session, ModalModel.Chat.Id);
-        await Commander.Run(command).ConfigureAwait(true);
+        await UICommander.Run(command).ConfigureAwait(true);
         await ModalInstance.CloseAsync().ConfigureAwait(true);
     }
 

@@ -24,9 +24,9 @@
     private FormModel _form = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -37,16 +37,16 @@
     private async Task OnCreate()
     {
         var command = new IChats.CreateChatCommand(Session, _form.Title);
-        var result = await Cmd.Run(command, default);
-        if (!result.CommandEvent.IsCompletedSuccessfully)
-            return;
-        await ModalInstance.CancelAsync();
-        var chatId = result.Result.Id;
+        var result = await UICommander.Run(command).ConfigureAwait(true);
+        if (result.HasError) return;
+
+        await ModalInstance.CancelAsync().ConfigureAwait(true);
+        var chatId = result.Id;
         Nav.NavigateTo($"/chat/{chatId}");
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync();
+        => ModalInstance.CancelAsync().ConfigureAwait(true);
 
     public class FormModel
     {

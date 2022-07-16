@@ -17,8 +17,8 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private FormModel M { get; set; } = null!;
 
@@ -31,7 +31,7 @@
 
     private async void OnSave() {
         var command = new EditUserCommand(Session, M.Name);
-        await Cmd.Run(command).ConfigureAwait(true);
+        await UICommander.Run(command).ConfigureAwait(true);
     }
 
     public sealed class FormModel : FormModel<FormModel> {

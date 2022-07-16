@@ -74,7 +74,7 @@ public abstract class StatePersisterBase<TState> : IStateRestoreHandler, IDispos
     }
 
     protected virtual ComputedState<TState>.Options GetStateOptions()
-        => new() { UpdateDelayer = new UpdateDelayer(UICommandTracker.None, 1)}; // 1 second update delay
+        => new() { UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 1) }; // 1 second update delay
 
     protected virtual string GetStorageKey()
         => $"State.{Key}";

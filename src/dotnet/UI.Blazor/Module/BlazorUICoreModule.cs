@@ -40,7 +40,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         fusion.AddBackendStatus();
         var fusionAuth = fusion.AddAuthentication().AddBlazor();
         // Default update delay is 0.2s
-        services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.2));
+        services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
         services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();

@@ -12,7 +12,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
     private Task _lastPersistTask;
 
     protected Func<T, ISessionCommand> PersistCommandFactory { get; }
-    protected UICommandRunner Cmd { get; }
+    protected UICommander UICommander { get; }
 
     public new record Options : MutableState<T>.Options
     {
@@ -26,7 +26,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
         : base(options, services, false)
     {
         PersistCommandFactory = persistCommandFactory;
-        Cmd = services.GetRequiredService<UICommandRunner>();
+        UICommander = services.UICommander();
         _cts = new CancellationTokenSource();
         _lastPersistTask = Task.CompletedTask;
 
@@ -66,7 +66,7 @@ public class PersistentState<T>: MutableState<T>, IPersistentState<T>
         {
             await prevTask.ConfigureAwait(false);
             var command = PersistCommandFactory(value);
-            await Cmd.Run(command, _cts.Token).ConfigureAwait(false);
+            await UICommander.Run(command, _cts.Token).ConfigureAwait(false);
         }
     }
 }

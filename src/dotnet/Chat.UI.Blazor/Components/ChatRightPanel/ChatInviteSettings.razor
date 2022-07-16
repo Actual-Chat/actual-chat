@@ -21,8 +21,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -48,7 +48,7 @@
             Details = new InviteDetails { Chat = new(Chat.Id) },
             Remaining = 10, // TODO: configurable
         };
-        _ = await Cmd.Run(new IInvites.GenerateCommand(Session, invite));
+        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
     }
 
     public record Model {

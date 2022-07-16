@@ -16,13 +16,13 @@
     private Result<Invite>? _useResult;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        var cmd = new IInvites.UseCommand(Session, InviteId);
-        _useResult = await Cmd.Run(cmd, CancellationToken.None).AsResult().ConfigureAwait(true);
+        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        _useResult = await UICommander.Run(useCommand, CancellationToken.None).ConfigureAwait(true);
     }
 }

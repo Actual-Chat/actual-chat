@@ -63,7 +63,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -112,7 +112,7 @@
             .Select(x => x.Author.Id.Value)
             .ToArray();
         var createChatAuthorsCommand = new IChatAuthors.CreateChatAuthorsCommand(Session, ModalModel.Chat.Id, userIds);
-        await Cmd.Run(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
+        await UICommander.Run(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
         await ModalInstance.CloseAsync().ConfigureAwait(false);
     }
 

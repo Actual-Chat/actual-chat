@@ -14,7 +14,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -29,6 +29,6 @@
         var settings = State.Value ?? new() { Language = LanguageId.Default };
         settings = settings with { Language = settings.LanguageOrDefault().Next() };
         var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
-        await Cmd.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 }

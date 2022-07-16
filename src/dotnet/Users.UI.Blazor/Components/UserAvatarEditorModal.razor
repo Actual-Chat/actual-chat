@@ -41,8 +41,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private FormModel M { get; set; } = null!;
 
@@ -72,7 +72,7 @@
     private async void OnSave() {
         var avatarId = ModalModel.AvatarId;
         var command = new IUserAvatars.UpdateCommand(Session, avatarId, M.Name, M.Picture, M.Bio);
-        await Cmd.Run(command).ConfigureAwait(true);
+        await UICommander.Run(command).ConfigureAwait(true);
 
         if (M.IsDefault && !M.Base.IsDefault)
             await SetDefaultAvatar(M.IsDefault ? avatarId : "").ConfigureAwait(true);
@@ -88,7 +88,7 @@
     private async Task SetDefaultAvatar(string avatarId)
     {
         var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
-        await Cmd.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 
     private async Task SetActiveAvatar(string avatarId)
@@ -97,7 +97,7 @@
         chatUserSettings ??= new();
         chatUserSettings = chatUserSettings with { AvatarId = avatarId };
         var command = new IChatUserSettings.SetCommand(Session, ModalModel.ChatId, chatUserSettings);
-        await Cmd.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 
     private void OnCancel()

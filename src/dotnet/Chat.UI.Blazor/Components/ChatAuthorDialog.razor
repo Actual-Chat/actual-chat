@@ -30,8 +30,8 @@
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
     private string AuthorId => ModalModel.AuthorId;
@@ -65,7 +65,7 @@
         IsAddingContact = true;
         StateHasChanged();
 
-        await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId)).ConfigureAwait(true);
+        await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId)).ConfigureAwait(true);
 
         IsAddingContact = false;
         await ModalInstance.CancelAsync().ConfigureAwait(true);

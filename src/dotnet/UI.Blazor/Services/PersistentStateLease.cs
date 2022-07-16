@@ -28,6 +28,10 @@ public sealed class PersistentStateLease<T>: IPersistentState<T>
 
     public void Set(Result<T> result)
         => _source.Set(result);
+    public void Set(Func<Result<T>, Result<T>> updater)
+        => _source.Set(updater);
+    public void Set<TState>(TState state, Func<TState, Result<T>, Result<T>> updater)
+        => _source.Set(state, updater);
 
     T IMutableResult<T>.Value {
         get => _source.Value;
@@ -50,7 +54,7 @@ public sealed class PersistentStateLease<T>: IPersistentState<T>
 
     public T? ValueOrDefault => _source.ValueOrDefault;
 
-    object? IResult.Value => ((IResult)_source).Value;
+    object? IResult.UntypedValue => ((IResult)_source).UntypedValue;
 
     public bool HasError => _source.HasError;
 

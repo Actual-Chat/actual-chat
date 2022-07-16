@@ -43,7 +43,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
 
@@ -82,7 +82,7 @@
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
+            var (_, e) = await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
         }
         finally {
             IsAddingContact = false;

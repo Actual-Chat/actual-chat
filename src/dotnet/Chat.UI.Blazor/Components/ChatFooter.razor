@@ -31,8 +31,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -55,7 +55,7 @@
     private async Task OnJoin() {
         string chatId = Chat.Id;
         var command = new IChats.JoinChatCommand(Session, chatId);
-        await Cmd.Run(command, default);
+        await UICommander.Run(command, default);
     }
 
     public record Model {

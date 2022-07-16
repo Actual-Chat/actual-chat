@@ -38,10 +38,10 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
     [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private FormModel _form = null!;
 
@@ -62,7 +62,7 @@
             IsPublic = _form.IsPublic,
             Picture = _form.Picture,
         };
-        await Cmd.Run(new IChats.UpdateChatCommand(Session, newChat));
+        await UICommander.Run(new IChats.UpdateChatCommand(Session, newChat));
     }
 
     public sealed class FormModel

@@ -2,12 +2,11 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Components.SideNav
-@using ActualChat.Hosting;
 @using System.Text.RegularExpressions
 @implements IDisposable
 @implements IBaseLayoutBackend
 @{
-    var failures = UICommandFailureList.Items;
+    var failures = UIActionFailureTracker.Items;
 }
 
 <div class="absolute z-60 min-h-mobile-header">
@@ -40,8 +39,9 @@
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
                     @foreach (var failure in failures) {
                         <WhenCommandError
-                            Error="failure.Result?.Error"
-                            Dismissed="@(_ => UICommandFailureList.Remove(failure.CommandId))"/>
+                            @key="failure"
+                            Error="failure.Error"
+                            Dismissed="@(_ => UIActionFailureTracker.Remove(failure))"/>
                     }
                 </div>
             }
@@ -53,16 +53,15 @@
 @code {
     private DotNetObjectReference<IBaseLayoutBackend> BlazorRef { get; set; } = null!;
 
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UICommandFailureList UICommandFailureList { get; init; } = null!;
+    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     protected override void OnInitialized() {
         BlazorRef = DotNetObjectReference.Create<IBaseLayoutBackend>(this);
         Nav.LocationChanged += OnLocationChanged;
-        UICommandFailureList.Changed += OnCommandFailureListChanged;
+        UIActionFailureTracker.Changed += OnCommandFailureListChanged;
     }
 
     protected override async Task OnInitializedAsync() {
@@ -74,7 +73,7 @@
 
     public void Dispose() {
         Nav.LocationChanged -= OnLocationChanged;
-        UICommandFailureList.Changed -= OnCommandFailureListChanged;
+        UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
     }
 
     [JSInvokable]
@@ -96,7 +95,7 @@
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        UICommandFailureList.Clear();
+        UIActionFailureTracker.Clear();
         NavbarUI.IsVisible = false;
         StateHasChanged();
     }

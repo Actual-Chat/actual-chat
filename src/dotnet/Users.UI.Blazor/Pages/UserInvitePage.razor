@@ -17,7 +17,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander Cmd { get; init; } = null!;
 
     protected override ComputedState<ImmutableArray<Invite>>.Options GetStateOptions()
         => new() { InitialValue = ImmutableArray<Invite>.Empty };
