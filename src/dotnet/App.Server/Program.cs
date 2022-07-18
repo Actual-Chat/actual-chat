@@ -47,12 +47,12 @@ internal static class Program
             ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIo);
             if (currentMinIo < minIoThreads) {
                 if (!ThreadPool.SetMinThreads(currentMinWorker, minIoThreads)) {
-                    throw new Exception("ERROR: Can't set min IO threads.");
+                    throw new InvalidOperationException("ERROR: Can't set min IO threads.");
                 }
                 currentMinIo = minIoThreads;
             }
             if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIo)) {
-                throw new Exception("ERROR: Can't set min worker threads.");
+                throw new InvalidOperationException("ERROR: Can't set min worker threads.");
             }
             ThreadPool.SetMaxThreads(4096, 4096);
         }

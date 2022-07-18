@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -69,7 +70,7 @@ public static class MauiProgram
             SessionId = sessionId
         };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
-            throw new Exception("Wrong configuration, base uri can't be empty.");
+            throw new ValidationException("Wrong configuration, base uri can't be empty.");
         services.TryAddSingleton<ClientAppSettings>(settings);
 
         ConfigureServices(services, new Uri(settings.BaseUri));
