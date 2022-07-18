@@ -4,7 +4,7 @@
 @implements IDropdownBackend
 @implements IAsyncDisposable
 @{
-    var buttonClass = ButtonClass;
+    var buttonClass = "dropdown-menu-btn " + ButtonClass;
 }
 <CascadingValue Value="@this" IsFixed="true">
     <div @ref="Ref" class="dropdown @Class">
