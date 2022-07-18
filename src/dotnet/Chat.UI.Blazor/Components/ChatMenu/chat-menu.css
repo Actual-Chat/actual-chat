@@ -7,6 +7,9 @@
 .chat-menu-btn.btn.btn-round:hover {
     @apply text-03;
 }
+.chat-menu-btn.btn.btn-round.on:hover {
+    @apply text-success;
+}
 .chat-menu .dropdown-menu {
     @apply fixed md:-right-46 -mt-2;
 }
