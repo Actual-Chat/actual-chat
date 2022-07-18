@@ -85,6 +85,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         return Task.CompletedTask;
     }
 
+    [JSInvokable]
+    public Task UpdateVisibleKeys(string?[] visibleKeys)
+    {
+        if (visibleKeys?.Length > 0 && VisibleKeysState != null)
+            VisibleKeysState.Value = visibleKeys.ToList()!;
+
+        return Task.CompletedTask;
+    }
+
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync().ConfigureAwait(true);
