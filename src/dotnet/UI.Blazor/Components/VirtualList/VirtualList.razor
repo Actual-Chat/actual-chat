@@ -6,10 +6,10 @@
     // var plan = LastPlan = Plan;
     // DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
 
-    const bool isEndAligned = true;
+    var isEndAligned = AlignmentEdge.IsEnd();
     const string flexBase = "flex flex-nowrap items-stretch content-start justify-start";
-    const string flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
-    const string scrollContainerFlexClass = $"{flexBase} {flexDir}";
+    var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
+    var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     const string flexClass = $"{flexBase} flex-col";
     const string invFlexClass = $"{flexBase} flex-col-reverse";
 

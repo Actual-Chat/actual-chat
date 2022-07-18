@@ -4,7 +4,6 @@ import { VirtualListClientSideState } from './virtual-list-client-side-state';
 import { VirtualListRenderState } from './virtual-list-render-state';
 
 export interface VirtualListAccessor {
-    SpacerSize: number;
     LoadZoneSize: number;
     Statistics: VirtualListStatistics;
     AlignmentEdge: VirtualListEdge;

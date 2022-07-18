@@ -127,7 +127,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                     $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                     Ref,
                     BlazorRef,
-                    false, //plan!.AlignmentEdge.IsEnd(),
+                    AlignmentEdge.IsEnd(),
+                    LoadZoneSize,
+                    BufferZoneSize,
                     DebugMode
                 )
                 .ConfigureAwait(true);

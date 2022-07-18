@@ -57,15 +57,16 @@ export class VirtualList implements VirtualListAccessor {
     public RenderState: VirtualListRenderState;
     public ClientSideState: VirtualListClientSideState;
     public Statistics: VirtualListStatistics = new VirtualListStatistics();
-    public SpacerSize: number = 4000;
-    public LoadZoneSize: number = 2000;
-    public BufferZoneSize: number = 2000;
+    public LoadZoneSize;
+    public BufferZoneSize;
     public AlignmentEdge: VirtualListEdge = VirtualListEdge.End;
 
     public constructor(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         isEndAligned: boolean,
+        loadZoneSize: number,
+        bufferZoneSize: number,
         debugMode: boolean) {
         if (debugMode) {
             console.log(`${LogScope}: .ctor`);
@@ -74,6 +75,8 @@ export class VirtualList implements VirtualListAccessor {
 
         this._debugMode = debugMode;
         this._isEndAligned = isEndAligned;
+        this.LoadZoneSize = loadZoneSize;
+        this.BufferZoneSize = bufferZoneSize;
         this._ref = ref;
         this._blazorRef = backendRef;
         this._isDisposed = false;
@@ -123,7 +126,7 @@ export class VirtualList implements VirtualListAccessor {
         }
 
         this.Plan = new VirtualListRenderPlan(this);
-        this.maybeOnRenderEnd([], this._renderEndObserver);
+        // this.maybeOnRenderEnd([], this._renderEndObserver);
     };
 
     get isSafeToScroll(): boolean {
@@ -134,8 +137,10 @@ export class VirtualList implements VirtualListAccessor {
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         isEndAligned: boolean,
+        loadZoneSize: number,
+        bufferZoneSize: number,
         debugMode: boolean) {
-        return new VirtualList(ref, backendRef, isEndAligned, debugMode);
+        return new VirtualList(ref, backendRef, isEndAligned, loadZoneSize, bufferZoneSize, debugMode);
     }
 
     public dispose() {
@@ -261,7 +266,8 @@ export class VirtualList implements VirtualListAccessor {
             if (this._debugMode)
                 console.log(`${LogScope}.onRenderEnd - ` +
                     `ClientSideState.scrollHeight: #${this.ClientSideState.scrollHeight}; ClientSideState.scrollTop: #${this.ClientSideState.scrollTop}; scrollTop: #${this.getScrollTop()}; ` +
-                    `pivotRefKey: ${getItemKey(this._scrollTopPivotRef)}; pivotOffset: ${this._scrollTopPivotOffset}`);
+                    `pivotRefKey: ${getItemKey(this._scrollTopPivotRef)}; pivotOffset: ${this._scrollTopPivotOffset}; ` +
+                    `isScrollHappened: ${isScrollHappened}`);
 
             if (isScrollHappened)
                 await delayAsync(RenderToUpdateClientSideStateDelay);
@@ -324,7 +330,7 @@ export class VirtualList implements VirtualListAccessor {
     private async updateClientSideStateImpl(): Promise<void> {
         const rs = this.RenderState;
         const cs = this.ClientSideState;
-        if (this._isDisposed || this._isUpdatingClientState /*|| rs.renderIndex === 0*/)
+        if (this._isDisposed || this._isUpdatingClientState || rs.renderIndex === 0)
             return;
 
         this.LastPlan = this.Plan;
@@ -364,7 +370,7 @@ export class VirtualList implements VirtualListAccessor {
                             const itemRefs = this.getOrderedItemRefs();
                             for (const itemRef of itemRefs) {
                                 const key = getItemKey(itemRef);
-                                const knownItem = cs.items[key];
+                                const knownItem = rs.items[key];
                                 if (!knownItem)
                                     continue; // Item won't exist once rendering completes
 
@@ -381,7 +387,7 @@ export class VirtualList implements VirtualListAccessor {
                             const itemRefs = this.getOrderedItemRefs(true);
                             for (const itemRef of itemRefs) {
                                 const key = getItemKey(itemRef);
-                                const knownItem = cs.items[key];
+                                const knownItem = rs.items[key];
                                 if (!knownItem)
                                     continue; // Item won't exist once rendering completes
 
@@ -690,20 +696,28 @@ export class VirtualList implements VirtualListAccessor {
         if (this.Query.IsSimilarTo(this.LastQuery))
             return;
 
-        if (!this.LastQuery.IsNone)
-        {
-            if (this._debugMode)
-                console.log(`${LogScope}.requestData: query:`, this.Query);
-            await this._blazorRef.invokeMethodAsync('RequestData', this.Query);
-        }
+        if (this._debugMode)
+            console.warn(`${LogScope}.requestData: query:`, this.Query);
+        await this._blazorRef.invokeMethodAsync('RequestData', this.Query);
         this.LastQuery = this.Query;
     }
 
     private getDataQuery(): VirtualListDataQuery {
         const plan = this.Plan;
-        const lastPlan = this.LastPlan;
+        const rs = this.RenderState;
         const itemSize = this.Statistics.ItemSize;
         const responseFulfillmentRatio = this.Statistics.ResponseFulfillmentRatio;
+        const viewport = plan.Viewport;
+        const viewportSize = RangeExt.Size(viewport);
+        const alreadyLoaded = plan.ItemRange;
+        let loadStart = viewport.Start - this.LoadZoneSize;
+        if (loadStart < alreadyLoaded.Start && rs.hasVeryFirstItem)
+            loadStart = alreadyLoaded.Start;
+        let loadEnd = viewport.End + this.LoadZoneSize;
+        if (loadEnd > alreadyLoaded.End && rs.hasVeryLastItem)
+            loadEnd = alreadyLoaded.End;
+        const loadZone = new Range(loadStart, loadEnd);
+        const bufferZone = new Range(Math.max(viewport.Start - this.BufferZoneSize, 0), viewport.End + this.BufferZoneSize);
 
         if (this.ClientSideState.scrollAnchorKey != null) {
             // we should load data near the last available item on scroll into skeleton area
@@ -721,13 +735,11 @@ export class VirtualList implements VirtualListAccessor {
             return this.LastQuery;
         if (plan.Viewport == null)
             return this.LastQuery;
-
-        const viewport = plan.Viewport;
-        const viewportSize = RangeExt.Size(viewport);
-        const loadZone = new Range(viewport.Start - this.LoadZoneSize, viewport.End + this.LoadZoneSize);
-        const bufferZone = new Range(viewport.Start - this.BufferZoneSize, viewport.End + this.BufferZoneSize);
-        const ignoreZone = new Range(viewport.Start - 2*viewportSize, viewport.End + 2*viewportSize);
-        if (RangeExt.Contains(loadZone, ignoreZone))
+        if (RangeExt.Contains(alreadyLoaded, loadZone))
+            return this.LastQuery;
+        if (loadZone.Start < alreadyLoaded.Start && (viewport.Start - alreadyLoaded.Start > viewportSize * 2))
+            return this.LastQuery;
+        if (loadZone.End > alreadyLoaded.End && (alreadyLoaded.End - viewport.End > viewportSize * 2))
             return this.LastQuery;
 
         let startIndex = -1;
