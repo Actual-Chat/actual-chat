@@ -37,12 +37,15 @@
     private async Task OnCreate()
     {
         var command = new IChats.CreateChatCommand(Session, _form.Title);
-        var result = await UICommander.Run(command).ConfigureAwait(true);
-        if (result.HasError) return;
-
-        await ModalInstance.CancelAsync().ConfigureAwait(true);
-        var chatId = result.Id;
-        Nav.NavigateTo($"/chat/{chatId}");
+        try {
+            var result = await UICommander.Call(command).ConfigureAwait(true);
+            await ModalInstance.CancelAsync().ConfigureAwait(true);
+            var chatId = result.Id;
+            Nav.NavigateTo($"/chat/{chatId}");
+        }
+        catch {
+            // Intended: command errors are shown in the UI anyway
+        }
     }
 
     private void OnCancel()
