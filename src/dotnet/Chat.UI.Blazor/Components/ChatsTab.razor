@@ -70,9 +70,4 @@
             _ => "",
             };
     }
-
-    private bool IsListening(string chatId) {
-        var listeningChatIds = ChatUI.ListeningChatIds.ValueOrDefault;
-        return listeningChatIds.Contains(chatId);
-    }
 }
