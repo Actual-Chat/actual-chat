@@ -322,7 +322,7 @@ export class VirtualList implements VirtualListAccessor {
     private async updateClientSideStateImpl(): Promise<void> {
         const rs = this.RenderState;
         const cs = this.ClientSideState;
-        if (this._isDisposed || this._isUpdatingClientState || rs.renderIndex === 0)
+        if (this._isDisposed || this._isUpdatingClientState || rs.renderIndex === 0 || !this.isSafeToScroll)
             return;
 
         this.LastPlan = this.Plan;
@@ -694,8 +694,13 @@ export class VirtualList implements VirtualListAccessor {
             return;
 
         this.Query = this.getDataQuery();
-        if (this.Query.IsSimilarTo(this.LastQuery))
+        if (this.Query.IsSimilarTo(this.LastQuery)) {
+            if (this.ClientSideState.scrollAnchorKey) {
+                let itemRef = this.getItemRef(this.ClientSideState.scrollAnchorKey);
+                this.scrollTo(itemRef, true);
+            }
             return;
+        }
 
         if (this._debugMode)
             console.warn(`${LogScope}.requestData: query:`, this.Query);
