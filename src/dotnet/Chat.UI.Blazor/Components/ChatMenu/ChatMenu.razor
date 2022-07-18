@@ -7,12 +7,3 @@
 <Divider/>
 
 <ChatMenuDelete/>
-
-
-@code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    private void OnClick() {}
-}
