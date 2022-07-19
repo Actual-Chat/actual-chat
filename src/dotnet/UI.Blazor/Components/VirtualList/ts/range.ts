@@ -5,7 +5,7 @@ export class Range<T> {
     ) {
     }
 
-    public Equals(other?: Range<T>): boolean {
+    public equals(other?: Range<T>): boolean {
         return this.Start === other?.Start && this.End === other?.End;
     }
 }

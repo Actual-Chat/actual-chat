@@ -1,4 +1,14 @@
-import { Clamp } from './math';
+import { clamp } from './math';
+
+const DefaultItemSize: number = 30;
+const MinItemSize: number = 8;
+const MaxItemSize: number = 16_384;
+const ItemCountResetThreshold: number = 1000;
+const ItemCountResetValue: number = 900;
+const MinResponseFulfillmentRatio: number = 0.25;
+const MaxResponseFulfillmentRatio: number = 1;
+const ResponseExpectedCountSumResetThreshold: number = 1000;
+const ResponseExpectedCountSumResetValue: number = 800;
 
 export class VirtualListStatistics {
     private _itemCount: number = 0;
@@ -6,52 +16,43 @@ export class VirtualListStatistics {
     private _responseActualCountSum: number = 0;
     private _responseExpectedCountSum: number = 0;
 
-    public DefaultItemSize: number = 100;
-    public MinItemSize: number = 8;
-    public MaxItemSize: number = 16_384;
-    public ItemCountResetThreshold: number = 1000;
-    public ItemCountResetValue: number = 900;
 
-    public get ItemSize(): number {
+
+    public get itemSize(): number {
         const num = this._itemCount == 0
-                    ? this.DefaultItemSize
-                    : this._itemSizeSum / this._itemCount;
-        return Clamp(num, this.MinItemSize, this.MaxItemSize);
+            ? DefaultItemSize
+            : this._itemSizeSum / this._itemCount;
+        return clamp(num, MinItemSize, MaxItemSize);
     }
 
-    public MinResponseFulfillmentRatio: number = 0.25;
-    public MaxResponseFulfillmentRatio: number = 1;
-    public ResponseExpectedCountSumResetThreshold: number = 1000;
-    public ResponseExpectedCountSumResetValue: number = 800;
-
-    public get ResponseFulfillmentRatio(): number {
+    public get responseFulfillmentRatio(): number {
         const num = this._responseExpectedCountSum < 1
-                    ? this.MaxResponseFulfillmentRatio
+                    ? MaxResponseFulfillmentRatio
                     : this._responseActualCountSum / this._responseExpectedCountSum;
-        return Clamp(num, this.MinResponseFulfillmentRatio, this.MaxResponseFulfillmentRatio);
+        return clamp(num, MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
     }
 
-    public AddItem(size: number, countAs: number): void {
+    public addItem(size: number, countAs: number): void {
         if (countAs == 0)
             return;
 
         size /= countAs;
         this._itemSizeSum += size;
         this._itemCount += countAs;
-        if (this._itemCount < this.ItemCountResetThreshold) return;
+        if (this._itemCount < ItemCountResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        this._itemSizeSum *= this.ItemCountResetValue / this._itemCount;
-        this._itemCount = this.ItemCountResetValue;
+        this._itemSizeSum *= ItemCountResetValue / this._itemCount;
+        this._itemCount = ItemCountResetValue;
     }
 
-    public AddResponse(actualCount: number, expectedCount: number): void {
+    public addResponse(actualCount: number, expectedCount: number): void {
         this._responseActualCountSum += actualCount;
         this._responseExpectedCountSum += expectedCount;
-        if (this._responseExpectedCountSum < this.ResponseExpectedCountSumResetThreshold) return;
+        if (this._responseExpectedCountSum < ResponseExpectedCountSumResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        this._responseActualCountSum *= this.ResponseExpectedCountSumResetValue / this._responseExpectedCountSum;
-        this._responseExpectedCountSum = this.ResponseExpectedCountSumResetValue;
+        this._responseActualCountSum *= ResponseExpectedCountSumResetValue / this._responseExpectedCountSum;
+        this._responseExpectedCountSum = ResponseExpectedCountSumResetValue;
     }
 }

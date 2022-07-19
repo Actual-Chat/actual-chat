@@ -7,116 +7,116 @@ import { VirtualListEdgeExt } from './virtual-list-edge-ext';
 import { VirtualListAccessor } from './virtual-list-accessor';
 
 export class VirtualListRenderPlan {
-    public Viewport?: Range<number> = null;
-    public ItemRange?: Range<number> = null;
-    public VirtualList: VirtualListAccessor;
-    public ItemByKey: Record<string, ItemRenderPlan>;
-    public Items: ItemRenderPlan[];
+    public viewport?: Range<number> = null;
+    public itemRange?: Range<number> = null;
+    public virtualList: VirtualListAccessor;
+    public itemByKey: Record<string, ItemRenderPlan>;
+    public items: ItemRenderPlan[];
 
     constructor(virtualList: VirtualListAccessor, lastPlan?: VirtualListRenderPlan) {
-        this.VirtualList = virtualList;
-        this.ItemByKey = {};
-        this.Items = [];
-        this.Update(lastPlan);
+        this.virtualList = virtualList;
+        this.itemByKey = {};
+        this.items = [];
+        this.update(lastPlan);
     }
 
-    public get FullRange(): Range<number> | null {
-        return this.ItemRange
-               ? new Range(-this.SpacerSize, this.ItemRange.End + this.EndSpacerSize)
+    public get fullRange(): Range<number> | null {
+        return this.itemRange
+               ? new Range(-this.spacerSize, this.itemRange.End + this.endSpacerSize)
                : null;
     }
 
-    public get TrimmedLoadZoneRange(): Range<number> | null {
-        return this.Viewport ? this.GetTrimmedLoadZoneRange(this.Viewport) : null;
+    public get trimmedLoadZoneRange(): Range<number> | null {
+        return this.viewport ? this.getTrimmedLoadZoneRange(this.viewport) : null;
     }
 
-    public get HasUnmeasuredItems(): boolean {
-        return !this.ItemRange;
+    public get hasUnmeasuredItems(): boolean {
+        return !this.itemRange;
     }
 
-    public get AlignmentEdge(): VirtualListEdge {
-        return this.VirtualList.AlignmentEdge;
+    public get alignmentEdge(): VirtualListEdge {
+        return this.virtualList.alignmentEdge;
     }
 
-    public get SpacerSize(): number {
-        return this.VirtualList.RenderState.spacerSize;
+    public get spacerSize(): number {
+        return this.virtualList.renderState.spacerSize;
     }
 
-    public get EndSpacerSize(): number {
-        return this.VirtualList.RenderState.endSpacerSize;
+    public get endSpacerSize(): number {
+        return this.virtualList.renderState.endSpacerSize;
     }
 
-    public get IsFullyLoaded(): boolean | null {
-        if (!this.ItemRange || !this.TrimmedLoadZoneRange)
+    public get isFullyLoaded(): boolean | null {
+        if (!this.itemRange || !this.trimmedLoadZoneRange)
             return null;
 
-        return (this.VirtualList.RenderState.hasVeryFirstItem && this.VirtualList.RenderState.hasVeryLastItem)
-            || RangeExt.Contains(this.ItemRange, this.TrimmedLoadZoneRange);
+        return (this.virtualList.renderState.hasVeryFirstItem && this.virtualList.renderState.hasVeryLastItem)
+            || RangeExt.contains(this.itemRange, this.trimmedLoadZoneRange);
     }
 
-    public Next(): VirtualListRenderPlan {
-        return new VirtualListRenderPlan(this.VirtualList, this);
+    public next(): VirtualListRenderPlan {
+        return new VirtualListRenderPlan(this.virtualList, this);
     }
 
-    public GetTrimmedLoadZoneRange(viewport: Range<number>): Range<number> {
+    public getTrimmedLoadZoneRange(viewport: Range<number>): Range<number> {
         return new Range(
-            viewport.Start - (this.VirtualList.RenderState.hasVeryFirstItem ? 0 : this.VirtualList.LoadZoneSize),
-            viewport.End + (this.VirtualList.RenderState.hasVeryLastItem ? 0 : this.VirtualList.LoadZoneSize),
+            viewport.Start - (this.virtualList.renderState.hasVeryFirstItem ? 0 : this.virtualList.loadZoneSize),
+            viewport.End + (this.virtualList.renderState.hasVeryLastItem ? 0 : this.virtualList.loadZoneSize),
         );
     }
 
-    private Update(lastPlan?: VirtualListRenderPlan): void {
-        const statistics = this.VirtualList.Statistics;
-        const clientSideItems = this.VirtualList.ClientSideState?.items;
-        const prevItemByKey = lastPlan?.ItemByKey;
+    private update(lastPlan?: VirtualListRenderPlan): void {
+        const statistics = this.virtualList.statistics;
+        const clientSideItems = this.virtualList.clientSideState?.items;
+        const prevItemByKey = lastPlan?.itemByKey;
 
         let hasUnmeasuredItems: boolean = false;
         let itemRange = new Range(0, 0);
 
-        for (const [key, item] of Object.entries(this.VirtualList.RenderState.items)) {
+        for (const [key, item] of Object.entries(this.virtualList.renderState.items)) {
             const newItem = new ItemRenderPlan(key, item);
             if (clientSideItems != null && clientSideItems[key] != null) {
                 const clientSideItem = clientSideItems[key];
                 const size = clientSideItem.size;
-                statistics.AddItem(size, item.countAs);
-                newItem.Range = new Range(0, size);
+                statistics.addItem(size, item.countAs);
+                newItem.range = new Range(0, size);
             } else if (prevItemByKey != null && prevItemByKey[key] != null) {
                 const oldItem = prevItemByKey[key];
-                newItem.Range = oldItem.Range;
+                newItem.range = oldItem.range;
             }
 
-            this.Items.push(newItem);
-            this.ItemByKey[key] = newItem;
-            if (newItem.IsMeasured) {
-                itemRange = new Range(itemRange.End, itemRange.End + newItem.Size);
-                newItem.Range = itemRange;
+            this.items.push(newItem);
+            this.itemByKey[key] = newItem;
+            if (newItem.isMeasured) {
+                itemRange = new Range(itemRange.End, itemRange.End + newItem.size);
+                newItem.range = itemRange;
             } else {
                 hasUnmeasuredItems = true;
             }
         }
-        this.ItemRange = hasUnmeasuredItems ? null : new Range(0, itemRange.End);
-        this.UpdateViewport();
+        this.itemRange = hasUnmeasuredItems ? null : new Range(0, itemRange.End);
+        this.updateViewport();
     }
 
-    private UpdateViewport(): void {
-        const viewport = VirtualListRenderPlan.getClientSideViewport(this.VirtualList.ClientSideState);
+    private updateViewport(): void {
+        const viewport = VirtualListRenderPlan.getClientSideViewport(this.virtualList.clientSideState);
         if (!viewport) {
-            if (this.Viewport == null) {
+            if (this.viewport == null) {
                 return;
             }
-            if (this.HasUnmeasuredItems) {
-                this.Viewport = null;
+            if (this.hasUnmeasuredItems) {
+                this.viewport = null;
                 return;
             }
         } else {
-            if (this.FullRange == null) {
-                this.Viewport = null;
+            if (this.fullRange == null) {
+                this.viewport = null;
                 return;
             }
-            this.Viewport = RangeExt.ScrollInto(
+            this.viewport = RangeExt.scrollInto(
                 viewport,
-                this.FullRange,
-                VirtualListEdgeExt.IsEnd(this.AlignmentEdge));
+                this.fullRange,
+                VirtualListEdgeExt.isEnd(this.alignmentEdge));
         }
     }
 

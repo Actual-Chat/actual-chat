@@ -4,29 +4,29 @@ export class VirtualListDataQuery
 {
     public static None: VirtualListDataQuery = new VirtualListDataQuery();
 
-    public InclusiveRange?: Range<string> = null;
-    public ScrollToKey?: string = null;
-    public ExpandStartBy: number = 0;
-    public ExpandEndBy: number = 0;
+    public inclusiveRange?: Range<string> = null;
+    public scrollToKey?: string = null;
+    public expandStartBy: number = 0;
+    public expandEndBy: number = 0;
 
     constructor(inclusiveRange?: Range<string>) {
-         this.InclusiveRange = inclusiveRange;
+         this.inclusiveRange = inclusiveRange;
     }
 
-    public get IsNone(): boolean {
+    public get isNone(): boolean {
         return this === VirtualListDataQuery.None;
     }
 
-    public IsSimilarTo(other: VirtualListDataQuery): boolean
+    public isSimilarTo(other: VirtualListDataQuery): boolean
     {
         if (this === other)
             return true;
 
-        if (!this.InclusiveRange.Equals(other.InclusiveRange))
+        if (!this.inclusiveRange.equals(other.inclusiveRange))
             return false;
 
         const epsilon: number = 10;
-        return !(Math.abs(this.ExpandStartBy - other.ExpandStartBy) > epsilon)
-            && !(Math.abs(this.ExpandEndBy - other.ExpandEndBy) > epsilon);
+        return !(Math.abs(this.expandStartBy - other.expandStartBy) > epsilon)
+            && !(Math.abs(this.expandEndBy - other.expandEndBy) > epsilon);
     }
 }
