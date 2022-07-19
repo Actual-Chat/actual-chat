@@ -112,3 +112,58 @@ input.input-underlined {
 .error-toast .toast-content {
     @apply flex p-2 rounded-b-md bg-error-toast-body;
 }
+
+/* BlazorContextMenu overridden classes */
+
+.context-menu {
+    @apply rounded-xl p-1;
+}
+.context-menu-list {
+    @apply p-0;
+}
+.context-menu-item {
+    @apply !flex rounded-lg h-8 whitespace-nowrap;
+}
+.context-menu-item:hover {
+    @apply bg-round-hover;
+}
+.context-menu-item:hover .context-menu-icon {
+    @apply text-success;
+}
+.context-menu-content {
+    @apply flex-x gap-x-2 items-center;
+}
+.context-menu-text {
+    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+}
+.context-menu-icon {
+    @apply text-icons-01;
+}
+.context-menu-separator {
+    @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
+}
+.context-menu-separator > * {
+    @apply bg-transparent border-0 m-0 p-0;
+}
+/* Important ContextMenuItem */
+.context-menu-item.important-item .context-menu-icon,
+.context-menu-item.important-item.off .context-menu-icon,
+.context-menu-item.important-item .context-menu-text,
+.context-menu-item.important-item.off .context-menu-text {
+    @apply text-success;
+}
+.context-menu-item.important-item.on .context-menu-icon,
+.context-menu-item.important-item.on .context-menu-text {
+    @apply text-error;
+}
+.context-menu-item.important-item.on:hover {
+    @apply bg-error-hover;
+}
+/* Warning Menu Item */
+.context-menu-item.warning-item:hover {
+    @apply bg-error-hover;
+}
+.context-menu-item.warning-item:hover .context-menu-icon,
+.context-menu-item.warning-item:hover .context-menu-text {
+    @apply text-error;
+}

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public interface IContextMenuBackend
+public interface ICustomContextMenuBackend
 {
     Task Toggle(bool? mustOpen = null);
 }

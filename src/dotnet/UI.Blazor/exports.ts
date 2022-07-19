@@ -4,7 +4,7 @@ import './Components/Button/button.css';
 import './Components/ChatIcon/chat-icon.css'
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
-import './Components/ContextMenu/context-menu.css';
+import './Components/ContextMenu/custom-context-menu.css';
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
@@ -18,7 +18,7 @@ import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 
 export * from './Components/Clipboard/clipboard';
-export * from './Components/ContextMenu/context-menu';
+export * from './Components/ContextMenu/custom-context-menu';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';

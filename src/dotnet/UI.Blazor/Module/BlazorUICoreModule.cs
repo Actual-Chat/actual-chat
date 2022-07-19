@@ -28,7 +28,16 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddBlazoredLocalStorage();
         services.AddBlazoredSessionStorage();
         services.AddBlazoredModal();
-        services.AddBlazorContextMenu();
+        services.AddBlazorContextMenu(options =>
+        {
+            options.ConfigureTemplate(defaultTemplate =>
+            {
+                defaultTemplate.MenuCssClass = "context-menu";
+                defaultTemplate.MenuItemCssClass = "context-menu-item";
+                defaultTemplate.MenuListCssClass = "context-menu-list";
+                defaultTemplate.SeperatorCssClass = "context-menu-separator";
+            });
+        });
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =

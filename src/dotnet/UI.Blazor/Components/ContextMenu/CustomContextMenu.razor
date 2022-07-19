@@ -1,19 +1,19 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IMenu
-@implements IContextMenuBackend
+@implements ICustomContextMenuBackend
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.Module
 
 <CascadingValue Value="@((IMenu) this)" IsFixed="true">
-    <div @ref="Ref" class="context-menu @Class">
-        <button class="context-menu-button @ButtonClass" @onclick="_ => Toggle()">
-            <div class="context-menu-button-inner">
+    <div @ref="Ref" class="custom-context-menu @Class">
+        <button class="custom-context-menu-button @ButtonClass" @onclick="_ => Toggle()">
+            <div class="custom-context-menu-button-inner">
                 @ButtonTemplate
             </div>
         </button>
         @if (_isOpen) {
-            <div class="context-menu-menu @MenuClass">
-                <div class="select-none relative p-1 flex-y context-menu-menu-inner">
+            <div class="custom-context-menu-menu @MenuClass">
+                <div class="select-none relative p-1 flex-y custom-context-menu-menu-inner">
                     @MenuTemplate
                 </div>
             </div>
@@ -24,7 +24,7 @@
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    private DotNetObjectReference<IContextMenuBackend> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<ICustomContextMenuBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private bool _isOpen;
@@ -59,7 +59,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IContextMenuBackend>(this);
+            BlazorRef = DotNetObjectReference.Create<ICustomContextMenuBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.ContextMenu.create",
                 Ref, BlazorRef

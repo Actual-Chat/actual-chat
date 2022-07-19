@@ -12,7 +12,7 @@
 .message-wrapper:hover .author-badge {
     @apply bg-message-hover;
 }
-.message-wrapper:hover .context-menu-button.show-on-hover {
+.message-wrapper:hover .custom-context-menu-button.show-on-hover {
     @apply visible;
 }
 .message-wrapper.own-message {
@@ -130,16 +130,16 @@
     @apply ml-0;
 }
 
-.chat-message:hover .chat-message-menu .context-menu-button {
+.chat-message:hover .chat-message-menu .custom-context-menu-button {
     @apply visible;
 }
 
-.chat-message-menu .context-menu-menu {
+.chat-message-menu .custom-context-menu-menu {
     @apply absolute z-10 right-16 -mt-3 -mr-2;
     @apply rounded-xl;
     @apply shadow-context border border-context-border bg-01;
 }
-.chat-message-menu .context-menu-menu-inner {
+.chat-message-menu .custom-context-menu-menu-inner {
     @apply p-0;
 }
 .chat-message-menu .menu-item {
