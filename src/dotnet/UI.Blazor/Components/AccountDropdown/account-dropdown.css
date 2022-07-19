@@ -30,3 +30,13 @@
 .btn.btn-square.account-btn:focus {
     @apply ring-4 ring-square-focus rounded-sm;
 }
+
+.left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
+    @apply bg-success text-success-title;
+}
+.left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
+    @apply bg-success text-success-title h-10 w-10 min-h-0 min-w-0;
+}
+.left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-content {
+    @apply bg-success-hover text-success-title;
+}
