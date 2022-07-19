@@ -1,14 +1,17 @@
 @using ActualChat.Users
+@using BlazorContextMenu
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
     RenderFragment RenderChat(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(ActiveChatId == c.Id)">
             <ChildContent>
-                <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
-                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
+                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContextMenuId(c.Id)">
+                    <div class="flex-x items-center">
+                        <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
+                        <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                    </div>
+                </ContextMenuTrigger>
             </ChildContent>
             <Ending>
                 @if (Group == ChatGroup.Listening ) {
@@ -26,11 +29,14 @@
                                 </svg>
                             </ButtonTemplate>
                             <MenuTemplate>
-                                <Menu Class="-left-48 ml-2 absolute w-24" ItemClass="text-left">
+                                <Menu Class="-left-48 ml-3 absolute w-24 -mt-0.5" ItemClass="text-left">
                                     <ChatMenu/>
                                 </Menu>
                             </MenuTemplate>
                         </Dropdown>
+
+                        <RightClickChatMenu Id="@ContextMenuId(c.Id)"/>
+
                     </CascadingValue>
                     <UnreadMessageCounter ChatId="@c.Id"/>
                 }
@@ -61,6 +67,9 @@
     [Parameter] public ChatGroup Group { get; set; } = ChatGroup.Listening;
     [Parameter] public List<Chat>? ChatList { get; set; }
     [Parameter] public string ActiveChatId { get; set; } = "";
+
+    private string ContextMenuId(string chatId)
+        => "chat-context-menu-" + chatId;
 
     private string GetCss(ChatGroup group) {
         return group switch

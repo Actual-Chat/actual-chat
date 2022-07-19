@@ -13,7 +13,7 @@ export class ContextMenu {
     constructor(ref: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
         this._ref = ref;
-        this._button = this._ref.querySelector('.context-menu-button');
+        this._button = this._ref.querySelector('.custom-context-menu-button');
 
         window.addEventListener('mouseup', this.onMouseUp);
         document.addEventListener('keydown', this.onKeyDown);
@@ -23,7 +23,7 @@ export class ContextMenu {
                 for (let node of mutation.addedNodes) {
                     if (node.nodeName.toLowerCase() == 'div') {
                         let elem = node as HTMLDivElement;
-                        if (elem.classList.contains('context-menu-menu')) {
+                        if (elem.classList.contains('custom-context-menu-menu')) {
                             this._menu = elem;
                             this.updatePosition(this._menu);
                             this.updateStyle(true);
@@ -38,7 +38,7 @@ export class ContextMenu {
                 for (let node of mutation.removedNodes) {
                     if (node.nodeName.toLowerCase() == 'div') {
                         let elem = node as HTMLDivElement;
-                        if (elem.classList.contains('context-menu-menu')) {
+                        if (elem.classList.contains('custom-context-menu-menu')) {
                             this._menu = null;
                             this.updateStyle(false);
                         }
