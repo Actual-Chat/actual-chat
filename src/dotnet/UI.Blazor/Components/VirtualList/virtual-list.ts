@@ -49,16 +49,16 @@ export class VirtualList implements VirtualListAccessor {
     private _updateClientSideStateTasks: Promise<void>[] = [];
     private _updateClientSideStateRenderIndex = -1;
 
-    private lastPlan?: VirtualListRenderPlan = null;
-    private plan: VirtualListRenderPlan;
-    private lastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
-    private query: VirtualListDataQuery = VirtualListDataQuery.None;
+    private _lastPlan?: VirtualListRenderPlan = null;
+    private _plan: VirtualListRenderPlan;
+    private _lastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
+    private _query: VirtualListDataQuery = VirtualListDataQuery.None;
 
     public renderState: VirtualListRenderState;
     public clientSideState: VirtualListClientSideState;
     public statistics: VirtualListStatistics = new VirtualListStatistics();
     public loadZoneSize;
-    public BufferZoneSize;
+    public bufferZoneSize;
     public alignmentEdge: VirtualListEdge = VirtualListEdge.End;
 
     public constructor(
@@ -76,7 +76,7 @@ export class VirtualList implements VirtualListAccessor {
         this._debugMode = debugMode;
         this._isEndAligned = isEndAligned;
         this.loadZoneSize = loadZoneSize;
-        this.BufferZoneSize = bufferZoneSize;
+        this.bufferZoneSize = bufferZoneSize;
         this._ref = ref;
         this._blazorRef = backendRef;
         this._isDisposed = false;
@@ -125,7 +125,7 @@ export class VirtualList implements VirtualListAccessor {
             items: {},
         };
 
-        this.plan = new VirtualListRenderPlan(this);
+        this._plan = new VirtualListRenderPlan(this);
     };
 
     get isSafeToScroll(): boolean {
@@ -182,10 +182,10 @@ export class VirtualList implements VirtualListAccessor {
             this.renderState = rs;
             // update statistics
             const responseFulfillmentRatio = this.statistics.responseFulfillmentRatio;
-            if (this.lastQuery.expandStartBy > 0 && !rs.hasVeryFirstItem)
-                this.statistics.addResponse(rs.startExpansion, this.lastQuery.expandStartBy * responseFulfillmentRatio);
-            if (this.lastQuery.expandEndBy > 0 && !rs.hasVeryLastItem)
-                this.statistics.addResponse(rs.endExpansion, this.lastQuery.expandEndBy * responseFulfillmentRatio);
+            if (this._lastQuery.expandStartBy > 0 && !rs.hasVeryFirstItem)
+                this.statistics.addResponse(rs.startExpansion, this._lastQuery.expandStartBy * responseFulfillmentRatio);
+            if (this._lastQuery.expandEndBy > 0 && !rs.hasVeryLastItem)
+                this.statistics.addResponse(rs.endExpansion, this._lastQuery.expandEndBy * responseFulfillmentRatio);
 
             if (this._debugMode)
                 console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
@@ -330,7 +330,7 @@ export class VirtualList implements VirtualListAccessor {
         if (this._isDisposed || this._isUpdatingClientState || rs.renderIndex === 0 || !this.isSafeToScroll)
             return;
 
-        this.lastPlan = this.plan;
+        this._lastPlan = this._plan;
         try {
             this._isUpdatingClientState = true;
             if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
@@ -519,7 +519,7 @@ export class VirtualList implements VirtualListAccessor {
                     await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', state.visibleKeys);
                 }
 
-                const plan = this.plan = this.lastPlan.next();
+                const plan = this._plan = this._lastPlan.next();
                 if (!plan.isFullyLoaded) {
                     await this.requestData();
                 }
@@ -696,11 +696,11 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private async requestData(): Promise<void> {
-        if (this.plan.isFullyLoaded)
+        if (this._plan.isFullyLoaded)
             return;
 
-        this.query = this.getDataQuery();
-        if (this.query.isSimilarTo(this.lastQuery)) {
+        this._query = this.getDataQuery();
+        if (this._query.isSimilarTo(this._lastQuery)) {
             if (this.clientSideState.scrollAnchorKey) {
                 let itemRef = this.getItemRef(this.clientSideState.scrollAnchorKey);
                 this.scrollTo(itemRef, true);
@@ -709,13 +709,13 @@ export class VirtualList implements VirtualListAccessor {
         }
 
         if (this._debugMode)
-            console.warn(`${LogScope}.requestData: query:`, this.query);
-        await this._blazorRef.invokeMethodAsync('RequestData', this.query);
-        this.lastQuery = this.query;
+            console.warn(`${LogScope}.requestData: query:`, this._query);
+        await this._blazorRef.invokeMethodAsync('RequestData', this._query);
+        this._lastQuery = this._query;
     }
 
     private getDataQuery(): VirtualListDataQuery {
-        const plan = this.plan;
+        const plan = this._plan;
         const rs = this.renderState;
         const itemSize = this.statistics.itemSize;
         const responseFulfillmentRatio = this.statistics.responseFulfillmentRatio;
@@ -730,8 +730,8 @@ export class VirtualList implements VirtualListAccessor {
             loadEnd = alreadyLoaded.End;
         const loadZone = new Range(loadStart, loadEnd);
         const bufferZone = new Range(
-            Math.max(viewport.Start - this.BufferZoneSize, 0),
-            viewport.End + this.BufferZoneSize);
+            Math.max(viewport.Start - this.bufferZoneSize, 0),
+            viewport.End + this.bufferZoneSize);
 
         if (this.clientSideState.scrollAnchorKey != null) {
             // we should load data near the last available item on scroll into skeleton area
@@ -744,17 +744,17 @@ export class VirtualList implements VirtualListAccessor {
             return anchorQuery;
         }
         if (plan.hasUnmeasuredItems) // Let's wait for measurement to complete first
-            return this.lastQuery;
+            return this._lastQuery;
         if (plan.items.length == 0) // No entries -> nothing to "align" the query to
-            return this.lastQuery;
+            return this._lastQuery;
         if (plan.viewport == null)
-            return this.lastQuery;
+            return this._lastQuery;
         if (RangeExt.contains(alreadyLoaded, loadZone))
-            return this.lastQuery;
+            return this._lastQuery;
         if (loadZone.Start < alreadyLoaded.Start && (viewport.Start - alreadyLoaded.Start > viewportSize * 2))
-            return this.lastQuery;
+            return this._lastQuery;
         if (loadZone.End > alreadyLoaded.End && (alreadyLoaded.End - viewport.End > viewportSize * 2))
-            return this.lastQuery;
+            return this._lastQuery;
 
         let startIndex = -1;
         let endIndex = -1;
