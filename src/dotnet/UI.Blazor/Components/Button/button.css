@@ -1,6 +1,6 @@
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-1 px-3 fill-current rounded-xl border;
+    @apply py-1 px-3 fill-current rounded-md border;
     @apply min-w-32 md:min-w-24 max-w-full md:max-w-max;
     @apply text-xl md:text-lg font-normal md:font-normal;
     @apply h-12 md:h-10 min-h-12 md:min-h-10;
