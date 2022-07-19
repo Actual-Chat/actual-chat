@@ -1,7 +1,7 @@
 ﻿@page "/join/{InviteId}"
 @using ActualChat.Invite
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
+<RequireAccount/>
 <MainHeader>Joining via invite link</MainHeader>
 
 @if (_useResult is { } useResult) {

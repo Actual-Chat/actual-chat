@@ -1,12 +1,11 @@
 @page "/user/invite"
 @using ActualChat.Invite
 @inherits ComputedStateComponent<ImmutableArray<Invite>>
-@attribute [Authorize(Policy = KnownPolicies.IsAdmin)]
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var m = State.LatestNonErrorValue;
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>User invite codes</MainHeader>
 
 <div class="-flex-x">

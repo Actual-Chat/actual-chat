@@ -99,7 +99,6 @@
     <Using Include="ActualChat.UI.Blazor.Components" />
     <Using Include="ActualChat.UI.Blazor.Layouts" />
     <Using Include="Microsoft.AspNetCore.Components" />
-    <Using Include="Microsoft.AspNetCore.Components.Authorization" />
     <Using Include="Microsoft.AspNetCore.Components.Forms" />
     <Using Include="Microsoft.AspNetCore.Components.Routing" />
     <Using Include="Microsoft.AspNetCore.Components.Web" />

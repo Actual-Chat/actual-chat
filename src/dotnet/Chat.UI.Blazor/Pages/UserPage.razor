@@ -1,7 +1,5 @@
 @page "/u/{UserId}"
-@using System.Net
 @inherits ComputedStateComponent<UserPage.Model>
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var m = State.LatestNonErrorValue;
     var user = m.User;
@@ -12,6 +10,7 @@
     }
 }
 
+<RequireAccount/>
 <MainHeader>
     <span class="text-03">User: @user.Name</span>
 </MainHeader>

@@ -3,7 +3,6 @@
 @using Blazored.LocalStorage
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
@@ -23,6 +22,9 @@
 @if (chat == null) {
     <div>Loading...</div>
     return;
+}
+@if (!chat.IsPublic) {
+    <RequireAccount/>
 }
 @* @key=... ensures child components are recreated on navigation to another chat *@
 <RenderIntoSlot Name="MainHeader">
