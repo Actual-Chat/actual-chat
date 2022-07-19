@@ -8,10 +8,9 @@
     TextClass="hidden" />
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
-
     private User? User { get; set; }
+
+    [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
 

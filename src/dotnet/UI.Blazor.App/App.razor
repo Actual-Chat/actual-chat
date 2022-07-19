@@ -6,25 +6,23 @@
 @using Stl.Plugins
 @using System.Reflection
 @implements IDisposable
-@{
-}
 
 <CascadingAuthState>
     <CascadingBlazoredModal>
-        <Welcome>
-            <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-                <Found>
-                    <CascadingValue Value="@context">
+        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+            <Found>
+                <CascadingValue Value="@context">
+                    <ErrorWrapper @key="context">
                         <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
-                    </CascadingValue>
-                </Found>
-                <NotFound>
-                    <LayoutView Layout="@typeof(MainLayout)">
-                        <p>Sorry, there's nothing here.</p>
-                    </LayoutView>
-                </NotFound>
-            </Router>
-        </Welcome>
+                    </ErrorWrapper>
+                </CascadingValue>
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <p>Sorry, there's nothing here.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
     </CascadingBlazoredModal>
 </CascadingAuthState>
 

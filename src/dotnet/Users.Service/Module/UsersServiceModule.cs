@@ -8,12 +8,10 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 using Stl.Redis;
 
@@ -32,6 +30,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         base.InjectServices(services);
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
+
+        UserOverrides.Apply();
 
         // ASP.NET Core authentication providers
         services.AddAuthentication(options => {

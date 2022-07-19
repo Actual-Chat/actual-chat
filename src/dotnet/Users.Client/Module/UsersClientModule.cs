@@ -15,6 +15,8 @@ public class UsersClientModule : HostModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
             return; // Client-side only module
 
+        UserOverrides.Apply();
+
         var fusion = services.AddFusion();
         var fusionClient = services.AddFusion().AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();

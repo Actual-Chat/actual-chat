@@ -27,4 +27,8 @@
     <TypeScriptCompile Include="theme.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\ErrorHandling\Try.razor" />
+  </ItemGroup>
+
 </Project>

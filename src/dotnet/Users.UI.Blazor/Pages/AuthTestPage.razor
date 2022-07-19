@@ -9,7 +9,9 @@
 
 <MainHeader>Authentication Test Page</MainHeader>
 
-<WhenError Title="Update error:" Error="@error" Class="mb-3"/>
+@if (error != null) {
+    <Error Title="Update error" Class="mb-3">@error.Message</Error>
+}
 
 <h3 class="section border-0">Session</h3>
 <ul>

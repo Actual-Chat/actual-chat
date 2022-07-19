@@ -38,10 +38,11 @@
             @if (failures.Count != 0) {
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
                     @foreach (var failure in failures) {
-                        <WhenCommandError
-                            @key="failure"
-                            Error="failure.Error"
-                            Dismissed="@(_ => UIActionFailureTracker.Remove(failure))"/>
+                        <Error @key="failure"
+                               Title="Action failed!"
+                               Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                            @failure.Error!.Message
+                        </Error>
                     }
                 </div>
             }

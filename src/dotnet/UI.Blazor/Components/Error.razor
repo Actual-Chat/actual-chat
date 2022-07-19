@@ -1,5 +1,5 @@
-@if (!_isClosed) {
-    <div class="@Class error-toast">
+@if (!_isDismissed) {
+    <div class="error-toast @Class">
         <div class="toast-header">
             <div class="header-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 -2 26 26">
@@ -7,7 +7,7 @@
                 </svg>
             </div>
             <div class="header-title">@Title</div>
-            <Button Class="flex float-right mt-1.5 !p-0 !min-w-0 !h-min !border-0" Click="_ => Close()">
+            <Button Class="flex float-right mt-1.5 !p-0 !min-w-0 !h-min !border-0" Click="_ => Dismiss()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" class="w-4 h-4 fill-current"><path d="M23.954 21.03l-9.184-9.095 9.092-9.174-2.832-2.807-9.09 9.179-9.176-9.088-2.81 2.81 9.186 9.105-9.095 9.184 2.81 2.81 9.112-9.192 9.18 9.1z"/></svg>
             </Button>
         </div>
@@ -16,29 +16,29 @@
 }
 
 @code {
-    private bool _isClosed;
+    private bool _isDismissed;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "Error:";
+    [Parameter] public double? AutoDismissDelay { get; set; }
     [Parameter] public EventCallback Dismissed { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private Task Close()
+    private async Task Dismiss()
     {
-        _isClosed = true;
-        return Dismissed.InvokeAsync(null);
+        if (_isDismissed)
+            return;
+        _isDismissed = true;
+        await Dismissed.InvokeAsync(null);
     }
 
-    private async Task AutoClose() {
-        await Task.Delay(5000).ConfigureAwait(true);
-        if (!_isClosed)
-            await Close().ConfigureAwait(true);
+    private async Task AutoDismiss(TimeSpan delay) {
+        await Task.Delay(delay).ConfigureAwait(true);
+        await Dismiss().ConfigureAwait(false);
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
-            _ = AutoClose();
-        return Task.CompletedTask;
+    protected override void OnInitialized() {
+        if (AutoDismissDelay is { } autoDismissDelay)
+            _ = AutoDismiss(TimeSpan.FromSeconds(autoDismissDelay));
     }
-
 }

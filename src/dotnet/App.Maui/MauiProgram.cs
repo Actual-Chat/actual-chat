@@ -118,9 +118,6 @@ public static class MauiProgram
 
         services.AddTransient<MainPage>();
 
-        // Host-specific service overrides
-        services.AddSingleton(new WelcomeOptions() { MustBypass = true });
-
         // Auth
         services.AddScoped<IClientAuth, MauiClientAuth>();
     }

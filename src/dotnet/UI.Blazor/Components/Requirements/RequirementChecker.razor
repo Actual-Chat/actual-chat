@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<FailedRequirementSet>
+
+@if (Failures.Count == 0) {
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+} else {
+    @ErrorContent(Failures)
+}
+
+@code {
+    protected MutableDictionary<RequirementComponent, Unit> Requirements { get; private set; } = new();
+
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public RenderFragment<FailedRequirementSet> ErrorContent { get; set; } = null!;
+
+    public FailedRequirementSet Failures => State.Value;
+
+    public virtual void Add(RequirementComponent requirement) {
+        if (Requirements.ContainsKey(requirement)) return;
+
+        Requirements.Add(requirement, default);
+        State.Invalidate();
+    }
+
+    public virtual void Remove(RequirementComponent requirement) {
+        if (!Requirements.ContainsKey(requirement)) return;
+
+        Requirements.Remove(requirement);
+        State.Invalidate();
+    }
+
+    public virtual void Reset() {
+        Requirements.Clear();
+        State.Invalidate();
+    }
+
+    protected override ComputedState<FailedRequirementSet>.Options GetStateOptions()
+        => new() {
+            InitialValue = FailedRequirementSet.Empty,
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+        };
+
+    protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {
+        var failures = ImmutableDictionary<RequirementComponent, Exception>.Empty;
+        var recoveredRequirements = ImmutableList<RequirementComponent>.Empty;
+        foreach (var requirement in Requirements.Keys) {
+            try {
+                await requirement.Require(cancellationToken).ConfigureAwait(true);
+                recoveredRequirements = recoveredRequirements.Add(requirement);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                failures = failures.Add(requirement, e);
+            }
+        }
+        foreach (var requirement in recoveredRequirements)
+            Requirements.Remove(requirement);
+
+        return failures.Any() ? new FailedRequirementSet(failures) : FailedRequirementSet.Empty;
+    }
+}
+
+

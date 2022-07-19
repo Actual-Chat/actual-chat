@@ -17,7 +17,7 @@
 }
 
 @if (error != null) {
-    <WhenError Error="error"/>
+    <Error Title="Update error" Class="mb-3">@error.Message</Error>
     return;
 }
 @if (chat == null) {
