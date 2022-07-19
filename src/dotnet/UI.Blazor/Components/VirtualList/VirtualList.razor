@@ -3,9 +3,6 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
-    // var plan = LastPlan = Plan;
-    // DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
-
     var isEndAligned = AlignmentEdge.IsEnd();
     const string flexBase = "flex flex-nowrap items-stretch content-start justify-start";
     var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
@@ -29,20 +26,11 @@
         EndSpacerSize = endSpacerSize,
         StartExpansion = startExpansion,
         EndExpansion = endExpansion,
-        // ScrollHeight = plan.ClientSideState?.ScrollHeight,
-        // ScrollTop = plan.ClientSideState?.ScrollTop,
-        // ViewportHeight = plan.ClientSideState?.ViewportHeight,
         HasVeryFirstItem = Data.HasVeryFirstItem,
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
-        // UseSmoothScroll = UseSmoothScroll,
-        // ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
-        // HasUnmeasuredItems = plan.HasUnmeasuredItems,
-        // StickyEdge = plan.StickyEdge,
         Items = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
     };
-    // ClientSideState = plan.ClientSideState ?? ClientSideState;
-    // RequestDataUpdate();
     var items = isEndAligned ? Data.Items.Reverse() : Data.Items;
     LastData = Data;
 }
