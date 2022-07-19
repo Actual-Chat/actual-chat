@@ -6,7 +6,7 @@
 
     start cmd /C timeout 5 ^& start https://localhost:7081/"
     pushd artifacts\bin
-    ActualChat.Host.exe
+    ActualChat.App.Server.exe
     popd
     exit /b
 BATCH
@@ -18,5 +18,5 @@ export ASPNETCORE_URLS="https://localhost:7080;https://localhost:7081"
 (sleep 5 && open https://localhost:7081 || xdbg-open https://localhost:7081) &
 
 pushd artifacts/bin
-./ActualChat.Host
+./ActualChat.App.Server
 popd
