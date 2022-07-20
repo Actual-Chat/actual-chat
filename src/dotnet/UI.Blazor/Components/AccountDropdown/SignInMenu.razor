@@ -3,12 +3,21 @@
 @{
     var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var buttonClass = "btn-success " + ButtonClass;
+    var mainButtonClass = ButtonType == MenuButton.Default ? "btn-success " : "btn-round ";
+    var btnClass = mainButtonClass + ButtonClass;
+    var dropdownClass = ButtonType == MenuButton.Round ? "left-panel-account-menu" : "";
+    var btnTitle = ButtonType == MenuButton.Round ? "Sign in" : "";
 }
 
-<Dropdown MenuClass="@ContentPositionClass" ButtonClass="@buttonClass">
+<Dropdown MenuClass="@ContentPositionClass" ButtonClass="@btnClass" Class="@dropdownClass" ButtonTitle="@btnTitle">
     <ButtonTemplate>
-        <span>Sign in</span>
+        @if (ButtonType == MenuButton.Default) {
+            <span>Sign in</span>
+        } else {
+            <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M17 4H19C19.55 4 20 4.45 20 5V19C20 19.55 19.55 20 19 20H17C16.45 20 16 19.55 16 19C16 18.45 16.45 18 17 18H18V6H17C16.45 6 16 5.55 16 5C16 4.45 16.45 4 17 4ZM10.3998 7.2004C10.8438 6.8694 11.4688 6.9594 11.7998 7.4004L14.7998 11.4004C15.0598 11.7464 15.0678 12.2204 14.8178 12.5754L12.0038 16.5754C11.8088 16.8524 11.4998 17.0004 11.1848 17.0004C10.9868 17.0004 10.7858 16.9414 10.6108 16.8184C10.1588 16.5004 10.0498 15.8764 10.3678 15.4244L12.0858 12.9824C12.0723 12.9837 12.0596 12.9875 12.047 12.9913C12.0316 12.9958 12.0163 13.0004 11.9998 13.0004H3.99976C3.44776 13.0004 2.99976 12.5524 2.99976 12.0004C2.99976 11.4474 3.44776 11.0004 3.99976 11.0004H11.9998H12.0008L10.1998 8.5994C9.86876 8.1584 9.95776 7.5314 10.3998 7.2004Z"/>
+            </svg>
+        }
     </ButtonTemplate>
     <MenuTemplate>
         <Menu Class="rounded-md border border-bg-03 p-1 mt-1" ItemClass="text-left">
@@ -21,6 +30,11 @@
 </Dropdown>
 
 @code {
+    public enum MenuButton {
+        Default,
+        Round,
+    }
+
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
@@ -29,6 +43,7 @@
     [CascadingParameter] private Task<AuthState> AuthStateTask { get; set; } = null!;
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string ContentPositionClass { get; set; } = "";
+    [Parameter] public MenuButton ButtonType { get; set; } = MenuButton.Default;
 
     protected override async Task OnParametersSetAsync() {
         User = (await AuthStateTask).User;

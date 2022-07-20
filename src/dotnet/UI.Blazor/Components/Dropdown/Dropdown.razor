@@ -11,7 +11,7 @@
             <Button Class="@buttonClass" Click="_ => _isOpen = !_isOpen" Title="@ButtonTitle">
                 @ButtonTemplate
             </Button>
-            <div class="dropdown-menu absolute z-50 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">
+            <div class="dropdown-menu absolute z-50 bottom-14 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">
                 <div class="dropdown-menu-inner relative @(_isOpen ? "" : "hidden")">
                     @MenuTemplate
                 </div>
