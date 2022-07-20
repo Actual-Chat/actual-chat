@@ -227,18 +227,24 @@ export class VirtualList implements VirtualListAccessor {
                         }
                     }
                 }
-                const itemY0 = this.getItemY0();
-                const scrollTop = this.getScrollTop();
-                const itemRect = this._scrollTopPivotRef.getBoundingClientRect();
-                const newScrollTopPivotOffset = itemRect.y - itemY0 - scrollTop;
-                let dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
-                const newScrollTop = scrollTop + dScrollTop;
-                if (this._debugMode)
-                    console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                if (Math.abs(dScrollTop) > SizeEpsilon && this._scrollTopPivotLocation !== 'top') {
-                    this.setScrollTop(newScrollTop);
-                    isScrollHappened = true;
-                }
+
+                await new Promise<void>(resolve => {
+                    requestAnimationFrame(_ => {
+                        const itemY0 = this.getItemY0();
+                        const scrollTop = this.getScrollTop();
+                        const itemRect = this._scrollTopPivotRef.getBoundingClientRect();
+                        const newScrollTopPivotOffset = itemRect.y - itemY0 - scrollTop;
+                        let dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
+                        const newScrollTop = scrollTop + dScrollTop;
+                        if (this._debugMode)
+                            console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                        if (Math.abs(dScrollTop) > SizeEpsilon && this._scrollTopPivotLocation !== 'top') {
+                            this.setScrollTop(newScrollTop);
+                            isScrollHappened = true;
+                        }
+                        resolve();
+                    });
+                });
             }
 
             if (this._debugMode)
@@ -523,7 +529,7 @@ export class VirtualList implements VirtualListAccessor {
                 this._onScrollStoppedTimeout = null;
                 this.updateClientSideStateDebounced(true);
             }, ScrollStoppedTimeout);
-        // this.updateClientSideStateDebounced();
+        this.updateClientSideStateDebounced();
     };
 
     private getRenderStateDataRef(): HTMLElement {
