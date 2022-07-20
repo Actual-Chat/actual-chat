@@ -20,7 +20,7 @@
         }
     </ButtonTemplate>
     <MenuTemplate>
-        <Menu Class="rounded-md border border-bg-03 p-1 mt-1" ItemClass="text-left">
+        <Menu Class="account-dropdown-menu bottom-0" ItemClass="text-left">
             @foreach (var (name, displayName) in unusedAuthSchemas) {
                 var title = "Sign in with " + displayName;
                 <MenuItem Title="@title" Click="(() => SignIn(name))"/>
