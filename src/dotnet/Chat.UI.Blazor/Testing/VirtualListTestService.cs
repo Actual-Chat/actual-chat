@@ -18,7 +18,6 @@ public class VirtualListTestService
         VirtualListDataQuery query,
         int? rangeSeed,
         int? contentSeed,
-        bool isReverseRendered,
         CancellationToken cancellationToken)
     {
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
