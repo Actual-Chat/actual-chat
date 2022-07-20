@@ -5,7 +5,7 @@
   }
 
 .account-dropdown-menu {
-    @apply absolute bottom-6 -left-12;
+    @apply absolute;
 }
 
 .account-dropdown-menu.menu {
