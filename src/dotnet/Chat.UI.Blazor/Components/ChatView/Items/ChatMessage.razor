@@ -91,7 +91,7 @@
 
     @if (!message.IsQuote) {
         <CascadingValue Value="@message">
-            <CustomContextMenu
+            <ContextMenuOld
                 Class="chat-message-menu "
                 ButtonClass="show-on-hover message-menu-button">
                 <ButtonTemplate>
@@ -102,7 +102,7 @@
                 <MenuTemplate>
                     <MessageContextMenu />
                 </MenuTemplate>
-            </CustomContextMenu>
+            </ContextMenuOld>
         </CascadingValue>
     }
 
