@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
@@ -120,5 +119,7 @@ public static class MauiProgram
 
         // Auth
         services.AddScoped<IClientAuth, MauiClientAuth>();
+
+        services.AddSingleton<NavigationInterceptor>();
     }
 }

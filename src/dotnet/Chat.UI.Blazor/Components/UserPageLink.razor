@@ -3,7 +3,7 @@
     var user = State.LatestNonErrorValue;
     if (user == null)
         return;
-    var url = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
+    var url = UriMapper.ToAbsolute("/u/" + user.Id).ToString();
 }
 
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
@@ -16,10 +16,10 @@
 @code {
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IAuth Auth { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UriMapper UriMapper { get; init; } = null!;
 
     protected override ComputedState<User?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+    => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override Task<User?> ComputeState(CancellationToken cancellationToken)
         => Auth.GetUser(Session, default);

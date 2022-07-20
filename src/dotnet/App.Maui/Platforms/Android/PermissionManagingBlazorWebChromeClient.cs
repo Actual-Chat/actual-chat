@@ -36,14 +36,14 @@ internal class PermissionManagingBlazorWebChromeClient : WebChromeClient, IActiv
     private const string LocationAccessRationale = "This app requires access to your location. Please grant access to your precise location when requested.";
     private const string MicrophoneAccessRationale = "This app requires access to your microphone. Please grant access to your microphone when requested.";
 
-    private static readonly Dictionary<string, string> s_rationalesByPermission = new() {
+    private static readonly Dictionary<string, string> s_rationalesByPermission = new(StringComparer.Ordinal) {
         [Manifest.Permission.Camera] = CameraAccessRationale,
         [Manifest.Permission.AccessFineLocation] = LocationAccessRationale,
         [Manifest.Permission.RecordAudio] = MicrophoneAccessRationale,
         // Add more rationales as you add more supported permissions.
     };
 
-    private static readonly Dictionary<string, string[]> s_requiredPermissionsByWebkitResource = new() {
+    private static readonly Dictionary<string, string[]> s_requiredPermissionsByWebkitResource = new(StringComparer.Ordinal) {
         [PermissionRequest.ResourceVideoCapture] = new[] { Manifest.Permission.Camera },
         [PermissionRequest.ResourceAudioCapture] = new[] { Manifest.Permission.ModifyAudioSettings, Manifest.Permission.RecordAudio },
         // Add more Webkit resource -> Android permission mappings as needed.
