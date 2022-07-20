@@ -29,7 +29,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
-    [Parameter] public VirtualListEdge AlignmentEdge { get; set; } = VirtualListEdge.Start;
 
     [Parameter]
     [EditorRequired]
@@ -89,7 +88,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                     $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                     Ref,
                     BlazorRef,
-                    AlignmentEdge.IsEnd(),
                     LoadZoneSize,
                     BufferZoneSize,
                     DebugMode

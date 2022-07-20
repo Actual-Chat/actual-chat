@@ -8,3 +8,7 @@
 .virtual-list::-webkit-scrollbar {
     display: none;
 }
+
+.virtual-list ul.virtual-container {
+    list-style-type: none;
+}

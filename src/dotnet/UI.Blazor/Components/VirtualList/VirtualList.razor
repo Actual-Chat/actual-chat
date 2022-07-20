@@ -3,10 +3,7 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
-    var isEndAligned = AlignmentEdge.IsEnd();
     const string flexBase = "flex flex-nowrap items-stretch content-start justify-start";
-    var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
-    var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     const string flexClass = $"{flexBase} flex-col";
     const string invFlexClass = $"{flexBase} flex-col-reverse";
 
@@ -31,82 +28,59 @@
         ScrollToKey = Data.ScrollToKey,
         Items = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
     };
-    var items = isEndAligned ? Data.Items.Reverse() : Data.Items;
+    var items = Data.Items;
     LastData = Data;
 }
 
 <div @ref="Ref"
-     class="virtual-list @scrollContainerFlexClass @Class"
+     class="virtual-list @invFlexClass @Class"
      style="@Style">
+
+    <div @key="@("<RenderIndex>")"
+         data-render-index="@renderIndex"
+         class="data render-index hidden flex-none">
+    </div>
+
     <div class="data render-state hidden @flexClass flex-none">
-        <div @key="@("<RenderState>:" + renderIndex)"
+        <div @key="@("<RenderState>")"
              class="data render-state-data">
             @SystemJsonSerializer.Default.Write(renderState)
         </div>
     </div>
 
-    @if (!isEndAligned) {
-        <div @key="@("<Spacer>")"
-             class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-             style="height: @(spacerSize)px">
-            <SkeletonContainer Class="@flexClass">
-                @for (var i = -SkeletonCount; i < 0; i++) {
-                    <div @key="@i" class="skeleton">
-                        @Skeleton(i)
-                    </div>
-                }
-            </SkeletonContainer>
-        </div>
-    } else {
-        <div @key="@("<EndSpacer>")"
-             class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-             style="height: @(endSpacerSize)px">
-            <SkeletonContainer Class="@flexClass">
-                @for (var i = 0; i < SkeletonCount; ++i) {
-                    <div @key="@i" class="skeleton">
-                        @Skeleton(i)
-                    </div>
-                }
-            </SkeletonContainer>
-        </div>
-    }
 
-    @foreach (var item in items) {
-        <div @key="item.Key"
-             class="item flex-none"
-             data-key="@item.Key">
-            @Item(item)
-        </div>
-    }
+    <div @key="@("<EndSpacer>")"
+         class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+         style="height: @(endSpacerSize)px">
+        <SkeletonContainer Class="@flexClass">
+            @for (var i = 0; i < SkeletonCount; ++i) {
+                <div @key="@i" class="skeleton">
+                    @Skeleton(i)
+                </div>
+            }
+        </SkeletonContainer>
+    </div>
 
-    @if (isEndAligned) {
-        <div @key="@("<Spacer>")"
-             class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-             style="height: @(spacerSize)px">
-            <SkeletonContainer Class="@flexClass">
-                @for (var i = -SkeletonCount; i < 0; i++) {
-                    <div @key="@i" class="skeleton">
-                        @Skeleton(i)
-                    </div>
-                }
-            </SkeletonContainer>
-        </div>
-    } else {
-        <div @key="@("<EndSpacer>")"
-             class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-             style="height: @(endSpacerSize)px">
-            <SkeletonContainer Class="@flexClass">
-                @for (var i = 0; i < SkeletonCount; ++i) {
-                    <div @key="@i" class="skeleton">
-                        @Skeleton(i)
-                    </div>
-                }
-            </SkeletonContainer>
-        </div>
-    }
 
-    <div @key="@("<RenderIndex>")"
-         data-render-index="@renderIndex"
-         class="data render-index hidden flex-none">
+    <ul class="virtual-container @flexClass">
+        @foreach (var item in items) {
+            <li @key="item.Key"
+                class="item flex-none"
+                data-key="@item.Key">
+                @Item(item)
+            </li>
+        }
+    </ul>
+
+    <div @key="@("<Spacer>")"
+         class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+         style="height: @(spacerSize)px">
+        <SkeletonContainer Class="@flexClass">
+            @for (var i = -SkeletonCount; i < 0; i++) {
+                <div @key="@i" class="skeleton">
+                    @Skeleton(i)
+                </div>
+            }
+        </SkeletonContainer>
     </div>
 </div>
