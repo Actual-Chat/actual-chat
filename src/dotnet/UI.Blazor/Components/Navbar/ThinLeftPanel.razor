@@ -1,6 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<bool>
 
-<div class="flex-y">
+@{
+    var isOpened = State.ValueOrDefault;
+    var cls = isOpened ? "left-opened" : "left-closed";
+}
+
+<div class="thin-left-panel @cls">
     <div class="-flex-x bg-04 m-3 h-14">
         <svg class="w-10 h-10 fill-current mr-2" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="26" cy="26" r="26" fill="#E4E4E4"/>
@@ -28,3 +35,13 @@
         <AccountDropdown/>
     </div>
 </div>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await NavbarUI.IsThinPanelOpened.Use(cancellationToken).ConfigureAwait(false);
+}

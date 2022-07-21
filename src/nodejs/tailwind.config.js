@@ -19,7 +19,9 @@ module.exports = {
   safelist: [
     // using in Avatar Size
     'w-9',
+    'w-10',
     'h-9',
+    'h-10',
     '-r-46',
   ],
   presets: [],
@@ -245,8 +247,12 @@ module.exports = {
       'scale-from-right': 'scale-from-right 150ms ease-in-out',
       'from-left': 'from-left 150ms ease-in-out',
       'from-right': 'from-right 150ms ease-in-out',
-      'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
-      'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
+      'hide-thin-panel': 'hide-thin-panel-to-left 150ms ease-in-out',
+      'show-thin-panel': 'show-thin-panel-from-left 150ms ease-in-out',
+      'hide-wide-panel': 'hide-wide-panel-to-right 150ms ease-in-out',
+      'show-wide-panel': 'show-wide-panel-from-right 150ms ease-in-out',
+      'width-to-zero': 'width-to-zero 150ms ease-in-out',
+      'width-to-full': 'width-to-full 150ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
@@ -756,14 +762,52 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'hide-element-to-left': {
+      'hide-thin-panel-to-left': {
         from: {
-          transform: 'translateX(0rem) scale(1)',
-            opacity: 1,
+          transform: 'translateX(25%)',
         },
         to: {
-          transform: 'translateX(-1rem) scale(.1)',
-            opacity: 0,
+          transform: '-translateX(100%)',
+        },
+      },
+      'show-thin-panel-from-left': {
+        from: {
+          transform: '-translateX(100%)',
+        },
+        to: {
+          transform: 'translateX(25%)',
+        },
+      },
+      'hide-wide-panel-to-right': {
+        from: {
+          transform: 'translateX(0%)',
+        },
+        to: {
+          transform: 'translateX(75%)',
+        },
+      },
+      'show-wide-panel-from-right': {
+        from: {
+          transform: 'translateX(75%)',
+        },
+        to: {
+          transform: 'translateX(0%)',
+        },
+      },
+      'width-to-zero': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '0%',
+        },
+      },
+      'width-to-full': {
+        from: {
+          width: '0%',
+        },
+        to: {
+          width: '100%',
         },
       },
       'scale-from-right': {
@@ -780,16 +824,6 @@ module.exports = {
         },
         to: {
           transform: 'translate(0rem, 0rem) scale(1)',
-        },
-      },
-      'hide-element-to-right': {
-        from: {
-          transform: 'translateX(0rem) scale(1)',
-            opacity: 1,
-          },
-        to: {
-          transform: 'translateX(1rem) scale(.1)',
-            opacity: 0,
         },
       },
       'display-element-from-bottom': {

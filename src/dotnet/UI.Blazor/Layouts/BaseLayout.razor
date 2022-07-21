@@ -9,31 +9,20 @@
     var failures = UIActionFailureTracker.Items;
 }
 
-<div class="absolute z-60 min-h-mobile-header">
-    <NavbarToggle/>
-</div>
 <div class="bg-02 flex-1 flex-x justify-items-stretch h-full max-h-full relative">
-    <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
+    <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <SideNav Direction="SideNavDirection.LeftToRight"
              Open="() => NavbarUI.IsVisible = true"
              Closed="() => NavbarUI.IsVisible = false"
              IsOpen="@NavbarUI.IsVisible">
-        <div class="w-full h-full flex-1 flex-y overflow-y-hidden">
-            <div class="absolute">
-                <NavbarToggle/>
-            </div>
-            <div class="navbar-mobile-title md:hidden
-                        flex-1 flex flex-row items-center justify-end px-4 py-3
-                        bg-04 font-semibold min-h-mobile-header">
-                <NavbarMobileTitle/>
-            </div>
-            <div class="flex-x h-full overflow-y-hidden bg-04">
+        <div class="w-full h-full flex-1 flex-y overflow-hidden">
+            <div class="flex-x h-full overflow-hidden bg-04">
                 <ThinLeftPanel/>
                 <WideLeftPanel/>
             </div>
         </div>
     </SideNav>
-    <div class="flex-1 overflow-y-auto flex-y relative float-left">
+    <div class="base-page-body">
         <div class="bg-01 flex-1 overflow-y-auto">
             @if (failures.Count != 0) {
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
