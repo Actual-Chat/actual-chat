@@ -2,15 +2,17 @@
 @using BlazorContextMenu
 
 <ContextMenu Id="@Id">
-    <RightClickMenuRecord/>
-    <RightClickMenuPin/>
-    <RightClickMenuPlayback/>
-    <Seperator/>
-    <RightClickMenuDelete/>
+    <ChildContent>
+        <CascadingValue Value="@(context.Data as Chat)">
+            <RightClickMenuRecord/>
+            <RightClickMenuPin/>
+            <RightClickMenuPlayback/>
+            <Seperator/>
+            <RightClickMenuDelete/>
+        </CascadingValue>
+    </ChildContent>
 </ContextMenu>
 
 @code{
-    [Parameter] public string Id { get; set; } = "";
-
-    private void OnClick() {}
+    public const string Id = "contextMenu-chatList-chat";
 }

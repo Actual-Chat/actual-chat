@@ -6,7 +6,7 @@
     RenderFragment RenderChat(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(ActiveChatId == c.Id)">
             <ChildContent>
-                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContextMenuId(c.Id)">
+                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@RightClickChatMenu.Id" Data="@c">
                     <div class="flex-x items-center">
                         <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
                         <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
@@ -34,8 +34,6 @@
                                 </Menu>
                             </MenuTemplate>
                         </Dropdown>
-
-                        <RightClickChatMenu Id="@ContextMenuId(c.Id)"/>
 
                     </CascadingValue>
                     <UnreadMessageCounter ChatId="@c.Id"/>
@@ -67,9 +65,6 @@
     [Parameter] public ChatGroup Group { get; set; } = ChatGroup.Listening;
     [Parameter] public List<Chat>? ChatList { get; set; }
     [Parameter] public string ActiveChatId { get; set; } = "";
-
-    private string ContextMenuId(string chatId)
-        => "chat-context-menu-" + chatId;
 
     private string GetCss(ChatGroup group) {
         return group switch
