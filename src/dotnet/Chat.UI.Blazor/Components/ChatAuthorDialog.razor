@@ -76,7 +76,7 @@
         var peerChatId = await Chats.GetPeerChatId(Session, AuthorId, default);
         if (peerChatId.IsNullOrEmpty())
             return;
-        Nav.NavigateTo($"/chat/{peerChatId.UrlEncode()}");
+        Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 
     public sealed record ComputedModel {

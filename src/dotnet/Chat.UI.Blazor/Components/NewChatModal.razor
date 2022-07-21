@@ -41,7 +41,7 @@
             var result = await UICommander.Call(command).ConfigureAwait(true);
             await ModalInstance.CancelAsync().ConfigureAwait(true);
             var chatId = result.Id;
-            Nav.NavigateTo($"/chat/{chatId}");
+            Nav.NavigateTo(Links.ChatPage(chatId));
         }
         catch {
             // Intended: command errors are shown in the UI anyway

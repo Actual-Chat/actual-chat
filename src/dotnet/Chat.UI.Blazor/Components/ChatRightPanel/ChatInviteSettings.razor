@@ -5,11 +5,11 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (!m.PublicUrl.IsNullOrEmpty()) {
+@if (m.PublicUrl != null) {
     <h4 class="section">Public join link</h4>
-    <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl"/>
+    <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl.CopyLink.ToString()"/>
 }
-@if (m.Invites.Length > 0 || m.PublicUrl.IsNullOrEmpty()) {
+@if (m.Invites.Length > 0 || m.PublicUrl == null) {
     <h4 class="section">Private join links</h4>
     <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
     <div class="mt-2 @(new FlexMode(FlexAlignment.End))">
@@ -21,7 +21,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -36,7 +36,7 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
-        var publicUrl = Chat.IsPublic ? Nav.BaseUri + "chat/" + Chat.Id.Value : "";
+        var publicUrl = Chat.IsPublic ? LinkInfoBuilder.GetFrom(Links.ChatPage(Chat.Id)) : null;
         return new() {
             PublicUrl = publicUrl,
             Invites = invites,
@@ -54,7 +54,7 @@
     public record Model {
         public static Model None { get; } = new();
 
-        public string PublicUrl { get; set; } = "";
-        public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray.Create<Invite>();
+        public LinkInfo? PublicUrl { get; init; }
+        public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }
 }

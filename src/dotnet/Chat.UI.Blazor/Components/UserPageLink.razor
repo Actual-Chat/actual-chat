@@ -3,20 +3,21 @@
     var user = State.LatestNonErrorValue;
     if (user == null)
         return;
-    var url = UriMapper.ToAbsolute("/u/" + user.Id).ToString();
+    var relativeUri = Links.UserPage(user.Id);
+    var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
 }
 
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
     <div class="flex-none text-02">
-        <a href="@url">@url</a>
+        <a href="@linkInfo.NavigateLink">@linkInfo.DisplayLink</a>
     </div>
-    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@url"/>
+    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@linkInfo.CopyLink.ToString()"/>
 </div>
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IAuth Auth { get; init; } = null!;
-    [Inject] private UriMapper UriMapper { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
     protected override ComputedState<User?>.Options GetStateOptions()
     => new() { UpdateDelayer = UpdateDelayer.MinDelay };

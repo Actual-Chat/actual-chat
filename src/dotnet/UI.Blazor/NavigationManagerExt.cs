@@ -12,7 +12,7 @@ public static class NavigationManagerExt
         => navigator.NavigateTo($"/unavailable{MaybePathComponent(what)}");
 
     public static void Chat(this NavigationManager navigator, string chatId = "")
-        => navigator.NavigateTo($"/chat/{chatId}");
+        => navigator.NavigateTo(Links.ChatPage(chatId));
 
     // Private methods
 
