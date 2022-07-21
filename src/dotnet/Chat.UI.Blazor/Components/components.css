@@ -190,7 +190,7 @@
     @apply border-b border-bg-04 pb-0 mb-0;
 }
 .wide-left-panel-tabs .btn-group {
-    @apply min-h-mobile-header;
+    @apply min-h-mobile-header justify-between px-4;
 }
 .wide-left-panel-tabs .btn-group .btn-group-container {
     @apply self-center;

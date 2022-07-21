@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="input-search">
+<div class="input-search @Class">
     <label>
         <input type="text" class="w-full" placeholder="Search"/>
         <ButtonRound Click="Click">
@@ -9,10 +9,10 @@
             </svg>
         </ButtonRound>
     </label>
-
 </div>
 
 @code {
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

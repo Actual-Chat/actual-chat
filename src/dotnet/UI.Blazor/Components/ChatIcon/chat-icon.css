@@ -27,6 +27,9 @@
 .chat-icon-size-9 {
     @apply w-9 h-9;
 }
+.chat-icon-size-10 {
+    @apply w-10 h-10;
+}
 .chat-icon-size-20 {
     @apply w-20 h-20 text-2xl;
 }

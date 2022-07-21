@@ -131,3 +131,27 @@
 .add-to-chat.btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
+
+.wide-left-panel {
+    @apply flex-y h-full overflow-hidden bg-03 border-r border-bg-04 w-full;
+}
+.left-opened.wide-left-panel {
+    @apply translate-x-3/4 animate-hide-wide-panel;
+    @apply md:animate-none;
+    /*@apply md:translate-x-0;*/
+}
+.left-closed.wide-left-panel {
+    @apply animate-show-wide-panel md:animate-none;
+}
+.thin-left-panel {
+    @apply flex-1 w-0 md:w-auto;
+    @apply hidden md:flex-y;
+}
+.left-opened.thin-left-panel {
+    @apply translate-x-0 animate-width-to-full w-3/4;
+    @apply md:animate-none md:w-auto flex-y;
+}
+.left-closed.thin-left-panel {
+    @apply animate-width-to-zero w-0 md:animate-none md:w-auto hidden md:flex-y;
+}
+

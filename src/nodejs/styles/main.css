@@ -122,7 +122,7 @@ input.input-underlined {
     @apply p-0;
 }
 .context-menu-item {
-    @apply !flex rounded-lg h-8 whitespace-nowrap;
+    @apply !flex rounded-lg h-12 whitespace-nowrap;
 }
 .context-menu-item:hover {
     @apply bg-round-hover;
@@ -166,4 +166,8 @@ input.input-underlined {
 .context-menu-item.warning-item:hover .context-menu-icon,
 .context-menu-item.warning-item:hover .context-menu-text {
     @apply text-error;
+}
+
+.base-page-body {
+    @apply flex-1 overflow-y-auto flex-y relative float-left;
 }
