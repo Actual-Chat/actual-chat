@@ -6,7 +6,7 @@
     RenderFragment RenderChat(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(ActiveChatId == c.Id)">
             <ChildContent>
-                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@RightClickChatMenu.Id" Data="@c">
+                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatContextMenu.Id" Data="@c">
                     <div class="flex-x items-center">
                         <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size8"/>
                         <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
@@ -22,7 +22,7 @@
                     <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn"/>
                     <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn"/>
 
-                    <ContextMenuToggleTrigger MenuId="@RightClickChatMenu.Id" Data="@c">
+                    <ContextMenuToggleTrigger MenuId="@ChatContextMenu.Id" Data="@c">
                         <div class="flex">
                             <Button Class="btn-round chat-menu-btn">
                                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">

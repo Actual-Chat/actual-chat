@@ -5,11 +5,11 @@
     <ContextMenu Id="@Id">
         <ChildContent>
             <CascadingValue Value="@(context.Data as Chat)">
-                <RightClickMenuRecord/>
-                <RightClickMenuPin/>
-                <RightClickMenuPlayback/>
+                <ChatContextMenuRecord/>
+                <ChatContextMenuPin/>
+                <ChatContextMenuPlayback/>
                 <Seperator/>
-                <RightClickMenuDelete/>
+                <ChatContextMenuDelete/>
             </CascadingValue>
         </ChildContent>
     </ContextMenu>
