@@ -22,10 +22,10 @@ public class NotificationsController : ControllerBase, INotifications
         => _service.GetStatus(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    public Task RegisterDevice([FromBody] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task SetStatus(INotifications.SetStatusCommand command, CancellationToken cancellationToken)
+    public Task SetStatus([FromBody] INotifications.SetStatusCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

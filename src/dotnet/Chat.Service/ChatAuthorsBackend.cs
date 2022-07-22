@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
@@ -95,8 +96,8 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
         var userId = account?.Id ?? Symbol.Empty;
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
-        chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
+        chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
@@ -104,6 +105,18 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));
             await Commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         }
+        return chatAuthor;
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken)
+    {
+        var chatAuthor = await GetByUserId(chatId, userId, inherit, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor != null)
+            return chatAuthor;
+
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId);
+        chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return chatAuthor;
     }
 
@@ -144,7 +157,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     // [CommandHandler]
     public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, userId) = command;
+        var (chatId, userId, requireAuthenticated) = command;
         if (Computed.IsInvalidating()) {
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
@@ -158,6 +171,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNullOrEmpty()) {
+            if (requireAuthenticated)
+                throw new ValidationException("Can't create unauthenticated author here.");
+
             var name = RandomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,

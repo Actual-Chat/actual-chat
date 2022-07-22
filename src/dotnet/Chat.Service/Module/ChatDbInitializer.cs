@@ -100,6 +100,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                     cancellationToken)
                 .ConfigureAwait(false);
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
@@ -132,6 +134,20 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         e.Type,
                         e.Content);
             }
+        }
+    }
+
+    private async Task UpgradeChats(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var candidateChatIds = await dbContext.Chats
+            .Where(c => c.Owners.Any() || c.ChatType == ChatType.Peer)
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var chatId in candidateChatIds) {
+            var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
     }
 

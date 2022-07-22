@@ -31,6 +31,6 @@ public class ChatRolesController : ControllerBase, IChatRoles
     // Commands
 
     [HttpPost]
-    public Task<ChatRole?> Change(IChatRoles.ChangeCommand command, CancellationToken cancellationToken)
+    public Task<ChatRole?> Change([FromBody] IChatRoles.ChangeCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

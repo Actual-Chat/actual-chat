@@ -5,6 +5,7 @@ using ActualChat.Db;
 using ActualChat.Events;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
+using NetBox.Extensions;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
 using Stl.Versioning;
@@ -416,6 +417,76 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         attachment = dbAttachment.ToModel();
         context.Operation().Items.Set(attachment);
         return attachment;
+    }
+
+    // [CommandHandler]
+    public virtual async Task UpgradeChat(IChatsBackend.UpgradeChatCommand command, CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            _ = Get(invChat.Id, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        chatId = chatId.RequireNonEmpty("Command.ChatId");
+        var dbChat = await dbContext.Chats
+            .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChat == null)
+            return;
+
+        var chat = dbChat.ToModel();
+        var isPeer = chat.ChatType is ChatType.Peer;
+        var parsedChatId = new ParsedChatId(chatId);
+        parsedChatId = isPeer ? parsedChatId.AssertPeerFull() : parsedChatId.AssertGroup();
+        if (chat.ChatType is ChatType.Peer) {
+            // Peer chat
+            var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+            var ownerUserIds = new[] { userId1.Value, userId2.Value };
+            var authors = await ownerUserIds
+                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            await UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
+            await UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            // Group chat
+            var ownerUserIds = dbChat.Owners.Select(o => o.UserId).ToArray();
+            var authors = await ownerUserIds
+                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+
+            var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
+                Create = new ChatRoleDiff() {
+                    SystemRole = SystemChatRole.Owners,
+                    Permissions = ChatPermissions.Owner,
+                    AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
+                        AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerUserIds.Select(id => (Symbol)id)),
+                    },
+                },
+            });
+            await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+
+            var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
+                Create = new ChatRoleDiff() {
+                    SystemRole = SystemChatRole.Joined,
+                    Permissions = ChatPermissions.Write | ChatPermissions.Invite,
+                },
+            });
+            await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
+        }
+
+        dbChat.Owners.Clear();
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        chat = dbChat.ToModel();
+        context.Operation().Items.Set(chat);
     }
 
     // Protected methods

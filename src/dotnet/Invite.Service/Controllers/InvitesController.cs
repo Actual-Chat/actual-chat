@@ -25,10 +25,10 @@ public class InvitesController : ControllerBase, IInvites
         => _service.ListChatInvites(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task<Invite> Generate(IInvites.GenerateCommand command, CancellationToken cancellationToken)
+    public Task<Invite> Generate([FromBody] IInvites.GenerateCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task<Invite> Use(IInvites.UseCommand command, CancellationToken cancellationToken)
+    public Task<Invite> Use([FromBody] IInvites.UseCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

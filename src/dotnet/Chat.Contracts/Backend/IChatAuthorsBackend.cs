@@ -17,6 +17,7 @@ public interface IChatAuthorsBackend : IComputeService
     // Non-compute methods
 
     Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
 
     // Commands
 
@@ -28,7 +29,8 @@ public interface IChatAuthorsBackend : IComputeService
     [DataContract]
     public sealed record CreateCommand(
         [property: DataMember] string ChatId,
-        [property: DataMember] string UserId
+        [property: DataMember] string UserId,
+        [property: DataMember] bool RequireAuthenticated = true
         ) : ICommand<ChatAuthor>, IBackendCommand;
 
     [DataContract]

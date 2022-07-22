@@ -127,7 +127,7 @@ public interface IChatRolesClientDef
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
-    Task<ChatRole?> Change(IChatRoles.ChangeCommand command, CancellationToken cancellationToken);
+    Task<ChatRole?> Change([Body] IChatRoles.ChangeCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]

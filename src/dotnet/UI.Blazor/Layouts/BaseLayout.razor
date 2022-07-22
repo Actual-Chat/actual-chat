@@ -46,12 +46,15 @@
                     }
                 </div>
             }
-            @Body
+            <NoComponent @key="BodyKey">
+                @Body
+            </NoComponent>
         </div>
     </div>
 </div>
 
 @code {
+    private static readonly object BodyKey = new();
     private DotNetObjectReference<IBaseLayoutBackend> BlazorRef { get; set; } = null!;
 
     [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;

@@ -52,10 +52,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     // Commands
 
     [HttpPost]
-    public Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    public Task AddToContacts([FromBody] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
+    public Task CreateChatAuthors([FromBody] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

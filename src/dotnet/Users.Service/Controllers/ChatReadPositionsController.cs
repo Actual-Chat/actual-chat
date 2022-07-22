@@ -21,6 +21,6 @@ public class ChatReadPositionsController: ControllerBase, IChatReadPositions
         => _service.GetReadPosition(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task UpdateReadPosition(IChatReadPositions.UpdateReadPositionCommand command, CancellationToken cancellationToken)
+    public Task UpdateReadPosition([FromBody] IChatReadPositions.UpdateReadPositionCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }
