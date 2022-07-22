@@ -8,10 +8,12 @@ public enum ChatPermissions
 {
     Read           = 0x1,
     Write          = 0x2,
-    ReadWrite      = Read + Write,
 
-    Invite         = 0x100 + ReadWrite,
+    Join           = 0x80,
+    Invite         = 0x100,
 
-    EditProperties = 0x1000 + Invite,
-    Owner          = 0x10_000 + EditProperties,
+    EditProperties = 0x1000,
+    EditRoles      = 0x2000,
+
+    Owner          = 0x10_000,
 }

@@ -98,15 +98,15 @@ public class ChatsController : ControllerBase, IChats
     // Commands
 
     [HttpPost]
-    public Task<Chat> CreateChat([FromBody] IChats.CreateChatCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
-
-    [HttpPost]
-    public Task<Unit> UpdateChat([FromBody] IChats.UpdateChatCommand command, CancellationToken cancellationToken)
+    public Task<Chat?> ChangeChat([FromBody] IChats.ChangeChatCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
+        => _commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task LeaveChat([FromBody] IChats.LeaveChatCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
@@ -115,9 +115,5 @@ public class ChatsController : ControllerBase, IChats
 
     [HttpPost]
     public Task RemoveTextEntry([FromBody] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
-
-    [HttpPost]
-    public Task LeaveChat([FromBody] IChats.LeaveChatCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

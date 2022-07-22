@@ -5,7 +5,7 @@
 @{
     var m = State.LatestNonErrorValue;
     var parsedChatId = new ParsedChatId(Chat.Id);
-    var isPeerChat = parsedChatId.IsValid && parsedChatId.Kind.IsPeer();
+    var isPeerChat = parsedChatId.IsValid && parsedChatId.Kind.IsPeerAny();
 }
 
 <div @ref="Ref" class="chat-author-tab">
@@ -74,7 +74,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        var requestAuthor = await Authors.GetOwnAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var requestAuthor = await Authors.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         var authorIds = requestAuthor == null ? allAuthorIds : allAuthorIds.Remove(requestAuthor.Id.ToString());
         if (requestAuthor != null && requestAuthor.HasLeft)
             requestAuthor = null;

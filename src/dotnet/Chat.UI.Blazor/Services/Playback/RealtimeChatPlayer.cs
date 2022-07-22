@@ -34,7 +34,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                 continue;
 
             if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
-                var chatAuthor = await ChatAuthors.GetOwnAuthor(Session, ChatId, cancellationToken)
+                var chatAuthor = await ChatAuthors.Get(Session, ChatId, cancellationToken)
                     .ConfigureAwait(false);
                 if (chatAuthor != null && entry.AuthorId == chatAuthor.Id)
                     continue;

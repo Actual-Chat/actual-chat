@@ -33,7 +33,7 @@ public class UserAvatarsController : ControllerBase, IUserAvatars
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task Update(IUserAvatars.UpdateCommand command, CancellationToken cancellationToken)
+    public Task Update([FromBody] IUserAvatars.UpdateCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]

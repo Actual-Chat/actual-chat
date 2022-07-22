@@ -6,21 +6,19 @@ public interface IChatRoles : IComputeService
     Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<ChatRole>> List(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task Upsert(UpsertCommand command, CancellationToken cancellationToken);
+    Task<ChatRole?> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record UpsertCommand(
+    public sealed record ChangeCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
-        [property: DataMember] string RoleId
-    ) : ISessionCommand<Unit>
-    {
-        [DataMember] public string? Title { get; init; }
-        [DataMember] public string[] AddPrincipalIds { get; init; } = Array.Empty<string>();
-        [DataMember] public string[] RemovePrincipalIds { get; init; } = Array.Empty<string>();
-        [DataMember] public bool MustRemove { get; init; }
-    }
+        [property: DataMember] string RoleId,
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] Change<ChatRoleDiff> Change
+    ) : ISessionCommand<ChatRole?>;
 }

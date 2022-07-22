@@ -30,11 +30,11 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
     {
         foreach (var markupItem in markup.Items) {
             if (Builder.Length >= MaxLength)
-                return Unit.Default;
+                return default;
 
             await Visit(markupItem, cancellationToken).ConfigureAwait(false);
         }
-        return Unit.Default;
+        return default;
     }
 
     protected override ValueTask<Unit> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
     protected override async ValueTask<Unit> VisitMention(Mention markup, CancellationToken cancellationToken)
     {
         if (Builder.Length >= MaxLength)
-            return Unit.Default;
+            return default;
 
         Builder.Append("@");
         Builder.Append(
@@ -61,7 +61,7 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
                 MentionKind.UserId => GetUserName(markup.Target),
                 _ => Task.FromResult(markup.Target),
             }).ConfigureAwait(false));
-        return Unit.Default;
+        return default;
     }
 
     protected override ValueTask<Unit> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)

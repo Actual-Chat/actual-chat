@@ -17,19 +17,20 @@ public interface IChatAuthorsBackend : IComputeService
     // Non-compute methods
 
     Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
     Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<ChatAuthor> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record CreateCommand(
         [property: DataMember] string ChatId,
-        [property: DataMember] string UserId
+        [property: DataMember] string UserId,
+        [property: DataMember] bool RequireAuthenticated = true
         ) : ICommand<ChatAuthor>, IBackendCommand;
 
     [DataContract]

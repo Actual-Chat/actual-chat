@@ -5,10 +5,10 @@
 }
 
 <div class="flex-y text-03">
-    @if (m.CanEditProperties) {
+    @if (m.CanEditProperties()) {
         <ChatBasicSettings/>
     }
-    @if (m.CanInvite) {
+    @if (m.CanInvite()) {
         <ChatInviteSettings/>
     }
 </div>

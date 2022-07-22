@@ -41,6 +41,7 @@
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
     [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
     private FormModel _form = null!;
 
@@ -61,7 +62,10 @@
             IsPublic = _form.IsPublic,
             Picture = _form.Picture,
         };
-        await UICommander.Run(new IChats.UpdateChatCommand(Session, newChat));
+        var cmd = new IChats.ChangeChatCommand(Session, Chat.Id, Chat.Version, new() {
+            Update = DiffEngine.Diff<Chat, ChatDiff>(Chat, newChat),
+        });
+        await UICommander.Run(cmd);
     }
 
     public sealed class FormModel

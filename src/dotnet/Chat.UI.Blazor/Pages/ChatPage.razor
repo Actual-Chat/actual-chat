@@ -100,25 +100,24 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var lastRenderedChat = _lastRenderedModel?.Chat;
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null) {
-            if (_lastRenderedModel?.Chat != null && _lastRenderedModel.Chat.Id == ChatId) {
-                // Chat became unavailable. Apparently user left the chat.
-                // Try to redirect user to first available chat.
+            if (lastRenderedChat != null && lastRenderedChat.Id == ChatId) {
+                // Chat became unavailable - let's redirect the user to the first available chat
                 var chats = await Chats.GetChats(Session, CancellationToken.None);
                 var chat1 = chats.FirstOrDefault();
                 if (chat1 != null)
                     return new Model() { NavigateToChatId = chat1.Id };
             }
-            return new() {IsUnavailable = true};
+            return new() { IsUnavailable = true };
         }
 
         // We want to return the same Chat instance while it stays unchanged
-        var renderedChat = _lastRenderedModel?.Chat;
-        var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
-        return new () {
-            Chat = isTheSameChat ? renderedChat : chat,
-        };
+        var isTheSameModel = lastRenderedChat != null
+            && lastRenderedChat.Id == chat.Id
+            && lastRenderedChat.Version == chat.Version;
+        return isTheSameModel ? _lastRenderedModel! : new() { Chat = chat };
     }
 
     protected override async Task OnParametersSetAsync() {

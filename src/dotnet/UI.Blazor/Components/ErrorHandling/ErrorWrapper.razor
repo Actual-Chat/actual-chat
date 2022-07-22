@@ -1,5 +1,6 @@
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
 
 <RequirementChecker @ref="_requirementChecker">
     <ChildContent>
@@ -38,8 +39,22 @@
 
 @code {
     private RequirementChecker _requirementChecker = null!;
+    private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
+
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized() {
+        _onLocationChanged = OnLocationChanged;
+        Nav.LocationChanged += _onLocationChanged;
+    }
+
+    public void Dispose()
+        => Nav.LocationChanged -= _onLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => _requirementChecker.Reset();
 
     private void OnDismiss(RequirementComponent requirement)
         => _requirementChecker.Remove(requirement);

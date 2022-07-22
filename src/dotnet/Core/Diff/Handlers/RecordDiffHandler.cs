@@ -1,0 +1,103 @@
+using System.Reflection;
+using Stl.Reflection;
+
+namespace ActualChat.Diff.Handlers;
+
+public class RecordDiffHandler<TRecord, TDiff> : DiffHandlerBase<TRecord, TDiff>
+    where TRecord : class
+    where TDiff : RecordDiff, new()
+{
+    public ImmutableArray<RecordDiffPropertyInfo> Properties { get; init; }
+    public Func<TRecord, TRecord> Cloner { get; init; }
+
+    public RecordDiffHandler(DiffEngine engine) : base(engine)
+    {
+        var tRecord = typeof(TRecord);
+        var tDiff = typeof(TDiff);
+
+        var properties = new List<RecordDiffPropertyInfo>();
+        foreach (var pDiff in tDiff.GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
+            var pRecord = tRecord.GetProperty(pDiff.Name, BindingFlags.Instance | BindingFlags.Public);
+            if (pRecord == null)
+                continue; // We omit extra properties in diff assuming they're handled manually
+            var property = (RecordDiffPropertyInfo) typeof(RecordDiffPropertyInfo<,>)
+                .MakeGenericType(typeof(TRecord), typeof(TDiff), pDiff.PropertyType, pRecord.PropertyType)
+                .CreateInstance(Engine, pDiff, pRecord);
+            properties.Add(property);
+        }
+        Properties = properties.ToImmutableArray();
+        Cloner = ObjectExt.GetCloner<TRecord>();
+    }
+
+    public override TDiff Diff(TRecord source, TRecord target)
+    {
+        var diff = new TDiff();
+        foreach (var property in Properties)
+            property.Diff(source, target, diff);
+        return diff;
+    }
+
+    public override TRecord Patch(TRecord source, TDiff diff)
+    {
+        var target = Cloner.Invoke(source);
+        foreach (var property in Properties)
+            property.Apply(source, target, diff);
+        return target;
+    }
+
+    // Nested types
+
+    public abstract class RecordDiffPropertyInfo
+    {
+        public DiffEngine Engine { get; }
+        public PropertyInfo DiffProperty { get; }
+        public PropertyInfo RecordProperty { get; }
+        public abstract IDiffHandler UntypedHandler { get; }
+
+        protected RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
+        {
+            Engine = engine;
+            DiffProperty = diffProperty;
+            RecordProperty = recordProperty;
+        }
+
+        public abstract void Diff(TRecord source, TRecord target, TDiff diff);
+        public abstract void Apply(TRecord source, TRecord target, TDiff diff);
+    }
+
+    public class RecordDiffPropertyInfo<TDiffProperty, TRecordProperty> : RecordDiffPropertyInfo
+    {
+        public IDiffHandler<TRecordProperty, TDiffProperty> Handler { get; }
+        public override IDiffHandler UntypedHandler => Handler;
+        public Func<object, TDiffProperty> DiffPropertyGetter { get; }
+        public Action<object, TDiffProperty> DiffPropertySetter { get; }
+        public Func<object, TRecordProperty> RecordPropertyGetter { get; }
+        public Action<object, TRecordProperty> RecordPropertySetter { get; }
+
+        public RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
+            : base(engine, diffProperty, recordProperty)
+        {
+            Handler = Engine.GetHandler<TRecordProperty, TDiffProperty>();
+            DiffPropertyGetter = DiffProperty.GetGetter<TDiffProperty>();
+            DiffPropertySetter = DiffProperty.GetSetter<TDiffProperty>();
+            RecordPropertyGetter = RecordProperty.GetGetter<TRecordProperty>();
+            RecordPropertySetter = RecordProperty.GetSetter<TRecordProperty>();
+        }
+
+        public override void Diff(TRecord source, TRecord target, TDiff diff)
+        {
+            var sourceValue = RecordPropertyGetter.Invoke(source);
+            var targetValue = RecordPropertyGetter.Invoke(target);
+            var diffValue = Handler.Diff(sourceValue, targetValue);
+            DiffPropertySetter.Invoke(diff, diffValue);
+        }
+
+        public override void Apply(TRecord source, TRecord target, TDiff diff)
+        {
+            var sourceValue = RecordPropertyGetter.Invoke(source);
+            var diffValue = DiffPropertyGetter.Invoke(diff);
+            var targetValue = Handler.Patch(sourceValue, diffValue);
+            RecordPropertySetter.Invoke(target, targetValue);
+        }
+    }
+}

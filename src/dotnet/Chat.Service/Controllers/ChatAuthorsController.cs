@@ -18,16 +18,16 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     }
 
     [HttpGet, Publish]
-    public Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetOwnAuthor(session, chatId, cancellationToken);
+    public Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetOwnPrincipalId(session, chatId, cancellationToken);
+    public Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetPrincipalId(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
-        => _service.ListOwnChatIds(session, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken)
+        => _service.ListChatIds(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
@@ -52,10 +52,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     // Commands
 
     [HttpPost]
-    public Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    public Task AddToContacts([FromBody] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
+    public Task CreateChatAuthors([FromBody] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

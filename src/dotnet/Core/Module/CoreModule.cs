@@ -25,16 +25,22 @@ public class CoreModule : HostModule<CoreSettings>
             .Distinct()
             .ToList();
 
-        // Common services
+        // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options() {
             ScannedAssemblies = pluginAssemblies,
         });
         services.AddSingleton<IMatchingTypeFinder, MatchingTypeFinder>();
+
+        // DiffEngine
+        services.AddSingleton<DiffEngine>();
+
+        // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
             : new DefaultObjectPoolProvider());
         services.AddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
 
+        // Fusion
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))

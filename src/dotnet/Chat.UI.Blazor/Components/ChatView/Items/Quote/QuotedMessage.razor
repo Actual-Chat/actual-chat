@@ -73,7 +73,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var principalId = await ChatAuthor
-            .GetOwnPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
+            .GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
             .ConfigureAwait(false);
         var hasAttachments = Message.Entry.HasAttachments;
         var markup = GetMarkup();

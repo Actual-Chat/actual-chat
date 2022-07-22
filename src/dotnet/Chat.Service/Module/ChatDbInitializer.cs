@@ -38,12 +38,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chatExists= await dbContext.Chats
+        var defaultChatExists = await dbContext.Chats
             .Where(c => c.Id == (string)Constants.Chat.DefaultChatId)
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
+        var shouldRecreateDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);
 
-        if ((DbInfo.ShouldRecreateDb && HostInfo.IsDevelopmentInstance) || (!chatExists && HostInfo.IsDevelopmentInstance)) {
+        if (shouldRecreateDb) {
             Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
@@ -99,9 +100,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                     cancellationToken)
                 .ConfigureAwait(false);
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -131,6 +135,32 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         e.Type,
                         e.Content);
             }
+        }
+    }
+
+    private async Task UpgradeChats(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var candidateChatIds = await dbContext.Chats
+            .Where(c => c.Owners.Any())
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (candidateChatIds.Count == 0) {
+            Log.LogInformation("No chats to upgrade");
+            return;
+        }
+
+        try {
+            Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
+            foreach (var chatId in candidateChatIds) {
+                var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
+                await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            }
+            Log.LogInformation("Chats are upgraded");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to upgrade chats!");
+            throw;
         }
     }
 

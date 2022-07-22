@@ -7,15 +7,13 @@
 @using System.Reflection
 @implements IDisposable
 
-<CascadingAuthState>
-    <CascadingBlazoredModal>
+<CascadingBlazoredModal>
+    <CascadingAuthState>
         <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
             <Found>
-                <CascadingValue Value="@context">
-                    <ErrorWrapper @key="context">
-                        <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
-                    </ErrorWrapper>
-                </CascadingValue>
+                <ErrorWrapper>
+                    <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
+                </ErrorWrapper>
             </Found>
             <NotFound>
                 <LayoutView Layout="@typeof(MainLayout)">
@@ -23,8 +21,8 @@
                 </LayoutView>
             </NotFound>
         </Router>
-    </CascadingBlazoredModal>
-</CascadingAuthState>
+    </CascadingAuthState>
+</CascadingBlazoredModal>
 
 @code {
     private static Assembly? UIAssembly { get; set; }

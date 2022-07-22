@@ -10,8 +10,8 @@ public partial class MainPage : ContentPage
 
     public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor)
     {
-        this._appSettings = appSettings;
-        this._navInterceptor = navInterceptor;
+        _appSettings = appSettings;
+        _navInterceptor = navInterceptor;
 
         InitializeComponent();
 
@@ -21,14 +21,11 @@ public partial class MainPage : ContentPage
 
         _blazorWebView.RootComponents.Add(
             new Microsoft.AspNetCore.Components.WebView.Maui.RootComponent {
-                ComponentType = typeof(Main),
+                ComponentType = typeof(MauiApp),
                 Selector = "#app",
                 Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
-                    {
-                        nameof(Main.SessionId),
-                        appSettings.SessionId
-                    },
-                }
+                    { nameof(MauiApp.SessionId), appSettings.SessionId },
+                },
             });
     }
 

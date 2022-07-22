@@ -14,7 +14,7 @@ public class ChatAuthorsTest : AppHostTestBase
         var session = tester.Session;
 
         var chatAuthors = tester.ClientServices.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetOwnAuthor(session, Constants.Chat.DefaultChatId, default);
+        var author = await chatAuthors.Get(session, Constants.Chat.DefaultChatId, default);
         author.Should().BeNull();
     }
 }

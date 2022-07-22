@@ -32,7 +32,8 @@ public class AdminGrantTest : AppHostTestBase
     public async Task UserWithActualChatDomainAndGoogleIdentityShouldBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "BobAdmin").WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
+        var user = new User("", "BobAdmin")
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
             .WithClaim(ClaimTypes.Email, "bob@actual.chat");
 
         // act
@@ -48,7 +49,8 @@ public class AdminGrantTest : AppHostTestBase
     public async Task UserWithoutGoogleIdentityShouldNotBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "JackNotAdmin").WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
+        var user = new User("", "JackNotAdmin")
+            .WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
             .WithClaim(ClaimTypes.Email, "jack@actual.chat");
 
         // act

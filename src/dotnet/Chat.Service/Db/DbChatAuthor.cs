@@ -22,8 +22,10 @@ public class DbChatAuthor : IHasId<string>
     public string? UserId { get; set; }
     public bool HasLeft { get; set; }
 
+    public List<DbChatAuthorRole> Roles { get; } = new();
+
     public static string ComposeId(string chatId, long localId)
-        => $"{chatId}:{localId.ToString(CultureInfo.InvariantCulture)}";
+        => new ParsedChatAuthorId(chatId, localId).Id;
 
     public ChatAuthor ToModel()
         => new() {
@@ -33,7 +35,8 @@ public class DbChatAuthor : IHasId<string>
             Name = Name,
             IsAnonymous = IsAnonymous,
             UserId = UserId ?? "",
-            HasLeft = HasLeft
+            HasLeft = HasLeft,
+            RoleIds = Roles.Select(ar => (Symbol)ar.ChatRoleId).ToImmutableArray(),
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
@@ -42,6 +45,7 @@ public class DbChatAuthor : IHasId<string>
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
+            // builder.HasMany(a => a.Roles).WithOne(nameof(DbChatAuthorRole.ChatAuthorId));
         }
     }
 }

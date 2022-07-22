@@ -35,9 +35,11 @@ public class ChatServiceModule : HostModule<ChatSettings>
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
             db.AddEntityResolver<string, DbChat>(_ => new() {
-                QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners),
+                QueryTransformer = query => query.Include(chat => chat.Owners),
             });
-            db.AddEntityResolver<string, DbChatAuthor>();
+            db.AddEntityResolver<string, DbChatAuthor>(_ => new() {
+                QueryTransformer = query => query.Include(a => a.Roles),
+            });
             db.AddEntityResolver<string, DbChatRole>();
             db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
@@ -81,6 +83,14 @@ public class ChatServiceModule : HostModule<ChatSettings>
         });
         fusion.AddComputeService<IChatAuthors, ChatAuthors>();
         fusion.AddComputeService<IChatAuthorsBackend, ChatAuthorsBackend>();
+
+        // ChatRoles
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatRole>("seq." + nameof(ChatRole));
+        });
+        fusion.AddComputeService<IChatRoles, ChatRoles>();
+        fusion.AddComputeService<IChatRolesBackend, ChatRolesBackend>();
 
         // ContentSaver
         services.AddResponseCaching();
