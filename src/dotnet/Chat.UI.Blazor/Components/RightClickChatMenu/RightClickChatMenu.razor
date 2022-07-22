@@ -1,17 +1,19 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
 
-<ContextMenu Id="@Id">
-    <ChildContent>
-        <CascadingValue Value="@(context.Data as Chat)">
-            <RightClickMenuRecord/>
-            <RightClickMenuPin/>
-            <RightClickMenuPlayback/>
-            <Seperator/>
-            <RightClickMenuDelete/>
-        </CascadingValue>
-    </ChildContent>
-</ContextMenu>
+<div class="fixed"> @* use fixed class to eliminate space style coming from NavGroup *@
+    <ContextMenu Id="@Id">
+        <ChildContent>
+            <CascadingValue Value="@(context.Data as Chat)">
+                <RightClickMenuRecord/>
+                <RightClickMenuPin/>
+                <RightClickMenuPlayback/>
+                <Seperator/>
+                <RightClickMenuDelete/>
+            </CascadingValue>
+        </ChildContent>
+    </ContextMenu>
+</div>
 
 @code{
     public const string Id = "contextMenu-chatList-chat";

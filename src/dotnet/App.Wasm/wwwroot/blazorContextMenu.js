@@ -87,11 +87,12 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
     }
 
-    var addToOpenMenus = function (menu, menuId, target) {
+    var addToOpenMenus = function (menu, menuId, target, toggle = undefined) {
         var instanceId = guid();
         openMenus.push({
             id: menuId,
             target: target,
+            toggle: toggle,
             instanceId: instanceId
         });
         menu.dataset["instanceId"] = instanceId;
@@ -112,6 +113,46 @@ var blazorContextMenu = function (blazorContextMenu) {
         addToOpenMenus(menu, menuId, e.target);
         var triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
         showMenuCommon(menu, menuId, e.x, e.y, e.target, triggerDotnetRef);
+        e.preventDefault();
+        if (stopPropagation) {
+            e.stopPropagation();
+        }
+        return false;
+    };
+
+    var getOpenedMenuForToggle = function (toggle) {
+        if (openMenus.length > 0) {
+            for (var i = 0; i < openMenus.length; i++) {
+                var currentMenu = openMenus[i];
+                if (currentMenu.toggle === toggle) {
+                    return currentMenu;
+                }
+            }
+        }
+        return undefined;
+    }
+
+    blazorContextMenu.OnContextMenuToggle = function (e, menuId, stopPropagation) {
+        //openingMenu = true;
+        const menu = document.getElementById(menuId);
+        if (!menu) throw new Error("No context menu with id '" + menuId + "' was found");
+        const target = e.currentTarget;
+        const currentMenu = getOpenedMenuForToggle(target);
+        if (currentMenu) {
+            blazorContextMenu.Hide(currentMenu.id);
+            return false;
+        }
+        const placement = target.getElementsByClassName('placement');
+        let x = e.x;
+        let y = e.y;
+        if (placement && placement.length > 0) {
+            const rect = placement[0].getBoundingClientRect();
+            x = rect.left;
+            y = rect.top;
+        }
+        addToOpenMenus(menu, menuId, e.target, target);
+        const triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
+        showMenuCommon(menu, menuId, x, y, e.target, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
             e.stopPropagation();
@@ -145,18 +186,27 @@ var blazorContextMenu = function (blazorContextMenu) {
             handleAutoHideEvent(e, "mousedown");
         });
 
+        document.addEventListener("keydown", function (e) {
+            if (e.key === 'Escape' || e.key === 'Esc')
+                handleAutoHideEvent(e, "escape");
+        });
+
         function handleAutoHideEvent(e, autoHideEvent) {
             if (openMenus.length > 0) {
                 for (var i = 0; i < openMenus.length; i++) {
                     var currentMenu = openMenus[i];
                     var menuElement = document.getElementById(currentMenu.id);
-                    if (menuElement && menuElement.dataset["autohide"] == "true" && menuElement.dataset["autohideevent"] == autoHideEvent) {
-                        var clickedInsideMenu = menuElement.contains(e.target);
-                        if (!clickedInsideMenu) {
+                    if (menuElement && menuElement.dataset["autohide"] == "true") {
+                        if (autoHideEvent === 'escape')
                             blazorContextMenu.Hide(currentMenu.id);
+                        else if (menuElement.dataset["autohideevent"] == autoHideEvent) {
+                            var clickedInsideMenu = menuElement.contains(e.target);
+                            var clickedInsideToggle = currentMenu.toggle && currentMenu.toggle.contains(e.target);
+                            if (!(clickedInsideMenu || clickedInsideToggle)) {
+                                blazorContextMenu.Hide(currentMenu.id);
+                            }
                         }
                     }
-
                 }
             }
         }
@@ -179,7 +229,7 @@ var blazorContextMenu = function (blazorContextMenu) {
         var targetId = null;
         if (target) {
             if (!target.id) {
-                //add an id to the target dynamically so that it can be referenced later 
+                //add an id to the target dynamically so that it can be referenced later
                 //TODO: Rewrite this once this Blazor limitation is lifted
                 target.id = guid();
             }
