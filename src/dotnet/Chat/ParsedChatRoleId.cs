@@ -12,8 +12,6 @@ public readonly struct ParsedChatRoleId : IEquatable<ParsedChatRoleId>, IHasId<S
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsSystem { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsValid { get; }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
@@ -34,8 +32,7 @@ public readonly struct ParsedChatRoleId : IEquatable<ParsedChatRoleId>, IHasId<S
 
         ChatId = chatId;
         LocalId = localId;
-        IsSystem = ChatId.Id.IsEmpty && ChatRole.SystemRoles.ContainsKey(Id);
-        IsValid = IsSystem || ChatId.IsValid;
+        IsValid = ChatId.IsValid;
     }
 
     public ParsedChatRoleId(ParsedChatId chatId, long localId)
@@ -43,8 +40,7 @@ public readonly struct ParsedChatRoleId : IEquatable<ParsedChatRoleId>, IHasId<S
         ChatId = chatId;
         LocalId = localId;
         Id = $"{chatId.Id}:{localId.ToString(CultureInfo.InvariantCulture)}";
-        IsSystem = ChatId.Id.IsEmpty && ChatRole.SystemRoles.ContainsKey(Id);
-        IsValid = IsSystem || ChatId.IsValid;
+        IsValid = ChatId.IsValid;
     }
 
     private ParsedChatRoleId(Symbol id, ParsedChatId chatId, long localId)
@@ -52,8 +48,7 @@ public readonly struct ParsedChatRoleId : IEquatable<ParsedChatRoleId>, IHasId<S
         Id = id;
         ChatId = chatId;
         LocalId = localId;
-        IsSystem = ChatId.Id.IsEmpty && ChatRole.SystemRoles.ContainsKey(Id);
-        IsValid = IsSystem || ChatId.IsValid;
+        IsValid = ChatId.IsValid;
     }
 
     public ParsedChatRoleId AssertValid()

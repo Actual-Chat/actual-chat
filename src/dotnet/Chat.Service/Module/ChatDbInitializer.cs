@@ -38,12 +38,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chatExists= await dbContext.Chats
+        var defaultChatExists = await dbContext.Chats
             .Where(c => c.Id == (string)Constants.Chat.DefaultChatId)
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
+        var shouldRecreateDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);
 
-        if ((DbInfo.ShouldRecreateDb && HostInfo.IsDevelopmentInstance) || (!chatExists && HostInfo.IsDevelopmentInstance)) {
+        if (shouldRecreateDb) {
             Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;

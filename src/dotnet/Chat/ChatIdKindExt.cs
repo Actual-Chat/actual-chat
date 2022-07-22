@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public static class ChatIdKindExt
 {
-    public static bool IsPeer(this ChatIdKind chatIdKind)
+    public static bool IsPeerAny(this ChatIdKind chatIdKind)
         => chatIdKind is ChatIdKind.PeerFull or ChatIdKind.PeerShort;
 
     public static ChatType ToChatType(this ChatIdKind chatIdKind)

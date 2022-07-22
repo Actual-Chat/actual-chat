@@ -78,7 +78,7 @@
     }
 
     private async Task InitRequestAuthorId() {
-        var requestAuthor = await ChatAuthors.GetOwnAuthor(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
+        var requestAuthor = await ChatAuthors.Get(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
         if (requestAuthor == null)
             return;
         RequestAuthor = requestAuthor;

@@ -5,11 +5,11 @@ namespace ActualChat.Chat;
 public interface IChatAuthors : IComputeService
 {
     [ComputeMethod]
-    Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
+    Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]

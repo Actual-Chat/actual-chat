@@ -40,7 +40,7 @@
         string chatId = Chat.Id;
         var permissions = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
-        var canSend = permissions.CanWrite;
+        var canSend = permissions.CanWrite();
         var canJoin = false;
         if (!canSend) {
             canJoin = await Chats.CanJoin(Session, chatId, cancellationToken).ConfigureAwait(false);

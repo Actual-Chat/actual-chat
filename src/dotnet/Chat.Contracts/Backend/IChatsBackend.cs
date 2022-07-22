@@ -6,9 +6,6 @@ public interface IChatsBackend : IComputeService
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListOwnedChatIds(string userId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
     Task<long> GetEntryCount(
         string chatId,
         ChatEntryType entryType,
@@ -70,10 +67,7 @@ public interface IChatsBackend : IComputeService
     // Commands
 
     [CommandHandler]
-    Task<Chat> CreateChat(CreateChatCommand command, CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task<Unit> UpdateChat(UpdateChatCommand command, CancellationToken cancellationToken);
+    Task<Chat?> ChangeChat(ChangeChatCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
@@ -84,16 +78,12 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record CreateChatCommand(
-        [property: DataMember]
-        Chat Chat
-    ) : ICommand<Chat>, IBackendCommand;
-
-    [DataContract]
-    public sealed record UpdateChatCommand(
-        [property: DataMember]
-        Chat Chat
-    ) : ICommand<Unit>, IBackendCommand;
+    public sealed record ChangeChatCommand(
+        [property: DataMember] string ChatId,
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] Change<ChatDiff> Change,
+        [property: DataMember] string? CreatorUserId = null
+    ) : ICommand<Chat?>, IBackendCommand;
 
     [DataContract]
     public sealed record CreateAudioEntryCommand(

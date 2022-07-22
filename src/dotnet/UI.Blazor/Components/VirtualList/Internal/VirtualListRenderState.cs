@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Components.Internal;
 public class VirtualListRenderState
 {
     public long RenderIndex { get; set; }
-    public VirtualListDataQuery Query { get; set; }
+    public VirtualListDataQuery Query { get; set; } = null!;
 
     public double SpacerSize { get; set; }
     public double EndSpacerSize { get; set; }

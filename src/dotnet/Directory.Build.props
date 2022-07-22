@@ -48,6 +48,7 @@
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.Diagnostics" />
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
+    <Using Include="ActualChat.Diff" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />
     <Using Include="System.Collections" />

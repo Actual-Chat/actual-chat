@@ -22,7 +22,6 @@ public interface IChatAuthorsBackend : IComputeService
 
     [CommandHandler]
     Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<ChatAuthor> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
 

@@ -6,18 +6,37 @@ namespace ActualChat.Chat;
 public sealed record ChatRole(
     [property: DataMember] Symbol Id, // Corresponds to DbChatRole.Id
     [property: DataMember] string Name = "",
-    [property: DataMember] bool IsPersistent = true
-    ) : IHasId<Symbol>, IHasVersion<long>
+    [property: DataMember] SystemChatRole SystemRole = SystemChatRole.None
+    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    public static ChatRole Everyone { get; } = new(":-1", "Everyone", false);
-    public static ChatRole Users { get; } = new(":-2", "Users", false);
-    public static ChatRole UnauthenticatedUsers { get; } = new(":-3", "Unauthenticated Users", false);
-    public static ChatRole Owners { get; } = new(":-10", "Owners");
-
-    public static IReadOnlyDictionary<Symbol, ChatRole> SystemRoles { get; } =
-        new[] { Owners, Users, UnauthenticatedUsers, Everyone }.ToDictionary(r => r.Id);
-
     [DataMember] public long Version { get; init; } = 0;
-    [DataMember] public string Picture { get; set; } = "";
-    [DataMember] public ImmutableHashSet<Symbol> AuthorIds { get; init; } = ImmutableHashSet<Symbol>.Empty;
+    [DataMember] public string Picture { get; init; } = "";
+    [DataMember] public ChatPermissions Permissions { get; init; }
+
+    public ChatRole Fix()
+    {
+        var role = this;
+        if (role.SystemRole is SystemChatRole.Owners && !role.Permissions.Has(ChatPermissions.Owner))
+            role = role with { Permissions = ChatPermissions.Owner.AddImplied() };
+        if (role.SystemRole is not SystemChatRole.None) {
+            var name = role.SystemRole.ToString();
+            if (!Equals(role.Name, name))
+                role = role with { Name = name };
+        }
+        var permissions = role.Permissions.AddImplied();
+        if (role.Permissions != permissions)
+            role = role with { Permissions = permissions };
+        return role;
+    }
+}
+
+[DataContract]
+public sealed record ChatRoleDiff : RecordDiff
+{
+    [DataMember] public string? Name { get; init; }
+    [DataMember] public SystemChatRole? SystemRole { get; init; }
+    [DataMember] public string? Picture { get; init; }
+    [DataMember] public ChatPermissions? Permissions { get; init; }
+    [DataMember] public SetDiff<ImmutableArray<Symbol>, Symbol> AuthorIds { get; init; } =
+        SetDiff<ImmutableArray<Symbol>, Symbol>.Unchanged;
 }

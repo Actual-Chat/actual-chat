@@ -75,33 +75,24 @@ public interface IChats : IComputeService
     // Commands
 
     [CommandHandler]
-    Task<Chat> CreateChat(CreateChatCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<Unit> UpdateChat(UpdateChatCommand command, CancellationToken cancellationToken);
+    Task<Chat?> ChangeChat(ChangeChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Unit> JoinChat(JoinChatCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<ChatEntry> CreateTextEntry(CreateTextEntryCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
-    [CommandHandler]
-    Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
-
     [DataContract]
-    public sealed record CreateChatCommand(
+    public sealed record ChangeChatCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string Title
-        ) : ISessionCommand<Chat>
-    {
-        [DataMember] public bool IsPublic { get; init; }
-    }
-
-    [DataContract]
-    public sealed record UpdateChatCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] Chat Chat
-        ) : ISessionCommand<Unit>;
+        [property: DataMember] string ChatId,
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] Change<ChatDiff> Change
+        ) : ISessionCommand<Chat?>;
 
     [DataContract]
     public sealed record JoinChatCommand(

@@ -2,8 +2,8 @@
 @inherits ComputedStateComponent<UserPage.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var user = m.User;
-    if (user == null) {
+    var userAuthor = m.UserAuthor;
+    if (userAuthor == null) {
         if (ReferenceEquals(m, Model.Unavailable))
             Nav.Unavailable("user");
         return;
@@ -12,12 +12,12 @@
 
 <RequireAccount/>
 <MainHeader>
-    <span class="text-03">User: @user.Name</span>
+    <span class="text-03">User: @userAuthor.Name</span>
 </MainHeader>
 
 <div class="user-info_badge">
-    <UserAuthorCircle UserId="@user.Id" Size="SquareSize.Size12" ShowsPresence="true" />
-    <UserAuthorName UserId="@user.Id" Class="text-02 font-semibold text-lg"/>
+    <UserAuthorCircle UserId="@UserId" Size="SquareSize.Size12" ShowsPresence="true" />
+    <UserAuthorName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
 </div>
 
 @if (m.CanAddContact || m.CanSendMessage) {
@@ -55,12 +55,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetByUserId(Session, UserId, cancellationToken);
-        if (!account.IsActive())
+        var userAuthor = await Accounts.GetUserAuthor(UserId, cancellationToken);
+        if (userAuthor == null)
             return Model.Unavailable;
 
         return new Model {
-            User = account!.User,
+            UserAuthor = userAuthor,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
             CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
         };
@@ -70,7 +70,7 @@
         public static Model None { get; } = new();
         public static Model Unavailable { get; } = new();
 
-        public User? User { get; init; }
+        public UserAuthor? UserAuthor { get; init; }
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }

@@ -49,7 +49,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
             // Let's try to activate recording first
             if (state.IsPlayingActive || state.IsPlayingPinned) {
                 var rules = await _chats.GetRules(_session, activeChatId, cancellationToken).ConfigureAwait(false);
-                if (rules.CanRead) {
+                if (rules.CanRead()) {
                     await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
                     _chatUI.IsPlaying.Value = state.IsPlayingActive;
                     _chatUI.MustPlayPinnedChats.Value = state.IsPlayingPinned;
@@ -80,7 +80,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
             .Collect()
             .ConfigureAwait(false);
         var filteredChatIds = rules
-            .Where(r => r.CanRead)
+            .Where(r => r.CanRead())
             .Select(r => r.ChatId)
             .ToArray();
         return filteredChatIds;

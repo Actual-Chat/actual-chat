@@ -17,34 +17,63 @@ public class DbChatRole : IHasId<string>
     public long LocalId { get; set; }
 
     [ConcurrencyCheck] public long Version { get; set; }
+    [Column(TypeName = "smallint")]
+    public SystemChatRole SystemRole { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
-    public string AuthorIds { get; set; } = ""; // Space-separated
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
+    public bool CanJoin { get; set; }
+    public bool CanInvite { get; set; }
+    public bool CanEditProperties { get; set; }
+    public bool CanEditRoles { get; set; }
 
     public DbChatRole() { }
     public DbChatRole(ChatRole model) => UpdateFrom(model);
 
     public ChatRole ToModel()
-        => new(Id) {
+    {
+        var permissions = (ChatPermissions) 0;
+        if (CanRead)
+            permissions |= ChatPermissions.Read;
+        if (CanWrite)
+            permissions |= ChatPermissions.Write;
+        if (CanJoin)
+            permissions |= ChatPermissions.Join;
+        if (CanInvite)
+            permissions |= ChatPermissions.Invite;
+        if (CanEditProperties)
+            permissions |= ChatPermissions.EditProperties;
+        if (CanEditRoles)
+            permissions |= ChatPermissions.EditRoles;
+        if (SystemRole is SystemChatRole.Owners)
+            permissions = ChatPermissions.Owner;
+        return new (Id) {
             Id = Id,
             Version = Version,
+            SystemRole = SystemRole,
             Name = Name,
             Picture = Picture,
-            AuthorIds = AuthorIds.Split(" ").Select(x => new Symbol(x)).ToImmutableHashSet(),
+            Permissions = permissions.AddImplied(),
         };
+    }
 
     public void UpdateFrom(ChatRole model)
     {
-        if (!model.IsPersistent)
-            throw new InvalidOperationException("Can't persist non-persistent chat role.");
         var parsedRoleId = new ParsedChatRoleId(model.Id).AssertValid();
         Id = model.Id;
         ChatId = parsedRoleId.ChatId;
         LocalId = parsedRoleId.LocalId;
         Version = model.Version;
+        SystemRole = model.SystemRole;
         Name = model.Name;
         Picture = model.Picture;
-        AuthorIds = model.AuthorIds.ToDelimitedString(" ");
+        CanRead = model.Permissions.Has(ChatPermissions.Read);
+        CanWrite = model.Permissions.Has(ChatPermissions.Write);
+        CanJoin = model.Permissions.Has(ChatPermissions.Join);
+        CanInvite = model.Permissions.Has(ChatPermissions.Invite);
+        CanEditProperties = model.Permissions.Has(ChatPermissions.EditProperties);
+        CanEditRoles = model.Permissions.Has(ChatPermissions.EditRoles);
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>

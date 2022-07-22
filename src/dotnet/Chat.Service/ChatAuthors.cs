@@ -9,10 +9,12 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 {
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthorsBackend? _backend;
+    private IChats? _chats;
 
     private IAuth Auth { get; }
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IUserAvatarsBackend UserAvatarsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
     private IUserPresences UserPresences { get; }
@@ -29,7 +31,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> GetOwnAuthor(
+    public virtual async Task<ChatAuthor?> Get(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
@@ -45,11 +47,11 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<Symbol> GetOwnPrincipalId(
+    public virtual async Task<Symbol> GetPrincipalId(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
-        var author = await GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             return author.Id;
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
@@ -77,7 +79,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
         if (account != null)
@@ -143,6 +145,9 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
+        var chatRules = await Chats.GetRules(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Invite);
+
         var chatUserIds = await Backend.ListUserIds(command.ChatId, cancellationToken).ConfigureAwait(false);
         var existingUserIds = new HashSet<Symbol>(chatUserIds);
         foreach (var userId in command.UserIds) {
@@ -150,7 +155,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
                 continue;
 
             var createCommand = new IChatAuthorsBackend.CreateCommand(command.ChatId, userId);
-            await Commander.Call(createCommand, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
 

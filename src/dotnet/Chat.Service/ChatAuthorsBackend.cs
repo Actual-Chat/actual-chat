@@ -88,7 +88,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await Frontend.GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await Frontend.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
@@ -165,8 +165,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             };
         }
         else {
-            var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).ConfigureAwait(false)
-                ?? throw new KeyNotFoundException();
+            var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).Require().ConfigureAwait(false);
             dbChatAuthor = new DbChatAuthor() {
                 IsAnonymous = userAuthor.IsAnonymous,
             };
@@ -224,16 +223,20 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         return chatAuthor;
     }
 
-    /// <summary> The filter which creates default avatar for anonymous chat author</summary>
-    [CommandHandler(IsFilter = true, Priority = 1)]
+    [CommandHandler(IsFilter = true, Priority = 1001)] // 1000 = DbOperationScopeProvider, we must "wrap" it
     public virtual async Task OnChatAuthorCreated(
         IChatAuthorsBackend.CreateCommand command,
         CancellationToken cancellationToken)
     {
+        // This filter creates default avatar for anonymous chat author
+
         var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating()) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;
+        }
+
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var chatAuthor = context.Items.Get<ChatAuthor>()!;
         if (!chatAuthor.UserId.IsEmpty)

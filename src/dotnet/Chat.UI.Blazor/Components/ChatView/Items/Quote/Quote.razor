@@ -55,7 +55,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var principalId = await ChatAuthor
-            .GetOwnPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
+            .GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
             .ConfigureAwait(false);
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);

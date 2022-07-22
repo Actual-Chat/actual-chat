@@ -76,7 +76,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            var currentAuthor = await ChatAuthors.GetOwnAuthor(Session, Chat.Id, _disposeToken.Token)
+            var currentAuthor = await ChatAuthors.Get(Session, Chat.Id, _disposeToken.Token)
                 .ConfigureAwait(true);
             _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
 

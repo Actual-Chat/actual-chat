@@ -21,12 +21,16 @@ public class ChatRolesController : ControllerBase, IChatRoles
         => _service.Get(session, chatId, roleId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.ListOwnRoleIds(session, chatId, cancellationToken);
+    public Task<ImmutableArray<ChatRole>> List(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.List(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+        => _service.ListAuthorIds(session, chatId, roleId, cancellationToken);
 
     // Commands
 
     [HttpPost]
-    public Task Upsert(IChatRoles.UpsertCommand command, CancellationToken cancellationToken)
+    public Task<ChatRole?> Change(IChatRoles.ChangeCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

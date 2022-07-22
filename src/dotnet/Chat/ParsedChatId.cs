@@ -68,8 +68,13 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
     public ParsedChatId AssertValid()
         => IsValid ? this : throw new FormatException("Invalid chat Id format.");
 
-    public ParsedChatId AssertPeer()
-        => AssertValid().Kind.IsPeer()
+    public ParsedChatId AssertGroup()
+        => AssertValid().Kind is ChatIdKind.Group
+            ? this
+            : throw new InvalidOperationException("Group chat Id is expected here.");
+
+    public ParsedChatId AssertPeerAny()
+        => AssertValid().Kind.IsPeerAny()
             ? this
             : throw new InvalidOperationException("Peer chat Id is expected here.");
 

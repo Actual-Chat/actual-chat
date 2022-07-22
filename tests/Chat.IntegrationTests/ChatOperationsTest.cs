@@ -17,28 +17,54 @@ public class ChatOperationsTest : AppHostTestBase
         var session = tester.Session;
         var user = await tester.SignIn(new User("", "Bob"));
 
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var chatRoles = services.GetRequiredService<IChatRoles>();
+        var chatAuthors = services.GetRequiredService<IChatAuthors>();
         var commander = tester.Commander;
-        var chatTitle = "test chat";
-        var chatResult = await commander.Call(new IChats.CreateChatCommand(session, chatTitle) { IsPublic = isPublicChat });
-        chatResult.Should().NotBeNull();
-        chatResult.Title.Should().Be(chatTitle);
-        chatResult.IsPublic.Should().Be(isPublicChat);
-        chatResult.OwnerIds.Should().HaveCount(1);
-        chatResult.OwnerIds.Should().Contain(user.Id);
-        var chatId = chatResult.Id;
 
-        var chats = tester.AppServices.GetRequiredService<IChats>();
-        var chatAuthors = tester.AppServices.GetRequiredService<IChatAuthors>();
-        var chat = await chats.Get(session, chatId, default);
+        var chatTitle = "test chat";
+        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = chatTitle,
+                ChatType = ChatType.Group,
+                IsPublic = isPublicChat,
+            },
+        }));
+        chat = chat.Require();
+        await Task.Delay(100); // Let's wait invalidations to hit the client
+        chat = await chats.Get(session, chat.Id, default).Require();
+
+        chat.Should().NotBeNull();
+        chat.Title.Should().Be(chatTitle);
+        chat.IsPublic.Should().Be(isPublicChat);
+
+        var roles = await chatRoles.List(session, chat.Id, default);
+        roles.Length.Should().Be(2);
+
+        var owners = roles.Single(r => r.SystemRole is SystemChatRole.Owners);
+        owners.Name.Should().Be(SystemChatRole.Owners.ToString());
+        owners.Permissions.Has(ChatPermissions.Owner).Should().BeTrue();
+
+        var joined = roles.Single(r => r.SystemRole is SystemChatRole.Joined);
+        joined.Name.Should().Be(SystemChatRole.Joined.ToString());
+        joined.Permissions.Has(ChatPermissions.Read).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Write).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Join).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Invite).Should().BeTrue();
+
         chat.Should().NotBeNull();
 
-        var permissions = await chats.GetRules(session, chatId, default);
-        permissions.CanReadWrite.Should().BeTrue();
-        permissions.CanEditProperties.Should().BeTrue();
-        permissions.CanInvite.Should().BeTrue();
-        permissions.IsOwner.Should().BeTrue();
+        var rules = await chats.GetRules(session, chat.Id, default);
+        rules.CanRead().Should().BeTrue();
+        rules.CanWrite().Should().BeTrue();
+        rules.CanJoin().Should().BeTrue();
+        rules.CanInvite().Should().BeTrue();
+        rules.CanEditProperties().Should().BeTrue();
+        rules.CanEditRoles().Should().BeTrue();
+        rules.IsOwner().Should().BeTrue();
 
-        var author = await chatAuthors.GetOwnAuthor(session, chatId, default);
+        var author = await chatAuthors.Get(session, chat.Id, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
     }
@@ -58,16 +84,21 @@ public class ChatOperationsTest : AppHostTestBase
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.CreateChatCommand(session, "test chat") {
-                IsPublic = isPublicChat
-            });
+            var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+                Create = new ChatDiff() {
+                    Title = "test chat",
+                    ChatType = ChatType.Group,
+                    IsPublic = isPublicChat,
+                },
+            }));
+            chat = chat.Require();
             chatId = chat.Id;
 
             if (!isPublicChat) {
                 // to join private chat we need to generate invite code
                 var invite = new Invite.Invite {
                     Details = new InviteDetails { Chat = new (chatId) },
-                    Remaining = 10
+                    Remaining = 10,
                 };
                 invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
                 inviteId = invite.Id;
@@ -77,7 +108,7 @@ public class ChatOperationsTest : AppHostTestBase
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
-            var user = await tester.SignIn(new User("", "Bob"));
+            var user = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
             var canJoin = await chats.CanJoin(session, chatId, default);
@@ -90,7 +121,6 @@ public class ChatOperationsTest : AppHostTestBase
                 await WaitInviteActivationCompleted();
                 canJoin = await chats.CanJoin(session, chatId, default);
             }
-
             canJoin.Should().BeTrue();
 
             var command = new IChats.JoinChatCommand(session, chatId);
@@ -115,9 +145,14 @@ public class ChatOperationsTest : AppHostTestBase
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.CreateChatCommand(session, "test chat") {
-                IsPublic = isPublicChat
-            });
+            var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+                Create = new ChatDiff() {
+                    Title = "test chat",
+                    ChatType = ChatType.Group,
+                    IsPublic = isPublicChat,
+                },
+            }));
+            chat = chat.Require();
             chatId = chat.Id;
 
             if (!isPublicChat) {
@@ -134,7 +169,7 @@ public class ChatOperationsTest : AppHostTestBase
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
-            var user = await tester.SignIn(new User("", "Bob"));
+            var user = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
 
@@ -152,8 +187,8 @@ public class ChatOperationsTest : AppHostTestBase
             await commander.Call(leaveCommand);
 
             var permissions = await chats.GetRules(session, chatId, default);
-            permissions.CanRead.Should().Be(isPublicChat);
-            permissions.CanWrite.Should().BeFalse();
+            permissions.CanRead().Should().Be(isPublicChat);
+            permissions.CanWrite().Should().BeFalse();
 
             var chat = await chats.Get(session, chatId, default);
             if (isPublicChat)
@@ -183,18 +218,19 @@ public class ChatOperationsTest : AppHostTestBase
     {
         var chats = services.GetRequiredService<IChats>();
 
-        var permissions = await chats.GetRules(session, chatId, default);
-        permissions.CanReadWrite.Should().BeTrue();
+        var rules = await chats.GetRules(session, chatId, default);
+        rules.CanRead().Should().BeTrue();
+        rules.CanWrite().Should().BeTrue();
 
         var chat = await chats.Get(session, chatId, default);
         chat.Should().NotBeNull();
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetOwnAuthor(session, chatId, default);
+        var author = await chatAuthors.Get(session, chatId, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
         author.HasLeft.Should().BeFalse();
 
-        var ownChatIds = await chatAuthors.ListOwnChatIds(session, default);
+        var ownChatIds = await chatAuthors.ListChatIds(session, default);
         ownChatIds.Should().Contain(chatId);
 
         var userIds = await chatAuthors.ListUserIds(session, chatId, default);
@@ -206,10 +242,10 @@ public class ChatOperationsTest : AppHostTestBase
     private static async Task AssertUserNotJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetOwnAuthor(session, chatId, default);
+        var author = await chatAuthors.Get(session, chatId, default);
         author!.HasLeft.Should().BeTrue();
 
-        var ownChatIds = await chatAuthors.ListOwnChatIds(session, default);
+        var ownChatIds = await chatAuthors.ListChatIds(session, default);
         ownChatIds.Should().NotContain(chatId);
 
         var userIds = await chatAuthors.ListUserIds(session, chatId, default);

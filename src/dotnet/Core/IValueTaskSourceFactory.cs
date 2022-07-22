@@ -13,7 +13,10 @@ namespace ActualChat;
 public interface IValueTaskSourceFactory<T>
 {
     ValueTaskSource<T> Create();
-    /// <summary> You shouldn't call this by youself, it will be called automatically after <c>await</c>. </summary>
+    /// <summary>
+    /// You shouldn't call this by yourself,
+    /// it's called automatically after <c>await</c>.
+    /// </summary>
     void Return(ValueTaskSource<T> valueTaskSource);
 }
 

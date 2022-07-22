@@ -13,6 +13,7 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbChatOwner> ChatOwners { get; protected set; } = null!;
     public DbSet<DbChatAuthor> ChatAuthors { get; protected set; } = null!;
     public DbSet<DbChatRole> ChatRoles { get; protected set; } = null!;
+    public DbSet<DbChatAuthorRole> ChatAuthorRoles { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
