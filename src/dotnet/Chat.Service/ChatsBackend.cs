@@ -440,6 +440,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (dbChat == null)
             return;
 
+        Log.LogInformation("Upgrading chat #{ChatId}: '{ChatTitle}' ({ChatType})",
+            chatId, dbChat.Title, dbChat.ChatType);
+
         var chat = dbChat.ToModel();
         var isPeer = chat.ChatType is ChatType.Peer;
         var parsedChatId = new ParsedChatId(chatId);

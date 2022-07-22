@@ -105,6 +105,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -140,14 +141,26 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     private async Task UpgradeChats(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         var candidateChatIds = await dbContext.Chats
-            .Where(c => c.Owners.Any() || c.ChatType == ChatType.Peer)
+            .Where(c => c.Owners.Any())
             .Select(c => c.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (candidateChatIds.Count == 0) {
+            Log.LogInformation("No chats to upgrade");
+            return;
+        }
 
-        foreach (var chatId in candidateChatIds) {
-            var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        try {
+            Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
+            foreach (var chatId in candidateChatIds) {
+                var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
+                await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            }
+            Log.LogInformation("Chats are upgraded");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to upgrade chats!");
+            throw;
         }
     }
 
