@@ -58,14 +58,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (!parsedChatId.IsValid)
             return ChatAuthorRules.None(chatId);
 
-        // Peer chats is a special case, we don't use actual roles there
+        // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
+        if (chatType is ChatType.Peer)
+            return await GetPeerChatRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+
+        // Group chat
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null) {
-            if (chatType is ChatType.Peer)
-                return await GetPeerChatRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
             return ChatAuthorRules.None(chatId);
-        }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
 
@@ -272,22 +273,21 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 // Peer chat
                 creatorUserId.RequireEmpty("Command.CreatorUserId");
                 var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-
-                var createChatAuthor1Cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId1);
-                await Commander.Call(createChatAuthor1Cmd, cancellationToken).ConfigureAwait(false);
-                var createChatAuthor2Cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId2);
-                await Commander.Call(createChatAuthor2Cmd, cancellationToken).ConfigureAwait(false);
-
-                // The commands triggered by these methods aren't nested!
-                var task1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
-                var task2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
-                await task1.Join(task2).ConfigureAwait(false);
+                var ownerUserIds = new[] { userId1.Value, userId2.Value };
+                var authors = await ownerUserIds
+                    .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
+                    .Collect(cancellationToken)
+                    .ConfigureAwait(false);
+                var tContact1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
+                var tContact2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+                var (contact1, contact2) = await tContact1.Join(tContact2).ConfigureAwait(false);
             }
             else {
                 // Group chat
                 creatorUserId = creatorUserId.RequireNonEmpty("Command.CreatorUserId");
-                var createChatAuthorCmd = new IChatAuthorsBackend.CreateCommand(chatId, creatorUserId);
-                var chatAuthor = await Commander.Call(createChatAuthorCmd, cancellationToken).ConfigureAwait(false);
+                var chatAuthor = await ChatAuthorsBackend
+                    .GetOrCreate(chatId, creatorUserId, true, cancellationToken)
+                    .ConfigureAwait(false);
 
                 var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                     Create = new ChatRoleDiff() {
@@ -452,8 +452,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            await UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
-            await UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
+            var tContact1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
+            var tContact2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+            var (contact1, contact2) = await tContact1.Join(tContact2).ConfigureAwait(false);
         }
         else {
             // Group chat

@@ -169,6 +169,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return default!;
         }
 
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNullOrEmpty()) {
             if (requireAuthenticated)
@@ -181,14 +184,17 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             };
         }
         else {
+            dbChatAuthor = await dbContext.ChatAuthors
+                .FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbChatAuthor != null)
+                return dbChatAuthor.ToModel(); // Author already exists
+
             var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).Require().ConfigureAwait(false);
             dbChatAuthor = new DbChatAuthor() {
                 IsAnonymous = userAuthor.IsAnonymous,
             };
         }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
 
         dbChatAuthor.ChatId = chatId;
         dbChatAuthor.LocalId = await DbChatAuthorLocalIdGenerator

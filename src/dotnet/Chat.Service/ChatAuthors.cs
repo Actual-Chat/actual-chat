@@ -148,15 +148,8 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         var chatRules = await Chats.GetRules(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Invite);
 
-        var chatUserIds = await Backend.ListUserIds(command.ChatId, cancellationToken).ConfigureAwait(false);
-        var existingUserIds = new HashSet<Symbol>(chatUserIds);
-        foreach (var userId in command.UserIds) {
-            if (existingUserIds.Contains(userId))
-                continue;
-
-            var createCommand = new IChatAuthorsBackend.CreateCommand(command.ChatId, userId);
-            await Commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
-        }
+        foreach (var userId in command.UserIds)
+            await Backend.GetOrCreate(command.ChatId, userId, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
