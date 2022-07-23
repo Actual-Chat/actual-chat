@@ -160,7 +160,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
-            o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromSeconds(15);
+            o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
+            o.MaxBufferedUnacknowledgedRenderBatches = 100; // Default is 10
             o.DetailedErrors = true;
         });
         fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
