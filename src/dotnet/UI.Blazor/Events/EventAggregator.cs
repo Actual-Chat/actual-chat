@@ -33,4 +33,7 @@ internal sealed class EventAggregator : IEventAggregator
             await eventHandler(@event, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    public Task Publish<TEvent>(CancellationToken cancellationToken = default) where TEvent : class, new()
+        => Publish(new TEvent(), cancellationToken);
 }

@@ -144,7 +144,7 @@
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
-        var isReplied = Message.Entry == await ChatUI.RepliedChatEntry.Use(cancellationToken);
+        var isReplied = Message.Entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.ChatEntry;
         var isHighlighted = Message.Entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted, isReplied);
     }

@@ -224,7 +224,7 @@ public class ChatEntryReaderTest : AppHostTestBase
                 if (count-- <= 0)
                     return;
 
-                var command = new IChats.CreateTextEntryCommand(session, chatId, text);
+                var command = new IChats.UpsertTextEntryCommand(session, chatId, null, text);
                 await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
             }
     }

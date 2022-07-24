@@ -82,7 +82,7 @@ public interface IChats : IComputeService
     Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ChatEntry> CreateTextEntry(CreateTextEntryCommand command, CancellationToken cancellationToken);
+    Task<ChatEntry> UpsertTextEntry(UpsertTextEntryCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
@@ -101,9 +101,10 @@ public interface IChats : IComputeService
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public sealed record CreateTextEntryCommand(
+    public sealed record UpsertTextEntryCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
+        [property: DataMember] long? Id,
         [property: DataMember] string Text) : ISessionCommand<ChatEntry>
     {
         [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =

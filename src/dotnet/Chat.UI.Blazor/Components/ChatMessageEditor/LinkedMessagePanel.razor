@@ -1,0 +1,31 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<LinkedMessagePanel.Model?>
+
+@{
+    var model = State.LatestNonErrorValue;
+}
+@if (model != null) {
+    <div class="flex-x bg-04 ml-14 outline-none mt-1 rounded-full">
+        <Quote Message="@model.Message" LinkType="model.LinkType"/>
+    </div>
+}
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatEntryRef = await ChatUI.LinkedChatEntry.Use(cancellationToken).ConfigureAwait(false);
+        if (chatEntryRef == null) {
+            return null;
+        }
+
+        var chatMessage = new ChatMessageModel(chatEntryRef.ChatEntry) {
+            IsBlockStart = true,
+            IsQuote = true,
+        };
+        return new (chatMessage, chatEntryRef.Type);
+    }
+
+    public record Model(ChatMessageModel Message, ChatEntryLinkType LinkType);
+
+}

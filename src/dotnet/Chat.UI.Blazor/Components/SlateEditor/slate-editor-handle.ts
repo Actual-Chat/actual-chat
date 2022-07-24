@@ -1,3 +1,5 @@
+import { MarkupNode } from './slate-editor-core';
+
 export class SlateEditorHandle {
     private readonly mention : Mention
 
@@ -7,21 +9,29 @@ export class SlateEditorHandle {
 
     public getText = () : string => ""
 
+    public setMarkup = (nodes: MarkupNode[]) : void => {};
+
     public clearText = () : void => {}
 
     public onPost = (text : string) => {}
+
+    public onCancel = () => {}
+
+    public onEditLastMessage = () => {}
 
     public onHasContentChanged = (hasContent : boolean) => {}
 
     public onMentionCommand = (cmd : string, args : string = "") => {}
 
-    public insertMention = (mention : any) => {}
+    public insertMention = (id: string, name: string) => {}
 
     get getMention() : Mention {
         return this.mention;
     }
 
     public setPlaceholder = (placeholder: string) => {}
+
+    public moveCursorToEnd = () => {}
 
     public onRendered = () : void => {}
 }

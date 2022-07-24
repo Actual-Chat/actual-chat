@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useEffect, useState, useRef } from 'react'
-import { Editor, Transforms, Range, createEditor, Descendant } from 'slate'
+import React, { useMemo, useCallback, useEffect, useState } from 'react'
+import { Editor, Transforms, Range, createEditor, Descendant } from 'slate';
 import { withHistory } from 'slate-history'
 import {
     Slate,
@@ -23,18 +23,38 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
     )
 
     handle.getText = () => trimLeftSpecial(serialize(editor));
+
+    handle.setMarkup = nodes => {
+        for (let node of nodes) {
+            switch (node.type) {
+                case 'mention':
+                    handle.insertMention(node.content, node.displayContent);
+                    break;
+                case 'paragraph':
+                    editor.insertText(node.content);
+                    break;
+                default:
+                    throw new Error(`Unexpected markup node type '${node.type}'`);
+            }
+        }
+    };
+
+    handle.moveCursorToEnd = () => {
+        Transforms.deselect(editor);
+        Transforms.select(editor, Editor.end(editor, []));
+    };
+
     handle.setPlaceholder = setPlaceholder;
 
     handle.clearText = () => {
-        if (debug) console.log('clear text')
-        resetEditor(editor)
+        if (debug) console.log('clear text');
+        resetEditor(editor);
     }
 
-    handle.insertMention = (mention : any) => {
-        const { id, name } = mention;
-        Transforms.select(editor, target)
-        insertMention(editor, id, name)
-        setTarget(null)
+    handle.insertMention = (id: string, name: string) => {
+        Transforms.select(editor, target);
+        insertMention(editor, id, name);
+        setTarget(null);
     }
 
     const onKeyDown = useCallback(
@@ -69,6 +89,18 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
                             handle.clearText()
                         }
                         break
+                    case 'Escape':
+                        if (!event.shiftKey) {
+                            event.preventDefault();
+                            handle.onCancel();
+                        }
+                        break;
+                    case 'ArrowUp':
+                        if (!event.shiftKey) {
+                            event.preventDefault();
+                            handle.onEditLastMessage();
+                        }
+                        break;
                 }
             }
         },
@@ -114,6 +146,12 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
             />
         </Slate>
     )
+}
+
+export interface MarkupNode {
+    type: 'mention' | 'paragraph';
+    content: string;
+    displayContent: string;
 }
 
 const trimLeftSpecial = (str : string) : string => {

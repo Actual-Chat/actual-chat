@@ -1,6 +1,6 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { createSlateEditorCore } from './slate-editor-core';
+import { createSlateEditorCore, MarkupNode } from './slate-editor-core';
 import { SlateEditorHandle } from './slate-editor-handle';
 import './slate-editor.css';
 
@@ -23,6 +23,8 @@ export class SlateEditor {
         this.autofocus = autofocus;
         this.editorHandle = new SlateEditorHandle();
         this.editorHandle.onPost = this.onPost;
+        this.editorHandle.onCancel = this.onCancel;
+        this.editorHandle.onEditLastMessage = this.onEditLastMessage;
         this.editorHandle.onMentionCommand = this.onMentionCommand;
         this.editorHandle.onRendered = this.onRendered;
 
@@ -38,8 +40,19 @@ export class SlateEditor {
     public getText = () =>
         this.editorHandle.getText();
 
+    public setMarkup = (nodes: MarkupNode[]) => {
+        this.clearText();
+        this.editorHandle.setMarkup(nodes);
+    };
+
     private onPost = () =>
         this.blazorRef.invokeMethodAsync("Post", this.getText());
+
+    private onCancel = () =>
+        this.blazorRef.invokeMethodAsync("Cancel");
+
+    private onEditLastMessage = () =>
+        this.blazorRef.invokeMethodAsync("EditLastMessage");
 
     public clearText = () =>
         this.editorHandle.clearText();
@@ -47,8 +60,8 @@ export class SlateEditor {
     private onMentionCommand = (cmd : string, args : string) : any =>
         this.blazorRef.invokeMethodAsync("MentionCommand", cmd, args);
 
-    public insertMention = (mention : any) =>
-        this.editorHandle.insertMention(mention);
+    public insertMention = (mention: { id: string, name: string }) =>
+        this.editorHandle.insertMention(mention.id, mention.name);
 
     public setPlaceholder = (placeholder: string) =>
         this.editorHandle.setPlaceholder(placeholder);
@@ -60,6 +73,10 @@ export class SlateEditor {
         else
             console.log('slate-editor : no input to focus.');
         if (this.debug) console.log('focus');
+    }
+
+    public moveCursorToEnd = () => {
+        this.editorHandle.moveCursorToEnd();
     }
 
     private onRendered = () => {

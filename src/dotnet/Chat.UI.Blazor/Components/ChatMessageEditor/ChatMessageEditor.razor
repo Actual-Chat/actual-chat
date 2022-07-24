@@ -9,6 +9,8 @@
 @using ActualChat.MediaPlayback
 
 <EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
+<EventHandler TEvent="@EditMessage" Handler="OnMessageEdit" />
+<EventHandler TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"
@@ -26,7 +28,7 @@
                                          Class="message-input -flex-y"
                                          Autofocus="true"
                                          Placeholder="@("#" + Chat.Title)"
-                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered"/>
+                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered" Canceled="@(() => CancelEdit())" LastMessageEditRequested="OnLastMessageEditRequested" />
                             <button class="btn btn-round post-message"
                                     @onclick="_ => OnPosted(clearEditor: true)">
                                 <svg class="fill-current w-8 h-8" viewBox="-1 -1 26 26" id="icon" xmlns="http://www.w3.org/2000/svg">
@@ -36,7 +38,7 @@
                         </label>
                     </div>
                 </div>
-                <ActiveReply/>
+                <LinkedMessagePanel/>
             </div>
             <RecorderPanel/>
         </div>
@@ -48,10 +50,13 @@
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
+    [Inject] private UICommander Commander { get; init; } = null!;
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -68,8 +73,7 @@
 
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -92,8 +96,7 @@
     }
 
     private async Task OnPosted(string? text = null, bool clearEditor = false) {
-        if (text == null)
-            text = await SlateEditorRef.GetText();
+        text ??= await SlateEditorRef.GetText();
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
@@ -104,9 +107,10 @@
             }
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
-            var repliedChatEntry = await ChatUI.RepliedChatEntry.Use().ConfigureAwait(false);
-            ChatUI.RepliedChatEntry.Value = null;
-            var entryId = await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text, repliedChatEntry?.Id);
+            var linked = ChatUI.LinkedChatEntry.Value;
+            ChatUI.LinkedChatEntry.Value = null;
+            var entryId = linked?.Type == ChatEntryLinkType.Edit ? await UpdateMessage(linked.ChatEntry, text) : await PostNewMessage(text, linked?.ChatEntry);
+
             await JSRef.InvokeVoidAsync("onPostSucceeded");
 
             if (LastReadEntryId != null)
@@ -115,6 +119,19 @@
         catch (Exception e) {
             ErrorUI.ShowError(e);
         }
+    }
+
+    private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
+        ChatUI.LinkedChatEntry.Value = null;
+
+        return await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text, repliedChatEntry?.Id);
+    }
+
+    private async Task<long> UpdateMessage(ChatEntry chatEntry, string text) {
+        ChatUI.LinkedChatEntry.Value = null;
+        await Commander.Call(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
+
+        return chatEntry.Id;
     }
 
     private Task OnFocusRequested(FocusChatMessageEditor @event, CancellationToken cancellationToken) => SlateEditorRef.Focus(cancellationToken);
@@ -137,6 +154,47 @@
 
     private async Task OnUploadFilesRequested() {
         await JSRef.InvokeVoidAsync("showFilesPicker");
+    }
+
+    private async Task OnMessageEdit(EditMessage @event, CancellationToken cancellationToken) {
+        var chatEntry = @event.ChatEntry;
+        await EditMessage(chatEntry, cancellationToken);
+    }
+
+    private async Task OnMessageEditCancel(CancelMessageEdit cancelMessageEdit, CancellationToken cancellationToken) {
+        await CancelEdit(cancellationToken);
+    }
+
+    private async Task OnLastMessageEditRequested() {
+        var chatId = ChatUI.ActiveChatId.Value;
+        var author = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        if (author == null)
+            return;
+
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, CancellationToken.None);
+        var lastEditableEntry = await Chats.NewEntryReader(Session, chatId, ChatEntryType.Text).GetLast(chatIdRange, x => x.AuthorId == author.Id && x.StreamId.IsEmpty, CancellationToken.None);
+        if (lastEditableEntry == null)
+            return;
+
+        await EditMessage(lastEditableEntry, CancellationToken.None);
+    }
+
+    private async Task EditMessage(ChatEntry chatEntry, CancellationToken cancellationToken)
+    {
+        ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
+
+        var editableMarkup = await EditedMarkupConverter.Convert(chatEntry.Content, cancellationToken);
+
+        await SlateEditorRef.SetMarkup(editableMarkup, cancellationToken);
+        await SlateEditorRef.Focus(cancellationToken);
+        await SlateEditorRef.MoveCursorToEnd(cancellationToken);
+    }
+
+    private async Task CancelEdit(CancellationToken cancellationToken = default)
+    {
+        ChatUI.LinkedChatEntry.Value = null;
+        await SlateEditorRef.Clear();
+        await SlateEditorRef.Focus(cancellationToken);
     }
 
 }

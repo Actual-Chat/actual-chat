@@ -4,14 +4,14 @@ namespace ActualChat.Chat;
 
 public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
 {
-    public Func<string, Task<string>> GetAuthorName { get; init; }
-    public Func<string, Task<string>> GetUserName { get; init; }
+    public Func<string, CancellationToken, Task<string>> GetAuthorName { get; init; }
+    public Func<string, CancellationToken, Task<string>> GetUserName { get; init; }
     public StringBuilder Builder { get; set; }
     public int MaxLength { get; init; }
 
     public MarkupToTextConverter(
-        Func<string,Task<string>> getAuthorName,
-        Func<string,Task<string>> getUserName,
+        Func<string, CancellationToken, Task<string>> getAuthorName,
+        Func<string, CancellationToken,Task<string>> getUserName,
         int maxLength = int.MaxValue)
     {
         GetAuthorName = getAuthorName;
@@ -57,8 +57,8 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
         Builder.Append("@");
         Builder.Append(
             await (markup.Kind switch {
-                MentionKind.AuthorId => GetAuthorName(markup.Target),
-                MentionKind.UserId => GetUserName(markup.Target),
+                MentionKind.AuthorId => GetAuthorName(markup.Target, cancellationToken),
+                MentionKind.UserId => GetUserName(markup.Target, cancellationToken),
                 _ => Task.FromResult(markup.Target),
             }).ConfigureAwait(false));
         return default;

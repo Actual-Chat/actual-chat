@@ -110,7 +110,7 @@ public class ChatsController : ControllerBase, IChats
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
+    public Task<ChatEntry> UpsertTextEntry([FromBody] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
