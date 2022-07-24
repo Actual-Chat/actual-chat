@@ -12,7 +12,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private const string InvitedIdOptionKey = "Invite::Id"; // comes from InvitesBackend.Use
 
     private IAuth Auth { get; }
-    private IAuthBackend AuthBackend { get; }
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChatAuthors ChatAuthors { get; }
@@ -23,7 +22,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public Chats(IServiceProvider services) : base(services)
     {
         Auth = Services.GetRequiredService<IAuth>();
-        AuthBackend = Services.GetRequiredService<IAuthBackend>();
         Accounts = Services.GetRequiredService<IAccounts>();
         AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
@@ -277,14 +275,21 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> CreateTextEntry(
-        IChats.CreateTextEntryCommand command,
-        CancellationToken cancellationToken)
+    public virtual Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
+            return Task.FromResult<ChatEntry>(null!); // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, text) = command;
+        return command.Id != null
+            ? UpdateTextEntry(command, cancellationToken)
+            : CreateTextEntry(command, cancellationToken);
+    }
+
+    private async Task<ChatEntry> CreateTextEntry(
+        IChats.UpsertTextEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var (session, chatId, _, text) = command;
         // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
         // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -324,6 +329,25 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return textEntry;
+    }
+
+    private async Task<ChatEntry> UpdateTextEntry(
+        IChats.UpsertTextEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var (session, chatId, id, text) = command;
+        var chatEntry = await GetChatEntry(session,
+                chatId,
+                id!.Value,
+                ChatEntryType.Text,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        await AssertCanUpdateTextEntry(chatEntry, session, cancellationToken).ConfigureAwait(false);
+
+        chatEntry = chatEntry with { Content = text };
+        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
+        return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -476,5 +500,19 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         return options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId)
             && OrdinalEquals(chatId, inviteChatId as string);
+    }
+
+    private async Task AssertCanUpdateTextEntry(
+        ChatEntry chatEntry,
+        Session session,
+        CancellationToken cancellationToken)
+    {
+        await RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (chatEntry.AuthorId != author.Id)
+            throw new SecurityException("User can edit only their own messages.");
+
+        if (chatEntry.Type != ChatEntryType.Text || !chatEntry.StreamId.IsEmpty)
+            throw new InvalidOperationException("Only text messages can be edited.");
     }
 }

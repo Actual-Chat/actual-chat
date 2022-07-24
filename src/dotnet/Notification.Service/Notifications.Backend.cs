@@ -1,4 +1,3 @@
-using System.Text;
 using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
@@ -163,15 +162,15 @@ public partial class Notifications
 
         }
 
-        async Task<string> AuthorNameResolver(string authorId)
+        async Task<string> AuthorNameResolver(string authorId, CancellationToken cancellationToken1)
         {
-            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken1).ConfigureAwait(false);
             return author?.Name ?? "";
         }
 
-        async Task<string> UserNameResolver(string userId1)
+        async Task<string> UserNameResolver(string userId1, CancellationToken cancellationToken1)
         {
-            var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken).ConfigureAwait(false);
+            var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken1).ConfigureAwait(false);
             return author?.Name ?? "";
         }
 

@@ -1,5 +1,5 @@
 // created by example from https://docs.slatejs.org/concepts/10-serializing
-import { Text } from 'slate'
+import { Text } from 'slate';
 
 export const serialize = node => {
     if (Text.isText(node)) {

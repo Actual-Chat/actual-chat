@@ -48,10 +48,10 @@
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -72,20 +72,10 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var principalId = await ChatAuthor
-            .GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
-            .ConfigureAwait(false);
         var hasAttachments = Message.Entry.HasAttachments;
-        var markup = GetMarkup();
-        _quoteText = string.IsNullOrWhiteSpace(markup.ToMarkupText()) ? "Click to see attachment" : markup.ToMarkupText();
-        return new (Message, _quoteText, principalId, hasAttachments);
-    }
-
-    private Markup GetMarkup()
-    {
-        return Message.Entry.AudioEntryId == null || Message.IsQuote
-            ? MarkupParser.Parse(Message.Entry.Content)
-            : new PlayableTextMarkup(Message.Entry.Content, Message.Entry.TextToTimeMap);
+        var text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content, cancellationToken);
+        _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
+        return new (Message, _quoteText, hasAttachments);
     }
 
     private void OnChatAuthorClick()
@@ -98,6 +88,6 @@
         }
     }
 
-    public record Model(ChatMessageModel Message, string Quote, Symbol PrincipalId, bool HasAttachments);
+    public record Model(ChatMessageModel Message, string Quote, bool HasAttachments);
 
 }

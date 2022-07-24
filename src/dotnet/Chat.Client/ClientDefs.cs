@@ -82,8 +82,8 @@ public interface IChatsClientDef
     [Post(nameof(LeaveChat))]
     Task LeaveChat([Body] IChats.LeaveChatCommand command, CancellationToken cancellationToken);
 
-    [Post(nameof(CreateTextEntry))]
-    Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(UpsertTextEntry))]
+    Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }

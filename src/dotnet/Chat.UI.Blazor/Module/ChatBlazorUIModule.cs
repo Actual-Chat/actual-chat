@@ -40,6 +40,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
         services.AddStateRestoreHandler<ChatUIStatePersister>();
+        services.AddScoped<EditedMarkupConverter>();
+        services.AddScoped<MentionedNameResolver>();
+        services.AddScoped<ChatMarkupToTextConverter>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();
