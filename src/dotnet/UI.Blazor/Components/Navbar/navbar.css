@@ -8,7 +8,8 @@
 }
 
 .navbar-group-toggles {
-    @apply flex-y items-end text-square-title bg-04 min-w-nav-left px-4 gap-y-2;
+    @apply flex-y items-start md:items-end text-square-title;
+    @apply bg-transparent md:bg-04 min-w-nav-left px-4 gap-y-2;
 }
 .navbar-group-toggles .btn.btn-square {
     @apply h-auto rounded-xl;
@@ -17,14 +18,17 @@
     @apply text-success;
 }
 .navbar-group-toggles .navbar-group-toggle .btn-content {
-    @apply p-1 justify-center bg-white rounded-lg;
+    @apply p-1 justify-center bg-transparent md:bg-white rounded-lg;
 }
 .navbar-group-toggles .navbar-group-toggle:hover .btn-content {
     @apply bg-white;
 }
+.navbar-group-toggles .navbar-group-toggle .btn-content .btn-content-inner {
+    @apply flex-x items-center;
+}
 
 .navbar-places {
-    @apply flex-y items-end text-square-title bg-04 min-w-nav-left px-4 gap-y-2;
+    @apply flex-y items-start md:items-end text-square-title bg-transparent min-w-nav-left px-4 gap-y-2;
 }
 .navbar-places .btn.btn-square {
     @apply h-auto rounded-xl;
@@ -132,26 +136,38 @@
     @apply bg-transparent;
 }
 
+/*Wide left panel*/
+.wide-left-panel-wrapper {
+    @apply w-full overflow-x-hidden;
+}
+.wide-left-panel-wrapper.thin-opened {
+    @apply w-1/6 animate-width-to-zero;
+    @apply md:w-full md:animate-none;
+}
+.wide-left-panel-wrapper.thin-closed {
+    @apply w-full animate-hide-to-left;
+    @apply md:animate-none;
+}
+.wide-left-panel-wrapper.thin-opened .panel-content {
+    @apply w-full;
+}
 .wide-left-panel {
     @apply flex-y h-full overflow-hidden bg-03 border-r border-bg-04 w-full;
 }
-.left-opened.wide-left-panel {
-    @apply translate-x-3/4 animate-hide-wide-panel;
-    @apply md:animate-none;
-    /*@apply md:translate-x-0;*/
-}
-.left-closed.wide-left-panel {
-    @apply animate-show-wide-panel md:animate-none;
-}
-.thin-left-panel {
-    @apply flex-1 w-0 md:w-auto;
-    @apply hidden md:flex-y;
-}
-.left-opened.thin-left-panel {
-    @apply translate-x-0 animate-width-to-full w-3/4;
-    @apply md:animate-none md:w-auto flex-y;
-}
-.left-closed.thin-left-panel {
-    @apply animate-width-to-zero w-0 md:animate-none md:w-auto hidden md:flex-y;
+.side-nav-open .thin-opened .wide-left-panel {
+    @apply absolute md:static;
 }
 
+/*Thin left panel*/
+.thin-left-panel {
+    @apply hidden flex-1 bg-01 items-start;
+    @apply md:w-auto md:bg-04 md:flex-y;
+}
+.thin-opened.thin-left-panel {
+    @apply animate-width-to-full w-5/6;
+    @apply md:animate-none md:w-auto flex-y;
+}
+.thin-closed.thin-left-panel {
+    @apply animate-width-to-zero;
+    @apply md:animate-none md:w-auto md:flex-y;
+}

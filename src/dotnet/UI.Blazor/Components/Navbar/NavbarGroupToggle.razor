@@ -10,12 +10,13 @@
 }
 
 <div class="flex-x">
-    <div class="h-8 w-1 mr-2 self-center rounded-lg @lineClass">
+    <div class="hidden md:block h-8 w-1 mr-2 self-center rounded-lg @lineClass">
     </div>
     <ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
         <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current @GetIconSize()" viewBox="@ViewBox">
             @IconSvg
         </svg>
+        <div class="navbar-group-title ml-8 md:hidden @cls">@Title</div>
     </ButtonSquare>
 </div>
 
