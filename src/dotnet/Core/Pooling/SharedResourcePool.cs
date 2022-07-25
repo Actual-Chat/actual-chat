@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 namespace ActualChat.Pooling;
 
 public partial class SharedResourcePool<TKey, TResource>
@@ -29,7 +27,7 @@ public partial class SharedResourcePool<TKey, TResource>
                 var (self, cancellationToken1) = state;
                 return new Lease(self, key1, cancellationToken1);
             }, (this, cancellationToken));
-            if (await lease.BeginRent().ConfigureAwait(false))
+            if (await lease.BeginRent(cancellationToken).ConfigureAwait(false))
                 return lease;
             spinWait.SpinOnce();
         }

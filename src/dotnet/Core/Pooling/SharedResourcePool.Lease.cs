@@ -1,6 +1,5 @@
 using Stl.Concurrency;
 using Stl.Pooling;
-using Stl.Reflection;
 
 namespace ActualChat.Pooling;
 
@@ -58,31 +57,45 @@ public partial class SharedResourcePool<TKey, TResource>
             }
         }
 
-        internal async ValueTask<bool> BeginRent()
+        internal async ValueTask<bool> BeginRent(CancellationToken cancellationToken)
         {
             Task? endRentTask;
             lock (Lock) {
                 ++_renterCount;
-                if (_endRentDelayTokenSource != null) {
-                    _endRentDelayTokenSource.CancelAndDisposeSilently();
-                    _endRentDelayTokenSource = null;
-                }
+                _endRentDelayTokenSource.CancelAndDisposeSilently();
+                _endRentDelayTokenSource = null;
                 endRentTask = _endRentTask;
             }
             if (endRentTask != null) {
-                await endRentTask.ConfigureAwait(false);
+                await endRentTask.WaitAsync(cancellationToken).ConfigureAwait(false);
                 return false;
             }
+
+            // If we're here, _endRentTask == null, i.e. no resource is allocated yet
             try {
-                await _resourceTask.ConfigureAwait(false);
+                await _resourceTask.WaitAsync(cancellationToken).ConfigureAwait(false);
                 return true;
+            }
+            catch (OperationCanceledException) {
+                // We assume we don't need to call EndRent if _resourceTask is cancelled.
+                // SharedResourcePool.Rent will fail with OperationCanceledException
+                // as well in this case, which is expected outcome, coz this method
+                // gets its cancellation token.
+                // The only thing we need to do here is to try removing the lease from
+                // the pool - EndRent, which is responsible for this otherwise,
+                // won't be called in this case.
+                lock (Lock) {
+                    _endRentTask = Task.CompletedTask;
+                    --_renterCount;
+                }
+                Pool._leases.TryRemove(Key, this);
+                throw;
             }
             catch (Exception e) {
                 Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
-                Task endRenTask;
                 lock (Lock)
-                    endRenTask = _endRentTask ??= EndRent();
-                await endRenTask.ConfigureAwait(false);
+                    endRentTask = _endRentTask ??= EndRent();
+                await endRentTask.ConfigureAwait(false);
                 return false;
             }
         }
