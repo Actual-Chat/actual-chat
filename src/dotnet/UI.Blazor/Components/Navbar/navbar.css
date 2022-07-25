@@ -140,7 +140,7 @@
 .wide-left-panel-wrapper {
     @apply w-full overflow-x-hidden;
 }
-.wide-left-panel-wrapper.thin-opened {
+.wide-left-panel-wrapper.thin-open {
     @apply w-1/6 animate-width-to-zero;
     @apply md:w-full md:animate-none;
 }
@@ -148,13 +148,13 @@
     @apply w-full animate-hide-to-left;
     @apply md:animate-none;
 }
-.wide-left-panel-wrapper.thin-opened .panel-content {
+.wide-left-panel-wrapper.thin-open .panel-content {
     @apply w-full;
 }
 .wide-left-panel {
     @apply flex-y h-full overflow-hidden bg-03 border-r border-bg-04 w-full;
 }
-.side-nav-open .thin-opened .wide-left-panel {
+.side-nav-open .thin-open .wide-left-panel {
     @apply absolute md:static;
 }
 
@@ -163,7 +163,7 @@
     @apply hidden flex-1 bg-01 items-start;
     @apply md:w-auto md:bg-04 md:flex-y;
 }
-.thin-opened.thin-left-panel {
+.thin-open.thin-left-panel {
     @apply animate-width-to-full w-5/6;
     @apply md:animate-none md:w-auto flex-y;
 }

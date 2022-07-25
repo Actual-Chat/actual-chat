@@ -3,8 +3,8 @@
 @inherits ComputedStateComponent<bool>
 
 @{
-    var isOpened = State.ValueOrDefault;
-    var cls = isOpened ? "thin-opened" : "thin-closed";
+    var isOpen = State.ValueOrDefault;
+    var cls = isOpen ? "thin-open" : "thin-closed";
 }
 
 <div class="thin-left-panel @cls">
@@ -54,5 +54,5 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await NavbarUI.IsThinPanelOpened.Use(cancellationToken).ConfigureAwait(false);
+        => await NavbarUI.IsThinPanelOpen.Use(cancellationToken).ConfigureAwait(false);
 }
