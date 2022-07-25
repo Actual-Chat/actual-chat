@@ -57,8 +57,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         if (lastReadEntryId > 0)
             navigateToEntryId = lastReadEntryId;
         else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token)
-                .ConfigureAwait(true);
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
             navigateToEntryId = chatIdRange.ToInclusive().End;
         }
 
@@ -76,15 +75,14 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            var currentAuthor = await ChatAuthors.Get(Session, Chat.Id, _disposeToken.Token)
-                .ConfigureAwait(true);
+            var currentAuthor = await ChatAuthors.Get(Session, Chat.Id, _disposeToken.Token);
             _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
 
             LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
             _initialLastReadEntryId = LastReadEntryId.Value;
         }
         finally {
-            await TimeZoneConverter.WhenInitialized.ConfigureAwait(true);
+            await TimeZoneConverter.WhenInitialized;
             _whenInitializedSource.SetResult(Unit.Default);
         }
     }
@@ -96,8 +94,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await VisibleKeys.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
-                var visibleKeys = await VisibleKeys.Use(cancellationToken).ConfigureAwait(true);
+                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
+                var visibleKeys = await VisibleKeys.Use(cancellationToken);
                 if (visibleKeys.Count == 0)
                     continue;
 
@@ -133,12 +131,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
-        await WhenInitialized.ConfigureAwait(true);
+        await WhenInitialized;
 
         var chat = Chat;
         var chatId = chat.Id.Value;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
-            .ConfigureAwait(true);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryId?.Value ?? 0;
         var entryId = lastReadEntryId;
         var mustScrollToEntry = query.IsNone && entryId != 0;
@@ -148,7 +145,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             chatId,
             ChatEntryType.Text,
             lastIdTile.Range,
-            cancellationToken).ConfigureAwait(true);
+            cancellationToken);
         foreach (var entry in lastTile.Entries) {
             if (entry.AuthorId != _currentAuthorId || entry.Id <= _initialLastReadEntryId)
                 continue;
@@ -159,7 +156,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         }
 
         var isHighlighted = false;
-        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken).ConfigureAwait(true);
+        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
         if (!mustScrollToEntry) {
             if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
                 isHighlighted = true;

@@ -31,16 +31,16 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
                 _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++, Session.Id
-                ).ConfigureAwait(true);
+                );
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 Log.LogInformation("Recording was cancelled");
                 try {
-                    await _jsRef.InvokeVoidAsync("stopRecording").ConfigureAwait(true);
-                    await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
+                    await _jsRef.InvokeVoidAsync("stopRecording");
+                    await _jsRef.DisposeSilentlyAsync();
                     if (_registration != default) {
-                        await _registration.DisposeAsync().ConfigureAwait(true);
+                        await _registration.DisposeAsync();
                     }
                     blazorRef.Dispose();
                 }
@@ -54,13 +54,13 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                     StateHasChanged();
                 }
             });
-            await _jsRef.InvokeVoidAsync("startRecording", ChatId).ConfigureAwait(true);
+            await _jsRef.InvokeVoidAsync("startRecording", ChatId);
             IsRecording = true;
         }
         else {
             _cts.CancelAndDisposeSilently();
             _cts = null;
-            await _registration.DisposeAsync().ConfigureAwait(true);
+            await _registration.DisposeAsync();
             IsRecording = false;
         }
     }

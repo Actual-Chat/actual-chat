@@ -39,7 +39,7 @@
         if (_lastMentionCandidateListManager != null)
             _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
         _rendered = false;
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -51,7 +51,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
                 EditorRef, BlazorRef, Constants.DebugMode.SlateEditor, Autofocus
-                ).ConfigureAwait(true);
+                );
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
             await Rendered.InvokeAsync().ConfigureAwait(false);
@@ -75,7 +75,7 @@
             return;
         switch (cmd) {
             case "insert": {
-                await Insert(manager.ListView?.Selection).ConfigureAwait(true);
+                await Insert(manager.ListView?.Selection);
                 break;
             }
             case "moveUp": {
@@ -87,11 +87,11 @@
                 break;
             }
             case "close": {
-                await manager.Hide().ConfigureAwait(true);
+                await manager.Hide();
                 break;
             }
             case "show": {
-                await manager.Show(args).ConfigureAwait(true);
+                await manager.Show(args);
                 break;
             }
         }

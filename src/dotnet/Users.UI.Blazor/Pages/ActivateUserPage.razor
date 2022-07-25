@@ -25,6 +25,6 @@
 
     protected override async Task OnInitializedAsync() {
         var useCommand = new IInvites.UseCommand(Session, InviteId);
-        _useResult = await UICommander.Run(useCommand, CancellationToken.None).ConfigureAwait(true);
+        _useResult = await UICommander.Run(useCommand, CancellationToken.None);
     }
 }

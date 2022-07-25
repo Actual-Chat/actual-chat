@@ -67,8 +67,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     public override async ValueTask DisposeAsync()
     {
-        await base.DisposeAsync().ConfigureAwait(true);
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await base.DisposeAsync();
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -91,8 +91,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                     LoadZoneSize,
                     BufferZoneSize,
                     DebugMode
-                )
-                .ConfigureAwait(true);
+                );
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
     }
@@ -108,7 +107,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var query = Query;
         VirtualListData<TItem> response;
         try {
-            response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
+            response = await DataSource.Invoke(query, cancellationToken);
             LastQuery = Query = response.Query;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

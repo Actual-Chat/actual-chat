@@ -52,11 +52,11 @@
     protected override async Task OnParametersSetAsync() {
         M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
-        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default).ConfigureAwait(true);
+        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
         var isDefault = OrdinalEquals(ModalModel.AvatarId, defaultAvatarId);
         var isActive = false;
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
-            var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default).ConfigureAwait(true);
+            var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default);
             var activeAvatarId = chatUserSettings?.AvatarId.Value ?? "";
             isActive = OrdinalEquals(ModalModel.AvatarId, activeAvatarId);
         }
@@ -72,14 +72,14 @@
     private async void OnSave() {
         var avatarId = ModalModel.AvatarId;
         var command = new IUserAvatars.UpdateCommand(Session, avatarId, M.Name, M.Picture, M.Bio);
-        await UICommander.Run(command).ConfigureAwait(true);
+        await UICommander.Run(command);
 
         if (M.IsDefault && !M.Base.IsDefault)
-            await SetDefaultAvatar(M.IsDefault ? avatarId : "").ConfigureAwait(true);
+            await SetDefaultAvatar(M.IsDefault ? avatarId : "");
 
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
             if (M.IsActive && !M.Base.IsActive)
-                await SetActiveAvatar(M.IsActive ? avatarId : "").ConfigureAwait(true);
+                await SetActiveAvatar(M.IsActive ? avatarId : "");
         }
 
         CloseModal();

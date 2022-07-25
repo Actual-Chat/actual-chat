@@ -33,7 +33,7 @@
     }
 
     private async Task AutoDismiss(TimeSpan delay) {
-        await Task.Delay(delay).ConfigureAwait(true);
+        await Task.Delay(delay);
         await Dismiss().ConfigureAwait(false);
     }
 

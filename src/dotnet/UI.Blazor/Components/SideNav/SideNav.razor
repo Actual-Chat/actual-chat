@@ -43,12 +43,12 @@
                 identifier,
                 ElementRef,
                 BlazorRef,
-                options).ConfigureAwait(true);
+                options);
         }
     }
 
     public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;

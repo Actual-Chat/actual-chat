@@ -17,7 +17,7 @@ You must sign in @(Reason.NullIfEmpty() ?? "to use this page").
 
     protected override async Task OnParametersSetAsync()
     {
-        var authState = await AuthStateTask.ConfigureAwait(true);
+        var authState = await AuthStateTask;
         if (authState.User != null)
             Nav.NavigateTo(RedirectTo.NullIfEmpty() ?? "/");
     }

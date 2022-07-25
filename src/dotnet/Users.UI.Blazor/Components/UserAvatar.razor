@@ -38,10 +38,10 @@
         if (userAvatar == null)
             return new Model();
 
-        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken).ConfigureAwait(true);
+        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken);
         var activeAvatarId = "";
         if (!ChatId.IsNullOrEmpty()) {
-            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
+            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken);
             activeAvatarId = chatUserSettings?.AvatarId ?? "";
         }
 

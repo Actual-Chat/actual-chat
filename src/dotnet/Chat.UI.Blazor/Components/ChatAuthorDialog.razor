@@ -65,10 +65,10 @@
         IsAddingContact = true;
         StateHasChanged();
 
-        await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId)).ConfigureAwait(true);
+        await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
 
         IsAddingContact = false;
-        await ModalInstance.CancelAsync().ConfigureAwait(true);
+        await ModalInstance.CancelAsync();
         StateHasChanged();
     }
 

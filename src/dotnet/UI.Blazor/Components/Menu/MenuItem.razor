@@ -28,7 +28,7 @@
     [Parameter] public EventCallback Click { get; set; }
 
     private async Task OnClick() {
-        await Menu.OnItemClick(this).ConfigureAwait(true);
-        await Click.InvokeAsync().ConfigureAwait(true);
+        await Menu.OnItemClick(this);
+        await Click.InvokeAsync();
     }
 }

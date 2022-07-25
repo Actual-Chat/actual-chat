@@ -26,8 +26,8 @@
 
     private async Task OnLeave(MouseEventArgs arg) {
         var command = new IChats.LeaveChatCommand(Session, ModalModel.Chat.Id);
-        await UICommander.Run(command).ConfigureAwait(true);
-        await ModalInstance.CloseAsync().ConfigureAwait(true);
+        await UICommander.Run(command);
+        await ModalInstance.CloseAsync();
     }
 
     public sealed record Model(Chat Chat);

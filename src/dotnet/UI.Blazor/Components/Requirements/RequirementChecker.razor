@@ -47,7 +47,7 @@
         var recoveredRequirements = ImmutableList<RequirementComponent>.Empty;
         foreach (var requirement in Requirements.Keys) {
             try {
-                await requirement.Require(cancellationToken).ConfigureAwait(true);
+                await requirement.Require(cancellationToken);
                 recoveredRequirements = recoveredRequirements.Add(requirement);
             }
             catch (Exception e) when (e is not OperationCanceledException) {

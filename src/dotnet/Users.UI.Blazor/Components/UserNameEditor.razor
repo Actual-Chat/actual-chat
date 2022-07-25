@@ -24,14 +24,14 @@
 
     protected override async Task OnInitializedAsync() {
         M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        var account = await Accounts.Get(Session, default).ConfigureAwait(true);
+        var account = await Accounts.Get(Session, default);
         M.Name = account?.User.Name ?? "";
         M.CopyToBase();
     }
 
     private async void OnSave() {
         var command = new EditUserCommand(Session, M.Name);
-        await UICommander.Run(command).ConfigureAwait(true);
+        await UICommander.Run(command);
     }
 
     public sealed class FormModel : FormModel<FormModel> {

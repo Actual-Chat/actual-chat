@@ -70,7 +70,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -87,27 +87,27 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
         }
     }
 
     private async Task OnPosted(string? text = null, bool clearEditor = false) {
         if (text == null)
-            text = await SlateEditorRef.GetText().ConfigureAwait(true);
+            text = await SlateEditorRef.GetText();
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
             if (clearEditor) {
-                await SlateEditorRef.Clear().ConfigureAwait(true);
+                await SlateEditorRef.Clear();
             }
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
             var repliedChatEntry = await ChatUI.RepliedChatEntry.Use().ConfigureAwait(false);
             ChatUI.RepliedChatEntry.Value = null;
-            var entryId = await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text, repliedChatEntry?.Id).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            var entryId = await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text, repliedChatEntry?.Id);
+            await JSRef.InvokeVoidAsync("onPostSucceeded");
 
             if (LastReadEntryId != null)
                 LastReadEntryId.Value = entryId;
@@ -124,19 +124,19 @@
         => AttachmentListPreviewRef.AddAttachment(id, url, fileName, fileType, length);
 
     private async Task OnSlateEditorRendered() {
-        await JSRef.InvokeVoidAsync("onSlateEditorRendered").ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("onSlateEditorRendered");
     }
 
     private async Task RemoveAttachment(Attachment attachment) {
-        await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id);
     }
 
     private async Task ClearAttachments(ImmutableArray<Attachment> attachments) {
-        await JSRef.InvokeVoidAsync("clearAttachments", attachments).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("clearAttachments", attachments);
     }
 
     private async Task OnUploadFilesRequested() {
-        await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("showFilesPicker");
     }
 
 }

@@ -170,7 +170,7 @@
     }
 
     private async Task OnStatusSelected(AccountStatus newStatus) {
-        var account = await Accounts.Get(Session, default).Require().ConfigureAwait(true);
+        var account = await Accounts.Get(Session, default).Require();
         var updatedAccount = account with { Status = newStatus };
         await Commander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }

@@ -51,7 +51,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -63,7 +63,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.ContextMenu.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
         }
     }
 

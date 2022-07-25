@@ -57,7 +57,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -66,7 +66,7 @@
     [JSInvokable]
     private async Task SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;
-        await JSRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("updateRating", _rating - 1);
     }
 
     private void OnSubmit() {
@@ -85,7 +85,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.Feedback.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
         }
     }
 

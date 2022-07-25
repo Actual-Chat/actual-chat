@@ -52,7 +52,7 @@
             ChatUI.RecordingChatId.Value = Symbol.Empty;
             return;
         }
-        CanRecord = await AudioRecorder.CanRecord().ConfigureAwait(true);
+        CanRecord = await AudioRecorder.CanRecord();
         if (!CanRecord) {
             StateHasChanged();
             return;
@@ -63,7 +63,7 @@
     private async Task OnLongPressStart() {
         if (IsLongPress)
             return;
-        CanRecord = await AudioRecorder.CanRecord().ConfigureAwait(true);
+        CanRecord = await AudioRecorder.CanRecord();
         if (!CanRecord) {
             StateHasChanged();
             return;

@@ -75,8 +75,7 @@
     protected override async Task OnInitializedAsync() {
         var existingChatUserIds = new HashSet<Symbol>(
             await ChatAuthors
-                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token)
-                .ConfigureAwait(true));
+                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
 
         var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
         var resolvedContacts = await contacts

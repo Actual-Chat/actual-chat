@@ -23,7 +23,7 @@
 
     protected override async Task OnParametersSetAsync() {
         var useCommand = new IInvites.UseCommand(Session, InviteId);
-        _useResult = await UICommander.Run(useCommand).ConfigureAwait(true);
+        _useResult = await UICommander.Run(useCommand);
         if (_useResult is not { } useResult || useResult.HasError)
             return;
         var invite = useResult.Value;

@@ -63,8 +63,8 @@
 
     public override async ValueTask DisposeAsync()
     {
-        await base.DisposeAsync().ConfigureAwait(true);
-        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+        await base.DisposeAsync();
+        await JSRef.DisposeSilentlyAsync();
         // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
@@ -84,7 +84,7 @@
         };
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    protected override Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IRightPanelSearchBackend>(this);
             // NOTE(AY): Commented out, coz it triggers JS errors in new peer chats with zero people
@@ -92,9 +92,10 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.RightPanelSearch.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
             */
         }
+        return Task.CompletedTask;
     }
 
     private void OnInviteClick()

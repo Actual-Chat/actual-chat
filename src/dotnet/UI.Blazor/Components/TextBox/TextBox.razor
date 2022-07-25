@@ -29,7 +29,7 @@
         if (firstRender) {
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.TextBox.create", Ref
-                ).ConfigureAwait(true);
+                );
             if (Autofocus)
                 await Focus();
         }
@@ -37,7 +37,7 @@
 
     public virtual async ValueTask DisposeAsync() {
         Dispose(true);
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
     }
 

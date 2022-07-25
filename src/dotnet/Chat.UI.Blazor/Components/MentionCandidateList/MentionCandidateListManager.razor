@@ -41,8 +41,7 @@
             return;
 
         Candidates.Value = await MentionCandidateProvider
-            .GetMentionCandidates(search, Limit, default)
-            .ConfigureAwait(true);
+            .GetMentionCandidates(search, Limit, default);
         _lastSearch = search;
     }
 

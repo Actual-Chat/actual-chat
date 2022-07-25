@@ -39,10 +39,10 @@
                 RequestBodySerializer = Services.GetRequiredService<RequestBodySerializer>(),
                 ResponseDeserializer = Services.GetRequiredService<ResponseDeserializer>()
             }.For<IAuthClientDef>();
-            _restEaseUser = await client.GetUser(Session, cts.Token).ConfigureAwait(true);
+            _restEaseUser = await client.GetUser(Session, cts.Token);
 
             // Gets user using Fusion service
-            _fusionUser = await Auth.GetUser(Session, cts.Token).ConfigureAwait(true);
+            _fusionUser = await Auth.GetUser(Session, cts.Token);
         }
         catch(Exception e) {
             _error = e;

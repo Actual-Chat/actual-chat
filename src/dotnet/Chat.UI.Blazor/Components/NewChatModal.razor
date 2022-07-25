@@ -43,9 +43,9 @@
             },
         });
         try {
-            var chat = await UICommander.Call(cmd).ConfigureAwait(true);
+            var chat = await UICommander.Call(cmd);
             chat = chat.Require();
-            await ModalInstance.CancelAsync().ConfigureAwait(true);
+            await ModalInstance.CancelAsync();
             Nav.NavigateTo(Links.ChatPage(chat.Id));
         }
         catch {
@@ -54,7 +54,7 @@
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync().ConfigureAwait(true);
+        => ModalInstance.CancelAsync();
 
     public class FormModel
     {
