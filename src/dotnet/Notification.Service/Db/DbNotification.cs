@@ -36,11 +36,11 @@ public class DbNotification : IHasId<string>
 
     public DateTime? ModifiedAt {
         get => _modifiedAt?.DefaultKind(DateTimeKind.Utc);
-        set => _modifiedAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
+        set => _modifiedAt = value?.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? HandledAt {
         get => _handledAt?.DefaultKind(DateTimeKind.Utc);
-        set => _handledAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
+        set => _handledAt = value?.DefaultKind(DateTimeKind.Utc);
     }
 }

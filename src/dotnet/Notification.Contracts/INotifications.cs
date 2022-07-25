@@ -12,6 +12,9 @@ public interface INotifications : IComputeService
     Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken);
 
     [CommandHandler]
+    Task HandleNotification(HandleNotificationCommand command, CancellationToken cancellationToken);
+
+    [CommandHandler]
     Task SetStatus(SetStatusCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
@@ -30,4 +33,10 @@ public interface INotifications : IComputeService
         [property: DataMember] string ChatId,
         [property: DataMember] bool IsMuted
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record HandleNotificationCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string NotificationId
+    ) : ISessionCommand<Unit>;
 }
