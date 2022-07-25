@@ -8,15 +8,19 @@
     var notifications = model.Notifications;
 }
 
-<div class="flex-y z-90 fixed bottom-16 right-0 min-w-[16%]">
+<div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%]">
     @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {
         var notificationId = notification.NotificationId;
         <Notification @key="@notificationId"
+                      Closed="() => OnClose(notificationId)"
+                      AutoCloseDelay="@(TimeSpan.FromSeconds(5))"
+                      AnimationTime="@(TimeSpan.FromSeconds(1))"
                       NotificationEntry="@notification"/>
     }
 </div>
 
 @code {
+    private HashSet<string> _closed = new();
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; set; } = null!;
@@ -30,31 +34,20 @@
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
         var notifications = new List<NotificationEntry>();
         foreach (var notificationId in notificationIds) {
+            if (_closed.Contains(notificationId))
+                continue;
             var notification = await Notifications.GetNotification(Session, notificationId, cancellationToken);
             notifications.Add(notification);
         }
 
-        // var lastNotificationId = State.Value.LastNotificationId;
-        // var isFirstRun = lastNotificationId == "";
-        // var newNotificationIds = notificationIds
-        //     .Where(id => string.CompareOrdinal(id, lastNotificationId) > 0)
-        //     .ToList();
-
-        // if (newNotificationIds.Count == 0)
-        //     return State.LatestNonErrorValue;
-
-        // var toastInstanceSettings = new ToastInstanceSettings(10, true);
-        // if (!isFirstRun) {
-        //     foreach (var notificationId in newNotificationIds) {
-        //         var parameters = new ToastParameters();
-        //         parameters.Add("NotificationId", notificationId);
-        //         ToastUI.ShowToast<Notification>(parameters, toastInstanceSettings);
-        //     }
-        // }
-
         return new () {
             Notifications = notifications.ToImmutableArray(),
         };
+    }
+
+    private void OnClose(string notificationId) {
+        _closed.Add(notificationId);
+        _ = State.Recompute();
     }
 
     public sealed record Model {
@@ -62,5 +55,4 @@
 
         public ImmutableArray<NotificationEntry> Notifications { get; init; } = ImmutableArray<NotificationEntry>.Empty;
     }
-
 }

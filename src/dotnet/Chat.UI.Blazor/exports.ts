@@ -5,4 +5,7 @@ export * from './Components/SlateEditor/slate-editor';
 import './Components/components.css';
 import './Components/ChatView/chat-view.css';
 import './Components/ChatMenu/chat-menu.css';
+import './Components/Notifications/stack.css'
+import './Components/Notifications/notification.css'
+
 import './Pages/user-page.css'
