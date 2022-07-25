@@ -101,6 +101,7 @@ export class VirtualListRenderPlan {
     private updateViewport(): void {
         const viewport = VirtualListRenderPlan.getClientSideViewport(this.virtualList.clientSideState);
         if (!viewport) {
+            console.warn('viewport is null');
             if (this.viewport == null) {
                 return;
             }

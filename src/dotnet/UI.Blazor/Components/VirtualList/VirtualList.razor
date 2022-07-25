@@ -38,14 +38,12 @@
 
     <div @key="@("<RenderIndex>")"
          data-render-index="@renderIndex"
-         class="data render-index hidden flex-none">
+         class="data render-index hidden @flexClass flex-none">
     </div>
 
-    <div class="data render-state hidden @flexClass flex-none">
-        <div @key="@("<RenderState>")"
-             class="data render-state-data">
-            @SystemJsonSerializer.Default.Write(renderState)
-        </div>
+    <div @key="@("<RenderState>")"
+         class="data render-state hidden @flexClass flex-none">
+        @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
 
