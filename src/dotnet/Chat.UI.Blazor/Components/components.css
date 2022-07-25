@@ -254,3 +254,13 @@
 .listened-chats .navbar-item-ending {
     @apply gap-x-3;
 }
+
+.chat-footer {
+    @apply bg-01 rounded-md py-0 md:py-1.5 px-2 md:px-2 flex justify-center w-full;
+}
+.chat-footer .btn {
+    @apply rounded-full md:rounded-md;
+}
+.chat-footer .btn .btn-content {
+    @apply text-lg;
+}
