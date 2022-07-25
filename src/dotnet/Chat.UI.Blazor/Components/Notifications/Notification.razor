@@ -1,6 +1,8 @@
 @using ActualChat.Notification
-@using ActualChat.Users
+@using System.Timers
+@using Timer = System.Timers.Timer
 @inherits ComputedStateComponent<Notification.Model>
+@implements IDisposable
 
 @{
     var model = State.Value;
@@ -30,6 +32,7 @@
 @code {
     private bool _isClosed;
     private bool _isClosing;
+    private Timer? _closingTimer;
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private INotifications Notifications { get; set; } = null!;
@@ -44,13 +47,21 @@
         InitialValue = Model.None,
     };
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (!firstRender) {
+    protected override void OnParametersSet() {
+        if (_closingTimer != null) {
+            _closingTimer.Stop();
+            _closingTimer.Elapsed -= OnCloseTimer;
+            _closingTimer.Dispose();
+        }
+
+        if (!AutoCloseDelay.HasValue) {
             return;
         }
 
-        if (AutoCloseDelay.HasValue)
-            _ = AutoClose(AutoCloseDelay.Value);
+        _closingTimer = new Timer(AutoCloseDelay.Value.TotalMilliseconds);
+        _closingTimer.Elapsed += OnCloseTimer;
+        _closingTimer.AutoReset = false;
+        _closingTimer.Start();
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -72,27 +83,26 @@
         };
     }
 
+    public void Dispose() {
+        _closingTimer?.Dispose();
+    }
+
     private async Task Close() {
         if (_isClosing)
             return;
         _isClosing = true;
         if (AnimationTime.HasValue) {
             StateHasChanged();
-            await Task.Delay(AnimationTime.Value).ConfigureAwait(true);
+            await Task.Delay(AnimationTime.Value);
         }
         if (_isClosed)
             return;
         _isClosed = true;
-        await Closed.InvokeAsync().ConfigureAwait(true);
-    }
-
-    private async Task AutoClose(TimeSpan delay) {
-        await Task.Delay(delay).ConfigureAwait(true);
-        await Close().ConfigureAwait(true);
+        await Closed.InvokeAsync();
     }
 
     private async Task OnClose() {
-        await Close().ConfigureAwait(true);
+        await Close();
     }
 
     private string GetStyle() {
@@ -102,6 +112,12 @@
         return _isClosing
             ? $"animation: fadeout {AnimationTime.Value.TotalMilliseconds}ms ease-out;"
             : $"animation: fadein {AnimationTime.Value.TotalMilliseconds}ms ease-in;";
+    }
+
+    private async void OnCloseTimer(object? sender, ElapsedEventArgs e) {
+        await InvokeAsync(async () => {
+            await Close();
+        });
     }
 
     public sealed record Model {
