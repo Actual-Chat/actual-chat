@@ -1,0 +1,32 @@
+.notification {
+    @apply border border-bg-03 rounded-2xl;
+}
+.notification-body {
+    padding: 1rem;
+    @apply flex flex-col gap-2;
+}
+.notification-title {
+    @apply flex items-center gap-2 text-xl font-semibold;
+}
+.notification-close {
+    @apply flex items-center;
+}
+.notification-filler {
+    @apply flex flex-1;
+}
+@keyframes fadein {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes fadeout {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}

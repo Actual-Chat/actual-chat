@@ -38,4 +38,8 @@ public class NotificationsController : ControllerBase, INotifications
     [HttpPost]
     public Task SetStatus([FromBody] INotifications.SetStatusCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task HandleNotification([FromBody] INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+        => _commander.Call(command, cancellationToken);
 }

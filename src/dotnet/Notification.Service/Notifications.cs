@@ -48,6 +48,30 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [CommandHandler]
+    public virtual async Task HandleNotification(INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating()) {
+            _ = GetNotification(command.Session, command.NotificationId, default);
+            _ = ListRecentNotificationIds(command.Session, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbNotification = await dbContext.Notifications
+            .ForUpdate()
+            .SingleOrDefaultAsync(x => x.Id == command.NotificationId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbNotification == null)
+            throw new InvalidOperationException("Notification doesn't exist.");
+
+        dbNotification.HandledAt = _clocks.SystemClock.Now;
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
