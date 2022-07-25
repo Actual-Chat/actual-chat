@@ -3,15 +3,15 @@
 @inherits ComputedStateComponent<bool>
 
 @{
-    var isOpened = State.ValueOrDefault;
-    var cls = isOpened ? "thin-opened" : "thin-closed";
+    var isOpen = State.ValueOrDefault;
+    var cls = isOpen ? "thin-open" : "thin-closed";
 }
 
 <div class="wide-left-panel-wrapper @cls">
     <div class="wide-left-panel">
         <div class="flex-x justify-center items-center min-h-mobile-header border-b border-bg-04 px-2 gap-x-2 panel-content">
             <div class="md:hidden w-12">
-                <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@IsOpened"/>
+                <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@IsOpen"/>
                 <NavbarToggle/>
             </div>
             <Search Class="mobile-hidden"/>
@@ -34,13 +34,13 @@
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    private bool _isOpened;
+    private bool _isOpen;
 
-    private bool IsOpened {
-        get => _isOpened;
+    private bool IsOpen {
+        get => _isOpen;
         set {
-            _isOpened = !NavbarUI.IsThinPanelOpened.Value;
-            NavbarUI.IsThinPanelOpened.Value = _isOpened;
+            _isOpen = !NavbarUI.IsThinPanelOpen.Value;
+            NavbarUI.IsThinPanelOpen.Value = _isOpen;
         }
     }
 
@@ -48,7 +48,7 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await NavbarUI.IsThinPanelOpened.Use(cancellationToken).ConfigureAwait(false);
+        => await NavbarUI.IsThinPanelOpen.Use(cancellationToken).ConfigureAwait(false);
 
     private void Click() {
         if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction)) {
