@@ -9,14 +9,14 @@
     var failures = UIActionFailureTracker.Items;
 }
 
-<div class="bg-02 flex-1 flex-x justify-items-stretch h-full max-h-full relative">
+<div class="bg-02 flex-1 flex-x h-full max-h-full relative">
     <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <SideNav Direction="SideNavDirection.LeftToRight"
              Open="() => NavbarUI.IsVisible = true"
              Closed="() => NavbarUI.IsVisible = false"
              IsOpen="@NavbarUI.IsVisible">
-        <div class="w-full h-full flex-1 flex-y overflow-hidden">
-            <div class="flex-x h-full overflow-hidden bg-04">
+        <div class="h-full w-full overflow-hidden bg-04">
+            <div class="flex-x h-full w-full bg-04">
                 <ThinLeftPanel/>
                 <WideLeftPanel/>
             </div>
