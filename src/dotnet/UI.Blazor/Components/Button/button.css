@@ -68,11 +68,11 @@
 
 /* Cancel outline */
 .btn.btn-cancel-outline {
-    @apply bg-01 border-cancel text-cancel-outline-title;
+    @apply bg-01 border-success text-success;
 }
 .btn.btn-cancel-outline:hover,
 .btn.btn-cancel-outline:focus:hover {
-    @apply bg-cancel-outline-hover border-cancel-hover;
+    @apply bg-round-hover;
 }
 .btn.btn-cancel-outline:active,
 .btn.btn-cancel-outline:focus:active {
