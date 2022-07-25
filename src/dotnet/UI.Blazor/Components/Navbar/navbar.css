@@ -31,7 +31,7 @@
     @apply flex-y items-start md:items-end text-square-title bg-transparent min-w-nav-left px-4 gap-y-2;
 }
 .navbar-places .btn.btn-square {
-    @apply h-auto rounded-xl;
+    @apply h-auto rounded-full md:rounded-xl;
 }
 .navbar-places .btn.btn-square .btn-content {
     @apply h-12 w-12 justify-center bg-white;
