@@ -9,17 +9,17 @@
         @if (m.CanPost) {
             <ChatMessageEditor/>
         } else if (m.CanJoin) {
-            <div class="bg-01 rounded-md mx-3 py-1.5 px-2 flex justify-center">
+            <div class="bg-01 rounded-md py-0 md:py-1.5 px-0 md:px-2 flex justify-center w-full md:w-auto">
                 @if (m.IsAuthenticated) {
                     <div>
                         <span class="inline-flex">To post or talk,</span>
                         <Button Click="@OnJoin">Join this chat</Button>
                     </div>
                 } else {
-                    <div>
-                        <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1"/></div>
-                        <span class="inline-flex mx-1">or</span>
-                        <Button Click="@OnJoin" Class="btn-cancel">Join this chat anonymously</Button>
+                    <div class="flex-y gap-y-1 md:gap-y-0 md:flex-x w-full md:w-auto">
+                        <div class="flex md:inline-flex w-full md:w-auto"><SignInMenu ButtonClass="py-1 w-full"/></div>
+                        <span class="hidden md:inline-flex mx-1 items-center">or</span>
+                        <Button Click="@OnJoin" Class="btn-cancel py-1">Join this chat anonymously</Button>
                     </div>
                 }
             </div>
