@@ -258,9 +258,12 @@
 .chat-footer {
     @apply bg-01 rounded-md py-0 md:py-1.5 px-2 md:px-2 flex justify-center w-full;
 }
-.chat-footer .btn {
-    @apply rounded-full md:rounded-md;
+.signin-footer {
+    @apply flex w-full md:w-auto py-1 justify-center;
 }
-.chat-footer .btn .btn-content {
+.signin-footer .btn {
+    @apply rounded-full md:rounded-md h-10 min-h-10 min-w-0 px-4;
+}
+.signin-footer .btn .btn-content {
     @apply text-lg;
 }
