@@ -40,3 +40,7 @@
 .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-content {
     @apply bg-success-hover text-success-title;
 }
+
+.footer-account-menu {
+    @apply w-full;
+}
