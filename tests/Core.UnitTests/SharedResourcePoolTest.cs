@@ -100,7 +100,7 @@ public class SharedResourcePoolTest : TestBase
     public async Task ShouldNotStuckWhenCancellationTokenIsFired()
     {
         // When resource factory task fails asynchronously with non-transient error,
-        // it causes that pool indefinitely tries to execute Lease.BeginRent.
+        // it causes that pool infinitely tries to execute Lease.BeginRent.
         async Task<Resource> ResourceFactory1(int _, CancellationToken cancellationToken) {
             await Task.Delay(1000, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
