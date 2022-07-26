@@ -3,7 +3,7 @@
 @{
     var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var mainButtonClass = ButtonType == MenuButton.Default ? "btn-success " : "btn-round ";
+    var mainButtonClass = ButtonType == MenuButton.Default ? "btn-primary " : "btn-round ";
     var btnClass = mainButtonClass + ButtonClass;
     var dropdownClass = ButtonType == MenuButton.Round ? "left-panel-account-menu" : "footer-account-menu";
     var btnTitle = ButtonType == MenuButton.Round ? "Sign in" : "";

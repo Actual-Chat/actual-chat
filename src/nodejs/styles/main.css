@@ -24,7 +24,7 @@ a {
     @apply bg-inherit text-02;
 }
 a:focus {
-    @apply outline-none underline underline-offset-1 decoration-success;
+    @apply outline-none underline underline-offset-1 decoration-primary;
 }
 a.unfocusable:focus {
     @apply outline-none no-underline;
@@ -41,7 +41,7 @@ input {
 input:focus {
     @apply bg-03;
     @apply rounded-sm border-0 outline-none;
-    @apply ring-2 ring-success;
+    @apply ring-1 ring-secondary;
 }
 input:focus[type="text"]::selection {
     @apply bg-selection text-02;
@@ -128,7 +128,7 @@ input.input-underlined {
     @apply bg-round-hover;
 }
 .context-menu-item:hover .context-menu-icon {
-    @apply text-success;
+    @apply text-primary;
 }
 .context-menu-content {
     @apply flex-x gap-x-2 items-center;
@@ -150,7 +150,7 @@ input.input-underlined {
 .context-menu-item.important-item.off .context-menu-icon,
 .context-menu-item.important-item .context-menu-text,
 .context-menu-item.important-item.off .context-menu-text {
-    @apply text-success;
+    @apply text-primary;
 }
 .context-menu-item.important-item.on .context-menu-icon,
 .context-menu-item.important-item.on .context-menu-text {

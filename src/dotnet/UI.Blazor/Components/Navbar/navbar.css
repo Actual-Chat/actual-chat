@@ -15,7 +15,7 @@
     @apply h-auto rounded-xl;
 }
 .navbar-group-toggles .navbar-group-toggle.btn.on {
-    @apply text-success;
+    @apply text-primary;
 }
 .navbar-group-toggles .navbar-group-toggle .btn-content {
     @apply p-1 justify-center bg-transparent md:bg-white rounded-lg;

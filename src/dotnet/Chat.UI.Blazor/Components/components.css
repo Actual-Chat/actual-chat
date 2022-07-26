@@ -116,7 +116,7 @@
     @apply justify-center bg-transparent;
 }
 .people-group .btn-square:hover {
-    @apply text-02 border-success;
+    @apply text-02 border-primary;
 }
 .people-group .btn-square:hover .btn-content {
     @apply bg-transparent;
@@ -129,7 +129,7 @@
     @apply justify-center bg-transparent;
 }
 .btn-square.add-user-btn:hover {
-    @apply text-02 border-success;
+    @apply text-02 border-primary;
 }
 .btn-square.add-user-btn:hover .btn-content {
     @apply bg-transparent;
@@ -142,7 +142,7 @@
     @apply flex flex-row items-center gap-x-1 border-b-2 border-transparent;
 }
 .search-contacts:hover {
-    @apply border-success;
+    @apply border-primary;
 }
 .search-contacts input {
     @apply flex-auto border-0 bg-transparent;
@@ -202,7 +202,7 @@
     @apply text-03;
 }
 .wide-left-panel-tabs .tab-btn:hover .btn-content {
-    @apply bg-round-hover text-success;
+    @apply bg-round-hover text-primary;
 }
 .wide-left-panel-tabs .tab-btn.on:hover .btn-content {
     @apply bg-transparent cursor-default;
@@ -230,7 +230,7 @@
     @apply bg-transparent;
 }
 .chats-tab .btn.btn-round.pin-toggle.play-pinned.on {
-    @apply text-success;
+    @apply text-primary;
 }
 
 .pinned-chats {

@@ -18,68 +18,46 @@
     @apply opacity-100;
 }
 
-/* Success */
-.btn.btn-success {
-    @apply bg-success border-success text-success-title;
+/* Primary */
+.btn.btn-primary {
+    @apply bg-primary border-primary text-primary-title;
 }
-.btn.btn-success:hover,
-.btn.btn-success:focus:hover {
-    @apply bg-success-hover border-success-hover;
+.btn.btn-primary:hover,
+.btn.btn-primary:focus {
+    @apply bg-primary-hover border-primary-hover;
 }
-.btn.btn-success:active,
-.btn.btn-success:focus:active {
-    @apply outline-none ring-2 ring-success-ring bg-success border-success-ring;
+.btn.btn-primary:active,
+.btn.btn-primary:focus:active {
+    @apply bg-primary border-primary;
 }
-.btn.btn-success:focus {
-    @apply outline-none ring-1 ring-success-ring bg-success border-success-ring;
-}
-
-/* Success outline */
-.btn.btn-success-outline {
-    @apply bg-01 border-success text-success-outline-title;
-}
-.btn.btn-success-outline:hover,
-.btn.btn-success-outline:focus:hover {
-    @apply bg-success-outline-hover border-success-hover;
-}
-.btn.btn-success-outline:active,
-.btn.btn-success-outline:focus:active {
-    @apply outline-none ring-2 ring-success-ring bg-01 border-success-ring;
-}
-.btn.btn-success-outline:focus {
-    @apply outline-none ring-1 ring-success-ring bg-01 border-success-ring;
+.btn.btn-primary:disabled,
+.btn.btn-secondary:disabled {
+    @apply bg-disabled text-primary-title border-disabled;
 }
 
-/* Cancel */
-.btn.btn-cancel {
-    @apply bg-cancel border-cancel text-cancel-title;
+/* Secondary */
+.btn.btn-secondary,
+.btn.btn-secondary:active,
+.btn.btn-secondary:focus:active {
+    @apply bg-secondary border-secondary text-secondary-title;
 }
-.btn.btn-cancel:hover,
-.btn.btn-cancel:focus:hover {
-    @apply bg-cancel-hover border-cancel-hover;
-}
-.btn.btn-cancel:active,
-.btn.btn-cancel:focus:active {
-    @apply outline-none ring-2 ring-cancel-ring bg-cancel border-cancel-ring;
-}
-.btn.btn-cancel:focus {
-    @apply outline-none ring-1 ring-cancel-ring bg-cancel border-cancel-ring;
+.btn.btn-secondary:hover,
+.btn.btn-secondary:focus {
+    @apply bg-secondary-hover border-secondary-hover;
 }
 
-/* Cancel outline */
-.btn.btn-cancel-outline {
-    @apply bg-01 border-success text-success;
+/* Outline */
+.btn.btn-outline,
+.btn.btn-outline:active,
+.btn.btn-outline:focus:active {
+    @apply bg-outline border-primary text-outline-title;
 }
-.btn.btn-cancel-outline:hover,
-.btn.btn-cancel-outline:focus:hover {
-    @apply bg-round-hover;
+.btn.btn-outline:hover,
+.btn.btn-outline:focus:hover {
+    @apply bg-secondary-hover border-primary;
 }
-.btn.btn-cancel-outline:active,
-.btn.btn-cancel-outline:focus:active {
-    @apply outline-none ring-2 ring-cancel-ring bg-01 border-cancel-ring;
-}
-.btn.btn-cancel-outline:focus {
-    @apply outline-none ring-1 ring-cancel-ring bg-01 border-cancel-ring;
+.btn.btn-outline:disabled {
+    @apply bg-outline border-disabled text-disabled;
 }
 
 /* Error */
@@ -244,7 +222,7 @@
 /* Suffixes */
 
 button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
-    @apply text-success;
+    @apply text-primary;
 }
 button.off, .btn.off, .btn.btn-square.off, .btn.btn-round.off {
     @apply text-icons-01;
