@@ -15,13 +15,23 @@
 }
 
 .mobile-control-panel .mobile-recorder-toggle.btn.btn-round {
-    @apply outline-1 outline-primary outline-offset-4;
+    @apply outline-1 outline-offset-4;
     @apply border-none shadow-none;
 }
+.mobile-control-panel .mobile-recorder-toggle.btn,
+.mobile-control-panel .mobile-recorder-toggle.btn.off {
+    @apply outline-primary;
+}
+.mobile-control-panel .mobile-recorder-toggle.btn.on {
+    @apply outline-error;
+}
 
-.mobile-control-panel .mobile-recorder-toggle.btn .btn-content {
-    @apply bg-primary text-04 h-20 w-20 rounded-full;
+.mobile-control-panel .mobile-recorder-toggle.btn .btn-content,
+.mobile-control-panel .mobile-recorder-toggle.btn.off .btn-content {
+    @apply bg-primary text-04 h-20 w-20 rounded-full outline-primary;
     max-width: 5rem;
     max-height: 5rem;
 }
-
+.mobile-control-panel .mobile-recorder-toggle.btn.on .btn-content {
+    @apply bg-error text-04 h-20 w-20 rounded-full outline-error;
+}
