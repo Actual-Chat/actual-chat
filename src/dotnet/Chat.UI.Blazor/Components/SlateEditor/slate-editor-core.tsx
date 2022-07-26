@@ -98,7 +98,9 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
                     case 'ArrowUp':
                         if (!event.shiftKey) {
                             event.preventDefault();
-                            handle.onEditLastMessage();
+                            const text = handle.getText();
+                            if(!text)
+                                handle.onEditLastMessage();
                         }
                         break;
                 }
