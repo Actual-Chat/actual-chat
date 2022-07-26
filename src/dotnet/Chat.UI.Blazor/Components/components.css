@@ -85,8 +85,6 @@
 .btn-round.attach-btn {
     @apply self-start;
 }
-.btn-round.attach-btn .btn-content {
-}
 
 .chat-header-panel-hint.btn.btn-square {
     @apply flex-none hidden group-hover:flex font-light text-xs;

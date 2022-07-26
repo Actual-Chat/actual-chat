@@ -238,6 +238,8 @@ module.exports = {
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'decrease': 'decrease 500ms ease-in-out',
+      'increase': 'increase 500ms ease-in-out',
       bounce: 'bounce 1s infinite',
       'instant-display': 'display-element-from-left 0s',
       'display-from-left': 'display-element-from-left 150ms ease-in-out',
@@ -738,6 +740,22 @@ module.exports = {
       'scale': {
         '50%': {
           transform: 'scale(0.3)',
+        },
+      },
+      'decrease': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(0.05)',
+        },
+      },
+      'increase': {
+        from: {
+          transform: 'scale(.05)',
+        },
+        to: {
+          transform: 'scale(1)',
         },
       },
       bounce: {
