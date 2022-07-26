@@ -1,5 +1,5 @@
 .mobile-control-panel {
-    @apply flex-x min-h-footer;
+    @apply flex-x h-auto py-4;
     @apply md:hidden justify-center;
     @apply bg-01;
     @apply rounded-b-3xl;
@@ -7,7 +7,21 @@
     @apply items-center;
 }
 
-.mobile-recorder-toggle .btn-content {
-    @apply bg-primary;
+.mobile-control-panel .btn.btn-round {
+    @apply border border-bg-03 shadow-mobile-button shadow-shadow-main;
+}
+.mobile-control-panel .btn.btn-round .btn-content {
+    @apply bg-01;
+}
+
+.mobile-control-panel .mobile-recorder-toggle.btn.btn-round {
+    @apply outline-1 outline-primary outline-offset-4;
+    @apply border-none shadow-none;
+}
+
+.mobile-control-panel .mobile-recorder-toggle.btn .btn-content {
+    @apply bg-primary text-04 h-20 w-20 rounded-full;
+    max-width: 5rem;
+    max-height: 5rem;
 }
 
