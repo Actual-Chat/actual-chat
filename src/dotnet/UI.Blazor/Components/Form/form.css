@@ -16,13 +16,15 @@
 }
 .form input:not([type='checkbox']).invalid {
     @apply border-error;
+    @apply ring-1 ring-error;
 }
 .form input:focus {
-    @apply outline-none border-success;
-    @apply ring ring-success-ring;
+    @apply outline-none border-primary;
+    @apply ring-1 ring-primary;
 }
 .form input:not([type='checkbox']).invalid:focus {
     @apply border-error;
+    @apply ring-1 ring-error;
 }
 
 .form.form-y section > * {

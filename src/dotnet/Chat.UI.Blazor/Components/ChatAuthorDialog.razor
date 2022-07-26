@@ -17,10 +17,10 @@
     <Buttons>
         <div class="btn-group">
             @if (m.CanAddContact) {
-                <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
+                <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
             @if (m.CanSendMessage) {
-                <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
+                <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
             }
         </div>
     </Buttons>

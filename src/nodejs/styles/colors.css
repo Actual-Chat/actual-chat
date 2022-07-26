@@ -17,19 +17,19 @@
     --counter: #D0D0D0;
 
     /* Buttons */
-    --success: #2970FF;
-    --success-hover: #3d7dff;
-    --success-title: #edf0f3;
-    --success-ring: #c6d9ff;
-    --success-outline-hover: #edf3ff;
-    --success-outline-title: #3d7dff;
+    --disabled: #E7E7E7;
 
-    --cancel: #64748b;
-    --cancel-hover: #546174;
-    --cancel-title: #edf0f3;
-    --cancel-ring: #9aa6b7;
-    --cancel-outline-hover: #eef1f4;
-    --cancel-outline-title: #64748b;
+    --primary: #2970FF;
+    --primary-hover: #2569F1;
+    --primary-title: #FFFFFF;
+
+    --secondary: #E1EFFA;
+    --secondary-hover: #C5D8FF;
+    --secondary-title: #2970FF;
+
+    --outline: #FFFFFF;
+    --outline-hover: #C5D8FF;
+    --outline-title: #2970FF;
 
     --error: #FF7070;
     --error-hover: #FFE4E4;

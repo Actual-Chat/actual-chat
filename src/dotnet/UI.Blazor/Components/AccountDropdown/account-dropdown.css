@@ -32,13 +32,13 @@
 }
 
 .left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
-    @apply bg-success text-success-title;
+    @apply bg-primary text-primary-title;
 }
 .left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
-    @apply bg-success text-success-title h-10 w-10 min-h-0 min-w-0;
+    @apply bg-primary text-primary-title h-10 w-10 min-h-0 min-w-0;
 }
 .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-content {
-    @apply bg-success-hover text-success-title;
+    @apply bg-primary-hover text-primary-title;
 }
 
 .footer-account-menu {

@@ -103,7 +103,7 @@
 }
 
 .author-recording {
-    @apply border-success;
+    @apply border-primary;
 }
 
 .author-not-recording {
@@ -111,7 +111,7 @@
 }
 
 .chat-message:hover .author-recording {
-    @apply border-success;
+    @apply border-primary;
 }
 
 .chat-message:hover .author-not-recording {

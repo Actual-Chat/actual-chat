@@ -52,8 +52,8 @@
     @apply border-error;
 }
 .dialog-body input:focus {
-    @apply outline-none border-success;
-    @apply ring ring-success-ring;
+    @apply outline-none border-primary;
+    @apply ring-1 ring-primary;
 }
 .dialog-body input:not([type='checkbox']).invalid:focus {
     @apply border-error;

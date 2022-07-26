@@ -47,7 +47,7 @@
 .attachment-list {
     @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto w-full;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-bg-04 divide-dashed;
-    @apply border-4 border-success rounded-xl;
+    @apply border-4 border-primary rounded-xl;
 }
 .clear-attachments-btn.btn.btn-round {
     @apply relative min-w-12 self-center;
@@ -59,7 +59,7 @@
     @apply hidden md:flex relative min-w-12 self-center;
 }
 .post-attachments-btn.btn.btn-round .btn-content {
-    @apply bg-success text-success-title min-w-full;
+    @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
     @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
@@ -75,7 +75,7 @@
     @apply w-8 h-8 text-white m-0 self-center;
 }
 .attachment-wrapper .btn.btn-round .btn-content {
-    @apply bg-success;
+    @apply bg-primary;
 }
 .attachment-wrapper .btn.btn-round:hover .btn-content {
     @apply bg-error-ring;
@@ -110,10 +110,10 @@
     @apply flex flex-1 rounded-full w-fit h-fit self-end;
 }
 .btn-round.audio-recorder-toggle .btn-content {
-    @apply bg-success text-success-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+    @apply bg-primary text-primary-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
 }
 .btn-round.audio-recorder-toggle:hover .btn-content {
-    @apply bg-success-hover text-success-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+    @apply bg-primary-hover text-primary-title min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
 }
 .btn-round.audio-recorder-toggle.recorder-disabled .btn-content {
     @apply bg-round;
