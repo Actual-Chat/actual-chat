@@ -108,9 +108,9 @@
                 var chats = await Chats.GetChats(Session, CancellationToken.None);
                 var chat1 = chats.FirstOrDefault();
                 if (chat1 != null)
-                    return new Model() { NavigateToChatId = chat1.Id };
+                    return new Model { NavigateToChatId = chat1.Id };
             }
-            return new() { IsUnavailable = true };
+            return new Model { IsUnavailable = true };
         }
 
         // We want to return the same Chat instance while it stays unchanged

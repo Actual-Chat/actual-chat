@@ -94,7 +94,7 @@
         var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var mustPlayPinned = await ChatUI.MustPlayPinnedContactChats.Use(cancellationToken).ConfigureAwait(false);
 
-        return new Model() {
+        return new Model {
             PinnedContacts = pinnedContacts,
             UnpinnedContacts = unpinnedContacts,
             ActiveChatId = activeChatId,

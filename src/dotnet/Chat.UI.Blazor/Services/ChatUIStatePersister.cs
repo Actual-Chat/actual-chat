@@ -65,7 +65,7 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
         var pinnedChatIds = await _chatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingActive = await _chatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingPinned = await _chatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
-        return new Model() {
+        return new Model {
             ActiveChatId = activeChatId,
             PinnedChatIds = pinnedChatIds.ToArray(),
             IsPlayingActive = isPlayingActive,

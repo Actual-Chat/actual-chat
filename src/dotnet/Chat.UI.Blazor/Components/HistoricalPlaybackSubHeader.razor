@@ -87,7 +87,7 @@
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
 
-        return new Model() {
+        return new Model {
             PlayingAt = playingAt,
         };
     }

@@ -151,7 +151,7 @@
         var sessionList = new List<SessionModel>();
 
         foreach (var session in sessions) {
-            var model = new SessionModel() {
+            var model = new SessionModel {
                 SessionHash = session.SessionHash,
                 IPAddress = session.IPAddress,
                 UserAgent = session.UserAgent,
@@ -162,7 +162,7 @@
             };
             sessionList.Add(model);
         }
-        return new Model() {
+        return new Model {
             SessionInfo = sessionInfo,
             Account = account,
             Sessions = sessionList.ToImmutableList(),
