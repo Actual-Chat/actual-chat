@@ -28,7 +28,7 @@
         var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
         if (!isPlayingActive)
-            return new Model() {
+            return new Model {
                 IsPlayingActive = isPlayingActive,
                 IsPlayingHistorical = isPlayingHistorical,
             };
@@ -40,7 +40,7 @@
         // By the way how it's supposed to remove chats from ListeningChatIds.
         //ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken).ConfigureAwait(false);
 
-        return new Model() {
+        return new Model {
             IsPlayingActive = isPlayingActive,
             IsPlayingHistorical = isPlayingHistorical,
         };

@@ -58,12 +58,12 @@
         var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
         if (!isPlayingActive)
-            return new Model() {
+            return new Model {
                 IsPlayingActive = isPlayingActive,
                 IsPlayingHistorical = isPlayingHistorical,
             };
 
-        return new Model() {
+        return new Model {
             IsPlayingActive = isPlayingActive,
             IsPlayingHistorical = isPlayingHistorical,
         };
