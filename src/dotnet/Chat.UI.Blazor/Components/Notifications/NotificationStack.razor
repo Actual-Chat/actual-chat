@@ -8,7 +8,7 @@
     var notifications = model.Notifications;
 }
 
-<div class="flex-y space-y-3 z-90 fixed top-0 bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar"
+<div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar max-h-[100%]"
     @onmouseover="MouseOver"
     @onmouseout="MouseOut">
     @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {
@@ -22,14 +22,14 @@
 </div>
 
 @code {
-    private HashSet<string> _closed = new();
     private bool _isHovered;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; set; } = null!;
-    [Inject] private ToastUI ToastUI { get; set; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() => new () {
+        UpdateDelayer = UpdateDelayer.ZeroDelay,
         InitialValue = Model.None,
     };
 
@@ -37,8 +37,6 @@
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
         var notifications = new List<NotificationEntry>();
         foreach (var notificationId in notificationIds) {
-            if (_closed.Contains(notificationId))
-                continue;
             var notification = await Notifications.GetNotification(Session, notificationId, cancellationToken);
             notifications.Add(notification);
         }
@@ -48,9 +46,9 @@
         };
     }
 
-    private void OnClose(string notificationId) {
-        _closed.Add(notificationId);
-        _ = State.Recompute();
+    private async Task OnClose(string notificationId) {
+        var command = new INotifications.HandleNotificationCommand(Session, notificationId);
+        await UICommander.Run(command);
     }
 
     private void MouseOver() {

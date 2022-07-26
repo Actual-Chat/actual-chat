@@ -21,7 +21,6 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly FirebaseMessagingClient _firebaseMessagingClient;
     private readonly ILogger<Notifications> _log;
 
-
     public Notifications(
         IServiceProvider services,
         IAuth auth,
@@ -76,6 +75,30 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     {
         var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         return await GetNotification(user.Id, notificationId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task HandleNotification(INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating()) {
+            _ = GetNotification(command.Session, command.NotificationId, default);
+            _ = ListRecentNotificationIds(command.Session, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbNotification = await dbContext.Notifications
+            .ForUpdate()
+            .SingleOrDefaultAsync(x => x.Id == command.NotificationId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbNotification == null)
+            throw new InvalidOperationException("Notification doesn't exist.");
+
+        dbNotification.HandledAt = _clocks.SystemClock.Now;
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

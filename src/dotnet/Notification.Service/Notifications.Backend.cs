@@ -55,7 +55,7 @@ public partial class Notifications
 
         return dbContext.Notifications
             .OrderByDescending(n => n.Id)
-            .Take(20)
+            .Where(x => x.HandledAt == null)
             .Select(n => n.Id)
             .ToImmutableArray();
     }
