@@ -38,12 +38,16 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service.ListUserIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
-        => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
+    public Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
+        => _service.GetAuthor(session, chatId, authorId, inherit, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken)
-        => _service.GetAuthorPresence(chatId, authorId, cancellationToken);
+    public Task<Presence> GetAuthorPresence(
+        Session session,
+        string chatId,
+        string authorId,
+        CancellationToken cancellationToken)
+        => _service.GetAuthorPresence(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)

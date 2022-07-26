@@ -16,9 +16,13 @@ public interface IChatAuthors : IComputeService
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Presence> GetAuthorPresence(
+        Session session,
+        string chatId,
+        string authorId,
+        CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 

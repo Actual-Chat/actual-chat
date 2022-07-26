@@ -1,3 +1,4 @@
+using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
@@ -96,9 +97,17 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     // [ComputeMethod]
     public virtual async Task<Author?> GetAuthor(
-        string chatId, string authorId, bool inherit,
+        Session session,
+        string chatId,
+        string authorId,
+        bool inherit,
         CancellationToken cancellationToken)
     {
+        // Check that user has access to chat
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
         var chatAuthor = await Backend.Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
         return chatAuthor.ToAuthor();
     }
@@ -106,9 +115,15 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     // [ComputeMethod]
     public virtual async Task<Presence> GetAuthorPresence(
-        string chatId, string authorId,
+        Session session,
+        string chatId,
+        string authorId,
         CancellationToken cancellationToken)
     {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            throw new UnauthorizedAccessException("User does not have access to this chat");
+
         var chatAuthor = await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
             return Presence.Offline;
@@ -117,6 +132,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         return await UserPresences.Get(chatAuthor.UserId.Value, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
     public virtual async Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
         var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);

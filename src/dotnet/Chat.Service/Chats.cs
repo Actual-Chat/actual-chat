@@ -226,7 +226,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
         var authors = await chatAuthorIds
-            .Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken))
+            .Select(id => ChatAuthors.GetAuthor(session, chatId, id, true, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
         var items = authors
@@ -292,6 +292,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var (session, chatId, _, text) = command;
         // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
         // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        await RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var chatEntry = new ChatEntry {
@@ -357,7 +359,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, entryId) = command;
-        await RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        var entry = await GetChatEntry(session,
+                chatId,
+                entryId,
+                ChatEntryType.Text,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await AssertCanRemoveTextEntry(entry, session, cancellationToken).ConfigureAwait(false);
+
         var textEntry = await RemoveChatEntry(session, chatId, entryId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
 
         if (textEntry.AudioEntryId != null)
@@ -508,11 +517,33 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+
+        if (chatEntry.IsRemoved)
+            throw ActualChat.StandardError.NotFound<ChatEntry>();
+
         var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("User can edit only their own messages.");
 
         if (chatEntry.Type != ChatEntryType.Text || !chatEntry.StreamId.IsEmpty)
             throw StandardError.Constraint("Only text messages can be edited.");
+    }
+
+    private async Task AssertCanRemoveTextEntry(
+        ChatEntry chatEntry,
+        Session session,
+        CancellationToken cancellationToken)
+    {
+        await RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+
+        if (chatEntry.IsRemoved)
+            throw StandardError.NotFound<ChatEntry>();
+
+        var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (chatEntry.AuthorId != author.Id)
+            throw new SecurityException("User can remove only their own messages.");
+
+        if (chatEntry.IsStreaming)
+            throw new InvalidOperationException("This chat entry is streaming.");
     }
 }
