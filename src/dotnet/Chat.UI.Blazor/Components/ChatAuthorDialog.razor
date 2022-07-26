@@ -48,7 +48,7 @@
             return ComputedModel.None;
 
         var chatId = parsedAuthorId.ChatId.Id;
-        var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetAuthor(Session, chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return ComputedModel.None;
 

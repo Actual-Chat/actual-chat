@@ -7,12 +7,14 @@ public class MentionedNameResolver
     private ChatUI ChatUI { get;  }
     private IChatAuthors ChatAuthors { get; }
     private IAccounts Accounts { get; }
+    public Session Session { get; }
 
-    public MentionedNameResolver(ChatUI chatUI, IChatAuthors chatAuthors, IAccounts accounts)
+    public MentionedNameResolver(ChatUI chatUI, IChatAuthors chatAuthors, IAccounts accounts, Session session)
     {
         ChatUI = chatUI;
         ChatAuthors = chatAuthors;
         Accounts = accounts;
+        Session = session;
     }
 
     public Task<string> GetName(MentionKind mentionKind, string id, CancellationToken cancellationToken)
@@ -30,7 +32,7 @@ public class MentionedNameResolver
 
     public async Task<string> GetAuthorName(string id, CancellationToken cancellationToken)
     {
-        var author = await ChatAuthors.GetAuthor(ChatUI.ActiveChatId.Value, id, true, cancellationToken)
+        var author = await ChatAuthors.GetAuthor(Session, ChatUI.ActiveChatId.Value, id, true, cancellationToken)
             .Require()
             .ConfigureAwait(false);
         return author.Name;

@@ -8,6 +8,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
     private string ChatId { get; set; } = "";
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }
@@ -37,7 +38,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         if (ChatId.IsNullOrEmpty())
             return Model.None;
 
-        var author = await ChatAuthors.GetAuthor(ChatId, AuthorId, true, cancellationToken).ConfigureAwait(true);
+        var author = await ChatAuthors.GetAuthor(Session, ChatId, AuthorId, true, cancellationToken).ConfigureAwait(true);
         if (author == null)
             return Model.None;
 
@@ -50,7 +51,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
 
         var presence = Presence.Unknown;
         if (ShowsPresence)
-            presence = await ChatAuthors.GetAuthorPresence(ChatId, AuthorId, cancellationToken).ConfigureAwait(true);
+            presence = await ChatAuthors.GetAuthorPresence(Session, ChatId, AuthorId, cancellationToken).ConfigureAwait(true);
         if (ChatRecordingActivity != null) {
             var isRecording = await ChatRecordingActivity.IsAuthorActive(author.Id, cancellationToken).ConfigureAwait(false);
             if (isRecording)
