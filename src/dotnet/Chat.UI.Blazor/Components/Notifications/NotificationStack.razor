@@ -8,7 +8,7 @@
     var notifications = model.Notifications;
 }
 
-<div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar h-full"
+<div class="flex-y space-y-3 z-90 fixed top-0 bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar"
     @onmouseover="MouseOver"
     @onmouseout="MouseOut">
     @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {

@@ -109,7 +109,7 @@
         if (!AnimationTime.HasValue) {
             return "";
         }
-        return _isClosing
+        return _isClosing || _isClosed
             ? $"animation: fadeout {AnimationTime.Value.TotalMilliseconds}ms ease-out;"
             : $"animation: fadein {AnimationTime.Value.TotalMilliseconds}ms ease-in;";
     }
