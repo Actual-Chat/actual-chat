@@ -17,8 +17,8 @@
                                RemoveRequested="@(RemoveAttachment)"
                                ClearAllRequested="@(ClearAttachments)"
                                Post="@(_ => OnPosted(clearEditor:true))"/>
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-01">
-            <div class="-flex-y w-full bg-01 mr-1.5 overflow-x-hidden">
+        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:p-1.5 gap-x-1.5">
+            <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5">
                     <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
@@ -39,6 +39,7 @@
                     </div>
                 </div>
                 <LinkedMessagePanel/>
+                <MobileControlPanel/>
             </div>
             <RecorderPanel/>
         </div>

@@ -1,0 +1,13 @@
+.mobile-control-panel {
+    @apply flex-x min-h-footer;
+    @apply md:hidden justify-center;
+    @apply bg-01;
+    @apply rounded-b-3xl;
+    @apply self-stretch md:self-end;
+    @apply items-center;
+}
+
+.mobile-recorder-toggle .btn-content {
+    @apply bg-primary;
+}
+

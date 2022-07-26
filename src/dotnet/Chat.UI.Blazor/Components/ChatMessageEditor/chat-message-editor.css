@@ -1,3 +1,10 @@
+.chat-message-editor {
+    @apply bg-05 md:bg-01;
+}
+.chat-message-editor .btn .btn-content,
+.chat-message-editor .btn.btn-round .btn-content {
+    @apply bg-05 md:bg-round;
+}
 .message-input::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -5,10 +12,10 @@
 
 .message-input {
     @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-6 mr-2;
-    @apply break-all outline-none hover:cursor-text text-02 bg-03;
+    @apply break-all outline-none hover:cursor-text text-05 md:text-02 bg-05 md:bg-03;
 }
 .post-panel {
-    @apply bg-03 rounded-3xl min-h-3 py-2 outline-none;
+    @apply bg-05 md:bg-03 rounded-3xl min-h-3 items-center outline-none;
 }
 
 .not-recording {
@@ -25,7 +32,7 @@
 }
 
 .btn.btn-round.post-message {
-    @apply sticky self-end outline-none text-round-title pr-1 mr-2 hidden;
+    @apply sticky self-end outline-none text-05 pr-1 mr-2 hidden;
 }
 
 .text-mode .btn.btn-round.post-message {
@@ -88,7 +95,8 @@
 }
 
 .recorder-panel {
-    @apply flex-x justify-center;
+    @apply hidden;
+    @apply md:flex-x justify-center;
     @apply bg-01 outline-none;
     @apply rounded-none;
     @apply self-stretch md:self-end;
