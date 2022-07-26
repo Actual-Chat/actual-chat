@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue ?? new();
 }
 
-<div class="flex-y w-full">
+<div class="flex-y w-full bg-05 md:bg-01">
     @if (m.CanPost) {
         <ChatMessageEditor/>
     } else if (m.CanJoin) {
