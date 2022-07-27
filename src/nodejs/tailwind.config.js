@@ -23,6 +23,10 @@ module.exports = {
     'h-9',
     'h-10',
     '-r-46',
+    'flex-x',
+    '-flex-x',
+    'flex-y',
+    '-flex-y',
   ],
   presets: [],
   darkMode: 'media',
@@ -267,6 +271,11 @@ module.exports = {
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
+      'width-half-to-full': 'width-half-to-full 500ms ease-in-out',
+      'width-full-to-half': 'width-full-to-half 500ms ease-in-out',
+      'loud-show': 'loud-show 500ms ease-in-out',
+      'loud-hide': 'loud-hide 500ms ease-in-out',
+
     },
     aspectRatio: {
       auto: 'auto',
@@ -848,6 +857,38 @@ module.exports = {
         to: {
           width: '84%',
           opacity: '1'
+        },
+      },
+      'width-full-to-half': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '50%',
+        },
+      },
+      'width-half-to-full': {
+        from: {
+          width: '50%',
+        },
+        to: {
+          width: '100%',
+        },
+      },
+      'loud-show': {
+        from: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+        to: {
+          transform: 'translateX(3rem) scale(1)',
+        },
+      },
+      'loud-hide': {
+        from: {
+          transform: 'translateX(3rem) scale(1)',
+        },
+        to: {
+          transform: 'translateX(1.5rem) scale(.05)',
         },
       },
       'hide-to-left': {
