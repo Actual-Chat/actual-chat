@@ -23,12 +23,12 @@
 }
 
 [contenteditable=true]:empty:not(:focus):before {
-    @apply text-placeholder truncate text-xs md:text-base;
+    @apply text-placeholder truncate text-base;
     content:attr(data-text)
 }
 
 .btn.btn-round.post-message {
-    @apply sticky self-end outline-none text-05 pr-1 mr-2 hidden;
+    @apply sticky self-end outline-none text-04 md:text-05 p-2 mr-2 hidden;
 }
 
 .text-mode .btn.btn-round.post-message {
@@ -75,7 +75,7 @@
     max-height: 12rem;
 }
 .attachment-wrapper .btn.btn-round {
-    @apply w-8 h-8 text-white m-0 self-center;
+    @apply w-8 h-8 text-04 m-0 self-center;
 }
 .attachment-wrapper .btn.btn-round .btn-content {
     @apply bg-primary;
