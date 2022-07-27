@@ -83,12 +83,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             break;
         case StopAudioRecorderCommand:
             if (!WhenInitialized.IsCompletedSuccessfully)
-                throw new LifetimeException("Recorder is not initialized yet.");
+                throw StandardError.StateTransition(GetType(), "Recorder is not initialized yet.");
 
             await StopRecordingInternal().ConfigureAwait(false);
             break;
         default:
-            throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+            throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
         }
         return null;
     }

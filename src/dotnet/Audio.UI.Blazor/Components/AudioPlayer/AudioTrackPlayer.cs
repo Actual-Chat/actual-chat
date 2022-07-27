@@ -68,7 +68,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 switch (command) {
                 case PlayCommand:
                     if (_jsRef != null)
-                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Repeated PlayCommand.");
+                        throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await _js.InvokeAsync<IJSObjectReference>(
@@ -82,7 +82,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 case StopCommand:
                     if (!_isStopSent) {
                         if (_jsRef == null)
-                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(StopCommand)}: Start command should be called first.");
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                         DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Stop command to JS", _id);
                         _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
                         _isStopSent = true;
@@ -90,12 +90,12 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     break;
                 case EndCommand:
                     if (_jsRef == null)
-                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(EndCommand)}: Start command should be called first.");
+                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);
                     _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
                     break;
                 default:
-                    throw new NotSupportedException($"[AudioTrackPlayer #{_id}] Unsupported command type: '{command.GetType()}'.");
+                    throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
                 }
             }).ConfigureAwait(false);
 
@@ -103,7 +103,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 if (_jsRef == null)
-                    throw new LifetimeException($"[AudioTrackPlayer #{_id}] Can't process media frame before initialization.");
+                    throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
                 _ = _jsRef.InvokeVoidAsync("data", cancellationToken, chunk);

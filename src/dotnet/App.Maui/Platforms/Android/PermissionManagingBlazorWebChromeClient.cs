@@ -159,9 +159,8 @@ internal class PermissionManagingBlazorWebChromeClient : WebChromeClient, IActiv
 
     private void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
     {
-        if (_pendingPermissionRequestCallback is not null) {
-            throw new InvalidOperationException("Cannot perform multiple permission requests simultaneously.");
-        }
+        if (_pendingPermissionRequestCallback is not null)
+            throw CoreErrors.Constraint("Cannot perform multiple permission requests simultaneously.");
 
         _pendingPermissionRequestCallback = callback;
         _requestPermissionLauncher.Launch(permission);

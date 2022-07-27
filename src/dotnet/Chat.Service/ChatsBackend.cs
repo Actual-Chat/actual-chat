@@ -274,9 +274,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 creatorUserId.RequireEmpty("Command.CreatorUserId");
                 var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
                 var ownerUserIds = new[] { userId1.Value, userId2.Value };
-                var authors = await ownerUserIds
+                await ownerUserIds
                     .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
-                    .Collect(cancellationToken)
+                    .Collect(0)
                     .ConfigureAwait(false);
                 var tContact1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
                 var tContact2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
@@ -316,9 +316,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ConfigureAwait(false);
             chat = dbChat.ToModel();
             if ((update.ChatType ?? chat.ChatType) != chat.ChatType)
-                throw new ValidationException("Chat type cannot be changed.");
-            if (expectedVersion is { } v && chat.Version != v)
-                throw new VersionMismatchException();
+                throw StandardError.Constraint("Chat type cannot be changed.");
+            VersionChecker.RequireExpected(chat.Version, expectedVersion);
 
             chat = chat with {
                 Version = VersionGenerator.NextVersion(chat.Version),
@@ -328,7 +327,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             dbContext.Update(dbChat);
         }
         else
-            throw new NotSupportedException("TBD.");
+            throw StandardError.NotSupported("Chat removal is not implemented yet.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
@@ -451,9 +450,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             // Peer chat
             var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
             var ownerUserIds = new[] { userId1.Value, userId2.Value };
-            var authors = await ownerUserIds
+            await ownerUserIds
                 .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
-                .Collect(cancellationToken)
+                .Collect(0)
                 .ConfigureAwait(false);
             var tContact1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
             var tContact2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
@@ -462,9 +461,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else {
             // Group chat
             var ownerUserIds = dbChat.Owners.Select(o => o.UserId).ToArray();
-            var authors = await ownerUserIds
+            await ownerUserIds
                 .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
-                .Collect(cancellationToken)
+                .Collect()
                 .ConfigureAwait(false);
 
             var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
@@ -549,9 +548,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             dbEntry = await dbContext.ChatEntries
                 .FindAsync(DbKey.Compose(compositeId), cancellationToken)
                 .ConfigureAwait(false)
-                ?? throw new KeyNotFoundException();
-            if (dbEntry.Version != entry.Version)
-                throw new VersionMismatchException();
+                ?? throw StandardError.NotFound<ChatEntry>();
+            VersionChecker.RequireExpected(dbEntry.Version, entry.Version);
             entry = entry with {
                 Version = VersionGenerator.NextVersion(dbEntry.Version),
             };

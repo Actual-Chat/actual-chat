@@ -24,7 +24,7 @@ public ref struct WebMReader
         WebMReadResultKind.CompleteCluster => (Cluster)_entry,
         WebMReadResultKind.Block => (Block)_entry,
         WebMReadResultKind.BlockGroup => (BlockGroup)_entry,
-        _ => throw new InvalidOperationException($"Invalid ReadResultKind = {ReadResultKind}"),
+        _ => throw StandardError.Constraint($"Invalid ReadResultKind: {ReadResultKind}."),
     };
 
     public ReadOnlySpan<byte> Span => _spanReader.Span;
@@ -137,7 +137,7 @@ public ref struct WebMReader
                 ReadResultKind = container.Descriptor.Identifier.EncodedValue switch {
                     MatroskaSpecification.Segment => WebMReadResultKind.Segment,
                     MatroskaSpecification.Cluster => WebMReadResultKind.CompleteCluster,
-                    _ => throw new InvalidOperationException($"Unexpected Ebml element type {container.Descriptor}"),
+                    _ => throw StandardError.Constraint($"Unexpected EBML element type: {container.Descriptor}."),
                 };
                 return true;
             }

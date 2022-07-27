@@ -68,7 +68,8 @@ public sealed class Playback : ProcessorBase
         async Task<object?> OnPlayTrackCommand(PlayTrackCommand cmd)
         {
             if (_trackPlayers.ContainsKey(cmd))
-                throw new LifetimeException($"The same {nameof(PlayTrackCommand)} is enqueued twice!");
+                throw StandardError.StateTransition(GetType(),
+                    $"The same {nameof(PlayTrackCommand)} is enqueued twice!");
 
             var trackPlayer = _trackPlayerFactory.Create(cmd.Source);
             // ReSharper disable once ConvertToLocalFunction
@@ -78,7 +79,7 @@ public sealed class Playback : ProcessorBase
             var playTask = PlayTrack();
             if (!_trackPlayers.TryAdd(cmd, (trackPlayer, playTask))) {
                 await trackPlayer.DisposeAsync().ConfigureAwait(false);
-                throw new LifetimeException(
+                throw StandardError.StateTransition(GetType(),
                     $"Can't register playback task; likely, the same {nameof(PlayTrackCommand)} is enqueued twice!");
             }
 

@@ -17,7 +17,7 @@ internal class ContentSaver : IContentSaver
             .ConfigureAwait(false);
         var blob = blobs.Single();
         if (blob == null)
-            throw new InvalidOperationException($"Unable to read stored blob: {content.ContentId}");
+            throw StandardError.NotFound<Blob>($"Unable to find blob #{content.ContentId}.");
 
         blob.Metadata[Constants.Headers.ContentType] = content.ContentType;
         await _blobStorage.SetBlobsAsync(new[] { blob }, cancellationToken).ConfigureAwait(false);

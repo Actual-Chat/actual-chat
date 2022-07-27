@@ -48,7 +48,7 @@ public class DbModule : HostModule<DbSettings>
                 => (DbKind.PostgreSql, suffix.Trim()),
             { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
                 => (DbKind.MySql, suffix.Trim()),
-            _ => throw new InvalidOperationException("Unrecognized database connection string."),
+            _ => throw StandardError.Format("Unrecognized database connection string."),
         };
         var dbInfo = new DbInfo<TDbContext> {
             DbKind = dbKind,
@@ -89,7 +89,7 @@ public class DbModule : HostModule<DbSettings>
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;
             default:
-                throw new NotSupportedException();
+                throw StandardError.NotSupported("Unsupported database kind.");
             }
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();

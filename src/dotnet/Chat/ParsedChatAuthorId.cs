@@ -50,7 +50,7 @@ public readonly struct ParsedChatAuthorId : IEquatable<ParsedChatAuthorId>, IHas
     }
 
     public ParsedChatAuthorId AssertValid()
-        => IsValid ? this : throw new FormatException("Invalid chat author Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid chat author Id format.");
 
     // Conversion
 

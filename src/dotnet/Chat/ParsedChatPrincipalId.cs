@@ -29,7 +29,7 @@ public readonly struct ParsedChatPrincipalId : IEquatable<ParsedChatPrincipalId>
     }
 
     public ParsedChatPrincipalId AssertValid()
-        => IsValid ? this : throw new FormatException("Invalid chat principal Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid chat principal Id format.");
 
     // Conversion
 

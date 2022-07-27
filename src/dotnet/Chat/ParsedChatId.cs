@@ -66,22 +66,22 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
     }
 
     public ParsedChatId AssertValid()
-        => IsValid ? this : throw new FormatException("Invalid chat Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid chat Id format.");
 
     public ParsedChatId AssertGroup()
         => AssertValid().Kind is ChatIdKind.Group
             ? this
-            : throw new InvalidOperationException("Group chat Id is expected here.");
+            : throw StandardError.Constraint("Group chat Id is expected here.");
 
     public ParsedChatId AssertPeerAny()
         => AssertValid().Kind.IsPeerAny()
             ? this
-            : throw new InvalidOperationException("Peer chat Id is expected here.");
+            : throw StandardError.Constraint("Peer chat Id is expected here.");
 
     public ParsedChatId AssertPeerFull()
         => AssertValid().Kind is ChatIdKind.PeerFull
             ? this
-            : throw new InvalidOperationException("Full peer chat Id is expected here.");
+            : throw StandardError.Constraint("Full peer chat Id is expected here.");
 
     // Conversion
 
@@ -98,7 +98,7 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
             return FormatShortPeerChatId(UserId2.Id);
         if (ownerUserId == UserId2.Id)
             return FormatShortPeerChatId(UserId1.Id);
-        throw new InvalidOperationException("Specified peer chat Id doesn't belong to the specified user.");
+        throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
     }
 
     // Equality

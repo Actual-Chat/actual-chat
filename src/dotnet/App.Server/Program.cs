@@ -36,24 +36,24 @@ internal static class Program
         {
             var envMinIo = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO");
             if (string.IsNullOrWhiteSpace(envMinIo)
-                || !int.TryParse(envMinIo, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIoThreads)) {
-                minIoThreads = 8;
+                || !int.TryParse(envMinIo, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIOThreads)) {
+                minIOThreads = 8;
             }
             var envMinWorker = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER");
             if (string.IsNullOrWhiteSpace(envMinWorker)
                 || !int.TryParse(envMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorkerThreads)) {
                 minWorkerThreads = 8;
             }
-            ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIo);
-            if (currentMinIo < minIoThreads) {
-                if (!ThreadPool.SetMinThreads(currentMinWorker, minIoThreads)) {
-                    throw new InvalidOperationException("ERROR: Can't set min IO threads.");
-                }
-                currentMinIo = minIoThreads;
+            ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
+            if (currentMinIO < minIOThreads) {
+                if (!ThreadPool.SetMinThreads(currentMinWorker, minIOThreads))
+                    throw StandardError.Internal("Can't set min. IO thread count.");
+
+                currentMinIO = minIOThreads;
             }
-            if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIo)) {
-                throw new InvalidOperationException("ERROR: Can't set min worker threads.");
-            }
+            if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIO))
+                throw StandardError.Internal("Can't set min. worker thread count.");
+
             ThreadPool.SetMaxThreads(4096, 4096);
         }
 

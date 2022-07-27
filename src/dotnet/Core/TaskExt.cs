@@ -148,7 +148,9 @@ public static class TaskExt
         public void Replace(ValueTask<T>[] tasks)
         {
             if (_tasks.Length >= tasks.Length)
-                throw new InvalidOperationException("New tasks buffer should be larger than existing one. Ensure it contains all entries from the old one at the beginning of the buffer.");
+                throw StandardError.Constraint(
+                    "New tasks buffer should be larger than existing one. "
+                    + "Ensure it contains all entries from the old one at the beginning of the buffer.");
 
             var oldLength = _tasks.Length;
             _tasks = tasks;

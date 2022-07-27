@@ -201,7 +201,7 @@ public static class EbmlHelper
             }
         }
         else
-            throw new NotSupportedException("Unable to write double (8-byte length)");
+            throw StandardError.NotSupported("Unable to write double (8-byte length).");
 
         return true;
     }

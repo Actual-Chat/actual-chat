@@ -16,7 +16,7 @@
 
     protected override void OnInitialized() {
         if (Panel == null)
-            throw new InvalidOperationException("<Tab> component must be nested into <TabPanel> component.");
+            throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
         Panel.RegisterTab(this);
     }
 }

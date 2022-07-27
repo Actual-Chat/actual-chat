@@ -8,7 +8,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
     public string BaseUri
         => MauiContext!.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureSuffix("/")
-           ?? throw new Exception("Failed to retrieve base url from client app settings");
+           ?? throw StandardError.Constraint<ClientAppSettings>("Invalid BaseUri.");
     public string SessionId
         => MauiContext!.Services.GetRequiredService<ClientAppSettings>().SessionId;
 

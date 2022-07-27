@@ -175,7 +175,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNullOrEmpty()) {
             if (requireAuthenticated)
-                throw new ValidationException("Can't create unauthenticated author here.");
+                throw StandardError.Constraint("Can't create unauthenticated author here.");
 
             var name = RandomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {

@@ -102,6 +102,6 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
 
         var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owners, cancellationToken).ConfigureAwait(false);
         if (ownerRole == null || !author.RoleIds.Contains(ownerRole.Id))
-            throw new SecurityException("Only this chat's Owners role members can perform this action.");
+            throw StandardError.Unauthorized("Only this chat's Owners role members can perform this action.");
     }
 }

@@ -26,7 +26,7 @@ public readonly struct ParsedUserId : IEquatable<ParsedUserId>, IHasId<Symbol>
     }
 
     public ParsedUserId AssertValid()
-        => IsValid ? this : throw new FormatException("Invalid chat user Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid chat user Id format.");
 
     // Conversion
 

@@ -114,7 +114,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
             var server = c.GetRequiredService<IServer>();
             var serverAddressesFeature =
-                server.Features.Get<IServerAddressesFeature>() ?? throw new Exception("Can't get server address.");
+                server.Features.Get<IServerAddressesFeature>()
+                ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
             baseUri = serverAddressesFeature.Addresses.First();
             return new UriMapper(baseUri);
         });

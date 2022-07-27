@@ -57,7 +57,7 @@ public class PlaywrightTest : AppHostTestBase
                 await Task.Delay(500).ConfigureAwait(false);
                 newMessages = await GetMessages(page).ConfigureAwait(false);
                 if (DateTime.Now >= stopTime) {
-                    throw new Exception($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
+                    throw new TimeoutException($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
                 }
             }
             return newMessages;

@@ -184,7 +184,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
-            .Collect(cancellationToken)
+            .Collect()
             .ConfigureAwait(false);
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)

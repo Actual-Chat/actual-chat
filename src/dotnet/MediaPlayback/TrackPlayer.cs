@@ -44,7 +44,7 @@ public abstract class TrackPlayer : ProcessorBase
 
         lock (Lock) {
             if (_whenPlaying != null)
-                throw new LifetimeException("Play is already started.");
+                throw StandardError.StateTransition(GetType(), "Play is already started.");
             this.ThrowIfDisposedOrDisposing();
 
             using (ExecutionContext.SuppressFlow()) {

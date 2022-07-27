@@ -18,7 +18,7 @@ public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
             TextStyle.None => "",
             TextStyle.Italic => "*",
             TextStyle.Bold => "**",
-            _ => throw new InvalidOperationException($"Invalid {nameof(Style)} property value."),
+            _ => throw StandardError.Internal($"Invalid {nameof(Style)} property value."),
         };
 
     public override Markup Simplify()

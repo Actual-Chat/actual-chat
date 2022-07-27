@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
-using Stl.Internal;
 
 namespace ActualChat.Users;
 
@@ -65,7 +64,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
-            throw Errors.InternalError("No SessionInfo in operation's items.");
+            throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
 
         if (Computed.IsInvalidating()) {

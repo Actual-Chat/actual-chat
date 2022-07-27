@@ -95,9 +95,9 @@ public readonly struct LinearMap
     public LinearMap AssertValid(bool requireInvertible = false)
     {
         if (!IsValid())
-            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+            throw StandardError.Constraint($"Invalid {GetType().Name}.");
         if (requireInvertible && !IsInversionValid())
-            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+            throw StandardError.Constraint($"Invalid {GetType().Name}.");
         return this;
     }
 

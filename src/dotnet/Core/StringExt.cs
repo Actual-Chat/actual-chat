@@ -15,10 +15,10 @@ public static class StringExt
 #pragma warning restore MA0023
 
     public static string RequireNonEmpty(this string? source, string name)
-        => source.NullIfEmpty() ?? throw new ValidationException($"{name} is required here.");
+        => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
     [return: NotNullIfNotNull("source")]
     public static string? RequireEmpty(this string? source, string name)
-        => source.IsNullOrEmpty() ? source : throw new ValidationException($"{name} must be null or empty here.");
+        => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");

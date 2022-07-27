@@ -70,7 +70,7 @@ public class UserAvatars : IUserAvatars
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
             if (avatar == null || avatar.UserId != account.Id)
-                throw new InvalidOperationException("Invalid AvatarId.");
+                throw StandardError.Constraint("Invalid AvatarId.");
         }
 
         account = account with { AvatarId = avatarId };

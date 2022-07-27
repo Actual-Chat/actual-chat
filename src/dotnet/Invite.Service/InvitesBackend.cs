@@ -115,7 +115,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var dbInvite = await dbContext.Invites
                 .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
                 .ConfigureAwait(false)
-            ?? throw new KeyNotFoundException($"Invite code '{command.InviteId}' is not found.");
+            ?? throw StandardError.NotFound($"Invite code '{command.InviteId}' is not found.");
 
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
@@ -123,9 +123,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
             if (account.Status == AccountStatus.Suspended)
-                throw new SecurityException("A suspended account cannot be re-activated via invite code.");
+                throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
-                throw new InvalidOperationException("Your account is already active.");
+                throw StandardError.StateTransition("Your account is already active.");
         }
 
         var chatInviteDetails = invite.Details?.Chat;
@@ -164,7 +164,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 return;
             }
 
-            throw new InvalidOperationException("Invite has no details.");
+            throw StandardError.Constraint("Invite has no details.");
         }, _log, "Invite-specific action failed", cancellationToken);
 
         return invite;

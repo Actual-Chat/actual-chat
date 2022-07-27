@@ -77,7 +77,7 @@
                     ShortChatId = ParsedChatId.FormatShortPeerChatId(userContact.TargetUserId),
                 };
             })
-            .Collect(cancellationToken)
+            .Collect()
             .ConfigureAwait(false);
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);

@@ -47,7 +47,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var otherUserId = (userId1, userId2).OtherThan(account.Id);
         if (otherUserId.IsEmpty)
-            throw new InvalidOperationException("Specified peer chat doesn't belong to the current user.");
+            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
 
         var contact = await UserContactsBackend.Get(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
         if (contact != null)
@@ -80,7 +80,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
-            .Collect(cancellationToken)
+            .Collect()
             .ConfigureAwait(false);
         return chats.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
     }
@@ -225,11 +225,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
-        var authorTasks = await chatAuthorIds
+        var authors = await chatAuthorIds
             .Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken))
-            .Collect(cancellationToken)
+            .Collect()
             .ConfigureAwait(false);
-        var items = authorTasks
+        var items = authors
             .Where(c => c != null)
             .Select(c => c!)
             .OrderBy(c => c.Name)
@@ -424,7 +424,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
-            throw new SecurityException("You can delete only your own messages.");
+            throw StandardError.Unauthorized("You can delete only your own messages.");
 
         chatEntry = chatEntry with { IsRemoved = true };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
@@ -510,9 +510,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
-            throw new SecurityException("User can edit only their own messages.");
+            throw StandardError.Unauthorized("User can edit only their own messages.");
 
         if (chatEntry.Type != ChatEntryType.Text || !chatEntry.StreamId.IsEmpty)
-            throw new InvalidOperationException("Only text messages can be edited.");
+            throw StandardError.Constraint("Only text messages can be edited.");
     }
 }

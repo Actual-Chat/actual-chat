@@ -52,7 +52,7 @@ public readonly struct ParsedChatRoleId : IEquatable<ParsedChatRoleId>, IHasId<S
     }
 
     public ParsedChatRoleId AssertValid()
-        => IsValid ? this : throw new FormatException("Invalid chat role Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid chat role Id format.");
 
     // Conversion
 

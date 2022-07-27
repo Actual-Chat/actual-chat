@@ -309,7 +309,7 @@ namespace ActualChat.Audio.WebM.Models
     }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{model.Descriptor.Identifier}'.");
+                throw new EbmlDataFormatException($"Unexpected EBML element '{model.Descriptor.Identifier}'.");
             }
         }
 
@@ -555,7 +555,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'.");
+                throw new EbmlDataFormatException($"Unexpected EBML element '{descriptor.Identifier}'.");
             }
         }
 
@@ -594,7 +594,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'.");
+                throw new EbmlDataFormatException($"Unexpected EBML element: '{descriptor.Identifier}'.");
             }
         }
 
@@ -635,7 +635,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'.");
+                throw new EbmlDataFormatException($"Unexpected EBML element: '{descriptor.Identifier}'.");
             }
         }
 

@@ -1,3 +1,5 @@
+using Stl.IO;
+
 namespace ActualChat.App.Server;
 
 /// <summary>
@@ -9,11 +11,40 @@ namespace ActualChat.App.Server;
 /// </summary>
 internal static class AppPathResolver
 {
-    public static string GetWebRootPath() => SearchWebRootDirectory();
+    private static string? _webRootPath;
 
-    public static string GetContentRootPath() => AppDomain.CurrentDomain.BaseDirectory!;
+    public static FilePath GetWebRootPath()
+        => _webRootPath ??= FindWebRootPath();
 
-    private static string? GetDeveloperMachineWebRootProbeDirectory(string projectName, [CallerFilePath] string? path = null)
+    public static FilePath GetContentRootPath()
+        => AppDomain.CurrentDomain.BaseDirectory!;
+
+    // Private methods
+
+    private static FilePath FindWebRootPath()
+    {
+        var probePaths = new List<FilePath>(4) {
+            AppDomain.CurrentDomain.BaseDirectory!,
+        };
+        var developerMachineClientWebRootProbeDirectory = GetDeveloperMachineWebRootProbeDirectory("App.Wasm");
+        if (developerMachineClientWebRootProbeDirectory.HasValue)
+            probePaths.Add(developerMachineClientWebRootProbeDirectory.Value);
+
+        var result = (
+            from path in probePaths
+            let wwwroot = path & "wwwroot"
+            where File.Exists(wwwroot & "favicon.ico")
+            select wwwroot
+            ).FirstOrDefault();
+
+        if (result.IsEmpty)
+            throw new DirectoryNotFoundException(
+                $"Couldn't find wwwroot directory, probed: {probePaths.ToDelimitedString("; ")}");
+        return result;
+    }
+
+    private static FilePath? GetDeveloperMachineWebRootProbeDirectory(
+        string projectName, [CallerFilePath] string? path = null)
     {
         var dirName = Path.GetDirectoryName(path);
 
@@ -23,29 +54,10 @@ internal static class AppPathResolver
 
         while (!projectRoot.IsNullOrEmpty() && Directory.Exists(projectRoot)) {
             var gitPath = Path.Combine(projectRoot, ".git");
-            if (Directory.Exists(gitPath) || File.Exists(gitPath)) {
+            if (Directory.Exists(gitPath) || File.Exists(gitPath))
                 return Path.Combine(projectRoot, "src", "dotnet", projectName);
-            }
             projectRoot = Path.GetDirectoryName(projectRoot);
         }
         return null;
-    }
-
-    private static string SearchWebRootDirectory()
-    {
-        var probeDirectories = new List<string>(4) { AppDomain.CurrentDomain.BaseDirectory!, };
-        var developerMachineClientWebRootProbeDirectory = GetDeveloperMachineWebRootProbeDirectory("App.Wasm");
-        if (!string.IsNullOrWhiteSpace(developerMachineClientWebRootProbeDirectory)) {
-            probeDirectories.Add(developerMachineClientWebRootProbeDirectory);
-        }
-
-        return probeDirectories
-                // Web root directory is a directory where favicon.ico is located
-                .Select(baseProbePath => File.Exists(Path.Combine(baseProbePath, "wwwroot", "favicon.ico"))
-                    ? Path.GetFullPath(Path.Combine(baseProbePath, "wwwroot"))
-                    : null)
-                .FirstOrDefault(webRootPath => !webRootPath.IsNullOrEmpty())
-            ?? throw new DirectoryNotFoundException(
-                $"Could not find web root directory\n Searched dirs: \n{string.Join("\n", probeDirectories)}");
     }
 }

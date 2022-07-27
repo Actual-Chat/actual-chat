@@ -170,12 +170,11 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                 .SingleAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
                 .ConfigureAwait(false);
             chatRole = dbChatRole.ToModel();
-            if (expectedVersion is { } v && chatRole.Version != v)
-                throw new VersionMismatchException();
+            VersionChecker.RequireExpected(chatRole.Version, expectedVersion);
 
             if (change.IsUpdate(out update)) {
                 if ((update.SystemRole ?? chatRole.SystemRole) != chatRole.SystemRole)
-                    throw new ValidationException("SystemRole cannot be changed.");
+                    throw StandardError.Constraint("System role cannot be changed.");
                 chatRole = chatRole with {
                     Version = VersionGenerator.NextVersion(chatRole.Version),
                 };
@@ -186,7 +185,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             else {
                 // Remove
                 if (chatRole.SystemRole is SystemChatRole.Owners or SystemChatRole.Joined)
-                    throw new ValidationException("This system role cannot be removed.");
+                    throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbChatAuthorRoles = await dbContext.ChatAuthorRoles.ForUpdate()
                     .Where(ar => ar.ChatRoleId == roleId)
@@ -200,7 +199,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         // Processing update.AuthorIds
         if (!update.AuthorIds.IsEmpty() && !change.IsRemove()) {
             if (chatRole.SystemRole is not SystemChatRole.None and not SystemChatRole.Owners)
-                throw new ValidationException("This system role uses automatic membership rules.");
+                throw StandardError.Constraint("This system role uses automatic membership rules.");
 
             // Adding items
             foreach (var authorId in update.AuthorIds.AddedItems)
@@ -221,7 +220,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                         .CountAsync(cancellationToken)
                         .ConfigureAwait(false);
                     if (remainingOwnerCount == 0)
-                        throw new ValidationException("There must be at least one user in Owners role.");
+                        throw StandardError.Constraint("There must be at least one user in Owners role.");
                 }
                 dbContext.RemoveRange(dbChatAuthorRoles);
  #pragma warning restore MA0002

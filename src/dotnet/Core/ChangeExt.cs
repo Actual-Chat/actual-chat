@@ -1,6 +1,4 @@
-using System.ComponentModel.DataAnnotations;
-
-namespace ActualChat.Diff;
+namespace ActualChat;
 
 public static class ChangeExt
 {
@@ -8,7 +6,10 @@ public static class ChangeExt
         where TChange : IChange
     {
         if (!change.IsValid())
-            throw new ValidationException("Invalid change descriptor.");
+            throw InvalidChangeDescriptor();
         return change;
     }
+
+    internal static Exception InvalidChangeDescriptor()
+        => new InvalidOperationException("Invalid change descriptor.");
 }

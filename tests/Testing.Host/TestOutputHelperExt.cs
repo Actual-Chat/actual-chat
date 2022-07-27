@@ -8,5 +8,5 @@ public static class TestOutputHelperExt
         => (ITest)(output.GetType()
                 .GetField("test", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.GetValue(output)
-            ?? throw new Exception("Failed to extract test name."));
+            ?? throw StandardError.Internal("Failed to extract test name."));
 }

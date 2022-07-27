@@ -14,7 +14,7 @@ public static class AccountsExt
         if (ownAccount.Id != (accessedAccount?.Id ?? Symbol.Empty))
             ownAccount.Require(Account.MustBeAdmin);
 
-        throw new UnauthorizedAccessException("You can't read accounts of other users.");
+        throw StandardError.Unauthorized("You can't read accounts of other users.");
     }
 
     public static async Task AssertCanUpdate(
@@ -31,7 +31,7 @@ public static class AccountsExt
         else {
             // User updates its own profile - everything but status update is allowed in this case
             if (ownAccount.Status != updatedAccount.Status)
-                throw new UnauthorizedAccessException("You can't change your own status.");
+                throw StandardError.Unauthorized("You can't change your own status.");
         }
     }
 }

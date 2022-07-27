@@ -13,10 +13,10 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
 #pragma warning disable VSTHRD002
     public TFormat Format => FormatTask.IsCompleted
         ? FormatTask.Result
-        : throw new InvalidOperationException("Format isn't parsed yet.");
+        : throw StandardError.Unavailable("Format isn't parsed yet.");
     public TimeSpan Duration => DurationTask.IsCompleted
         ? DurationTask.Result
-        : throw new InvalidOperationException("Duration isn't parsed yet.");
+        : throw StandardError.Unavailable("Duration isn't parsed yet.");
 #pragma warning restore VSTHRD002
     public Task WhenFormatAvailable => FormatTask;
     public Task WhenDurationAvailable => DurationTask;

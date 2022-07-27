@@ -34,11 +34,8 @@ public partial class SharedResourcePool<TKey, TResource>
         public void Dispose()
         {
             lock (Lock) {
-                switch (--_renterCount) {
-                    case > 0: return;
-                    case < 0: throw new InvalidOperationException(
-                        "Each lease returned by Rent should be disposed just once.");
-                }
+                if (--_renterCount != 0)
+                    return;
 
                 var endRentDelayTokenSource = new CancellationTokenSource();
                 var endRentDelayToken = endRentDelayTokenSource.Token;

@@ -62,14 +62,14 @@ public static class MauiProgram
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
-        //var settings = builder.Configuration.Get<ClientAppSettings>();
+        // var settings = builder.Configuration.Get<ClientAppSettings>();
         var sessionId = new SessionFactory().CreateSession().Id;
         var settings = new ClientAppSettings {
             BaseUri = GetBackendUrl(),
             SessionId = sessionId
         };
         if (string.IsNullOrWhiteSpace(settings.BaseUri))
-            throw new ValidationException("Wrong configuration, base uri can't be empty.");
+            throw StandardError.Constraint<ClientAppSettings>("BaseUri cannot be empty.");
         services.TryAddSingleton<ClientAppSettings>(settings);
 
         ConfigureServices(services, new Uri(settings.BaseUri));

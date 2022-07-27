@@ -193,7 +193,7 @@ public class ChatPlayers : WorkerBase
     {
         var resultPlayingTasks = await chatIds
             .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
-            .Collect(cancellationToken)
+            .Collect(0)
             .ConfigureAwait(false);
         return Task.WhenAll(resultPlayingTasks);
     }
@@ -216,11 +216,11 @@ public class ChatPlayers : WorkerBase
     private Task Stop(IEnumerable<Symbol> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
         => chatIds
             .Select(chatId => Stop(chatId, playerKind, cancellationToken))
-            .Collect(cancellationToken);
+            .Collect(0);
 
     private Task Stop(CancellationToken cancellationToken)
         // ReSharper disable once InconsistentlySynchronizedField
         => _players
             .Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken))
-            .Collect(cancellationToken);
+            .Collect(0);
 }
