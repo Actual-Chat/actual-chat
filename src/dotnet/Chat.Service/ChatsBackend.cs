@@ -246,13 +246,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return null!;
         }
 
-        change.RequireValid();
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         Chat chat;
         DbChat dbChat;
-        if (change.IsCreate(out var update)) {
+        if (change.RequireValid().IsCreate(out var update)) {
             chatId = chatId.NullIfEmpty() ?? ChatIdGenerator.Next();
             chat = new Chat() {
                 Id = chatId,

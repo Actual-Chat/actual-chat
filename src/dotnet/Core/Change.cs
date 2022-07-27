@@ -24,8 +24,6 @@ public record Change<TCreate, TUpdate> : IChange
     {
         if (!Create.IsSome(out create!))
             return false;
-        if (Update.HasValue || Remove)
-            throw ChangeExt.InvalidChangeDescriptor();
         return true;
     }
 
@@ -33,8 +31,6 @@ public record Change<TCreate, TUpdate> : IChange
     {
         if (!Update.IsSome(out update!))
             return false;
-        if (Create.HasValue || Remove)
-            throw ChangeExt.InvalidChangeDescriptor();
         return true;
     }
 
@@ -42,8 +38,6 @@ public record Change<TCreate, TUpdate> : IChange
     {
         if (!Remove)
             return false;
-        if (!(Create.IsNone() && Update.IsNone()))
-            throw ChangeExt.InvalidChangeDescriptor();
         return true;
     }
 }

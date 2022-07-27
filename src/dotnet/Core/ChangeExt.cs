@@ -6,10 +6,7 @@ public static class ChangeExt
         where TChange : IChange
     {
         if (!change.IsValid())
-            throw InvalidChangeDescriptor();
+            throw StandardError.Constraint("Change must describe a single kind of change (create, update, or remove).");
         return change;
     }
-
-    internal static Exception InvalidChangeDescriptor()
-        => new InvalidOperationException("Invalid change descriptor.");
 }
