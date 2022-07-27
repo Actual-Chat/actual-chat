@@ -40,11 +40,13 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
     {
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
         var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author is null or { HasLeft: true })
+            return ImmutableArray<ChatRole>.Empty;
+
         var isAuthenticated = account != null;
-        var isAdmin = account?.IsAdmin ?? false;
-        var effectiveAuthor = author is { HasLeft: false } ? author : null;
+        var isAnonymous = author is { IsAnonymous: true };
         return await Backend
-            .List(chatId, effectiveAuthor?.Id, isAuthenticated, isAdmin, cancellationToken)
+            .List(chatId, author.Id, isAuthenticated, isAnonymous, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -85,7 +87,7 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
         if (author == null)
             return false;
 
-        var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owners, cancellationToken).ConfigureAwait(false);
+        var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken).ConfigureAwait(false);
         if (ownerRole == null || !author.RoleIds.Contains(ownerRole.Id))
             return false;
 
@@ -100,7 +102,7 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
 
         var author = await ChatAuthors.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
-        var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owners, cancellationToken).ConfigureAwait(false);
+        var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken).ConfigureAwait(false);
         if (ownerRole == null || !author.RoleIds.Contains(ownerRole.Id))
             throw StandardError.Unauthorized("Only this chat's Owners role members can perform this action.");
     }

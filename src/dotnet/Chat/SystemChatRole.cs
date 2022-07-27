@@ -5,11 +5,9 @@ namespace ActualChat.Chat;
 public enum SystemChatRole
 {
     None = 0,
-    Anyone = 1,
+    Anyone = 11,
     Unauthenticated = Anyone + 2,
-    Authenticated = Anyone + 4,
-    Joined = Anyone + 10,
-    JoinedUnauthenticated = Joined + 2,
-    JoinedAuthenticated = Joined + 4,
-    Owners = Anyone + 100,
+    Regular = Anyone + 4,
+    Anonymous = Anyone + 4 + 8,
+    Owner = 101,
 }

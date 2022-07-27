@@ -41,16 +41,14 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ChatRole>> List(
-        string chatId, string? authorId, bool isAuthenticated, bool isAdmin, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<ChatRole>> List(string chatId, string authorId,
+        bool isAuthenticated, bool isAnonymous,
+        CancellationToken cancellationToken)
     {
         // No need to call PseudoList - it's called by ListSystem anyway
 
-        var isJoined = !authorId.IsNullOrEmpty();
         var systemRoles = await ListSystem(chatId, cancellationToken).ConfigureAwait(false);
         systemRoles = systemRoles.Where(IsInSystemRole).ToImmutableArray();
-        if (!isJoined)
-            return systemRoles;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -58,7 +56,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         var dbRoles = await dbContext.ChatRoles
             .Where(r =>
                 r.ChatId == chatId
-                && (r.SystemRole == SystemChatRole.None || r.SystemRole == SystemChatRole.Owners)
+                && (r.SystemRole == SystemChatRole.None || r.SystemRole == SystemChatRole.Owner)
                 && dbContext.ChatAuthorRoles.Any(ar => ar.ChatAuthorId == authorId && ar.ChatRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -74,11 +72,8 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             => role.SystemRole switch {
                 SystemChatRole.Anyone => true,
                 SystemChatRole.Unauthenticated => !isAuthenticated,
-                SystemChatRole.Authenticated => isAuthenticated,
-                SystemChatRole.Joined => isJoined,
-                SystemChatRole.JoinedUnauthenticated => isJoined && !isAuthenticated,
-                SystemChatRole.JoinedAuthenticated => isJoined && isAuthenticated,
-                SystemChatRole.Owners => isAdmin,
+                SystemChatRole.Regular => isAuthenticated && !isAnonymous,
+                SystemChatRole.Anonymous => isAuthenticated && isAnonymous,
                 _ => false,
             };
     }
@@ -183,7 +178,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             }
             else {
                 // Remove
-                if (chatRole.SystemRole is SystemChatRole.Owners or SystemChatRole.Joined)
+                if (chatRole.SystemRole is SystemChatRole.Owner or SystemChatRole.Anyone)
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbChatAuthorRoles = await dbContext.ChatAuthorRoles.ForUpdate()
@@ -197,7 +192,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
 
         // Processing update.AuthorIds
         if (!update.AuthorIds.IsEmpty() && !change.IsRemove()) {
-            if (chatRole.SystemRole is not SystemChatRole.None and not SystemChatRole.Owners)
+            if (chatRole.SystemRole is not SystemChatRole.None and not SystemChatRole.Owner)
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
             // Adding items
@@ -212,7 +207,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                     .Where(ar => ar.ChatRoleId == roleId && removedAuthorIds.Contains(ar.ChatAuthorId))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
-                if (chatRole!.SystemRole == SystemChatRole.Owners) {
+                if (chatRole!.SystemRole == SystemChatRole.Owner) {
                     var remainingOwnerCount = await dbContext.ChatAuthors
                         .Where(a => a.ChatId == chatId && a.UserId != null && !a.HasLeft
                             && !removedAuthorIds.Contains(a.Id))

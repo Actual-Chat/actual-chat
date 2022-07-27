@@ -46,7 +46,7 @@ public class DbChatRole : IHasId<string>
             permissions |= ChatPermissions.EditProperties;
         if (CanEditRoles)
             permissions |= ChatPermissions.EditRoles;
-        if (SystemRole is SystemChatRole.Owners)
+        if (SystemRole is SystemChatRole.Owner)
             permissions = ChatPermissions.Owner;
         return new (Id) {
             Id = Id,

@@ -16,7 +16,7 @@ public sealed record ChatRole(
     public ChatRole Fix()
     {
         var role = this;
-        if (role.SystemRole is SystemChatRole.Owners && !role.Permissions.Has(ChatPermissions.Owner))
+        if (role.SystemRole is SystemChatRole.Owner && !role.Permissions.Has(ChatPermissions.Owner))
             role = role with { Permissions = ChatPermissions.Owner.AddImplied() };
         if (role.SystemRole is not SystemChatRole.None) {
             var name = role.SystemRole.ToString();

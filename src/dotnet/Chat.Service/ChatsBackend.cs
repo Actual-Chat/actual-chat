@@ -78,15 +78,19 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var account = userId.IsNullOrEmpty() ? null
             : await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
 
-        var isAuthenticated = account != null;
-        var isAdmin = account?.IsAdmin ?? false;
-        var effectiveAuthor = author is { HasLeft: false } ? author : null;
-        var roles = await ChatRolesBackend
-            .List(chatId, effectiveAuthor?.Id, isAuthenticated, isAdmin, cancellationToken)
-            .ConfigureAwait(false);
+        var roles = ImmutableArray<ChatRole>.Empty;
+        if (author is { HasLeft: false }) {
+            var isAuthenticated = account != null;
+            var isAnonymous = author is { IsAnonymous: true };
+            roles = await ChatRolesBackend
+                .List(chatId, author.Id, isAuthenticated, isAnonymous, cancellationToken)
+                .ConfigureAwait(false);
+        }
         var permissions = roles.ToPermissions();
         if (chat.IsPublic)
             permissions |= ChatPermissions.Join;
+        if (account?.IsAdmin == true)
+            permissions |= ChatPermissions.Owner;
         permissions = permissions.AddImplied();
 
         var rules = new ChatAuthorRules(chatId, author, account, permissions);
@@ -290,7 +294,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
                 var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                     Create = new ChatRoleDiff() {
-                        SystemRole = SystemChatRole.Owners,
+                        SystemRole = SystemChatRole.Owner,
                         Permissions = ChatPermissions.Owner,
                         AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
                             AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
@@ -301,7 +305,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
                 var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                     Create = new ChatRoleDiff() {
-                        SystemRole = SystemChatRole.Joined,
+                        SystemRole = SystemChatRole.Anyone,
                         Permissions = ChatPermissions.Write | ChatPermissions.Invite,
                     },
                 });
@@ -467,7 +471,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
             var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                 Create = new ChatRoleDiff() {
-                    SystemRole = SystemChatRole.Owners,
+                    SystemRole = SystemChatRole.Owner,
                     Permissions = ChatPermissions.Owner,
                     AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
                         AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerUserIds.Select(id => (Symbol)id)),
@@ -478,7 +482,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
             var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                 Create = new ChatRoleDiff() {
-                    SystemRole = SystemChatRole.Joined,
+                    SystemRole = SystemChatRole.Anyone,
                     Permissions = ChatPermissions.Write | ChatPermissions.Invite,
                 },
             });

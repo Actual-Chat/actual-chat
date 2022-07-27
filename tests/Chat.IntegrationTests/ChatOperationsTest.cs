@@ -42,12 +42,12 @@ public class ChatOperationsTest : AppHostTestBase
         var roles = await chatRoles.List(session, chat.Id, default);
         roles.Length.Should().Be(2);
 
-        var owners = roles.Single(r => r.SystemRole is SystemChatRole.Owners);
-        owners.Name.Should().Be(SystemChatRole.Owners.ToString());
+        var owners = roles.Single(r => r.SystemRole is SystemChatRole.Owner);
+        owners.Name.Should().Be(SystemChatRole.Owner.ToString());
         owners.Permissions.Has(ChatPermissions.Owner).Should().BeTrue();
 
-        var joined = roles.Single(r => r.SystemRole is SystemChatRole.Joined);
-        joined.Name.Should().Be(SystemChatRole.Joined.ToString());
+        var joined = roles.Single(r => r.SystemRole is SystemChatRole.Anyone);
+        joined.Name.Should().Be(SystemChatRole.Anyone.ToString());
         joined.Permissions.Has(ChatPermissions.Read).Should().BeTrue();
         joined.Permissions.Has(ChatPermissions.Write).Should().BeTrue();
         joined.Permissions.Has(ChatPermissions.Join).Should().BeTrue();

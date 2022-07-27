@@ -6,7 +6,9 @@ public interface IChatRolesBackend : IComputeService
     Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ChatRole>> List(string chatId, string? authorId, bool isAuthenticated, bool isAdmin, CancellationToken cancellationToken);
+    Task<ImmutableArray<ChatRole>> List(string chatId, string authorId,
+        bool isAuthenticated, bool isAnonymous,
+        CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<ChatRole>> ListSystem(string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
