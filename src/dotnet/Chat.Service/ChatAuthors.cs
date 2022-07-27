@@ -122,7 +122,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            throw new UnauthorizedAccessException("User does not have access to this chat");
+            return Presence.Unknown;
 
         var chatAuthor = await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
