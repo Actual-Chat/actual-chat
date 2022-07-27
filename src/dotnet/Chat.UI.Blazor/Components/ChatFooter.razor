@@ -4,30 +4,30 @@
     var m = State.LatestNonErrorValue ?? new();
 }
 
-@if (m.HasFooter) {
-    <div class="flex-y w-full">
-        @if (m.CanPost) {
-            <ChatMessageEditor/>
-        } else if (m.CanJoin) {
-            <div class="chat-footer">
-                @if (m.IsAuthenticated) {
-                    <div>
-                        <span class="inline-flex">To post or talk,</span>
-                        <Button Click="@OnJoin">Join this chat</Button>
+<div class="flex-y w-full">
+    @if (m.CanPost) {
+        <ChatMessageEditor/>
+    } else if (m.CanJoin) {
+        <div class="chat-footer">
+            @if (m.IsAuthenticated) {
+                <div>
+                    <span class="inline-flex">To post or talk,</span>
+                    <Button Click="@OnJoin">Join this chat</Button>
+                </div>
+            } else {
+                <div class="signin-footer">
+                    <div class="inline-flex">
+                        <SignInMenu ButtonClass="w-full"/>
                     </div>
-                } else {
-                    <div class="signin-footer">
-                        <div class="inline-flex">
-                            <SignInMenu ButtonClass="w-full"/>
-                        </div>
-                        <span class="inline-flex mx-2 items-center">or</span>
-                        <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-}
+                    <span class="inline-flex mx-2 items-center">or</span>
+                    <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                </div>
+            }
+        </div>
+    } else {
+        <div class="chat-footer text-xl">This chat is read-only for you</div>
+    }
+</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

@@ -541,9 +541,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
-            throw new SecurityException("User can remove only their own messages.");
+            throw StandardError.Unauthorized("User can remove only their own messages.");
 
         if (chatEntry.IsStreaming)
-            throw new InvalidOperationException("This chat entry is streaming.");
+            throw StandardError.Constraint("This chat entry is streaming.");
     }
 }
