@@ -31,8 +31,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        UserOverrides.Apply();
-
         // ASP.NET Core authentication providers
         services.AddAuthentication(options => {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

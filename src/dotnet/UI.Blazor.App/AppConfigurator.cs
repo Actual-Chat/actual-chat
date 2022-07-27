@@ -13,6 +13,7 @@ using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
+using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Client;
@@ -44,6 +45,7 @@ namespace ActualChat.UI.Blazor.App
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
                 typeof(InviteClientModule),
+                typeof(UsersContractsModule),
                 typeof(UsersClientModule),
                 typeof(UsersBlazorUIModule),
                 typeof(FeedbackClientModule),

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace ActualChat.Users;
 
 public abstract class AccountException : Exception
