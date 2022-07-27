@@ -4,13 +4,12 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase, IAsyncDisposable
+public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
-    private Symbol _currentAuthorId;
     private long _lastNavigateToEntryId;
     private long _initialLastReadEntryId;
     private HashSet<long> _fullyVisibleEntryIds = new ();
@@ -75,9 +74,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            var currentAuthor = await ChatAuthors.Get(Session, Chat.Id, _disposeToken.Token);
-            _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
-
             LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
             _initialLastReadEntryId = LastReadEntryId.Value;
         }
@@ -127,14 +123,17 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             }
     }
 
-    private async Task<VirtualListData<ChatMessageModel>> GetMessages(
+    async Task<VirtualListData<ChatMessageModel>> IVirtualListDataSource<ChatMessageModel>.GetData(
         VirtualListDataQuery query,
+        VirtualListData<ChatMessageModel> oldData,
         CancellationToken cancellationToken)
     {
         await WhenInitialized;
 
         var chat = Chat;
         var chatId = chat.Id.Value;
+        var currentAuthor = await ChatAuthors.Get(Session, chatId, cancellationToken);
+        var currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryId?.Value ?? 0;
         var entryId = lastReadEntryId;
@@ -147,7 +146,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != _currentAuthorId || entry.Id <= _initialLastReadEntryId)
+            if (entry.AuthorId != currentAuthorId || entry.Id <= _initialLastReadEntryId)
                 continue;
 
             _initialLastReadEntryId = entry.Id;
@@ -190,10 +189,14 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
+        var existingEntryIds = oldData.Items
+            .Select(m => m.Entry.Id)
+            .ToHashSet();
 
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             _initialLastReadEntryId,
+            existingEntryIds,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)

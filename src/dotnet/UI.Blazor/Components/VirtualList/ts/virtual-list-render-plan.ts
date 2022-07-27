@@ -67,23 +67,16 @@ export class VirtualListRenderPlan {
 
     private update(lastPlan?: VirtualListRenderPlan): void {
         const statistics = this.virtualList.statistics;
-        const clientSideItems = this.virtualList.clientSideState?.items;
+        const clientSideItems = this.virtualList.clientSideState.items;
         const prevItemByKey = lastPlan?.itemByKey;
 
         let hasUnmeasuredItems: boolean = false;
         let itemRange = new Range(0, 0);
 
-        for (const [key, item] of Object.entries(this.virtualList.renderState.items)) {
+        for (const [key, item] of Object.entries(clientSideItems)) {
             const newItem = new ItemRenderPlan(key, item);
-            if (clientSideItems != null && clientSideItems[key] != null) {
-                const clientSideItem = clientSideItems[key];
-                const size = clientSideItem.size;
-                statistics.addItem(size, item.countAs);
-                newItem.range = new Range(0, size);
-            } else if (prevItemByKey != null && prevItemByKey[key] != null) {
-                const oldItem = prevItemByKey[key];
-                newItem.range = oldItem.range;
-            }
+            statistics.addItem(item.size, item.countAs);
+            newItem.range = new Range(0, item.size);
 
             this.items.push(newItem);
             this.itemByKey[key] = newItem;

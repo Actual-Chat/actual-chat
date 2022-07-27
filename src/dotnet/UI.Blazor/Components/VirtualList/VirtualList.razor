@@ -26,7 +26,6 @@
         HasVeryFirstItem = Data.HasVeryFirstItem,
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
-        Items = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
     };
     var items = Data.Items;
     LastData = Data;
@@ -60,13 +59,26 @@
     </div>
 
 
-    <ul class="virtual-container @flexClass">
+    <ul @key="@("<Container>")"
+        class="virtual-container @flexClass">
         @foreach (var item in items) {
-            <li @key="item.Key"
-                class="item flex-none"
-                data-key="@item.Key">
-                @Item(item)
-            </li>
+            var preloadClass = item.IsNew
+                ? "item flex-none preload"
+                : "item flex-none";
+            @if (item.CountAs != 1) {
+                <li @key="item.Key"
+                    class="@preloadClass"
+                    data-key="@item.Key"
+                    data-count-as="@item.CountAs">
+                    @Item(item)
+                </li>
+            } else {
+                <li @key="item.Key"
+                    class="@preloadClass"
+                    data-key="@item.Key">
+                    @Item(item)
+                </li>
+            }
         }
     </ul>
 

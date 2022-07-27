@@ -3,10 +3,6 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public delegate Task<VirtualListData<TItem>> VirtualListDataSource<TItem>(
-    VirtualListDataQuery query,
-    CancellationToken cancellationToken) where TItem : IVirtualListItem;
-
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
@@ -32,8 +28,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     [Parameter]
     [EditorRequired]
-    public VirtualListDataSource<TItem> DataSource { get; set; } =
-        (_, _) => Task.FromResult(VirtualListData<TItem>.None);
+    public IVirtualListDataSource<TItem> DataSource { get; set; } = NoOpDataSource.Instance;
 
     [Parameter]
     [EditorRequired]
@@ -107,7 +102,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var query = Query;
         VirtualListData<TItem> response;
         try {
-            response = await DataSource.Invoke(query, cancellationToken);
+            response = await DataSource.GetData(query, LastData, cancellationToken);
             LastQuery = Query = response.Query;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -115,5 +110,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             throw;
         }
         return response;
+    }
+
+    private class NoOpDataSource : IVirtualListDataSource<TItem>
+    {
+        public static readonly NoOpDataSource Instance = new ();
+
+        public Task<VirtualListData<TItem>> GetData(
+            VirtualListDataQuery query,
+            VirtualListData<TItem> oldData,
+            CancellationToken cancellationToken)
+            => Task.FromResult(VirtualListData<TItem>.None);
     }
 }

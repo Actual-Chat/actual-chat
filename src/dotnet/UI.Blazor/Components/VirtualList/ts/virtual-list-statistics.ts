@@ -33,15 +33,13 @@ export class VirtualListStatistics {
     }
 
     public addItem(size: number, countAs: number): void {
-        if (countAs == 0)
+        if (!(size > 0 && countAs > 0))
             return;
 
         size /= countAs;
         this._itemSizeSum += size;
         this._itemCount += countAs;
         if (this._itemCount < ItemCountResetThreshold) return;
-
-        // We change the item count too, so remaining items will have increased weight
         this._itemSizeSum *= ItemCountResetValue / this._itemCount;
         this._itemCount = ItemCountResetValue;
     }

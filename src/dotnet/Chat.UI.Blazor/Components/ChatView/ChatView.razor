@@ -4,8 +4,8 @@
 <EventHandler TEvent="@NavigateToChatEntry" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
-    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="200" SkeletonCount="20"
-    DataSource="GetMessages"
+    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="1000" SkeletonCount="30"
+    DataSource="this"
     KeyComparer="LongAsStringKeyComparer.Default"
     VisibleKeysState="VisibleKeys">
     <Item>

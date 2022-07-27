@@ -1,5 +1,6 @@
 @page "/test/virtual-list"
 @using ActualChat.Comparison
+@implements IVirtualListDataSource<TestListItemRef>
 @inject VirtualListTestService Service
 @inject ILogger<VirtualListTestPage> Log
 
@@ -8,7 +9,7 @@
 <VirtualList Style="height: 600px;"
              SpacerSize="10_000"
              LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
-             DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
+             DataSource="this" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
         <TestListItemBadge ItemRef="@context" />
     </Item>
@@ -34,8 +35,9 @@
     [Parameter, SupplyParameterFromQuery]
     public int? ContentSeed { get; set; } = null;
 
-    private Task<VirtualListData<TestListItemRef>> GetVirtualListItems(
+    public Task<VirtualListData<TestListItemRef>> GetData(
         VirtualListDataQuery query,
+        VirtualListData<TestListItemRef> oldData,
         CancellationToken cancellationToken)
         => Service.GetItemKeys(query, RangeSeed, ContentSeed, cancellationToken);
 }
