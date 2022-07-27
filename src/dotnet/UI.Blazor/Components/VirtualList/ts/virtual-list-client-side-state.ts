@@ -21,6 +21,6 @@ export interface VirtualListClientSideState {
 
 export interface VirtualListClientSideItem {
     size: number;
-    dataHash: number;
+    countAs: number;
 }
 
