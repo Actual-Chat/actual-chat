@@ -27,8 +27,8 @@ export class VirtualListStatistics {
 
     public get responseFulfillmentRatio(): number {
         const num = this._responseExpectedCountSum < 1
-                    ? MaxResponseFulfillmentRatio
-                    : this._responseActualCountSum / this._responseExpectedCountSum;
+            ? MaxResponseFulfillmentRatio
+            : this._responseActualCountSum / this._responseExpectedCountSum;
         return clamp(num, MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
     }
 
