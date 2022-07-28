@@ -6,10 +6,11 @@
 
 <MainHeader>VirtualList Test Page</MainHeader>
 
-<VirtualList Style="height: 600px;"
-             SpacerSize="10_000"
-             LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
-             DataSource="this" KeyComparer="LongAsStringKeyComparer.Default">
+<VirtualList
+    Style="height: 600px;"
+    SpacerSize="10_000"
+    LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
+    DataSource="this" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
         <TestListItemBadge ItemRef="@context" />
     </Item>

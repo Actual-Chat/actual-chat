@@ -35,18 +35,17 @@
      class="virtual-list @invFlexClass @Class"
      style="@Style">
 
-    <div @key="@("<RenderIndex>")"
+    <div @key="VirtualListSpecialKeys.RenderIndex"
          data-render-index="@renderIndex"
          class="data render-index hidden @flexClass flex-none">
     </div>
 
-    <div @key="@("<RenderState>")"
+    <div @key="VirtualListSpecialKeys.RenderState"
          class="data render-state hidden @flexClass flex-none">
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
-
-    <div @key="@("<EndSpacer>")"
+    <div @key="VirtualListSpecialKeys.EndSpacer"
          class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
          style="height: @(endSpacerSize)px">
         <SkeletonContainer Class="@flexClass">
@@ -58,8 +57,7 @@
         </SkeletonContainer>
     </div>
 
-
-    <ul @key="@("<Container>")"
+    <ul @key="VirtualListSpecialKeys.Container"
         class="virtual-container @flexClass">
         @foreach (var item in items) {
             var preloadClass = item.IsNew
@@ -82,7 +80,7 @@
         }
     </ul>
 
-    <div @key="@("<Spacer>")"
+    <div @key="VirtualListSpecialKeys.Spacer"
          class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
          style="height: @(spacerSize)px">
         <SkeletonContainer Class="@flexClass">
