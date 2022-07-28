@@ -2,13 +2,13 @@
 @using ActualChat.Audio.UI.Blazor.Components
 
 <div class="mobile-control-panel flex-x gap-x-6">
-    <div class="language-button mobile-button flex">
+    <div class="mobile-language-button mobile-button flex">
         <MobileLanguageToggle/>
     </div>
-    <div class="recorder-button mobile-button flex">
+    <div class="mobile-recorder-button mobile-button flex">
         <MobileRecorderToggle ChatId="@Chat.Id"/>
     </div>
-    <div class="playback-toggle w-28 -mr-14">
+    <div class="mobile-playback-toggle">
         <MobilePlaybackToggle ChatId="@Chat.Id"/>
     </div>
 </div>

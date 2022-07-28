@@ -97,7 +97,7 @@ module.exports = {
         'selection': 'var(--selection)',
         'dot': 'var(--dot)',
         'dot-selected': 'var(--dot-selected)',
-        'shadow-main': 'var(--shadow-main)',
+        'shadow-main': 'var(--background-04)',
         'skeleton': 'var(--skeleton)',
         'skeleton-border': 'var(--skeleton-border)',
         'scrollbar': 'var(--scrollbar)',
@@ -216,6 +216,7 @@ module.exports = {
       12: '3rem',
       14: '3.5rem',
       16: '4rem',
+      18: '4.5rem',
       20: '5rem',
       24: '6rem',
       28: '7rem',
@@ -272,7 +273,9 @@ module.exports = {
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
       'width-half-to-full': 'width-half-to-full 500ms ease-in-out',
+      'width-60-to-full': 'width-60-to-full 500ms ease-in-out',
       'width-full-to-half': 'width-full-to-half 500ms ease-in-out',
+      'width-full-to-60': 'width-full-to-60 500ms ease-in-out',
       'loud-show': 'loud-show 500ms ease-in-out',
       'loud-hide': 'loud-hide 500ms ease-in-out',
 
@@ -381,7 +384,7 @@ module.exports = {
       'recorder': '0 35px 60px -15px rgb(0 0 0 / 0.25)',
       none: 'none',
       context: '5px 5px 4px 0px rgba(34, 60, 80, 0.2);',
-      'mobile-button': '0px 2px 6px 1px rgba(0, 0, 0, 0.2);',
+      'mobile-button': '0px 4px 6px 3px rgba(0, 0, 0, 0.2);',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
     caretColor: ({ theme }) => theme('colors'),
@@ -867,9 +870,25 @@ module.exports = {
           width: '50%',
         },
       },
+      'width-full-to-60': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '60%',
+        },
+      },
       'width-half-to-full': {
         from: {
           width: '50%',
+        },
+        to: {
+          width: '100%',
+        },
+      },
+      'width-60-to-full': {
+        from: {
+          width: '60%',
         },
         to: {
           width: '100%',
