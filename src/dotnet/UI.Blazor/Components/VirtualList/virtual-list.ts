@@ -183,6 +183,20 @@ export class VirtualList implements VirtualListAccessor {
 
         this._isRendering = true;
         try {
+            // AY:
+            // Here is what's wrong here:
+            // - onRenderEnd is called on end of any render
+            // - renders can be queued
+            // - onRenderEnd awaits for new item measurements
+            // => it's possible that while it waits for new item measurements,
+            //    another instance of it gets called,
+            //    or at least more of new items are added.
+            //
+            // IMO you should extract an async fn from here to await for new item measurements,
+            // and continue to the next step only once it's done; maybe you should do this
+            // even inside maybeOnRenderEnd - in other words, let's make sure that
+            // most of onRenderEnd logic runs only when both render & measurements are done.
+
             this.renderState = rs;
             const newItems = [...this.getNewItemRefs()];
             const newItemSizes: Record<string, number> = {};
