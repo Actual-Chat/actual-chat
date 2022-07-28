@@ -133,7 +133,7 @@
 }
 
 .text-mode .mobile-control-panel .recorder-wrapper {
-    @apply border-0 h-20 w-20;
+    @apply border-0 h-auto w-auto;
 }
 .text-mode .mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
     @apply bg-primary;
