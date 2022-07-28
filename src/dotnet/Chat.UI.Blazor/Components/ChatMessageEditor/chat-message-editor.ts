@@ -9,6 +9,7 @@ export class ChatMessageEditor {
     private input: HTMLDivElement;
     private filesPicker: HTMLInputElement;
     private postButton: HTMLButtonElement;
+    private recorderPanel: HTMLDivElement;
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
     private recordButtonObserver : MutationObserver;
@@ -28,9 +29,10 @@ export class ChatMessageEditor {
         this.filesPicker = this.editorDiv.querySelector('input.files-picker');
         this.postButton = this.editorDiv.querySelector('.post-message');
         this.blazorRef = blazorRef;
-        this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
+        this.recorderPanel = this.editorDiv.querySelector('.recorder-panel');
+        this.recorderButtonDiv = this.recorderPanel.querySelector('div.recorder-button');
         this.recordButton = this.recorderButtonDiv.querySelector('button');
-        this.audioButtons = this.editorDiv.querySelector('.recorder-buttons');
+        this.audioButtons = this.recorderPanel.querySelector('.recorder-buttons');
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
