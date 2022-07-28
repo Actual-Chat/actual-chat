@@ -97,8 +97,21 @@ export class ChatMessageEditor {
         this.isTextMode = isTextMode;
         if (isTextMode) {
             this.editorDiv.classList.add('text-mode');
+            this.animationOff();
         } else {
             this.editorDiv.classList.remove('text-mode');
+            this.animationOff();
+        }
+    }
+
+    private animationOff() : void {
+        const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
+        let classes = playbackWrapper.classList;
+        if (classes.contains('listen-on-to-off')) {
+            classes.replace('listen-on-to-off', 'listen-off');
+        }
+        else if (classes.contains('listen-off-to-on')) {
+            classes.replace('listen-off-to-on', 'listen-on');
         }
     }
 
