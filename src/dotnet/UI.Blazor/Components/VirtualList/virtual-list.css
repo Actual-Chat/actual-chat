@@ -13,7 +13,7 @@
     list-style-type: none;
 }
 
-.virtual-list ul.virtual-container li.item.preload {
+.virtual-list ul.virtual-container li.item.new {
     position: absolute;
     top: -20000px;
 }

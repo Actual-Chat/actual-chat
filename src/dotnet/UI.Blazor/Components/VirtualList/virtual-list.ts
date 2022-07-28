@@ -184,21 +184,21 @@ export class VirtualList implements VirtualListAccessor {
         this._isRendering = true;
         try {
             this.renderState = rs;
-            const preloadedItems = [...this.getPreloadItemRefs()];
-            const preloadItemSizes: Record<string, number> = {};
-            const sizeObserver = new ResizeObserver((entries, obs) => {
+            const newItems = [...this.getNewItemRefs()];
+            const newItemSizes: Record<string, number> = {};
+            const sizeObserver = new ResizeObserver((entries, _) => {
                 for (const entry of entries) {
                     const key = getItemKey(entry.target as HTMLElement);
-                    preloadItemSizes[key] = entry.contentRect.height;
+                    newItemSizes[key] = entry.contentRect.height;
                 }
             });
-            for (const itemRef of preloadedItems) {
+            for (const itemRef of newItems) {
                 const key = getItemKey(itemRef as HTMLElement);
-                preloadItemSizes[key] = -1;
+                newItemSizes[key] = -1;
                 sizeObserver.observe(itemRef, { box: 'border-box' });
             }
 
-            // update statistics
+            // Update statistics
             const responseFulfillmentRatio = this.statistics.responseFulfillmentRatio;
             if (this._lastQuery.expandStartBy > 0 && !rs.hasVeryFirstItem)
                 this.statistics.addResponse(
@@ -211,10 +211,10 @@ export class VirtualList implements VirtualListAccessor {
             let scrollToItemRef = this.getItemRef(rs.scrollToKey);
             let isSizeCalculated = false;
             let frameCount = 0;
-            while(!isSizeCalculated && frameCount < 3) {
+            while (!isSizeCalculated && frameCount < 3) {
                 await new Promise<void>(resolve => {
                     requestAnimationFrame(_ => {
-                        isSizeCalculated = !Object.values(preloadItemSizes).includes(-1);
+                        isSizeCalculated = !Object.values(newItemSizes).includes(-1);
                         frameCount++;
                         resolve();
                     });
@@ -222,8 +222,8 @@ export class VirtualList implements VirtualListAccessor {
             }
             sizeObserver.disconnect();
 
-            for (const itemRef of this.getPreloadItemRefs()) {
-                itemRef.classList.remove('preload');
+            for (const itemRef of this.getNewItemRefs()) {
+                itemRef.classList.remove('new');
             }
 
             if (scrollToItemRef != null) {
@@ -561,8 +561,8 @@ export class VirtualList implements VirtualListAccessor {
         return this._ref.querySelectorAll(':scope > .virtual-container > .item').values() as IterableIterator<HTMLElement>;
     }
 
-    private getPreloadItemRefs(): IterableIterator<HTMLElement> {
-        return this._ref.querySelectorAll(':scope > .virtual-container > .item.preload').values() as IterableIterator<HTMLElement>;
+    private getNewItemRefs(): IterableIterator<HTMLElement> {
+        return this._ref.querySelectorAll(':scope > .virtual-container > .item.new').values() as IterableIterator<HTMLElement>;
     }
 
     private getOrderedItemRefs(bottomToTop: boolean = false): IterableIterator<HTMLElement> {
