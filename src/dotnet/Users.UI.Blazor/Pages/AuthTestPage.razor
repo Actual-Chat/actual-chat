@@ -54,7 +54,7 @@
                 </div>
             </ButtonTemplate>
             <MenuTemplate>
-                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="MenuOrientation.Vertical" IconPosition="MenuIconPosition.Right">
+                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left">
                     @foreach (var value in Enum.GetValues<AccountStatus>()) {
                         <MenuItem Title="@value.ToString()" Click="_ => OnStatusSelected(value)"></MenuItem>
                     }
