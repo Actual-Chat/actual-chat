@@ -26,12 +26,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
 
-    [Parameter]
-    [EditorRequired]
-    public IVirtualListDataSource<TItem> DataSource { get; set; } = NoOpDataSource.Instance;
-
-    [Parameter]
-    [EditorRequired]
+    [Parameter, EditorRequired]
+    public IVirtualListDataSource<TItem> DataSource { get; set; } = VirtualListDataSource<TItem>.Empty;
+    [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
     public RenderFragment<TItem> Item { get; set; } = null!;
 
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
@@ -80,13 +77,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                    $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                    Ref,
-                    BlazorRef,
-                    LoadZoneSize,
-                    BufferZoneSize,
-                    DebugMode
-                );
+                $"{BlazorUICoreModule.ImportName}.VirtualList.create",
+                Ref,
+                BlazorRef,
+                LoadZoneSize,
+                BufferZoneSize,
+                DebugMode);
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
     }
@@ -110,16 +106,5 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             throw;
         }
         return response;
-    }
-
-    private class NoOpDataSource : IVirtualListDataSource<TItem>
-    {
-        public static readonly NoOpDataSource Instance = new ();
-
-        public Task<VirtualListData<TItem>> GetData(
-            VirtualListDataQuery query,
-            VirtualListData<TItem> oldData,
-            CancellationToken cancellationToken)
-            => Task.FromResult(VirtualListData<TItem>.None);
     }
 }
