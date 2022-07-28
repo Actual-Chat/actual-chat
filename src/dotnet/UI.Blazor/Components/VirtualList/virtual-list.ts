@@ -1,6 +1,6 @@
 import './virtual-list.css';
 import { delayAsync } from 'delay';
-import { VirtualListClientSideState } from './ts/virtual-list-client-side-state';
+import { VirtualListClientSideItem, VirtualListClientSideState } from './ts/virtual-list-client-side-state';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -16,7 +16,7 @@ const LogScope: string = 'VirtualList';
 const ScrollStoppedTimeout: number = 64;
 const UpdateClientSideStateTimeout: number = 320;
 const IronPantsHandleTimeout: number = 320;
-const RenderToUpdateClientSideStateDelay: number = 2000;
+const RenderToUpdateClientSideStateDelay: number = 20
 const SizeEpsilon: number = 1;
 const ItemSizeEpsilon: number = 1;
 const MoveSizeEpsilon: number = 28;
@@ -35,7 +35,12 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _renderIndexRef: HTMLElement;
     private readonly _abortController: AbortController;
     private readonly _renderEndObserver: MutationObserver;
+    private readonly _sizeObserver: ResizeObserver;
     private readonly _ironPantsHandlerInterval: number;
+
+    private readonly _items: Record<string, VirtualListClientSideItem>;
+    private readonly _unmeasuredItems: Set<string>;
+
     private _isDisposed = false;
     private _scrollTopPivotRef?: HTMLElement;
     private _scrollTopPivotOffset?: number;
@@ -93,9 +98,13 @@ export class VirtualList implements VirtualListAccessor {
         this._renderEndObserver.observe(
             this._renderIndexRef,
             { attributes: true, attributeFilter: ['data-render-index'] });
-
+        this._renderEndObserver.observe(this._containerRef, { childList: true });
+        this._sizeObserver = new ResizeObserver(this.onResize);
         // @ts-ignore
         this._ironPantsHandlerInterval = setInterval(this.onIronPantsHandle, IronPantsHandleTimeout);
+
+        this._items = {};
+        this._unmeasuredItems = new Set<string>();
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -153,88 +162,109 @@ export class VirtualList implements VirtualListAccessor {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private maybeOnRenderEnd = (mutations: MutationRecord[], observer: MutationObserver): void => {
         if (this._debugMode)
-            console.log(`${LogScope}.maybeOnRenderEnd:`, mutations);
+            console.log(`${LogScope}.maybeOnRenderEnd: `, mutations.length);
 
-        const rsJson = this._renderStateRef.textContent;
-        if (rsJson == null || rsJson === '')
+        // if (this._isRendering)
+        //     return;
+
+        // void this.onRenderEnd(rs, mutations.length == 0);
+
+        let isNodesAdded = mutations.length == 0; // first render
+        for (const mutation of mutations) {
+            if (mutation.type === 'childList') {
+                for (const node of mutation.removedNodes) {
+                    if (!node['dataset'])
+                        continue;
+
+                    const itemRef = node as HTMLElement;
+                    const key = getItemKey(itemRef);
+                    delete this._items[key];
+                    this._unmeasuredItems.delete(key);
+                    this._sizeObserver.unobserve(itemRef);
+                }
+
+                // iterating over all mutations addedNodes is slow
+                isNodesAdded ||= mutation.addedNodes.length > 0;
+            }
+        }
+
+        if (!isNodesAdded)
             return;
 
-        const rs = JSON.parse(rsJson) as Required<VirtualListRenderState>;
-        if (rs.renderIndex <= this.renderState.renderIndex)
-            return;
+        for (const itemRef of this.getNewItemRefs()) {
+            const key = getItemKey(itemRef);
+            const countAs = getItemCountAs(itemRef);
 
-        const riText = this._renderIndexRef.dataset['renderIndex'];
-        if (riText == null || riText == '')
-            return;
+            if (this._items.hasOwnProperty(key))
+                return;
 
-        const ri = Number.parseInt(riText);
-        if (ri != rs.renderIndex)
-            return;
-
-        if (this._isRendering)
-            return;
-
-        void this.onRenderEnd(rs, mutations.length == 0);
+            this._items[key] = {
+                size: -1,
+                countAs: countAs ?? 1,
+            }
+            this._unmeasuredItems.add(key);
+            this._sizeObserver.observe(itemRef, { box: 'border-box' });
+        }
     };
 
-    private async onRenderEnd(rs: Required<VirtualListRenderState>, isFirstRender: boolean): Promise<void> {
+    private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
+        for (const entry of entries) {
+            const contentBoxSize = Array.isArray(entry.contentBoxSize)
+               ? entry.contentBoxSize[0]
+               : entry.contentBoxSize;
+
+            const key = getItemKey(entry.target as HTMLElement);
+            this._unmeasuredItems.delete(key);
+
+            const item = this._items[key];
+            if (item) {
+                item.size = contentBoxSize.blockSize;
+            }
+            if (this._unmeasuredItems.size === 0) {
+                const rsJson = this._renderStateRef.textContent;
+                if (rsJson == null || rsJson === '')
+                    return;
+
+                const rs = JSON.parse(rsJson) as Required<VirtualListRenderState>;
+                if (rs.renderIndex <= this.renderState.renderIndex)
+                    return;
+
+                const riText = this._renderIndexRef.dataset['renderIndex'];
+                if (riText == null || riText == '')
+                    return;
+
+                const ri = Number.parseInt(riText);
+                if (ri != rs.renderIndex)
+                    return;
+
+                this.onRenderEnd(rs, false);
+            }
+        }
+    }
+
+    private onRenderEnd(rs: Required<VirtualListRenderState>, isFirstRender: boolean):void {
+        if (this._isRendering) {
+            if (this._debugMode)
+                console.warn(`${LogScope}.onRenderEnd - Skipped, renderIndex = #${rs.renderIndex}, rs =`, rs);
+            return;
+        }
+
         if (this._debugMode)
             console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
 
         this._isRendering = true;
         try {
-            // AY:
-            // Here is what's wrong here:
-            // - onRenderEnd is called on end of any render
-            // - renders can be queued
-            // - onRenderEnd awaits for new item measurements
-            // => it's possible that while it waits for new item measurements,
-            //    another instance of it gets called,
-            //    or at least more of new items are added.
-            //
-            // IMO you should extract an async fn from here to await for new item measurements,
-            // and continue to the next step only once it's done; maybe you should do this
-            // even inside maybeOnRenderEnd - in other words, let's make sure that
-            // most of onRenderEnd logic runs only when both render & measurements are done.
-
             this.renderState = rs;
-            const newItems = [...this.getNewItemRefs()];
-            const newItemSizes: Record<string, number> = {};
-            const sizeObserver = new ResizeObserver((entries, _) => {
-                for (const entry of entries) {
-                    const key = getItemKey(entry.target as HTMLElement);
-                    newItemSizes[key] = entry.contentRect.height;
-                }
-            });
-            for (const itemRef of newItems) {
-                const key = getItemKey(itemRef as HTMLElement);
-                newItemSizes[key] = -1;
-                sizeObserver.observe(itemRef, { box: 'border-box' });
-            }
 
             // Update statistics
-            const responseFulfillmentRatio = this.statistics.responseFulfillmentRatio;
-            if (this._lastQuery.expandStartBy > 0 && !rs.hasVeryFirstItem)
-                this.statistics.addResponse(
-                    rs.startExpansion,
-                    this._lastQuery.expandStartBy * responseFulfillmentRatio);
-            if (this._lastQuery.expandEndBy > 0 && !rs.hasVeryLastItem)
-                this.statistics.addResponse(rs.endExpansion, this._lastQuery.expandEndBy * responseFulfillmentRatio);
+            const ratio = this.statistics.responseFulfillmentRatio;
+            if (rs.query.expandStartBy > 0 && !rs.hasVeryFirstItem)
+                this.statistics.addResponse(rs.startExpansion, rs.query.expandStartBy * ratio);
+            if (rs.query.expandEndBy > 0 && !rs.hasVeryLastItem)
+                this.statistics.addResponse(rs.endExpansion, rs.query.expandEndBy * ratio);
 
             let isScrollHappened = false;
             let scrollToItemRef = this.getItemRef(rs.scrollToKey);
-            let isSizeCalculated = false;
-            let frameCount = 0;
-            while (!isSizeCalculated && frameCount < 3) {
-                await new Promise<void>(resolve => {
-                    requestAnimationFrame(_ => {
-                        isSizeCalculated = !Object.values(newItemSizes).includes(-1);
-                        frameCount++;
-                        resolve();
-                    });
-                });
-            }
-            sizeObserver.disconnect();
 
             for (const itemRef of this.getNewItemRefs()) {
                 itemRef.classList.remove('new');
@@ -310,8 +340,8 @@ export class VirtualList implements VirtualListAccessor {
             this._scrollTopPivotRef = null;
             this._scrollTopPivotOffset = null;
 
-            if (isScrollHappened)
-                await delayAsync(RenderToUpdateClientSideStateDelay);
+            // if (isScrollHappened)
+            //     await delayAsync(RenderToUpdateClientSideStateDelay);
         } finally {
             this._isRendering = false;
             if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
@@ -367,7 +397,7 @@ export class VirtualList implements VirtualListAccessor {
     private async updateClientSideStateImpl(): Promise<void> {
         const rs = this.renderState;
         const cs = this.clientSideState;
-        if (this._isDisposed || this._isUpdatingClientState)
+        if (this._isDisposed || this._isUpdatingClientState || this._isRendering)
             return;
 
         this._lastPlan = this._plan;
@@ -572,11 +602,13 @@ export class VirtualList implements VirtualListAccessor {
     };
 
     private getItemRefs(): IterableIterator<HTMLElement> {
-        return this._ref.querySelectorAll(':scope > .virtual-container > .item').values() as IterableIterator<HTMLElement>;
+        // getElementsByClassName is faster than querySelectorAll
+        return Array.from(this._containerRef.getElementsByClassName('item')).values() as IterableIterator<HTMLElement>;
     }
 
     private getNewItemRefs(): IterableIterator<HTMLElement> {
-        return this._ref.querySelectorAll(':scope > .virtual-container > .item.new').values() as IterableIterator<HTMLElement>;
+        // getElementsByClassName is faster than querySelectorAll
+        return Array.from(this._containerRef.getElementsByClassName('item new')).values() as IterableIterator<HTMLElement>;
     }
 
     private getOrderedItemRefs(bottomToTop: boolean = false): IterableIterator<HTMLElement> {
@@ -709,10 +741,10 @@ export class VirtualList implements VirtualListAccessor {
 
         this._query = this.getDataQuery();
         if (this._query.isSimilarTo(this._lastQuery)) {
-            if (this.clientSideState.scrollAnchorKey) {
-                let itemRef = this.getItemRef(this.clientSideState.scrollAnchorKey);
-                this.scrollTo(itemRef, true);
-            }
+            // if (this.clientSideState.scrollAnchorKey) {
+            //     let itemRef = this.getItemRef(this.clientSideState.scrollAnchorKey);
+            //     this.scrollTo(itemRef, true);
+            // }
             return;
         }
 
@@ -787,15 +819,21 @@ export class VirtualList implements VirtualListAccessor {
 
         const firstItem = items[startIndex];
         const lastItem = items[endIndex];
-        const startGap = Math.max(0, firstItem.range.Start - loadZone.Start);
-        const endGap = Math.max(0, loadZone.End - lastItem.range.End);
+        let startGap = Math.max(0, firstItem.range.Start - loadZone.Start);
+        let endGap = Math.max(0, loadZone.End - lastItem.range.End);
+        if (startGap > endGap) {
+            startGap = this.loadZoneSize;
+        }
+        else if (endGap > startGap) {
+            endGap = this.loadZoneSize;
+        }
 
         const expandStartBy = this.renderState.hasVeryFirstItem
-                              ? 0
-                              : clamp(Math.ceil(startGap / itemSize), 0, MaxExpandBy);
+            ? 0
+            : clamp(Math.ceil(startGap / itemSize), 0, MaxExpandBy);
         const expandEndBy = this.renderState.hasVeryLastItem
-                            ? 0
-                            : clamp(Math.ceil(endGap / itemSize), 0, MaxExpandBy);
+            ? 0
+            : clamp(Math.ceil(endGap / itemSize), 0, MaxExpandBy);
         const keyRange = new Range(firstItem.Key, lastItem.Key);
         const query = new VirtualListDataQuery(keyRange);
         query.expandStartBy = expandStartBy / responseFulfillmentRatio;
