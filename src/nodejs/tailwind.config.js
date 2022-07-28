@@ -278,6 +278,8 @@ module.exports = {
       'width-full-to-60': 'width-full-to-60 500ms ease-in-out',
       'loud-show': 'loud-show 500ms ease-in-out',
       'loud-hide': 'loud-hide 500ms ease-in-out',
+      'scale-to-full': 'scale-to-full 1s ease-in-out',
+      'scale-to-5': 'scale-to-5 500ms ease-in-out',
 
     },
     aspectRatio: {
@@ -908,6 +910,25 @@ module.exports = {
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',
+        },
+      },
+      'scale-to-full': {
+        '0%': {
+          transform: 'scale(0)',
+        },
+        '50%': {
+          transform: 'scale(0.05)'
+        },
+        '99%': {
+          transform: 'scale(1)',
+        },
+      },
+      'scale-to-5': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(0.05)',
         },
       },
       'hide-to-left': {

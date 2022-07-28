@@ -20,27 +20,68 @@
     min-height: 3.5rem;
 }
 
-.mobile-control-panel .mobile-recorder-toggle.btn.btn-round {
-    @apply outline-1 outline-offset-4;
-    @apply border-none shadow-mobile-button;
+.mobile-control-panel .recorder-wrapper {
+    @apply border justify-center flex h-24 w-24;
 }
-.mobile-control-panel .mobile-recorder-toggle.btn,
-.mobile-control-panel .mobile-recorder-toggle.btn.off {
-    @apply outline-primary shadow-secondary;
+.mobile-control-panel .recorder-wrapper .btn {
+    @apply self-center;
 }
-.mobile-control-panel .mobile-recorder-toggle.btn.on {
-    @apply outline-error shadow-error-hover;
+.mobile-control-panel .recorder-wrapper .btn .btn-content {
+    @apply text-04;
+    max-height: 5rem;
+    min-height: 5rem;
+    max-width: 5rem;
+    min-width: 5rem;
+}
+.mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply bg-primary;
+}
+.mobile-control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply bg-error;
+}
+.mobile-control-panel .recorder-wrapper.record-off,
+.mobile-control-panel .recorder-wrapper.record-on-to-off {
+    @apply border-primary transition-colors duration-700;
+}
+.mobile-control-panel .recorder-wrapper.record-on,
+.mobile-control-panel .recorder-wrapper.record-off-to-on {
+    @apply border-error transition-colors duration-700;
+}
+.mobile-control-panel .recorder-wrapper .record-on-btn.btn {
+    @apply shadow-mobile-button shadow-error-hover;
+}
+.mobile-control-panel .recorder-wrapper .record-off-btn.btn {
+    @apply shadow-mobile-button shadow-secondary;
 }
 
-.mobile-control-panel .mobile-recorder-toggle.btn .btn-content,
-.mobile-control-panel .mobile-recorder-toggle.btn.off .btn-content {
-    @apply bg-primary text-04 h-20 w-20;
-    max-width: 5rem;
-    max-height: 5rem;
+.mobile-control-panel .recorder-wrapper.record-off .record-on-btn.btn {
+    @apply scale-0 absolute;
 }
-.mobile-control-panel .mobile-recorder-toggle.btn.on .btn-content {
-    @apply bg-error text-04 h-20 w-20;
+.mobile-control-panel .recorder-wrapper.record-off .record-off-btn.btn {
+    @apply scale-100;
 }
+
+.mobile-control-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
+    @apply animate-scale-to-5 scale-0 absolute;
+}
+.mobile-control-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+
+.mobile-control-panel .recorder-wrapper.record-on .record-off-btn.btn {
+    @apply scale-0 absolute;
+}
+.mobile-control-panel .recorder-wrapper.record-on .record-on-btn.btn {
+    @apply scale-100;
+}
+
+.mobile-control-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
+    @apply animate-scale-to-5 scale-0 absolute;
+}
+.mobile-control-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+
 .mobile-control-panel .mobile-playback-toggle {
     @apply w-28 -mr-14;
 }
@@ -87,26 +128,18 @@
     min-width: 5rem;
     min-height: 3rem;
 }
-.text-mode .mobile-control-panel .btn.btn-round {
-    @apply outline-0 outline-offset-0;
-}
 .text-mode .mobile-control-panel .btn.btn-round svg {
     @apply h-6 w-6;
 }
 
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn.btn-round,
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn.btn-round.off {
-    @apply shadow-mobile-button shadow-secondary;
+.text-mode .mobile-control-panel .recorder-wrapper {
+    @apply border-0 h-20 w-20;
 }
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn.btn-round.on {
-    @apply shadow-error-hover;
+.text-mode .mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply bg-primary;
 }
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn .btn-content,
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn.off .btn-content {
-    @apply bg-primary text-04;
-}
-.text-mode .mobile-control-panel .mobile-recorder-toggle.btn.on .btn-content {
-    @apply bg-error text-04;
+.text-mode .mobile-control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply bg-error;
 }
 
 .text-mode .mobile-control-panel .mobile-playback-toggle {
