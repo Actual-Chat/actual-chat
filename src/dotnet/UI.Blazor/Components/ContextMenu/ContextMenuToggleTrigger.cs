@@ -33,20 +33,17 @@ public class ContextMenuToggleTrigger : ContextMenuTrigger
 
         builder.OpenElement(0, WrapperTag);
 
-        builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes));
+        builder.AddMultipleAttributes(1,
+            Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<IEnumerable<KeyValuePair<string, object>>>(Attributes));
 
-        builder.AddAttribute(2, "onclick", $"blazorContextMenu.OnContextMenuToggle(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+        builder.AddAttribute(2, "onclick",
+            $"blazorContextMenu.OnContextMenuToggle(event, '{MenuId.OrdinalReplace("'", "\\'")}', {StopPropagation.ToString().ToLowerInvariant()});");
 
         if (!string.IsNullOrWhiteSpace(CssClass))
-        {
             builder.AddAttribute(5, "class", CssClass);
-        }
         builder.AddAttribute(6, "id", Id);
         builder.AddContent(7, ChildContent);
-        builder.AddElementReferenceCapture(8, (__value) =>
-        {
-            SetContextMenuTriggerElementRef(__value);
-        });
+        builder.AddElementReferenceCapture(8, SetContextMenuTriggerElementRef);
         builder.CloseElement();
     }
 
