@@ -60,19 +60,19 @@
     <ul @key="VirtualListSpecialKeys.Container"
         class="virtual-container @flexClass">
         @foreach (var item in items) {
-            var preloadClass = item.IsNew
-                ? "item flex-none preload"
+            var itemClass = item.IsNew
+                ? "item flex-none new"
                 : "item flex-none";
             @if (item.CountAs != 1) {
                 <li @key="item.Key"
-                    class="@preloadClass"
+                    class="@itemClass"
                     data-key="@item.Key"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
                 <li @key="item.Key"
-                    class="@preloadClass"
+                    class="@itemClass"
                     data-key="@item.Key">
                     @Item(item)
                 </li>
