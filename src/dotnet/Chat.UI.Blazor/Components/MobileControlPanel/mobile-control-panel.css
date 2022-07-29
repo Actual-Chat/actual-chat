@@ -96,13 +96,13 @@
     @apply w-28;
 }
 .playback-wrapper.listen-on .loud-btn.btn.btn-round {
-    @apply opacity-100 translate-x-12;
+    @apply opacity-100 translate-x-14;
 }
 .playback-wrapper.listen-off {
     @apply w-14;
 }
 .playback-wrapper.listen-off .loud-btn.btn.btn-round {
-    @apply opacity-0 translate-x-12 absolute;
+    @apply opacity-0 translate-x-14 absolute;
 }
 .playback-wrapper.listen-on-to-off {
     @apply animate-width-full-to-half w-14;
@@ -114,7 +114,7 @@
     @apply animate-width-half-to-full w-28;
 }
 .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-    @apply animate-loud-show absolute translate-x-12;
+    @apply animate-loud-show absolute translate-x-14;
 }
 
 /*Text mode*/
@@ -176,11 +176,11 @@
     @apply animate-width-full-to-60 w-20;
 }
 .text-mode .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply animate-loud-hide absolute transition duration-500 opacity-0 scale-0;
+    @apply animate-loud-hide-text-mode absolute transition duration-500 opacity-0 scale-0;
 }
 .text-mode .playback-wrapper.listen-off-to-on {
     @apply animate-width-60-to-full w-32;
 }
 .text-mode .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-    @apply animate-loud-show absolute translate-x-12;
+    @apply animate-loud-show-text-mode absolute translate-x-12;
 }
