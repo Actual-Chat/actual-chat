@@ -26,7 +26,7 @@ public partial class MainPage
     private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
         if (e.WebView.Context?.GetActivity() is not ComponentActivity activity)
-            throw CoreErrors.Constraint(
+            throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
 
         e.WebView.Settings.JavaScriptEnabled = true;

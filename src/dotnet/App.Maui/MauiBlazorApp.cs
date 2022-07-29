@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui;
 
-public class MauiApp : UI.Blazor.App.App
+public class MauiBlazorApp : UI.Blazor.App.App
 {
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private NavigationInterceptor NavInterceptor { get; init; } = null!;

@@ -21,10 +21,10 @@ public partial class MainPage : ContentPage
 
         _blazorWebView.RootComponents.Add(
             new Microsoft.AspNetCore.Components.WebView.Maui.RootComponent {
-                ComponentType = typeof(MauiApp),
+                ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
                 Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
-                    { nameof(MauiApp.SessionId), appSettings.SessionId },
+                    { nameof(MauiBlazorApp.SessionId), appSettings.SessionId },
                 },
             });
     }
