@@ -17,6 +17,6 @@ public class UserContactsController : ControllerBase, IUserContacts
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)
-        => _service.GetAll(session, cancellationToken);
+    public Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken)
+        => _service.List(session, cancellationToken);
 }

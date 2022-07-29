@@ -59,6 +59,7 @@
     [Inject] private IUserContacts Contacts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -67,7 +68,11 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userContacts = await Contacts.GetAll(Session, cancellationToken).ConfigureAwait(false);
+        var userContacts = await Contacts.List(Session, cancellationToken);
+        var criteria = await SearchUI.Criteria.Use(cancellationToken).ConfigureAwait(false);
+        if (!criteria.IsNullOrEmpty())
+            userContacts = userContacts.Where(x => x.Name.Contains(criteria)).ToImmutableArray();
+
         var contacts = await userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);

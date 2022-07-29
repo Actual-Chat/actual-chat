@@ -11,18 +11,18 @@ public class UserContacts : IUserContacts
         _contactsBackend = contactsBackend;
     }
 
-    public virtual async Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return ImmutableArray<UserContact>.Empty;
 
         var contactIds = await _contactsBackend.GetContactIds(user.Id, cancellationToken).ConfigureAwait(false);
-        var contacts = await Task.WhenAll(
-            contactIds
-                .Select(c => _contactsBackend.Get(c, cancellationToken))
-                .ToArray()
-            ).ConfigureAwait(false);
+        var contacts = await contactIds.Select(c => _contactsBackend.Get(c, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
         return contacts.Where(c => c != null).Select(c => c!).ToImmutableArray();
     }
 }
