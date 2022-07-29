@@ -256,10 +256,10 @@
 }
 
 .chat-footer {
-    @apply bg-01 rounded-md py-0 md:py-1.5 px-2 md:px-2 flex justify-center w-full;
+    @apply bg-01 py-0 md:py-1.5 px-2 md:px-2 flex justify-center w-full;
 }
 .signin-footer {
-    @apply flex w-full md:w-auto py-1 justify-center;
+    @apply flex w-full md:w-auto py-1 justify-center min-h-footer items-center;
 }
 .signin-footer .btn {
     @apply rounded-full md:rounded-md h-10 min-h-10 min-w-0 px-4;
