@@ -6,7 +6,6 @@ import { VirtualListRenderState } from './virtual-list-render-state';
 export interface VirtualListAccessor {
     loadZoneSize: number;
     statistics: VirtualListStatistics;
-    alignmentEdge: VirtualListEdge;
     renderState: VirtualListRenderState;
     clientSideState: VirtualListClientSideState;
 }

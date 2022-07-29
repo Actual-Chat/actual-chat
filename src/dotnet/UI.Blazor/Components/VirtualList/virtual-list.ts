@@ -41,10 +41,10 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _unmeasuredItems: Set<string>;
 
     private _isDisposed = false;
-    private _scrollTopPivotRef?: HTMLElement;
-    private _scrollTopPivotOffset?: number;
-    private _scrollTopPivotLocation?: 'top' | 'bottom';
-    private _stickyEdge?: Required<VirtualListStickyEdgeState> = null;
+    private _scrollTopPivotRef: HTMLElement | null = null;
+    private _scrollTopPivotOffset: number | null = null;
+    private _scrollTopPivotLocation: 'top' | 'bottom' | null = null;
+    private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
 
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
@@ -63,7 +63,6 @@ export class VirtualList implements VirtualListAccessor {
     public statistics: VirtualListStatistics = new VirtualListStatistics();
     public loadZoneSize;
     public bufferZoneSize;
-    public alignmentEdge: VirtualListEdge = VirtualListEdge.End;
 
     public constructor(
         ref: HTMLElement,
@@ -263,10 +262,12 @@ export class VirtualList implements VirtualListAccessor {
                     if (this.clientSideState.visibleKeys.length > 0) {
                         const key = this.clientSideState.visibleKeys[this.clientSideState.visibleKeys.length - 1];
                         lastVisibleItemRef = this.getItemRef(key);
-                        const itemY0 = this.getItemY0();
-                        const scrollTop = this.getScrollTop();
-                        const itemRect = lastVisibleItemRef.getBoundingClientRect();
-                        lastVisibleItemScrollOffset = itemRect.y - itemY0 - scrollTop;
+                        if (lastVisibleItemRef) {
+                            const itemY0 = this.getItemY0();
+                            const scrollTop = this.getScrollTop();
+                            const itemRect = lastVisibleItemRef.getBoundingClientRect();
+                            lastVisibleItemScrollOffset = itemRect.y - itemY0 - scrollTop;
+                        }
                     }
 
                     for (const itemRef of this.getNewItemRefs()) {
@@ -632,8 +633,8 @@ export class VirtualList implements VirtualListAccessor {
     private getItemRef(key: string): HTMLElement | null {
         if (key == null || key == '')
             return null;
-        // TODO(AK): use id!
-        return this._ref.querySelector(`:scope > .virtual-container > .item[data-key="${key}"]`);
+
+        return this._containerRef.querySelector(`:scope > .item[data-key="${key}"]`);
     }
 
     private getFirstItemRef(): HTMLElement | null {
@@ -781,21 +782,9 @@ export class VirtualList implements VirtualListAccessor {
             Math.max(viewport.Start - this.bufferZoneSize, 0),
             viewport.End + this.bufferZoneSize);
 
-        // if (this.clientSideState.scrollAnchorKey != null) {
-        //     // we should load data near the last available item on scroll into skeleton area
-        //     const key = this.clientSideState.scrollAnchorKey!;
-        //     const avgItemsPerLoadZone = this.loadZoneSize / itemSize;
-        //     const anchorKeyRange = new Range(key, key);
-        //     const anchorQuery = new VirtualListDataQuery(anchorKeyRange);
-        //     anchorQuery.expandStartBy = avgItemsPerLoadZone / responseFulfillmentRatio;
-        //     anchorQuery.expandEndBy = avgItemsPerLoadZone / responseFulfillmentRatio;
-        //     return anchorQuery;
-        // }
         if (plan.hasUnmeasuredItems) // Let's wait for measurement to complete first
             return this._lastQuery;
         if (plan.items.length == 0) // No entries -> nothing to "align" the query to
-            return this._lastQuery;
-        if (plan.viewport == null)
             return this._lastQuery;
         if (RangeExt.contains(alreadyLoaded, loadZone))
             return this._lastQuery;
