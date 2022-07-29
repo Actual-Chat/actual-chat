@@ -119,7 +119,7 @@ public class LazyWriter<T> : IAsyncDisposable
                 Log.LogError(e,
                     "Error #{ErrorCount} while flushing a batch of {ItemCount} items, will retry in {RetryDelay}",
                     failedTryCount, flushBuffer.Count, retryDelay.ToShortString());
-                await Clock.Delay(retryDelay);
+                await Clock.Delay(retryDelay).ConfigureAwait(false);
             }
         }
     }
