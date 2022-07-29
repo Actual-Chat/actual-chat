@@ -7,12 +7,14 @@ namespace ActualChat.Chat.Db;
 [Table("ChatOwners")]
 public class DbChatOwner
 {
-    public string ChatId { get; set; } = "";
-    public string UserId { get; set; } = "";
+    [Column("ChatId")]
+    public string DbChatId { get; set; } = "";
+    [Column("UserId")]
+    public string DbUserId { get; set; } = "";
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatOwner>
     {
         public void Configure(EntityTypeBuilder<DbChatOwner> builder)
-            => builder.HasKey(e => new { e.ChatId, e.UserId });
+            => builder.HasKey(e => new { ChatId = e.DbChatId, UserId = e.DbUserId });
     }
 }

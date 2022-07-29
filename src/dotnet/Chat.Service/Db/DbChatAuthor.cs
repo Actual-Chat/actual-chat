@@ -36,7 +36,7 @@ public class DbChatAuthor : IHasId<string>
             IsAnonymous = IsAnonymous,
             UserId = UserId ?? "",
             HasLeft = HasLeft,
-            RoleIds = Roles.Select(ar => (Symbol)ar.ChatRoleId).ToImmutableArray(),
+            RoleIds = Roles.Select(ar => (Symbol)ar.DbChatRoleId).ToImmutableArray(),
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
@@ -45,7 +45,7 @@ public class DbChatAuthor : IHasId<string>
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
-            // builder.HasMany(a => a.Roles).WithOne(nameof(DbChatAuthorRole.ChatAuthorId));
+            // builder.HasMany(a => a.Roles).WithOne();
         }
     }
 }

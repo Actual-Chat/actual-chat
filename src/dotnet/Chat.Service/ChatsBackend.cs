@@ -463,7 +463,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         else {
             // Group chat
-            var ownerUserIds = dbChat.Owners.Select(o => o.UserId).ToArray();
+            var ownerUserIds = dbChat.Owners.Select(o => o.DbUserId).ToArray();
             await ownerUserIds
                 .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
                 .Collect()

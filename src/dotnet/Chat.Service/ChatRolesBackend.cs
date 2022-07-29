@@ -57,7 +57,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             .Where(r =>
                 r.ChatId == chatId
                 && (r.SystemRole == SystemChatRole.None || r.SystemRole == SystemChatRole.Owner)
-                && dbContext.ChatAuthorRoles.Any(ar => ar.ChatAuthorId == authorId && ar.ChatRoleId == r.Id))
+                && dbContext.ChatAuthorRoles.Any(ar => ar.DbChatAuthorId == authorId && ar.DbChatRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles
@@ -113,8 +113,8 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthorIds = await dbContext.ChatAuthorRoles
-            .Where(ar => ar.ChatRoleId == roleId)
-            .Select(ar => ar.ChatAuthorId)
+            .Where(ar => ar.DbChatRoleId == roleId)
+            .Select(ar => ar.DbChatAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var authorIds = dbAuthorIds.Select(id => (Symbol)id).ToImmutableArray();
@@ -182,7 +182,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbChatAuthorRoles = await dbContext.ChatAuthorRoles.ForUpdate()
-                    .Where(ar => ar.ChatRoleId == roleId)
+                    .Where(ar => ar.DbChatRoleId == roleId)
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 dbContext.RemoveRange(dbChatAuthorRoles);
@@ -198,13 +198,13 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             // Adding items
             foreach (var authorId in update.AuthorIds.AddedItems)
                 dbContext.ChatAuthorRoles.Add(
-                    new() { ChatRoleId = chatId, ChatAuthorId = authorId });
+                    new() { DbChatRoleId = roleId, DbChatAuthorId = authorId });
             // Removing items
             var removedAuthorIds = update.AuthorIds.RemovedItems.Select(i => i.Value).ToList();
             if (removedAuthorIds.Any()) {
  #pragma warning disable MA0002
                 var dbChatAuthorRoles = await dbContext.ChatAuthorRoles
-                    .Where(ar => ar.ChatRoleId == roleId && removedAuthorIds.Contains(ar.ChatAuthorId))
+                    .Where(ar => ar.DbChatRoleId == roleId && removedAuthorIds.Contains(ar.DbChatAuthorId))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (chatRole!.SystemRole == SystemChatRole.Owner) {

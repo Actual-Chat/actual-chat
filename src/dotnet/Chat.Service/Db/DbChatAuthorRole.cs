@@ -5,15 +5,17 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatAuthorRoles")]
-[Index(nameof(ChatRoleId), nameof(ChatAuthorId), IsUnique = true)]
+[Index(nameof(DbChatRoleId), nameof(DbChatAuthorId), IsUnique = true)]
 public class DbChatAuthorRole
 {
-    public string ChatAuthorId { get; set; } = "";
-    public string ChatRoleId { get; set; } = "";
+    [Column("ChatAuthorId")]
+    public string DbChatAuthorId { get; set; } = "";
+    [Column("ChatRoleId")]
+    public string DbChatRoleId { get; set; } = "";
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthorRole>
     {
         public void Configure(EntityTypeBuilder<DbChatAuthorRole> builder)
-            => builder.HasKey(e => new { e.ChatAuthorId, e.ChatRoleId });
+            => builder.HasKey(e => new { ChatAuthorId = e.DbChatAuthorId, ChatRoleId = e.DbChatRoleId });
     }
 }

@@ -3,6 +3,7 @@ using System;
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220729103808_UpdateChatRoles4")]
+    partial class UpdateChatRoles4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,16 +237,23 @@ namespace ActualChat.Chat.Migrations
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatOwner", b =>
                 {
-                    b.Property<string>("DbChatId")
+                    b.Property<string>("ChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
 
-                    b.Property<string>("DbUserId")
+                    b.Property<string>("UserId")
                         .HasColumnType("text")
                         .HasColumnName("user_id");
 
-                    b.HasKey("DbChatId", "DbUserId")
+                    b.Property<string>("DbChatId")
+                        .HasColumnType("text")
+                        .HasColumnName("db_chat_id");
+
+                    b.HasKey("ChatId", "UserId")
                         .HasName("pk_chat_owners");
+
+                    b.HasIndex("DbChatId")
+                        .HasDatabaseName("ix_chat_owners_db_chat_id");
 
                     b.ToTable("chat_owners");
                 });
@@ -415,9 +424,7 @@ namespace ActualChat.Chat.Migrations
                     b.HasOne("ActualChat.Chat.Db.DbChat", null)
                         .WithMany("Owners")
                         .HasForeignKey("DbChatId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_chat_owners_chats_chat_id");
+                        .HasConstraintName("fk_chat_owners_chats_db_chat_id");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChat", b =>

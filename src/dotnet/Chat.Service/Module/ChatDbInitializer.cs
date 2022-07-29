@@ -57,8 +57,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 IsPublic = true,
                 Owners = {
                     new DbChatOwner {
-                        ChatId = defaultChatId,
-                        UserId = adminUserId,
+                        DbChatId = defaultChatId,
+                        DbUserId = adminUserId,
                     },
                 },
             };
