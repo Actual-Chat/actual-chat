@@ -12,11 +12,5 @@ export interface VirtualListRenderState {
     hasVeryLastItem: boolean;
 
     scrollToKey?: string;
-    useSmoothScroll: boolean;
-    items: Record<string, VirtualListRenderItem>;
 }
 
-export interface VirtualListRenderItem {
-    countAs: number;
-    dataHash: number;
-}

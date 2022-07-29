@@ -16,7 +16,7 @@
     <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="1" />
     <option name="PROJECT_KIND" value="DotNetCore" />
     <option name="PROJECT_TFM" value="net6.0" />
-    <browser url="https://localhost:7081/chat/the-actual-one" name="98ca6316-2f89-46d9-a9e5-fa9e2b0625b3" start="true" />
+    <browser url="https://local.actual.chat/chat/the-actual-one" name="98ca6316-2f89-46d9-a9e5-fa9e2b0625b3" />
     <method v="2">
       <option name="Build" />
     </method>

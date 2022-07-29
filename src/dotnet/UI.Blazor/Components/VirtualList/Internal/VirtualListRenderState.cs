@@ -15,6 +15,4 @@ public class VirtualListRenderState
     public bool HasVeryLastItem { get; set; }
 
     public string? ScrollToKey { get; set; }
-
-    public Dictionary<string, VirtualListRenderItem> Items { get; set; } = null!;
 }

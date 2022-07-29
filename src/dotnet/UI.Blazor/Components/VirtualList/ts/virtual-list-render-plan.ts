@@ -1,9 +1,7 @@
 import { ItemRenderPlan } from './item-render-plan';
 import { Range } from './range';
 import { RangeExt } from './range-ext';
-import { VirtualListEdge } from './virtual-list-edge';
 import { VirtualListClientSideState } from './virtual-list-client-side-state';
-import { VirtualListEdgeExt } from './virtual-list-edge-ext';
 import { VirtualListAccessor } from './virtual-list-accessor';
 
 export class VirtualListRenderPlan {
@@ -13,11 +11,11 @@ export class VirtualListRenderPlan {
     public itemByKey: Record<string, ItemRenderPlan>;
     public items: ItemRenderPlan[];
 
-    constructor(virtualList: VirtualListAccessor, lastPlan?: VirtualListRenderPlan) {
+    constructor(virtualList: VirtualListAccessor) {
         this.virtualList = virtualList;
         this.itemByKey = {};
         this.items = [];
-        this.update(lastPlan);
+        this.update();
     }
 
     public get fullRange(): Range<number> | null {
@@ -32,10 +30,6 @@ export class VirtualListRenderPlan {
 
     public get hasUnmeasuredItems(): boolean {
         return !this.itemRange;
-    }
-
-    public get alignmentEdge(): VirtualListEdge {
-        return this.virtualList.alignmentEdge;
     }
 
     public get spacerSize(): number {
@@ -55,7 +49,7 @@ export class VirtualListRenderPlan {
     }
 
     public next(): VirtualListRenderPlan {
-        return new VirtualListRenderPlan(this.virtualList, this);
+        return new VirtualListRenderPlan(this.virtualList);
     }
 
     public getTrimmedLoadZoneRange(viewport: Range<number>): Range<number> {
@@ -65,25 +59,17 @@ export class VirtualListRenderPlan {
         );
     }
 
-    private update(lastPlan?: VirtualListRenderPlan): void {
+    private update(): void {
         const statistics = this.virtualList.statistics;
-        const clientSideItems = this.virtualList.clientSideState?.items;
-        const prevItemByKey = lastPlan?.itemByKey;
+        const clientSideItems = this.virtualList.items;
 
         let hasUnmeasuredItems: boolean = false;
         let itemRange = new Range(0, 0);
 
-        for (const [key, item] of Object.entries(this.virtualList.renderState.items)) {
+        for (const [key, item] of Object.entries(clientSideItems)) {
             const newItem = new ItemRenderPlan(key, item);
-            if (clientSideItems != null && clientSideItems[key] != null) {
-                const clientSideItem = clientSideItems[key];
-                const size = clientSideItem.size;
-                statistics.addItem(size, item.countAs);
-                newItem.range = new Range(0, size);
-            } else if (prevItemByKey != null && prevItemByKey[key] != null) {
-                const oldItem = prevItemByKey[key];
-                newItem.range = oldItem.range;
-            }
+            statistics.addItem(item.size, item.countAs);
+            newItem.range = new Range(0, item.size);
 
             this.items.push(newItem);
             this.itemByKey[key] = newItem;
@@ -117,7 +103,7 @@ export class VirtualListRenderPlan {
             this.viewport = RangeExt.scrollInto(
                 viewport,
                 this.fullRange,
-                VirtualListEdgeExt.isEnd(this.alignmentEdge));
+                true);
         }
     }
 

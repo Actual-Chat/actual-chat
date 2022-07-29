@@ -26,7 +26,6 @@
         HasVeryFirstItem = Data.HasVeryFirstItem,
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
-        Items = Data.Items.ToDictionary(i => i.Key.Value, i => new VirtualListRenderItem(i)),
     };
     var items = Data.Items;
     LastData = Data;
@@ -36,18 +35,17 @@
      class="virtual-list @invFlexClass @Class"
      style="@Style">
 
-    <div @key="@("<RenderIndex>")"
+    <div @key="VirtualListSpecialKeys.RenderIndex"
          data-render-index="@renderIndex"
          class="data render-index hidden @flexClass flex-none">
     </div>
 
-    <div @key="@("<RenderState>")"
+    <div @key="VirtualListSpecialKeys.RenderState"
          class="data render-state hidden @flexClass flex-none">
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
-
-    <div @key="@("<EndSpacer>")"
+    <div @key="VirtualListSpecialKeys.EndSpacer"
          class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
          style="height: @(endSpacerSize)px">
         <SkeletonContainer Class="@flexClass">
@@ -59,18 +57,27 @@
         </SkeletonContainer>
     </div>
 
-
-    <ul class="virtual-container @flexClass">
+    <ul @key="VirtualListSpecialKeys.Container"
+        class="virtual-container @flexClass">
         @foreach (var item in items) {
-            <li @key="item.Key"
-                class="item flex-none"
-                data-key="@item.Key">
-                @Item(item)
-            </li>
+            @if (item.CountAs != 1) {
+                <li @key="item.Key"
+                    class="item flex-none new"
+                    data-key="@item.Key"
+                    data-count-as="@item.CountAs">
+                    @Item(item)
+                </li>
+            } else {
+                <li @key="item.Key"
+                    class="item flex-none new"
+                    data-key="@item.Key">
+                    @Item(item)
+                </li>
+            }
         }
     </ul>
 
-    <div @key="@("<Spacer>")"
+    <div @key="VirtualListSpecialKeys.Spacer"
          class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
          style="height: @(spacerSize)px">
         <SkeletonContainer Class="@flexClass">

@@ -1,9 +1,9 @@
 import { Range } from './range';
 import { RangeExt } from './range-ext';
-import { VirtualListRenderItem } from './virtual-list-render-state';
+import { VirtualListClientSideItem } from './virtual-list-client-side-state';
 
 export class ItemRenderPlan {
-    constructor(public Key: string, public Item: VirtualListRenderItem) {
+    constructor(public Key: string, public Item: VirtualListClientSideItem) {
     }
 
     range: Range<number> = new Range(-1, -2);

@@ -12,6 +12,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
     public bool IsUnread { get; init; }
+    public bool IsNew { get; init; }
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
     public bool IsQuote { get; init; }
@@ -55,6 +56,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
         long? lastReadEntryId,
+        HashSet<long> existingEntryIds,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -76,6 +78,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
+                IsNew = !existingEntryIds.Contains(entry.Id),
                 IsFirstUnread = isUnread && !isPrevUnread,
             };
             result.Add(model);

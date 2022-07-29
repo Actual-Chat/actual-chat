@@ -3,10 +3,6 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public delegate Task<VirtualListData<TItem>> VirtualListDataSource<TItem>(
-    VirtualListDataQuery query,
-    CancellationToken cancellationToken) where TItem : IVirtualListItem;
-
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
@@ -30,13 +26,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
 
-    [Parameter]
-    [EditorRequired]
-    public VirtualListDataSource<TItem> DataSource { get; set; } =
-        (_, _) => Task.FromResult(VirtualListData<TItem>.None);
-
-    [Parameter]
-    [EditorRequired]
+    [Parameter, EditorRequired]
+    public IVirtualListDataSource<TItem> DataSource { get; set; } = VirtualListDataSource<TItem>.Empty;
+    [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
     public RenderFragment<TItem> Item { get; set; } = null!;
 
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
@@ -85,13 +77,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                    $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                    Ref,
-                    BlazorRef,
-                    LoadZoneSize,
-                    BufferZoneSize,
-                    DebugMode
-                );
+                $"{BlazorUICoreModule.ImportName}.VirtualList.create",
+                Ref,
+                BlazorRef,
+                LoadZoneSize,
+                BufferZoneSize,
+                DebugMode);
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
     }
@@ -107,7 +98,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var query = Query;
         VirtualListData<TItem> response;
         try {
-            response = await DataSource.Invoke(query, cancellationToken);
+            response = await DataSource.GetData(query, LastData, cancellationToken);
             LastQuery = Query = response.Query;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
