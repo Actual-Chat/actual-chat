@@ -14,10 +14,10 @@ public class ChatModule : HostModule
     {
         if (HostInfo.HostKind == HostKind.WebServer) {
             var rawParser = new MarkupParser();
-            var sharedCache = new ConcurrentLruCache<string, Markup>(65536, HardwareInfo.GetProcessorCountPo2Factor(4));
+            var sharedCache = new ConcurrentLruCache<string, Markup>(16384, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
-            services.AddScoped<IMarkupParser>(c => {
+            services.AddScoped<IMarkupParser>(_ => {
                 var scopedCache = new ThreadSafeLruCache<string, Markup>(256);
                 var scopedParser = new CachingMarkupParser(sharedParser, scopedCache);
                 return scopedParser;
