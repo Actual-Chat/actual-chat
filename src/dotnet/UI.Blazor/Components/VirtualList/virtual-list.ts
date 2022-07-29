@@ -16,7 +16,6 @@ const ScrollStoppedTimeout: number = 64;
 const UpdateClientSideStateTimeout: number = 320;
 const IronPantsHandleTimeout: number = 320;
 const SizeEpsilon: number = 1;
-const ItemSizeEpsilon: number = 1;
 const MoveSizeEpsilon: number = 28;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
@@ -36,8 +35,7 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
     private readonly _ironPantsHandlerInterval: number;
-
-    private readonly _items: Record<string, VirtualListClientSideItem>;
+    private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
 
     private _isDisposed = false;
@@ -60,9 +58,9 @@ export class VirtualList implements VirtualListAccessor {
 
     public renderState: VirtualListRenderState;
     public clientSideState: VirtualListClientSideState;
-    public statistics: VirtualListStatistics = new VirtualListStatistics();
-    public loadZoneSize;
-    public bufferZoneSize;
+    public readonly statistics: VirtualListStatistics = new VirtualListStatistics();
+    public readonly loadZoneSize;
+    public readonly items: Record<string, VirtualListClientSideItem>;
 
     public constructor(
         ref: HTMLElement,
@@ -77,7 +75,7 @@ export class VirtualList implements VirtualListAccessor {
 
         this._debugMode = debugMode;
         this.loadZoneSize = loadZoneSize;
-        this.bufferZoneSize = bufferZoneSize;
+        this._bufferZoneSize = bufferZoneSize;
         this._ref = ref;
         this._blazorRef = backendRef;
         this._isDisposed = false;
@@ -100,8 +98,9 @@ export class VirtualList implements VirtualListAccessor {
         // @ts-ignore
         this._ironPantsHandlerInterval = setInterval(this.onIronPantsHandle, IronPantsHandleTimeout);
 
-        this._items = {};
         this._unmeasuredItems = new Set<string>();
+
+        this.items = {};
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -117,14 +116,12 @@ export class VirtualList implements VirtualListAccessor {
         };
         this.clientSideState = {
             renderIndex: 0,
-            spacerSize: 0,
-            endSpacerSize: 0,
+
             scrollTop: 0,
-            scrollHeight: 0,
             viewportHeight: 0,
+            stickyEdge: null,
 
             visibleKeys: [],
-            items: {},
         };
 
         this._plan = new VirtualListRenderPlan(this);
@@ -166,7 +163,7 @@ export class VirtualList implements VirtualListAccessor {
 
                     const itemRef = node as HTMLElement;
                     const key = getItemKey(itemRef);
-                    delete this._items[key];
+                    delete this.items[key];
                     this._unmeasuredItems.delete(key);
                     this._sizeObserver.unobserve(itemRef);
                 }
@@ -183,12 +180,12 @@ export class VirtualList implements VirtualListAccessor {
             const key = getItemKey(itemRef);
             const countAs = getItemCountAs(itemRef);
 
-            if (this._items.hasOwnProperty(key)) {
+            if (this.items.hasOwnProperty(key)) {
                 itemRef.classList.remove('new');
-                return;
+                continue;
             }
 
-            this._items[key] = {
+            this.items[key] = {
                 size: -1,
                 countAs: countAs ?? 1,
             }
@@ -206,7 +203,7 @@ export class VirtualList implements VirtualListAccessor {
             const key = getItemKey(entry.target as HTMLElement);
             this._unmeasuredItems.delete(key);
 
-            const item = this._items[key];
+            const item = this.items[key];
             if (item) {
                 item.size = contentBoxSize.blockSize;
             }
@@ -441,7 +438,6 @@ export class VirtualList implements VirtualListAccessor {
 
                         const spacerSize = spacerRect.height;
                         const endSpacerSize = endSpacerRect.height;
-                        const scrollHeight = this._ref.scrollHeight;
                         const viewportHeight = this._ref.clientHeight;
                         const scrollTop = this.getScrollTop();
 
@@ -481,65 +477,33 @@ export class VirtualList implements VirtualListAccessor {
                         state = {
                             renderIndex: rs.renderIndex,
 
-                            spacerSize: spacerSize,
-                            endSpacerSize: endSpacerSize,
-                            scrollHeight: scrollHeight,
                             scrollTop: scrollTop,
                             viewportHeight: viewportHeight,
                             stickyEdge: this._stickyEdge,
-                            scrollAnchorKey: this._scrollTopPivotRef ? getItemKey(this._scrollTopPivotRef) : null,
 
-                            items: {}, // Will be updated further
                             visibleKeys: [],
                         } as VirtualListClientSideState;
 
                         let gotResizedItems = false;
                         const visibleItemKeys = [];
                         for (const itemRef of this.getItemRefs()) {
-                            const key = getItemKey(itemRef);
-                            const countAs = getItemCountAs(itemRef);
-                            const knownItem = cs.items[key];
-                            const knownSize = knownItem?.size ?? -1;
-                            const size = itemRef.getBoundingClientRect().height;
                             //TODO(AK): Optimize size measurements with Resize Observer API + dataHash comparison
                             //TODO(AK): Optimize visibility tracking with Intersection Observer API
                             const isVisible = this.isItemVisible(itemRef);
                             if (isVisible) {
+                                const key = getItemKey(itemRef);
                                 visibleItemKeys.push(key);
-                            }
-                            if (knownSize < 0) {
-                                // new item
-                                state.items[key] = {
-                                    size,
-                                    countAs: countAs ?? 1,
-                                };
-                            } else if (Math.abs(size - knownSize) > ItemSizeEpsilon) {
-                                // existing item with updated size
-                                state.items[key] = {
-                                    size,
-                                    countAs: countAs ?? 1,
-                                };
-                                gotResizedItems = true;
-                            }
-                            else {
-                                // unchanged existing item
-                                state.items[key] = {
-                                    size,
-                                    countAs: countAs ?? 1,
-                                };
                             }
                         }
                         state.visibleKeys = visibleItemKeys;
 
                         if (this._debugMode) {
-                            const hasItemSizes = Object.keys(state.items).length > 0 || Object.keys(cs.items).length > 0;
                             const isFirstRender = rs.renderIndex <= 1;
-                            const isScrollHappened = hasItemSizes && cs.scrollTop != null && Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
+                            const isScrollHappened = cs.scrollTop != null && Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
                             const isScrollTopChanged = cs.scrollTop == null || Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
-                            const isScrollHeightChanged = cs.scrollHeight == null || Math.abs(state.scrollHeight - cs.scrollHeight) > MoveSizeEpsilon;
                             const isViewportHeightChanged = cs.viewportHeight == null || Math.abs(state.viewportHeight - cs.viewportHeight) > MoveSizeEpsilon;
 
-                            const isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isViewportHeightChanged;
+                            const isViewportChanged = isScrollTopChanged || isViewportHeightChanged;
                             const isUserScrollDetected = isScrollHappened && !gotResizedItems;
                             if (isUserScrollDetected || isFirstRender || endSpacerSize == 0 || spacerSize == 0)
                                 this.renewStickyEdge();
@@ -548,10 +512,10 @@ export class VirtualList implements VirtualListAccessor {
                                 || cs.stickyEdge?.edge !== state.stickyEdge?.edge;
 
                             console.log(`${LogScope}.updateClientSideStateImpl: changes:` +
-                                            (Object.keys(state.items).length > 0 ? ' [items]' : '') +
-                                            (isUserScrollDetected ? ' [user scroll]' : '') +
-                                            (isViewportChanged ? ' [viewport]' : '') +
-                                            (isStickyEdgeChanged ? ' [sticky edge]' : ''));
+                                (Object.keys(this.items).length > 0 ? ' [items]' : '') +
+                                (isUserScrollDetected ? ' [user scroll]' : '') +
+                                (isViewportChanged ? ' [viewport]' : '') +
+                                (isStickyEdgeChanged ? ' [sticky edge]' : ''));
                         }
                     } finally {
                         resolve(state);
@@ -779,8 +743,8 @@ export class VirtualList implements VirtualListAccessor {
             loadEnd = alreadyLoaded.End;
         const loadZone = new Range(loadStart, loadEnd);
         const bufferZone = new Range(
-            Math.max(viewport.Start - this.bufferZoneSize, 0),
-            viewport.End + this.bufferZoneSize);
+            Math.max(viewport.Start - this._bufferZoneSize, 0),
+            viewport.End + this._bufferZoneSize);
 
         if (plan.hasUnmeasuredItems) // Let's wait for measurement to complete first
             return this._lastQuery;

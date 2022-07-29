@@ -3,14 +3,10 @@ import { VirtualListStickyEdgeState } from './virtual-list-sticky-edge-state';
 export interface VirtualListClientSideState {
     renderIndex: number;
 
-    spacerSize: number;
-    endSpacerSize: number;
-    scrollHeight: number;
     scrollTop: number;
     viewportHeight: number;
-    stickyEdge?: Required<VirtualListStickyEdgeState>;
+    stickyEdge: Required<VirtualListStickyEdgeState> | null;
 
-    items: Record<string, VirtualListClientSideItem>;
     visibleKeys: string[];
 }
 
