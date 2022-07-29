@@ -103,7 +103,7 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
 
     // Equality
 
-    public bool Equals(ParsedChatId other) => Id.Equals(other.Id);
+    public bool Equals(ParsedChatId other) => Id == other.Id;
     public override bool Equals(object? obj) => obj is ParsedChatId other && Equals(other);
     public override int GetHashCode() => Id.GetHashCode();
     public static bool operator ==(ParsedChatId left, ParsedChatId right) => left.Equals(right);
