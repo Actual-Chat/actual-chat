@@ -31,10 +31,30 @@ public class AppHost : IDisposable
                 .ConfigureAppConfiguration(ConfigureAppConfiguration)
                 .UseStartup<Startup>()
                 .ConfigureServices(ConfigureAppServices)
+                .ConfigureServices(ValidateContainerRegistrations)
             );
 
         Host = webBuilder.Build();
         return Task.CompletedTask;
+    }
+
+    private void ValidateContainerRegistrations(WebHostBuilderContext webHostBuilderContext, IServiceCollection services)
+    {
+        if (!webHostBuilderContext.HostingEnvironment.IsDevelopment())
+            return;
+
+        var transientDisposables = services.Where(x => x.Lifetime == ServiceLifetime.Transient)
+            .Select(x => AsDisposable(x.ImplementationType))
+            .SkipNullItems()
+            .Where(x => x.Namespace?.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) != true)
+            .ToList();
+        if (transientDisposables.Any()) {
+            var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
+            throw new Exception($"Disposable transient services are not allowed: {transientDisposablesString}");
+        }
+
+        Type? AsDisposable(Type? type) => type?.IsAssignableTo(typeof(IDisposable)) == true
+            || type?.IsAssignableTo(typeof(IAsyncDisposable)) == true ? type : null;
     }
 
     public virtual async Task Initialize(CancellationToken cancellationToken = default)
