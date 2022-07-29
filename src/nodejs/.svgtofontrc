@@ -1,0 +1,6 @@
+{
+    "fontName": "icon",
+    "emptyDist": true,
+    "css": true,
+    "outSVGReact": false
+}
