@@ -20,11 +20,9 @@ internal sealed class MauiClientAuth : IClientAuth
     {
         if (string.Equals(GoogleSchemeName, scheme, StringComparison.Ordinal)) {
             #if ANDROID
-            if (DeviceInfo.Platform == DevicePlatform.Android) {
-                var activity = (MainActivity)Platform.CurrentActivity!;
-                await activity.DefaultSignIn().ConfigureAwait(false);
-                return;
-            }
+            var activity = (MainActivity)Platform.CurrentActivity!;
+            await activity.SignInWithGoogle().ConfigureAwait(false);
+            return;
             #endif
         }
 
@@ -34,11 +32,10 @@ internal sealed class MauiClientAuth : IClientAuth
 
     public async ValueTask SignOut()
     {
-        // TODO(DF): need to find out correct way to sign out
         #if ANDROID
-        if (DeviceInfo.Platform == DevicePlatform.Android) {
-            var activity = (MainActivity)Platform.CurrentActivity!;
-            await activity.DefaultSignOut().ConfigureAwait(true);
+        var activity = (MainActivity)Platform.CurrentActivity!;
+        if (activity.IsSignedInWithGoogle()) {
+            await activity.SignOutWithGoogle().ConfigureAwait(true);
             return;
         }
         #endif

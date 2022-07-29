@@ -14,7 +14,7 @@ namespace ActualChat.App.Maui;
 [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density )]
 public class MainActivity : MauiAppCompatActivity
 {
-    private const int RC_DEFAULT_SIGN_IN = 800;
+    private const int RC_SIGN_IN_GOOGLE = 800;
     private const string TAG = nameof(MainActivity);
     private const string GoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
 
@@ -44,21 +44,24 @@ public class MainActivity : MauiAppCompatActivity
         // Build a GoogleSignInClient with the options specified by gso.
         mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
 
-        //// Check for existing Google Sign In account, if the user is already signed in
-        //// the GoogleSignInAccount will be non-null.
-        //var account = GoogleSignIn.GetLastSignedInAccount(this);
-        //if (account != null)
-        //    OnDefaultSignIn(account);
-        // TODO(DM): implement automatic sign in if account not null 
+        _ = AutoSignInOnStart();
     }
 
-    public Task DefaultSignIn()
+    public Task SignInWithGoogle()
     {
-        StartActivityForResult(mGoogleSignInClient.SignInIntent, RC_DEFAULT_SIGN_IN);
+        StartActivityForResult(mGoogleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
         return Task.CompletedTask;
     }
 
-    public async Task DefaultSignOut()
+    public bool IsSignedInWithGoogle()
+    {
+        // Check for existing Google Sign In account, if the user is already signed in
+        // the GoogleSignInAccount will be non-null.
+        var account = GoogleSignIn.GetLastSignedInAccount(this);
+        return account != null;
+    }
+
+    public async Task SignOutWithGoogle()
     {
         await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
         var mobileAuthClient = ServiceLocator.Services.GetRequiredService<MobileAuthClient>();
@@ -69,13 +72,13 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == RC_DEFAULT_SIGN_IN) {
+        if (requestCode == RC_SIGN_IN_GOOGLE) {
             async Task CheckResult(Intent data1)
             {
                 try {
                     var account = await GoogleSignIn.GetSignedInAccountFromIntentAsync(data1).ConfigureAwait(true);
                     if (account != null)
-                        _ = OnDefaultSignIn(account);
+                        _ = OnSignInWithGoogle(account);
                 }
                 catch (Android.Gms.Common.Apis.ApiException e) {
                     Log.Debug(TAG, "Could not get an account from intent: " + e.ToString());
@@ -86,12 +89,19 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-    private async Task OnDefaultSignIn(GoogleSignInAccount account)
+    private async Task OnSignInWithGoogle(GoogleSignInAccount account)
     {
         var code = account.ServerAuthCode;
-        if (!string.IsNullOrEmpty(code)) {
-            var mobileAuthClient = ServiceLocator.Services.GetRequiredService<MobileAuthClient>();
-            await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
-        }
+        if (string.IsNullOrEmpty(code))
+            return;
+        var mobileAuthClient = ServiceLocator.Services.GetRequiredService<MobileAuthClient>();
+        await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
+    }
+
+    private async Task AutoSignInOnStart()
+    {
+        // Check for existing Google Sign In account, if it exists then request authentication code and authenticate session.
+        if (IsSignedInWithGoogle())
+            await SignInWithGoogle().ConfigureAwait(true);
     }
 }
