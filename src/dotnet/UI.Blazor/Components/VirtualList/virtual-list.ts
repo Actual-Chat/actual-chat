@@ -20,6 +20,7 @@ const ItemSizeEpsilon: number = 1;
 const MoveSizeEpsilon: number = 28;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
+const StickyEdgeTolerance: number = 50;
 
 export class VirtualList implements VirtualListAccessor {
     private readonly _debugMode: boolean = false;
@@ -301,12 +302,12 @@ export class VirtualList implements VirtualListAccessor {
                                 : this.getLastItemKey();
                 if (itemKey == null) {
                     this.setStickyEdge(null);
-                } else if (itemKey !== this._stickyEdge.itemKey) {
+                } else {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
                     // scroll is required for start edge only - the list is reverse-rendered
                     if (this._stickyEdge?.edge === VirtualListEdge.Start) {
                         let itemRef = this.getItemRef(itemKey);
-                        this.scrollTo(itemRef, true);
+                        this.scrollTo(itemRef, false);
                         isScrollHappened = true;
                     }
                 }
@@ -363,6 +364,17 @@ export class VirtualList implements VirtualListAccessor {
 
             if (this._debugMode)
                 console.log(`${LogScope}.onRenderEnd - isScrollHappened: ${isScrollHappened}`);
+            if (isScrollHappened) {
+                // wait for render
+                for (let i = 0; i < 3; i++) {
+                    await new Promise<void>(resolve => {
+                        requestAnimationFrame(time => {
+                            resolve();
+                        });
+                    });
+                }
+                this.renewStickyEdge();
+            }
 
             this._scrollTopPivotRef = null;
             this._scrollTopPivotOffset = null;
@@ -727,7 +739,7 @@ export class VirtualList implements VirtualListAccessor {
             if (stickyEdge.itemKey == null)
                 return;
             const itemRef = this.getItemRef(stickyEdge.itemKey);
-            if (isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect))
+            if (isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect, StickyEdgeTolerance))
                 return this.setStickyEdge(stickyEdge);
         }
         return this.setStickyEdge(null);
@@ -853,6 +865,6 @@ function getItemCountAs(itemRef?: HTMLElement): number | null {
     return parseInt(countString);
 }
 
-function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect): boolean {
-    return rect.bottom > viewRect.top && rect.top < viewRect.bottom;
+function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect, tolerance: number = 0): boolean {
+    return rect.bottom > viewRect.top - tolerance && rect.top < viewRect.bottom + tolerance;
 }
