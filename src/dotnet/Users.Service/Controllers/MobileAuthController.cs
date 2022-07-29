@@ -87,6 +87,7 @@ public class MobileAuthController : Controller
     [HttpGet("signInGoogleWithCode/{sessionId}/{code}")]
     public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
     {
+        // https://developers.google.com/identity/protocols/oauth2
         code = WebUtility.UrlDecode(code);
 
         var schemeName = GoogleDefaults.AuthenticationScheme;

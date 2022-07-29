@@ -158,6 +158,9 @@
     <!-- Generators -->
     <PackageReference Update="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="ActualLab.Generators.Abstractions" Version="$(ActualLabGeneratorsVersion)" />
+
+    <!-- Android -->
+    <PackageReference Update="Xamarin.GooglePlayServices.Auth" Version="120.2.0.1" />
   </ItemGroup>
 
 </Project>

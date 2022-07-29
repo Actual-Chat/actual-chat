@@ -76,6 +76,8 @@ public static class MauiProgram
 
         var mauiApp = builder.Build();
 
+        ServiceLocator.Initialize(mauiApp.Services);
+
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
         StartHostedServices(mauiApp);
@@ -119,6 +121,7 @@ public static class MauiProgram
 
         // Auth
         services.AddScoped<IClientAuth, MauiClientAuth>();
+        services.AddTransient<MobileAuthClient>();
 
         services.AddSingleton<NavigationInterceptor>();
     }

@@ -7,6 +7,9 @@ internal sealed class MauiClientAuth : IClientAuth
     private readonly ClientAppSettings _clientAppSettings;
     private readonly ILogger<MauiClientAuth> _log;
 
+    private const string GoogleSchemeName = "Google";
+    private const string FacebookSchemeName = "Facebook";
+
     public MauiClientAuth(ClientAppSettings clientAppSettings, ILogger<MauiClientAuth> log)
     {
         _clientAppSettings = clientAppSettings;
@@ -15,18 +18,40 @@ internal sealed class MauiClientAuth : IClientAuth
 
     public async ValueTask SignIn(string scheme)
     {
+        if (string.Equals(GoogleSchemeName, scheme, StringComparison.Ordinal)) {
+            #if ANDROID
+            if (DeviceInfo.Platform == DevicePlatform.Android) {
+                var activity = (MainActivity)Platform.CurrentActivity!;
+                await activity.DefaultSignIn().ConfigureAwait(false);
+                return;
+            }
+            #endif
+        }
+
         var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signin/{_clientAppSettings.SessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
     public async ValueTask SignOut()
     {
+        // TODO(DF): need to find out correct way to sign out
+        #if ANDROID
+        if (DeviceInfo.Platform == DevicePlatform.Android) {
+            var activity = (MainActivity)Platform.CurrentActivity!;
+            await activity.DefaultSignOut().ConfigureAwait(true);
+            return;
+        }
+        #endif
+
         var uri = $"{_clientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signout/{_clientAppSettings.SessionId}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
-        => ValueTask.FromResult(new[]{ ("Google", "Google") });
+        => ValueTask.FromResult(new[]{
+                (GoogleSchemeName, "Google"),
+                (FacebookSchemeName, "Facebook")
+            });
 
     private async Task OpenSystemBrowserForSignIn(string url)
     {
