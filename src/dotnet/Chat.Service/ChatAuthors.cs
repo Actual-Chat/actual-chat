@@ -112,7 +112,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         return chatAuthor.ToAuthor();
     }
 
-
     // [ComputeMethod]
     public virtual async Task<Presence> GetAuthorPresence(
         Session session,

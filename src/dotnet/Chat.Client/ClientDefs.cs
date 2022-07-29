@@ -103,9 +103,9 @@ public interface IChatAuthorsClientDef
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetAuthor))]
-    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetAuthorPresence))]
-    Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(CanAddToContacts))]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
