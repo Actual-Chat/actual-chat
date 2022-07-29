@@ -9,7 +9,6 @@ export interface VirtualListClientSideState {
     scrollTop: number;
     viewportHeight: number;
     stickyEdge?: Required<VirtualListStickyEdgeState>;
-    scrollAnchorKey?: string,
 
     items: Record<string, VirtualListClientSideItem>;
     visibleKeys: string[];

@@ -34,10 +34,6 @@ export class VirtualListRenderPlan {
         return !this.itemRange;
     }
 
-    public get alignmentEdge(): VirtualListEdge {
-        return this.virtualList.alignmentEdge;
-    }
-
     public get spacerSize(): number {
         return this.virtualList.renderState.spacerSize;
     }
@@ -110,7 +106,7 @@ export class VirtualListRenderPlan {
             this.viewport = RangeExt.scrollInto(
                 viewport,
                 this.fullRange,
-                VirtualListEdgeExt.isEnd(this.alignmentEdge));
+                true);
         }
     }
 
