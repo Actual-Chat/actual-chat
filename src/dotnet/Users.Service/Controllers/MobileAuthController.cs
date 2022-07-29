@@ -1,10 +1,17 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
+using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using NetBox.Extensions;
 
 namespace ActualChat.Users.Controllers;
 
@@ -77,6 +84,133 @@ public class MobileAuthController : Controller
         }
     }
 
+    [HttpGet("signInGoogleWithCode/{sessionId}/{code}")]
+    public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
+    {
+        code = WebUtility.UrlDecode(code);
+
+        var schemeName = GoogleDefaults.AuthenticationScheme;
+        var options = _services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
+            .Get(schemeName);
+
+        using var tokens = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
+        if (tokens.Error != null)
+            return BadRequest(tokens.Error);
+        if (string.IsNullOrEmpty(tokens.AccessToken))
+            return BadRequest("Failed to retrieve access token.");
+
+        // Get the Google user
+        var request = new HttpRequestMessage(HttpMethod.Get, options.UserInformationEndpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        var userResponse = await options.Backchannel.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!userResponse.IsSuccessStatusCode)
+            return BadRequest($"An error occurred when retrieving Google user information ({userResponse.StatusCode}). Please check if the authentication information is correct.");
+
+        // Build a principal from the Google user
+        var claimsIssuer = options.ClaimsIssuer ?? schemeName;
+        var identity = new ClaimsIdentity(claimsIssuer);
+        var json = await userResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        using (var payload = JsonDocument.Parse(json)) {
+            var userData = payload.RootElement;
+            foreach (var action in options.ClaimActions)
+                action.Run(userData, identity, claimsIssuer);
+        }
+        var principal = new ClaimsPrincipal(identity);
+
+        // Authenticate session with the principal
+        var oldUser = HttpContext.User;
+        HttpContext.User = principal;
+        try {
+            var helper = _services.GetRequiredService<ServerAuthHelper>();
+            await helper.UpdateAuthState(
+                    new Session(sessionId),
+                    HttpContext,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            HttpContext.User = oldUser;
+        }
+
+        return this.Ok();
+    }
+
+    // <summary>
+    // Exchanges the authorization code for a authorization token from the remote provider.
+    // Implementation is a copy from Microsoft.AspNetCore.Authentication.OAuth.OAuthHandler with small modifications.
+    // </summary>
+    private async Task<OAuthTokenResponse> ExchangeCodeAsync(string code, OAuthOptions options, CancellationToken requestAborted)
+    {
+        var tokenRequestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
+            { "client_id", options.ClientId },
+            { "redirect_uri", ""  /* context.RedirectUri */ },
+            { "client_secret", options.ClientSecret },
+            { "code", code },
+            { "grant_type", "authorization_code" },
+        };
+
+        // We do not use PKCE here, TODO(DF): read more about PKCE.
+        // // PKCE https://tools.ietf.org/html/rfc7636#section-4.5, see BuildChallengeUrl
+        // if (context.Properties.Items.TryGetValue(OAuthConstants.CodeVerifierKey, out var codeVerifier))
+        // {
+        //     tokenRequestParameters.Add(OAuthConstants.CodeVerifierKey, codeVerifier!);
+        //     context.Properties.Items.Remove(OAuthConstants.CodeVerifierKey);
+        // }
+
+        var backChannel = options.Backchannel;
+
+        var requestContent = new FormUrlEncodedContent(tokenRequestParameters!);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, options.TokenEndpoint);
+        requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        requestMessage.Content = requestContent;
+        requestMessage.Version = backChannel.DefaultRequestVersion;
+        var response = await backChannel.SendAsync(requestMessage, requestAborted).ConfigureAwait(false);
+        if (response.IsSuccessStatusCode) {
+            var json = await response.Content.ReadAsStringAsync(requestAborted).ConfigureAwait(false);
+            var payload = JsonDocument.Parse(json);
+            return OAuthTokenResponse.Success(payload);
+        }
+        else {
+            var error = "OAuth token endpoint failure: " + await Display(response).ConfigureAwait(false);
+            return OAuthTokenResponse.Failed(new Exception(error));
+        }
+    }
+
+    [HttpGet("signInGoogleWithIdToken/{sessionId}/{idToken}")]
+    public async Task<IActionResult> SignInGoogleWithIdToken(string sessionId, string idToken, CancellationToken cancellationToken)
+    {
+        idToken = WebUtility.UrlDecode(idToken);
+
+        var options = _services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
+            .Get(GoogleDefaults.AuthenticationScheme);
+        var clientId = options.ClientId;
+
+        try {
+            var payload = await GoogleJsonWebSignature.ValidateAsync(idToken,
+                    new GoogleJsonWebSignature.ValidationSettings {
+                        Audience = new[] {clientId}
+                    })
+                .ConfigureAwait(false);
+            var json = payload.JsonSerialise();
+
+            throw new NotImplementedException("Create a principal");
+            return Content(json);
+        }
+        catch (Exception e) {
+            return BadRequest(e.ToString());
+        }
+    }
+
+    private static async Task<string> Display(HttpResponseMessage response)
+    {
+        var output = new StringBuilder();
+        output.Append("Status: " + response.StatusCode + ";");
+        output.Append("Headers: " + response.Headers.ToString() + ";");
+        output.Append("Body: " + await response.Content.ReadAsStringAsync() + ";");
+        return output.ToString();
+    }
+
     [HttpGet("signOut/{sessionId}")]
     public async Task SignOut(string sessionId, CancellationToken cancellationToken)
     {
@@ -86,6 +220,7 @@ public class MobileAuthController : Controller
         await _commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
 
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
+
     }
 
     private async Task WriteAutoClosingMessage(CancellationToken cancellationToken)
