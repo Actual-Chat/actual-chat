@@ -92,6 +92,9 @@
     @apply absolute;
 }
 
+.playback-wrapper .loud-btn {
+    @apply self-center;
+}
 .playback-wrapper.listen-on {
     @apply w-28;
 }
