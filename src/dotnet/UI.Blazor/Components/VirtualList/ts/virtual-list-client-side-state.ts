@@ -13,10 +13,6 @@ export interface VirtualListClientSideState {
 
     items: Record<string, VirtualListClientSideItem>;
     visibleKeys: string[];
-
-    isViewportChanged: boolean;
-    isStickyEdgeChanged: boolean;
-    isUserScrollDetected: boolean;
 }
 
 export interface VirtualListClientSideItem {
