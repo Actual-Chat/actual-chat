@@ -132,8 +132,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var chat = Chat;
         var chatId = chat.Id.Value;
-        var currentAuthor = await ChatAuthors.Get(Session, chatId, cancellationToken);
-        var currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
+        var author = await ChatAuthors.Get(Session, chatId, cancellationToken);
+        var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryId?.Value ?? 0;
         var entryId = lastReadEntryId;
@@ -146,7 +146,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != currentAuthorId || entry.Id <= _initialLastReadEntryId)
+            if (entry.AuthorId != authorId || entry.Id <= _initialLastReadEntryId)
                 continue;
 
             _initialLastReadEntryId = entry.Id;
@@ -240,8 +240,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeToken.IsCancellationRequested)
             return;
 
-        var currentUri = new Uri(Nav.Uri);
-        var entryIdString = currentUri.Fragment.TrimStart('#');
+        var uri = new Uri(Nav.Uri);
+        var entryIdString = uri.Fragment.TrimStart('#');
         if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
             NavigateToEntry(entryId);
     }
