@@ -277,7 +277,9 @@ module.exports = {
       'width-full-to-half': 'width-full-to-half 500ms ease-in-out',
       'width-full-to-60': 'width-full-to-60 500ms ease-in-out',
       'loud-show': 'loud-show 500ms ease-in-out',
+      'loud-show-text-mode': 'loud-show-text-mode 500ms ease-in-out',
       'loud-hide': 'loud-hide 500ms ease-in-out',
+      'loud-hide-text-mode': 'loud-hide-text-mode 500ms ease-in-out',
       'scale-to-full': 'scale-to-full 1s ease-in-out',
       'scale-to-5': 'scale-to-5 500ms ease-in-out',
 
@@ -901,10 +903,26 @@ module.exports = {
           transform: 'translateX(1.5rem) scale(.05)',
         },
         to: {
+          transform: 'translateX(3.5rem) scale(1)',
+        },
+      },
+      'loud-show-text-mode': {
+        from: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+        to: {
           transform: 'translateX(3rem) scale(1)',
         },
       },
       'loud-hide': {
+        from: {
+          transform: 'translateX(3.5rem) scale(1)',
+        },
+        to: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+      },
+      'loud-hide-text-mode': {
         from: {
           transform: 'translateX(3rem) scale(1)',
         },
