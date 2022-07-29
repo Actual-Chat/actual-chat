@@ -120,7 +120,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     protected override Task PlayInternal(CancellationToken cancellationToken)
         => base.PlayInternal(cancellationToken)
-            .ContinueWith(async _ => await CircuitInvoke(
+            .ContinueWith(_ => CircuitInvoke(
                 async () => {
                     var (jsRef, blazorRef) = (_jsRef, _blazorRef);
                     (_jsRef, _blazorRef) = (null, null);
@@ -137,11 +137,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
-            ).ConfigureAwait(false),
-            CancellationToken.None,
-            TaskContinuationOptions.RunContinuationsAsynchronously,
-            TaskScheduler.Default
-        );
+            ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });

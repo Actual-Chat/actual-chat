@@ -65,7 +65,7 @@ public abstract class TrackPlayer : ProcessorBase
                         catch {
                             // Intended
                         }
-                    }, TaskScheduler.Default);
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 #pragma warning disable MA0100
                 return _whenPlaying;
 #pragma warning restore MA0100

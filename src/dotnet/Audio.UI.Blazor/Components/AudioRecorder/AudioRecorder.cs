@@ -116,7 +116,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 
                 _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by _js backend");
                 await OnRecordingStopped().ConfigureAwait(true);
-            }, TaskScheduler.Current);
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("stopRecording").ConfigureAwait(false);
