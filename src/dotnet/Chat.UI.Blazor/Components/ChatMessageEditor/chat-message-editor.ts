@@ -95,13 +95,11 @@ export class ChatMessageEditor {
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
-        if (isTextMode) {
+        if (isTextMode)
             this.editorDiv.classList.add('text-mode');
-            this.animationOff();
-        } else {
+        else
             this.editorDiv.classList.remove('text-mode');
-            this.animationOff();
-        }
+        this.animationOff();
     }
 
     private animationOff() : void {
