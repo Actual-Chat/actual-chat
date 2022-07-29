@@ -124,10 +124,6 @@ export class VirtualList implements VirtualListAccessor {
             scrollHeight: 0,
             viewportHeight: 0,
 
-            isStickyEdgeChanged: false,
-            isUserScrollDetected: false,
-            isViewportChanged: false,
-
             visibleKeys: [],
             items: {},
         };
@@ -494,10 +490,6 @@ export class VirtualList implements VirtualListAccessor {
 
                             items: {}, // Will be updated further
                             visibleKeys: [],
-
-                            isViewportChanged: false, // Will be updated further
-                            isStickyEdgeChanged: false, // Will be updated further
-                            isUserScrollDetected: false, // Will be updated further
                         } as VirtualListClientSideState;
 
                         let gotResizedItems = false;
@@ -538,27 +530,27 @@ export class VirtualList implements VirtualListAccessor {
                         }
                         state.visibleKeys = visibleItemKeys;
 
-                        const hasItemSizes = Object.keys(state.items).length > 0 || Object.keys(cs.items).length > 0;
-                        const isFirstRender = rs.renderIndex <= 1;
-                        const isScrollHappened = hasItemSizes && cs.scrollTop != null && Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
-                        const isScrollTopChanged = cs.scrollTop == null || Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
-                        const isScrollHeightChanged = cs.scrollHeight == null || Math.abs(state.scrollHeight - cs.scrollHeight) > MoveSizeEpsilon;
-                        const isViewportHeightChanged = cs.viewportHeight == null || Math.abs(state.viewportHeight - cs.viewportHeight) > MoveSizeEpsilon;
-
-                        state.isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isViewportHeightChanged;
-                        state.isUserScrollDetected = isScrollHappened && !gotResizedItems;
-                        if (state.isUserScrollDetected || isFirstRender || endSpacerSize == 0 || spacerSize == 0)
-                            this.renewStickyEdge();
-                        state.isStickyEdgeChanged =
-                            cs.stickyEdge?.itemKey !== state.stickyEdge?.itemKey
-                            || cs.stickyEdge?.edge !== state.stickyEdge?.edge;
-
                         if (this._debugMode) {
+                            const hasItemSizes = Object.keys(state.items).length > 0 || Object.keys(cs.items).length > 0;
+                            const isFirstRender = rs.renderIndex <= 1;
+                            const isScrollHappened = hasItemSizes && cs.scrollTop != null && Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
+                            const isScrollTopChanged = cs.scrollTop == null || Math.abs(state.scrollTop - cs.scrollTop) > MoveSizeEpsilon;
+                            const isScrollHeightChanged = cs.scrollHeight == null || Math.abs(state.scrollHeight - cs.scrollHeight) > MoveSizeEpsilon;
+                            const isViewportHeightChanged = cs.viewportHeight == null || Math.abs(state.viewportHeight - cs.viewportHeight) > MoveSizeEpsilon;
+
+                            const isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isViewportHeightChanged;
+                            const isUserScrollDetected = isScrollHappened && !gotResizedItems;
+                            if (isUserScrollDetected || isFirstRender || endSpacerSize == 0 || spacerSize == 0)
+                                this.renewStickyEdge();
+                            const isStickyEdgeChanged =
+                                cs.stickyEdge?.itemKey !== state.stickyEdge?.itemKey
+                                || cs.stickyEdge?.edge !== state.stickyEdge?.edge;
+
                             console.log(`${LogScope}.updateClientSideStateImpl: changes:` +
                                             (Object.keys(state.items).length > 0 ? ' [items]' : '') +
-                                            (state.isUserScrollDetected ? ' [user scroll]' : '') +
-                                            (state.isViewportChanged ? ' [viewport]' : '') +
-                                            (state.isStickyEdgeChanged ? ' [sticky edge]' : ''));
+                                            (isUserScrollDetected ? ' [user scroll]' : '') +
+                                            (isViewportChanged ? ' [viewport]' : '') +
+                                            (isStickyEdgeChanged ? ' [sticky edge]' : ''));
                         }
                     } finally {
                         resolve(state);
