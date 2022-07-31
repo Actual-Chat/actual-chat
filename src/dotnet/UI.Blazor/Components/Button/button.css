@@ -164,7 +164,7 @@
     @apply flex overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-full min-h-0;
     @apply border-0;
-    @apply text-base font-semibold text-icons-01;
+    @apply text-base text-icons-01;
     @apply rounded-full w-fit h-fit self-end;
 }
 .btn.btn-round:disabled {

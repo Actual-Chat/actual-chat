@@ -5,6 +5,7 @@ import './styles/scrollbars.css';
 import './styles/spinkit.css';
 import './styles/blazor.css';
 import './styles/main.css';
+import './fonts/icon.css';
 
 export * as ui from '../dotnet/UI.Blazor/exports';
 export * as audio from '../dotnet/Audio.UI.Blazor/exports';
