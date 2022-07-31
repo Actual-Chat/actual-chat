@@ -34,9 +34,11 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _abortController: AbortController;
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
+    private readonly _visibilityObserver: IntersectionObserver;
     private readonly _ironPantsHandlerInterval: number;
     private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
+    private readonly _visibleItems: Set<string>;
 
     private _isDisposed = false;
     private _scrollTopPivotRef: HTMLElement | null = null;
@@ -95,10 +97,13 @@ export class VirtualList implements VirtualListAccessor {
             { attributes: true, attributeFilter: ['data-render-index'] });
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
+        this._visibilityObserver = new IntersectionObserver(this.onIntersect, { root: this._ref });
+
         // @ts-ignore
         this._ironPantsHandlerInterval = setInterval(this.onIronPantsHandle, IronPantsHandleTimeout);
 
         this._unmeasuredItems = new Set<string>();
+        this._visibleItems = new Set<string>();
 
         this.items = {};
         this.renderState = {
@@ -166,6 +171,7 @@ export class VirtualList implements VirtualListAccessor {
                     delete this.items[key];
                     this._unmeasuredItems.delete(key);
                     this._sizeObserver.unobserve(itemRef);
+                    this._visibilityObserver.unobserve(itemRef);
                 }
 
                 // iterating over all mutations addedNodes is slow
@@ -191,6 +197,7 @@ export class VirtualList implements VirtualListAccessor {
             }
             this._unmeasuredItems.add(key);
             this._sizeObserver.observe(itemRef, { box: 'border-box' });
+            this._visibilityObserver.observe(itemRef);
         }
     };
 
@@ -225,6 +232,19 @@ export class VirtualList implements VirtualListAccessor {
                     return;
 
                 void this.onRenderEnd(rs);
+            }
+        }
+    }
+
+    private onIntersect = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+        for (const entry of entries) {
+            const itemRef = entry.target as HTMLElement;
+            const key = getItemKey(itemRef);
+            if (entry.intersectionRatio <= 0) {
+                this._visibleItems.delete(key);
+            }
+            else if (entry.intersectionRatio == 1) {
+                this._visibleItems.add(key);
             }
         }
     }
@@ -489,16 +509,7 @@ export class VirtualList implements VirtualListAccessor {
                         } as VirtualListClientSideState;
 
                         let gotResizedItems = false;
-                        const visibleItemKeys = [];
-                        for (const itemRef of this.getItemRefs()) {
-                            //TODO(AK): Optimize visibility tracking with Intersection Observer API
-                            const isVisible = this.isItemVisible(itemRef);
-                            if (isVisible) {
-                                const key = getItemKey(itemRef);
-                                visibleItemKeys.push(key);
-                            }
-                        }
-                        state.visibleKeys = visibleItemKeys;
+                        state.visibleKeys = [...this._visibleItems];
 
                         if (this._debugMode) {
                             const isFirstRender = rs.renderIndex <= 1;
@@ -568,6 +579,10 @@ export class VirtualList implements VirtualListAccessor {
             // force size calculation resubscribe
             this.maybeOnRenderEnd([], this._renderEndObserver);
         }
+        const intersections = this._visibilityObserver.takeRecords();
+        if (intersections.length > 0) {
+            this.onIntersect(intersections, this._visibilityObserver);
+        }
     }
 
     private onScroll = (): void => {
@@ -582,11 +597,6 @@ export class VirtualList implements VirtualListAccessor {
                 this.updateClientSideStateDebounced(true);
             }, ScrollStoppedTimeout);
     };
-
-    private getItemRefs(): IterableIterator<HTMLElement> {
-        // getElementsByClassName is faster than querySelectorAll
-        return Array.from(this._containerRef.getElementsByClassName('item')).values() as IterableIterator<HTMLElement>;
-    }
 
     private getNewItemRefs(): IterableIterator<HTMLElement> {
         // getElementsByClassName is faster than querySelectorAll
@@ -624,15 +634,6 @@ export class VirtualList implements VirtualListAccessor {
 
     private getItemY0(): number {
         return this._spacerRef.getBoundingClientRect().bottom;
-    }
-
-    private isItemVisible(itemRef: HTMLElement): boolean {
-        const itemRect = itemRef.getBoundingClientRect();
-        const viewRect = this._ref.getBoundingClientRect();
-        if (itemRect.bottom <= viewRect.top)
-            return false;
-        return itemRect.top < viewRect.bottom;
-
     }
 
     private isItemFullyVisible(itemRef: HTMLElement): boolean {
