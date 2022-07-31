@@ -68,8 +68,10 @@ export class SlateEditor {
 
     public focus = () => {
         const input = this.editorDiv.querySelector('div');
+        const width = document.documentElement.clientWidth;
         if (input)
-            input.focus();
+            if (width >= 768)
+                input.focus();
         else
             console.log('slate-editor : no input to focus.');
         if (this.debug) console.log('focus');

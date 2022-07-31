@@ -121,6 +121,7 @@ module.exports = {
         'text-04': 'var(--text-04)',
         'bg-05': 'var(--background-05)',
         'text-05': 'var(--text-05)',
+        'bg-06': 'var(--background-06)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -128,6 +129,7 @@ module.exports = {
         '03': 'var(--background-03)',
         '04': 'var(--background-04)',
         '05': 'var(--background-05)',
+        '06': 'var(--background-06)',
       },
     },
     screens: {
@@ -282,6 +284,10 @@ module.exports = {
       'loud-hide-text-mode': 'loud-hide-text-mode 500ms ease-in-out',
       'scale-to-full': 'scale-to-full 1s ease-in-out',
       'scale-to-5': 'scale-to-5 500ms ease-in-out',
+      'notify-panel-opening': 'notify-panel-opening 500ms ease-in-out',
+      'notify-panel-closing': 'notify-panel-closing 500ms ease-in-out',
+      'notify-toggle-hide': 'notify-toggle-hide 500ms ease-in-out',
+      'notify-toggle-show': 'notify-toggle-show 500ms ease-in-out',
 
     },
     aspectRatio: {
@@ -947,6 +953,68 @@ module.exports = {
         },
         to: {
           transform: 'scale(0.05)',
+        },
+      },
+      'notify-panel-opening': {
+        '0%': {
+          transform: 'translateX(100%)',
+          width: '0',
+          opacity: '0',
+        },
+        '50%': {
+          transform: 'translateX(100%)',
+          width: '0',
+          opacity: '0',
+        },
+        '100%': {
+          transform: 'translateX(0)',
+          width: '100%',
+          opacity: '100%',
+        },
+      },
+      'notify-panel-closing': {
+        '0%': {
+          transform: 'translateX(0)',
+          width: '100%',
+          opacity: '100%',
+        },
+        '50%': {
+          transform: 'translateX(100%)',
+          width: '0',
+          opacity: '0',
+        },
+        '100%': {
+          transform: 'translateX(100%)',
+          width: '0',
+          opacity: '0',
+        },
+      },
+      'notify-toggle-hide': {
+        '0%': {
+          transform: 'scale(1)',
+          width: '100%',
+        },
+        '50%': {
+          transform: 'scale(0)',
+          width: '0%',
+        },
+        '99%': {
+          transform: 'scale(0)',
+          width: '0%',
+        },
+      },
+      'notify-toggle-show': {
+        '0%': {
+          transform: 'scale(0)',
+          width: '0%',
+        },
+        '50%': {
+          transform: 'scale(0)',
+          width: '0%',
+        },
+        '100%': {
+          transform: 'scale(1)',
+          width: '100%',
         },
       },
       'hide-to-left': {

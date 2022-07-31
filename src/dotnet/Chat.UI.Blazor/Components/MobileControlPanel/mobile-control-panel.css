@@ -121,69 +121,69 @@
 }
 
 /*Text mode*/
-.text-mode .mobile-control-panel {
+.narrow-panel .mobile-control-panel {
     @apply gap-x-2;
 }
-.text-mode .mobile-control-panel .btn.btn-round .btn-content {
+.narrow-panel .mobile-control-panel .btn.btn-round .btn-content {
     @apply bg-01 rounded-full;
     max-width: 5rem;
     max-height: 3rem;
     min-width: 5rem;
     min-height: 3rem;
 }
-.text-mode .mobile-control-panel .btn.btn-round svg {
+.narrow-panel .mobile-control-panel .btn.btn-round svg {
     @apply h-6 w-6;
 }
 
-.text-mode .mobile-control-panel .recorder-wrapper {
+.narrow-panel .mobile-control-panel .recorder-wrapper {
     @apply border-0 h-auto w-auto;
 }
-.text-mode .mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+.narrow-panel .mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
     @apply bg-primary;
 }
-.text-mode .mobile-control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+.narrow-panel .mobile-control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
     @apply bg-error;
 }
 
-.text-mode .mobile-control-panel .mobile-playback-toggle {
+.narrow-panel .mobile-control-panel .mobile-playback-toggle {
     @apply w-32;
 }
-.text-mode .mobile-control-panel .mobile-playback-toggle .playback-wrapper {
+.narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper {
     @apply h-12;
 }
-.text-mode .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn {
+.narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn {
     @apply left-4;
 }
-.text-mode .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn.btn-round .btn-content {
+.narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn.btn-round .btn-content {
     @apply bg-01 rounded-full;
     max-width: 3rem;
     min-width: 3rem;
 }
-.text-mode .mobile-control-panel .mobile-playback-toggle .playback-wrapper svg {
+.narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper svg {
     @apply h-8 w-8;
 }
 
-.text-mode .playback-wrapper.listen-on {
+.narrow-panel .playback-wrapper.listen-on {
     @apply w-32;
 }
-.text-mode .playback-wrapper.listen-on .loud-btn.btn.btn-round {
+.narrow-panel .playback-wrapper.listen-on .loud-btn.btn.btn-round {
     @apply opacity-100 translate-x-12;
 }
-.text-mode .playback-wrapper.listen-off {
+.narrow-panel .playback-wrapper.listen-off {
     @apply w-20;
 }
-.text-mode .playback-wrapper.listen-off .loud-btn.btn.btn-round {
+.narrow-panel .playback-wrapper.listen-off .loud-btn.btn.btn-round {
     @apply opacity-0 translate-x-12 absolute;
 }
-.text-mode .playback-wrapper.listen-on-to-off {
+.narrow-panel .playback-wrapper.listen-on-to-off {
     @apply animate-width-full-to-60 w-20;
 }
-.text-mode .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
+.narrow-panel .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
     @apply animate-loud-hide-text-mode absolute transition duration-500 opacity-0 scale-0;
 }
-.text-mode .playback-wrapper.listen-off-to-on {
+.narrow-panel .playback-wrapper.listen-off-to-on {
     @apply animate-width-60-to-full w-32;
 }
-.text-mode .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
+.narrow-panel .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
     @apply animate-loud-show-text-mode absolute translate-x-12;
 }

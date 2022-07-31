@@ -12,9 +12,12 @@ export class ChatMessageEditor {
     private recorderPanel: HTMLDivElement;
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
+    private notifyPanel: HTMLDivElement;
     private recordButtonObserver : MutationObserver;
+    private notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
+    private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
     private audioButtons: HTMLDivElement;
@@ -33,9 +36,12 @@ export class ChatMessageEditor {
         this.recorderButtonDiv = this.recorderPanel.querySelector('div.recorder-button');
         this.recordButton = this.recorderButtonDiv.querySelector('button');
         this.audioButtons = this.recorderPanel.querySelector('.recorder-buttons');
+        this.notifyPanel = this.editorDiv.querySelector('.notify-call-panel');
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
+        this.input.addEventListener('focusin', this.inputFocusInListener);
+        this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
         this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
@@ -45,6 +51,13 @@ export class ChatMessageEditor {
             subtree: false,
         };
         this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
+        this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
+        const notifyPanelObserverConfig = {
+            attributes: true,
+            childList: false,
+            subtree: false,
+        };
+        this.notifyPanelObserver.observe(this.notifyPanel, notifyPanelObserverConfig);
         this.changeMode();
     }
 
@@ -60,6 +73,15 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
+    });
+
+    private inputFocusInListener = ((event: Event & { target: Element; }) => {
+        if (!this.editorDiv.classList.contains('narrow-panel'))
+            this.editorDiv.classList.add('narrow-panel');
+    });
+
+    private inputFocusOutListener = ((event: Event & { target: Element; }) => {
+        this.editorDiv.classList.remove('narrow-panel');
     });
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
@@ -89,6 +111,28 @@ export class ChatMessageEditor {
         }
     };
 
+    private syncAttachDropdownVisibility = () => {
+        const isPanelOpened = this.notifyPanel.classList.contains('panel-opening');
+        if (this.isPanelOpened === isPanelOpened)
+            return;
+        this.isPanelOpened = isPanelOpened;
+        const attachBtn = this.editorDiv.querySelector('.attach-btn');
+        if (isPanelOpened) {
+            setTimeout(() => {
+                attachBtn.classList.add('invisible');
+                this.input.classList.add('invisible');
+            }, 500);
+        } else {
+            attachBtn.classList.remove('invisible');
+            this.input.classList.remove('invisible');
+        }
+        if (this.notifyPanel.classList.contains('panel-closing')) {
+            setTimeout(() => {
+                this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
+            }, 500);
+        }
+    };
+
     private changeMode() {
         const text = this.getText();
         const isTextMode = text != '' || this.attachments.size > 0;
@@ -99,10 +143,16 @@ export class ChatMessageEditor {
             this.editorDiv.classList.add('text-mode');
         else
             this.editorDiv.classList.remove('text-mode');
-        this.animationOff();
+        this.playbackAnimationOff();
+        this.notifyPanelAnimationOff();
     }
 
-    private animationOff() : void {
+    private notifyPanelAnimationOff() : void {
+        let classes = this.notifyPanel.classList;
+        classes.remove('panel-opening', 'panel-closing');
+    }
+
+    private playbackAnimationOff() : void {
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
         let classes = playbackWrapper.classList;
         if (classes.contains('listen-on-to-off')) {
