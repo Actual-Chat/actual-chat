@@ -26,6 +26,62 @@
     @apply text-placeholder truncate text-base;
     content:attr(data-text)
 }
+.notify-call-panel,
+.notify-call-panel.panel-closed {
+    @apply flex flex-row-reverse right-0 h-8 w-auto bg-transparent;
+}
+.notify-call-panel.panel-opening {
+    @apply bg-05;
+}
+.notify-call-panel.panel-closed {
+    @apply gap-x-0;
+}
+.btn.btn-round.notify-call-toggle {
+    @apply flex self-end outline-none text-05 md:text-05 p-0 h-8 bg-05 mr-1;
+}
+.panel-closed .notify-call-content * {
+    @apply w-0 scale-0;
+}
+.panel-opening .btn.btn-round.notify-call-toggle {
+    @apply scale-0 animate-notify-toggle-hide w-0;
+}
+.panel-closing .btn.btn-round.notify-call-toggle {
+    @apply scale-100 animate-notify-toggle-show;
+}
+.btn.btn-round.notify-call-toggle .btn-content {
+    @apply rounded-full bg-transparent;
+    min-width: 2rem;
+    min-height: 2rem;
+}
+.notify-call-content,
+.panel-closed .notify-call-content {
+    @apply relative right-4 flex-x gap-x-4 justify-end w-0 opacity-0 w-0;
+}
+.panel-opening .notify-call-content {
+    @apply absolute w-full opacity-100 animate-notify-panel-opening translate-x-0 -mt-1 -mr-4;
+}
+.panel-closing .notify-call-content {
+    @apply w-0 opacity-0 animate-notify-panel-closing translate-x-full;
+}
+.notify-call-content .btn {
+    @apply rounded-full min-h-0 h-auto px-0 min-w-0;
+    @apply bg-06 text-04 border-bg-06;
+}
+.notify-call-content .btn .btn-content{
+    @apply rounded-full mx-0 items-center;
+}
+.notify-call-content .btn.close-btn {
+    @apply flex self-end outline-none text-04 md:text-05 p-0 mr-2 h-8;
+    @apply bg-transparent;
+}
+.notify-call-content .btn.close-btn .btn-content{
+    @apply rounded-full mx-0 items-center bg-transparent;
+    min-width: 2rem;
+    min-height: 2rem;
+}
+.text-mode .notify-call-panel {
+    @apply hidden;
+}
 
 .btn.btn-round.post-message {
     @apply sticky self-end outline-none text-04 md:text-05 p-2 mr-2 hidden;
