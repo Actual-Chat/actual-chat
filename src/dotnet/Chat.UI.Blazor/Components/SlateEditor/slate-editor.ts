@@ -68,10 +68,8 @@ export class SlateEditor {
 
     public focus = () => {
         const input = this.editorDiv.querySelector('div');
-        const width = document.documentElement.clientWidth;
         if (input)
-            if (width >= 768)
-                input.focus();
+            input.focus();
         else
             console.log('slate-editor : no input to focus.');
         if (this.debug) console.log('focus');
@@ -84,8 +82,11 @@ export class SlateEditor {
     private onRendered = () => {
         if (this.debug) console.log('slate-editor rendered.');
         if (this.autofocus) {
-            // invoke focus with delay, otherwise in SSB editor gets focus but immediately loses it.
-            setTimeout(this.focus, 250);
+            const width = document.documentElement.clientWidth;
+            if (width >= 768) {
+                // invoke focus with delay, otherwise in SSB editor gets focus but immediately loses it.
+                setTimeout(this.focus, 250);
+            }
         }
     }
 
