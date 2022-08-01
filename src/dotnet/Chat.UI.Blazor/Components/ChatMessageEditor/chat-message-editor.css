@@ -37,7 +37,7 @@
     @apply gap-x-0;
 }
 .btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 pr-1;
+    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 mr-2;
 }
 .panel-closed .notify-call-content * {
     @apply w-0 scale-0;
