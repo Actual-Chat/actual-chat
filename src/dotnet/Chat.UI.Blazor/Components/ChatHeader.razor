@@ -1,27 +1,48 @@
-<div class="flex-x justify-items-stretch items-center text-02 font-medium px-1 min-h-mobile-header border-b border-bg-04">
+<div class="flex-x justify-items-stretch items-center px-1 min-h-mobile-header border-b border-bg-04">
     <div class="flex-none self-start">
         <NavbarButton/>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-2 px-3 group">
+    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 py-0.5 pl-3 group">
         <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" />
-        <div class="flex-1 flex-x text-03 chat-header-title cursor-pointer" @onclick="OnTitleClick">
-            <div class="flex self-center">@Chat.Title</div>
+        <div class="flex-1 flex-x chat-header-title">
+            <div class="flex-y self-center">
+                <div class="text-01 font-medium">@Chat.Title</div>
+                <div class="text-icons-02">@_subTitle</div>
+            </div>
             <div class="flex-1"></div>
-            <ButtonSquare Class="chat-header-panel-hint">
-                @(RightPanelUI.IsVisible.Value ? "Hide" : "Show") settings
-            </ButtonSquare>
+            <div class="flex-none flex-x items-center gap-x-3 px-0.5">
+                <ChatActivities/>
+            </div>
+            <div class="hidden md:flex-x">
+                <ButtonRound Click="OnChatSearchClick">
+                    <i class="icon-search text-xl"></i>
+                </ButtonRound>
+                <ButtonRound Click="OnInviteClick">
+                    <i class="icon-person-add text-xl"></i>
+                </ButtonRound>
+            </div>
+            <ButtonRound Click="OnSwitchRightPanelClick">
+                <i class="icon-more-vertical text-xl"></i>
+            </ButtonRound>
         </div>
-    </div>
-    <div class="flex-none flex-x items-center gap-x-3 px-0.5">
-        <ChatActivities/>
     </div>
 </div>
 
 @code {
+    private string _subTitle = "sub title";
+
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnTitleClick()
+    private void OnChatSearchClick()
+        => _ = FeedbackUI.AskFeatureRequestFeedback("chat-header/search", "Chat search");
+
+    private void OnInviteClick()
+        => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+
+    private void OnSwitchRightPanelClick()
         => RightPanelUI.IsVisible.Value = !RightPanelUI.IsVisible.Value;
 }

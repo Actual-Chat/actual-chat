@@ -86,14 +86,6 @@
     @apply self-start;
 }
 
-.chat-header-panel-hint.btn.btn-square {
-    @apply flex-none hidden group-hover:flex font-light text-xs;
-    @apply bg-02 ring-2 ring-bg-04 rounded;
-}
-.chat-header-panel-hint.btn.btn-square:focus .btn-content {
-    @apply bg-inherit;
-}
-
 .tab-panel .tab.people-tab {
     @apply h-full overflow-y-hidden;
 }
