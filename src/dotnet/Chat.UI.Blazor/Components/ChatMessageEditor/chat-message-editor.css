@@ -37,7 +37,7 @@
     @apply gap-x-0;
 }
 .btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 mr-1;
+    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 pr-1;
 }
 .panel-closed .notify-call-content * {
     @apply w-0 scale-0;
@@ -79,7 +79,7 @@
 }
 .notify-call-content .btn.close-btn {
     @apply flex self-end outline-none text-04 md:text-icons-01 p-0 mr-2 h-8;
-    @apply bg-transparent md:pt-1;
+    @apply bg-transparent;
 }
 .notify-call-content .btn.close-btn .btn-content{
     @apply rounded-full mx-0 items-center bg-transparent;
