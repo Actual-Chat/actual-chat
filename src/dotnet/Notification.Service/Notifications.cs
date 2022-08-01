@@ -66,7 +66,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
-        dbNotification.HandledAt = _clocks.SystemClock.Now;
+        dbNotification.HandledAt = Clocks.SystemClock.Now;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

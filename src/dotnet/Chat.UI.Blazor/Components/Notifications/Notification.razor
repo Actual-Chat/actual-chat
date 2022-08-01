@@ -68,7 +68,7 @@
         _closingTimer.Start();
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notification = NotificationEntry;
         var chatId = notification.Message?.ChatId ?? notification.Chat?.ChatId;
         var entryId = notification.Message?.EntryId;
@@ -77,14 +77,14 @@
         if (chatId != null) {
             // TODO(AK): Unread message counter
         }
-        return new() {
+        return Task.FromResult<Model>(new() {
             Title = notification.Title,
             Content = notification.Content,
             NavigateToUrl = chatId.IsNullOrEmpty()
                 ? null
-                : UriMapper.GetChatUrl(chatId, entryId).ToString(),
+                : UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString(),
             AuthorId = authorId,
-        };
+        });
     }
 
     public void Dispose() {

@@ -1,12 +1,14 @@
-namespace ActualChat.UI.Blazor;
+namespace ActualChat;
 
 public static class Links
 {
-    public static string ChatPage(string chatId)
-        => "/chat/" + chatId.UrlEncode();
+    public static string ChatPage(string chatId, long? entryId = null)
+        => entryId.HasValue
+            ? $"/chat/{chatId}#{entryId}"
+            : $"/chat/{chatId}";
 
     public static string UserPage(string userId)
-        => "/u/" + userId.UrlEncode();
+        => $"/u/{userId.UrlEncode()}";
 
     public static string SettingsPage()
         => "/settings";

@@ -5,10 +5,10 @@ namespace ActualChat.Notification;
 
 public class FirebaseMessagingClient
 {
-    private readonly UriMapper _uriMapper;
-    private readonly FirebaseMessaging _firebaseMessaging;
-    private readonly ICommander _commander;
-    private readonly ILogger<FirebaseMessagingClient> _log;
+    private UriMapper UriMapper { get; }
+    private FirebaseMessaging FirebaseMessaging { get; }
+    private ICommander Commander { get; }
+    private ILogger Log { get; }
 
     public FirebaseMessagingClient(
         UriMapper uriMapper,
@@ -16,10 +16,10 @@ public class FirebaseMessagingClient
         ICommander commander,
         ILogger<FirebaseMessagingClient> log)
     {
-        _uriMapper = uriMapper;
-        _firebaseMessaging = firebaseMessaging;
-        _commander = commander;
-        _log = log;
+        UriMapper = uriMapper;
+        FirebaseMessaging = firebaseMessaging;
+        Commander = commander;
+        Log = log;
     }
 
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = _uriMapper.GetChatUrl(chatId, entryId).ToString();
+                link = UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString();
             }
             break;
         }
@@ -42,7 +42,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = _uriMapper.GetChatUrl(chatId, entryId).ToString();
+                link = UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString();
             }
             break;
         }
@@ -50,7 +50,7 @@ public class FirebaseMessagingClient
             var chatId = entry.Chat?.ChatId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = _uriMapper.GetChatUrl(chatId).ToString();
+                link = UriMapper.ToAbsolute(Links.ChatPage(chatId)).ToString();
             }
             break;
         }
@@ -101,13 +101,13 @@ public class FirebaseMessagingClient
                     // Icon = ??? TODO(AK): Set icon
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
+                    Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")
                         ? null
                         : link,
                 }
             },
         };
-        var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
+        var batchResponse = await FirebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
 
         if (batchResponse.FailureCount > 0) {
@@ -127,7 +127,7 @@ public class FirebaseMessagingClient
                     var tokensToRemove = responseGroup
                         .Select(g => g.DeviceId)
                         .ToImmutableArray();
-                    _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
+                    _ = Commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
                 }
                 else if (responseGroup.Key.HasValue) {
                     var firstErrorItem = responseGroup.First();
@@ -136,7 +136,7 @@ public class FirebaseMessagingClient
                         : await firstErrorItem.HttpResponse.Content
                             .ReadAsStringAsync(cancellationToken)
                             .ConfigureAwait(false);
-                    _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                    Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
                         responseGroup.Key, responseGroup.Count(), errorContent);
                 }
         }

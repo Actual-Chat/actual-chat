@@ -34,6 +34,7 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
         var command = new INotificationsBackend.NotifyNewChatEntryCommand(
             @event.ChatId,
             @event.Id,
+            chatAuthor.Id,
             chatAuthor.UserId,
             title,
             iconUrl,
