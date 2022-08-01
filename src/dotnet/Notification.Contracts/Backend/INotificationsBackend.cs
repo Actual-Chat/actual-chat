@@ -28,6 +28,7 @@ public interface INotificationsBackend : IComputeService
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId,
         [property: DataMember] string AuthorId,
+        [property: DataMember] string AuthorUserId,
         [property: DataMember] string Title,
         [property: DataMember] string IconUrl,
         [property: DataMember] string Content

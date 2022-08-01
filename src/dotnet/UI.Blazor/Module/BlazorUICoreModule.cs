@@ -3,7 +3,6 @@ using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.Modal.Services;
 using Blazored.SessionStorage;
-using Blazored.Toast;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.Plugins;
@@ -28,7 +27,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
         services.AddScoped<ModalService>();
-        services.AddBlazoredToast();
         services.AddBlazorContextMenu(options =>
         {
             options.ConfigureTemplate(defaultTemplate =>
@@ -91,7 +89,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ImagePreviewUI>();
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
-        services.AddScoped<ToastUI>();
         services.AddScoped<ThemeUI>();
         services.AddScoped<KeepAwakeUI>();
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
