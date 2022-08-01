@@ -998,7 +998,7 @@ module.exports = {
           transform: 'scale(0)',
           width: '0%',
         },
-        '99%': {
+        '100%': {
           transform: 'scale(0)',
           width: '0%',
         },
