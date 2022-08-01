@@ -39,7 +39,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 0),
+            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 2),
         };
     }
 

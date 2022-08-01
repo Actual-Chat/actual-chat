@@ -243,7 +243,7 @@ export class VirtualList implements VirtualListAccessor {
             if (entry.intersectionRatio <= 0) {
                 this._visibleItems.delete(key);
             }
-            else if (entry.intersectionRatio == 1) {
+            else if (entry.intersectionRatio >= 0.9) {
                 this._visibleItems.add(key);
             }
         }
