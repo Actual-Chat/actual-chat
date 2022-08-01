@@ -17,13 +17,13 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative z-20 p-1 pb-0.25;
-    @apply flex flex-row items-center justify-center;
+    @apply relative z-20 p-1;
+    @apply flex-x;
     @apply bg-04 shadow-lg text-02;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
-    @apply flex flex-row items-center justify-center gap-x-2;
+    @apply flex-x w-full items-center;
 }
 .historical-playback-sub-header-content .c-text {
     @apply pb-0.5;

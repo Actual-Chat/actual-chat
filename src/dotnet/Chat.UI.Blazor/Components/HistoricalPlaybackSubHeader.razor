@@ -11,31 +11,52 @@
 
 <div class="historical-playback-sub-header">
     <div class="historical-playback-sub-header-content">
-        @* Icons *@
-        <div class="c-icons">
-            <svg class="h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 24.123 11.997 C 24.123 18.624 18.75 23.997 12.123 23.997 C 5.496 23.997 0.123 18.624 0.123 11.997 L 2.123 11.997 C 2.123 17.511 6.609 21.997 12.123 21.997 C 17.637 21.997 22.123 17.511 22.123 11.997 C 22.123 6.483 17.637 1.997 12.123 1.997 C 9.346 1.997 6.836 3.138 5.024 4.974 L 7.085 7.035 L 0.123 8.389 L 1.428 1.376 L 3.607 3.556 C 5.779 1.36 8.789 -0.003 12.123 -0.003 C 18.75 -0.003 24.123 5.37 24.123 11.997 Z M 11.123 5.997 L 11.123 13.997 L 18.123 13.997 L 18.123 11.997 L 13.123 11.997 L 13.123 5.997 L 11.123 5.997 Z"></path>
-            </svg>
-        </div>
-        @* Position *@
-        <div class="c-text">
-            @if (m.PlayingAt is { } playingAt) {
-                var localTime = timeZoneConverter.ToLocalTime(playingAt);
-                var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
-                var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
-                <span>
-                    Playing audio recorded
-                    <span class="c-moment" title="@absoluteTime">@relativeTime</span>
-                </span>
+        <div class="flex-x self-center">
+            <ButtonRound Title="Backward" Click="@OnBackward">
+                @* <i class="icon-search text-xl"></i> *@
+                <span>&Lt;</span>
+            </ButtonRound>
+            @if (m.IsPaused) {
+                <ButtonRound Title="Play" Click="@OnPlay">
+                    <span>&</span>
+                </ButtonRound>
+            } else {
+                <ButtonRound Title="Pause" Click="@OnPause">
+                    <i class="icon-search text-xl"></i>
+                </ButtonRound>
             }
-        </div>
-        @* Stop button *@
-        <div class="c-stop">
-            <ButtonSquare Click="OnStop">
+            <ButtonRound Title="Stop" Click="@OnStop">
                 <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M0 0h24v24h-24z"/>
                 </svg>
-            </ButtonSquare>
+            </ButtonRound>
+            <ButtonRound Title="Fast-forward" Click="@OnFastForward">
+                <span>&Gt;</span>
+            </ButtonRound>
+        </div>
+
+        @* Position *@
+        @* Replace position with playing chat title *@
+        <div class="flex-1 flex-x justify-center">
+            <div class="c-text">
+                @if (m.PlayingAt is { } playingAt) {
+                    var localTime = timeZoneConverter.ToLocalTime(playingAt);
+                    var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
+                    var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
+                    <span>
+                        Playing audio recorded
+                        <span class="c-moment" title="@absoluteTime">@relativeTime</span>
+                    </span>
+                }
+            </div>
+        </div>
+
+        <div class="flex-x self-center">
+            @* Speed Selector *@
+            <CloseButton Click="OnStop" />
+            <ButtonRound Title="Close" Click="OnStop">
+                <span>&Gt;</span>
+            </ButtonRound>
         </div>
     </div>
 </div>
@@ -92,9 +113,32 @@
         };
     }
 
-    private Task OnStop(MouseEventArgs _) {
+    private Task OnStop() {
         ChatPlayers.StopPlayback();
         return Task.CompletedTask;
+    }
+
+    private void OnPlay() {
+    }
+
+    private void OnPause() {
+
+    }
+
+    private void OnFastForward()
+        => PlayAt(TimeSpan.FromSeconds(15));
+
+    private void OnBackward()
+        => PlayAt(TimeSpan.FromSeconds(-15));
+
+    private void PlayAt(TimeSpan shift)
+    {
+        // this solution does not work well where there are gaps between audio entries (which is normal)
+        var moment = State.LatestNonErrorValue.PlayingAt;
+        if (!moment.HasValue)
+            return;
+        var newMoment = moment.Value.Add(shift);
+        ChatPlayers.StartHistoricalPlayback(Chat.Id, newMoment);
     }
 
     public sealed record Model
@@ -102,5 +146,7 @@
         public static Model NotPlaying { get; } = new();
 
         public DateTime? PlayingAt { get; init; }
+
+        public bool IsPaused { get; init; }
     }
 }
