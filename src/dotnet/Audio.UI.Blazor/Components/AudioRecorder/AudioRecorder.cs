@@ -114,7 +114,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
                 if (State.Value?.Id != state?.Id)
                     return; // We don't want to stop the next recording here
 
-                _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by _js backend");
+                _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
                 await OnRecordingStopped().ConfigureAwait(true);
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
