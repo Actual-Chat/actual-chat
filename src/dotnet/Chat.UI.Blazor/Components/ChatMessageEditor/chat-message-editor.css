@@ -7,7 +7,7 @@
 }
 
 .message-input {
-    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 ml-2 md:ml-6 mr-2;
+    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 mx-2 md:ml-1 md:mr-4;
     @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-05 md:bg-03;
 }
 .post-panel {
@@ -91,7 +91,7 @@
 }
 
 .btn.btn-round.post-message {
-    @apply sticky self-end outline-none text-04 md:text-05 p-2 mr-2 hidden;
+    @apply sticky self-end outline-none text-04 md:text-05 p-2 mr-0 md:mr-2 hidden;
 }
 
 .text-mode .btn.btn-round.post-message {
