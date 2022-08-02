@@ -20,15 +20,15 @@
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:p-2.5 md:px-10 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
-                    <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
+                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                         <input class="files-picker" type="file" hidden multiple/>
                         <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                             <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                          Class="message-input -flex-y"
                                          Autofocus="true"
                                          Placeholder="@("#" + Chat.Title)"
-                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered" Canceled="@(() => CancelEdit())" LastMessageEditRequested="OnLastMessageEditRequested" />
+                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered" Canceled="@(() => CancelEdit())" LastMessageEditRequested="OnLastMessageEditRequested"/>
                             <button class="btn btn-round post-message"
                                     @onclick="_ => OnPosted(clearEditor: true)">
                                 <svg class="fill-current w-8 h-8" viewBox="-1 -1 26 26" id="icon" xmlns="http://www.w3.org/2000/svg">

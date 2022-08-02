@@ -54,7 +54,6 @@ label {
 code {
     @apply px-0.5;
     @apply rounded-sm border border-bg-03;
-    /* @apply rounded-sm border-0 ring ring-1 ring-accent; */
     @apply bg-01;
     @apply font-mono;
 }
