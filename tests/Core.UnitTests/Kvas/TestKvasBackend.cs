@@ -16,6 +16,8 @@ public class TestKvasBackend : IKvasBackend
             var result = new string?[keys.Length];
             for (var i = 0; i < keys.Length; i++)
                 result[i] = Storage.GetValueOrDefault(keys[i]);
+            var (actualDelay, spinCount) = PreciseDelay.Delay(TimeSpan.FromMilliseconds(3));
+            Out?.WriteLine("Actual delay: {0} ({1} spins)", actualDelay.ToShortString(), spinCount);
             return Task.FromResult(result);
         }
     }

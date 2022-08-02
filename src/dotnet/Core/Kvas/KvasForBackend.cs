@@ -8,10 +8,12 @@ public class KvasForBackend : IKvas
     {
         public Func<IThreadSafeLruCache<Symbol, string?>> ReadCacheFactory { get; init; } =
             () => new ThreadSafeLruCache<Symbol, string?>(1024);
-        public TimeSpan ReadBatchDelay { get; init; } = TimeSpan.FromMilliseconds(1);
-        public TimeSpan WriteFlushDelay { get; init; } = TimeSpan.FromMilliseconds(100);
-        public int WriteFlushLimit { get; init; } = 64;
-        public RetryDelaySeq WriteFlushRetryDelays { get; init; } = new();
+        public Func<CancellationToken, Task>? ReadBatchDelayTaskFactory { get; init; } = null;
+        public int ReadBatchConcurrencyLevel { get; init; } = 4;
+        public int ReadBatchMaxSize { get; init; } = 64;
+        public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+        public int FlushMaxItemCount { get; init; } = 64;
+        public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     }
 
     protected IKvasBackend Backend { get; }
@@ -26,15 +28,15 @@ public class KvasForBackend : IKvas
         Backend = backend;
         ReadCache = options.ReadCacheFactory.Invoke();
         Reader = new BatchProcessor<Symbol, string?>() {
-            MaxBatchSize = 16,
-            ConcurrencyLevel = Math.Min(HardwareInfo.ProcessorCount, 4),
-            BatchingDelayTaskFactory = cancellationToken => Task.Delay(options.ReadBatchDelay, cancellationToken),
+            ConcurrencyLevel = options.ReadBatchConcurrencyLevel,
+            MaxBatchSize = options.ReadBatchMaxSize,
+            BatchingDelayTaskFactory = options.ReadBatchDelayTaskFactory,
             Implementation = BatchRead,
         };
         Writer = new LazyWriter<(Symbol Key, string? Value)>() {
-            FlushDelay = options.WriteFlushDelay,
-            FlushLimit = options.WriteFlushLimit,
-            FlushRetryDelays = options.WriteFlushRetryDelays,
+            FlushDelay = options.FlushDelay,
+            FlushLimit = options.FlushMaxItemCount,
+            FlushRetryDelays = options.FlushRetryDelays,
             Implementation = BatchWrite,
             Log = Log,
         };

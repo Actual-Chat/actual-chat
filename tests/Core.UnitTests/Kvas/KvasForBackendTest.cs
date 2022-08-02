@@ -10,7 +10,13 @@ public class KvasForBackendTest : TestBase
     public async Task BasicTest()
     {
         var kvasBackend = new TestKvasBackend() { Out = Out };
-        var kvas = new KvasForBackend(new(), kvasBackend);
+        var options = new KvasForBackend.Options() {
+            ReadBatchConcurrencyLevel = 1,
+            ReadBatchDelayTaskFactory = null,
+            ReadBatchMaxSize = 10,
+            FlushDelay = TimeSpan.FromMilliseconds(10),
+        };
+        var kvas = new KvasForBackend(options, kvasBackend);
 
         kvas.Set("a", "a");
         (await kvas.Get("a")).Should().Be("a");
@@ -22,12 +28,22 @@ public class KvasForBackendTest : TestBase
         (await kvas.Get("b")).Should().Be(null);
         await kvas.Flush();
 
-        var kvas2 = new KvasForBackend(new(), kvasBackend);
+        var kvas2 = new KvasForBackend(options, kvasBackend);
         var aTask = kvas2.Get("a");
         var bTask = kvas2.Get("b");
         var cTask = kvas2.Get("c");
+        var dTask = kvas2.Get("a");
         (await aTask).Should().Be("a");
         (await bTask).Should().Be(null);
         (await cTask).Should().Be("c");
+        (await dTask).Should().Be("a");
+
+        var tasks = new List<Task<string?>>();
+        for (var i = 0; i < 50; i++) {
+            tasks.Add(kvas2.Get("a").AsTask());
+            PreciseDelay.Delay(TimeSpan.FromMilliseconds(1));
+        }
+        var results = await tasks.Collect();
+        results.All(x => x == "a").Should().BeTrue();
     }
 }
