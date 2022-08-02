@@ -86,14 +86,6 @@
     @apply self-start;
 }
 
-.chat-header-panel-hint.btn.btn-square {
-    @apply flex-none hidden group-hover:flex font-light text-xs;
-    @apply bg-02 ring-2 ring-bg-04 rounded;
-}
-.chat-header-panel-hint.btn.btn-square:focus .btn-content {
-    @apply bg-inherit;
-}
-
 .tab-panel .tab.people-tab {
     @apply h-full overflow-y-hidden;
 }
@@ -266,4 +258,16 @@
 }
 .signin-footer .btn .btn-content {
     @apply text-lg;
+}
+
+.chat-header-control-panel {
+    @apply flex-x gap-x-1;
+}
+.chat-header-control-panel .btn.btn-round {
+    @apply bg-transparent;
+}
+.chat-header-control-panel .btn.btn-round .btn-content {
+    @apply bg-transparent text-icons-01;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
 }
