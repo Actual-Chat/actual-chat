@@ -207,8 +207,9 @@ public class MobileAuthController : Controller
     {
         var output = new StringBuilder();
         output.Append("Status: " + response.StatusCode + ";");
-        output.Append("Headers: " + response.Headers.ToString() + ";");
-        output.Append("Body: " + await response.Content.ReadAsStringAsync() + ";");
+        output.Append("Headers: " + response.Headers + ";");
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        output.Append("Body: " + body + ";");
         return output.ToString();
     }
 
