@@ -76,7 +76,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
-        if (player is not HistoricalChatPlayer)
+        if (player is not HistoricalChatPlayer historicalChatPlayer)
             return Model.NotPlaying;
 
         var playback = player.Playback;
@@ -106,6 +106,7 @@
 
         return new Model {
             PlayingAt = playingAt,
+            ChatPlayer = historicalChatPlayer
         };
     }
 
@@ -122,19 +123,21 @@
     }
 
     private void OnFastForward()
-        => PlayAt(TimeSpan.FromSeconds(15));
+        => _ = PlayAt(TimeSpan.FromSeconds(15));
 
     private void OnBackward()
-        => PlayAt(TimeSpan.FromSeconds(-15));
+        => _ = PlayAt(TimeSpan.FromSeconds(-15));
 
-    private void PlayAt(TimeSpan shift)
+    private async Task PlayAt(TimeSpan shift, CancellationToken cancellationToken = default)
     {
-        // this solution does not work well where there are gaps between audio entries (which is normal)
-        var moment = State.LatestNonErrorValue.PlayingAt;
-        if (!moment.HasValue)
+        var m = State.LatestNonErrorValue;
+        var moment = m.PlayingAt;
+        if (!moment.HasValue || m.ChatPlayer == null)
             return;
-        var newMoment = moment.Value.Add(shift);
-        ChatPlayers.StartHistoricalPlayback(Chat.Id, newMoment);
+        var newMoment = await m.ChatPlayer.GetRewindMoment(moment.Value, shift, cancellationToken).ConfigureAwait(false);
+        if (!newMoment.HasValue)
+            return;
+        ChatPlayers.StartHistoricalPlayback(Chat.Id, newMoment.Value);
     }
 
     public sealed record Model
@@ -144,5 +147,7 @@
         public DateTime? PlayingAt { get; init; }
 
         public bool IsPaused { get; init; }
+
+        public HistoricalChatPlayer? ChatPlayer { get; init; }
     }
 }
