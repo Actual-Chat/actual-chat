@@ -4,7 +4,7 @@
     </div>
     <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-2 px-3 group">
         <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" />
-        <div class="flex-1 flex-x text-03 chat-header-title cursor-pointer" @onclick="OnTitleClick">
+        <div class="flex-1 flex-x text-03 chat-header-title cursor-pointer select-none no-highlight" @onclick="OnTitleClick">
             <div class="flex self-center">@Chat.Title</div>
             <div class="flex-1"></div>
             <ButtonSquare Class="chat-header-panel-hint">

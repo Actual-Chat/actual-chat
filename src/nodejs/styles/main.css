@@ -47,6 +47,10 @@ input:focus[type="text"]::selection {
     @apply bg-selection text-02;
 }
 
+label {
+    @apply no-highlight;
+}
+
 code {
     @apply px-0.5;
     @apply rounded-sm border border-bg-03;

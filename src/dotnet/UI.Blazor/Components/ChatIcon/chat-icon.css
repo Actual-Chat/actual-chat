@@ -7,7 +7,7 @@
 }
 
 .chat-icon-generated {
-    @apply flex items-center justify-center rounded-full cursor-default pointer-events-none;
+    @apply flex items-center justify-center rounded-full cursor-default pointer-events-none select-none;
 }
 
 .chat-icon-image {
