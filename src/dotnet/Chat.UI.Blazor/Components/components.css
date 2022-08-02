@@ -259,3 +259,15 @@
 .signin-footer .btn .btn-content {
     @apply text-lg;
 }
+
+.chat-header-control-panel {
+    @apply flex-x gap-x-1;
+}
+.chat-header-control-panel .btn.btn-round {
+    @apply bg-transparent;
+}
+.chat-header-control-panel .btn.btn-round .btn-content {
+    @apply bg-transparent text-icons-01;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+}
