@@ -193,18 +193,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
-        var existingEntryIds = oldData.Items
-            .Select(m => m.Entry.Id)
-            .ToHashSet();
 
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             _initialLastReadEntryId,
-            existingEntryIds,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;
+        // if scroll position has been changed - return actual query to the client
         var result = VirtualListData.New(
             OrdinalEquals(query.ScrollToKey, scrollToKey)
                 ? query
