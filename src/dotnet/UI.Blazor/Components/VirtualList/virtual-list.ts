@@ -97,7 +97,13 @@ export class VirtualList implements VirtualListAccessor {
             { attributes: true, attributeFilter: ['data-render-index'] });
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
-        this._visibilityObserver = new IntersectionObserver(this.onIntersect, { root: this._ref });
+        this._visibilityObserver = new IntersectionObserver(
+            this.onIntersect,
+            {
+                root: null,
+                threshold: [0, 0.1, 0.9, 1],
+                rootMargin: '10px',
+            });
 
         // @ts-ignore
         this._ironPantsHandlerInterval = setInterval(this.onIronPantsHandle, IronPantsHandleTimeout);
@@ -170,6 +176,7 @@ export class VirtualList implements VirtualListAccessor {
                     const key = getItemKey(itemRef);
                     delete this.items[key];
                     this._unmeasuredItems.delete(key);
+                    this._visibleItems.delete(key);
                     this._sizeObserver.unobserve(itemRef);
                     this._visibilityObserver.unobserve(itemRef);
                 }
@@ -509,7 +516,7 @@ export class VirtualList implements VirtualListAccessor {
                         } as VirtualListClientSideState;
 
                         let gotResizedItems = false;
-                        state.visibleKeys = [...this._visibleItems];
+                        state.visibleKeys = [...this._visibleItems].sort();
 
                         if (this._debugMode) {
                             const isFirstRender = rs.renderIndex <= 1;
