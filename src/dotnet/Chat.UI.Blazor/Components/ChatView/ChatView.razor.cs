@@ -139,6 +139,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var entryId = lastReadEntryId;
         var mustScrollToEntry = query.IsNone && entryId != 0;
 
+        // get latest tile to check whether the Author has submitted new entry
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
         var lastTile = await Chats.GetTile(Session,
             chatId,
@@ -149,12 +150,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (entry.AuthorId != authorId || entry.Id <= _initialLastReadEntryId)
                 continue;
 
+            // scroll to the latest Author entry - e.g.m when author submits the new one
             _initialLastReadEntryId = entry.Id;
             entryId = entry.Id;
             mustScrollToEntry = true;
         }
 
         var isHighlighted = false;
+        // handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
         if (!mustScrollToEntry) {
             if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
@@ -168,6 +171,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 mustScrollToEntry = true;
             }
         }
+        // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
             ? IdTileStack.Layers[1].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
             : query.IsNone
