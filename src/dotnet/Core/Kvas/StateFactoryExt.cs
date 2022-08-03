@@ -2,30 +2,35 @@ namespace ActualChat.Kvas;
 
 public static class StateFactoryExt
 {
+    public static IStoredState<T> NewStored<T>(
+        this IStateFactory stateFactory,
+        StoredState<T>.Options options)
+        => new StoredState<T>(options, stateFactory.Services);
+
     public static IStoredState<T> NewStored<T, TScope>(
         this IStateFactory stateFactory,
         string key,
-        MutableState<T>.Options? options = null)
+        Func<StoredState<T>.KvasOptions, StoredState<T>.KvasOptions>? configure = null)
     {
-        options ??= DefaultStoredStateOptions<T>.Instance;
-        return new StoredState<T, TScope>(options, key, stateFactory.Services);
+        var options = new StoredState<T>.KvasOptions(
+            stateFactory.Services.GetRequiredService<IKvas<TScope>>(),
+            key);
+        if (configure != null)
+            options = configure.Invoke(options);
+        return new StoredState<T>(options, stateFactory.Services);
     }
 
     public static IStoredState<T> NewStored<T>(
         this IStateFactory stateFactory,
         Type scope,
         string key,
-        MutableState<T>.Options? options = null)
+        Func<StoredState<T>.KvasOptions, StoredState<T>.KvasOptions>? configure = null)
     {
-        options ??= DefaultStoredStateOptions<T>.Instance;
-        var kvas = (IKvas) stateFactory.Services.GetRequiredService(typeof(IKvas<>).MakeGenericType(scope));
-        return new StoredState<T>(options, kvas, key, stateFactory.Services);
-    }
-
-    // Nested types
-
-    private static class DefaultStoredStateOptions<T>
-    {
-        public static MutableState<T>.Options Instance { get; } = new();
+        var options = new StoredState<T>.KvasOptions(
+            (IKvas) stateFactory.Services.GetRequiredService(typeof(IKvas<>).MakeGenericType(scope)),
+            key);
+        if (configure != null)
+            options = configure.Invoke(options);
+        return new StoredState<T>(options, stateFactory.Services);
     }
 }

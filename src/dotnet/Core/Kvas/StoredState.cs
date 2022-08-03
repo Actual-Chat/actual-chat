@@ -7,14 +7,12 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
 {
     private IStateSnapshot<T>? _snapshotOnRead;
 
-    protected Symbol Key { get; }
-    protected IKvas Kvas { get; }
+    protected Options Settings { get; }
 
-    public StoredState(Options options, IKvas kvas, Symbol key, IServiceProvider services, bool initialize = true)
+    public StoredState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
-        Key = key;
-        Kvas = kvas;
+        Settings = options;
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -30,37 +28,55 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             var firstSnapshot = Snapshot;
             using var _ = ExecutionContextExt.SuppressFlow();
             Task.Run(async () => {
-                var readResultOpt = Option.None<Result<T>>();
+                var valueOpt = Option.None<T>();
                 try {
-                    var valueOpt = await Kvas.Get<T>(Key, CancellationToken.None).ConfigureAwait(false);
-                    if (valueOpt.IsSome(out var value))
-                        readResultOpt = Option<Result<T>>.Some(value);
+                    valueOpt = await Settings.Read().ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    readResultOpt = Option<Result<T>>.Some(Result.Error<T>(e));
+                catch {
+                    // Intended
                 }
-                if (readResultOpt.IsSome(out var readResult))
+                if (valueOpt.IsSome(out var value)) {
+                    value = await Settings.Corrector.Invoke(value).ConfigureAwait(false);
                     lock (Lock) {
                         if (Snapshot == firstSnapshot) {
                             _snapshotOnRead = firstSnapshot;
-                            Set(readResult);
+                            Set(value);
                         }
                     }
+                }
             });
         }
         else {
             if (oldSnapshot == _snapshotOnRead)
                 _snapshotOnRead = null; // Let's make it available for GC
             else if (computed.IsValue(out var value))
-                Kvas.Set(Key, value);
+                Settings.Write(value);
         }
         return computed;
     }
-}
 
-public class StoredState<T, TScope> : StoredState<T>
-{
-    public StoredState(Options options, Symbol key, IServiceProvider services, bool initialize = true)
-        : base(options, services.GetRequiredService<IKvas<TScope>>(), key, services, initialize)
-    { }
+    // Nested types
+
+    public new abstract record Options : MutableState<T>.Options
+    {
+        public Func<T, ValueTask<T>> Corrector { get; init; } = static x => ValueTask.FromResult(x);
+
+        internal abstract ValueTask<Option<T>> Read();
+        internal abstract void Write(T value);
+    }
+
+    public record ReaderWriterOptions(
+        Func<ValueTask<Option<T>>> Reader,
+        Action<T> Writer
+        ) : Options
+    {
+        internal override ValueTask<Option<T>> Read() => Reader.Invoke();
+        internal override void Write(T value) => Writer.Invoke(value);
+    }
+
+    public record KvasOptions(IKvas Kvas, string Key) : Options
+    {
+        internal override ValueTask<Option<T>> Read() => Kvas.Get<T>(Key, CancellationToken.None);
+        internal override void Write(T value) => Kvas.Set(Key, value);
+    }
 }
