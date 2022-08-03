@@ -1,13 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<bool>
 
-@{
-    var isOpen = State.ValueOrDefault;
-    var cls = isOpen ? "thin-open" : "thin-closed";
-}
-
-<div class="wide-left-panel-wrapper @cls">
+<div class="wide-left-panel-wrapper">
     <div class="wide-left-panel">
         <div class="flex-x justify-center items-center min-h-mobile-header border-b border-bg-04 px-2 gap-x-2 panel-content">
             <div class="md:hidden w-12">
@@ -39,12 +33,6 @@
             NavbarUI.IsThinPanelOpen.Value = _isOpen;
         }
     }
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
-
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await NavbarUI.IsThinPanelOpen.Use(cancellationToken).ConfigureAwait(false);
 
     private void Click() {
         if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction)) {

@@ -261,10 +261,10 @@ module.exports = {
       'scale-from-right': 'scale-from-right 150ms ease-in-out',
       'from-left': 'from-left 150ms ease-in-out',
       'from-right': 'from-right 150ms ease-in-out',
-      'hide-thin-panel': 'hide-thin-panel-to-left 150ms ease-in-out',
-      'show-thin-panel': 'show-thin-panel-from-left 150ms ease-in-out',
-      'hide-wide-panel': 'hide-wide-panel-to-right 150ms ease-in-out',
-      'show-wide-panel': 'show-wide-panel-from-right 150ms ease-in-out',
+      'hide-thin-panel': 'hide-thin-panel 300ms ease-in-out',
+      'show-thin-panel': 'show-thin-panel 300ms ease-in-out',
+      'hide-wide-panel': 'hide-wide-panel 300ms ease-in-out',
+      'show-wide-panel': 'show-wide-panel 300ms ease-in-out',
       'width-to-zero': 'width-to-zero 150ms ease-in-out',
       'width-to-full': 'width-to-full 150ms ease-in-out',
       'hide-to-left': 'hide-to-left 150ms ease-in-out',
@@ -814,44 +814,36 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'hide-thin-panel-to-left': {
+      'hide-thin-panel': {
         from: {
-          transform: 'translateX(16%)',
-          opacity: '1',
+          transform: 'translateX(0%)',
         },
         to: {
           transform: '-translateX(100%)',
-          opacity: '0',
         },
       },
-      'show-thin-panel-from-left': {
+      'show-thin-panel': {
         from: {
           transform: '-translateX(100%)',
-          opacity: '0',
         },
         to: {
           transform: 'translateX(0%)',
-          opacity: '1',
         },
       },
-      'hide-wide-panel-to-right': {
+      'hide-wide-panel': {
         from: {
-          transform: 'translateX(0%)',
-          opacity: '1',
+          transform: '-translateX(84%)',
         },
         to: {
-          transform: 'translateX(84%)',
-          opacity: '0',
+          transform: 'translateX(0%)',
         },
       },
-      'show-wide-panel-from-right': {
+      'show-wide-panel': {
         from: {
-          transform: 'translateX(84%)',
-          opacity: '0',
+          transform: 'translateX(0%)',
         },
         to: {
-          transform: 'translateX(0%)',
-          opacity: '1',
+          transform: '-translateX(84%)',
         },
       },
       'width-to-zero': {
@@ -1170,6 +1162,7 @@ module.exports = {
       'modal': '480px',
       'nav-left': '7.5rem',
       '3': '3rem',
+      '5/6': '83.333333%',
     }),
     objectPosition: {
       bottom: 'bottom',
@@ -1396,6 +1389,7 @@ module.exports = {
       '2/4': '50%',
       '3/4': '75%',
       '4/5': '80%',
+      '5/6': '83.333333%',
       full: '100%',
     }),
     width: ({ theme }) => ({
