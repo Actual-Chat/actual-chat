@@ -55,4 +55,12 @@
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
     }
+
+    // Nested types
+
+    public class Options
+    {
+        public int? MaxSize { get; set; }
+        public string? UploadUrl { get; set; }
+    }
 }

@@ -72,7 +72,6 @@
 
     protected override async Task OnInitializedAsync() {
         LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
-
     }
 
     public async ValueTask DisposeAsync() {
