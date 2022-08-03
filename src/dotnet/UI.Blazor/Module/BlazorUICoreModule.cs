@@ -61,6 +61,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<StateRestore>();
         services.AddScoped<LocalStorageBackend>();
         services.AddScoped<LocalStorage>();
+        services.AddScoped<LocalStorage.Options>();
 
         if (isServerSideBlazor)
             services.AddScoped<TimeZoneConverter, ServerSideTimeZoneConverter>();
