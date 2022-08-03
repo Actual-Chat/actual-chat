@@ -6,3 +6,6 @@ public interface IKvas
     void Set(Symbol key, string? value);
     Task Flush(CancellationToken cancellationToken = default);
 }
+
+public interface IKvas<TScope> : IKvas
+{ }

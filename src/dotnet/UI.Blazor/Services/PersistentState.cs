@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface IPersistentState<T> : IMutableState<T>, IAsyncDisposable
 { }
+
 public class PersistentState<T>: MutableState<T>, IPersistentState<T>
 {
     private readonly object _lock = new ();

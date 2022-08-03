@@ -32,5 +32,14 @@ public static class KvasExt
     // WithXxx
 
     public static IKvas WithPrefix(this IKvas kvas, string prefix)
-        => new KvasForPrefix(prefix, kvas);
+    {
+        if (prefix.IsNullOrEmpty())
+            return kvas;
+        if (kvas is KvasForPrefix kvp)
+            return new KvasForPrefix($"{prefix}.{kvp.Prefix}", kvp.Upstream);
+        return new KvasForPrefix(prefix, kvas);
+    }
+
+    public static IKvas<TScope> WithScope<TScope>(this IKvas kvas)
+        => new KvasForScope<TScope>(kvas);
 }

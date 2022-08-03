@@ -1,8 +1,6 @@
-using Stl.OS;
-
 namespace ActualChat.Kvas;
 
-public class KvasForBackend : IKvas
+public class KvasForBackend : IKvas, IAsyncDisposable
 {
     public record Options
     {
@@ -42,6 +40,9 @@ public class KvasForBackend : IKvas
         };
     }
 
+    public virtual async ValueTask DisposeAsync()
+        => await Flush().ConfigureAwait(false);
+
     public ValueTask<string?> Get(Symbol key, CancellationToken cancellationToken = default)
     {
         if (ReadCache.TryGetValue(key, out var value))
@@ -57,6 +58,9 @@ public class KvasForBackend : IKvas
 
     public Task Flush(CancellationToken cancellationToken = default)
         => Writer.Flush().WaitAsync(cancellationToken);
+
+    public void ClearReadCache()
+        => ReadCache.Clear();
 
     // Private methods
 
