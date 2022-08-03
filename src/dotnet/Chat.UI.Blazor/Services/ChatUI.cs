@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -9,6 +10,7 @@ public partial class ChatUI
 {
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
+    private IChats Chats { get; }
     private IChatReadPositions ChatReadPositions { get; }
     private ModalUI ModalUI { get; }
     private Session Session { get; }
@@ -26,14 +28,22 @@ public partial class ChatUI
     public ChatUI(IServiceProvider services)
     {
         Services = services;
+        StateFactory = services.StateFactory();
+        Chats = services.GetRequiredService<IChats>();
+        ChatReadPositions = services.GetRequiredService<IChatReadPositions>();
         ModalUI = services.GetRequiredService<ModalUI>();
         Session = services.GetRequiredService<Session>();
 
-        StateFactory = services.StateFactory();
-        ChatReadPositions = services.GetRequiredService<IChatReadPositions>();
         ActiveChatId = StateFactory.NewMutable<Symbol>();
         RecordingChatId = StateFactory.NewMutable<Symbol>();
-        PinnedChatIds = StateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
+        PinnedChatIds = StateFactory.NewStored<ImmutableHashSet<Symbol>, ChatUI>(
+            nameof(PinnedChatIds),
+            o => o with {
+                InitialValue = ImmutableHashSet<Symbol>.Empty,
+                Serializer = v => SystemJsonSerializer.Default.Write(v.ToArray()),
+                Deserializer = s => SystemJsonSerializer.Default.Read<Symbol[]>(s).ToImmutableHashSet(),
+                Corrector = RemoveUnreadable,
+            });
         ListeningChatIds = StateFactory.NewMutable(ImmutableArray<Symbol>.Empty);
         MustPlayPinnedChats = StateFactory.NewMutable<bool>();
         MustPlayPinnedContactChats = StateFactory.NewMutable<bool>();
@@ -107,4 +117,19 @@ public partial class ChatUI
 
     public void ShowDeleteMessageRequest(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
+
+    // Private methods
+
+    private async ValueTask<ImmutableHashSet<Symbol>> RemoveUnreadable(ImmutableHashSet<Symbol> chatIds)
+    {
+        var rules = await chatIds
+            .Select(chatId => Chats.GetRules(Session, chatId, default))
+            .Collect()
+            .ConfigureAwait(false);
+        var filteredChatIds = rules
+            .Where(r => r.CanRead())
+            .Select(r => r.ChatId)
+            .ToImmutableHashSet();
+        return filteredChatIds;
+    }
 }

@@ -33,9 +33,6 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 
         // We'll be waiting for chat activation, so let's do the rest as background task
         _ = BackgroundTask.Run(async () => {
-            var pinnedChatIds = await Normalize(state.PinnedChatIds).ConfigureAwait(false);
-            _chatUI.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
-
             // Let's wait for activation of the last active chat before any further actions
             if (_nav.ToBaseRelativePath(_nav.Uri).StartsWith("chat", StringComparison.OrdinalIgnoreCase))
                 await _chatUI.ActiveChatId
@@ -62,12 +59,10 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     protected override async Task<Model> Compute(CancellationToken cancellationToken)
     {
         var activeChatId = await _chatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var pinnedChatIds = await _chatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingActive = await _chatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingPinned = await _chatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             ActiveChatId = activeChatId,
-            PinnedChatIds = pinnedChatIds.ToArray(),
             IsPlayingActive = isPlayingActive,
             IsPlayingPinned = isPlayingPinned,
         };
@@ -90,7 +85,6 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
     {
         // TODO: remove it and use ActiveChatId from local storage instead
         public Symbol ActiveChatId { get; init; }
-        public Symbol[] PinnedChatIds { get; init; } = Array.Empty<Symbol>();
         public bool IsPlayingActive { get; init; }
         public bool IsPlayingPinned { get; init; }
     }
