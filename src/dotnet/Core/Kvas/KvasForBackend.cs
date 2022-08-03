@@ -50,10 +50,11 @@ public class KvasForBackend : IKvas, IAsyncDisposable
         return Reader.Process(key, cancellationToken).ToValueTask();
     }
 
-    public void Set(Symbol key, string? value)
+    public Task Set(Symbol key, string? value, CancellationToken cancellationToken = default)
     {
         ReadCache[key] = value;
         Writer.Add((key, value));
+        return Task.CompletedTask;
     }
 
     public Task Flush(CancellationToken cancellationToken = default)

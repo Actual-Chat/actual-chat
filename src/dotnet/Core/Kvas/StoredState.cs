@@ -30,13 +30,18 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             Task.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
-                    valueOpt = await Settings.Read().ConfigureAwait(false);
+                    var data = await Settings.Read().ConfigureAwait(false);
+                    if (data != null) {
+                        var v = Settings.Deserializer.Invoke(data);
+                        if (Settings.Corrector != null)
+                            v = await Settings.Corrector.Invoke(v).ConfigureAwait(false);
+                        valueOpt = v;
+                    }
                 }
                 catch {
                     // Intended
                 }
                 if (valueOpt.IsSome(out var value)) {
-                    value = await Settings.Corrector.Invoke(value).ConfigureAwait(false);
                     lock (Lock) {
                         if (Snapshot == firstSnapshot) {
                             _snapshotOnRead = firstSnapshot;
@@ -49,8 +54,10 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
         else {
             if (oldSnapshot == _snapshotOnRead)
                 _snapshotOnRead = null; // Let's make it available for GC
-            else if (computed.IsValue(out var value))
-                Settings.Write(value);
+            else if (computed.IsValue(out var value)) {
+                var data = Settings.Serializer.Invoke(value);
+                _ = Settings.Write(data);
+            }
         }
         return computed;
     }
@@ -59,24 +66,26 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
 
     public new abstract record Options : MutableState<T>.Options
     {
-        public Func<T, ValueTask<T>> Corrector { get; init; } = static x => ValueTask.FromResult(x);
+        public Func<T, string> Serializer { get; init; } = static value => SystemJsonSerializer.Default.Write(value);
+        public Func<string, T> Deserializer { get; init; } = static data => SystemJsonSerializer.Default.Read<T>(data);
+        public Func<T, ValueTask<T>>? Corrector { get; init; }
 
-        internal abstract ValueTask<Option<T>> Read();
-        internal abstract void Write(T value);
+        internal abstract ValueTask<string?> Read();
+        internal abstract Task Write(string data);
     }
 
     public record ReaderWriterOptions(
-        Func<ValueTask<Option<T>>> Reader,
-        Action<T> Writer
+        Func<ValueTask<string?>> Reader,
+        Func<string, Task> Writer
         ) : Options
     {
-        internal override ValueTask<Option<T>> Read() => Reader.Invoke();
-        internal override void Write(T value) => Writer.Invoke(value);
+        internal override ValueTask<string?> Read() => Reader.Invoke();
+        internal override Task Write(string data) => Writer.Invoke(data);
     }
 
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
-        internal override ValueTask<Option<T>> Read() => Kvas.Get<T>(Key, CancellationToken.None);
-        internal override void Write(T value) => Kvas.Set(Key, value);
+        internal override ValueTask<string?> Read() => Kvas.Get(Key);
+        internal override Task Write(string data) => Kvas.Set(Key, data);
     }
 }

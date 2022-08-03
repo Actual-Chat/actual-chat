@@ -16,8 +16,8 @@ public class KvasForPrefix : IKvas
     public ValueTask<string?> Get(Symbol key, CancellationToken cancellationToken = default)
         => Upstream.Get(FullPrefix + key, cancellationToken);
 
-    public void Set(Symbol key, string? value)
-        => Upstream.Set(FullPrefix + key, value);
+    public Task Set(Symbol key, string? value, CancellationToken cancellationToken = default)
+        => Upstream.Set(FullPrefix + key, value, cancellationToken);
 
     public Task Flush(CancellationToken cancellationToken = default)
         => Upstream.Flush(cancellationToken);

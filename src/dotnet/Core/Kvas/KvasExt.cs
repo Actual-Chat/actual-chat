@@ -12,21 +12,18 @@ public static class KvasExt
         return data is null ? Option<T>.None : Serializer.Read<T>(data);
     }
 
-    public static void Set<T>(this IKvas kvas, Symbol key, T value)
+    public static Task Set<T>(this IKvas kvas, Symbol key, T value)
     {
         var data = Serializer.Write(value);
-        kvas.Set(key, data);
+        return kvas.Set(key, data);
     }
 
-    public static void Set<T>(this IKvas kvas, Symbol key, Option<T> value)
-    {
-        if (value.IsSome(out var v))
-            kvas.Set(key, v);
-        else
-            kvas.Remove(key);
-    }
+    public static Task Set<T>(this IKvas kvas, Symbol key, Option<T> value)
+        => value.IsSome(out var v)
+            ? kvas.Set(key, v)
+            : kvas.Remove(key);
 
-    public static void Remove(this IKvas kvas, Symbol key)
+    public static Task Remove(this IKvas kvas, Symbol key)
         => kvas.Set(key, null);
 
     // WithXxx

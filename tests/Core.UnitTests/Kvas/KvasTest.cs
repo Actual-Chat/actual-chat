@@ -18,13 +18,13 @@ public class KvasTest : TestBase
         };
         var kvas = new KvasForBackend(options, kvasBackend);
 
-        kvas.Set("a", "a");
+        await kvas.Set("a", "a");
         (await kvas.Get("a")).Should().Be("a");
-        kvas.Set("b", "b");
+        await kvas.Set("b", "b");
         (await kvas.Get("b")).Should().Be("b");
-        kvas.Set("c", "c");
+        await kvas.Set("c", "c");
         (await kvas.Get("c")).Should().Be("c");
-        kvas.Remove("b");
+        await kvas.Remove("b");
         (await kvas.Get("b")).Should().Be(null);
         await kvas.Flush();
 
@@ -110,7 +110,7 @@ public class KvasTest : TestBase
         var kvas2 = new KvasForBackend(options, kvasBackend2);
         var kvas = kvas1.WithSecondary(kvas2);
 
-        kvas.Set("a", "a");
+        await kvas.Set("a", "a");
         (await kvas1.Get("a")).Should().Be("a");
         (await kvas2.Get("a")).Should().Be("a");
         (await kvas.Get("a")).Should().Be("a");
@@ -125,7 +125,7 @@ public class KvasTest : TestBase
         (await kvas1.Get("a")).Should().Be("a");
         (await kvas2.Get("a")).Should().Be("a");
 
-        kvas1.Remove("a");
+        await kvas1.Remove("a");
         (await kvas1.Get("a")).Should().Be(null);
         (await kvas.Get("a")).Should().Be("a");
 

@@ -2,7 +2,24 @@ const LogScope: string = 'LocalStorage';
 const DebugMode: boolean = true;
 
 export class LocalStorage {
+    private static _isInitialized: boolean = false;
+
+    public static initialize() {
+        if (LocalStorage._isInitialized)
+            return
+        const tagKey = ".App.sessionHash";
+        // @ts-ignore
+        const tagValue: string = window.App.sessionHash;
+        if (tagValue != localStorage.getItem(tagKey)) {
+            if (DebugMode)
+                console.info(`${LogScope}: local storage is cleared!`);
+            localStorage.clear();
+            localStorage.setItem(tagKey, tagValue);
+        }
+    }
+
     public static getMany(keys: string[]) {
+        LocalStorage.initialize();
         const result = new Array<string>();
         if (DebugMode)
             console.debug(`${LogScope}: getMany(${result.length} keys):`);
@@ -10,24 +27,25 @@ export class LocalStorage {
             let value = localStorage.getItem(key);
             result.push(value);
             if (DebugMode)
-                console.debug(`${LogScope}: - "${key}" -> "${value}"`);
+                console.debug(`${LogScope}: · '${key}' -> '${value}'`);
         }
         return result;
     }
 
     public static setMany(updates: Record<string, string>) {
+        LocalStorage.initialize();
         if (DebugMode)
-            console.debug(`${LogScope}: setMany(${updates.length} keys):`);
+            console.debug(`${LogScope}: setMany(${Object.keys(updates).length} keys):`);
         for (const [key, value] of Object.entries(updates)) {
             if (value == null) {
                 localStorage.removeItem(key);
                 if (DebugMode)
-                    console.debug(`${LogScope}: * "${key}" <- "${value}"`);
+                    console.debug(`${LogScope}: - '${key}'`);
             }
             else {
                 localStorage.setItem(key, value);
                 if (DebugMode)
-                    console.debug(`${LogScope}: - "${key}"`);
+                    console.debug(`${LogScope}: * '${key}' <- '${value}'`);
             }
         }
     }

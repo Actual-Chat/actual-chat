@@ -15,10 +15,12 @@ public class KvasForSecondary : IKvas
         => await Primary.Get(key, cancellationToken).ConfigureAwait(false)
             ?? await Secondary.Get(key, cancellationToken).ConfigureAwait(false);
 
-    public void Set(Symbol key, string? value)
+    public async Task Set(Symbol key, string? value, CancellationToken cancellationToken = default)
     {
-        Primary.Set(key, value);
-        Secondary.Set(key, value);
+        var task1 = Primary.Set(key, value, cancellationToken);
+        var task2 = Secondary.Set(key, value, cancellationToken);
+        await task1.ConfigureAwait(false);
+        await task2.ConfigureAwait(false);
     }
 
     public async Task Flush(CancellationToken cancellationToken = default)
