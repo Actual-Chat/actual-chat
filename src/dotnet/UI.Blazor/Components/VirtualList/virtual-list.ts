@@ -1,3 +1,5 @@
+import { debounce, Debounced } from 'debounce';
+import { onceAtATime } from 'serialize';
 import './virtual-list.css';
 import { VirtualListClientSideItem, VirtualListClientSideState } from './ts/virtual-list-client-side-state';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -38,6 +40,8 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
+
+    private readonly updateClientSideStateDebounced: Debounced<typeof this.updateClientSideState>;
 
     private _isDisposed = false;
     private _scrollTopPivotRef: HTMLElement | null = null;
@@ -111,6 +115,7 @@ export class VirtualList implements VirtualListAccessor {
 
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
+        this.updateClientSideStateDebounced = debounce(onceAtATime(this.updateClientSideState), UpdateClientSideStateTimeout);
 
         this.items = {};
         this.renderState = {
@@ -424,50 +429,11 @@ export class VirtualList implements VirtualListAccessor {
                 this._whenRenderCompletedResolve();
                 this._whenRenderCompletedResolve = null;
             }
-            this.updateClientSideStateDebounced(true);
-        }
-    }
-
-    private updateClientSideStateDebounced(immediately: boolean = false) {
-        if (this._isRendering)
-            return;
-
-        if (immediately) {
-            if (this._updateClientSideStateTimeout != null) {
-                clearTimeout(this._updateClientSideStateTimeout);
-                this._updateClientSideStateTimeout = null;
-            }
-            void this.updateClientSideState();
-        } else {
-            if (this._updateClientSideStateTimeout != null)
-                return;
-            this._updateClientSideStateTimeout = self.setTimeout(async () => {
-                this._updateClientSideStateTimeout = null;
-                await this.updateClientSideState();
-            }, UpdateClientSideStateTimeout);
+            this.updateClientSideStateDebounced.now();
         }
     }
 
     private async updateClientSideState(): Promise<void> {
-        const queue = this._updateClientSideStateTasks;
-        const lastTask = queue.length > 0 ? queue[queue.length - 1] : null;
-        if (queue.length > 0) {
-            await lastTask;
-            return;
-        }
-        const newTask = (async () => {
-            try {
-                if (lastTask != null)
-                    await lastTask.then(v => v, _ => null);
-                await this.updateClientSideStateImpl();
-            } finally {
-                void queue.shift();
-            }
-        })();
-        queue.push(newTask);
-    }
-
-    private async updateClientSideStateImpl(): Promise<void> {
         const rs = this.renderState;
         if (this._isDisposed || this._isUpdatingClientState || this._isRendering)
             return;
@@ -589,7 +555,7 @@ export class VirtualList implements VirtualListAccessor {
         this._onScrollStoppedTimeout =
             setTimeout(() => {
                 this._onScrollStoppedTimeout = null;
-                this.updateClientSideStateDebounced(true);
+                this.updateClientSideStateDebounced();
             }, ScrollStoppedTimeout);
     };
 

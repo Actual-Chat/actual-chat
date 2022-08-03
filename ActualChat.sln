@@ -188,6 +188,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\on-device-awake.ts = src\nodejs\src\on-device-awake.ts
 		src\nodejs\src\on-device-awake-worker.ts = src\nodejs\src\on-device-awake-worker.ts
 		src\nodejs\src\exports.ts = src\nodejs\src\exports.ts
+		src\nodejs\src\debounce.ts = src\nodejs\src\debounce.ts
+		src\nodejs\src\serialize.ts = src\nodejs\src\serialize.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
