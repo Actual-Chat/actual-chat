@@ -59,6 +59,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.TryAddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
         services.AddScoped<DisposeMonitor>();
         services.AddScoped<StateRestore>();
+        services.AddScoped<LocalStorageBackend>();
+        services.AddScoped<LocalStorage>();
 
         if (isServerSideBlazor)
             services.AddScoped<TimeZoneConverter, ServerSideTimeZoneConverter>();
