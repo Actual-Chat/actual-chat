@@ -33,20 +33,33 @@
     <script>
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
-        // ClientId
+        window.App = {
+            debug: true,
+            baseUri: null,
+            sessionHash: '@(session.Hash)',
+            windowId: null,
+            initPage: function (baseUri, sessionHash) {
+                throw Error("Internal error: App.initPage is available only in mobile apps.");
+            },
+            postMessage: function (data) {
+                throw Error("Internal error: App.postMessage is available only in mobile apps.");
+            }
+        }
+
+        // Set App.windowId
         window.addEventListener("beforeunload", function (e) {
-            let clientIds = JSON.parse(window.sessionStorage.clientIds ?? "[]");
-            clientIds.push(window.clientId);
-            window.sessionStorage.clientIds = JSON.stringify(clientIds);
+            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            windowIds.push(window.windowId);
+            window.sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
         window.addEventListener("load", function (e) {
-            let clientIds = JSON.parse(window.sessionStorage.clientIds ?? "[]");
-            window.clientId = clientIds.pop();
-            if (window.clientId == null)
-                window.clientId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
+            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            window.App.windowId = windowIds.pop();
+            if (window.App.windowId == null)
+                window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
             else
-                window.sessionStorage.clientIds = JSON.stringify(clientIds);
+                window.sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
     </script>

@@ -223,7 +223,8 @@ export class ChatMessageEditor {
 
         console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
         let url = 'api/chats/' + chatId + '/message';
-        const baseUri = window['_baseURI']; // web api _baseURI when running in MAUI
+        // @ts-ignore
+        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
         if (baseUri)
             url = new URL(url, baseUri).toString();
         const response = await fetch(url, {

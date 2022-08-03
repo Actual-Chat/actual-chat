@@ -40,7 +40,8 @@ public partial class MauiBlazorWebViewHandler
     private async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
     {
         try {
-            var script = $"window.chatApp.initPage('{this.BaseUri}')";
+            var sessionHash = new Session(this.SessionId).Hash;
+            var script = $"window.App.initPage('{this.BaseUri}', '{sessionHash}')";
             await sender.ExecuteScriptAsync(script);
         }
         catch (Exception ex) {

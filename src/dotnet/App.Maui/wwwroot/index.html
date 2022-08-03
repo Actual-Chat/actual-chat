@@ -11,12 +11,15 @@
     <link href="/dist/bundle.css" rel="stylesheet" />
 
     <script>
-        window.chatApp = {
+        window.App = {
             debug: true,
-            initPage: function (data) {
-                const baseUri = data;
-                if (window.chatApp.debug) console.log('init page, base uri:' + baseUri);
-                window['_baseURI'] = baseUri;
+            baseUri: null,
+            sessionHash: null,
+            initPage: function (baseUri, sessionHash) {
+                if (window.App.debug)
+                    console.log('App.initPage: baseUri =', baseUri);
+                window.App.baseUri = baseUri;
+                window.App.sessionHash = sessionHash;
                 audio.OpusMediaRecorder.origin = baseUri;
             },
             postMessage: function (data) {
@@ -32,8 +35,26 @@
             }
         }
 
+        // Set App.windowId
+        window.addEventListener("beforeunload", function (e) {
+            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            windowIds.push(window.windowId);
+            window.sessionStorage.windowIds = JSON.stringify(windowIds);
+            return null;
+        });
+        window.addEventListener("load", function (e) {
+            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            window.App.windowId = windowIds.pop();
+            if (window.App.windowId == null)
+                window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
+            else
+                window.sessionStorage.windowIds = JSON.stringify(windowIds);
+            return null;
+        });
+
         document.addEventListener("DOMContentLoaded", function (event) {
-            if (window.chatApp.debug) console.log("DOM fully loaded and parsed");
+            if (window.App.debug)
+                console.log("DOM is fully loaded and parsed");
             try {
                 if (window.Android)
                     window.Android.DOMContentLoaded();

@@ -40,7 +40,8 @@ partial class MauiBlazorWebViewHandler
         {
             _webView.Post(() => {
                 try {
-                    var script = $"window.chatApp.initPage('{_handler.BaseUri}')";
+                    var sessionHash = new Session(_handler.SessionId).Hash;
+                    var script = $"window.App.initPage('{_handler.BaseUri}', '{sessionHash}')";
                     _webView.EvaluateJavascript(script, null);
                 }
                 catch (Exception ex) {
