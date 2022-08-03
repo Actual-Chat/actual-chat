@@ -31,6 +31,12 @@ public static class KvasExt
 
     // WithXxx
 
+    public static IKvas WithPrimary(this IKvas kvas, IKvas primary)
+        => new KvasForSecondary(primary, kvas);
+
+    public static IKvas WithSecondary(this IKvas kvas, IKvas secondary)
+        => new KvasForSecondary(kvas, secondary);
+
     public static IKvas WithPrefix(this IKvas kvas, string prefix)
     {
         if (prefix.IsNullOrEmpty())
