@@ -102,6 +102,7 @@ module.exports = {
         'skeleton-border': 'var(--skeleton-border)',
         'scrollbar': 'var(--scrollbar)',
         'quote': 'var(--quote)',
+        'selected': 'var(--selected)',
       },
       textColor: {
         '01': 'var(--text-01)',

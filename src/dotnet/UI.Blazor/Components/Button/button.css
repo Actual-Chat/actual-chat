@@ -187,6 +187,11 @@
 .btn.btn-round.transparent:active .btn-content {
     @apply bg-round-focus;
 }
+.btn.btn-round.blackout:hover .btn-content,
+.btn.btn-round.blackout:focus .btn-content,
+.btn.btn-round.blackout:active .btn-content {
+    @apply text-03;
+}
 .btn.btn-round.show-on-hover {
     @apply invisible z-10 absolute;
 }

@@ -60,6 +60,7 @@
     --shadow-main: #B9B9B9;
 
     /* Utils colors */
+    --selected: #C5D8FF;
     --online: #0AA489;
     --unread: #93c5fd;
     --separator: #2b3641;
