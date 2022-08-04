@@ -4,6 +4,7 @@ import './Components/Button/button.css';
 import './Components/ChatIcon/chat-icon.css'
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
+import './Components/ContextMenu/context-menu.css';
 import './Components/ContextMenu/context-menu-old.css';
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'

@@ -1,0 +1,4 @@
+.context-menu-container {
+    @apply fixed;
+    z-index: 200;
+}
