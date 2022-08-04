@@ -121,7 +121,7 @@
     @apply bg-round-hover;
 }
 .navbar-item.active {
-    @apply bg-round-active;
+    @apply bg-selected;
 }
 
 .listened-chats .navbar-subgroup .pin-toggle,

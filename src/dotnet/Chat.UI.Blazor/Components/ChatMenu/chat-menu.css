@@ -4,9 +4,7 @@
 .navbar-item:hover .chat-menu-btn {
     @apply flex;
 }
-.chat-menu-btn.btn.btn-round:hover {
-    @apply text-03;
-}
+
 .chat-menu-btn.btn.btn-round.on:hover {
     @apply text-primary;
 }

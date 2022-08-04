@@ -238,7 +238,7 @@
     @apply border-t-8 border-bg-04 bg-01;
 }
 .listened-chats .navbar-item.active {
-    @apply bg-round-active;
+    @apply bg-selected;
 }
 .listened-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
