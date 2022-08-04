@@ -8,8 +8,8 @@
 .side-nav-right {
     @apply translate-x-full;
     @apply left-0;
-    @apply top-[49px];
-    @apply z-40;
+    @apply top-0;
+    @apply z-60;
     @apply md:w-80
 }
 
@@ -23,7 +23,7 @@
 .side-nav-drawer {
     @apply fixed;
     @apply top-0 bottom-0;
-    @apply w-[10px];
+    @apply w-[15px];
     @apply bg-transparent;
 }
 

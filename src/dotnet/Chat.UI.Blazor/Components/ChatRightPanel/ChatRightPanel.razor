@@ -6,17 +6,23 @@
          Open="() => RightPanelUI.IsVisible.Value = true"
          Closed="() => RightPanelUI.IsVisible.Value = false"
          IsOpen="@State.Value.IsRightPanelVisible">
-    <div class="flex-y w-full h-full md:w-80 border-l border-bg-03 p-3">
-        <TabPanel TabsClass="right-panel-tabs" BottomBorder="true">
-            <div class="overflow-y-hidden">
-                <Tab Title="People" Class="people-tab">
-                    <ChatAuthorsTab/>
+    <div class="flex-y w-full h-full md:w-80 border-l border-bg-04">
+        <RightPanelHeader/>
+        <RightPanelChatInfo/>
+        <div class="flex w-full min-h-2 bg-04"></div>
+        <div class="flex flex-col w-full h-full overflow-hidden">
+            <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
+                <Tab Title="Members">
+                    <ChatAuthors/>
                 </Tab>
-                <Tab Title="Chat" Class="chat-settings-tab">
-                    <ChatTab/>
+                <Tab Title="Media">
                 </Tab>
-            </div>
-        </TabPanel>
+                <Tab Title="Files">
+                </Tab>
+                <Tab Title="Links">
+                </Tab>
+            </TabPanel>
+        </div>
     </div>
 </SideNav>
 

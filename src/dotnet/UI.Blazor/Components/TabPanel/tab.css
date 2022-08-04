@@ -28,7 +28,6 @@
 }
 
 .shape {
-    @apply w-6 h-1.5 rounded-b self-center;
-    transform: perspective(50px) rotateX(-135deg);
+    @apply h-1 rounded-t self-center;
+    width: calc(100% - 0.7rem);
 }
-

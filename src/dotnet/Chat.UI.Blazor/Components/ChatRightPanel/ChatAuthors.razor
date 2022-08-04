@@ -1,0 +1,71 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
+@inherits ComputedStateComponent<ChatAuthors.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<div class="flex flex-col w-full h-full px-5 py-3 overflow-hidden">
+    <div class="flex-auto flex-y space-y-3 overflow-y-auto custom-scrollbar">
+        <div class="text-02">Active — @m.ActiveAuthorIds.Length</div>
+        @foreach (var authorId in m.ActiveAuthorIds) {
+            <ChatAuthorBadge
+                AuthorId="@authorId"
+                Size="SquareSize.Size12"
+                ShowsPresence="true"
+                Click="() => OnChatAuthorClick(authorId)"
+                TextClass="font-medium text-02 select-none"/>
+        }
+        <div class="text-02">Offline — @m.OfflineAuthorIds.Length</div>
+        @foreach (var authorId in m.OfflineAuthorIds) {
+            <ChatAuthorBadge
+                AuthorId="@authorId"
+                Size="SquareSize.Size12"
+                ShowsPresence="true"
+                Click="() => OnChatAuthorClick(authorId)"
+                TextClass="font-medium text-02 select-none"/>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private IChatAuthors Authors { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        var activeAuthorIds = new List<Symbol>();
+        var inactiveAuthorIds = new List<Symbol>();
+        foreach (var authorId in allAuthorIds) {
+            var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+            if (presence is Presence.Online or Presence.Recording) {
+                activeAuthorIds.Add(authorId);
+            } else {
+                inactiveAuthorIds.Add(authorId);
+            }
+        }
+
+        return new() {
+            ActiveAuthorIds = activeAuthorIds.ToImmutableArray(),
+            OfflineAuthorIds = inactiveAuthorIds.ToImmutableArray(),
+        };
+    }
+
+    private void OnChatAuthorClick(string authorId)
+        => ModalUI.Show(new ChatAuthorDialog.Model(authorId));
+
+    private void OnSelfClick()
+        => ModalUI.Show(new AuthorSettingsModal.Model(Chat));
+
+    public sealed class Model {
+        public static Model None { get; } = new();
+        public ImmutableArray<Symbol> ActiveAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
+        public ImmutableArray<Symbol> OfflineAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
+    }
+}
