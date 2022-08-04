@@ -102,7 +102,7 @@
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Storage.NetCore" Version="9.27.0"/>
     <PackageReference Update="Storage.NetCore.Gcp.CloudStorage" Version="1.0.1"/>
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.3.1"/>
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.4.0"/>
     <PackageReference Update="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)"/>
     <PackageReference Update="System.Threading.Channels" Version="$(AspNetCoreVersion)"/>
@@ -144,14 +144,14 @@
     <PackageReference Update="Moq" Version="4.18.2"/>
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="xunit" Version="2.4.1"/>
+    <PackageReference Update="xunit" Version="2.4.2"/>
     <PackageReference Update="Xunit.DependencyInjection" Version="8.5.0"/>
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.1"/>
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.5" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Analyzers -->
     <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="xunit.analyzers" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.2.32" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Meziantou.Analyzer" Version="1.0.708" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
