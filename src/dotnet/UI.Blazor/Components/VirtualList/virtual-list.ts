@@ -16,6 +16,7 @@ import { RangeExt } from './ts/range-ext';
 const LogScope: string = 'VirtualList';
 const ScrollStoppedTimeout: number = 64;
 const UpdateClientSideStateTimeout: number = 320;
+const UpdateVisibleKeysTimeout: number = 320;
 const IronPantsHandleTimeout: number = 320;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
@@ -42,6 +43,7 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _visibleItems: Set<string>;
 
     private readonly updateClientSideStateDebounced: Debounced<typeof this.updateClientSideState>;
+    private readonly updateVisibleKeysDebounced: Debounced<typeof this.updateVisibleKeys>;
 
     private _isDisposed = false;
     private _scrollTopPivotRef: HTMLElement | null = null;
@@ -54,9 +56,6 @@ export class VirtualList implements VirtualListAccessor {
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _onScrollStoppedTimeout: any = null;
-
-    private _updateClientSideStateTimeout: number = null;
-    private _updateClientSideStateTasks: Promise<void>[] = [];
 
     private _lastPlan?: VirtualListRenderPlan = null;
     private _plan: VirtualListRenderPlan;
@@ -108,6 +107,11 @@ export class VirtualList implements VirtualListAccessor {
                 root: null,
                 threshold: [0, 0.1, 0.9, 1],
                 rootMargin: '10px',
+
+                /* required options for IntersectionObserver v2*/
+                // @ts-ignore
+                trackVisibility: true,
+                delay: 100  // minimum 100
             });
 
         // @ts-ignore
@@ -119,6 +123,7 @@ export class VirtualList implements VirtualListAccessor {
             onceAtATime(this.updateClientSideState),
             UpdateClientSideStateTimeout,
             true);
+        this.updateVisibleKeysDebounced = debounce(this.updateVisibleKeys, UpdateVisibleKeysTimeout);
 
         this.items = {};
         this.renderState = {
@@ -257,16 +262,20 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private onIntersect = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+        let hasChanged = false;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
             const key = getItemKey(itemRef);
-            if (entry.intersectionRatio <= 0) {
+            if (entry.intersectionRatio <= 0.1) {
+                hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
             }
             else if (entry.intersectionRatio >= 0.9) {
+                hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
             }
         }
+        this.updateVisibleKeysDebounced();
     }
 
     private async onRenderEnd(rs: Required<VirtualListRenderState>): Promise<void> {
@@ -511,14 +520,7 @@ export class VirtualList implements VirtualListAccessor {
                 }
 
                 this.clientSideState = state;
-                if (state.visibleKeys.length > 0) {
-                    if (this._debugMode)
-                        console.log(
-                            `${LogScope}.updateClientSideStateImpl: server call UpdateVisibleKeys:`,
-                            state.visibleKeys);
 
-                    await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', state.visibleKeys);
-                }
 
                 const plan = this._plan = this._lastPlan.next();
                 if (!plan.isFullyLoaded) {
@@ -527,6 +529,18 @@ export class VirtualList implements VirtualListAccessor {
             }
         } finally {
             this._isUpdatingClientState = false;
+        }
+    }
+
+    private async updateVisibleKeys(): Promise<void> {
+        const visibleKeys = [...this._visibleItems].sort();
+        if (visibleKeys.length > 0) {
+            if (this._debugMode)
+                console.log(
+                    `${LogScope}.updateClientSideStateImpl: server call UpdateVisibleKeys:`,
+                    visibleKeys);
+
+            await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
         }
     }
 
