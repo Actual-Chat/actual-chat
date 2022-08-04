@@ -104,7 +104,7 @@ export class VirtualList implements VirtualListAccessor {
             {
                 root: null,
                 threshold: [0, 0.1, 0.9, 1],
-                rootMargin: '10px',
+                rootMargin: '0px',
 
                 /* required options for IntersectionObserver v2*/
                 // @ts-ignore
@@ -259,11 +259,11 @@ export class VirtualList implements VirtualListAccessor {
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
             const key = getItemKey(itemRef);
-            if (entry.intersectionRatio <= 0.1) {
+            if (entry.intersectionRatio <= 0.2 && !entry.isIntersecting) {
                 hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
             }
-            else if (entry.intersectionRatio >= 0.9) {
+            else if (entry.intersectionRatio >= 0.4 && entry.isIntersecting) {
                 hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
             }
@@ -453,7 +453,7 @@ export class VirtualList implements VirtualListAccessor {
         try {
             this._isUpdatingClientState = true;
             if (this._debugMode)
-                console.log(`${LogScope}.updateClientSideStateImpl: #${rs.renderIndex}`);
+                console.log(`${LogScope}.updateClientSideState: #${rs.renderIndex}`);
 
             const state = await new Promise<VirtualListClientSideState | null>(resolve => {
                 let state: VirtualListClientSideState = null;
@@ -506,7 +506,7 @@ export class VirtualList implements VirtualListAccessor {
 
             if (state) {
                 if (this._debugMode)
-                    console.log(`${LogScope}.updateClientSideStateImpl: state:`, state);
+                    console.log(`${LogScope}.updateClientSideState: state:`, state);
                 const expectedRenderIndex = this.renderState.renderIndex;
                 if (state.renderIndex != expectedRenderIndex) {
                     return;
@@ -527,14 +527,12 @@ export class VirtualList implements VirtualListAccessor {
 
     private async updateVisibleKeys(): Promise<void> {
         const visibleKeys = [...this._visibleItems].sort();
-        if (visibleKeys.length > 0) {
-            if (this._debugMode)
-                console.log(
-                    `${LogScope}.updateClientSideStateImpl: server call UpdateVisibleKeys:`,
-                    visibleKeys);
+        if (this._debugMode)
+            console.log(
+                `${LogScope}.updateVisibleKeys: server call UpdateVisibleKeys:`,
+                visibleKeys);
 
-            await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
-        }
+        await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
     }
 
     // Event handlers
@@ -560,6 +558,8 @@ export class VirtualList implements VirtualListAccessor {
     private onScroll = (): void => {
         if (this._isRendering || this._isDisposed)
             return;
+
+        return;
 
         this.updateClientSideStateDebounced();
     };
