@@ -15,6 +15,7 @@ export class ChatMessageEditor {
     private notifyPanel: HTMLDivElement;
     private recordButtonObserver : MutationObserver;
     private notifyPanelObserver : MutationObserver;
+    private observerConfig: {}
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
     private isPanelOpened: boolean = false;
@@ -34,9 +35,7 @@ export class ChatMessageEditor {
         this.blazorRef = blazorRef;
         this.recorderPanel = this.editorDiv.querySelector('.recorder-panel');
         this.recorderButtonDiv = this.recorderPanel.querySelector('div.recorder-button');
-        this.recordButton = this.recorderButtonDiv.querySelector('button');
         this.audioButtons = this.recorderPanel.querySelector('.recorder-buttons');
-        this.notifyPanel = this.editorDiv.querySelector('.notify-call-panel');
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
@@ -44,20 +43,17 @@ export class ChatMessageEditor {
         this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
-        this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
-        const recordButtonObserverConfig = {
+        this.observerConfig = {
             attributes: true,
             childList: false,
             subtree: false,
         };
-        this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
+        this.notifyPanel = this.editorDiv.querySelector('.notify-call-panel');
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
-        const notifyPanelObserverConfig = {
-            attributes: true,
-            childList: false,
-            subtree: false,
-        };
-        this.notifyPanelObserver.observe(this.notifyPanel, notifyPanelObserverConfig);
+        this.notifyPanelObserver.observe(this.notifyPanel, this.observerConfig);
+        this.recordButton = this.recorderButtonDiv.querySelector('button');
+        this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
+        this.recordButtonObserver.observe(this.recordButton, this.observerConfig);
         this.changeMode();
     }
 

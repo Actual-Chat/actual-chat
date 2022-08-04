@@ -132,9 +132,6 @@
 .add-to-chat.btn.btn-round {
     @apply h-10 w-10 self-center rounded-3xl ml-3;
 }
-.add-to-chat.btn.btn-round:hover .btn-content {
-    @apply bg-transparent;
-}
 
 /*Wide left panel*/
 .wide-left-panel-wrapper {
@@ -155,14 +152,14 @@
 
 /*Thin left panel*/
 .thin-left-panel {
-    @apply w-fit flex-y bg-01 items-start min-w-5/6 -translate-x-5/6;
+    @apply w-fit flex-y bg-01 z-10 items-start min-w-5/6 -translate-x-5/6;
     @apply md:min-w-fit md:bg-04 md:translate-x-0;
 }
 .thin-open .thin-left-panel {
-    @apply animate-show-thin-panel translate-x-0;
+    @apply translate-x-0 transition duration-300 ease-in-out;
     @apply md:animate-none;
 }
 .thin-closed .thin-left-panel {
-    @apply animate-hide-thin-panel -translate-x-5/6;
+    @apply animate-hide-thin-panel -translate-x-full;
     @apply md:animate-none md:translate-x-0;
 }
