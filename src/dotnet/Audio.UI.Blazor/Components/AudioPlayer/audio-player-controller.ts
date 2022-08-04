@@ -84,6 +84,8 @@ export class AudioPlayerController implements Resettable {
         onBufferLow?: () => void,
         onStartPlaying?: () => void,
         onStarving?: () => void,
+        onPaused?: () => void;
+        onResumed?: () => void;
         /** If playing was started and now it's stopped */
         onStopped?: () => void,
         /** Called at the end of the queue, even if the playing wasn't started */
@@ -112,6 +114,8 @@ export class AudioPlayerController implements Resettable {
         feederNode.onStartPlaying = callbacks.onStartPlaying;
         feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
         feederNode.onStarving = callbacks.onStarving;
+        feederNode.onPaused = callbacks.onPaused;
+        feederNode.onResumed = callbacks.onResumed;
         feederNode.onStopped = callbacks.onStopped;
         feederNode.onEnded = callbacks.onEnded;
 
@@ -177,6 +181,16 @@ export class AudioPlayerController implements Resettable {
         this.feederNode.stop();
     }
 
+    public pause(): void {
+        console.assert(this.feederNode !== null, `${LogScope}.pause: feederNode isn't created yet. Lifetime error.`);
+        this.feederNode.pause();
+    }
+
+    public resume(): void {
+        console.assert(this.feederNode !== null, `${LogScope}.resume: feederNode isn't created yet. Lifetime error.`);
+        this.feederNode.resume();
+    }
+
     public reset(): void | PromiseLike<void> {
         this.isReset = true;
         if (this.feederNode != null) {
@@ -185,6 +199,8 @@ export class AudioPlayerController implements Resettable {
             this.feederNode.onStartPlaying = null;
             this.feederNode.onBufferTooMuch = null;
             this.feederNode.onStarving = null;
+            this.feederNode.onPaused = null;
+            this.feederNode.onResumed = null;
             this.feederNode.onStopped = null;
             this.feederNode.onEnded = null;
         }

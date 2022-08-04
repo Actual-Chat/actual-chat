@@ -56,6 +56,14 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
+    public Task OnPausedAt(double offset)
+    {
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPausedAt: {Offset}", _id, offset);
+        OnPausedAt(TimeSpan.FromSeconds(offset));
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
     public Task OnChangeReadiness(bool isBufferReady)
     {
         UpdateBufferReadyState(isBufferReady);
@@ -78,6 +86,28 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                                 DebugLog != null,
                                 _id
                             ).ConfigureAwait(true);
+                    break;
+                case PauseCommand:
+                    if (!_isStopSent) {
+                        if (_jsRef == null)
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", _id);
+                        _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
+                    }
+                    else {
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Pause command was invoked after Stop command", _id);
+                    }
+                    break;
+                case ResumeCommand:
+                    if (!_isStopSent) {
+                        if (_jsRef == null)
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", _id);
+                        _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
+                    }
+                    else {
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Resume command was invoked after Stop command", _id);
+                    }
                     break;
                 case StopCommand:
                     if (!_isStopSent) {

@@ -52,4 +52,10 @@ export class AudioPlayerTestPage {
     public stop(): Promise<void> {
         return this.player.stop();
     }
+    public pause(): Promise<void> {
+        return this.player.pause();
+    }
+    public resume(): Promise<void> {
+        return this.player.resume();
+    }
 }

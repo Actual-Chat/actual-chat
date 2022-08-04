@@ -10,6 +10,8 @@ namespace ActualChat.Audio.UI.Blazor.Pages;
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
     private bool _isPlaying;
+    private bool _isPaused;
+    private IJSObjectReference jsRef;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
@@ -60,7 +62,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await CreateAudioSource(_uri, _cts.Token).ConfigureAwait(false);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var stopWatch = Stopwatch.StartNew();
-            var jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token,
                 blazorRef);
@@ -80,6 +82,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
                 finally {
                     _isPlaying = false;
+                    _isPaused = false;
                     _registration = default;
                     StateHasChanged();
                 }
@@ -99,6 +102,20 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             if (!_cts.Token.IsCancellationRequested)
                 await jsRef.InvokeVoidAsync("end", _cts.Token);
         }
+    }
+
+    private async Task OnPauseToggleClick()
+    {
+        if (!_isPlaying)
+            return;
+
+        if (_isPaused) {
+            await jsRef.InvokeVoidAsync("resume");
+        }
+        else {
+            await jsRef.InvokeVoidAsync("pause");
+        }
+        _isPaused = !_isPaused;
     }
 
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
@@ -132,6 +149,15 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         if (true) {
             Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
         }
+        _offset = offset;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnPausedAt(double offset)
+    {
+        Log.LogInformation("OnPausedAt(offset={Offset}s)", offset);
         _offset = offset;
         StateHasChanged();
         return Task.CompletedTask;
