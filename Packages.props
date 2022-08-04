@@ -14,7 +14,7 @@
     <MySqlVersion>2.1.11</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.6.48</RedisVersion>
+    <RedisVersion>2.6.54</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <StlFusionVersion>3.5.10</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
