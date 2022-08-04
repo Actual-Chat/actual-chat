@@ -1,25 +1,44 @@
-export function onceAtATime<T extends (...args: unknown[]) => Promise<void>>(func: (...args: Parameters<T>) => ReturnType<T>)
+interface QueuedTask {
+    whenCompleted: Promise<void>;
+    queuedAt: number;
+}
+
+export function onceAtATime<T extends (...args: unknown[]) => Promise<void>>(func: (...args: Parameters<T>) => ReturnType<T>, maxWait = 500)
     : (...args: Parameters<T>) => Promise<void> {
-    const queue = new Array<Promise<void>>();
+    let lastTask: QueuedTask | null = null;
     let context: unknown;
 
     return async function(...onceArgs: Parameters<T>): Promise<void> {
         context = this;
-        const lastTask = queue.length > 0 ? queue[queue.length - 1] : null;
-        if (queue.length > 0) {
-            await lastTask;
-            return;
+        const time = Date.now();
+        if (lastTask) {
+            const waitDuration = time - lastTask.queuedAt;
+            if (waitDuration >= maxWait) {
+                lastTask = null;
+            }
+            else {
+                await lastTask.whenCompleted;
+                return;
+            }
         }
+
         const newTask = (async () => {
             try {
-                if (lastTask != null)
-                    await lastTask.then(v => v, reason => console.error('onceAtATime: rejected promise', reason));
                 await func.apply(context, onceArgs);
-            } finally {
-                void queue.shift();
+            }
+            catch (e) {
+                console.error('onceAtATime: call has failed', e);
+            }
+            finally {
+                lastTask = null;
             }
         })();
-        queue.push(newTask);
+        lastTask = {
+            whenCompleted: newTask,
+            queuedAt: time,
+        };
+
+        await newTask;
     };
 }
 
