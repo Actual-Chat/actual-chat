@@ -14,6 +14,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUserContact> UserContacts { get; protected set; } = null!;
     public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;
     public DbSet<DbChatReadPosition> ChatReadPositions { get; protected set; } = null!;
+    public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;

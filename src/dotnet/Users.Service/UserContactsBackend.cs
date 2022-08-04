@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 
 public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsBackend
 {
-    private readonly IDbEntityResolver<string,DbUserContact> _dbUserContactResolver;
+    private readonly IDbEntityResolver<string, DbUserContact> _dbUserContactResolver;
     private readonly IAccountsBackend _accountsBackend;
     private readonly ICommander _commander;
 

@@ -1,6 +1,7 @@
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -80,6 +81,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbUserAvatar>();
             db.AddEntityResolver<string, DbUserContact>();
             db.AddEntityResolver<string, DbChatReadPosition>();
+            db.AddEntityResolver<string, DbKvasEntry>();
             db.AddShardLocalIdGenerator(dbContext => dbContext.UserAvatars,
                 (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
@@ -140,6 +142,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
+        fusion.AddComputeService<IServerKvas, ServerKvas>();
+        fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
 
         // ChatUserSettings
         services.AddSingleton(c => {

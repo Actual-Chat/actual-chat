@@ -1,4 +1,4 @@
-namespace ActualChat.Kvas;
+namespace ActualChat.IO;
 
 public class LazyWriter<T> : IAsyncDisposable
 {

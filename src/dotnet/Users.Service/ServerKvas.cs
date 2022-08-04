@@ -1,0 +1,50 @@
+using ActualChat.Kvas;
+
+namespace ActualChat.Users;
+
+public class ServerKvas : IServerKvas
+{
+    private IAuth Auth { get; }
+    private IServerKvasBackend Backend { get; }
+    private ICommander Commander { get; }
+
+    public ServerKvas(IAuth auth, IServerKvasBackend backend, ICommander commander)
+    {
+        Auth = auth;
+        Backend = backend;
+        Commander = commander;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default)
+    {
+        var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task Set(IServerKvas.SetCommand command, CancellationToken cancellationToken = default)
+    {
+        var prefix = await GetPrefix(command.Session, cancellationToken).ConfigureAwait(false);
+        var cmd = new IServerKvasBackend.SetManyCommand(prefix, new[] { (command.Key, command.Value) });
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task SetMany(IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
+    {
+        var prefix = await GetPrefix(command.Session, cancellationToken).ConfigureAwait(false);
+        var cmd = new IServerKvasBackend.SetManyCommand(prefix, command.Items.Select(i => (i.Key, i.Value)).ToArray());
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async ValueTask<string> GetPrefix(Session session, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        return user != null
+            ? $"u/{user.Id.Value}/"
+            : $"s/{session.Id.Value}/";
+    }
+}

@@ -1,6 +1,8 @@
+using ActualChat.IO;
+
 namespace ActualChat.Kvas;
 
-public class KvasForBackend : IKvas, IAsyncDisposable
+public class BatchingKvas : IKvas, IAsyncDisposable
 {
     public record Options
     {
@@ -14,24 +16,24 @@ public class KvasForBackend : IKvas, IAsyncDisposable
         public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     }
 
-    protected IKvasBackend Backend { get; }
+    protected IBatchingKvasBackend Backend { get; }
     protected IThreadSafeLruCache<Symbol, string?> ReadCache { get; }
-    protected BatchProcessor<Symbol, string?> Reader { get; }
-    protected LazyWriter<(Symbol Key, string? Value)> Writer { get; }
+    protected BatchProcessor<string, string?> Reader { get; }
+    protected LazyWriter<(string Key, string? Value)> Writer { get; }
     protected ILogger Log { get; }
 
-    public KvasForBackend(Options options, IKvasBackend backend, ILogger<KvasForBackend>? log = null)
+    public BatchingKvas(Options options, IBatchingKvasBackend backend, ILogger<BatchingKvas>? log = null)
     {
-        Log = log ?? NullLogger<KvasForBackend>.Instance;
+        Log = log ?? NullLogger<BatchingKvas>.Instance;
         Backend = backend;
         ReadCache = options.ReadCacheFactory.Invoke();
-        Reader = new BatchProcessor<Symbol, string?>() {
+        Reader = new BatchProcessor<string, string?>() {
             ConcurrencyLevel = options.ReadBatchConcurrencyLevel,
             MaxBatchSize = options.ReadBatchMaxSize,
             BatchingDelayTaskFactory = options.ReadBatchDelayTaskFactory,
             Implementation = BatchRead,
         };
-        Writer = new LazyWriter<(Symbol Key, string? Value)>() {
+        Writer = new LazyWriter<(string Key, string? Value)>() {
             FlushDelay = options.FlushDelay,
             FlushLimit = options.FlushMaxItemCount,
             FlushRetryDelays = options.FlushRetryDelays,
@@ -43,18 +45,24 @@ public class KvasForBackend : IKvas, IAsyncDisposable
     public virtual async ValueTask DisposeAsync()
         => await Flush().ConfigureAwait(false);
 
-    public ValueTask<string?> Get(Symbol key, CancellationToken cancellationToken = default)
+    public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
         if (ReadCache.TryGetValue(key, out var value))
             return ValueTask.FromResult(value);
         return Reader.Process(key, cancellationToken).ToValueTask();
     }
 
-    public Task Set(Symbol key, string? value, CancellationToken cancellationToken = default)
+    public Task Set(string key, string? value, CancellationToken cancellationToken = default)
     {
         ReadCache[key] = value;
         Writer.Add((key, value));
         return Task.CompletedTask;
+    }
+
+    public async Task SetMany((string Key, string? Value)[] items, CancellationToken cancellationToken = default)
+    {
+        foreach (var (key, value) in items)
+            await Set(key, value, cancellationToken).ConfigureAwait(false);
     }
 
     public Task Flush(CancellationToken cancellationToken = default)
@@ -65,7 +73,7 @@ public class KvasForBackend : IKvas, IAsyncDisposable
 
     // Private methods
 
-    private async Task BatchRead(List<BatchItem<Symbol, string?>> batch, CancellationToken cancellationToken)
+    private async Task BatchRead(List<BatchItem<string, string?>> batch, CancellationToken cancellationToken)
     {
         var results = await Backend
             .GetMany(batch.Select(i => i.Input).ToArray(), cancellationToken)
@@ -76,6 +84,6 @@ public class KvasForBackend : IKvas, IAsyncDisposable
         }
     }
 
-    private Task BatchWrite(List<(Symbol Key, string? Value)> batch)
+    private Task BatchWrite(List<(string Key, string? Value)> batch)
         => Backend.SetMany(batch, CancellationToken.None);
 }

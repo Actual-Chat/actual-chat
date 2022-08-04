@@ -1,4 +1,5 @@
 ﻿using ActualChat.Hosting;
+using ActualChat.Kvas;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
@@ -23,5 +24,6 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
         fusionClient.AddReplicaService<IUserAvatars, IUserAvatarsClientDef>();
         fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
+        fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
     }
 }

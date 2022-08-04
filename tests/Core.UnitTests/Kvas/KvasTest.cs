@@ -9,14 +9,14 @@ public class KvasTest : TestBase
     [Fact]
     public async Task BasicTest()
     {
-        var kvasBackend = new TestKvasBackend() { Out = Out };
-        var options = new KvasForBackend.Options() {
+        var kvasBackend = new TestBatchingKvasBackend() { Out = Out };
+        var options = new BatchingKvas.Options() {
             ReadBatchConcurrencyLevel = 1,
             ReadBatchDelayTaskFactory = null,
             ReadBatchMaxSize = 10,
             FlushDelay = TimeSpan.FromMilliseconds(10),
         };
-        var kvas = new KvasForBackend(options, kvasBackend);
+        var kvas = new BatchingKvas(options, kvasBackend);
 
         await kvas.Set("a", "a");
         (await kvas.Get("a")).Should().Be("a");
@@ -28,7 +28,7 @@ public class KvasTest : TestBase
         (await kvas.Get("b")).Should().Be(null);
         await kvas.Flush();
 
-        var kvas2 = new KvasForBackend(options, kvasBackend);
+        var kvas2 = new BatchingKvas(options, kvasBackend);
         var aTask = kvas2.Get("a");
         var bTask = kvas2.Get("b");
         var cTask = kvas2.Get("c");
@@ -50,19 +50,19 @@ public class KvasTest : TestBase
     [Fact]
     public async Task StoredStateTest()
     {
-        var kvasBackend = new TestKvasBackend() { Out = Out };
-        var options = new KvasForBackend.Options() {
+        var kvasBackend = new TestBatchingKvasBackend() { Out = Out };
+        var options = new BatchingKvas.Options() {
             ReadBatchConcurrencyLevel = 1,
             ReadBatchDelayTaskFactory = null,
             ReadBatchMaxSize = 10,
             FlushDelay = TimeSpan.FromMilliseconds(10),
         };
-        var kvasForBackend = new KvasForBackend(options, kvasBackend);
+        var kvasForBackend = new BatchingKvas(options, kvasBackend);
 
         await using var services = new ServiceCollection()
             .AddFusion().Services
             .AddSingleton<IKvas>(_ => kvasForBackend)
-            .AddSingleton(typeof(IKvas<>), typeof(KvasForScope<>))
+            .AddSingleton(typeof(IKvas<>), typeof(ScopedKvasWrapper<>))
             .BuildServiceProvider();
         var stateFactory = services.StateFactory();
 
@@ -94,45 +94,4 @@ public class KvasTest : TestBase
         s2a.Value = "c";
         s2a.Value.Should().Be("c");
     }
-
-    // [Fact]
-    // public async Task PrimarySecondaryTest()
-    // {
-    //     var kvasBackend1 = new TestKvasBackend() { Out = Out };
-    //     var kvasBackend2 = new TestKvasBackend() { Out = Out };
-    //     var options = new KvasForBackend.Options() {
-    //         ReadBatchConcurrencyLevel = 1,
-    //         ReadBatchDelayTaskFactory = null,
-    //         ReadBatchMaxSize = 10,
-    //         FlushDelay = TimeSpan.FromMilliseconds(1000),
-    //     };
-    //     var kvas1 = new KvasForBackend(options, kvasBackend1);
-    //     var kvas2 = new KvasForBackend(options, kvasBackend2);
-    //     var kvas = kvas1.WithSecondary(kvas2);
-    //
-    //     await kvas.Set("a", "a");
-    //     (await kvas1.Get("a")).Should().Be("a");
-    //     (await kvas2.Get("a")).Should().Be("a");
-    //     (await kvas.Get("a")).Should().Be("a");
-    //
-    //     kvas1.ClearReadCache();
-    //     kvas2.ClearReadCache();
-    //     (await kvas1.Get("a")).Should().Be(null);
-    //     (await kvas2.Get("a")).Should().Be(null);
-    //     (await kvas.Get("a")).Should().Be(null);
-    //
-    //     await kvas.Flush();
-    //     (await kvas1.Get("a")).Should().Be("a");
-    //     (await kvas2.Get("a")).Should().Be("a");
-    //
-    //     await kvas1.Remove("a");
-    //     (await kvas1.Get("a")).Should().Be(null);
-    //     (await kvas.Get("a")).Should().Be("a");
-    //
-    //     await kvas.Flush();
-    //     kvas1.ClearReadCache();
-    //     kvas2.ClearReadCache();
-    //     (await kvas1.Get("a")).Should().Be(null);
-    //     (await kvas.Get("a")).Should().Be("a");
-    // }
 }

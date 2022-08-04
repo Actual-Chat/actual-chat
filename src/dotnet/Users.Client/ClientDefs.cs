@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using RestEase;
 
 namespace ActualChat.Users.Client;
@@ -50,4 +51,16 @@ public interface IChatReadPositionsClientDef
     public Task UpdateReadPosition(
         [Body] IChatReadPositions.UpdateReadPositionCommand command,
         CancellationToken cancellationToken);
+}
+
+[BasePath("serverKvas")]
+public interface IServerKvasClientDef
+{
+    [Get(nameof(Get))]
+    Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default);
+
+    [Post(nameof(Set))]
+    Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
+    [Post(nameof(SetMany))]
+    Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
 }

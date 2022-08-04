@@ -26,7 +26,7 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
             Name = Name,
             OwnerUserId = OwnerUserId,
             TargetUserId = TargetUserId,
-            Version = Version
+            Version = Version,
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserContact>

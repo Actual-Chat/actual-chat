@@ -2,14 +2,14 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Core.UnitTests.Kvas;
 
-public class TestKvasBackend : IKvasBackend
+public class TestBatchingKvasBackend : IBatchingKvasBackend
 {
     private object Lock => Storage;
 
     public ITestOutputHelper? Out { get; init; }
     public Dictionary<Symbol, string> Storage { get; init; } = new();
 
-    public Task<string?[]> GetMany(Symbol[] keys, CancellationToken cancellationToken = default)
+    public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         lock (Lock) {
             Out?.WriteLine($"GetMany: {keys.ToDelimitedString(", ")}");
@@ -22,7 +22,7 @@ public class TestKvasBackend : IKvasBackend
         }
     }
 
-    public Task SetMany(List<(Symbol Key, string? Value)> updates, CancellationToken cancellationToken = default)
+    public Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
     {
         lock (Lock) {
             Out?.WriteLine($"SetMany: {updates.Select(u => $"({u.Key} = {u.Value})").ToDelimitedString(", ")}");
