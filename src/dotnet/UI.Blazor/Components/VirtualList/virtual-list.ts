@@ -559,8 +559,6 @@ export class VirtualList implements VirtualListAccessor {
         if (this._isRendering || this._isDisposed)
             return;
 
-        return;
-
         this.updateClientSideStateDebounced();
     };
 
