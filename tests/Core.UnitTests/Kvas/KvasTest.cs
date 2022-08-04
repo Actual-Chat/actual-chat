@@ -95,44 +95,44 @@ public class KvasTest : TestBase
         s2a.Value.Should().Be("c");
     }
 
-    [Fact]
-    public async Task PrimarySecondaryTest()
-    {
-        var kvasBackend1 = new TestKvasBackend() { Out = Out };
-        var kvasBackend2 = new TestKvasBackend() { Out = Out };
-        var options = new KvasForBackend.Options() {
-            ReadBatchConcurrencyLevel = 1,
-            ReadBatchDelayTaskFactory = null,
-            ReadBatchMaxSize = 10,
-            FlushDelay = TimeSpan.FromMilliseconds(1000),
-        };
-        var kvas1 = new KvasForBackend(options, kvasBackend1);
-        var kvas2 = new KvasForBackend(options, kvasBackend2);
-        var kvas = kvas1.WithSecondary(kvas2);
-
-        await kvas.Set("a", "a");
-        (await kvas1.Get("a")).Should().Be("a");
-        (await kvas2.Get("a")).Should().Be("a");
-        (await kvas.Get("a")).Should().Be("a");
-
-        kvas1.ClearReadCache();
-        kvas2.ClearReadCache();
-        (await kvas1.Get("a")).Should().Be(null);
-        (await kvas2.Get("a")).Should().Be(null);
-        (await kvas.Get("a")).Should().Be(null);
-
-        await kvas.Flush();
-        (await kvas1.Get("a")).Should().Be("a");
-        (await kvas2.Get("a")).Should().Be("a");
-
-        await kvas1.Remove("a");
-        (await kvas1.Get("a")).Should().Be(null);
-        (await kvas.Get("a")).Should().Be("a");
-
-        await kvas.Flush();
-        kvas1.ClearReadCache();
-        kvas2.ClearReadCache();
-        (await kvas1.Get("a")).Should().Be(null);
-        (await kvas.Get("a")).Should().Be("a");
-    }
+    // [Fact]
+    // public async Task PrimarySecondaryTest()
+    // {
+    //     var kvasBackend1 = new TestKvasBackend() { Out = Out };
+    //     var kvasBackend2 = new TestKvasBackend() { Out = Out };
+    //     var options = new KvasForBackend.Options() {
+    //         ReadBatchConcurrencyLevel = 1,
+    //         ReadBatchDelayTaskFactory = null,
+    //         ReadBatchMaxSize = 10,
+    //         FlushDelay = TimeSpan.FromMilliseconds(1000),
+    //     };
+    //     var kvas1 = new KvasForBackend(options, kvasBackend1);
+    //     var kvas2 = new KvasForBackend(options, kvasBackend2);
+    //     var kvas = kvas1.WithSecondary(kvas2);
+    //
+    //     await kvas.Set("a", "a");
+    //     (await kvas1.Get("a")).Should().Be("a");
+    //     (await kvas2.Get("a")).Should().Be("a");
+    //     (await kvas.Get("a")).Should().Be("a");
+    //
+    //     kvas1.ClearReadCache();
+    //     kvas2.ClearReadCache();
+    //     (await kvas1.Get("a")).Should().Be(null);
+    //     (await kvas2.Get("a")).Should().Be(null);
+    //     (await kvas.Get("a")).Should().Be(null);
+    //
+    //     await kvas.Flush();
+    //     (await kvas1.Get("a")).Should().Be("a");
+    //     (await kvas2.Get("a")).Should().Be("a");
+    //
+    //     await kvas1.Remove("a");
+    //     (await kvas1.Get("a")).Should().Be(null);
+    //     (await kvas.Get("a")).Should().Be("a");
+    //
+    //     await kvas.Flush();
+    //     kvas1.ClearReadCache();
+    //     kvas2.ClearReadCache();
+    //     (await kvas1.Get("a")).Should().Be(null);
+    //     (await kvas.Get("a")).Should().Be("a");
+    // }
 }
