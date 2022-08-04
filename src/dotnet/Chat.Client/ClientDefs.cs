@@ -72,6 +72,9 @@ public interface IChatsClientDef
     [Get(nameof(GetPeerChatId))]
     Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
+    [Get(nameof(GetPeerChatContact))]
+    Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
+
     [Get(nameof(GetMentionCandidates))]
     Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
 
@@ -110,7 +113,7 @@ public interface IChatAuthorsClientDef
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     [Post(nameof(AddToContacts))]
-    Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
+    Task AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateChatAuthors))]
     Task CreateChatAuthors([Body] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken);
 }
@@ -138,11 +141,4 @@ public interface IChatUserSettingsClientDef
 
     [Post(nameof(Set))]
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
-}
-
-[BasePath("userContacts")]
-public interface IUserContactsClientDef
-{
-    [Get(nameof(GetAll))]
-    Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken);
 }

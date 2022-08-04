@@ -58,6 +58,8 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
+    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
+    [Inject] private IUserContacts UserContacts { get; init; } = null!;
     [Inject] private UICommander Commander { get; init; } = null!;
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
@@ -120,6 +122,8 @@
         catch (Exception e) {
             ErrorUI.ShowError(e);
         }
+
+        await UpdateRecentContacts().ConfigureAwait(false);
     }
 
     private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
@@ -130,7 +134,7 @@
 
     private async Task<long> UpdateMessage(ChatEntry chatEntry, string text) {
         ChatUI.LinkedChatEntry.Value = null;
-        await Commander.Call(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
+        await Commander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
 
         return chatEntry.Id;
     }
@@ -196,6 +200,14 @@
         ChatUI.LinkedChatEntry.Value = null;
         await SlateEditorRef.Clear();
         await SlateEditorRef.Focus(cancellationToken);
+    }
+
+    private async Task UpdateRecentContacts() {
+        if (Chat.ChatType == ChatType.Peer) {
+            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
+            var command = new IRecentEntries.UpdateUserContactCommand(Session, contact.Id, Clocks.SystemClock.UtcNow);
+            await Commander.Run(command, CancellationToken.None);
+        }
     }
 
 }

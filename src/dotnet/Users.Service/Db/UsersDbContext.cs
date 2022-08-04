@@ -21,6 +21,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
+    public DbSet<DbRecentEntry> RecentEntries { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
 

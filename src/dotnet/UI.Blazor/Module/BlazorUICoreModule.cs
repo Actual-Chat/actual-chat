@@ -89,6 +89,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
         services.AddScoped<LinkInfoBuilder>();
+        services.AddScoped<SearchUI>();
 
         // UI events
         services.AddScoped<IEventAggregator, EventAggregator>();
