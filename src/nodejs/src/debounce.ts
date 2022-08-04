@@ -1,6 +1,5 @@
 export interface Debounced<T extends (...args: unknown[]) => unknown> {
     (...args: Parameters<T>): void;
-    now(...args: Parameters<T>): void;
     cancel(): void;
 }
 
@@ -8,7 +7,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(func: (...ar
     let context: unknown;
     let waitTimeout: number | null = null;
     let previousTimestamp = 0;
-    let args: unknown[] = [];
+    let args: Parameters<T>;
 
     const later = function() {
         const passed = Date.now() - previousTimestamp;
@@ -26,7 +25,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(func: (...ar
         }
     };
 
-    const debounced: Debounced<T> = function(...dArgs: Parameters<T>): void {
+    const debounced: Debounced<T> = function( ...dArgs: Parameters<T>): void {
         context = this;
         args = dArgs;
         previousTimestamp = Date.now();
@@ -43,13 +42,6 @@ export function debounce<T extends (...args: unknown[]) => unknown>(func: (...ar
         clearTimeout(waitTimeout);
         waitTimeout = args = context = null;
     };
-    debounced.now = function(...dArgs: Parameters<T>): void {
-        clearTimeout(waitTimeout);
-        waitTimeout = null;
-        context = this;
-        args = dArgs;
-        func.apply(context, args);
-    }
 
     return debounced;
 }

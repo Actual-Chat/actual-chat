@@ -115,7 +115,10 @@ export class VirtualList implements VirtualListAccessor {
 
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
-        this.updateClientSideStateDebounced = debounce(onceAtATime(this.updateClientSideState), UpdateClientSideStateTimeout);
+        this.updateClientSideStateDebounced = debounce(
+            onceAtATime(this.updateClientSideState),
+            UpdateClientSideStateTimeout,
+            true);
 
         this.items = {};
         this.renderState = {
@@ -429,7 +432,8 @@ export class VirtualList implements VirtualListAccessor {
                 this._whenRenderCompletedResolve();
                 this._whenRenderCompletedResolve = null;
             }
-            this.updateClientSideStateDebounced.now();
+            this.updateClientSideStateDebounced.cancel();
+            this.updateClientSideStateDebounced();
         }
     }
 
