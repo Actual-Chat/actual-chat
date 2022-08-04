@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
@@ -69,6 +71,9 @@ public interface IChats : IComputeService
 
     [ComputeMethod]
     Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
     Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
 

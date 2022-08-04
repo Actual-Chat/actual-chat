@@ -9,6 +9,11 @@ namespace ActualChat.Users.Db;
 [Index(nameof(OwnerUserId))]
 public class DbUserContact : IHasId<string>, IRequirementTarget
 {
+    public DbUserContact()
+    { }
+    public DbUserContact(UserContact contact)
+        => UpdateFrom(contact);
+
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
@@ -16,6 +21,7 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
     public string OwnerUserId { get; set; } = null!;
     public string TargetUserId { get; set; } = null!;
     public string Name { get; set; } = null!;
+    public bool IsFavorite { get; set; }
 
     public static string ComposeId(string ownerUserId, string contactUserId)
         => $"{ownerUserId}:{contactUserId}";
@@ -24,10 +30,21 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
         => new UserContact {
             Id = Id,
             Name = Name,
+            IsFavorite = IsFavorite,
             OwnerUserId = OwnerUserId,
             TargetUserId = TargetUserId,
             Version = Version,
         };
+
+    public void UpdateFrom(UserContact model)
+    {
+        Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerUserId, model.TargetUserId);
+        Name = model.Name;
+        IsFavorite = model.IsFavorite;
+        OwnerUserId = model.OwnerUserId;
+        TargetUserId = model.TargetUserId;
+        Version = model.Version;
+    }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserContact>
     {

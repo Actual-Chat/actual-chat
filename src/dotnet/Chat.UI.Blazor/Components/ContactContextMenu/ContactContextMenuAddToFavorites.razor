@@ -1,0 +1,30 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using BlazorContextMenu
+
+@if (!Contact.IsFavorite) {
+    <Item OnClick="OnClick" CssClass="context-menu-item warning-item">
+        <div class="context-menu-content">
+            <div class="context-menu-icon">
+                @* TODO: *@
+            </div>
+            <div class="context-menu-text">
+                Add to Favorites
+            </div>
+        </div>
+    </Item>
+}
+
+
+@code {
+    [CascadingParameter] public UserContact Contact { get; set; } = null!;
+    [Inject] private UICommander Commander { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; set; } = null!;
+
+    private async Task OnClick() {
+        var diff = DiffEngine.Diff<UserContact, UserContactDiff>(Contact, Contact with { IsFavorite = true });
+        var command = new IUserContacts.ChangeCommand(Session, Contact.Id, null, new Change<UserContactDiff> { Update = diff });
+        await Commander.Run(command).ConfigureAwait(false);
+    }
+
+}

@@ -1,3 +1,4 @@
+using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 
@@ -90,6 +91,10 @@ public class ChatsController : ControllerBase, IChats
     [HttpGet, Publish]
     public Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
         => _service.GetPeerChatId(session, chatPrincipalId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
+        => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
     [HttpGet]
     public Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)

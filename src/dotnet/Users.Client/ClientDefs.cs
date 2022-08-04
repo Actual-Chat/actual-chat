@@ -41,6 +41,15 @@ public interface IUserAvatarsClientDef
     Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
+[BasePath("recentEntries")]
+public interface IRecentEntriesClientDef
+{
+    [Get(nameof(ListUserContactIds))]
+    Task<ImmutableHashSet<string>> ListUserContactIds(Session session, int limit, CancellationToken cancellationToken);
+    [Post(nameof(Update))]
+    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateUserContactCommand command, CancellationToken cancellationToken);
+}
+
 [BasePath("chatReadPositions")]
 public interface IChatReadPositionsClientDef
 {
@@ -63,4 +72,13 @@ public interface IServerKvasClientDef
     Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
     [Post(nameof(SetMany))]
     Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
+}
+
+[BasePath("userContacts")]
+public interface IUserContactsClientDef
+{
+    [Get(nameof(List))]
+    Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
+    [Post(nameof(Change))]
+    Task<UserContact?> Change([Body] IUserContacts.ChangeCommand command, CancellationToken cancellationToken);
 }
