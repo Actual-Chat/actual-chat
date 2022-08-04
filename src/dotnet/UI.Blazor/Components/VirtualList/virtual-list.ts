@@ -14,8 +14,7 @@ import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
 
 const LogScope: string = 'VirtualList';
-const ScrollStoppedTimeout: number = 64;
-const UpdateClientSideStateTimeout: number = 320;
+const UpdateClientSideStateTimeout: number = 64;
 const UpdateVisibleKeysTimeout: number = 320;
 const IronPantsHandleTimeout: number = 320;
 const SizeEpsilon: number = 1;
@@ -55,7 +54,6 @@ export class VirtualList implements VirtualListAccessor {
 
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
-    private _onScrollStoppedTimeout: any = null;
 
     private _lastPlan?: VirtualListRenderPlan = null;
     private _plan: VirtualListRenderPlan;
@@ -121,8 +119,7 @@ export class VirtualList implements VirtualListAccessor {
         this._visibleItems = new Set<string>();
         this.updateClientSideStateDebounced = debounce(
             onceAtATime(this.updateClientSideState),
-            UpdateClientSideStateTimeout,
-            true);
+            UpdateClientSideStateTimeout);
         this.updateVisibleKeysDebounced = debounce(this.updateVisibleKeys, UpdateVisibleKeysTimeout);
 
         this.items = {};
@@ -152,10 +149,6 @@ export class VirtualList implements VirtualListAccessor {
         this._plan = new VirtualListRenderPlan(this);
         this.maybeOnRenderEnd([], this._renderEndObserver);
     };
-
-    get isSafeToScroll(): boolean {
-        return this._onScrollStoppedTimeout == null;
-    }
 
     public static create(
         ref: HTMLElement,
@@ -338,7 +331,7 @@ export class VirtualList implements VirtualListAccessor {
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 }
-            } else if (this.isSafeToScroll && this._stickyEdge != null) {
+            } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                         ? this.getFirstItemKey()
@@ -442,7 +435,7 @@ export class VirtualList implements VirtualListAccessor {
                 this._whenRenderCompletedResolve = null;
             }
             this.updateClientSideStateDebounced.cancel();
-            this.updateClientSideStateDebounced();
+            void this.updateClientSideState();
         }
     }
 
@@ -568,13 +561,7 @@ export class VirtualList implements VirtualListAccessor {
         if (this._isRendering || this._isDisposed)
             return;
 
-        if (this._onScrollStoppedTimeout != null)
-            clearTimeout(this._onScrollStoppedTimeout);
-        this._onScrollStoppedTimeout =
-            setTimeout(() => {
-                this._onScrollStoppedTimeout = null;
-                this.updateClientSideStateDebounced();
-            }, ScrollStoppedTimeout);
+        this.updateClientSideStateDebounced();
     };
 
     private getNewItemRefs(): IterableIterator<HTMLElement> {
