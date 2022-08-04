@@ -352,26 +352,27 @@ export class VirtualList implements VirtualListAccessor {
             }
             else if (this._scrollTopPivotRef != null) {
                 // _scrollTopPivot handling
-
                 const viewportHeight = this._ref.clientHeight;
                 if (this._scrollTopPivotLocation === 'top') {
-                    if (this._scrollTopPivotOffset - viewportHeight > 0) {
-                        // item was out of viewport
-                        this.scrollTo(this._scrollTopPivotRef, false, 'end');
-                        isScrollHappened = true;
-                    }
-                    else {
-                        const itemY0 = this.getItemY0();
-                        const scrollTop = this.getScrollTop();
-                        const itemRect = this._scrollTopPivotRef.getBoundingClientRect();
-                        const newScrollTopPivotOffset = itemRect.y - itemY0 - scrollTop;
-                        let dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
-                        const newScrollTop = scrollTop + dScrollTop;
-                        if (this._debugMode)
-                            console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                        if (Math.abs(dScrollTop) > SizeEpsilon) {
-                            this.setScrollTop(newScrollTop);
+                    const isPivotVisibleNow = this.isItemFullyVisible(this._scrollTopPivotRef);
+                    if (!isPivotVisibleNow) {
+                        if (this._scrollTopPivotOffset - viewportHeight > 0) {
+                            // item was out of viewport
+                            this.scrollTo(this._scrollTopPivotRef, false, 'end');
                             isScrollHappened = true;
+                        } else {
+                            const itemY0 = this.getItemY0();
+                            const scrollTop = this.getScrollTop();
+                            const itemRect = this._scrollTopPivotRef.getBoundingClientRect();
+                            const newScrollTopPivotOffset = itemRect.y - itemY0 - scrollTop;
+                            let dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
+                            const newScrollTop = scrollTop + dScrollTop;
+                            if (this._debugMode)
+                                console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                            if (Math.abs(dScrollTop) > SizeEpsilon) {
+                                this.setScrollTop(newScrollTop);
+                                isScrollHappened = true;
+                            }
                         }
                     }
                 }
