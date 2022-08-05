@@ -36,7 +36,9 @@
         @* Replace position with playing chat title *@
         <div class="flex-1 flex-x justify-center">
             <div class="flex-y">
-                <div class="c-text">@m.Title</div>
+                @if (m.DisplayChatTitle) {
+                    <div class="c-text">@m.Title</div>
+                }
                 <div class="c-text">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = timeZoneConverter.ToLocalTime(playingAt);
@@ -67,6 +69,8 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+
+    [CascadingParameter] public Chat ChatViewChat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
         => await LiveTime.WhenInitialized.ConfigureAwait(false);
@@ -117,7 +121,8 @@
             PlayingAt = playingAt,
             ChatPlayer = historicalChatPlayer,
             IsPaused = isPaused,
-            Title = chatTitle
+            Title = chatTitle,
+            DisplayChatTitle = chatId != ChatViewChat.Id
         };
     }
 
@@ -163,13 +168,10 @@
         public static Model NotPlaying { get; } = new();
 
         public DateTime? PlayingAt { get; init; }
-
         public bool IsPaused { get; init; }
-
         public HistoricalChatPlayer? ChatPlayer { get; init; }
-
         public string Title { get; init; } = "";
-
         public Symbol ChatId { get; init; }
+        public bool DisplayChatTitle { get; init; }
     }
 }
