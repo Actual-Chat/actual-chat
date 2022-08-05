@@ -35,16 +35,19 @@
         @* Position *@
         @* Replace position with playing chat title *@
         <div class="flex-1 flex-x justify-center">
-            <div class="c-text">
-                @if (m.PlayingAt is { } playingAt) {
-                    var localTime = timeZoneConverter.ToLocalTime(playingAt);
-                    var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
-                    var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
-                    <span>
-                        Playing audio recorded
-                        <span class="c-moment" title="@absoluteTime">@relativeTime</span>
-                    </span>
-                }
+            <div class="flex-y">
+                <div class="c-text">@m.Title</div>
+                <div class="c-text">
+                    @if (m.PlayingAt is { } playingAt) {
+                        var localTime = timeZoneConverter.ToLocalTime(playingAt);
+                        var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
+                        var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
+                        <span>
+                            Playing audio recorded
+                            <span class="c-moment" title="@absoluteTime">@relativeTime</span>
+                        </span>
+                    }
+                </div>
             </div>
         </div>
 
@@ -62,8 +65,8 @@
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnInitializedAsync()
         => await LiveTime.WhenInitialized.ConfigureAwait(false);
@@ -75,23 +78,31 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
-        if (player is not HistoricalChatPlayer historicalChatPlayer)
+        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId.IsEmpty)
             return Model.NotPlaying;
-
-        var playback = player.Playback;
-        var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        if (!isPlaying) {
-            // If the player still has playing task but playback is not playing,
-            // apparently it is awaiting next track is fetched.
-            // So it make sense to keep header status for a while.
-            if (player.WhenPlaying != null && State.LatestNonErrorValue.PlayingAt.HasValue) {
-                // Invalidate to force recompute to check if the player is really stopped or not.
-                Computed.GetCurrent()!.Invalidate(TimeSpan.FromMilliseconds(100));
-                return State.LatestNonErrorValue;
-            }
-            return Model.NotPlaying;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatTitle = chat?.Title ?? "";
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        var historicalChatPlayer = player as HistoricalChatPlayer;
+        var playback = historicalChatPlayer?.Playback;
+        if (playback == null) {
+            // There is no playback. This may happen if playback is not started yet or is being restarting.
+            // Keep previous state.
+            return State.ValueOrDefault ?? Model.NotPlaying;
         }
+        //var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+        // if (!isPlaying) {
+        //     // If the player still has playing task but playback is not playing,
+        //     // apparently it is awaiting next track is fetched.
+        //     // So it make sense to keep header status for a while.
+        //     if (player.WhenPlaying != null && State.LatestNonErrorValue.PlayingAt.HasValue) {
+        //         // Invalidate to force recompute to check if the player is really stopped or not.
+        //         Computed.GetCurrent()!.Invalidate(TimeSpan.FromMilliseconds(100));
+        //         return State.LatestNonErrorValue;
+        //     }
+        //     return Model.NotPlaying;
+        // }
 
         var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
@@ -104,11 +115,21 @@
 
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
+        if (!playingAt.HasValue && State.ValueOrDefault != null) {
+            var m = State.LatestNonErrorValue;
+            if (m.ChatId == chatId &&
+                m.ChatPlayer == historicalChatPlayer &&
+                m.Title == chatTitle &&
+                m.IsPaused == isPaused)
+                return m; // keep last model to avoid blinks
+        }
 
         return new Model {
+            ChatId = chatId,
             PlayingAt = playingAt,
             ChatPlayer = historicalChatPlayer,
-            IsPaused = isPaused
+            IsPaused = isPaused,
+            Title = chatTitle
         };
     }
 
@@ -146,7 +167,7 @@
         var newMoment = await m.ChatPlayer.GetRewindMoment(moment.Value, shift, cancellationToken).ConfigureAwait(false);
         if (!newMoment.HasValue)
             return;
-        ChatPlayers.StartHistoricalPlayback(Chat.Id, newMoment.Value);
+        ChatPlayers.StartHistoricalPlayback(m.ChatId, newMoment.Value);
     }
 
     public sealed record Model
@@ -158,5 +179,9 @@
         public bool IsPaused { get; init; }
 
         public HistoricalChatPlayer? ChatPlayer { get; init; }
+
+        public string Title { get; init; } = "";
+
+        public Symbol ChatId { get; init; }
     }
 }
