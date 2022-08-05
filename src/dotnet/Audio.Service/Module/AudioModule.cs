@@ -43,7 +43,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             signalR.AddMessagePackProtocol();
 
         // Module's own services
-        services.AddTransient<AudioHub>();
+        services.AddScoped<AudioHub>();
 
         services.TryAddSingleton<AudioProcessor.Options>();
         services.AddSingleton<AudioProcessor>();
