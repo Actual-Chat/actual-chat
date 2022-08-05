@@ -7,6 +7,7 @@ using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;

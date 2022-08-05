@@ -1,0 +1,31 @@
+@page "/test/features"
+@inherits ComputedStateComponent<FeaturesTestPage.Model?>
+@inject IClientFeatures ClientFeatures
+@inject IServerFeatures ServerFeatures
+@{
+    var m = State.ValueOrDefault ?? new();
+}
+
+<MainHeader>Features Test Page</MainHeader>
+
+<p>Client user: @(m.ClientUser?.Name ?? "n/a")</p>
+<p>Server time: @(m.ServerTime)</p>
+
+@code {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var clientUser = await ClientFeatures.Get<TestFeatures.ClientUser, User?>(cancellationToken);
+        var serverTime = await ServerFeatures.Get<TestFeatures.ServerTime, Moment>(cancellationToken);
+        return new Model() {
+            ClientUser = clientUser,
+            ServerTime = serverTime,
+        };
+    }
+
+    // Nested types
+
+    public record Model
+    {
+        public User? ClientUser { get; init; }
+        public Moment ServerTime { get; init; }
+    }
+}

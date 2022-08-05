@@ -2,11 +2,20 @@
 
 <MainHeader>Fusion Test Page</MainHeader>
 
-<Button Click="OnInvalidateEverything">Invalidate Everything</Button>
+<Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
+<Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
 
 @code {
-    private Task OnInvalidateEverything() {
+    private Task OnInvalidateEverythingClick() {
         ComputedRegistry.Instance.InvalidateEverything();
         return Task.CompletedTask;
+    }
+
+    private async Task OnGCCollectClick() {
+        for (var i = 0; i < 3; i++) {
+            if (i != 0)
+                await Task.Delay(500);
+            GC.Collect();
+        }
     }
 }
