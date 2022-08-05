@@ -11,6 +11,7 @@ public class ChatPlayers : WorkerBase
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
     public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
+    public IMutableState<Symbol> HistoricalPlaybackChatId { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
@@ -20,6 +21,7 @@ public class ChatPlayers : WorkerBase
 
         var stateFactory = services.StateFactory();
         ChatPlaybackState = stateFactory.NewMutable<ChatPlaybackState?>();
+        HistoricalPlaybackChatId = stateFactory.NewMutable<Symbol>();
         Start();
     }
 
@@ -115,6 +117,7 @@ public class ChatPlayers : WorkerBase
         Task EnterState(ChatPlaybackState? state, CancellationToken ct)
         {
             if (state is HistoricalChatPlaybackState historical) {
+                HistoricalPlaybackChatId.Value = historical.ChatId;
                 var result = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await result.ConfigureAwait(false);
@@ -130,13 +133,14 @@ public class ChatPlayers : WorkerBase
             return Task.CompletedTask;
         }
 
-        Task ExitState(ChatPlaybackState? state, CancellationToken ct)
+        async Task ExitState(ChatPlaybackState? state, CancellationToken ct)
         {
-            if (state is HistoricalChatPlaybackState historical)
-                return Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
-            if (state is RealtimeChatPlaybackState realtime)
-                return Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
-            return Task.CompletedTask;
+            if (state is HistoricalChatPlaybackState historical) {
+                await Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
+                HistoricalPlaybackChatId.Value = Symbol.Empty;
+            }
+            else if (state is RealtimeChatPlaybackState realtime)
+                await Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
         }
     }
 

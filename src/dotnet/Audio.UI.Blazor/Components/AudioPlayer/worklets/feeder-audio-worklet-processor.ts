@@ -6,6 +6,7 @@ import {
     GetStateNodeMessage,
     InitNodeMessage,
     OperationCompletedProcessorMessage,
+    ProcessorState,
 } from './feeder-audio-worklet-message';
 import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from '../workers/opus-decoder-worker-message';
 
@@ -35,6 +36,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     /** In seconds from the start of playing, excluding starving time and processing time */
     private playbackTime = 0;
     private isPlaying = false;
+    private isPaused = false;
     private isStarving = false;
 
     constructor(options: AudioWorkletNodeOptions) {
@@ -59,7 +61,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
-        const { debug, chunks, isPlaying, samplesLowThreshold, tooMuchBuffered } = this;
+        const { debug, chunks, isPlaying, isPaused, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
             return true;
@@ -72,7 +74,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             console.assert(channel.length === 128, `${LogScope}.process: WebAudio's render quantum size must be 128`);
         }
 
-        if (!isPlaying) {
+        if (!isPlaying || isPaused) {
             // write silence, because we don't playing
             channel.fill(0);
             return true;
@@ -115,11 +117,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 channel.fill(0, offset);
                 if (!this.isStarving) {
                     this.isStarving = true;
-                    const message: StateChangedProcessorMessage = {
-                        type: 'stateChanged',
-                        state: 'starving',
-                    };
-                    this.port.postMessage(message);
+                    this.postStateChangedMessage('starving');
                 }
 
                 break;
@@ -130,29 +128,17 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const bufferedDuration = sampleCount / SAMPLE_RATE;
         if (this.isPlaying && !this.isStarving) {
             if (sampleCount <= samplesLowThreshold) {
-                const message: StateChangedProcessorMessage = {
-                    type: 'stateChanged',
-                    state: 'playingWithLowBuffer',
-                };
-                this.port.postMessage(message);
+                this.postStateChangedMessage('playingWithLowBuffer');
             }
             if (bufferedDuration > tooMuchBuffered) {
-                const message: StateChangedProcessorMessage = {
-                    type: 'stateChanged',
-                    state: 'playingWithTooMuchBuffer',
-                };
-                this.port.postMessage(message);
+                this.postStateChangedMessage('playingWithTooMuchBuffer');
             }
         } else if (this.isStarving) {
             if (sampleCount > samplesLowThreshold) {
                 this.isStarving = false;
 
                 if (this.isPlaying) {
-                    const message: StateChangedProcessorMessage = {
-                        type: 'stateChanged',
-                        state: 'playing',
-                    };
-                    this.port.postMessage(message);
+                    this.postStateChangedMessage('playing');
                 }
             }
         }
@@ -167,6 +153,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             break;
         case 'stop':
             this.onStopMessage();
+            break;
+        case 'pause':
+            this.onPauseMessage(true);
+            break;
+        case 'resume':
+            this.onPauseMessage(false);
             break;
         case 'getState':
             this.onGetState(msg as GetStateNodeMessage);
@@ -192,6 +184,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         if (debug)
             console.debug(`${LogScope}: reset`);
         this.isPlaying = false;
+        this.isPaused = false;
         this.isStarving = false;
         this.chunks.clear();
         this.chunkOffset = 0;
@@ -218,17 +211,26 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         if (wasPlaying) {
             if (debug)
                 console.debug(`${LogScope}: onStopMessage`);
-            const message: StateChangedProcessorMessage = {
-                type: 'stateChanged',
-                state: 'stopped',
-            };
-            this.port.postMessage(message);
+            this.postStateChangedMessage('stopped');
         }
-        const message: StateChangedProcessorMessage = {
-            type: 'stateChanged',
-            state: 'ended',
-        };
-        this.port.postMessage(message);
+        this.postStateChangedMessage('ended');
+    }
+
+    private onPauseMessage(isPause : boolean) {
+        const { isPlaying: wasPlaying, isPaused : wasPaused, debug } = this;
+
+        if (this.isPaused === isPause) {
+            if (debug)
+                console.debug(`${LogScope}: already in pause state: ${this.isPaused}`);
+            return;
+        }
+        this.isPaused = isPause;
+        if (isPause) {
+            this.postStateChangedMessage('paused');
+        }
+        else {
+            this.postStateChangedMessage('resumed');
+        }
     }
 
     private startPlaybackIfEnoughBuffered(): void {
@@ -271,11 +273,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         // for example if play threshold > number of frames before the end
         if (!this.isPlaying) {
             this.reset();
-            const message: StateChangedProcessorMessage = {
-                type: 'stateChanged',
-                state: 'ended',
-            };
-            this.port.postMessage(message);
+            this.postStateChangedMessage('ended');
         }
     }
 
@@ -285,6 +283,14 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         this.startPlaybackIfEnoughBuffered();
     }
 
+    private postStateChangedMessage(state : ProcessorState)
+    {
+        const message: StateChangedProcessorMessage = {
+            type: 'stateChanged',
+            state: state,
+        };
+        this.port.postMessage(message);
+    }
 }
 
 // @ts-expect-error - register  is defined

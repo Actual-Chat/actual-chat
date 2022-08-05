@@ -8,6 +8,18 @@ public sealed class PlayCommand : IPlayerCommand
     private PlayCommand() { }
 }
 
+public sealed class PauseCommand : IPlayerCommand, IPlaybackCommand
+{
+ public static PauseCommand Instance { get; } = new();
+ private PauseCommand() { }
+}
+
+public sealed class ResumeCommand : IPlayerCommand, IPlaybackCommand
+{
+    public static ResumeCommand Instance { get; } = new();
+    private ResumeCommand() { }
+}
+
 public sealed class StopCommand : IPlayerCommand, IPlaybackCommand
 {
     public static StopCommand Instance { get; } = new();

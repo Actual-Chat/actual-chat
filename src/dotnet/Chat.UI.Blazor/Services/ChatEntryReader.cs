@@ -119,6 +119,21 @@ public sealed class ChatEntryReader
         }
     }
 
+    public async IAsyncEnumerable<ChatEntry> ReadReverse(
+        Range<long> idRange,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
+            foreach (var entry in tile.Entries.Reverse()) {
+                if (entry.Id >= idRange.End)
+                    continue;
+                if (entry.Id < idRange.Start)
+                    yield break;
+                yield return entry;
+            }
+        }
+    }
+
     // This method never returns empty tiles
     public async IAsyncEnumerable<ChatTile> ReadTiles(
         Range<long> idRange,

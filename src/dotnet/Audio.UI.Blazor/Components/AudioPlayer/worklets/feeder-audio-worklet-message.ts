@@ -1,6 +1,6 @@
 /** Message that is used to communicate between the global scope and the audio worklet scope (node -> processor) */
 export interface NodeMessage {
-    type: 'init' | 'stop' | 'getState';
+    type: 'init' | 'stop' | 'pause' | 'resume' | 'getState';
 }
 
 /** Message that is used to communicate between the audio worklet scope and the global scope (processor -> node) */
@@ -24,6 +24,14 @@ export interface StopNodeMessage extends NodeMessage {
     type: 'stop';
 }
 
+export interface PauseNodeMessage extends NodeMessage {
+    type: 'pause';
+}
+
+export interface ResumeNodeMessage extends NodeMessage {
+    type: 'resume';
+}
+
 export interface StateProcessorMessage extends ProcessorMessage {
     type: 'state',
     callbackId: number,
@@ -38,7 +46,9 @@ export interface OperationCompletedProcessorMessage extends ProcessorMessage {
     callbackId: number;
 }
 
+export type ProcessorState = 'playing' | 'playingWithLowBuffer' | 'playingWithTooMuchBuffer' | 'starving' | 'paused' | 'resumed' | 'stopped' | 'ended';
+
 export interface StateChangedProcessorMessage extends ProcessorMessage {
     type: 'stateChanged';
-    state: 'playing' | 'playingWithLowBuffer' | 'playingWithTooMuchBuffer' | 'starving' | 'stopped' | 'ended';
+    state: ProcessorState;
 }
