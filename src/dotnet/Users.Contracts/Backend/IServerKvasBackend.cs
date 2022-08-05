@@ -4,8 +4,9 @@ public interface IServerKvasBackend
 {
     [ComputeMethod]
     Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default);
+
     [CommandHandler]
-    Task Set(SetManyCommand command, CancellationToken cancellationToken = default);
+    Task SetMany(SetManyCommand command, CancellationToken cancellationToken = default);
 
     [DataContract]
     public record SetManyCommand(

@@ -5,8 +5,10 @@ public interface IStoredState<T> : IMutableState<T>
 
 public class StoredState<T> : MutableState<T>, IStoredState<T>
 {
-    private IStateSnapshot<T>? _snapshotOnRead;
+    private IStateSnapshot<T>? _snapshotOnSync;
+    private ILogger? _log;
 
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected Options Settings { get; }
 
     public StoredState(Options options, IServiceProvider services, bool initialize = true)
@@ -30,21 +32,15 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             Task.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
-                    var data = await Settings.Read().ConfigureAwait(false);
-                    if (data != null) {
-                        var v = Settings.Deserializer.Invoke(data);
-                        if (Settings.Corrector != null)
-                            v = await Settings.Corrector.Invoke(v).ConfigureAwait(false);
-                        valueOpt = v;
-                    }
+                    valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
                 }
-                catch {
-                    // Intended
+                catch (Exception e) {
+                    Log.LogError(e, "Failed to read initial value");
                 }
                 if (valueOpt.IsSome(out var value)) {
                     lock (Lock) {
                         if (Snapshot == firstSnapshot) {
-                            _snapshotOnRead = firstSnapshot;
+                            _snapshotOnSync = firstSnapshot;
                             Set(value);
                         }
                     }
@@ -52,12 +48,10 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             });
         }
         else {
-            if (oldSnapshot == _snapshotOnRead)
-                _snapshotOnRead = null; // Let's make it available for GC
-            else if (computed.IsValue(out var value)) {
-                var data = Settings.Serializer.Invoke(value);
-                _ = Settings.Write(data);
-            }
+            if (oldSnapshot == _snapshotOnSync)
+                _snapshotOnSync = null; // Let's make it available for GC
+            else if (computed.IsValue(out var value))
+                _ = Settings.Write(value, CancellationToken.None);
         }
         return computed;
     }
@@ -66,26 +60,44 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
 
     public new abstract record Options : MutableState<T>.Options
     {
-        public Func<T, string> Serializer { get; init; } = static value => SystemJsonSerializer.Default.Write(value);
-        public Func<string, T> Deserializer { get; init; } = static data => SystemJsonSerializer.Default.Read<T>(data);
-        public Func<T, ValueTask<T>>? Corrector { get; init; }
-
-        internal abstract ValueTask<string?> Read();
-        internal abstract Task Write(string data);
+        internal abstract ValueTask<Option<T>> Read(CancellationToken cancellationToken);
+        internal abstract Task Write(T value, CancellationToken cancellationToken);
     }
 
-    public record ReaderWriterOptions(
-        Func<ValueTask<string?>> Reader,
-        Func<string, Task> Writer
+    public record CustomOptions(
+        Func<CancellationToken, ValueTask<Option<T>>> Reader,
+        Func<T, CancellationToken, Task> Writer
         ) : Options
     {
-        internal override ValueTask<string?> Read() => Reader.Invoke();
-        internal override Task Write(string data) => Writer.Invoke(data);
+        internal override ValueTask<Option<T>> Read(CancellationToken cancellationToken)
+            => Reader.Invoke(cancellationToken);
+        internal override Task Write(T value, CancellationToken cancellationToken)
+            => Writer.Invoke(value, cancellationToken);
     }
 
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
-        internal override ValueTask<string?> Read() => Kvas.Get(Key);
-        internal override Task Write(string data) => Kvas.Set(Key, data);
+        public static ITextSerializer<T> DefaultSerializer { get; set; } =
+            SystemJsonSerializer.Default.ToTyped<T>();
+
+        public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
+        public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
+
+        internal override async ValueTask<Option<T>> Read(CancellationToken cancellationToken)
+        {
+            var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
+            if (data == null)
+                return default;
+            var value = Serializer.Read(data);
+            if (Corrector != null)
+                value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
+            return value;
+        }
+
+        internal override Task Write(T value, CancellationToken cancellationToken)
+        {
+            var data = Serializer.Write(value);
+            return Kvas.Set(Key, data, cancellationToken);
+        }
     }
 }

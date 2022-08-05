@@ -25,17 +25,23 @@ public class ServerKvas : IServerKvas
     // [CommandHandler]
     public virtual async Task Set(IServerKvas.SetCommand command, CancellationToken cancellationToken = default)
     {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
         var prefix = await GetPrefix(command.Session, cancellationToken).ConfigureAwait(false);
         var cmd = new IServerKvasBackend.SetManyCommand(prefix, new[] { (command.Key, command.Value) });
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     public virtual async Task SetMany(IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
     {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
         var prefix = await GetPrefix(command.Session, cancellationToken).ConfigureAwait(false);
         var cmd = new IServerKvasBackend.SetManyCommand(prefix, command.Items.Select(i => (i.Key, i.Value)).ToArray());
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

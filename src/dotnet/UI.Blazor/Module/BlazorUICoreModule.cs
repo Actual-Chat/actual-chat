@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
@@ -62,6 +63,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddSingleton<LocalStorage.Options>();
         services.AddScoped<LocalStorageBackend>();
         services.AddScoped<LocalStorage>();
+        services.AddScoped<ServerKvasClient>();
 
         if (isServerSideBlazor)
             services.AddScoped<TimeZoneConverter, ServerSideTimeZoneConverter>();

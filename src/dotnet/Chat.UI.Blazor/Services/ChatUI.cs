@@ -2,6 +2,7 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using static ActualChat.Chat.UI.Blazor.Services.ChatUI;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -36,12 +37,13 @@ public partial class ChatUI
 
         ActiveChatId = StateFactory.NewMutable<Symbol>();
         RecordingChatId = StateFactory.NewMutable<Symbol>();
-        PinnedChatIds = StateFactory.NewStored<ImmutableHashSet<Symbol>, ChatUI>(
+        PinnedChatIds = StateFactory.NewSynced<ImmutableHashSet<Symbol>, ServerState>(
             nameof(PinnedChatIds),
             o => o with {
                 InitialValue = ImmutableHashSet<Symbol>.Empty,
-                Serializer = v => SystemJsonSerializer.Default.Write(v.ToArray()),
-                Deserializer = s => SystemJsonSerializer.Default.Read<Symbol[]>(s).ToImmutableHashSet(),
+                Serializer = TextSerializer<ImmutableHashSet<Symbol>>.New(
+                    s => SystemJsonSerializer.Default.Read<Symbol[]>(s).ToImmutableHashSet(),
+                    v => SystemJsonSerializer.Default.Write(v.ToArray())),
                 Corrector = RemoveUnreadable,
             });
         ListeningChatIds = StateFactory.NewMutable(ImmutableArray<Symbol>.Empty);
@@ -120,7 +122,9 @@ public partial class ChatUI
 
     // Private methods
 
-    private async ValueTask<ImmutableHashSet<Symbol>> RemoveUnreadable(ImmutableHashSet<Symbol> chatIds)
+    private async ValueTask<ImmutableHashSet<Symbol>> RemoveUnreadable(
+        ImmutableHashSet<Symbol> chatIds,
+        CancellationToken cancellationToken)
     {
         var rules = await chatIds
             .Select(chatId => Chats.GetRules(Session, chatId, default))
@@ -132,4 +136,9 @@ public partial class ChatUI
             .ToImmutableHashSet();
         return filteredChatIds;
     }
+
+    // Nested types
+
+    public abstract record LocalState;
+    public abstract record ServerState;
 }

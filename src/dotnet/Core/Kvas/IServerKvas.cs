@@ -1,6 +1,6 @@
 namespace ActualChat.Kvas;
 
-public interface IServerKvas
+public interface IServerKvas : IComputeService
 {
     [ComputeMethod]
     Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default);

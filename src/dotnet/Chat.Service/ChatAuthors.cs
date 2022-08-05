@@ -146,6 +146,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
+
         var (session, chatPrincipalId) = command;
         var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (otherUserId.IsEmpty)

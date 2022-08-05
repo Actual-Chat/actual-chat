@@ -19,7 +19,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     }
 
     // [CommandHandler]
-    public virtual async Task Set(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
     {
         var prefix = command.Prefix;
         if (Computed.IsInvalidating()) {
@@ -42,23 +42,27 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
             ? command.Items
             : command.Items.Reverse().DistinctBy(e => e.Key, StringComparer.Ordinal);
         foreach (var (key, value) in items) {
-            var dbKvasEntry = dbKvasEntries.GetValueOrDefault(key);
+            var fullKey = prefix + key;
+            var dbKvasEntry = dbKvasEntries.GetValueOrDefault(fullKey);
             if (value != null) {
                 if (dbKvasEntry == null) {
+                    // Create
                     dbKvasEntry = new DbKvasEntry() {
-                        Key = key,
+                        Key = fullKey,
                         Version = VersionGenerator.NextVersion(),
                         Value = value,
                     };
                     dbContext.KvasEntries.Add(dbKvasEntry);
                 }
                 else {
+                    // Update
                     dbKvasEntry.Version = VersionGenerator.NextVersion(dbKvasEntry.Version);
                     dbKvasEntry.Value = value;
                     dbContext.KvasEntries.Update(dbKvasEntry);
                 }
             }
             else {
+                // Remove
                 if (dbKvasEntry != null)
                     dbContext.KvasEntries.Remove(dbKvasEntry);
             }
