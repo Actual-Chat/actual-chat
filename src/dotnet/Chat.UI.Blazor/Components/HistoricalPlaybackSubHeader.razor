@@ -91,19 +91,6 @@
             // Keep previous state.
             return State.ValueOrDefault ?? Model.NotPlaying;
         }
-        //var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        // if (!isPlaying) {
-        //     // If the player still has playing task but playback is not playing,
-        //     // apparently it is awaiting next track is fetched.
-        //     // So it make sense to keep header status for a while.
-        //     if (player.WhenPlaying != null && State.LatestNonErrorValue.PlayingAt.HasValue) {
-        //         // Invalidate to force recompute to check if the player is really stopped or not.
-        //         Computed.GetCurrent()!.Invalidate(TimeSpan.FromMilliseconds(100));
-        //         return State.LatestNonErrorValue;
-        //     }
-        //     return Model.NotPlaying;
-        // }
-
         var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
@@ -116,12 +103,13 @@
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
         if (!playingAt.HasValue && State.ValueOrDefault != null) {
+            // Try to keep last state to avoid blinks
             var m = State.LatestNonErrorValue;
             if (m.ChatId == chatId &&
                 m.ChatPlayer == historicalChatPlayer &&
                 m.Title == chatTitle &&
                 m.IsPaused == isPaused)
-                return m; // keep last model to avoid blinks
+                return m;
         }
 
         return new Model {

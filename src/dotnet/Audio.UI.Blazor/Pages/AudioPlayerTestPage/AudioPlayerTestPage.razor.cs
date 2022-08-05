@@ -108,13 +108,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (!_isPlaying)
             return;
-
-        if (_isPaused) {
-            await jsRef.InvokeVoidAsync("resume");
-        }
-        else {
-            await jsRef.InvokeVoidAsync("pause");
-        }
+        await jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
         _isPaused = !_isPaused;
     }
 
