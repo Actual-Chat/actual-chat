@@ -17,7 +17,7 @@
         => new() {
             ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),
             ServerTime = await Features.Get<TestFeatures.ServerTime, Moment>(cancellationToken),
-            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncomplete, bool>(cancellationToken),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
         };
 
     // Nested types

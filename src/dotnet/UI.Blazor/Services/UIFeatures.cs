@@ -6,12 +6,12 @@ namespace ActualChat.UI.Blazor.Services;
 
 public static class UIFeatures
 {
-    public class EnableIncomplete : FeatureDef<bool>, IClientFeatureDef
+    public class EnableIncompleteUI : FeatureDef<bool>, IClientFeatureDef
     {
         public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
             var blazorUISettings = services.GetRequiredService<BlazorUISettings>();
-            if (blazorUISettings.EnableIncompleteFeatured is { } enableIncompleteFeatures)
+            if (blazorUISettings.EnableIncompleteUI is { } enableIncompleteFeatures)
                 return enableIncompleteFeatures;
 
             var hostInfo = services.GetRequiredService<HostInfo>();
