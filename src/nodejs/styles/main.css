@@ -1,5 +1,9 @@
 /* Default styling */
 
+* {
+    font-family: "humanist-521-bt";
+}
+
 html {
     height: 100%;
     @apply text-base;
