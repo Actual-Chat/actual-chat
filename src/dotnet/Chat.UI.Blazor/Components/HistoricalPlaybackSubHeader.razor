@@ -37,7 +37,9 @@
         <div class="flex-1 flex-x justify-center">
             <div class="flex-y">
                 @if (m.DisplayChatTitle) {
-                    <div class="c-text">@m.Title</div>
+                    <div class="c-text">
+                        <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.Title</a>
+                    </div>
                 }
                 <div class="c-text">
                     @if (m.PlayingAt is { } playingAt) {
