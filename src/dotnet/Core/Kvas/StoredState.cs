@@ -35,7 +35,7 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
                     valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (Exception e) {
-                    Log.LogError(e, "Failed to read initial value");
+                    Log.LogError(e, "Failed to read the initial value");
                 }
                 if (valueOpt.IsSome(out var value)) {
                     lock (Lock) {

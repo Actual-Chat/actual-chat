@@ -107,7 +107,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 }
                 catch (Exception e) {
                     readResult = Result.Error<T>(e);
-                    Log.LogWarning(e, "Failed to read initial value");
+                    Log.LogWarning(e, "Failed to read the initial value");
                 }
             }),
             cancellationToken
