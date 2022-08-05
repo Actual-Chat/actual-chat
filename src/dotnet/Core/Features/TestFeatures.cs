@@ -2,7 +2,7 @@ using Stl.Fusion.Extensions;
 
 namespace ActualChat;
 
-public class TestFeatures
+public static class TestFeatures
 {
     public class ServerTime : FeatureDef<Moment>, IServerFeatureDef
     {
@@ -18,8 +18,8 @@ public class TestFeatures
     {
         public override async Task<User?> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
-            var auth = services.GetRequiredService<IAuth>();
             var session = services.GetRequiredService<Session>();
+            var auth = services.GetRequiredService<IAuth>();
             var user = await auth.GetUser(session, cancellationToken).ConfigureAwait(false);
             return user;
         }

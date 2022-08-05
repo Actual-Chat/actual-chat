@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
@@ -7,12 +6,11 @@ using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
 
-public class BlazorUICoreModule : HostModule, IBlazorUIModule
+public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";
 
@@ -22,6 +20,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
+        base.InjectServices(services);
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);

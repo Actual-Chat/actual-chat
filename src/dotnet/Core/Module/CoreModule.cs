@@ -44,6 +44,9 @@ public class CoreModule : HostModule<CoreSettings>
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
+
+        // Features
+        services.AddScoped<Features>();
         fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))

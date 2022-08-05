@@ -2,38 +2,26 @@ using Stl.Reflection;
 
 namespace ActualChat;
 
-public interface IFeatures : IComputeService, IHasServices
+public class Features : IFeatures
 {
-    [ComputeMethod]
-    Task<object?> Get(Type featureType, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken);
-}
-
-public abstract class Features : IFeatures
-{
-    protected ITextSerializer Serializer { get; set; } = TypeDecoratingSerializer.Default;
-
     public IServiceProvider Services { get; }
-    public IFeatureDefRegistry Registry { get; }
+    public IClientFeatures ClientFeatures { get; }
+    public IServerFeatures ServerFeatures { get; }
 
-    protected Features(IFeatureDefRegistry registry, IServiceProvider services)
+    public Features(IServiceProvider services)
     {
-        Registry = registry;
         Services = services;
+        ClientFeatures = services.GetRequiredService<IClientFeatures>();
+        ServerFeatures = services.GetRequiredService<IServerFeatures>();
     }
 
-    public virtual Task<object?> Get(Type featureType, CancellationToken cancellationToken)
+    public Task<object?> Get(Type featureType, CancellationToken cancellationToken)
     {
-        var featureDef = Registry.Get(featureType);
-        var value = featureDef.ComputeUntyped(Services, cancellationToken);
-        return value;
+        if (typeof(IClientFeatureDef).IsAssignableFrom(featureType))
+            return ClientFeatures.Get(featureType, cancellationToken);
+        return ServerFeatures.Get(featureType, cancellationToken);
     }
 
-    public virtual async Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
-    {
-        var value = await Get(featureTypeRef.Resolve(), cancellationToken).ConfigureAwait(false);
-        var json = Serializer.Write(value);
-        return json;
-    }
+    Task<string> IFeatures.GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
+        => throw StandardError.NotSupported("This method isn't supported.");
 }
