@@ -122,17 +122,17 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         if (shift <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shift));
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
-            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, fullIdRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null) {
             Log.LogWarning("Couldn't find start entry");
             return null;
         }
 
-        idRange = (startEntry.Id, idRange.End);
+        Range<long> idRange = (startEntry.Id, fullIdRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
@@ -150,7 +150,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return null;
         }
 
-        idRange = ((Range<long>)(idRange.Start, lastEntry.Id)).ToExclusive();
+        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.Id)).ToExclusive();
         var reverseEntries = audioEntryReader.ReadReverse(idRange, cancellationToken);
         var remainedShift = shift;
         var lastShiftPosition = playingAt;
