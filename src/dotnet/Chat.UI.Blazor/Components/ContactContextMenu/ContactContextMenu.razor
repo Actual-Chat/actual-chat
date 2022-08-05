@@ -1,15 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
 
-<div class="fixed"> @* use fixed class to eliminate space style coming from NavGroup *@
+<RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
     <ContextMenu Id="@Id">
         <ChildContent>
             <CascadingValue Value="@(context.Data as UserContact)">
                 <ContactContextMenuAddToFavorites />
+                <ContactContextMenuPin/>
             </CascadingValue>
         </ChildContent>
     </ContextMenu>
-</div>
+</RenderIntoStack>
 
 @code{
     public const string Id = "contextMenu-contactList-chat";
