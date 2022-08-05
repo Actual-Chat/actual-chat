@@ -16,10 +16,11 @@ public class ServerKvas : IServerKvas
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default)
+    public virtual async Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default)
     {
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
+        var result = await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
+        return result == null ? default : Option<string>.Some(result);
     }
 
     // [CommandHandler]

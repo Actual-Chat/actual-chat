@@ -57,7 +57,7 @@ public interface IChatReadPositionsClientDef
 public interface IServerKvasClientDef
 {
     [Get(nameof(Get))]
-    Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default);
+    Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [Post(nameof(Set))]
     Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);

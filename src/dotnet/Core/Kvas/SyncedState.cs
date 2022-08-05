@@ -63,7 +63,13 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     protected virtual async Task SyncCycle()
     {
         var cancellationToken = DisposeToken;
-        await Sync(cancellationToken).ConfigureAwait(false);
+        try {
+            await Sync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "Failure inside SyncCycle() on the very first sync");
+            throw;
+        }
 
         while (!cancellationToken.IsCancellationRequested) {
             var cts = cancellationToken.CreateLinkedTokenSource();
@@ -101,6 +107,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 }
                 catch (Exception e) {
                     readResult = Result.Error<T>(e);
+                    Log.LogWarning(e, "Failed to read initial value");
                 }
             }),
             cancellationToken

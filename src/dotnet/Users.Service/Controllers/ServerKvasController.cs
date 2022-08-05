@@ -18,14 +18,14 @@ public class ServerKvasController : ControllerBase, IServerKvas
     }
 
     [HttpGet, Publish]
-    public Task<string?> Get(Session session, string key, CancellationToken cancellationToken = default)
+    public Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default)
         => _service.Get(session, key, cancellationToken);
 
     [HttpPost]
     public Task Set([FromBody] IServerKvas.SetCommand command, CancellationToken cancellationToken = default)
-        => _service.Set(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task SetMany([FromBody] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
-        => _service.SetMany(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

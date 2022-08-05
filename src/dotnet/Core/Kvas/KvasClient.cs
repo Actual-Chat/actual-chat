@@ -11,8 +11,11 @@ public class KvasClient : IKvas
         Session = session;
     }
 
-    public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
-        => ServerKvas.Get(Session, key, cancellationToken).ToValueTask();
+    public async ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
+    {
+        var result = await ServerKvas.Get(Session, key, cancellationToken).ConfigureAwait(false);
+        return result.IsSome(out var value) ? value : null;
+    }
 
     public Task Set(string key, string? value, CancellationToken cancellationToken = default)
         => ServerKvas.Set(Session, key, value, cancellationToken);
