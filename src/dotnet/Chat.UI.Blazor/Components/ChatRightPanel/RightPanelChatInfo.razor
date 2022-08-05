@@ -97,7 +97,7 @@
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {
-        var url = ContentUrlMapper.ContentUrl(State.LatestNonErrorValue.Picture);
+        var url = ContentUrlMapper.ContentUrl(State.LatestNonErrorValue.Picture!);
         await ImagePreviewUI.Show(url);
     }
 

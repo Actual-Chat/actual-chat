@@ -11,7 +11,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 {
     private bool _isPlaying;
     private bool _isPaused;
-    private IJSObjectReference jsRef;
+    private IJSObjectReference _jsRef = null!;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
@@ -62,7 +62,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await CreateAudioSource(_uri, _cts.Token).ConfigureAwait(false);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var stopWatch = Stopwatch.StartNew();
-            jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token,
                 blazorRef);
@@ -71,8 +71,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _registration = _cts.Token.Register(async () => {
                 try {
                     Log.LogInformation("Playing was cancelled");
-                    await jsRef.InvokeVoidAsync("stop", CancellationToken.None);
-                    await jsRef.DisposeSilentlyAsync();
+                    await _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
+                    await _jsRef.DisposeSilentlyAsync();
                     if (_registration != default) {
                         await _registration.DisposeAsync();
                     }
@@ -97,10 +97,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data);
+                _ = _jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data);
             }
             if (!_cts.Token.IsCancellationRequested)
-                await jsRef.InvokeVoidAsync("end", _cts.Token);
+                await _jsRef.InvokeVoidAsync("end", _cts.Token);
         }
     }
 
@@ -108,7 +108,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (!_isPlaying)
             return;
-        await jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
+        await _jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
         _isPaused = !_isPaused;
     }
 
