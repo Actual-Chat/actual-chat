@@ -1,4 +1,4 @@
-const LogScope: string = 'LocalStorage';
+const LogScope: string = 'LocalSettings';
 const DebugMode: boolean = true;
 
 export class LocalStorage {

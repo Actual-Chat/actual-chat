@@ -39,8 +39,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
-        services.AddScoped(c => c.GetRequiredService<LocalStorage>().WithScope<ChatUI.LocalState>());
-        services.AddScoped(c => c.GetRequiredService<ServerKvasClient>().WithScope<ChatUI.ServerState>());
         services.AddStateRestoreHandler<ChatUIStatePersister>();
         services.AddScoped<EditedMarkupConverter>();
         services.AddScoped<MentionedNameResolver>();

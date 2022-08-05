@@ -3,16 +3,16 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class LocalStorageBackend : IBatchingKvasBackend
+public class LocalSettingsBackend : IBatchingKvasBackend
 {
     private IJSRuntime JS { get; }
 
-    public LocalStorageBackend(IJSRuntime js)
+    public LocalSettingsBackend(IJSRuntime js)
         => JS = js;
 
     public async Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
         => await JS.InvokeAsync<string?[]>(
-            $"{BlazorUICoreModule.ImportName}.LocalStorage.getMany",
+            $"{BlazorUICoreModule.ImportName}.LocalSettings.getMany",
             cancellationToken,
             keys);
 
@@ -22,7 +22,7 @@ public class LocalStorageBackend : IBatchingKvasBackend
         foreach (var (key, value) in updates)
             dUpdates[key] = value;
         await JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.LocalStorage.setMany",
+            $"{BlazorUICoreModule.ImportName}.LocalSettings.setMany",
             cancellationToken,
             dUpdates);
     }

@@ -1,3 +1,5 @@
+using Stl.Reflection;
+
 namespace ActualChat.Kvas;
 
 public static class KvasExt
@@ -28,6 +30,12 @@ public static class KvasExt
 
     // WithXxx
 
+    public static IKvas WithPrefix<T>(this IKvas kvas)
+        => kvas.WithPrefix(typeof(T));
+
+    public static IKvas WithPrefix(this IKvas kvas, Type type)
+        => kvas.WithPrefix(type.GetName());
+
     public static IKvas WithPrefix(this IKvas kvas, string prefix)
     {
         if (prefix.IsNullOrEmpty())
@@ -36,7 +44,4 @@ public static class KvasExt
             return new PrefixedKvasWrapper(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
         return new PrefixedKvasWrapper(kvas, prefix);
     }
-
-    public static IKvas<TScope> WithScope<TScope>(this IKvas kvas)
-        => new ScopedKvasWrapper<TScope>(kvas);
 }

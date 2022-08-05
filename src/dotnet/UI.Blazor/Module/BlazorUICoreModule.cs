@@ -60,10 +60,12 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.TryAddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
         services.AddScoped<DisposeMonitor>();
         services.AddScoped<StateRestore>();
-        services.AddSingleton<LocalStorage.Options>();
-        services.AddScoped<LocalStorageBackend>();
-        services.AddScoped<LocalStorage>();
-        services.AddScoped<ServerKvasClient>();
+
+        // Settings
+        services.AddSingleton<LocalSettings.Options>();
+        services.AddScoped<LocalSettingsBackend>();
+        services.AddScoped<LocalSettings>();
+        services.AddScoped<AccountSettings>();
 
         if (isServerSideBlazor)
             services.AddScoped<TimeZoneConverter, ServerSideTimeZoneConverter>();

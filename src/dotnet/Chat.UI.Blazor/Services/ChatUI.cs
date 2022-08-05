@@ -35,11 +35,12 @@ public partial class ChatUI
         ModalUI = services.GetRequiredService<ModalUI>();
         Session = services.GetRequiredService<Session>();
 
+        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(ChatUI));
+        var accountSettings = services.GetRequiredService<AccountSettings>().WithPrefix(nameof(ChatUI));
         ActiveChatId = StateFactory.NewMutable<Symbol>();
         RecordingChatId = StateFactory.NewMutable<Symbol>();
-        PinnedChatIds = StateFactory.NewSynced<ImmutableHashSet<Symbol>, ServerState>(
-            nameof(PinnedChatIds),
-            o => o with {
+        PinnedChatIds = StateFactory.NewKvasSynced<ImmutableHashSet<Symbol>>(
+            new(accountSettings, nameof(PinnedChatIds)) {
                 InitialValue = ImmutableHashSet<Symbol>.Empty,
                 Serializer = TextSerializer<ImmutableHashSet<Symbol>>.New(
                     s => SystemJsonSerializer.Default.Read<Symbol[]>(s).ToImmutableHashSet(),
@@ -136,9 +137,4 @@ public partial class ChatUI
             .ToImmutableHashSet();
         return filteredChatIds;
     }
-
-    // Nested types
-
-    public abstract record LocalState;
-    public abstract record ServerState;
 }

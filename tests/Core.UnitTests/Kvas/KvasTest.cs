@@ -61,34 +61,32 @@ public class KvasTest : TestBase
 
         await using var services = new ServiceCollection()
             .AddFusion().Services
-            .AddSingleton<IKvas>(_ => kvasForBackend)
-            .AddSingleton(typeof(IKvas<>), typeof(ScopedKvasWrapper<>))
+            .AddSingleton(_ => kvasForBackend.WithPrefix(GetType()))
             .BuildServiceProvider();
         var stateFactory = services.StateFactory();
+        var kvas = services.GetRequiredService<IKvas>();
 
         // Instant set
 
-        var s1 = stateFactory.NewStored<string>(GetType(), "s1");
+        var s1 = stateFactory.NewKvasStored<string>(new(kvas, "s1"));
         s1.Value = "a";
 
         await Task.Delay(20);
 
-        var s1a = stateFactory.NewStored<string>(GetType(), "s1");
-        s1a.Value.Should().BeNull();
+        var s1a = stateFactory.NewKvasStored<string>(new(kvas, "s1"));
         await Task.Delay(20);
         s1a.Value.Should().Be("a");
 
         // Delayed set
 
-        var s2 = stateFactory.NewStored<string>(GetType(), "s2");
+        var s2 = stateFactory.NewKvasStored<string>(new(kvas, "s2"));
         await Task.Delay(20);
         s2.Value = "b";
 
         await Task.Delay(20);
 
         kvasForBackend.ClearReadCache();
-        var s2a = stateFactory.NewStored<string>(GetType(), "s2");
-        s2a.Value.Should().BeNull();
+        var s2a = stateFactory.NewKvasStored<string>(new(kvas, "s2"));
         await Task.Delay(20);
         s2a.Value.Should().Be("b");
         s2a.Value = "c";

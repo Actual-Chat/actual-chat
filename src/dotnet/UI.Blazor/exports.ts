@@ -18,7 +18,7 @@ import './Components/Search/search.css'
 import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 
-export * from './Services/LocalStorage/local-storage';
+export * from './Services/Settings/local-settings';
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu-old';

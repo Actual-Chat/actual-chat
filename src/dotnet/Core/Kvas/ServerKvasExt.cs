@@ -2,9 +2,6 @@ namespace ActualChat.Kvas;
 
 public static class ServerKvasExt
 {
-    public static ServerKvasClient ToClient(this IServerKvas serverKvas, Session session)
-        => new (serverKvas, session);
-
     public static Task Set(this IServerKvas serverKvas,
         Session session, string key, string? value,
         CancellationToken cancellationToken = default)
