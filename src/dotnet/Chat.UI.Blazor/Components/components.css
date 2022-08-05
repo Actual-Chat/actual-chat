@@ -1,14 +1,3 @@
-.chat-header-button button {
-    @apply rounded-md bg-04 outline-none;
-    @apply flex-1 flex flex-row justify-center;
-}
-.chat-header-button:hover {
-    @apply z-10;
-}
-.chat-header-button:hover button {
-    @apply bg-02 z-10;
-}
-
 .chat-playback-toggles .btn.btn-square {
     @apply block;
 }
@@ -89,15 +78,7 @@
 .tab-panel .tab.people-tab {
     @apply h-full overflow-y-hidden;
 }
-.right-panel-tabs .btn {
-    @apply min-w-1/2;
-}
-.chat-settings-tab.tab {
-    @apply px-2;
-}
-.chat-author-tab {
-    @apply flex flex-col w-full h-full space-y-3 overflow-hidden;
-}
+
 .people-group {
     @apply gap-x-12;
 }
@@ -128,26 +109,6 @@
 }
 .btn-square.add-user-btn:focus .btn-content {
     @apply bg-transparent text-02;
-}
-
-.search-contacts {
-    @apply flex flex-row items-center gap-x-1 border-b-2 border-transparent;
-}
-.search-contacts:hover {
-    @apply border-primary;
-}
-.search-contacts input {
-    @apply flex-auto border-0 bg-transparent;
-}
-.search-contacts input:focus {
-    @apply outline-none ring-0;
-}
-
-.search-contacts .btn.btn-square {
-    @apply bg-transparent rounded-none;
-}
-.search-contacts .btn.btn-square .btn-content {
-    @apply bg-transparent;
 }
 
 .author-settings-modal {
@@ -185,7 +146,7 @@
     @apply min-h-mobile-header justify-between px-4;
 }
 .wide-left-panel-tabs .btn-group .btn-group-container {
-    @apply self-center;
+    @apply min-h-mobile-header self-center;
 }
 .wide-left-panel-tabs .btn {
     @apply min-w-0 min-h-0 rounded-lg p-0;

@@ -21,15 +21,23 @@
 .chat-icon-size-6 {
     @apply w-6 h-6;
 }
+
 .chat-icon-size-8 {
     @apply w-8 h-8;
 }
+
 .chat-icon-size-9 {
     @apply w-9 h-9;
 }
+
 .chat-icon-size-10 {
     @apply w-10 h-10;
 }
+
+.chat-icon-size-16 {
+    @apply w-16 h-16;
+}
+
 .chat-icon-size-20 {
     @apply w-20 h-20 text-2xl;
 }

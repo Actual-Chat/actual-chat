@@ -1,5 +1,4 @@
 export * from './Components/ChatMessageEditor/chat-message-editor';
-export * from './Components/ChatRightPanel/right-panel-search';
 export * from './Components/SlateEditor/slate-editor';
 
 import './Components/components.css';

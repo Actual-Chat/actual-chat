@@ -4,20 +4,27 @@
     var m = State.LatestNonErrorValue;
 }
 
-<div class="flex-y text-03">
+<div class="flex-x px-2 md:pl-5 md:pr-2 min-h-mobile-header border-b border-bg-04">
+    <ButtonRound Click="OnSwitchRightPanelClick" Class="md:!hidden transparent">
+        <i class="icon-arrow-left text-2xl"></i>
+    </ButtonRound>
+    <div class="flex grow text-03 font-medium self-center">Profile</div>
     @if (m.CanEditProperties()) {
-        <ChatBasicSettings/>
-    }
-    @if (m.CanInvite()) {
-        <ChatInviteSettings/>
+        <ButtonRound Class="transparent">
+            <i class="icon-edit text-2xl"></i>
+        </ButtonRound>
     }
 </div>
 
 @code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    private void OnSwitchRightPanelClick()
+        => RightPanelUI.IsVisible.Value = false;
 
     protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
         => new() {

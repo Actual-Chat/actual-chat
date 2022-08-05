@@ -1,0 +1,115 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@inherits ComputedStateComponent<RightPanelChatInfo.Model>
+@{
+    var m = State.LatestNonErrorValue;
+    if (m.Title == null)
+        return;
+    var publicUrl = m.PublicUrl?.CopyLink.ToString();
+}
+
+<div class="px-5 py-3 space-y-3">
+    <div class="flex-x overflow-hidden">
+        <div class="mr-3">
+            <ChatIcon
+                PictureClick="OnPictureClick"
+                Size="SquareSize.Size16"
+                Title="@m.Title"
+                Picture="@m.Picture">
+            </ChatIcon>
+        </div>
+        <div class="flex-y min-w-0 self-center">
+            <div class="text-01 text-xl">
+                @m.Title
+            </div>
+            <div class="text-03 text-md">
+                @(m.IsPublic ? "Public" : "Private")
+            </div>
+        </div>
+    </div>
+
+    @if (publicUrl != null) {
+        <div class="flex-x overflow-hidden">
+            <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
+                <i class="icon-link-2 text-2xl text-icons-03"></i>
+            </div>
+            <div class="flex-y min-w-0 self-center">
+                <div class="text-01 text-lg cursor-pointer truncate"
+                     @onclick="() => OnPublicUrlClick(publicUrl)">
+                    @publicUrl
+                </div>
+                <div class="text-03 text-md">
+                    Public join link
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="flex-x overflow-hidden">
+        <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
+            <i class="icon-bell text-2xl text-icons-03"></i>
+        </div>
+        <div class="flex-y min-w-0 self-center grow">
+            <div class="text-01 text-lg truncate">
+                Notifications
+            </div>
+            <div class="text-03 text-md">
+                @(m.IsSubscribed ? "On" : "Off")
+            </div>
+        </div>
+        <div class="flex self-center">
+            <Toggle
+                Value="@(m.IsSubscribed)"
+                ValueChanged="OnValueChanged"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var publicUrl = Chat.IsPublic ? LinkInfoBuilder.GetFrom(Links.ChatPage(Chat.Id)) : null;
+        var notificationStatus = await Notifications.GetStatus(Session, Chat.Id, cancellationToken);
+        return new Model {
+            Title = Chat.Title,
+            IsPublic = Chat.IsPublic,
+            Picture = Chat.Picture,
+            PublicUrl = publicUrl,
+            IsSubscribed = notificationStatus.IsSubscribed,
+        };
+    }
+
+    private async Task OnPictureClick(MouseEventArgs arg) {
+        var url = ContentUrlMapper.ContentUrl(State.LatestNonErrorValue.Picture);
+        await ImagePreviewUI.Show(url);
+    }
+
+    private async Task OnPublicUrlClick(string publicUrl) {
+        await ClipboardUI.WriteText(publicUrl);
+    }
+
+    private Task OnValueChanged(bool isMuted)
+        => UICommander.Run(new INotifications.SetStatusCommand(Session, Chat.Id, isMuted));
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public string? Picture { get; init; }
+        public string? Title { get; init; }
+        public bool IsPublic { get; init; }
+        public LinkInfo? PublicUrl { get; init; }
+        public bool IsSubscribed { get; init; }
+    }
+}
