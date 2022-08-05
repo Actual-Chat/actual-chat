@@ -12,23 +12,23 @@
 <div class="historical-playback-sub-header">
     <div class="historical-playback-sub-header-content">
         <div class="flex-x self-center">
-            <ButtonRound Title="Backward" Click="@OnBackward">
-                <i class="icon-rewind-left-fill text-xl"></i>
+            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+                <i class="icon-rewind-left-fill text-2xl"></i>
             </ButtonRound>
             @if (m.IsPaused) {
-                <ButtonRound Title="Play" Click="@OnResume">
-                    <i class="icon-play-fill text-xl"></i>
+                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon">
+                    <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {
-                <ButtonRound Title="Pause" Click="@OnPause">
-                    <i class="icon-pause-fill text-xl"></i>
+                <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
+                    <i class="icon-pause-fill text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+                    <i class="icon-Stop-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Stop" Click="@OnStop">
-                <i class="icon-Stop-fill text-xl"></i>
-            </ButtonRound>
-            <ButtonRound Title="Fast-forward" Click="@OnFastForward">
-                <i class="icon-rewind-right-fill text-xl"></i>
+            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon">
+                <i class="icon-rewind-right-fill text-2xl"></i>
             </ButtonRound>
         </div>
 
@@ -50,8 +50,8 @@
 
         <div class="flex-x self-center">
             @* Speed Selector *@
-            <ButtonRound Title="Close" Click="OnStop">
-                <i class="icon-close-fill text-xl"></i>
+            <ButtonRound Title="Close" Click="OnStop" Class="transparent hover-primary-icon">
+                <i class="icon-close-fill text-2xl"></i>
             </ButtonRound>
         </div>
     </div>

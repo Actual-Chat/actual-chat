@@ -19,7 +19,8 @@
 .historical-playback-sub-header {
     @apply relative z-20 p-1;
     @apply flex-x;
-    @apply bg-04 shadow-lg text-02;
+    @apply bg-01 shadow-lg text-02;
+    @apply border-b border-bg-04;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {

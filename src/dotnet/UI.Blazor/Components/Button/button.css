@@ -179,6 +179,12 @@
 .btn.btn-round.transparent .btn-content {
     @apply bg-transparent min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
 }
+.btn.btn-round.primary-icon .btn-content {
+    @apply text-primary;
+}
+.btn.btn-round.hover-primary-icon .btn-content {
+    @apply hover:text-primary;
+}
 .btn.btn-round:focus .btn-content,
 .btn.btn-round.transparent:focus .btn-content,
 .btn.btn-round:hover .btn-content,
