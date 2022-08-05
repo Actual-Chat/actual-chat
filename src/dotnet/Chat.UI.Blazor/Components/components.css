@@ -165,28 +165,34 @@
     @apply p-1.5 rounded-xl;
 }
 
-.navbar-chats {
+.navbar-chats,
+.navbar-contacts {
     @apply overflow-hidden h-full;
 }
-.tab-panel .chats-tab.tab .navbar-item {
+.tab-panel .chats-tab.tab .navbar-item,
+.tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;
 }
-.tab-panel .chats-tab.tab .navbar-item-content {
+.tab-panel .chats-tab.tab .navbar-item-content,
+.tab-panel .contacts-tab.tab .navbar-item-content {
     @apply w-full;
 }
-.chats-tab .btn-round {
+.chats-tab .btn-round,
+.contacts-tab .btn-round {
     @apply w-6 h-6;
 }
-.chats-tab .btn.btn-round .btn-content {
+.chats-tab .btn.btn-round .btn-content,
+.contacts-tab .btn.btn-round .btn-content {
     @apply bg-transparent;
 }
-.chats-tab .btn.btn-round.pin-toggle.btn-content {
+.chats-tab .btn.btn-round.pin-toggle.btn-content,
+.contacts-tab .btn.btn-round.pin-toggle.btn-content {
     @apply bg-transparent;
 }
-.chats-tab .btn.btn-round.pin-toggle.play-pinned.on {
+.chats-tab .btn.btn-round.pin-toggle.play-pinned.on,
+.contacts-tab .btn.btn-round.pin-toggle.play-pinned.on {
     @apply text-primary;
 }
-
 .pinned-chats {
     @apply flex-y pb-2 px-2 gap-y-0.5;
 }

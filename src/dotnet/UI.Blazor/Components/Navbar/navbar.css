@@ -79,15 +79,12 @@
 .navbar-item .navbar-item-status {
     @apply rounded-full block w-2 h-2 mr-2;
 }
-.navbar-item.status-unknown .navbar-item-status {
+.navbar-item.status-unknown .navbar-item-status,
+.navbar-item.status-online .navbar-item-status,
+.navbar-item.status-offline .navbar-item-status {
     @apply hidden;
 }
-.navbar-item.status-online .navbar-item-status {
-    @apply bg-online;
-}
-.navbar-item.status-offline .navbar-item-status {
-    @apply border border-text-02;
-}
+
 .navbar-item .navbar-item-ending {
     @apply flex-1 justify-self-end h-6;
     @apply flex flex-row justify-end gap-x-3 w-fit;
