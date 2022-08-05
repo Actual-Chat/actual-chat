@@ -12,6 +12,7 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
+import { delayAsync } from '../../../../nodejs/src/delay';
 
 const LogScope: string = 'VirtualList';
 const UpdateClientSideStateTimeout: number = 64;
@@ -21,6 +22,8 @@ const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
 const StickyEdgeTolerance: number = 50;
+const RenderTimeout: number = 640;
+const UpdateTimeout: number = 1200;
 
 export class VirtualList implements VirtualListAccessor {
     private readonly _debugMode: boolean = false;
@@ -36,12 +39,14 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
     private readonly _visibilityObserver: IntersectionObserver;
+    private readonly _skeletonObserver: IntersectionObserver;
     private readonly _ironPantsHandlerInterval: number;
     private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
 
     private readonly updateClientSideStateDebounced: Debounced<typeof this.updateClientSideState>;
+    private readonly updateClientSideStateOnce: typeof this.updateClientSideState;
     private readonly updateVisibleKeysDebounced: Debounced<typeof this.updateVisibleKeys>;
 
     private _isDisposed = false;
@@ -51,9 +56,12 @@ export class VirtualList implements VirtualListAccessor {
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private _whenRenderCompleted: Promise<void> | null = null;
     private _whenRenderCompletedResolve: () => void | null = null;
+    private _whenUpdateCompleted: Promise<void> | null = null;
+    private _whenUpdateCompletedResolve: () => void | null = null;
 
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
+    private _isNearSkeleton: boolean = false;
 
     private _lastPlan?: VirtualListRenderPlan = null;
     private _plan: VirtualListRenderPlan;
@@ -100,11 +108,22 @@ export class VirtualList implements VirtualListAccessor {
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
         this._visibilityObserver = new IntersectionObserver(
-            this.onIntersect,
+            this.onItemVisibilityChange,
             {
                 root: null,
                 threshold: [0, 0.1, 0.9, 1],
                 rootMargin: '0px',
+
+                /* required options for IntersectionObserver v2*/
+                // @ts-ignore
+                trackVisibility: true,
+                delay: 100  // minimum 100
+            });
+        this._skeletonObserver = new IntersectionObserver(
+            this.onSkeletonVisibilityChange,
+            {
+                root: this._ref,
+                rootMargin: `${Math.round(loadZoneSize/4)}px`,
 
                 /* required options for IntersectionObserver v2*/
                 // @ts-ignore
@@ -117,10 +136,12 @@ export class VirtualList implements VirtualListAccessor {
 
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
-        this.updateClientSideStateDebounced = debounce(
-            onceAtATime(this.updateClientSideState),
-            UpdateClientSideStateTimeout);
+        this.updateClientSideStateOnce = onceAtATime(this.updateClientSideState);
+        this.updateClientSideStateDebounced = debounce(this.updateClientSideStateOnce, UpdateClientSideStateTimeout);
         this.updateVisibleKeysDebounced = debounce(this.updateVisibleKeys, UpdateVisibleKeysTimeout);
+
+        this._skeletonObserver.observe(this._spacerRef);
+        this._skeletonObserver.observe(this._endSpacerRef);
 
         this.items = {};
         this.renderState = {
@@ -254,7 +275,7 @@ export class VirtualList implements VirtualListAccessor {
         }
     }
 
-    private onIntersect = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+    private onItemVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
         let hasChanged = false;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
@@ -269,6 +290,15 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
         this.updateVisibleKeysDebounced();
+    }
+
+    private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+        for (const entry of entries) {
+            this._isNearSkeleton = entry.isIntersecting
+                && entry.boundingClientRect.height > EdgeEpsilon
+                && !this._isRendering;
+
+        }
     }
 
     private async onRenderEnd(rs: Required<VirtualListRenderState>): Promise<void> {
@@ -435,8 +465,10 @@ export class VirtualList implements VirtualListAccessor {
                 this._whenRenderCompletedResolve();
                 this._whenRenderCompletedResolve = null;
             }
-            this.updateClientSideStateDebounced.cancel();
-            void this.updateClientSideState();
+            if (this._whenUpdateCompletedResolve) {
+                this._whenUpdateCompletedResolve();
+                this._whenUpdateCompletedResolve = null;
+            }
         }
     }
 
@@ -447,7 +479,11 @@ export class VirtualList implements VirtualListAccessor {
 
         const whenRenderCompleted = this._whenRenderCompleted;
         if (whenRenderCompleted) {
-            await whenRenderCompleted;
+            await Promise.race([whenRenderCompleted, delayAsync(RenderTimeout)]);
+        }
+        const whenUpdateCompleted = this._whenUpdateCompleted;
+        if (whenUpdateCompleted) {
+            await Promise.race([whenUpdateCompleted, delayAsync(UpdateTimeout)]);
         }
 
         this._lastPlan = this._plan;
@@ -552,7 +588,10 @@ export class VirtualList implements VirtualListAccessor {
         // }
         const intersections = this._visibilityObserver.takeRecords();
         if (intersections.length > 0) {
-            this.onIntersect(intersections, this._visibilityObserver);
+            this.onItemVisibilityChange(intersections, this._visibilityObserver);
+        }
+        if (this._isNearSkeleton) {
+            void this.updateClientSideStateDebounced();
         }
     }
 
@@ -685,6 +724,11 @@ export class VirtualList implements VirtualListAccessor {
 
         if (this._debugMode)
             console.warn(`${LogScope}.requestData: query:`, this._query);
+
+        this._whenUpdateCompleted = new Promise<void>(resolve => {
+            this._whenUpdateCompletedResolve = resolve;
+        });
+
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
     }
