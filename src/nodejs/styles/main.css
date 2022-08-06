@@ -1,8 +1,7 @@
 /* Default styling */
 
 * {
-    font-family: "humanist-521-bt";
-    font-size: medium;
+    font-family: 'Noto Sans', sans-serif;
 }
 
 html {
