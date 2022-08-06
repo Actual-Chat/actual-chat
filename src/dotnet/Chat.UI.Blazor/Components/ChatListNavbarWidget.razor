@@ -71,6 +71,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -84,6 +85,9 @@
             return Model.None;
 
         var chats = await Chats.GetChats(Session, cancellationToken).ConfigureAwait(false);
+        var criteria = await SearchUI.Criteria.Use(cancellationToken).ConfigureAwait(false);
+        if (!criteria.IsNullOrEmpty())
+            chats = chats.Where(x => x.Title.Contains(criteria)).ToArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
