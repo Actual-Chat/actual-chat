@@ -1,5 +1,6 @@
 ﻿using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -14,7 +15,7 @@ public class ChatUIStateSync : WorkerBase
     private IChatUserSettings? _chatUserSettings;
     private IChats? _chats;
     private AudioSettings? _chatSettings;
-    private IJSRuntime? _js;
+    private KeepAwakeUI? _keepAwakeUI;
 
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
@@ -29,7 +30,7 @@ public class ChatUIStateSync : WorkerBase
     private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -160,7 +161,7 @@ public class ChatUIStateSync : WorkerBase
             var mustKeepAwake = cUpdate.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 // TODO(AY): Send this update to JS
-                await JS.InvokeVoidAsync($"{JSConstants.SharedJSModuleName}.setNoSleepEnabled", cancellationToken, mustKeepAwake).ConfigureAwait(false);
+                await KeepAwakeUI.SetNoSleepEnabled(mustKeepAwake, cancellationToken);
                 lastMustKeepAwake = mustKeepAwake;
             }
         }

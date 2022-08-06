@@ -1,5 +1,5 @@
 import { default as NoSleep } from 'nosleep.js';
-import { addInteractionHandler } from 'first-interaction';
+import { addInteractionHandler } from '../../nodejs/src/first-interaction';
 
 const noSleep = new NoSleep();
 const LogScope = 'keep-screen-awake';
