@@ -222,5 +222,5 @@
 }
 
 .btn.chat-language-toggle {
-    @apply font-semibold text-base;
+    @apply font-semibold text-lg md:text-base text-icons-01;
 }
