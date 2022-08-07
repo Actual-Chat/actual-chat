@@ -43,43 +43,38 @@
 
     RenderFragment RenderTab(ContactGroup group, string title) =>
         @<Tab Title="@title" Id="@group.ToString()" Class="flex-y relative overflow-y-hidden h-full contacts-tab">
-            @if (group == Group.Value) {
-                @if (m.PinnedContacts.Length > 0) {
-                    <NavbarSubgroup Class="first">
-                        <ChildContent>Pinned</ChildContent>
-                        <Ending>
-                            <ButtonSquare
-                                Class="@mustPlayPinnedClass"
-                                Click="@(() => ChatUI.MustPlayPinnedContactChats.Value = !mustPlayPinned)"
-                                Title="When listening, also listen all pinned contact chats">
-                                <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-                                    @if (mustPlayPinned) {
-                                        <path d="M 0 24 C 0 17.021 7.555 12.66 13.599 16.149 C 16.403 17.768 18.131 20.762 18.131 24 L 0 24 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 23.285 -0.042 C 24.371 2.147 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z" style=""></path>
-                                    } else {
-                                        <path d="M 23.285 -0.042 C 24.371 2.1470000000000002 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 11.428 15.146 L 11.428 24 L 0 24 C -0.001 18.022 5.639 13.651 11.428 15.146 Z M 9.142 13.714 C 5.355 13.714 2.286 10.645 2.286 6.8580000000000005 C 2.286 3.069 5.355 0 9.142 0 C 12.931000000000001 0 15.999 3.069 15.999 6.8580000000000005 C 15.999 10.645 12.931000000000001 13.714 9.142 13.714 Z M 15.999 18.286 L 15.999 14.857 L 18.284 14.857 L 18.284 18.286 L 21.713 18.286 L 21.713 20.571 L 18.284 20.571 L 18.284 24 L 15.999 24 L 15.999 20.571 L 12.571 20.571 L 12.571 18.286 L 15.999 18.286 Z" style=""></path>
-                                    }
-                                </svg>
-                            </ButtonSquare>
-                        </Ending>
-                    </NavbarSubgroup>
-                    foreach (var c in m.PinnedContacts)
-                        @RenderItem(c)
-                    if (m.UnpinnedContacts.Length > 0) {
-                        <NavbarSubgroup>Unpinned</NavbarSubgroup>
-                        foreach (var c in m.UnpinnedContacts)
-                            @RenderItem(c)
+            <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+                @if (group == Group.Value) {
+                    @if (m.PinnedContacts.Length > 0) {
+                        <div class="pinned-contacts">
+                            @foreach (var c in m.PinnedContacts) {
+                                @RenderItem(c)
+                            }
+                        </div>
+                        <div class="mx-4 mb-2 border-b border-bg-04"></div>
+
+                        if (m.UnpinnedContacts.Length > 0) {
+                            <div class="unpinned-contacts custom-scrollbar">
+                                @foreach (var c in m.UnpinnedContacts) {
+                                    @RenderItem(c)
+                                }
+                            </div>
+                        }
+                    } else {
+                        <div class="unpinned-contacts custom-scrollbar">
+                            @foreach (var c in m.UnpinnedContacts) {
+                                @RenderItem(c)
+                            }
+                        </div>
                     }
-                } else {
-                    foreach (var c in m.UnpinnedContacts)
-                        @RenderItem(c)
                 }
-            }
+            </div>
         </Tab>;
 }
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
-        <TabPanel BottomHill="true" ActiveTabChanged="OnActiveTabChanged">
+        <TabPanel BottomHill="true" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
             @RenderTab(ContactGroup.Recent, "Recent")
             @RenderTab(ContactGroup.Favorites, "Favorites")
             @RenderTab(ContactGroup.All, "A-Z")
@@ -188,5 +183,4 @@
     private void OnActiveTabChanged(Tab tab) {
         Group.Value = Enum.Parse<ContactGroup>(tab.Id);
     }
-
 }

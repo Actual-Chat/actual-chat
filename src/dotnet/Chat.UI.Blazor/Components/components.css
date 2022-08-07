@@ -129,7 +129,7 @@
     @apply pl-8 py-2 w-full;
 }
 .people-tab .author-badge {
-    @apply rounded-xl cursor-pointer p-0.5 mx-1;
+    @apply rounded-xl cursor-pointer p-0.5 mr-1 cursor-pointer;
 }
 .people-tab .author-badge .author-avatar-badge {
     @apply m-0.5;
@@ -137,7 +137,7 @@
 .people-tab .author-badge:hover .author-badge-name {
 }
 .people-tab .author-badge:hover {
-    @apply bg-02;
+    @apply bg-round-hover;
 }
 
 .wide-left-panel-tabs {
@@ -193,11 +193,13 @@
 .contacts-tab .btn.btn-round.pin-toggle.play-pinned.on {
     @apply text-primary;
 }
-.pinned-chats {
+.pinned-chats,
+.pinned-contacts {
     @apply flex-y pb-2 px-2 gap-y-0.5;
 }
 
-.unpinned-chats {
+.unpinned-chats,
+.unpinned-contacts {
     @apply flex-y h-full px-2 gap-y-0.5;
 }
 
