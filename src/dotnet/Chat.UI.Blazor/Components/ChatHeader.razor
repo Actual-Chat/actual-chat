@@ -40,7 +40,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnChatSearchClick()
-        => _ = FeedbackUI.AskFeatureRequestFeedback("chat-header/search", "Chat search");
+        => _ = FeedbackUI.AskFeatureRequestFeedback("chat-search", "Chat search");
 
     private void OnInviteClick()
         => ModalUI.Show(new InviteChatAuthor.Model(Chat));

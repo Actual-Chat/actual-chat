@@ -1,16 +1,12 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inject FeedbackUI FeedbackUI
 
 <div class="flex-x items-center">
     <ButtonSquare Click="@OnClicked" Class="first-pinned">
-        AC
+        IP
     </ButtonSquare>
-    <div class="ml-8 md:hidden">Actual Chat</div>
-</div>
-<div class="flex-x items-center">
-    <ButtonSquare Click="@OnClicked" Class="second-pinned">
-        <div>BD</div>
-    </ButtonSquare>
-    <div class="ml-8 md:hidden">Brahmapar Dumba</div>
+    <div class="ml-8 md:hidden">Imaginary Place</div>
 </div>
 
 <div class="flex-x items-center">
@@ -23,5 +19,6 @@
 </div>
 
 @code {
-    private void OnClicked() {}
+    private Task OnClicked()
+        => FeedbackUI.AskFeatureRequestFeedback("places", "Places");
 }

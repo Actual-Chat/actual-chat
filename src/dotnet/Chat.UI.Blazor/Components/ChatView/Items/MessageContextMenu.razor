@@ -3,7 +3,7 @@
 @inject FeedbackUI FeedbackUI;
 @inject ChatUI ChatUI;
 
-<MenuItem Title="Reaction" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-menu/reaction", "Reactions"))">
+<MenuItem Title="Reaction" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"))">
     <Icon>
         <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-5 -5 32 32">
             <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3.5 8c.828 0 1.5.671 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.671-1.5-1.5.672-1.5 1.5-1.5zm-7 0c.828 0 1.5.671 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.671-1.5-1.5.672-1.5 1.5-1.5zm3.501 10c-2.801 0-4.874-1.846-6.001-3.566l.493-.493c1.512 1.195 3.174 1.931 5.508 1.931 2.333 0 3.994-.736 5.506-1.931l.493.493c-1.127 1.72-3.199 3.566-5.999 3.566z"/>
@@ -35,7 +35,7 @@
         </Icon>
     </MenuItem>
 }
-<MenuItem Title="Create Thread" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-submenu/create-thread", "Create Thread"))">
+<MenuItem Title="Create Thread" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))">
     <Icon>
         <svg class="w-6 h-6 fill-current" viewBox="-3 -5 32 32" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.548 9l.452-2h-5.364l1.364-6h-2l-1.364 6h-5l1.364-6h-2l-1.364 6h-6.184l-.452 2h6.182l-1.364 6h-5.36l-.458 2h5.364l-1.364 6h2l1.364-6h5l-1.364 6h2l1.364-6h6.185l.451-2h-6.182l1.364-6h5.366zm-8.73 6h-5l1.364-6h5l-1.364 6z"/>
@@ -46,13 +46,6 @@
     <Icon>
         <svg class="w-6 h-6 fill-current" viewBox="-2 -2 28 28" xmlns="http://www.w3.org/2000/svg">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M11.527 3.89973C13.709 1.71273 17.23 1.31773 19.662 3.21973C22.575 5.49773 22.766 9.74273 20.235 12.2797L18.812 13.7047C18.419 14.0987 17.783 14.0987 17.39 13.7047C16.997 13.3117 16.997 12.6727 17.39 12.2797L18.812 10.8537C20.467 9.19673 20.377 6.44173 18.54 4.90373C16.913 3.54073 14.471 3.80073 12.972 5.30273L11.699 6.57773C11.307 6.97173 10.669 6.97173 10.277 6.57773C9.88398 6.18473 9.87998 5.54973 10.454 4.97473L11.527 3.89973ZM13.2929 9.29303L9.29288 13.293C8.90188 13.684 8.90188 14.316 9.29288 14.707C9.48788 14.902 9.74388 15 9.99988 15C10.2559 15 10.5119 14.902 10.7069 14.707L14.7069 10.707C15.0979 10.316 15.0979 9.68403 14.7069 9.29303C14.3159 8.90203 13.6839 8.90203 13.2929 9.29303ZM12.2802 17.3965L11.0062 18.6675C9.50518 20.1645 7.05818 20.4225 5.43018 19.0655C3.59118 17.5335 3.50018 14.7875 5.15718 13.1345L6.58218 11.7145C6.97518 11.3225 6.97518 10.6865 6.58218 10.2935C6.18918 9.90253 5.55118 9.90253 5.15718 10.2935L3.88218 11.5665C1.71018 13.7325 1.32918 17.2165 3.20718 19.6405C5.47818 22.5735 9.73818 22.7715 12.2802 20.2375L13.7052 18.8175C14.0982 18.4245 14.0982 17.7895 13.7052 17.3965C13.3112 17.0035 12.6742 17.0035 12.2802 17.3965Z"/>
-        </svg>
-    </Icon>
-</MenuItem>
-<MenuItem Title="Mark Message" Name="wip" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("message-submenu/mark-message", "Mark Message"))">
-    <Icon>
-        <svg class="w-6 h-6 fill-current" viewBox="-3 -4 30 30" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11 17h2v5l-2 2v-7zm3.571-12c0-2.903 2.36-3.089 2.429-5h-10c.068 1.911 2.429 2.097 2.429 5 0 3.771-3.429 3.291-3.429 10h12c0-6.709-3.429-6.229-3.429-10z"/>
         </svg>
     </Icon>
 </MenuItem>
