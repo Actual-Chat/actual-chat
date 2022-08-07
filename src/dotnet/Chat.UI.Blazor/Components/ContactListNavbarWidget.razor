@@ -75,9 +75,9 @@
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
         <TabPanel BottomHill="true" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
+            @RenderTab(ContactGroup.All, "All")
             @RenderTab(ContactGroup.Recent, "Recent")
             @RenderTab(ContactGroup.Favorites, "Favorites")
-            @RenderTab(ContactGroup.All, "A-Z")
         </TabPanel>
         <ContactContextMenu/>
     </ChildContent>
