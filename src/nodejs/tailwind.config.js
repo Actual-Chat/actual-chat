@@ -17,7 +17,7 @@ const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
 module.exports = {
   content: dirs,
   safelist: [
-    // using in Avatar Size
+    // Used by in Avatar sizes
     'w-9',
     'w-10',
     'h-9',
