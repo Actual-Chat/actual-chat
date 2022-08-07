@@ -52,7 +52,8 @@ input:focus[type="text"]::selection {
 }
 
 label {
-    @apply no-highlight;
+    /* NOTE(AY): this is "@apply no-highlight" */
+    -webkit-tap-highlight-color: transparent;
 }
 
 code {
