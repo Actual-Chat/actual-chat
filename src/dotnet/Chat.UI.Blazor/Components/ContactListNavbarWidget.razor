@@ -15,7 +15,7 @@
              IsActive="@(m.ActiveChatId == c.ShortChatId || m.ActiveChatId == c.FullChatId)">
             <ChildContent>
                 <ContextMenuToggleTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.Id" Data="@c.Contact">
-                    <div class="flex-x items-center">
+                    <div class="flex-x items-center gap-x-2">
                         <UserAuthorCircle UserId="@c.UserId" Size="SquareSize.Size9" ShowsPresence="true"/>
                         <div>@c.Contact.Name</div>
                     </div>
