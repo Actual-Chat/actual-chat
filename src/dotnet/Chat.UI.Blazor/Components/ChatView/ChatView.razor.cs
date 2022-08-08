@@ -176,7 +176,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ? IdTileStack.Layers[1].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
             : query.IsNone
                 ? new Range<long>(
-                    chatIdRange.End - (3 * IdTileStack.Layers[1].TileSize),
+                    chatIdRange.End - IdTileStack.Layers[1].TileSize,
                     chatIdRange.End)
                 : query.InclusiveRange
                     .AsLongRange()
