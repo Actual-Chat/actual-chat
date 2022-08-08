@@ -129,7 +129,7 @@ input.input-underlined {
     @apply p-0;
 }
 .context-menu-item {
-    @apply !flex rounded-lg h-12 whitespace-nowrap;
+    @apply !flex rounded-xl h-10 whitespace-nowrap;
 }
 .context-menu-item:hover {
     @apply bg-round-hover;
