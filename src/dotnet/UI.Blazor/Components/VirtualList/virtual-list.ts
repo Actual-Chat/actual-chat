@@ -193,6 +193,10 @@ export class VirtualList implements VirtualListAccessor {
         if (this._debugMode)
             console.log(`${LogScope}.maybeOnRenderEnd: `, mutations.length);
 
+        if (this._whenRenderCompletedResolve) {
+            this._whenRenderCompletedResolve();
+            this._whenRenderCompletedResolve = null;
+        }
         this._whenRenderCompleted = new Promise<void>(resolve => {
             this._whenRenderCompletedResolve = resolve;
         });
@@ -565,6 +569,9 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private async updateVisibleKeys(): Promise<void> {
+        if (this._isDisposed)
+            return;
+
         const visibleKeys = [...this._visibleItems].sort();
         if (this._debugMode)
             console.log(
