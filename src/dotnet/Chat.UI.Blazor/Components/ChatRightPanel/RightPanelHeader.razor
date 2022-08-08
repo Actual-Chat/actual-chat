@@ -8,15 +8,18 @@
     <ButtonRound Click="OnSwitchRightPanelClick" Class="md:!hidden transparent">
         <i class="icon-arrow-left text-2xl"></i>
     </ButtonRound>
-    <div class="flex grow text-03 font-medium self-center">Profile</div>
+    <div class="flex grow text-03 font-medium self-center">Chat Settings</div>
     @if (m.CanEditProperties()) {
-        <ButtonRound Class="transparent">
+        <ButtonRound
+            Class="transparent"
+            Click="@(_ => FeedbackUI.AskFeatureRequestFeedback("edit-chat-properties", "Edit Chat Settings"))">
             <i class="icon-edit text-2xl"></i>
         </ButtonRound>
     }
 </div>
 
 @code {
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
