@@ -3,14 +3,13 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Components.SideNav
 @using System.Text.RegularExpressions
-@using Error = ActualChat.UI.Blazor.Components.Error
 @implements IDisposable
 @implements IBaseLayoutBackend
 @{
     var failures = UIActionFailureTracker.Items;
 }
 
-<div class="bg-02 flex-1 flex-x h-full max-h-full relative">
+<div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
     <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <SideNav Direction="SideNavDirection.LeftToRight"
              Open="() => NavbarUI.IsVisible = true"
@@ -20,7 +19,7 @@
             <LeftPanel/>
         </div>
     </SideNav>
-    <div class="base-page-body">
+    <div class="base-layout-body">
         <div class="bg-01 flex-1 overflow-y-auto">
             @if (failures.Count != 0) {
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">

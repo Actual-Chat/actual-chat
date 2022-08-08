@@ -1,21 +1,40 @@
 @page "/"
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Services
-@using Blazored.LocalStorage
+@using ActualChat.Users
+@inherits ComputedStateComponent<Account?>
+@layout NoLayout
+@{
+    var account = State.LatestNonErrorValue;
+    if (account == null)
+        return; // Not yet computed
+    if (account.IsGuest()) {
+        <SignInBlock/>
+    }
+    else {
+        Nav.NavigateTo(Links.ChatPage(_defaultChatId));
+        return;
+    }
+}
 
 @code {
+    private string _defaultChatId = "";
+
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        var chatId = await LocalStorage.GetActiveChatId().ConfigureAwait(false);
-        if (chatId.IsNullOrEmpty()) {
+        _defaultChatId = await LocalSettings.GetActiveChatId() ?? "";
+        if (_defaultChatId.IsNullOrEmpty()) {
             var chats = await Chats.GetChats(Session, CancellationToken.None);
             var defaultChat = chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
-            chatId = defaultChat?.Id ?? Symbol.Empty;
+            _defaultChatId = defaultChat?.Id ?? "";
         }
-        Nav.Chat(chatId);
     }
+
+    protected override async Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
 }

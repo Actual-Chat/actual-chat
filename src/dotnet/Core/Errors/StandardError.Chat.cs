@@ -10,16 +10,9 @@ public static partial class StandardError
     }
 }
 
-public abstract class ChatException : Exception
-{
-    protected ChatException() : this(null) { }
-    protected ChatException(string? message) : base(message ?? "Chat-related error.") { }
-    protected ChatException(string? message, Exception? inner) : base(message, inner) { }
-}
-
-public class UnavailableChatException : AccountException
+public class UnavailableChatException : KeyNotFoundException, IContentUnavailableException
 {
     public UnavailableChatException() : this(null) { }
-    public UnavailableChatException(string? message) : base(message ?? "This chat is unavailable or does not exist.") { }
+    public UnavailableChatException(string? message) : base(message ?? "The chat is unavailable or does not exist.") { }
     public UnavailableChatException(string? message, Exception? inner) : base(message, inner) { }
 }

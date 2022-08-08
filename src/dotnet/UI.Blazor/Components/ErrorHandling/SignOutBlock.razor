@@ -16,14 +16,13 @@
         @ChildContent
     </p>
     <div class="mt-5">
-        <Button Class="btn-outline" Click="OnSignOutClick">Sign out</Button>
+        <SignOutButton/>
     </div>
 </SignInLayout>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
@@ -32,8 +31,4 @@
 
     protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
         => Accounts.Get(Session, cancellationToken);
-
-    private async Task OnSignOutClick() {
-        await ClientAuth.SignOut();
-    }
 }

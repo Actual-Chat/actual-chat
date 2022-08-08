@@ -12,10 +12,6 @@ public static partial class StandardError
             => new SuspendedAccountException(message);
         public static Exception NonAdmin(string? message = null)
             => new NonAdminAccountException(message);
-
-        // ReSharper disable once MemberHidesStaticFromOuterClass
-        public static Exception Unavailable(string? message = null)
-            => new UnavailableAccountException(message);
     }
 }
 
@@ -52,11 +48,4 @@ public class NonAdminAccountException : AccountException
     public NonAdminAccountException() : this(null) { }
     public NonAdminAccountException(string? message) : base(message ?? "Only administrators can perform this action.") { }
     public NonAdminAccountException(string? message, Exception? inner) : base(message, inner) { }
-}
-
-public class UnavailableAccountException : AccountException
-{
-    public UnavailableAccountException() : this(null) { }
-    public UnavailableAccountException(string? message) : base(message ?? "This user doesn't exit.") { }
-    public UnavailableAccountException(string? message, Exception? inner) : base(message, inner) { }
 }

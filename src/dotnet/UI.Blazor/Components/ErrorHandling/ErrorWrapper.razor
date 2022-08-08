@@ -1,7 +1,10 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
-@implements IDisposable
+@inherits ComputedStateComponent<Account?>
+@{
+    var account = State.LatestNonErrorValue;
+}
 
 <RequirementChecker @ref="_requirementChecker">
     <ChildContent>
@@ -38,6 +41,15 @@
                                Dismissed="_ => OnDismiss(requirement)">@error.Message</Error>
                     }
                 </div>
+                <p>
+                    @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
+                        @if (account == null) {
+                            <span>You can try to <SignInDropdown/> to resolve it.</span>
+                        } else {
+                            <span>You can try to <SignOutButton/> and sign in with another account to resolve it.</span>
+                        }
+                    }
+                </p>
             </LayoutView>
         }
     </ErrorContent>
@@ -47,18 +59,26 @@
     private RequirementChecker _requirementChecker = null!;
     private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override void OnInitialized() {
+        base.OnInitialized();
         _onLocationChanged = OnLocationChanged;
         Nav.LocationChanged += _onLocationChanged;
     }
 
-    public void Dispose()
-        => Nav.LocationChanged -= _onLocationChanged;
+    public override ValueTask DisposeAsync() {
+        Nav.LocationChanged -= _onLocationChanged;
+        return base.DisposeAsync();
+    }
+
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => _requirementChecker.Reset();

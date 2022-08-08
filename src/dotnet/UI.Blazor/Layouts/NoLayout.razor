@@ -1,0 +1,50 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@{
+    var failures = UIActionFailureTracker.Items;
+}
+
+<div class="base-layout no-layout bg-02 flex-1 flex-x h-full max-h-full relative">
+    <div class="base-layout-body">
+        <div class="bg-01 flex-1 overflow-y-auto">
+            @if (failures.Count != 0) {
+                <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
+                    @foreach (var failure in failures) {
+                        <Error @key="failure"
+                               Title="Action failed!"
+                               Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                            @failure.Error!.Message
+                        </Error>
+                    }
+                </div>
+            }
+            <NoComponent @key="BodyKey">
+                @Body
+            </NoComponent>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly object BodyKey = new();
+
+    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        Nav.LocationChanged += OnLocationChanged;
+        UIActionFailureTracker.Changed += OnCommandFailureListChanged;
+    }
+
+    public void Dispose() {
+        UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        UIActionFailureTracker.Clear();
+        StateHasChanged();
+    }
+
+    private void OnCommandFailureListChanged()
+        => InvokeAsync(StateHasChanged);
+}

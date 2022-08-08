@@ -18,11 +18,6 @@ public sealed record Account(Symbol Id, User User) : IHasId<Symbol>, IRequiremen
         (Account? p) => p != null && (p.Status != AccountStatus.Suspended || p.IsAdmin));
     public static Requirement<Account> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
 
-    // Must be used for other people's accounts only!
-    public static Requirement<Account> MustBeAvailable { get; } = Requirement.New(
-        new(() => StandardError.Account.Unavailable()),
-        (Account? p) => p != null);
-
     public long Version { get; init; }
     public AccountStatus Status { get; init; }
     public Symbol AvatarId { get; init; }

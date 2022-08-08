@@ -1,7 +1,3 @@
-.chat-layout {
-    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
-}
-
 .message-wrapper {
     @apply flex-x relative;
     @apply border-l-2 border-bg-01;

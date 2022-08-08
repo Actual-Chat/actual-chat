@@ -1,14 +1,11 @@
 @page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
-@using Blazored.LocalStorage
 @using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatLayout
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
-    if (!m.NavigateToChatId.IsNullOrEmpty())
-        Nav.Chat(m.NavigateToChatId);
     if (m.IsUnavailable) {
         <RequireChat/>
         return;
@@ -77,7 +74,7 @@
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
-    [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
@@ -116,9 +113,8 @@
     protected override async Task OnParametersSetAsync() {
         if (ChatUI.ActiveChatId.Value != ChatId) {
             ChatUI.ActiveChatId.Value = ChatId;
-            await LocalStorage.SetActiveChatId(ChatId).ConfigureAwait(false);
+            LocalSettings.SetActiveChatId(ChatId);
         }
-
         await base.OnParametersSetAsync();
     }
 
@@ -129,7 +125,6 @@
         public static Model None { get; } = new();
 
         public bool IsUnavailable { get; init; }
-        public string? NavigateToChatId { get; init; }
         public Chat? Chat { get; init; }
     }
 }

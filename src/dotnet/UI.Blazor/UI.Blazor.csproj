@@ -8,7 +8,6 @@
   <ItemGroup>
     <PackageReference Include="Blazor.ContextMenu" />
     <PackageReference Include="Blazored.Modal" />
-    <PackageReference Include="Blazored.LocalStorage" />
     <PackageReference Include="Blazored.SessionStorage" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />

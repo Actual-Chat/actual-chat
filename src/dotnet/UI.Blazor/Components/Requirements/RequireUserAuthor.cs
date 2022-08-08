@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class RequireOtherAccount : RequirementComponent
+public class RequireUserAuthor : RequirementComponent
 {
     [Inject] protected Session Session { get; init; } = null!;
     [Inject] protected IAccounts Accounts { get; init; } = null!;
@@ -11,8 +11,8 @@ public class RequireOtherAccount : RequirementComponent
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
-        var chat = await Accounts.GetByUserId(Session, UserId, cancellationToken).ConfigureAwait(false);
-        chat.Require(Account.MustBeAvailable);
+        var userAuthor = await Accounts.GetUserAuthor(UserId, cancellationToken).ConfigureAwait(false);
+        userAuthor.Require();
         return default;
     }
 }

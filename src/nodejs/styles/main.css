@@ -175,6 +175,17 @@ input.input-underlined {
     @apply text-error;
 }
 
-.base-page-body {
+/* Layouts */
+
+.base-layout-body {
     @apply flex-1 overflow-y-auto flex-y relative float-left;
+}
+
+.chat-layout .layout-body {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
+    @apply p-0;
+}
+
+.no-chat-layout .layout-body {
+    @apply p-4;
 }

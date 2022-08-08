@@ -3,32 +3,30 @@
 @{
     var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var svgClass = IsOpen ? "rotate-180" : "";
 }
 
 @if (User == null) {
-  <div class="@Class flex-shrink-0 flex select-none">
-        <div class="flex items-center">
-            <div class="relative">
-                <div class="relative">
-                    <div class="@(IsOpen ? "" : "hidden") absolute bottom-0 left-0 w-44 rounded-md">
-                        <div class="py-1 rounded-md bg-white shadow-lg mb-1 relative">
-                            @foreach (var (name, displayName) in unusedAuthSchemas) {
-                                <a @onclick="_ => SignIn(name)" href="#" class="block px-4 py-2 text-primary hover:bg-primary">
-                                    Sign in with @displayName
-                                </a>
-                            }
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <button @onclick="_ => IsOpen = !IsOpen" class="inline-flex justify-center w-full max-w-xs px-6 py-2 font-medium leading-5 text-gray-700 transition duration-150 ease-in-out bg-gray-50 border border-gray-300 rounded-md hover:text-gray-500 outline-none active:bg-gray-50 active:text-gray-800" type="button" aria-haspopup="true" aria-expanded="true">
-                        <span>Sign in @Why</span>
-                        <svg class="ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
-                    </button>
+    <span class="@Class select-none">
+        <span class="relative">
+            <div class="@(IsOpen ? "" : "hidden") absolute bottom-6 left-0 w-48">
+                <div class="relative rounded-md shadow-lg border bg-white py-1 flex-y">
+                    @foreach (var (name, displayName) in unusedAuthSchemas) {
+                        <a @onclick="_ => SignIn(name)" href="#" class="flex-auto p-3 text-01 hover:bg-primary hover:text-04">
+                            Sign in with @displayName
+                        </a>
+                    }
                 </div>
             </div>
-        </div>
-    </div>
+        </span>
+        <button class="btn btn-outline flex-x items-center" aria-haspopup="true" aria-expanded="@IsOpen"
+                @onclick="_ => IsOpen = !IsOpen">
+            <span>Sign in @Why</span>
+            <svg class="@svgClass ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48">
+                <path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/>
+            </svg>
+        </button>
+    </span>
 }
 
 @code {
