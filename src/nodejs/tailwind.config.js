@@ -404,6 +404,7 @@ module.exports = {
       none: 'none',
       context: '5px 5px 4px 0px rgba(34, 60, 80, 0.2);',
       'mobile-button': '0px 4px 6px 3px rgba(0, 0, 0, 0.2);',
+      'up': '0px -6px 8px 2px rgba(200, 200, 200, 0.2);;',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
     caretColor: ({ theme }) => theme('colors'),
