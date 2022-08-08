@@ -41,7 +41,7 @@
                                Dismissed="_ => OnDismiss(requirement)">@error.Message</Error>
                     }
                 </div>
-                <p>
+                <div class="p-5 pt-0">
                     @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
                         @if (account == null) {
                             <span>You can try to <SignInDropdown/> to resolve it.</span>
@@ -49,7 +49,7 @@
                             <span>You can try to <SignOutButton/> and sign in with another account to resolve it.</span>
                         }
                     }
-                </p>
+                </div>
             </LayoutView>
         }
     </ErrorContent>
