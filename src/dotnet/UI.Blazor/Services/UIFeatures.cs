@@ -21,7 +21,6 @@ public static class UIFeatures
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
             var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
-            Console.WriteLine("IsAdmin: {0}", account?.IsAdmin);
             return account?.IsAdmin == true;
         }
     }

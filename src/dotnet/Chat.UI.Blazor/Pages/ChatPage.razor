@@ -1,6 +1,5 @@
 @page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
-@using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatLayout
 @{
@@ -21,7 +20,8 @@
     <div>Loading...</div>
     return;
 }
-@if (!chat.IsPublic) {
+@if (!chat.IsPublic && !m.Account.IsActive()) {
+    /* We check account here to avoid excessive render */
     <RequireAccount/>
 }
 @* @key=... ensures child components are recreated on navigation to another chat *@
@@ -69,6 +69,7 @@
     private ChatView _chatView = null!;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
@@ -98,16 +99,13 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var lastRenderedChat = _lastRenderedModel?.Chat;
         var chat = await Chats.Get(Session, ChatId, cancellationToken);
         if (chat == null)
-            return new Model { IsUnavailable = true };
+            return Model.Unavailable;
 
-        // We want to return the same Chat instance while it stays unchanged
-        var isTheSameModel = lastRenderedChat != null
-            && lastRenderedChat.Id == chat.Id
-            && lastRenderedChat.Version == chat.Version;
-        return isTheSameModel ? _lastRenderedModel! : new() { Chat = chat };
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var result = new Model(chat, account);
+        return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -121,10 +119,16 @@
     private void OnUnreadMessagesClick()
         => _ = _chatView.NavigateToUnreadEntry();
 
-    public sealed record Model {
-        public static Model None { get; } = new();
+    public sealed record Model(Chat? Chat, Account? Account) {
+        public static Model None { get; } = new(null, null);
+        public static Model Unavailable { get; } = new(null, null) { IsUnavailable = true };
 
         public bool IsUnavailable { get; init; }
-        public Chat? Chat { get; init; }
+
+        public bool IsSame(Model? other) {
+            if (other == null)
+                return false;
+            return ReferenceEquals(Chat, other.Chat) && ReferenceEquals(Account, other.Account);
+        }
     }
 }
