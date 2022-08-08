@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
 
-<Item OnClick="@(_ => Delete(Chat.Id))" CssClass="context-menu-item warning-item">
+<Item OnClick="OnLeaveChatClick" CssClass="context-menu-item warning-item">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -9,7 +9,7 @@
             </svg>
         </div>
         <div class="context-menu-text">
-            Delete chat
+            Leave chat
         </div>
     </div>
 </Item>
@@ -17,8 +17,11 @@
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void Delete(string chatId) {}
+    private void OnLeaveChatClick() {
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(Chat));
+    }
 }

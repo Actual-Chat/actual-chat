@@ -12,7 +12,7 @@
 <div class="flex-x">
     <div class="@lineClass hidden md:block h-8 w-1 mr-2 self-center rounded-lg">
     </div>
-    <ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
+    <ButtonSquare Click="@OnClick" Title="@Title" Class="@btnClass">
         <svg xmlns="http://www.w3.org/2000/svg" class="@GetIconSize() navbar-group-icon fill-current" viewBox="@ViewBox">
             @IconSvg
         </svg>
@@ -47,7 +47,7 @@
     public void Dispose()
         => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 
-    private void OnClicked()
+    private void OnClick()
         => NavbarUI.ActivateGroup(Id, Title);
 
 }
