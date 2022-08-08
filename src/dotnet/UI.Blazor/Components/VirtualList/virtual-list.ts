@@ -13,6 +13,7 @@ import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
 import { delayAsync } from '../../../../nodejs/src/delay';
+import { whenCompleted, WhenCompleted } from 'when';
 
 const LogScope: string = 'VirtualList';
 const UpdateClientSideStateTimeout: number = 64;
@@ -54,10 +55,10 @@ export class VirtualList implements VirtualListAccessor {
     private _scrollTopPivotOffset: number | null = null;
     private _scrollTopPivotLocation: 'top' | 'bottom' | null = null;
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
-    private _whenRenderCompleted: Promise<void> | null = null;
-    private _whenRenderCompletedResolve: () => void | null = null;
-    private _whenUpdateCompleted: Promise<void> | null = null;
-    private _whenUpdateCompletedResolve: () => void | null = null;
+    private _whenRenderCompleted: WhenCompleted | null = null;
+    // private _whenRenderCompletedResolve: () => void | null = null;
+    private _whenUpdateCompleted: WhenCompleted | null = null;
+    // private _whenUpdateCompletedResolve: () => void | null = null;
 
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
@@ -184,6 +185,11 @@ export class VirtualList implements VirtualListAccessor {
         this._isDisposed = true;
         this._abortController.abort();
         this._renderEndObserver.disconnect();
+        this._skeletonObserver.disconnect();
+        this._visibilityObserver.disconnect();
+        this._sizeObserver.disconnect();
+        this._whenRenderCompleted?.complete();
+        this._whenUpdateCompleted?.complete();
         clearInterval(this._ironPantsHandlerInterval);
         this._ref.removeEventListener('scroll', this.onScroll);
     }
@@ -193,13 +199,8 @@ export class VirtualList implements VirtualListAccessor {
         if (this._debugMode)
             console.log(`${LogScope}.maybeOnRenderEnd: `, mutations.length);
 
-        if (this._whenRenderCompletedResolve) {
-            this._whenRenderCompletedResolve();
-            this._whenRenderCompletedResolve = null;
-        }
-        this._whenRenderCompleted = new Promise<void>(resolve => {
-            this._whenRenderCompletedResolve = resolve;
-        });
+        this._whenRenderCompleted?.complete();
+        this._whenRenderCompleted = whenCompleted();
 
         let isNodesAdded = mutations.length == 0; // first render
         for (const mutation of mutations) {
@@ -465,14 +466,8 @@ export class VirtualList implements VirtualListAccessor {
             this._scrollTopPivotOffset = null;
         } finally {
             this._isRendering = false;
-            if (this._whenRenderCompletedResolve) {
-                this._whenRenderCompletedResolve();
-                this._whenRenderCompletedResolve = null;
-            }
-            if (this._whenUpdateCompletedResolve) {
-                this._whenUpdateCompletedResolve();
-                this._whenUpdateCompletedResolve = null;
-            }
+            this._whenRenderCompleted?.complete();
+            this._whenUpdateCompleted?.complete();
         }
     }
 
@@ -738,9 +733,7 @@ export class VirtualList implements VirtualListAccessor {
         if (this._debugMode)
             console.warn(`${LogScope}.requestData: query:`, this._query);
 
-        this._whenUpdateCompleted = new Promise<void>(resolve => {
-            this._whenUpdateCompletedResolve = resolve;
-        });
+        this._whenUpdateCompleted = whenCompleted();
 
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
