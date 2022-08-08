@@ -38,7 +38,7 @@
     }
 
     protected override ComputedState<MentionCandidate[]?>.Options GetStateOptions() {
-        return new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        return new() { UpdateDelayer = UpdateDelayer.MinDelay };
     }
 
     protected override Task<MentionCandidate[]?> ComputeState(CancellationToken cancellationToken)

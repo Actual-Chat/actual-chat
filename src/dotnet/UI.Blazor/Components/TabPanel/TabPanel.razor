@@ -50,4 +50,13 @@
         ActiveTab ??= tab;
         StateHasChanged();
     }
+
+    public void UnregisterTab(Tab tab) {
+        var tabIndex = _tabs.IndexOf(tab);
+        _tabs.Remove(tab);
+        tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
+        ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
+        StateHasChanged();
+    }
+
 }

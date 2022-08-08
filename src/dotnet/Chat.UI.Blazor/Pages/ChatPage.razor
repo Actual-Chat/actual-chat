@@ -94,7 +94,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

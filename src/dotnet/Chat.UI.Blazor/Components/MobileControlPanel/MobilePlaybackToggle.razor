@@ -48,7 +48,7 @@
         var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
         if (State.LatestNonErrorValue == null)
-            return new Model(isPlayingActive, isPlayingHistorical, isPlayingActive ? ListeningState.On : ListeningState.Off);
+            return new(isPlayingActive, isPlayingHistorical, isPlayingActive ? ListeningState.On : ListeningState.Off);
 
         // TODO: rework this, now it cause infinite loop: ComputeState method changes ChatUI.ListeningChatIds
         // and in the same time uses it as dependency via ChatUI.AddToListeningChatIds.
@@ -57,7 +57,7 @@
         // By the way how it's supposed to remove chats from ListeningChatIds.
         //ChatUI.ListeningChatIds.Value = await ChatUI.AddToListeningChatIds(ChatId, cancellationToken).ConfigureAwait(false);
 
-        return new Model (isPlayingActive, isPlayingHistorical, isPlayingActive ? ListeningState.OffToOn : ListeningState.OnToOff);
+        return new(isPlayingActive, isPlayingHistorical, isPlayingActive ? ListeningState.OffToOn : ListeningState.OnToOff);
     }
 
     public record Model(bool IsPlayingActive, bool IsPlayingHistorical, ListeningState ListeningState);

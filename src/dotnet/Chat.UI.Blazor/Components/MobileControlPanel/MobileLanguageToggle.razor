@@ -21,7 +21,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
         => await ChatUserSettings.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);

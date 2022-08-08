@@ -11,8 +11,8 @@ public static class UIFeatures
         public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
             var blazorUISettings = services.GetRequiredService<BlazorUISettings>();
-            if (blazorUISettings.EnableIncompleteUI is { } enableIncompleteFeatures)
-                return enableIncompleteFeatures;
+            if (blazorUISettings.EnableIncompleteUI is { } enableIncompleteUI)
+                return enableIncompleteUI;
 
             var hostInfo = services.GetRequiredService<HostInfo>();
             if (!hostInfo.IsDevelopmentInstance)
@@ -21,6 +21,7 @@ public static class UIFeatures
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
             var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            Console.WriteLine("IsAdmin: {0}", account?.IsAdmin);
             return account?.IsAdmin == true;
         }
     }

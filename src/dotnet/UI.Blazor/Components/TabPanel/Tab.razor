@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
 
 @if (Panel.ActiveTab == this) {
     <div class="@Class tab">
@@ -18,5 +19,11 @@
         if (Panel == null)
             throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
         Panel.RegisterTab(this);
+    }
+
+    public void Dispose() {
+        if (Panel == null)
+            throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
+        Panel.UnregisterTab(this);
     }
 }
