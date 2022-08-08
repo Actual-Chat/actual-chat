@@ -1,9 +1,15 @@
-@page "/test/fusion"
+@page "/test/system"
 
-<MainHeader>Fusion Test Page</MainHeader>
+<MainHeader>System Test Page</MainHeader>
 
-<Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
-<Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
+<div class="flex-y justify-start gap-y-1">
+    <div class="flex-1">
+        <Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
+    </div>
+    <div class="flex-1">
+        <Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
+    </div>
+</div>
 
 @code {
     private Task OnInvalidateEverythingClick() {
