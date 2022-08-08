@@ -507,7 +507,7 @@ export class VirtualList implements VirtualListAccessor {
                         if (scrollTop < EdgeEpsilon) {
                             // Spacer overlaps with the top of the viewport
                             const itemRef = this.getFirstItemRef();
-                            if (scrollTop < 0) {
+                            if (itemRef && scrollTop < 0) {
                                 this._scrollTopPivotRef = itemRef;
                                 this._scrollTopPivotOffset = -scrollTop;
                                 this._scrollTopPivotLocation = 'top';
@@ -515,12 +515,14 @@ export class VirtualList implements VirtualListAccessor {
                         } else if (contentScrollBottom - contentScrollHeight > EdgeEpsilon) {
                             // End spacer overlaps with the bottom of the viewport
                             const itemRef = this.getLastItemRef();
-                            const itemRect = itemRef.getBoundingClientRect();
-                            const y = itemRect.y - itemY0;
-                            if (y <= contentScrollBottom) {
-                                this._scrollTopPivotRef = itemRef;
-                                this._scrollTopPivotOffset = y - scrollTop;
-                                this._scrollTopPivotLocation = 'bottom';
+                            if (itemRef) {
+                                const itemRect = itemRef.getBoundingClientRect();
+                                const y = itemRect.y - itemY0;
+                                if (y <= contentScrollBottom) {
+                                    this._scrollTopPivotRef = itemRef;
+                                    this._scrollTopPivotOffset = y - scrollTop;
+                                    this._scrollTopPivotLocation = 'bottom';
+                                }
                             }
                         }
 
@@ -700,7 +702,7 @@ export class VirtualList implements VirtualListAccessor {
             if (stickyEdge.itemKey == null)
                 return;
             const itemRef = this.getItemRef(stickyEdge.itemKey);
-            if (isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect, StickyEdgeTolerance))
+            if (itemRef && isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect, StickyEdgeTolerance))
                 return this.setStickyEdge(stickyEdge);
         }
         return this.setStickyEdge(null);

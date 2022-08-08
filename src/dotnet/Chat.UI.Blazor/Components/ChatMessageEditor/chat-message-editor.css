@@ -102,14 +102,6 @@
     @apply disabled;
 }
 
-.record-mode .btn.btn-round.post-message {
-    @apply hidden;
-}
-
-.record-mode .language-button {
-    @apply flex animate-scale-from-right;
-}
-
 .attachment-list {
     @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto w-full;
     @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-bg-04 divide-dashed;
