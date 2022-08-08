@@ -1,4 +1,4 @@
-.chat-page {
+.chat-layout {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
