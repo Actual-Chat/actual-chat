@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="tab-panel @Class">
-        <div class="tab-panel-tabs @TabsClass" role="tablist">
+    <div class="@Class tab-panel">
+        <div class="@TabsClass tab-panel-tabs" role="tablist">
             <div class="relative btn-group min-w-full">
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
@@ -13,7 +13,7 @@
                     </Button>
                     @if (BottomHill) {
                         var lineCls = isActive ? "bg-primary" : "bg-transparent";
-                        <div class="shape @lineCls"></div>
+                        <div class="@lineCls shape"></div>
                     }
                 </div>
             }

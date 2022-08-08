@@ -16,7 +16,7 @@
 }
 
 @if (CanRecord) {
-    <div class="recorder-wrapper desktop-button @wrapperCls">
+    <div class="@wrapperCls recorder-wrapper desktop-button">
         <ButtonRound Class="record-off-btn"
                      Click="OnClick"
                      @ontouchend="OnLongPressStop"

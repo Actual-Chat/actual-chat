@@ -3,7 +3,7 @@
 
 <div class="author-badge" onclick="@Click">
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="flex-y @_contentClass">
+    <div class="@_contentClass flex-y">
         <div class="author-badge-name">
             <span class="@_nameClass">@Author.Name</span>
         </div>
@@ -21,7 +21,7 @@
     private string _statusTextClass = "";
     private string _statusText = "";
 
-    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
     [Parameter] public string TextClass { get; set; } = "";
     [Parameter] public IAuthorLike Author { get; set; } = null!;
@@ -44,20 +44,13 @@
         };
 
     private string GetStatusTextClass()
-        => Size switch {
-            SquareSize.Size12 => "",
-            _ => "text-xxs leading-4",
-        };
+        => (int)Size < 12 ? "text-xxs leading-4" : "";
 
     private string GetNameClass() {
         if (!TextClass.IsNullOrEmpty())
             return TextClass;
 
-        var sizeClass = Size switch {
-            SquareSize.Size6 => "",
-            SquareSize.Size8 => "",
-            _ => "text-md",
-            };
+        var sizeClass = (int)Size > 8 ? "text-md" : "";
         return "select-none " + sizeClass;
     }
 

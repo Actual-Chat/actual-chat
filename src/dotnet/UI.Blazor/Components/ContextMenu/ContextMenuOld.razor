@@ -5,14 +5,14 @@
 @using ActualChat.UI.Blazor.Module
 
 <CascadingValue Value="@((IMenu) this)" IsFixed="true">
-    <div @ref="Ref" class="context-menu-old @Class">
-        <button class="context-menu-old-button @ButtonClass" @onclick="_ => Toggle()">
+    <div @ref="Ref" class="@Class context-menu-old">
+        <button class="@ButtonClass context-menu-old-button" @onclick="_ => Toggle()">
             <div class="context-menu-old-button-inner">
                 @ButtonTemplate
             </div>
         </button>
         @if (_isOpen) {
-            <div class="context-menu-old-menu @MenuClass">
+            <div class="@MenuClass context-menu-old-menu">
                 <div class="select-none relative p-1 flex-y context-menu-old-menu-inner">
                     @MenuTemplate
                 </div>

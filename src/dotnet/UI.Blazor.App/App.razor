@@ -12,11 +12,11 @@
         <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
             <Found>
                 <ErrorWrapper>
-                    <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
+                    <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
                 </ErrorWrapper>
             </Found>
             <NotFound>
-                <LayoutView Layout="@typeof(MainLayout)">
+                <LayoutView Layout="@typeof(NoChatLayout)">
                     <p>Sorry, there's nothing here.</p>
                 </LayoutView>
             </NotFound>

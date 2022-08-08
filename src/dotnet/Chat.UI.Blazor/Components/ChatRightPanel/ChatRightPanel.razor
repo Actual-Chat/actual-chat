@@ -1,11 +1,14 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Components.SideNav
 @inherits ComputedStateComponent<ChatRightPanel.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
 
 <SideNav Direction="SideNavDirection.RightToLeft"
          Open="() => RightPanelUI.IsVisible.Value = true"
          Closed="() => RightPanelUI.IsVisible.Value = false"
-         IsOpen="@State.Value.IsRightPanelVisible">
+         IsOpen="@m.IsRightPanelVisible">
     <div class="flex-y w-full h-full md:w-80 border-l border-bg-04">
         <RightPanelHeader/>
         <RightPanelChatInfo/>
@@ -15,12 +18,17 @@
                 <Tab Title="Members">
                     <ChatAuthors/>
                 </Tab>
-                <Tab Title="Media">
-                </Tab>
-                <Tab Title="Files">
-                </Tab>
-                <Tab Title="Links">
-                </Tab>
+                @if (m.EnableIncompleteUI) {
+                    <Tab Title="Media">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab Title="Files">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab Title="Links">
+                        <ToBeDone/>
+                    </Tab>
+                }
             </TabPanel>
         </div>
     </div>
@@ -28,6 +36,7 @@
 
 @code {
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -39,13 +48,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, Boolean>(cancellationToken).ConfigureAwait(false);
         return new () {
             IsRightPanelVisible = isRightPanelVisible,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
     public sealed record Model {
         public static Model None { get; } = new();
         public bool IsRightPanelVisible { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 }

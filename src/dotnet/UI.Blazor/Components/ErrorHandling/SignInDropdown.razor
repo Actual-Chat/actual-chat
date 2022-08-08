@@ -10,7 +10,7 @@
         <div class="flex items-center">
             <div class="relative">
                 <div class="relative">
-                    <div class="absolute bottom-0 left-0 w-44 rounded-md @(IsOpen ? "" : "hidden")">
+                    <div class="@(IsOpen ? "" : "hidden") absolute bottom-0 left-0 w-44 rounded-md">
                         <div class="py-1 rounded-md bg-white shadow-lg mb-1 relative">
                             @foreach (var (name, displayName) in unusedAuthSchemas) {
                                 <a @onclick="_ => SignIn(name)" href="#" class="block px-4 py-2 text-primary hover:bg-primary">

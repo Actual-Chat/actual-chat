@@ -56,9 +56,8 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (BlazorModeHelper.IsServerSideBlazor) {
+        if (BlazorModeHelper.IsServerSideBlazor)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
-        }
         await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
     }
 

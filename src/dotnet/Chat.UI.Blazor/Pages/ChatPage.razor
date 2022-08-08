@@ -3,16 +3,16 @@
 @using Blazored.LocalStorage
 @using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout ChatPageLayout
+@layout ChatLayout
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
     if (!m.NavigateToChatId.IsNullOrEmpty())
         Nav.Chat(m.NavigateToChatId);
-    if (m.IsUnavailable)
-        Nav.Unavailable("chat");
-    if (m.MustLogin)
-        Nav.Login("to view this chat");
+    if (m.IsUnavailable) {
+        <RequireChat/>
+        return;
+    }
     var chat = m.Chat;
 }
 
@@ -103,16 +103,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var lastRenderedChat = _lastRenderedModel?.Chat;
         var chat = await Chats.Get(Session, ChatId, cancellationToken);
-        if (chat == null) {
-            if (lastRenderedChat != null && lastRenderedChat.Id == ChatId) {
-                // Chat became unavailable - let's redirect the user to the first available chat
-                var chats = await Chats.GetChats(Session, CancellationToken.None);
-                var chat1 = chats.FirstOrDefault();
-                if (chat1 != null)
-                    return new Model { NavigateToChatId = chat1.Id };
-            }
+        if (chat == null)
             return new Model { IsUnavailable = true };
-        }
 
         // We want to return the same Chat instance while it stays unchanged
         var isTheSameModel = lastRenderedChat != null
@@ -138,7 +130,6 @@
 
         public bool IsUnavailable { get; init; }
         public string? NavigateToChatId { get; init; }
-        public bool MustLogin { get; init; }
         public Chat? Chat { get; init; }
     }
 }

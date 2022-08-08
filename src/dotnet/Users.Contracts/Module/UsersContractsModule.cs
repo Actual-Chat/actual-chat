@@ -13,10 +13,10 @@ public class UsersContractsModule : HostModule
     {
         // Overrides default requirements for User type
         User.MustExist = Requirement.New(
-            new(() => new NoAccountException()),
+            new(() => StandardError.Account.None()),
             (User? u) => u != null);
         User.MustBeAuthenticated = Requirement.New(
-            new(() => new NoAccountException()),
+            new(() => StandardError.Account.None()),
             (User? u) => u?.IsAuthenticated() == true);
 
         // Any AccountException isn't a transient error

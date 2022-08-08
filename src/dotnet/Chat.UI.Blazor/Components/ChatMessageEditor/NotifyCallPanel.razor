@@ -6,10 +6,11 @@
         PanelState.Closed => "panel-closed",
         PanelState.Opening => "panel-opening",
         PanelState.Closing => "panel-closing",
+        _ => "",
     };
 }
 
-<div class="notify-call-panel @panelCls">
+<div class="@panelCls notify-call-panel">
     <ButtonRound Class="notify-call-toggle blackout" Click="OnClick">
         <i class="icon-hand text-2xl"></i>
     </ButtonRound>

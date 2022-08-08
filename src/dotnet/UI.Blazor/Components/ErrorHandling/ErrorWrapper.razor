@@ -1,4 +1,5 @@
 @using ActualChat.Users
+@using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 
@@ -27,7 +28,9 @@
         } else {
             <div class="p-4 pr-5">
                 @foreach (var (requirement, error) in context.Items) {
-                    var title = $"Error ({error.GetType().Name}):";
+                    var title = HostInfo.IsDevelopmentInstance
+                        ? $"Error ({error.GetType().Name}):"
+                        : "Error:";
                     <Error @key="requirement"
                            Title="@title"
                            Dismissed="_ => OnDismiss(requirement)">@error.Message</Error>
@@ -41,6 +44,7 @@
     private RequirementChecker _requirementChecker = null!;
     private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }

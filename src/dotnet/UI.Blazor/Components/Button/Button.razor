@@ -1,13 +1,13 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="btn @Class" title="@Title"
+<button class="@Class btn" title="@Title"
         name="@Name" type="@GetButtonType()"
         disabled="@IsDisabled"
         autofocus="@IsAutofocused"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
-    <div class="btn-content @ContentClass" tabindex="-1">
+    <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
 </button>

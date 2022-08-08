@@ -5,6 +5,10 @@ namespace ActualChat.Chat;
 [DataContract]
 public sealed record Chat : IRequirementTarget
 {
+    public static Requirement<Chat> MustExist { get; } = Requirement.New(
+        new(() => StandardError.Chat.Unavailable()),
+        (Chat? p) => p != null);
+
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public long Version { get; init; }
     [DataMember] public string Title { get; init; } = "";
