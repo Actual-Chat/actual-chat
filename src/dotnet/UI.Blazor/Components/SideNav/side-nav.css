@@ -7,7 +7,7 @@
 
 .side-nav-right {
     @apply translate-x-full;
-    @apply z-60 left-0 md:w-120;
+    @apply z-60 left-0 md:w-96;
 }
 
 .side-nav-left {
