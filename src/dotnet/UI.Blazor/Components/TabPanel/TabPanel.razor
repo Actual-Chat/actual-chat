@@ -32,7 +32,7 @@
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public EventCallback<Tab> ActiveTabChanged { get; set; }
+    [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
     public Tab? ActiveTab {

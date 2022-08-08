@@ -180,7 +180,7 @@
         public string UserId { get; init; } = "";
     };
 
-    private void OnActiveTabChanged(Tab tab) {
-        Group.Value = Enum.Parse<ContactGroup>(tab.Id);
+    private void OnActiveTabChanged(Tab? tab) {
+        Group.Value = tab == null ? ContactGroup.All : Enum.Parse<ContactGroup>(tab.Id);
     }
 }
