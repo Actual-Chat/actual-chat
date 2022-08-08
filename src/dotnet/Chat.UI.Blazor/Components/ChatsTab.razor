@@ -6,15 +6,13 @@
     RenderFragment RenderChat(Chat c) =>
         @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(ActiveChatId == c.Id)">
             <ChildContent>
-                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatContextMenu.Id" Data="@c">
-                    <div class="flex-x items-center gap-x-2">
-                        <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size10" />
-                        <span class="text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                    </div>
-                </ContextMenuTrigger>
+                <div class="flex-x items-center gap-x-2">
+                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size10" />
+                    <span class="text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
+                </div>
             </ChildContent>
             <Ending>
-                @if (Group == ChatGroup.Listening ) {
+                @if (Group == ChatGroup.Listening) {
                     <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ListeningChatRemoveButton ChatId="@c.Id"/>
@@ -46,7 +44,9 @@
 @if (ChatList != null) {
     <div class="@GetCss(Group)">
         @foreach (var c in ChatList) {
-            @RenderChat(c)
+            <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatContextMenu.Id" Data="@c" CssClass="flex-x items-center gap-x-2">
+                @RenderChat(c)
+            </ContextMenuTrigger>
         }
     </div>
 }

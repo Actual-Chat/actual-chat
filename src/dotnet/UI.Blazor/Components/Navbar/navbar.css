@@ -109,8 +109,9 @@
 .navbar-item:hover .btn.btn-round.pin-toggle {
     @apply text-icons-01 bg-transparent;
 }
-.navbar-item .btn.btn-round.recording-in-chat.on,
-.navbar-item:hover .btn.btn-round.recording-in-chat.on {
+.navbar-item .btn.btn-round.recording-in-chat.on .btn-content,
+.navbar-item:hover .btn.btn-round.recording-in-chat.on .btn-content,
+.navbar-item .btn.btn-round.recording-in-chat.on:hover .btn-content {
     @apply text-recorder-on bg-transparent;
 }
 

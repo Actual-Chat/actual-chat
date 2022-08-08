@@ -5,7 +5,7 @@
     @apply flex;
 }
 
-.chat-menu-btn.btn.btn-round.on:hover {
+.chat-menu-btn.btn.btn-round.on:hover .btn-content {
     @apply text-primary;
 }
 .chat-menu .dropdown-menu {
