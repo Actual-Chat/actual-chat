@@ -1,8 +1,12 @@
 @using System.Text
+@using ActualChat.UI.Blazor.Components.Tooltip
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="@Class btn btn-round" title="@Title"
-        name="@Name" type="@GetButtonType()"
+<button @ref="_ref"
+        class="@Class btn btn-round"
+        title="@Title"
+        name="@Name"
+        type="@GetButtonType()"
         disabled="@IsDisabled"
         autofocus="@IsAutofocused"
         oncontextmenu="return false;"
@@ -14,11 +18,17 @@
         </div>
     </div>
 </button>
+@if (HasTooltip) {
+    <Tooltip Reference="_ref">@Tooltip</Tooltip>
+}
 
 @code {
+    private ElementReference _ref;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
@@ -32,4 +42,5 @@
     private string GetButtonType()
         => Type.ToString().ToLower();
 
+    private bool HasTooltip => !Tooltip.IsNullOrEmpty();
 }
