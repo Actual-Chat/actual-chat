@@ -111,6 +111,7 @@ module.exports = {
         '03': 'var(--text-03)',
         '04': 'var(--text-04)',
         '05': 'var(--text-05)',
+        '07': 'var(--text-07)',
       },
       borderColor: {
         'bg-01': 'var(--background-01)',
@@ -124,6 +125,8 @@ module.exports = {
         'bg-05': 'var(--background-05)',
         'text-05': 'var(--text-05)',
         'bg-06': 'var(--background-06)',
+        'bg-07': 'var(--background-07)',
+        'bg-08': 'var(--background-08)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -132,6 +135,8 @@ module.exports = {
         '04': 'var(--background-04)',
         '05': 'var(--background-05)',
         '06': 'var(--background-06)',
+        '07': 'var(--background-07)',
+        '08': 'var(--background-08)',
       },
     },
     screens: {
