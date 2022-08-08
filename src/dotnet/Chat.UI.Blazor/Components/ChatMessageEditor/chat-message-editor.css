@@ -120,14 +120,10 @@
     @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
-    @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
-    max-width: 12rem;
-    min-width: 12rem;
+    @apply relative min-w-48 max-w-48 mr-2 pl-2 first:pl-0 last:mr-0;
 }
 .attachment-item {
-    @apply relative p-3 rounded-none grid overflow-y-auto overflow-x-hidden;
-    min-height: 10rem;
-    max-height: 12rem;
+    @apply relative grid min-h-40 max-h-48 p-3 rounded-none overflow-y-auto overflow-x-hidden;
 }
 .attachment-wrapper .btn.btn-round {
     @apply w-8 h-8 text-04 m-0 self-center;
@@ -150,20 +146,19 @@
 
 /* Desktop control panel */
 .recorder-panel {
-    @apply hidden;
-    @apply md:-flex-x justify-center;
-    @apply bg-01 outline-none;
-    @apply rounded-none gap-x-2.5;
+    @apply hidden md:-flex-x;
+    @apply justify-center gap-x-2.5;
+    @apply bg-01 outline-none rounded-none;
     @apply self-stretch md:self-end;
 }
 .recorder-panel > div {
-    @apply flex flex-1 rounded-full w-fit h-fit self-end;
+    @apply flex flex-1 w-fit h-fit self-end rounded-full;
 }
 .recorder-panel .desktop-button {
     @apply flex rounded-full;
 }
 .recorder-panel .recorder-wrapper {
-    @apply border justify-center flex h-14 w-14 relative top-1 border-primary;
+    @apply relative flex top-1 justify-center h-14 w-14 border border-primary;
 }
 .recorder-panel .recorder-wrapper .btn {
     @apply self-center m-0.5;
@@ -189,25 +184,25 @@
     @apply shadow-lg shadow-secondary;
 }
 .recorder-panel .recorder-wrapper.record-off .record-on-btn.btn {
-    @apply scale-0 absolute;
+    @apply absolute scale-0;
 }
 .recorder-panel .recorder-wrapper.record-off .record-off-btn.btn {
     @apply scale-100;
 }
 .recorder-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
-    @apply animate-scale-to-5 scale-0 absolute;
+    @apply absolute animate-scale-to-5 scale-0;
 }
 .recorder-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
     @apply animate-scale-to-full scale-100;
 }
 .recorder-panel .recorder-wrapper.record-on .record-off-btn.btn {
-    @apply scale-0 absolute;
+    @apply absolute scale-0;
 }
 .recorder-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply scale-100;
 }
 .recorder-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
-    @apply animate-scale-to-5 scale-0 absolute;
+    @apply absolute animate-scale-to-5 scale-0;
 }
 .recorder-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply animate-scale-to-full scale-100;
