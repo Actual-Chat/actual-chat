@@ -481,6 +481,10 @@ export class VirtualList implements VirtualListAccessor {
         if (this._isDisposed || this._isUpdatingClientState || this._isRendering)
             return;
 
+        // Do not update client state when we haven't completed rendering for the first time
+        if (rs.renderIndex === -1)
+            return;
+
         const whenRenderCompleted = this._whenRenderCompleted;
         if (whenRenderCompleted) {
             await Promise.race([whenRenderCompleted, delayAsync(RenderTimeout)]);
