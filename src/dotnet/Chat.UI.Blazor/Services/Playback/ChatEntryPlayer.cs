@@ -72,8 +72,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         }
 
         BackgroundTask.Run(async () => {
-            var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, AbortToken).ConfigureAwait(false);
             try {
+                var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, AbortToken).ConfigureAwait(false);
                 await playProcess.WhenCompleted.ConfigureAwait(false);
             }
             catch (Exception e) {
