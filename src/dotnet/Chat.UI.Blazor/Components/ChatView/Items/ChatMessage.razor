@@ -3,6 +3,7 @@
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
+@using BlazorContextMenu
 
 @{
     var model = State.LatestNonErrorValue;
@@ -36,77 +37,72 @@
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
-<div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
-
-    <div class="flex-y truncate">
-        @if (isReply) {
-            <QuotedMessage Message="@model.RepliedChatMessage"/>
-        }
-
-        <div class="chat-message group px-1.5 py-0.5 relative">
-            @if (showPicture || isReply) {
-                <div class="m-1.5">
-                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-                </div>
-            } else {
-                <div class="w-10 mr-2 mt-1">
-                    <span class="chat-message-timestamp-secondary text-03 text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
-                </div>
+<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageContextMenu.Id" Data="@Message">
+    <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
+        <div class="flex-y truncate">
+            @if (isReply) {
+                <QuotedMessage Message="@model.RepliedChatMessage"/>
             }
-            <div class="flex-1 overflow-hidden mb-1 mt-1">
-                @if (showHeader || isReply) {
-                    <div class="header chat-message-header ml-1">
-                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-03"/>
-                        <ChatMessageTimestamp Moment="entry.BeginsAt"/>
-                        &nbsp;
-                        <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span>
+
+            <div class="chat-message group px-1.5 py-0.5 relative">
+                @if (showPicture || isReply) {
+                    <div class="m-1.5">
+                        <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+                    </div>
+                } else {
+                    <div class="w-10 mr-2 mt-1">
+                        <span class="chat-message-timestamp-secondary text-03 text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
                     </div>
                 }
-                <div class="content message-content rounded-sm">
-                    @if (entry.IsStreaming) {
-                        <ChatMessageTranscript Model="@message" Class="mx-1"/>
-                    } else {
-                        <p class="chat-message-markup mx-1">
-                            <CascadingValue Value="@entry">
-                                <MarkupView Markup="@model.Markup"/>
-                            </CascadingValue>
-                        </p>
+                <div class="flex-1 overflow-hidden mb-1 mt-1">
+                    @if (showHeader || isReply) {
+                        <div class="header chat-message-header ml-1">
+                            <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-03"/>
+                            <ChatMessageTimestamp Moment="entry.BeginsAt"/>
+                            &nbsp;
+                            <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span>
+                        </div>
                     }
-                </div>
-                @if (model.Attachments.Length > 0) {
-                    <div class="message-attachments">
-                        @foreach (var attachment in model.Attachments) {
-                            var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
-                            @if (isImage) {
-                                <ImageAttachment Attachment="@attachment"/>
-                            } else {
-                                <FileAttachment Attachment="@attachment"/>
-                            }
+                    <div class="content message-content rounded-sm">
+                        @if (entry.IsStreaming) {
+                            <ChatMessageTranscript Model="@message" Class="mx-1"/>
+                        } else {
+                            <p class="chat-message-markup mx-1">
+                                <CascadingValue Value="@entry">
+                                    <MarkupView Markup="@model.Markup"/>
+                                </CascadingValue>
+                            </p>
                         }
                     </div>
-                }
+                    @if (model.Attachments.Length > 0) {
+                        <div class="message-attachments">
+                            @foreach (var attachment in model.Attachments) {
+                                var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                                @if (isImage) {
+                                    <ImageAttachment Attachment="@attachment"/>
+                                } else {
+                                    <FileAttachment Attachment="@attachment"/>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
             </div>
         </div>
-    </div>
 
-    @if (!message.IsQuote) {
-        <CascadingValue Value="@message">
-            <ContextMenuOld
-                Class="chat-message-menu "
-                ButtonClass="show-on-hover message-menu-button">
-                <ButtonTemplate>
-                    <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                        <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-                    </svg>
-                </ButtonTemplate>
-                <MenuTemplate>
-                    <MessageContextMenu />
-                </MenuTemplate>
-            </ContextMenuOld>
-        </CascadingValue>
-    }
-
+        @if (!message.IsQuote) {
+            <ContextMenuToggleTrigger MenuId="@MessageContextMenu.Id" Data="@Message">
+                <button class="show-on-hover message-menu-button context-menu-old-button">
+                    <div class="context-menu-old-button-inner">
+                        <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                            <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+                        </svg>
+                    </div>
+                </button>
+            </ContextMenuToggleTrigger>
+        }
 </div>
+</ContextMenuTrigger>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
