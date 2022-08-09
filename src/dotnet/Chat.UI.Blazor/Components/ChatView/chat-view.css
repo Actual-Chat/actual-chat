@@ -8,7 +8,7 @@
 .message-wrapper:hover .author-badge {
     @apply bg-message-hover;
 }
-.message-wrapper:hover .context-menu-old-button.show-on-hover {
+.message-wrapper:hover .message-menu-btn.show-on-hover {
     @apply visible;
 }
 .message-wrapper.own-message {
@@ -126,10 +126,6 @@
     @apply ml-0;
 }
 
-.chat-message:hover .chat-message-menu .context-menu-old-button {
-    @apply visible;
-}
-
 .chat-message-menu .context-menu-old-menu {
     @apply absolute z-10 right-16 -mt-3 -mr-2;
     @apply rounded-xl;
@@ -167,15 +163,21 @@
     @apply bg-04 text-02 rounded-md;
 }
 
-.message-menu-button {
-    @apply h-8 w-12 right-4 -mt-3 bg-01;
-    @apply rounded-r-lg rounded-l-lg border-r border-t border-b border-l;
-    @apply border-bg-03 shadow-context;
+.message-menu-btn {
+    @apply absolute z-20 right-4 -mt-3 p-1 mx-0;
+    @apply min-w-0 max-w-max h-8 w-12;
+    @apply rounded-lg outline-none;
+    @apply bg-01 text-base font-semibold text-03;
+    @apply border border-bg-03 shadow-context;
+}
+.message-menu-btn.show {
+    @apply visible bg-context-menu ;
+}
+.message-menu-btn.show-on-hover {
+    @apply invisible;
 }
 
-.message-menu-button.show {
-    @apply visible z-20 absolute bg-context-menu ;
-}
 .message-attachment-image img.skeleton {
     @apply bg-skeleton rounded-md animate-pulse;
 }
+
