@@ -125,15 +125,6 @@
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
-
-.chat-message-menu .context-menu-old-menu {
-    @apply absolute z-10 right-16 -mt-3 -mr-2;
-    @apply rounded-xl;
-    @apply shadow-context border border-context-border bg-01;
-}
-.chat-message-menu .context-menu-old-menu-inner {
-    @apply p-0;
-}
 .chat-message-menu .menu-item {
     @apply h-8 text-left w-full;
 }
