@@ -1,4 +1,13 @@
 @layout NoLayout
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+@inject FeedbackUI FeedbackUI
+
+@{
+    var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var googleAuth = unusedAuthSchemas.FirstOrDefault(e => e.DisplayName.ToLower() == "google");
+}
 
 @page "/welcome"
 
@@ -23,7 +32,7 @@
         <div class="welcome-menu">
             <div class="text-3xl font-black text-02">The future of digital communication</div>
             <div class="text-base font-medium text-02">Try in two taps:</div>
-            <Button Class="welcome-btn">
+            <Button Class="welcome-btn" Click="@(() => SignIn(googleAuth.Name))">
                 <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="12" fill="#F5F5F5"/>
                     <g clip-path="url(#clip0_1036_33378)">
@@ -39,16 +48,16 @@
                         </clipPath>
                     </defs>
                 </svg>
-                Continue with Google
+                Continue with @googleAuth.DisplayName
             </Button>
-            <Button Class="welcome-btn">
+            <Button Class="welcome-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
                 <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M24 12C24 5.36889 18.6311 0 12 0C5.36889 0 0 5.36889 0 12C0 17.9911 4.39111 22.9511 10.1333 23.8578V15.4667H7.07556V12H10.1333V9.35111C10.1333 6.34667 11.9111 4.69333 14.6489 4.69333C15.9644 4.69333 17.3333 4.92444 17.3333 4.92444V7.87556H15.8222C14.3289 7.87556 13.8667 8.8 13.8667 9.74222V12H17.1911L16.6578 15.4667H13.8667V23.8578C19.6089 22.9511 24 17.9911 24 12Z" fill="#1677F0"/>
                     <path d="M16.6754 15.4667L17.2088 12H13.8666V9.74225C13.8666 8.80003 14.3288 7.87558 15.8221 7.87558H17.3332V4.92447C17.3332 4.92447 15.9643 4.69336 14.6488 4.69336C11.911 4.69336 10.1332 6.34669 10.1332 9.35114V12H7.07544V15.4667H10.1332V23.8578C10.7377 23.9467 11.3777 24 11.9999 24C12.6399 24 13.2621 23.9467 13.8666 23.8578V15.4667H16.6754Z" fill="white"/>
                 </svg>
                 Continue with Facebook
             </Button>
-            <Button Class="welcome-btn">
+            <Button Class="welcome-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
                 <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="12" fill="#626262"/>
                     <g clip-path="url(#clip0_1161_43975)">
@@ -67,5 +76,26 @@
 </div>
 
 @code {
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+    private User? User { get; set; }
+
+    [CascadingParameter] private Task<AuthState> AuthStateTask { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        User = (await AuthStateTask).User;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+    // GetSchemas requires JS interop for web version, so it can be called only at this point
+            AuthSchemas = await ClientAuth.GetSchemas();
+            StateHasChanged();
+        }
+    }
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
 }
