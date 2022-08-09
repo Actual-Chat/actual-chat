@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public class VirtualListData<TItem>
     where TItem : IVirtualListItem
 {
-    public static VirtualListData<TItem> None { get; } = new(null!, Array.Empty<TItem>());
+    public static VirtualListData<TItem> None { get; } = new(VirtualListDataQuery.None, Array.Empty<TItem>());
 
     public VirtualListDataQuery Query { get; }
     public IReadOnlyCollection<TItem> Items { get; }

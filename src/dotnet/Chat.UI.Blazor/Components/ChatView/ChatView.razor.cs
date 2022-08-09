@@ -173,7 +173,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
-            ? IdTileStack.Layers[1].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
+            ? IdTileStack.Layers[0].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
             : query.IsNone
                 ? new Range<long>(
                     chatIdRange.End - IdTileStack.Layers[1].TileSize,

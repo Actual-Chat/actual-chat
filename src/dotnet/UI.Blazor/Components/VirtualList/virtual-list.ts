@@ -111,9 +111,9 @@ export class VirtualList implements VirtualListAccessor {
         this._visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
             {
-                root: null,
+                root: this._ref,
                 threshold: [0, 0.1, 0.9, 1],
-                rootMargin: '0px',
+                rootMargin: '10px',
 
                 /* required options for IntersectionObserver v2*/
                 // @ts-ignore
@@ -243,6 +243,30 @@ export class VirtualList implements VirtualListAccessor {
             this._sizeObserver.observe(itemRef, { box: 'border-box' });
             this._visibilityObserver.observe(itemRef);
         }
+
+        if (this._unmeasuredItems.size === 0) {
+            for (const itemRef of this.getAllItemRefs()) {
+                const key = getItemKey(itemRef);
+                const countAs = getItemCountAs(itemRef);
+
+                if (this.items.hasOwnProperty(key)) {
+                    continue;
+                }
+
+                this.items[key] = {
+                    size: -1,
+                    countAs: countAs ?? 1,
+                }
+                this._unmeasuredItems.add(key);
+                this._sizeObserver.observe(itemRef, { box: 'border-box' });
+                this._visibilityObserver.observe(itemRef);
+            }
+
+            const rs = this.getRenderState();
+            if (rs) {
+                void this.onRenderEnd(rs);
+            }
+        }
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
@@ -258,23 +282,10 @@ export class VirtualList implements VirtualListAccessor {
             if (item) {
                 item.size = contentBoxSize.blockSize;
             }
-            if (this._unmeasuredItems.size === 0) {
-                const rsJson = this._renderStateRef.textContent;
-                if (rsJson == null || rsJson === '')
-                    return;
-
-                const rs = JSON.parse(rsJson) as Required<VirtualListRenderState>;
-                if (rs.renderIndex <= this.renderState.renderIndex)
-                    return;
-
-                const riText = this._renderIndexRef.dataset['renderIndex'];
-                if (riText == null || riText == '')
-                    return;
-
-                const ri = Number.parseInt(riText);
-                if (ri != rs.renderIndex)
-                    return;
-
+        }
+        if (this._unmeasuredItems.size === 0) {
+            const rs = this.getRenderState();
+            if (rs) {
                 void this.onRenderEnd(rs);
             }
         }
@@ -306,7 +317,27 @@ export class VirtualList implements VirtualListAccessor {
         }
     }
 
-    private async onRenderEnd(rs: Required<VirtualListRenderState>): Promise<void> {
+    private getRenderState(): VirtualListRenderState | null {
+        const rsJson = this._renderStateRef.textContent;
+        if (rsJson == null || rsJson === '')
+            return null;
+
+        const rs = JSON.parse(rsJson) as Required<VirtualListRenderState>;
+        if (rs.renderIndex <= this.renderState.renderIndex)
+            return null;
+
+        const riText = this._renderIndexRef.dataset['renderIndex'];
+        if (riText == null || riText == '')
+            return null;
+
+        const ri = Number.parseInt(riText);
+        if (ri != rs.renderIndex)
+            return null;
+
+        return rs;
+    }
+
+    private async onRenderEnd(rs: VirtualListRenderState): Promise<void> {
         if (this._isRendering) {
             if (this._debugMode)
                 console.warn(`${LogScope}.onRenderEnd - Skipped, renderIndex = #${rs.renderIndex}, rs =`, rs);
@@ -468,6 +499,11 @@ export class VirtualList implements VirtualListAccessor {
             this._isRendering = false;
             this._whenRenderCompleted?.complete();
             this._whenUpdateCompleted?.complete();
+
+            // trigger update only for first render to load data if needed
+            if (rs.renderIndex <= 1) {
+                void this.updateClientSideStateOnce();
+            }
         }
     }
 
@@ -613,6 +649,11 @@ export class VirtualList implements VirtualListAccessor {
     private getNewItemRefs(): IterableIterator<HTMLElement> {
         // getElementsByClassName is faster than querySelectorAll
         return Array.from(this._containerRef.getElementsByClassName('item new')).values() as IterableIterator<HTMLElement>;
+    }
+
+    private getAllItemRefs(): IterableIterator<HTMLElement> {
+        // getElementsByClassName is faster than querySelectorAll
+        return Array.from(this._containerRef.getElementsByClassName('item')).values() as IterableIterator<HTMLElement>;
     }
 
     private getItemRef(key: string): HTMLElement | null {

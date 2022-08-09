@@ -29,6 +29,9 @@
     };
     var items = Data.Items;
     LastData = Data;
+    var itemClass = Data.Query.IsNone
+        ? "item flex-none"
+        : "item flex-none new";
 }
 
 <div @ref="Ref"
@@ -62,14 +65,14 @@
         @foreach (var item in items) {
             @if (item.CountAs != 1) {
                 <li @key="item.Key"
-                    class="item flex-none new"
+                    class="@itemClass"
                     data-key="@item.Key"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
                 <li @key="item.Key"
-                    class="item flex-none new"
+                    class="@itemClass"
                     data-key="@item.Key">
                     @Item(item)
                 </li>
