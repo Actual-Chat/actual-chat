@@ -9,7 +9,7 @@
     if (account == null)
         return; // Not yet computed
     if (account.IsGuest()) {
-        <SignInBlock/>
+        <Welcome/>
     }
     else {
         Nav.NavigateTo(Links.ChatPage(_defaultChatId));
