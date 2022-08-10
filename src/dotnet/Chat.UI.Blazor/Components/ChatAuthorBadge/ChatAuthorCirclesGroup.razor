@@ -1,0 +1,44 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var authorIds = AuthorIds;
+    if (authorIds.Length == 0)
+        return;
+    var maxLength = MaxIconCount > authorIds.Length ? authorIds.Length : MaxIconCount;
+    var cls = "-mr-2 border border-bg-02 rounded-full";
+}
+
+<div class="@Class flex-x gap-x-2 pr-3">
+    @{
+        var zIndex = 1;
+        for (var i = 0; i < maxLength; i++) {
+            var authorId = authorIds[i];
+            <div class="@cls" style="z-index: @zIndex;">
+                <ChatAuthorCircle AuthorId="@authorId" Size="@Size" />
+            </div>
+            zIndex++;
+        }
+        if (authorIds.Length > MaxIconCount) {
+            <div class="@cls" style="z-index: @(maxLength + 1);">
+                @{
+                    var avatarText = authorIds.Length < 11
+                        ? "+" + (authorIds.Length - MaxIconCount)
+                        : "...";
+                }
+                <TextualAuthorBadge Size="@Size" Text="@avatarText" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private ChatActivity ChatActivity { get; init; } = null!;
+
+    private IChatRecordingActivity? ChatRecordingActivity { get; set; }
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public int MaxIconCount { get; set; } = 5;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
+    [Parameter] public ImmutableArray<Symbol> AuthorIds { get; set; }
+}

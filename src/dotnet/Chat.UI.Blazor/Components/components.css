@@ -24,7 +24,7 @@
     @apply flex-x w-full items-center;
 }
 .historical-playback-sub-header-content .c-text {
-    @apply pb-0.5 font-light;
+    @apply font-light;
 }
 .historical-playback-sub-header-content .c-moment {
     @apply font-normal;

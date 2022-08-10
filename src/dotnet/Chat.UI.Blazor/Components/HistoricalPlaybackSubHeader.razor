@@ -34,7 +34,12 @@
 
         @* Position *@
         @* Replace position with playing chat title *@
-        <div class="flex-1 flex-x justify-center">
+        <div class="flex-1 flex-x justify-center items-center">
+            <ChatAuthorCirclesGroup
+                Class="historical-playback-active-authors-panel"
+                MaxIconCount="4"
+                Size="SquareSize.Size6"
+                AuthorIds="@m.AuthorIds" />
             <div class="flex-y">
                 @if (m.DisplayChatTitle) {
                     <div class="c-text">
@@ -99,13 +104,19 @@
         }
         var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        var authorIds = ImmutableArray<Symbol>.Empty;
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
-            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
+            var trackInfo = playbackState.TrackInfo;
+            var chatAudioTrackInfo = trackInfo as ChatAudioTrackInfo;
+            if (chatAudioTrackInfo != null) {
+                var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
+                if (!authorIds.Contains(authorId))
+                    authorIds = authorIds.Add(authorId);
+            }
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
                 continue;
-            var trackInfo = playbackState.TrackInfo;
-
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
         if (!playingAt.HasValue && State.ValueOrDefault != null) {
@@ -124,7 +135,8 @@
             ChatPlayer = historicalChatPlayer,
             IsPaused = isPaused,
             Title = chatTitle,
-            DisplayChatTitle = chatId != ChatViewChat.Id
+            DisplayChatTitle = chatId != ChatViewChat.Id,
+            AuthorIds = authorIds
         };
     }
 
@@ -175,5 +187,6 @@
         public string Title { get; init; } = "";
         public Symbol ChatId { get; init; }
         public bool DisplayChatTitle { get; init; }
+        public ImmutableArray<Symbol> AuthorIds { get; init; }
     }
 }
