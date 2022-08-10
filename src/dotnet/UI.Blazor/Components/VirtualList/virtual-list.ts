@@ -18,7 +18,7 @@ import { whenCompleted, WhenCompleted } from 'when';
 const LogScope: string = 'VirtualList';
 const UpdateClientSideStateTimeout: number = 64;
 const UpdateVisibleKeysTimeout: number = 320;
-const IronPantsHandleTimeout: number = 320;
+const IronPantsHandleTimeout: number = 1600;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
@@ -359,7 +359,6 @@ export class VirtualList implements VirtualListAccessor {
             if (rs.query.expandEndBy > 0 && !rs.hasVeryLastItem)
                 this.statistics.addResponse(rs.endExpansion, rs.query.expandEndBy * ratio);
 
-            let isScrollHappened = false;
             let scrollToItemRef = this.getItemRef(rs.scrollToKey);
             let pivotOffset: number = null;
             let pivotRef: HTMLElement = null;
@@ -395,7 +394,6 @@ export class VirtualList implements VirtualListAccessor {
                     } else {
                         this.scrollTo(scrollToItemRef, true, 'center');
                     }
-                    isScrollHappened = true;
                 }
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
@@ -415,7 +413,6 @@ export class VirtualList implements VirtualListAccessor {
                     if (this._stickyEdge?.edge === VirtualListEdge.Start) {
                         let itemRef = this.getItemRef(itemKey);
                         this.scrollTo(itemRef, false);
-                        isScrollHappened = true;
                     }
                 }
             }
@@ -427,30 +424,23 @@ export class VirtualList implements VirtualListAccessor {
                 const newScrollTopPivotOffset = itemRect.y - itemY0 - scrollTop;
                 let dScrollTop = newScrollTopPivotOffset - pivotOffset;
                 const newScrollTop = scrollTop + dScrollTop;
-                // if (Math.abs(dScrollTop) > SizeEpsilon) {
-                    if (this._debugMode)
-                        console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                    this.setScrollTop(newScrollTop);
-                    isScrollHappened = true;
-                // }
+                if (this._debugMode)
+                    console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                this.setScrollTop(newScrollTop);
             }
 
-            if (this._debugMode)
-                console.log(`${LogScope}.onRenderEnd - isScrollHappened: ${isScrollHappened}`);
-            if (isScrollHappened) {
-                // wait for render
-                await new Promise<void>(resolve => {
-                    requestAnimationFrame(time => {
-                        // skeleton time to time become visible after render and scroll
-                        this._isNearSkeleton =
-                            this.isItemVisible(this._spacerRef)
-                            || this.isItemVisible(this._endSpacerRef);
+            // wait for render
+            await new Promise<void>(resolve => {
+                requestAnimationFrame(time => {
+                    // skeleton time to time become visible after render and scroll
+                    this._isNearSkeleton =
+                        this.isItemVisible(this._spacerRef)
+                        || this.isItemVisible(this._endSpacerRef);
 
-                        resolve();
-                    });
+                    resolve();
                 });
-                this.renewStickyEdge();
-            }
+            });
+            this.renewStickyEdge();
         } finally {
             this._isRendering = false;
             this._whenRenderCompleted?.complete();
@@ -705,6 +695,8 @@ export class VirtualList implements VirtualListAccessor {
         this._query = this.getDataQuery();
         if (this._query.isSimilarTo(this._lastQuery) && !this._isNearSkeleton)
             return;
+        if(this._query.isNone)
+            return;
 
         if (this._debugMode)
             console.warn(`${LogScope}.requestData: query:`, this._query);
@@ -743,9 +735,9 @@ export class VirtualList implements VirtualListAccessor {
             return this._lastQuery;
         if (RangeExt.contains(alreadyLoaded, loadZone))
             return this._lastQuery;
-        if (loadZone.Start < alreadyLoaded.Start && (viewport.Start - alreadyLoaded.Start > viewportSize * 2))
+        if (loadZone.Start < alreadyLoaded.Start && (viewport.Start - alreadyLoaded.Start > viewportSize * 2) && !this._isNearSkeleton)
             return this._lastQuery;
-        if (loadZone.End > alreadyLoaded.End && (alreadyLoaded.End - viewport.End > viewportSize * 2))
+        if (loadZone.End > alreadyLoaded.End && (alreadyLoaded.End - viewport.End > viewportSize * 2) && !this._isNearSkeleton)
             return this._lastQuery;
 
         let startIndex = -1;
