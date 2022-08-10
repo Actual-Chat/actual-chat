@@ -27,9 +27,10 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
+    var visibleKeys = (VisibleKeysState?.LatestNonErrorValue ?? new List<string>()).ToHashSet();
     var items = Data.Items;
     LastData = Data;
-    var itemClass = Data.Query.IsNone
+    var itemClassBase = Data.Query.IsNone
         ? "item flex-none"
         : "item flex-none new";
 }
@@ -63,6 +64,10 @@
     <ul @key="VirtualListSpecialKeys.Container"
         class="@flexClass virtual-container">
         @foreach (var item in items) {
+            var itemClass = visibleKeys.Contains(item.Key)
+                ? "item flex-none"
+                : itemClassBase;
+
             @if (item.CountAs != 1) {
                 <li @key="item.Key"
                     class="@itemClass"

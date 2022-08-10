@@ -22,9 +22,6 @@ export class VirtualListDataQuery
         if (this === other)
             return true;
 
-        if (!this.inclusiveRange.equals(other.inclusiveRange))
-            return false;
-
         const epsilon: number = 10;
         return !(Math.abs(this.expandStartBy - other.expandStartBy) > epsilon)
             && !(Math.abs(this.expandEndBy - other.expandEndBy) > epsilon);
