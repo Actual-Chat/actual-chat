@@ -32,7 +32,7 @@
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-current break-all;
+    @apply text-current;
 }
 
 .chat-message-modal .chat-message:hover {
