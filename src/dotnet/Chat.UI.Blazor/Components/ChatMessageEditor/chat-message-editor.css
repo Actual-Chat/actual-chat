@@ -26,42 +26,27 @@
     @apply text-placeholder truncate text-base;
     content:attr(data-text)
 }
+/* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex flex-row-reverse right-0 h-8 w-auto bg-transparent;
+    @apply flex flex-row-reverse right-2 h-8 w-auto bg-transparent;
 }
-.notify-call-panel.panel-opening {
-    @apply bg-05 md:bg-transparent;
-}
-.btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 mr-2;
-}
-.panel-closed .notify-call-content * {
-    @apply w-0 scale-0;
-}
-.panel-opening .btn.btn-round.notify-call-toggle {
-    @apply scale-0 animate-notify-toggle-hide w-0;
-}
-.panel-closing .btn.btn-round.notify-call-toggle {
-    @apply scale-100 animate-notify-toggle-show;
+.btn.btn-round.notify-call-toggle,
+.panel-closed .btn.btn-round.notify-call-toggle {
+    @apply flex self-end outline-none p-0 h-8 mr-2 scale-100;
+    @apply text-05 md:text-icons-01 bg-05 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
     @apply rounded-full bg-transparent;
     @apply min-w-8 min-h-8;
 }
-.notify-call-content {
+.notify-call-content,
+.panel-closed .notify-call-content {
     @apply flex-x gap-x-0 justify-end items-center;
-    @apply w-0 opacity-0 -mr-2;
-}
-.panel-opening .notify-call-content {
-    @apply w-full opacity-100 animate-notify-panel-opening;
-}
-.panel-closing .notify-call-content {
-    @apply w-0 opacity-0;
-    @apply translate-x-full animate-notify-panel-closing;
+    @apply w-0 scale-0;
 }
 .notify-call-content .actions {
-    @apply flex-x items-center gap-x-2 max-h-6;
+    @apply flex-x items-center gap-x-2 max-h-6 md:mr-4;
     @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
@@ -78,7 +63,7 @@
     @apply rounded-full mx-0 -my-1 px-2 items-center;
 }
 .notify-call-content .btn.close-btn {
-    @apply flex self-end p-0 h-8;
+    @apply flex self-end p-0 h-8 w-8;
     @apply outline-none text-04 md:text-icons-01;
     @apply bg-transparent;
 }
@@ -88,6 +73,25 @@
 }
 .text-mode .notify-call-panel {
     @apply hidden;
+}
+
+/* Opening panel */
+.panel-opening.notify-call-panel {
+    @apply bg-05 md:bg-transparent;
+}
+.panel-opening .btn.btn-round.notify-call-toggle {
+    @apply animate-notify-toggle-hide scale-0 w-0;
+}
+.panel-opening .notify-call-content {
+    @apply scale-100 w-full animate-notify-panel-opening;
+}
+
+/* Closing panel */
+.panel-closing .btn.btn-round.notify-call-toggle {
+    @apply scale-100 animate-notify-toggle-show;
+}
+.panel-closing .notify-call-content {
+    @apply scale-0 animate-notify-panel-closing;
 }
 
 .btn.btn-round.post-message {

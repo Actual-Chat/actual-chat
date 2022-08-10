@@ -964,64 +964,49 @@ module.exports = {
       },
       'notify-panel-opening': {
         '0%': {
-          transform: 'translateX(100%)',
+          transform: 'scale(0)',
           width: '0',
-          opacity: '0',
         },
         '50%': {
-          transform: 'translateX(100%)',
-          width: '0',
-          opacity: '0',
+          transform: 'scale(0)',
+            width: '0',
         },
         '100%': {
-          transform: 'translateX(0)',
+          transform: 'scale(1)',
           width: '100%',
-          opacity: '100%',
         },
       },
       'notify-panel-closing': {
         '0%': {
-          transform: 'translateX(0)',
-          width: '100%',
-          opacity: '100%',
+          transform: 'scale(1)',
         },
         '50%': {
-          transform: 'translateX(100%)',
-          width: '0',
-          opacity: '0',
+          transform: 'scale(0)',
         },
         '100%': {
-          transform: 'translateX(100%)',
-          width: '0',
-          opacity: '0',
+          transform: 'scale(0)',
         },
       },
       'notify-toggle-hide': {
         '0%': {
           transform: 'scale(1)',
-          width: '100%',
         },
         '50%': {
           transform: 'scale(0)',
-          width: '0%',
         },
         '100%': {
           transform: 'scale(0)',
-          width: '0%',
         },
       },
       'notify-toggle-show': {
         '0%': {
           transform: 'scale(0)',
-          width: '0%',
         },
         '50%': {
           transform: 'scale(0)',
-          width: '0%',
         },
         '100%': {
           transform: 'scale(1)',
-          width: '100%',
         },
       },
       'hide-to-left': {
