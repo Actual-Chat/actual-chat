@@ -56,17 +56,6 @@
     @apply font-semibold underline;
 }
 
-.chat-message-transcript {
-    @apply text-02 whitespace-normal;
-    @apply underline decoration-dotted decoration-audio-message;
-}
-.chat-message-markup {
-    @apply text-02;
-}
-.playable-text-markup {
-    @apply underline decoration-dotted decoration-audio-message;
-}
-
 .btn-round.attach-btn {
     @apply self-start;
 }

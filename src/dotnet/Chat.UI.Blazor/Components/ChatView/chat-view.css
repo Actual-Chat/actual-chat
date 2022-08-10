@@ -122,11 +122,24 @@
     @apply visible;
 }
 
+.chat-message-markup {
+    @apply text-02;
+}
+
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
 .chat-message-menu .menu-item {
     @apply h-8 text-left w-full;
+}
+
+.chat-message-transcript {
+    @apply text-02 whitespace-normal;
+    @apply underline decoration-dotted decoration-audio-message;
+}
+
+.playable-text-markup {
+    @apply underline decoration-dotted decoration-audio-message;
 }
 
 .playable-text-markup > span {
