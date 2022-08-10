@@ -129,17 +129,43 @@
     @apply h-8 text-left w-full;
 }
 
-.chat-message-markup .playable {
+.playable-text-markup > span {
     @apply cursor-pointer;
-    transition: color 300ms ease-in, text-shadow 300ms ease-in;
 }
 
-.chat-message-markup .playable:hover {
-    text-shadow: 0 0 2px var(--glow-max), 0 0 4px var(--glow-mid), 0 0 8px var(--glow-min);
+.playable-text-markup > span:hover {
 }
 
-.chat-message-markup .playing {
-    text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
+.playable-text-markup .playing-start {
+    border-radius: 6px 0 0 6px;
+}
+
+.playable-text-markup .playing-end {
+    border-radius: 0 6px 6px 0;
+}
+
+.playable-text-markup .playing-start-end {
+    border-radius: 6px;
+}
+
+.playable-text-markup .playing-blue {
+    background: #2970FF;
+    color: white;
+}
+
+.playable-text-markup .played-blue {
+    background: #E1EFFA;
+    border-radius: 4px 4px 0 0;
+}
+
+.playable-text-markup .playing-green {
+    background: #13BA6A;
+    color: white;
+}
+
+.playable-text-markup .played-green {
+    background: #B8FFDD;
+    border-radius: 4px 4px 0 0;
 }
 
 .chat-header-title:hover {
