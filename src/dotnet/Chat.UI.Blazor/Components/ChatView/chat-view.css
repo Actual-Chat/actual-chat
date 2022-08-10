@@ -139,11 +139,11 @@
 }
 
 .playable-text-markup {
-    @apply underline decoration-dotted decoration-audio-message;
 }
 
 .playable-text-markup > span {
     @apply cursor-pointer;
+    display:inline-block;
 }
 
 .playable-text-markup > span:hover {
@@ -161,6 +161,10 @@
     border-radius: 6px;
 }
 
+.playable-text-markup .played-start {
+    border-radius: 6px 0 0 0;
+}
+
 .playable-text-markup .playing-blue {
     background: #2970FF;
     color: white;
@@ -168,7 +172,6 @@
 
 .playable-text-markup .played-blue {
     background: #E1EFFA;
-    border-radius: 4px 4px 0 0;
 }
 
 .playable-text-markup .playing-green {

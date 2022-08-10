@@ -3,7 +3,7 @@
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
-    var m = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.LatestNonErrorValue;
 }
 <span class="playable-text-markup whitespace-break-spaces">
     @for (var i = 0; i < Markup.Words.Length; i++) {
@@ -17,6 +17,7 @@
 @code {
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private Model? _lastRenderedModel;
 
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
@@ -49,6 +50,34 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var model = await InnerComputeState(cancellationToken);
+        if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
+            return model;
+
+        WordPlayback[] map;
+        if (model.Map == null) {
+            map = _lastRenderedModel.Map
+                .Select(c => c == WordPlayback.None ? WordPlayback.None : WordPlayback.Played)
+                .ToArray();
+        } else {
+            map = _lastRenderedModel.Map.Zip(model.Map,
+                (last, current) => current != WordPlayback.None
+                    ? current :
+                    last == WordPlayback.None ? WordPlayback.None : WordPlayback.Played )
+                .ToArray();
+        }
+        var prev = WordPlayback.None;
+        for (int i = 0; i < map.Length; i++) {
+            var current = map[i];
+            if (current == WordPlayback.Played && prev == WordPlayback.None)
+                map[i] = WordPlayback.Played | WordPlayback.PlayedStart;
+            prev = current;
+        }
+        return new Model { Map = map };
+    }
+
+    private async Task<Model> InnerComputeState(CancellationToken cancellationToken)
+    {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var audioEntryId = Entry.AudioEntryId;
         if (audioEntryId == null)
@@ -59,14 +88,16 @@
             return Model.None;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
+        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not
+            ChatAudioTrackInfo trackInfo)
             return Model.None;
 
         var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
         if (playbackState == null || playbackState.IsCompleted)
             return Model.None;
 
-        var playingAt = (float)(trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt).TotalSeconds;
+        var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
+            .TotalSeconds;
         var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
         if (!playingAtNearbyRange.Overlaps(timeRange))
             return Model.None;
@@ -77,6 +108,10 @@
             var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
             map[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
         }
+
+        var isEmpty = map.All(c => c == WordPlayback.None);
+        if (isEmpty)
+            return Model.None;
 
         for (var i = 0; i < Markup.Words.Length; i++) {
             var prev = i > 0 ? map[i - 1] : WordPlayback.None;
@@ -98,6 +133,13 @@
     private string GetPlayingClass(WordPlayback status) {
         if (status == WordPlayback.None)
             return "";
+        if (status.HasFlag(WordPlayback.Played)) {
+            var cls = "played-blue";
+            var start = status.HasFlag(WordPlayback.PlayedStart);
+            if (start)
+                cls += " played-start";
+            return cls;
+        }
         if (status.HasFlag(WordPlayback.Playing)) {
             var cls = "playing-blue";
             var start = status.HasFlag(WordPlayback.PlayingStart);
@@ -113,11 +155,14 @@
         return "";
     }
 
-    [Flags] public enum WordPlayback {
-        None = 0x00,
-        Playing = 0x10,
-        PlayingStart = 0x11,
-        PlayingEnd = 0x12,
+    [Flags]
+    public enum WordPlayback {
+        None         = 0x00,
+        Playing      = 0x10,
+        PlayingStart = Playing | 0x01,
+        PlayingEnd   = Playing | 0x02,
+        Played       = 0x80,
+        PlayedStart =  Played | 0x01,
     }
 
     public record Model {
