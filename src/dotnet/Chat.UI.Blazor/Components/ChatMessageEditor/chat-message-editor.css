@@ -29,47 +29,44 @@
 /* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex flex-row-reverse right-2 h-8 w-auto bg-transparent;
+    @apply flex flex-row-reverse right-2 h-12 w-12 bg-transparent;
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none p-0 h-8 mr-2 scale-100;
+    @apply flex self-end outline-none p-0 h-12 scale-100;
     @apply text-05 md:text-icons-01 bg-05 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
     @apply rounded-full bg-transparent;
-    @apply min-w-8 min-h-8;
+    @apply min-w-12 min-h-12;
 }
 .notify-call-content,
 .panel-closed .notify-call-content {
-    @apply flex-x gap-x-0 justify-end items-center;
+    @apply flex-x gap-x-0 justify-end items-center cursor-text;
     @apply w-0 scale-0;
 }
 .notify-call-content .actions {
-    @apply flex-x items-center gap-x-2 max-h-6 md:mr-4;
+    @apply flex-x items-center gap-x-2 max-h-12 md:mr-4;
     @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
     @apply rounded-full min-h-0 h-auto px-0 min-w-0;
-    @apply bg-06 text-04 border-bg-06;
 }
 .notify-call-content .btn.notify-btn {
     @apply md:bg-04 md:border-bg-04 md:text-03;
-}
-.notify-call-content .btn.call-btn {
-    @apply md:bg-primary md:border-primary md:text-04;
+    @apply bg-06 text-04 border-bg-06;
 }
 .notify-call-content .btn .btn-content {
     @apply rounded-full mx-0 -my-1 px-2 items-center;
 }
 .notify-call-content .btn.close-btn {
-    @apply flex self-end p-0 h-8 w-8;
+    @apply flex self-end p-0 h-12 w-12;
     @apply outline-none text-04 md:text-icons-01;
     @apply bg-transparent;
 }
 .notify-call-content .btn.close-btn .btn-content{
     @apply rounded-full mx-0 items-center bg-transparent;
-    @apply min-w-8 min-h-8;
+    @apply min-w-8 min-h-12;
 }
 .text-mode .notify-call-panel {
     @apply hidden;
@@ -77,7 +74,7 @@
 
 /* Opening panel */
 .panel-opening.notify-call-panel {
-    @apply bg-05 md:bg-transparent;
+    @apply bg-05 md:bg-transparent w-full;
 }
 .panel-opening .btn.btn-round.notify-call-toggle {
     @apply animate-notify-toggle-hide scale-0 w-0;

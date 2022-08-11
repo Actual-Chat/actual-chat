@@ -36,7 +36,7 @@
                                 </svg>
                             </button>
                         </label>
-                        <NotifyCallPanel/>
+                        <NotifyCallPanel @ref="NotifyCallPanelRef" />
                     </div>
                 </div>
                 <LinkedMessagePanel/>
@@ -67,6 +67,7 @@
     private ElementReference Ref { get; set; }
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
+    private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
     private IPersistentState<long>? LastReadEntryId { get; set; }
 
@@ -140,6 +141,10 @@
     }
 
     private Task OnFocusRequested(FocusChatMessageEditor @event, CancellationToken cancellationToken) => SlateEditorRef.Focus(cancellationToken);
+
+    [JSInvokable]
+    public void CloseNotifyPanel()
+        => NotifyCallPanelRef.OnCloseClick();
 
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)

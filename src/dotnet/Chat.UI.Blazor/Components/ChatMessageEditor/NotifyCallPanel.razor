@@ -17,7 +17,7 @@
     <div class="notify-call-content">
         <div class="actions">
             <Button Class="notify-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify", "Notify"))">
-                <div class="w-full flex-x items-center gap-x-2">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
                     <i class="icon-at text-2xl"></i>
                     <div>
                         Notify
@@ -25,8 +25,8 @@
                 </div>
             </Button>
             or
-            <Button Class="call-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("call", "Call"))">
-                <div class="w-full flex-x items-center gap-x-2">
+            <Button Class="btn-primary" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("call", "Call"))">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
                     <i class="icon-phone text-2xl"></i>
                     <div>
                         Call
@@ -50,12 +50,17 @@
 
     private PanelState _panelState = PanelState.Closed;
 
-    private void OnClick() {
+    public void OnClick() {
         _panelState = _panelState switch {
             PanelState.Closed => PanelState.Opening,
             PanelState.Opening => PanelState.Closing,
             PanelState.Closing => PanelState.Opening,
             _ => PanelState.Closed,
         };
+    }
+
+    public void OnCloseClick() {
+        _panelState = PanelState.Closing;
+        StateHasChanged();
     }
 }

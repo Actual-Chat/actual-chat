@@ -34,12 +34,21 @@ export class ChatMessageEditor {
         this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
+        this.notifyPanel.addEventListener('click', this.notifyPanelListener);
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
         this.changeMode();
     }
+
+    private notifyPanelListener = (async (event: Event & { target: Element; }) => {
+        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
+            if (this.notifyPanel.classList.contains('panel-opening')) {
+                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
+            }
+        }
+    });
 
     private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
@@ -84,16 +93,18 @@ export class ChatMessageEditor {
         if (this.isPanelOpened === isPanelOpened)
             return;
         this.isPanelOpened = isPanelOpened;
-        const attachBtn = this.editorDiv.querySelector('.attach-btn');
+        const attach = this.editorDiv.querySelector(':scope .dropdown');
+        const label = this.editorDiv.querySelector(':scope label');
         if (isPanelOpened) {
             setTimeout(() => {
-                attachBtn.classList.add('invisible');
-                this.input.classList.add('invisible');
+                attach.classList.add('hidden');
+                label.classList.add('w-0');
             }, 500);
         } else {
-            attachBtn.classList.remove('invisible');
-            this.input.classList.remove('invisible');
+            attach.classList.remove('hidden');
+            label.classList.remove('w-0');
         }
+
         if (this.notifyPanel.classList.contains('panel-closing')) {
             setTimeout(() => {
                 this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
@@ -243,8 +254,11 @@ export class ChatMessageEditor {
 
     public dispose() {
         this.input.removeEventListener('paste', this.inputPasteListener);
+        this.input.removeEventListener('focusin', this.inputFocusInListener);
+        this.input.removeEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
+        this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
         this.notifyPanelObserver.disconnect();
     }
 }
