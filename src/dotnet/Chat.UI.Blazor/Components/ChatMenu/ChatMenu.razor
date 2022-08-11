@@ -6,11 +6,11 @@
         <ChildContent>
             @if (context.Data is Chat chat) {
                 <CascadingValue Value="@chat">
-                    <ChatContextMenuRecord/>
-                    <ChatContextMenuPin/>
-                    <ChatContextMenuPlayback/>
+                    <ChatMenuRecord/>
+                    <ChatMenuPin/>
+                    <ChatMenuPlayback/>
                     <Seperator/>
-                    <ChatContextMenuLeave/>
+                    <ChatMenuLeave/>
                 </CascadingValue>
             }
         </ChildContent>
@@ -18,5 +18,5 @@
 </RenderIntoStack>
 
 @code{
-    public const string MenuId = "menu-ChatContextMenu";
+    public const string MenuId = "menu-ChatMenu";
 }

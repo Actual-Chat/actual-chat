@@ -20,7 +20,7 @@
                     <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
 
-                    <ContextMenuToggleTrigger MenuId="@ChatContextMenu.MenuId" Data="@c">
+                    <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@c">
                         <div class="flex">
                             <Button Class="btn-round chat-menu-btn blackout">
                                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
@@ -44,7 +44,7 @@
 @if (ChatList != null) {
     <div class="@GetCss(Group)">
         @foreach (var c in ChatList) {
-            <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatContextMenu.MenuId" Data="@c" CssClass="flex-x items-center gap-x-2">
+            <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@c" CssClass="flex-x items-center gap-x-2">
                 @RenderChat(c)
             </ContextMenuTrigger>
         }

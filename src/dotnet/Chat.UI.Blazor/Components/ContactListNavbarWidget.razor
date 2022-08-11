@@ -22,7 +22,7 @@
             <Ending>
                 <ChatListPlaybackToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
                 <ChatListRecordingToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
-                <ContextMenuToggleTrigger MenuId="@ContactContextMenu.MenuId" Data="@c.Contact">
+                <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                     <div class="flex">
                         <Button Class="btn-round chat-menu-btn blackout">
                             <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
@@ -46,7 +46,7 @@
                     @if (m.PinnedContacts.Length > 0) {
                         <div class="pinned-contacts">
                             @foreach (var c in m.PinnedContacts) {
-                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.MenuId" Data="@c.Contact">
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                     @RenderItem(c)
                                 </ContextMenuTrigger>
                             }
@@ -56,7 +56,7 @@
                         if (m.UnpinnedContacts.Length > 0) {
                             <div class="unpinned-contacts custom-scrollbar">
                                 @foreach (var c in m.UnpinnedContacts) {
-                                    <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.MenuId" Data="@c.Contact">
+                                    <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                         @RenderItem(c)
                                     </ContextMenuTrigger>
                                 }
@@ -65,7 +65,7 @@
                     } else {
                         <div class="unpinned-contacts custom-scrollbar">
                             @foreach (var c in m.UnpinnedContacts) {
-                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.MenuId" Data="@c.Contact">
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                     @RenderItem(c)
                                 </ContextMenuTrigger>
                             }
@@ -83,7 +83,7 @@
             @RenderTab(ContactGroup.Recent, "Recent")
             @RenderTab(ContactGroup.Favorites, "Favorites")
         </TabPanel>
-        <ContactContextMenu/>
+        <ContactMenu/>
     </ChildContent>
 </NavbarGroup>
 

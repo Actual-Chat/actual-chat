@@ -37,7 +37,7 @@
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
-<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageContextMenu.MenuId" Data="@Message">
+<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageMenu.MenuId" Data="@Message">
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
         <div class="flex-y">
             @if (isReply) {
@@ -91,7 +91,7 @@
         </div>
 
         @if (!message.IsQuote) {
-            <ContextMenuToggleTrigger MenuId="@MessageContextMenu.MenuId" Data="@Message">
+            <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
                 <button class="show-on-hover message-menu-btn">
                     <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
                         <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>

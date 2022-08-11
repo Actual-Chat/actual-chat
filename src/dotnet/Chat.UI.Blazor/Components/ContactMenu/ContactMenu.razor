@@ -4,9 +4,10 @@
 <RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
     <ContextMenu Id="@MenuId">
         <ChildContent>
-            @if (context.Data is ChatMessageModel chatMessageModel) {
-                <CascadingValue Value="@chatMessageModel">
-                    <MessageContextMenuContent/>
+            @if (context.Data is UserContact userContact) {
+                <CascadingValue Value="@userContact">
+                    <ContactMenuAddToFavorites/>
+                    <ContactMenuPin/>
                 </CascadingValue>
             }
         </ChildContent>
@@ -14,5 +15,5 @@
 </RenderIntoStack>
 
 @code{
-    public const string MenuId = "menu-MessageContextMenu";
+    public const string MenuId = "menu-ContactMenu";
 }
