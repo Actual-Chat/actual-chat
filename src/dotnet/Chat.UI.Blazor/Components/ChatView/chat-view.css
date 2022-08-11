@@ -124,6 +124,7 @@
 
 .chat-message-markup {
     @apply text-02;
+    word-break: break-all;
 }
 
 .chat-message.mention .chat-message-markup {
@@ -185,6 +186,10 @@
 .playable-text-markup .played-green {
     background: #B8FFDD;
     border-radius: 4px 4px 0 0;
+}
+
+.plain-text-markup {
+    word-break: break-word;
 }
 
 .chat-header-title:hover {
