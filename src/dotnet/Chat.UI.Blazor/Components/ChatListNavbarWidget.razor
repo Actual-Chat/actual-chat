@@ -95,11 +95,11 @@
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
-            .Where(c => pinnedChatIds.Contains(c.Id))
+            .Where(c => pinnedChatIds.ContainsKey(c.Id))
             .OrderBy(c => c.Title)
             .ToList();
         var unpinnedChats = chats
-            .Where(c => !pinnedChatIds.Contains(c.Id))
+            .Where(c => !pinnedChatIds.ContainsKey(c.Id))
             .OrderBy(c => c.Title)
             .ToList();
 

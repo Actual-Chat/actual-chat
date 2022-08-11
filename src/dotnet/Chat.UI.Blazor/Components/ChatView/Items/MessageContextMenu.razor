@@ -2,15 +2,17 @@
 @using BlazorContextMenu
 
 <RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
-    <ContextMenu Id="@Id">
+    <ContextMenu Id="@MenuId">
         <ChildContent>
-            <CascadingValue Value="@(context.Data as ChatMessageModel)">
-                <MessageContextMenuContent/>
-            </CascadingValue>
+            @if (context.Data is ChatMessageModel chatMessageModel) {
+                <CascadingValue Value="@chatMessageModel">
+                    <MessageContextMenuContent/>
+                </CascadingValue>
+            }
         </ChildContent>
     </ContextMenu>
 </RenderIntoStack>
 
 @code{
-    public const string Id = "contextMenu-chat-message";
+    public const string MenuId = "menu-MessageContextMenu";
 }

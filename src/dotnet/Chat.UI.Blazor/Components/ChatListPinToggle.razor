@@ -31,15 +31,9 @@
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return pinnedChatIds.Contains(ChatId);
+        return pinnedChatIds.ContainsKey(ChatId);
     }
 
-    private Task Toggle() {
-        var pinnedChatIds = ChatUI.PinnedChatIds.Value;
-        pinnedChatIds = pinnedChatIds.Contains(ChatId)
-            ? pinnedChatIds.Remove(ChatId)
-            : pinnedChatIds.Add(ChatId);
-        ChatUI.PinnedChatIds.Value = pinnedChatIds;
-        return Task.CompletedTask;
-    }
+    private void Toggle()
+        => ChatUI.TogglePinState(ChatId);
 }
