@@ -68,19 +68,6 @@ public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
         };
     }
 
-    private async Task<Symbol[]> Normalize(Symbol[] chatIds)
-    {
-        var rules = await chatIds
-            .Select(chatId => _chats.GetRules(_session, chatId, default))
-            .Collect()
-            .ConfigureAwait(false);
-        var filteredChatIds = rules
-            .Where(r => r.CanRead())
-            .Select(r => r.ChatId)
-            .ToArray();
-        return filteredChatIds;
-    }
-
     public sealed record Model
     {
         // TODO: remove it and use ActiveChatId from local storage instead
