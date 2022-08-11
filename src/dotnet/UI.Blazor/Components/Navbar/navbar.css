@@ -9,7 +9,7 @@
 
 .navbar-group-toggles {
     @apply flex-y items-start md:items-end text-square-title;
-    @apply bg-transparent md:bg-04 min-w-nav-left px-4 gap-y-1 md:gap-y-2;
+    @apply bg-transparent md:bg-04 min-w-nav-left px-2 md:pr-4 gap-y-1 md:gap-y-2;
 }
 .navbar-group-toggles .btn.btn-square {
     @apply h-auto rounded-xl;
@@ -28,7 +28,8 @@
 }
 
 .navbar-places {
-    @apply flex-y items-start md:items-end text-square-title bg-transparent min-w-nav-left px-4 gap-y-1 md:gap-y-2;
+    @apply flex-y items-start min-w-nav-left md:items-end px-2 md:pr-4 gap-y-1 md:gap-y-2;
+    @apply text-square-title bg-transparent;
 }
 .navbar-places .btn.btn-square {
     @apply h-auto rounded-full md:rounded-xl;
@@ -71,10 +72,10 @@
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row justify-start items-center gap-x-1 w-full px-2 py-1 rounded-lg;
+    @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg;
 }
 .navbar-item .navbar-item-content {
-    @apply text-02 overflow-hidden my-0.5;
+    @apply text-02 overflow-hidden my-0.5 mx-1.5 md:mx-0;
 }
 .navbar-item .navbar-item-status {
     @apply rounded-full block w-2 h-2 mr-2;

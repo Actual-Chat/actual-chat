@@ -13,8 +13,10 @@
     <div class="@lineClass left-line">
     </div>
     <ButtonSquare Click="@OnClick" Title="@Title" Class="@btnClass">
-        @ChildContent
-        <div class="@cls navbar-group-title ml-4 md:hidden">@Title</div>
+        <div class="flex w-12 md:justify-center pl-1 md:pl-0">
+            @ChildContent
+        </div>
+        <div class="@cls navbar-group-title ml-2 md:hidden">@Title</div>
     </ButtonSquare>
 </div>
 
