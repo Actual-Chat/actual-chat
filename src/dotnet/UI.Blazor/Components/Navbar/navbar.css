@@ -128,7 +128,7 @@
 }
 
 .add-to-chat.btn.btn-round {
-    @apply hidden md:flex float-right h-10 w-10 self-center rounded-3xl ml-3;
+    @apply hidden md:flex float-right self-center;
 }
 
 /*Wide left panel*/
