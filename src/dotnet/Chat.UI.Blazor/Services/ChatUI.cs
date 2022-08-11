@@ -18,7 +18,7 @@ public partial class ChatUI
 
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<Symbol> RecordingChatId { get; }
-    public IMutableState<ImmutableDictionary<Symbol, Moment>> PinnedChatIds { get; }
+    public IMutableState<ImmutableDictionary<string, Moment>> PinnedChatIds { get; }
     public IMutableState<ImmutableArray<Symbol>> ListeningChatIds { get; }
     public IMutableState<bool> MustPlayPinnedChats { get; }
     public IMutableState<bool> MustPlayPinnedContactChats { get; }
@@ -40,9 +40,9 @@ public partial class ChatUI
         var accountSettings = services.GetRequiredService<AccountSettings>().WithPrefix(nameof(ChatUI));
         ActiveChatId = StateFactory.NewMutable<Symbol>();
         RecordingChatId = StateFactory.NewMutable<Symbol>();
-        PinnedChatIds = StateFactory.NewKvasSynced<ImmutableDictionary<Symbol, Moment>>(
+        PinnedChatIds = StateFactory.NewKvasSynced<ImmutableDictionary<string, Moment>>(
             new(accountSettings, nameof(PinnedChatIds)) {
-                InitialValue = ImmutableDictionary<Symbol, Moment>.Empty,
+                InitialValue = ImmutableDictionary<string, Moment>.Empty,
                 Corrector = FixPinnedChatIds,
             });
         ListeningChatIds = StateFactory.NewMutable(ImmutableArray<Symbol>.Empty);
@@ -141,8 +141,8 @@ public partial class ChatUI
 
     // Private methods
 
-    private async ValueTask<ImmutableDictionary<Symbol, Moment>> FixPinnedChatIds(
-        ImmutableDictionary<Symbol, Moment> pinnedChatIds,
+    private async ValueTask<ImmutableDictionary<string, Moment>> FixPinnedChatIds(
+        ImmutableDictionary<string, Moment> pinnedChatIds,
         CancellationToken cancellationToken)
     {
         if (pinnedChatIds.Count < 32)
