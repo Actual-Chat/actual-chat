@@ -161,3 +161,9 @@
     @apply animate-hide-thin-panel -translate-x-full;
     @apply md:animate-none md:translate-x-0;
 }
+
+.left-line {
+    @apply hidden md:block h-8 self-center rounded-lg;
+    width: 2px;
+    margin-right: 3px;
+}
