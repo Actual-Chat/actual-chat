@@ -75,7 +75,7 @@
     @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg;
 }
 .navbar-item .navbar-item-content {
-    @apply text-02 overflow-hidden my-0.5 mx-1.5 md:mx-0;
+    @apply text-02 overflow-hidden my-0.5;
 }
 .navbar-item .navbar-item-status {
     @apply rounded-full block w-2 h-2 mr-2;
