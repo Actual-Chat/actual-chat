@@ -9,4 +9,5 @@
 }
 .slate-editor-root span[data-slate-string="true"] {
     @apply text-04 md:text-01 !opacity-100;
+    word-break: break-word;
 }
