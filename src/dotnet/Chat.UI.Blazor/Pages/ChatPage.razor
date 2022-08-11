@@ -6,7 +6,7 @@
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
     if (m.IsUnavailable) {
-        <RequireChat/>
+        <RequireChat ChatId="@ChatId" />
         return;
     }
     var chat = m.Chat;
@@ -76,6 +76,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
+    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
@@ -99,6 +100,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (ChatId.IsNullOrEmpty()) {
+            Log.LogWarning("ChatId is null");
+        }
         var chat = await Chats.Get(Session, ChatId, cancellationToken);
         if (chat == null)
             return Model.Unavailable;
