@@ -144,7 +144,15 @@
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
         var isReplied = Message.Entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.ChatEntry;
         var isHighlighted = Message.Entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
+        if (Message.ShowEntryType)
+            markup = EnrichMarkupWithEntryType(markup);
         return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted, isReplied);
+    }
+
+    private Markup EnrichMarkupWithEntryType(Markup markup) {
+        var isAudio = markup is PlayableTextMarkup;
+        var contentKind = new ChatEntryTypeMarkup(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
+        return new MarkupSeq(contentKind, markup);
     }
 
     private Markup GetMarkup()

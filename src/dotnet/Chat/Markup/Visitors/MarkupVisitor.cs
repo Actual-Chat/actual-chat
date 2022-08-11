@@ -10,6 +10,7 @@ public abstract class MarkupVisitor<TResult>
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup),
             TextMarkup textMarkup => VisitText(textMarkup),
+            CustomMarkup customMarkup => VisitCustom(customMarkup),
             _ => throw new ArgumentOutOfRangeException(nameof(markup)),
         };
 
@@ -33,4 +34,5 @@ public abstract class MarkupVisitor<TResult>
     protected abstract TResult VisitPlayableText(PlayableTextMarkup markup);
     protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup);
     protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup);
+    protected abstract TResult VisitCustom(CustomMarkup markup);
 }
