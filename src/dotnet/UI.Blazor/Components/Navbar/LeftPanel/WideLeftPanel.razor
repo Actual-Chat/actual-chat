@@ -3,17 +3,15 @@
 
 <div class="wide-left-panel-wrapper">
     <div class="wide-left-panel">
-        <div class="flex-x justify-center items-center min-h-mobile-header border-b border-bg-04 px-2 gap-x-2 panel-content">
+        <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 px-4 gap-x-1 panel-content">
             <div class="md:hidden w-12">
                 <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@IsOpen"/>
                 <NavbarToggle/>
             </div>
             <Search Class="mobile-hidden" Applied="OnSearch"/>
-            <div class="w-16 flex-1 float-right mobile-hidden">
-                <ButtonRound Click="@OnClick" Class="add-to-chat transparent">
-                    <i class="icon-message-add text-2xl"></i>
-                </ButtonRound>
-            </div>
+            <ButtonRound Click="@OnClick" Class="add-to-chat transparent">
+                <i class="icon-message-add text-2xl"></i>
+            </ButtonRound>
         </div>
         <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full panel-content">
             <NavbarContent/>

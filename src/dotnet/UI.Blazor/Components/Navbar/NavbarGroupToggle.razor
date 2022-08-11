@@ -13,10 +13,8 @@
     <div class="@lineClass hidden md:block h-8 w-1 mr-2 self-center rounded-lg">
     </div>
     <ButtonSquare Click="@OnClick" Title="@Title" Class="@btnClass">
-        <svg xmlns="http://www.w3.org/2000/svg" class="@GetIconSize() navbar-group-icon fill-current" viewBox="@ViewBox">
-            @IconSvg
-        </svg>
-        <div class="@cls navbar-group-title ml-8 md:hidden">@Title</div>
+        @ChildContent
+        <div class="@cls navbar-group-title ml-4 md:hidden">@Title</div>
     </ButtonSquare>
 </div>
 
@@ -26,22 +24,14 @@
     private EventHandler? _onActiveGroupChanged;
 
     [Parameter] public string? Class { get; set; } = "";
-    [Parameter] public int IconHeight { get; set; } = 8;
-    [Parameter] public int IconWidth { get; set; } = 8;
-    [Parameter] public SquareSize IconSize { get; set; } = SquareSize.Size8;
     [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
-    [Parameter] public RenderFragment IconSvg { get; set; } = null!;
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
         NavbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
-    }
-
-    private string GetIconSize() {
-        var size = (int) IconSize;
-        return $"h-{size} w-{size}";
     }
 
     public void Dispose()
