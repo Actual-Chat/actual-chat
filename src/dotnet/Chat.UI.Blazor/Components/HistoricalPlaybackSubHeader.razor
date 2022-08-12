@@ -2,6 +2,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
+@using Timer = System.Timers.Timer;
+@using System.Timers
+
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
@@ -72,6 +75,8 @@
 </div>
 
 @code {
+    private RewindController? _rewindController;
+
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
@@ -162,21 +167,34 @@
     }
 
     private void OnFastForward()
-        => _ = PlayAt(TimeSpan.FromSeconds(15));
+        => Rewind(TimeSpan.FromSeconds(15));
 
     private void OnBackward()
-        => _ = PlayAt(TimeSpan.FromSeconds(-15));
+        => Rewind(TimeSpan.FromSeconds(-15));
 
-    private async Task PlayAt(TimeSpan shift, CancellationToken cancellationToken = default)
-    {
+    private void Rewind(TimeSpan shift) {
+        _rewindController ??= new RewindController(OnRewindRequested);
         var m = State.LatestNonErrorValue;
         var moment = m.PlayingAt;
         if (!moment.HasValue || m.ChatPlayer == null)
             return;
-        var newMoment = await m.ChatPlayer.GetRewindMoment(moment.Value, shift, cancellationToken).ConfigureAwait(false);
+        _rewindController.Rewind(m.ChatId, moment.Value, shift);
+    }
+
+    private void OnRewindRequested(Symbol chatId, DateTime momentFrom, TimeSpan shift) {
+        _ = InvokeAsync(() => {
+            var m = State.LatestNonErrorValue;
+            if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
+                _ = PlayAt(m.ChatPlayer, momentFrom, shift);
+        });
+    }
+
+    private async Task PlayAt(HistoricalChatPlayer chatPlayer, DateTime from, TimeSpan shift, CancellationToken cancellationToken = default)
+    {
+        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken).ConfigureAwait(false);
         if (!newMoment.HasValue)
             return;
-        ChatPlayers.StartHistoricalPlayback(m.ChatId, newMoment.Value);
+        ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
     }
 
     public sealed record Model
@@ -190,5 +208,34 @@
         public Symbol ChatId { get; init; }
         public bool DisplayChatTitle { get; init; }
         public ImmutableArray<Symbol> AuthorIds { get; init; }
+    }
+
+    internal class RewindController
+    {
+        private Timer _rewindTimer;
+        private Symbol _chatId;
+        private DateTime _rewindFrom;
+        private TimeSpan _rewindSpan;
+
+        public RewindController(Action<Symbol, DateTime, TimeSpan> onRewindRequested)
+        {
+            _rewindTimer = new Timer(300) { AutoReset = false };
+            _rewindTimer.Elapsed += (s,e) => onRewindRequested(_chatId, _rewindFrom, _rewindSpan);
+        }
+
+        public void Rewind(Symbol chatId, DateTime moment, TimeSpan shift)
+        {
+            if (!_rewindTimer.Enabled) {
+                _chatId = chatId;
+                _rewindFrom = moment;
+                _rewindSpan = shift;
+                _rewindTimer.Start();
+            } else {
+                _rewindTimer.Stop();
+                _rewindSpan += shift;
+                if (_chatId == chatId)
+                    _rewindTimer.Start();
+            }
+        }
     }
 }
