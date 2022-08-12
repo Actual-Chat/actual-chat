@@ -36,6 +36,6 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
     }
 
     public sealed record Model(Author Author, Presence Presence = Presence.Unknown) {
-        public static Model None { get; } = new(new Author());
+        public static Model None { get; } = new(Author.None);
     }
 }
