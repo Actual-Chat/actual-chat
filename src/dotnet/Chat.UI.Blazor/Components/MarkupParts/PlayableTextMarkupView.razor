@@ -4,8 +4,16 @@
 @attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var colorCls = m.Color switch {
+        PlayableTextColor.Blue => "playable-text-color-blue",
+        PlayableTextColor.Purple => "playable-text-color-purple",
+        PlayableTextColor.Cyan => "playable-text-color-cyan",
+        PlayableTextColor.Green => "playable-text-color-green",
+        null => "",
+        _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
+        };
 }
-<span class="playable-text-markup whitespace-break-spaces">
+<span class="playable-text-markup @colorCls whitespace-break-spaces">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
@@ -20,6 +28,7 @@
     private Model? _lastRenderedModel;
 
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
 
     private async Task OnClick(int startIndex) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
@@ -53,27 +62,60 @@
         var model = await InnerComputeState(cancellationToken);
         if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
             return model;
+        var colorLease = ActualizeColorLease(model, _lastRenderedModel);
+        var map = EnrichMapWithPlayedStatus(model.Map, _lastRenderedModel.Map);
+        return new Model {
+            Map = map,
+            ColorLease = colorLease,
+            Color = colorLease?.Color ?? _lastRenderedModel.Color
+        };
+    }
 
-        WordPlayback[] map;
-        if (model.Map == null) {
-            map = _lastRenderedModel.Map
+    private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
+    {
+        WordPlayback[] enrichedMap;
+        if (map == null) {
+            enrichedMap = lastMap
                 .Select(c => c == WordPlayback.None ? WordPlayback.None : WordPlayback.Played)
                 .ToArray();
-        } else {
-            map = _lastRenderedModel.Map.Zip(model.Map,
+        }
+        else {
+            enrichedMap = lastMap.Zip(map,
                 (last, current) => current != WordPlayback.None
-                    ? current :
-                    last == WordPlayback.None ? WordPlayback.None : WordPlayback.Played )
+                    ? current
+                    : last == WordPlayback.None
+                        ? WordPlayback.None
+                        : WordPlayback.Played)
                 .ToArray();
         }
+
         var prev = WordPlayback.None;
-        for (int i = 0; i < map.Length; i++) {
-            var current = map[i];
+        for (int i = 0; i < enrichedMap.Length; i++) {
+            var current = enrichedMap[i];
             if (current == WordPlayback.Played && prev == WordPlayback.None)
-                map[i] = WordPlayback.Played | WordPlayback.PlayedStart;
+                enrichedMap[i] = WordPlayback.Played | WordPlayback.PlayedStart;
             prev = current;
         }
-        return new Model { Map = map };
+
+        return enrichedMap;
+    }
+
+    private IPlayableTextColorLease? ActualizeColorLease(Model model, Model lastModel)
+    {
+        var colorLease = lastModel.ColorLease;
+        var hasActivePlaying = model.HasActivePlaying;
+        if (hasActivePlaying) {
+            colorLease ??= PaletteProvider
+                .GetPalette(Entry.ChatId)
+                .RentColor(Entry.AuthorId, Entry.Id);
+        }
+        else {
+            if (colorLease != null) {
+                colorLease.Release();
+                colorLease = null;
+            }
+        }
+        return colorLease;
     }
 
     private async Task<Model> InnerComputeState(CancellationToken cancellationToken)
@@ -134,14 +176,14 @@
         if (status == WordPlayback.None)
             return "";
         if (status.HasFlag(WordPlayback.Played)) {
-            var cls = "played-blue";
+            var cls = "played";
             var start = status.HasFlag(WordPlayback.PlayedStart);
             if (start)
                 cls += " played-start";
             return cls;
         }
         if (status.HasFlag(WordPlayback.Playing)) {
-            var cls = "playing-blue";
+            var cls = "playing";
             var start = status.HasFlag(WordPlayback.PlayingStart);
             var end = status.HasFlag(WordPlayback.PlayingEnd);
             if (start && end)
@@ -153,6 +195,12 @@
             return cls;
         }
         return "";
+    }
+
+    public override ValueTask DisposeAsync() {
+        var m = State.LatestNonErrorValue;
+        m.ColorLease?.Release();
+        return base.DisposeAsync();
     }
 
     [Flags]
@@ -169,5 +217,11 @@
         public static readonly Model None = new Model();
 
         public WordPlayback[]? Map { get; init; }
+
+        public PlayableTextColor? Color { get; init; }
+
+        public IPlayableTextColorLease? ColorLease { get; init; }
+
+        public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
     }
 }

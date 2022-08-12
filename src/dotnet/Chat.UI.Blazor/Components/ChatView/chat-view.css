@@ -169,23 +169,40 @@
     border-radius: 6px 0 0 0;
 }
 
-.playable-text-markup .playing-blue {
+.playable-text-color-blue .playing {
     background: #2970FF;
     color: white;
 }
 
-.playable-text-markup .played-blue {
+.playable-text-color-blue .played {
     background: #E1EFFA;
 }
 
-.playable-text-markup .playing-green {
+.playable-text-color-green .playing {
     background: #13BA6A;
     color: white;
 }
 
-.playable-text-markup .played-green {
+.playable-text-color-green .played {
     background: #B8FFDD;
-    border-radius: 4px 4px 0 0;
+}
+
+.playable-text-color-purple .playing {
+    background: #5429FF;
+    color: white;
+}
+
+.playable-text-color-purple .played {
+    background: #E6E0FF;
+}
+
+.playable-text-color-cyan .playing {
+    background: #00B1D8;
+    color: white;
+}
+
+.playable-text-color-cyan .played {
+    background: #D3F7FF;
 }
 
 .plain-text-markup {
