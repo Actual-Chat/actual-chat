@@ -10,7 +10,7 @@
 }
 
 <div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content">
+    <div class="historical-playback-sub-header-content relative">
         <div class="flex-x self-center">
             <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon mobile-hidden">
                 <i class="icon-rewind-left-fill text-2xl"></i>
@@ -32,9 +32,11 @@
             </ButtonRound>
         </div>
 
+        <div class="flex-1"></div>
+
         @* Position *@
         @* Replace position with playing chat title *@
-        <div class="flex-1 flex-x justify-center items-center">
+        <div class="absolute left-52 flex-x items-center ">
             <ChatAuthorCirclesGroup
                 Class="historical-playback-active-authors-panel mobile-hidden"
                 MaxIconCount="4"
@@ -60,7 +62,7 @@
             </div>
         </div>
 
-        <div class="flex-x self-center">
+        <div class="flex-x self-center self-end">
             @* Speed Selector *@
             <ButtonRound Title="Close" Click="OnStop" Class="transparent hover-primary-icon">
                 <i class="icon-close-fill text-2xl"></i>
