@@ -12,7 +12,7 @@
 <div class="historical-playback-sub-header">
     <div class="historical-playback-sub-header-content">
         <div class="flex-x self-center">
-            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon mobile-hidden">
                 <i class="icon-rewind-left-fill text-2xl"></i>
             </ButtonRound>
             @if (m.IsPaused) {
@@ -23,11 +23,11 @@
                 <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
-                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon mobile-hidden">
                     <i class="icon-Stop-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon mobile-hidden">
                 <i class="icon-rewind-right-fill text-2xl"></i>
             </ButtonRound>
         </div>
@@ -36,7 +36,7 @@
         @* Replace position with playing chat title *@
         <div class="flex-1 flex-x justify-center items-center">
             <ChatAuthorCirclesGroup
-                Class="historical-playback-active-authors-panel"
+                Class="historical-playback-active-authors-panel mobile-hidden"
                 MaxIconCount="4"
                 Size="SquareSize.Size6"
                 AuthorIds="@m.AuthorIds" />
@@ -46,7 +46,7 @@
                         <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.Title</a>
                     </div>
                 }
-                <div class="c-text">
+                <div class="c-text mobile-hidden">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = timeZoneConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
