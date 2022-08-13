@@ -212,3 +212,7 @@
 .btn.chat-language-toggle {
     @apply font-semibold text-lg md:text-base text-icons-01;
 }
+
+.linked-message-panel {
+    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:px-10;
+}
