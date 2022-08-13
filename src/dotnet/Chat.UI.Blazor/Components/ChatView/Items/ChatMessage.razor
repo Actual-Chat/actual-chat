@@ -95,7 +95,7 @@
                 @if (entry.AudioEntryId != null) {
                     <MessageMenuPlay Entry="@entry"/>
                 }
-                <ButtonRound Title="Reply" Class="reply-btn">
+                <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
                     <i class="icon-reply text-xl text-icon-01"></i>
                 </ButtonRound>
                 <ContextMenuToggleTrigger MenuId="@MessageContextMenu.Id" Data="@Message">
@@ -183,6 +183,11 @@
             IsBlockStart = true,
             IsQuote = true,
         };
+    }
+
+    private async Task Reply(ChatEntry chatEntry) {
+        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        await EventAggregator.Publish(new FocusChatMessageEditor());
     }
 
     private void OnChatAuthorClick()
