@@ -3,18 +3,12 @@
 @{
     var m = State.LatestNonErrorValue;
 }
-@if (m == Model.None) {
-    <div class="author-badge animate-pulse">
-        <div class="w-9 h-9 rounded-full bg-04"></div>
-    </div>
-} else {
-    <div class="author-badge">
-        <AuthorCircle
-            Author="@m.Author" Size="SquareSize.Size9" Presence="@m.Presence"
-            Click="@Click"/>
-    </div>
-}
 
+<div class="author-badge">
+    <AuthorCircle
+        Author="@m.Author" Size="SquareSize.Size9" Presence="@m.Presence"
+        Click="@Click"/>
+</div>
 
 @code {
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }

@@ -5,7 +5,7 @@
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
     <div class="@_contentClass flex-y">
         <div class="author-badge-name">
-            <span class="@_nameClass">@Author.Name</span>
+            <AuthorName Author="@Author" Size="@Size" Class="@TextClass"/>
         </div>
         @if (ShowsStatusText && !_statusText.IsNullOrEmpty()) {
             <div>
@@ -17,7 +17,6 @@
 
 @code {
     private string _contentClass = "";
-    private string _nameClass = "";
     private string _statusTextClass = "";
     private string _statusText = "";
 
@@ -30,7 +29,6 @@
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        _nameClass = GetNameClass();
         _contentClass = GetContentClass();
         _statusText = GetStatusText();
         _statusTextClass = GetStatusTextClass();
@@ -45,14 +43,6 @@
 
     private string GetStatusTextClass()
         => (int)Size < 12 ? "text-xxs leading-4" : "";
-
-    private string GetNameClass() {
-        if (!TextClass.IsNullOrEmpty())
-            return TextClass;
-
-        var sizeClass = (int)Size > 8 ? "text-md" : "";
-        return "select-none " + sizeClass;
-    }
 
     private string GetContentClass()
         => "ml-3";
