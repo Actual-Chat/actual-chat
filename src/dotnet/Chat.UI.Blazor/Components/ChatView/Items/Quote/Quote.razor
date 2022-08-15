@@ -5,11 +5,11 @@
     var entry = message.Entry;
 }
 
-<div class="chat-quote cursor-pointer" @onclick="OnQuoteClick">
+<div class="chat-quote cursor-pointer mt-0 md:mt-2" @onclick="OnQuoteClick">
     @if (LinkType == ChatEntryLinkType.Reply) {
-        <div class="w-full">
+        <div class="w-full break-all">
             Replying to <ChatAuthorName AuthorId="@entry.AuthorId" Class="text-02 font-bold"/>
-            <div>@Text</div>
+            <div class="break-words">@Text</div>
         </div>
     } else {
         <div class="w-full">
