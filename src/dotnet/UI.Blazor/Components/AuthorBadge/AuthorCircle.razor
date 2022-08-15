@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     RenderFragment? presenceFragment = null;
-    var title = HasTooltip ? Author?.Name : "" ?? "";
+    var title = HasTooltip ? Author.Name : "";
 
     if (Presence == Presence.Recording) {
         presenceFragment =
@@ -24,7 +24,7 @@
 
 <div class="author-avatar-badge flex-x items-center rounded-full">
     <div class="relative">
-        @if (ReferenceEquals(Author, Users.Author.None) || Author == null) {
+        @if (ReferenceEquals(Author, Users.Author.None)) {
             <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
         } else {
             <img class="@_avatarClass @Class rounded-full block"
