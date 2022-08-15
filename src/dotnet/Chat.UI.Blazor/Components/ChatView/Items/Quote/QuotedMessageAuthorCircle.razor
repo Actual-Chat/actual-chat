@@ -4,17 +4,11 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (m == Model.None) {
-    <div class="min-w-fit mr-2 animate-pulse">
-        <div class="w-4 h-4 rounded-full bg-skeleton"></div>
-    </div>
-} else {
-    <div class="min-w-fit">
-        <AuthorCircle
-            Author="@m.Author" Size="SquareSize.Size4" Presence="@m.Presence"
-            Click="@Click"/>
-    </div>
-}
+<div class="min-w-fit">
+    <AuthorCircle
+        Author="@m.Author" Size="SquareSize.Size4" Presence="@m.Presence"
+        Click="@Click"/>
+</div>
 
 @code {
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }

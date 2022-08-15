@@ -2,19 +2,9 @@
 @inherits ChatAuthorBadgeBase
 @{
     var m = State.LatestNonErrorValue;
-    var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 26, 40 };
-    var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
-    var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
 }
 
-@if (m == Model.None) {
-    <div class="skeleton flex items-start animate-pulse">
-        <span class="font-bold bg-skeleton rounded-md border-skeleton-border border-2 w-@firstLength h-4"></span>
-        <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
-    </div>
-} else {
-    <span class="@Class">@m.Author.Name</span>
-}
+<AuthorName Author="@m.Author" Class="@Class" />
 
 @code {
     [Parameter] public string Class { get; set; } = "";

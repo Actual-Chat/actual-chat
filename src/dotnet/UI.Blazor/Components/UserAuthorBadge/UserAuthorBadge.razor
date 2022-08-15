@@ -2,23 +2,12 @@
 @inherits UserAuthorBadgeBase
 @{
     var m = State.LatestNonErrorValue;
-    var sizeClass = GetSizeClass();
 }
-@if (m == Model.None) {
-    <div class="author-badge animate-pulse">
-        <div class="@sizeClass rounded-full bg-03"></div>
-    </div>
-} else {
-    <AuthorBadge Author="@m.Author" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
-}
+
+<AuthorBadge Author="@m.Author" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public string TextClass { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
-
-    private string GetSizeClass() {
-        var size = (int) Size;
-        return $"h-{size} w-{size}";
-    }
 }
