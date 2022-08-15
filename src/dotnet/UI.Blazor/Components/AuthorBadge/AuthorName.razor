@@ -5,10 +5,10 @@
     var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
     var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
     var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
-    <div class="skeleton flex items-start animate-pulse">
+    <span class="skeleton flex items-start animate-pulse">
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@firstLength h-4"></span>
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
-    </div>
+    </span>
 } else {
     <span class="@_class">@Author.Name</span>
 }
