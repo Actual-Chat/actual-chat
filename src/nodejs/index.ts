@@ -1,4 +1,5 @@
 import './fonts/icon.css';
+import './fonts/tt-commons-pro-trial.css';
 import './node_modules/fork-awesome/css/fork-awesome.min.css';
 import './styles/tailwind.css';
 import './styles/colors.css';

@@ -1,7 +1,11 @@
 /* Default styling */
 
 * {
-    font-family: 'Noto Sans Display', sans-serif;
+    font-family: 'TT Commons Pro', sans-serif;
+    /*font-family: 'Noto Sans', sans-serif;*/
+    /*font-family: 'Rubik', sans-serif;*/
+    /*font-family: 'Figtree', sans-serif;*/
+    /*font-family: 'Gantari', sans-serif;*/
 }
 
 html {
