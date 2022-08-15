@@ -39,7 +39,7 @@
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageMenu.MenuId" Data="@Message">
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
-        <div class="flex-y">
+        <div class="flex-y w-full">
             @if (isReply) {
                 <QuotedMessage Message="@model.RepliedChatMessage"/>
             }
@@ -91,17 +91,23 @@
         </div>
 
         @if (!message.IsQuote) {
-            <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
-                <button class="show-on-hover message-menu-btn">
-                    <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                        <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-                    </svg>
-                </button>
-                <div class="fixed right-14">
-                    <div class="placement -mt-2">
+            <div class="message-hover-menu">
+                @if (entry.AudioEntryId != null) {
+                    <MessageMenuPlay Entry="@entry"/>
+                }
+                <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
+                    <i class="icon-reply text-xl text-icon-01"></i>
+                </ButtonRound>
+                <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
+                    <ButtonRound Title="More options" Class="more-btn">
+                        <i class="icon-more-vertical text-xl text-icon-01"></i>
+                    </ButtonRound>
+                    <div class="absolute right-10">
+                        <div class="placement -mt-9">
+                        </div>
                     </div>
-                </div>
-            </ContextMenuToggleTrigger>
+                </ContextMenuToggleTrigger>
+            </div>
         }
 </div>
 </ContextMenuTrigger>
@@ -177,6 +183,11 @@
             IsBlockStart = true,
             IsQuote = true,
         };
+    }
+
+    private async Task Reply(ChatEntry chatEntry) {
+        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        await EventAggregator.Publish(new FocusChatMessageEditor());
     }
 
     private void OnChatAuthorClick()

@@ -52,13 +52,7 @@
     <div @key="VirtualListSpecialKeys.EndSpacer"
          class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
          style="height: @(endSpacerSize)px">
-        <SkeletonContainer Class="@flexClass">
-            @for (var i = 0; i < SkeletonCount; ++i) {
-                <div @key="@i" class="skeleton">
-                    @Skeleton(i)
-                </div>
-            }
-        </SkeletonContainer>
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="VirtualListSpecialKeys.Container"
@@ -88,12 +82,6 @@
     <div @key="VirtualListSpecialKeys.Spacer"
          class="@invFlexClass flex-none spacer spacer-start overflow-y-hidden"
          style="height: @(spacerSize)px">
-        <SkeletonContainer Class="@flexClass">
-            @for (var i = -SkeletonCount; i < 0; i++) {
-                <div @key="@i" class="skeleton">
-                    @Skeleton(i)
-                </div>
-            }
-        </SkeletonContainer>
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 </div>

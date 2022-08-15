@@ -2,6 +2,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
+@using Timer = System.Timers.Timer;
+@using System.Timers
+
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
@@ -10,9 +13,9 @@
 }
 
 <div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content">
+    <div class="historical-playback-sub-header-content relative">
         <div class="flex-x self-center">
-            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon mobile-hidden">
                 <i class="icon-rewind-left-fill text-2xl"></i>
             </ButtonRound>
             @if (m.IsPaused) {
@@ -23,20 +26,22 @@
                 <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
-                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon mobile-hidden">
                     <i class="icon-Stop-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon mobile-hidden">
                 <i class="icon-rewind-right-fill text-2xl"></i>
             </ButtonRound>
         </div>
 
+        <div class="flex-1"></div>
+
         @* Position *@
         @* Replace position with playing chat title *@
-        <div class="flex-1 flex-x justify-center items-center">
+        <div class="absolute left-52 flex-x items-center ">
             <ChatAuthorCirclesGroup
-                Class="historical-playback-active-authors-panel"
+                Class="historical-playback-active-authors-panel mobile-hidden"
                 MaxIconCount="4"
                 Size="SquareSize.Size6"
                 AuthorIds="@m.AuthorIds" />
@@ -46,7 +51,7 @@
                         <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.Title</a>
                     </div>
                 }
-                <div class="c-text">
+                <div class="c-text mobile-hidden">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = timeZoneConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
@@ -60,7 +65,7 @@
             </div>
         </div>
 
-        <div class="flex-x self-center">
+        <div class="flex-x self-center self-end">
             @* Speed Selector *@
             <ButtonRound Title="Close" Click="OnStop" Class="transparent hover-primary-icon">
                 <i class="icon-close-fill text-2xl"></i>
@@ -70,6 +75,8 @@
 </div>
 
 @code {
+    private RewindController? _rewindController;
+
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
@@ -160,21 +167,34 @@
     }
 
     private void OnFastForward()
-        => _ = PlayAt(TimeSpan.FromSeconds(15));
+        => Rewind(TimeSpan.FromSeconds(15));
 
     private void OnBackward()
-        => _ = PlayAt(TimeSpan.FromSeconds(-15));
+        => Rewind(TimeSpan.FromSeconds(-15));
 
-    private async Task PlayAt(TimeSpan shift, CancellationToken cancellationToken = default)
-    {
+    private void Rewind(TimeSpan shift) {
+        _rewindController ??= new RewindController(OnRewindRequested);
         var m = State.LatestNonErrorValue;
         var moment = m.PlayingAt;
         if (!moment.HasValue || m.ChatPlayer == null)
             return;
-        var newMoment = await m.ChatPlayer.GetRewindMoment(moment.Value, shift, cancellationToken).ConfigureAwait(false);
+        _rewindController.Rewind(m.ChatId, moment.Value, shift);
+    }
+
+    private void OnRewindRequested(Symbol chatId, DateTime momentFrom, TimeSpan shift) {
+        _ = InvokeAsync(() => {
+            var m = State.LatestNonErrorValue;
+            if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
+                _ = PlayAt(m.ChatPlayer, momentFrom, shift);
+        });
+    }
+
+    private async Task PlayAt(HistoricalChatPlayer chatPlayer, DateTime from, TimeSpan shift, CancellationToken cancellationToken = default)
+    {
+        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken).ConfigureAwait(false);
         if (!newMoment.HasValue)
             return;
-        ChatPlayers.StartHistoricalPlayback(m.ChatId, newMoment.Value);
+        ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
     }
 
     public sealed record Model
@@ -188,5 +208,34 @@
         public Symbol ChatId { get; init; }
         public bool DisplayChatTitle { get; init; }
         public ImmutableArray<Symbol> AuthorIds { get; init; }
+    }
+
+    internal class RewindController
+    {
+        private Timer _rewindTimer;
+        private Symbol _chatId;
+        private DateTime _rewindFrom;
+        private TimeSpan _rewindSpan;
+
+        public RewindController(Action<Symbol, DateTime, TimeSpan> onRewindRequested)
+        {
+            _rewindTimer = new Timer(300) { AutoReset = false };
+            _rewindTimer.Elapsed += (s,e) => onRewindRequested(_chatId, _rewindFrom, _rewindSpan);
+        }
+
+        public void Rewind(Symbol chatId, DateTime moment, TimeSpan shift)
+        {
+            if (!_rewindTimer.Enabled) {
+                _chatId = chatId;
+                _rewindFrom = moment;
+                _rewindSpan = shift;
+                _rewindTimer.Start();
+            } else {
+                _rewindTimer.Stop();
+                _rewindSpan += shift;
+                if (_chatId == chatId)
+                    _rewindTimer.Start();
+            }
+        }
     }
 }

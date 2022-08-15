@@ -62,6 +62,6 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     }
 
     public sealed record Model(Author Author, Presence Presence = Presence.Unknown) {
-        public static Model None { get; } = new(new Author());
+        public static Model None { get; } = new(Author.None);
     }
 }

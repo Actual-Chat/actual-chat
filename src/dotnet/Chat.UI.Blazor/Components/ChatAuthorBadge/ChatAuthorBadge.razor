@@ -1,8 +1,10 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ChatAuthorBadgeBase
+
 @{
     var m = State.LatestNonErrorValue;
 }
+
 <AuthorBadge Author="@m.Author" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
 
 @code {

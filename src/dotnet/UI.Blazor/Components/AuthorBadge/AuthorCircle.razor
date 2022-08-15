@@ -24,9 +24,13 @@
 
 <div class="author-avatar-badge flex-x items-center rounded-full">
     <div class="relative">
-        <img class="@_avatarClass @Class rounded-full block"
-             src="@Author.Picture" alt="avatar" title="@title"
-             @onclick="@Click"/>
+        @if (ReferenceEquals(Author, Users.Author.None)) {
+            <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
+        } else {
+            <img class="@_avatarClass @Class rounded-full block"
+                 src="@Author.Picture" alt="avatar" title="@title"
+                 @onclick="@Click"/>
+        }
 
         @if (presenceFragment != null) {
             <div class="@_presenceClass absolute bg-01">

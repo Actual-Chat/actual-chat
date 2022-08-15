@@ -43,6 +43,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<EditedMarkupConverter>();
         services.AddScoped<MentionedNameResolver>();
         services.AddScoped<ChatMarkupToTextConverter>();
+        services.AddScoped<PlayableTextPaletteProvider>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();

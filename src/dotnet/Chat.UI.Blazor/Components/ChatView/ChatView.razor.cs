@@ -196,6 +196,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
+            oldData.Items,
             _initialLastReadEntryId,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry

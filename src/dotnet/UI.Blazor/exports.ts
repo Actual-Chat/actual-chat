@@ -1,3 +1,4 @@
+import './Components/components.css';
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/AuthorBadge/author-badge.css'
 import './Components/Button/button.css';
