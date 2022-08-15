@@ -1,5 +1,5 @@
 .message-wrapper {
-    @apply flex-x relative;
+    @apply flex-x relative w-full;
     @apply border-l-2 border-bg-01;
 }
 .message-wrapper:hover {
@@ -62,9 +62,13 @@
 }
 
 .quoted-message {
-    @apply flex-x items-center mt-1;
+    @apply px-5 opacity-75;
+    @apply flex-x items-center mt-1 gap-x-2;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-03 cursor-pointer;
+}
+.quoted-message * {
+    @apply max-h-5 flex-x;
 }
 
 .chat-message-quoted {
@@ -224,7 +228,7 @@
     @apply invisible;
 }
 .message-wrapper:hover .message-hover-menu {
-    @apply visible;
+    @apply invisible md:visible;
 }
 .message-hover-menu .btn.btn-round .btn-content {
     @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;

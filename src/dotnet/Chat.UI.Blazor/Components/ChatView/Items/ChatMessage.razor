@@ -39,7 +39,7 @@
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageContextMenu.Id" Data="@Message">
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
-        <div class="flex-y">
+        <div class="flex-y w-full">
             @if (isReply) {
                 <QuotedMessage Message="@model.RepliedChatMessage"/>
             }

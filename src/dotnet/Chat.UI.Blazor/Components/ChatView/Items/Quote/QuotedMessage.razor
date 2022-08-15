@@ -14,30 +14,26 @@
     var entry = message.Entry;
 }
 
-<div @onclick="OnQuoteClick" class="h-5">
-    <div class="quoted-message relative left-6 opacity-75" @onclick="OnQuoteClick">
-        <div class="mx-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 0 24 24">
-                <path d="M16 16v4l8-8-8-8v4h-8.929c-9.059 0-7.134 9.521-6.334 11.418.788-2.445 2.464-3.418 5.371-3.418h9.892z"/>
-            </svg>
-        </div>
-        <QuotedMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-        <div class="flex-x items-baseline overflow-hidden">
-            <div class="mr-2">
-                <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base"/>
+<div class="quoted-message h-5" @onclick="OnQuoteClick">
+    <div class="ml-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 0 24 24">
+            <path d="M16 16v4l8-8-8-8v4h-8.929c-9.059 0-7.134 9.521-6.334 11.418.788-2.445 2.464-3.418 5.371-3.418h9.892z"/>
+        </svg>
+    </div>
+    <QuotedMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+    <div class="flex-x items-baseline overflow-hidden gap-x-2 max-w-full">
+        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base min-w-fit"/>
+        <div class="flex-x items-center text-sm pointer-events-none overflow-hidden">
+            <div class="pointer-cursor truncate mr-2">
+                @model.Quote
             </div>
-            <div class="flex-x items-center text-sm pointer-events-none mr-20 overflow-hidden">
-                <div class="pointer-cursor truncate mr-2">
-                    @model.Quote
+            @if (model.HasAttachments) {
+                <div class="min-w-fit">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="-1 -1 32 32">
+                        <path d="M21.586 10.461l-10.05 10.075c-1.95 1.949-5.122 1.949-7.071 0s-1.95-5.122 0-7.072l10.628-10.585c1.17-1.17 3.073-1.17 4.243 0 1.169 1.17 1.17 3.072 0 4.242l-8.507 8.464c-.39.39-1.024.39-1.414 0s-.39-1.024 0-1.414l7.093-7.05-1.415-1.414-7.093 7.049c-1.172 1.172-1.171 3.073 0 4.244s3.071 1.171 4.242 0l8.507-8.464c.977-.977 1.464-2.256 1.464-3.536 0-2.769-2.246-4.999-5-4.999-1.28 0-2.559.488-3.536 1.465l-10.627 10.583c-1.366 1.368-2.05 3.159-2.05 4.951 0 3.863 3.13 7 7 7 1.792 0 3.583-.684 4.95-2.05l10.05-10.075-1.414-1.414z"/>
+                    </svg>
                 </div>
-                @if (model.HasAttachments) {
-                    <div class="min-w-fit">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="-1 -1 32 32">
-                            <path d="M21.586 10.461l-10.05 10.075c-1.95 1.949-5.122 1.949-7.071 0s-1.95-5.122 0-7.072l10.628-10.585c1.17-1.17 3.073-1.17 4.243 0 1.169 1.17 1.17 3.072 0 4.242l-8.507 8.464c-.39.39-1.024.39-1.414 0s-.39-1.024 0-1.414l7.093-7.05-1.415-1.414-7.093 7.049c-1.172 1.172-1.171 3.073 0 4.244s3.071 1.171 4.242 0l8.507-8.464c.977-.977 1.464-2.256 1.464-3.536 0-2.769-2.246-4.999-5-4.999-1.28 0-2.559.488-3.536 1.465l-10.627 10.583c-1.366 1.368-2.05 3.159-2.05 4.951 0 3.863 3.13 7 7 7 1.792 0 3.583-.684 4.95-2.05l10.05-10.075-1.414-1.414z"/>
-                        </svg>
-                    </div>
-                }
-            </div>
+            }
         </div>
     </div>
 </div>
