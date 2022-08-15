@@ -55,11 +55,12 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
+        IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
-
+        var firstOldItemId = int.Parse(oldItems?.FirstOrDefault()?.Key ?? "0", CultureInfo.InvariantCulture);
         var isBlockStart = true;
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
@@ -93,11 +94,15 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
         return result;
 
-        bool ShouldSplit(ChatEntry entry, ChatEntry? nextEntry)
+        bool ShouldSplit(
+            ChatEntry entry,
+            ChatEntry? nextEntry)
         {
             if (nextEntry == null)
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
+                return true;
+            if (nextEntry.Id == firstOldItemId)
                 return true;
 
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;
