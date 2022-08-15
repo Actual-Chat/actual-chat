@@ -15,13 +15,11 @@
 }
 
 <div class="quoted-message h-5" @onclick="OnQuoteClick">
-    <div class="ml-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 0 24 24">
-            <path d="M16 16v4l8-8-8-8v4h-8.929c-9.059 0-7.134 9.521-6.334 11.418.788-2.445 2.464-3.418 5.371-3.418h9.892z"/>
-        </svg>
+    <div class="mx-2 w-8 justify-end">
+        <i class="icon-share-fill text-xl -mt-1"></i>
     </div>
     <QuotedMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-    <div class="flex-x items-baseline overflow-hidden gap-x-2 max-w-full">
+    <div class="flex-x items-baseline overflow-hidden gap-x-1 max-w-full">
         <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base min-w-fit"/>
         <div class="flex-x items-center text-sm pointer-events-none overflow-hidden">
             <div class="pointer-cursor truncate mr-2">

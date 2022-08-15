@@ -62,8 +62,8 @@
 }
 
 .quoted-message {
-    @apply px-5 opacity-75;
-    @apply flex-x items-center mt-1 gap-x-2;
+    @apply px-1.5 opacity-75;
+    @apply flex-x items-center mt-1 gap-x-1;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-03 cursor-pointer;
 }
