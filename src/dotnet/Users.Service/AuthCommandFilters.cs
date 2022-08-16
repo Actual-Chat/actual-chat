@@ -6,7 +6,6 @@ using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Internal;
-using Stl.Fusion.Operations.Internal;
 
 namespace ActualChat.Users;
 
@@ -104,9 +103,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignedIn(SignInCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
-        // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
-        // - Updates UserPresence.Get & invalidates it if it's not computed or offline
-        // - Resets session options & invalidates Auth.GetOptions
+        // - publishes NewUserEvent when user was created within sign-in.
 
         var context = CommandContext.GetCurrent();
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
@@ -114,15 +111,15 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (Computed.IsInvalidating())
             return;
 
+        var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
+        if (!isNewUser)
+            return;
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
-        if (isNewUser) {
-            var newUserEvent = new NewUserEvent(userId);
-            await EventPublisher.Publish(newUserEvent, cancellationToken).ConfigureAwait(false);
-        }
+        var newUserEvent = new NewUserEvent(userId);
+        await EventPublisher.Publish(newUserEvent, cancellationToken).ConfigureAwait(false);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]

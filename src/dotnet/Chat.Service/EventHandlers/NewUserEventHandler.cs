@@ -17,7 +17,6 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
     public async Task Handle(NewUserEvent @event, ICommander commander, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
-        //var chat = await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        var chatAuthor = await _chatAuthorsBackend.GetOrCreate(chatId, @event.UserId, false, cancellationToken).ConfigureAwait(false);
+        _ = await _chatAuthorsBackend.GetOrCreate(chatId, @event.UserId, false, cancellationToken).ConfigureAwait(false);
     }
 }

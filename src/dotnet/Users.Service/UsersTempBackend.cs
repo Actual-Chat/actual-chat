@@ -4,6 +4,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
+[Obsolete]
 public class UsersTempBackend : DbServiceBase<UsersDbContext>,  IUsersTempBackend
 {
     public UsersTempBackend(IServiceProvider services) : base(services)

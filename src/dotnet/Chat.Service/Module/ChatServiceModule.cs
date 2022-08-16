@@ -8,7 +8,6 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
