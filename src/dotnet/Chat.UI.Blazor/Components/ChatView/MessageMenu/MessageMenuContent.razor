@@ -3,7 +3,7 @@
 @inject FeedbackUI FeedbackUI;
 @inject ChatUI ChatUI;
 
-<Item OnClick="@(() => FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"))" CssClass="context-menu-item">
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })" CssClass="context-menu-item">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <i class="icon-heart-fill text-xl"></i>
@@ -23,7 +23,7 @@
         </div>
     </div>
 </Item>
-<Item OnClick="@(() => FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))" CssClass="context-menu-item">
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })" CssClass="context-menu-item">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <i class="icon-hash-fill text-xl"></i>
