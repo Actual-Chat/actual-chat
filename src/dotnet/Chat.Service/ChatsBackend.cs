@@ -495,6 +495,45 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(chat);
     }
 
+    public virtual async Task<Chat> CreateAnnouncementsChat(IChatsBackend.CreateAnnouncementsChatCommand command, CancellationToken cancellationToken)
+    {
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        if (Computed.IsInvalidating()) {
+            _ = Get(chatId, default);
+            return default!;
+        }
+
+        var cmd = new IChatsBackend.ChangeChatCommand(chatId, null, new() {
+            Create = new ChatDiff {
+                ChatType = ChatType.Group,
+                Title = "Actual.chat Announcements",
+                IsPublic = true,
+            },
+        }, UserConstants.Admin.UserId /* have to specify owner */);
+        var chat = (await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false))!;
+
+        var role = (await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Anyone, cancellationToken)
+            .ConfigureAwait(false)).Require();
+
+        var changeJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, role.Id, null, new() {
+            Update = new ChatRoleDiff() {
+                SystemRole = SystemChatRole.Anyone,
+                Permissions = ChatPermissions.Invite,
+            },
+        });
+        await Commander.Call(changeJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
+
+        var usersTempBackend = Services.GetRequiredService<IUsersTempBackend>();
+        var userIds = await usersTempBackend.GetUserIds(cancellationToken).ConfigureAwait(false);
+
+        foreach (var userId in userIds) {
+            // join existent users to the chat
+            _ = await ChatAuthorsBackend.GetOrCreate(chatId, userId, false, cancellationToken).ConfigureAwait(false);
+        }
+
+        return chat;
+    }
+
     // Protected methods
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)

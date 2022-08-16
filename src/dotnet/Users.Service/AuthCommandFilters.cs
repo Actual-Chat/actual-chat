@@ -1,8 +1,12 @@
+using ActualChat.Events;
 using ActualChat.Users.Db;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
+using Stl.Fusion.EntityFramework.Internal;
+using Stl.Fusion.Operations.Internal;
 
 namespace ActualChat.Users;
 
@@ -14,6 +18,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     protected UserNamer UserNamer { get; }
     protected IUserPresences UserPresences { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
+    protected IEventPublisher EventPublisher { get; }
 
     public AuthCommandFilters(IServiceProvider services)
         : base(services)
@@ -24,6 +29,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         UserNamer = services.GetRequiredService<UserNamer>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+        EventPublisher = services.GetRequiredService<IEventPublisher>();
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
@@ -92,6 +98,31 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await ResetSessionOptions(dbContext, session, cancellationToken).ConfigureAwait(false);
         await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    [CommandHandler(IsFilter = true, Priority = FusionEntityFrameworkCommandHandlerPriority.DbOperationScopeProvider + 1)]
+    public virtual async Task OnSignedIn(SignInCommand command, CancellationToken cancellationToken)
+    {
+        // This command filter takes the following actions on sign-in:
+        // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
+        // - Updates UserPresence.Get & invalidates it if it's not computed or offline
+        // - Resets session options & invalidates Auth.GetOptions
+
+        var context = CommandContext.GetCurrent();
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+
+        if (Computed.IsInvalidating())
+            return;
+
+        var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
+        if (sessionInfo == null)
+            throw StandardError.Internal("No SessionInfo in operation's items.");
+        var userId = sessionInfo.UserId;
+        var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
+        if (isNewUser) {
+            var newUserEvent = new NewUserEvent(userId);
+            await EventPublisher.Publish(newUserEvent, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]

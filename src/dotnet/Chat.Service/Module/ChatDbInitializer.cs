@@ -102,10 +102,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
 
             await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
             await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -160,6 +162,28 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to upgrade chats!");
+            throw;
+        }
+    }
+
+    private async Task EnsureAnnouncementsChatExists(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var exists = await dbContext.Chats
+            .Where(c => c.Id == chatId)
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (exists)
+            return;
+
+        try {
+            Log.LogInformation("There is no 'Announcements' chat, will create one");
+            var cmd = new IChatsBackend.CreateAnnouncementsChatCommand();
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("'Announcements' chat is created");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Announcements' chat!");
             throw;
         }
     }

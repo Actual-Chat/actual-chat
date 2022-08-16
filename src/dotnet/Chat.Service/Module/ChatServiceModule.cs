@@ -6,7 +6,9 @@ using ActualChat.Db.Module;
 using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
@@ -97,11 +99,9 @@ public class ChatServiceModule : HostModule<ChatSettings>
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Events
-        services.AddSingleton<IEventPublisher, LocalEventPublisher>();
-        services.AddSingleton<LocalEventHub<NewChatEntryEvent>>();
-        services.AddSingleton(c => c.GetRequiredService<LocalEventHub<NewChatEntryEvent>>().Reader);
-        services.AddSingleton<IEventHandler<NewChatEntryEvent>, NewChatEntryEventHandler>();
-        services.AddHostedService<EventListener<NewChatEntryEvent>>();
+        services.AddEvent<NewChatEntryEvent>();
+        services.AddEventHandler<NewChatEntryEvent, NewChatEntryEventHandler>();
+        services.AddEventHandler<NewUserEvent, NewUserEventHandler>();
 
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);
