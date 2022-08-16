@@ -170,7 +170,7 @@ public class ChatUIStateSync : WorkerBase
             var mustKeepAwake = cUpdate.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 // TODO(AY): Send this update to JS
-                await KeepAwakeUI.SetNoSleepEnabled(mustKeepAwake, cancellationToken);
+                await KeepAwakeUI.SetKeepAwake(mustKeepAwake, cancellationToken);
                 lastMustKeepAwake = mustKeepAwake;
             }
         }

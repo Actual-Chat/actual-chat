@@ -32,7 +32,7 @@ public class UserInteractionUI : IUserInteractionUIBackend, IDisposable
         _whenInitialized = BlazorCircuitContext.Dispatcher.InvokeAsync(() => {
             _blazorRef = DotNetObjectReference.Create<IUserInteractionUIBackend>(this);
             return JS.InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.UserInteraction.initialize",
+                $"{BlazorUICoreModule.ImportName}.UserInteractionUI.initialize",
                 _blazorRef);
         });
     }

@@ -19,7 +19,8 @@ import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 
 export * from './Services/Settings/local-settings';
-export * from './Services/UserInteraction/user-interaction';
+export * from './Services/UserInteractionUI/user-interaction-ui';
+export * from './Services/KeepAwakeUI/keep-awake-ui'
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/Dropdown/dropdown';
@@ -34,7 +35,6 @@ export * from './Components/SideNav/side-nav';
 export * from './Layouts/base-layout';
 
 export * from './messaging-init';
-export * from './keep-screen-awake';
 export * from './theme';
 
 export * from './Components/FileUpload/file-upload';

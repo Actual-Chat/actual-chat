@@ -1,8 +1,8 @@
-import { addPostInteractionHandler } from '../../../../nodejs/src/first-interaction';
+import { addPostInteractionHandler } from 'first-interaction';
 
-const LogScope: string = 'UserInteraction';
+const LogScope: string = 'UserInteractionUI';
 
-export class UserInteraction {
+export class UserInteractionUI {
     public static initialize(blazorRef: DotNet.DotNetObject): void {
         console.debug(`${LogScope}: initialize`);
         addPostInteractionHandler(() => {
