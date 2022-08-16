@@ -30,9 +30,10 @@
                     } else {
                         <Checkbox Checked="@contact.IsChecked" Class="self-center ml-4"/>
                     }
-                    <AuthorBadge Author="@contact.Author"
-                                 Presence="@contact.Presence"
-                                 Size="SquareSize.Size8"/>
+                    <AuthorBadge
+                        Author="@contact.Author"
+                        Presence="@contact.Presence"
+                        Size="SquareSize.Size8"/>
                 </div>
             }
         </div>
@@ -77,7 +78,7 @@
             await ChatAuthors
                 .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
 
-        var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
+        var contacts = await UserContacts.List(Session, DisposeTokenSource.Token).ConfigureAwait(false);
         var resolvedContacts = await contacts
             .Select(async userContact => {
                 var userAuthor = await Accounts.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);

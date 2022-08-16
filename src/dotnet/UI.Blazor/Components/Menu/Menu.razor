@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@((IMenu) this)" IsFixed="true">
-    <div class="menu @Class" name="@Name">
+    <div class="@Class menu" name="@Name">
         <div class="select-none flex-y">
             @ChildContent
         </div>

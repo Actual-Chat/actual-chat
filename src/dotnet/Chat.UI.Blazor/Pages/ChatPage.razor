@@ -1,18 +1,14 @@
 @page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
-@using Blazored.LocalStorage
-@using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout ChatPageLayout
+@layout ChatLayout
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
-    if (!m.NavigateToChatId.IsNullOrEmpty())
-        Nav.Chat(m.NavigateToChatId);
-    if (m.IsUnavailable)
-        Nav.Unavailable("chat");
-    if (m.MustLogin)
-        Nav.Login("to view this chat");
+    if (m.IsUnavailable) {
+        <RequireChat ChatId="@ChatId" />
+        return;
+    }
     var chat = m.Chat;
 }
 
@@ -24,7 +20,8 @@
     <div>Loading...</div>
     return;
 }
-@if (!chat.IsPublic) {
+@if (!chat.IsPublic && !m.Account.IsActive()) {
+    /* We check account here to avoid excessive render */
     <RequireAccount/>
 }
 @* @key=... ensures child components are recreated on navigation to another chat *@
@@ -72,12 +69,14 @@
     private ChatView _chatView = null!;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
-    [Inject] private ILocalStorageService LocalStorage { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
+    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
@@ -97,48 +96,45 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var lastRenderedChat = _lastRenderedModel?.Chat;
-        var chat = await Chats.Get(Session, ChatId, cancellationToken);
-        if (chat == null) {
-            if (lastRenderedChat != null && lastRenderedChat.Id == ChatId) {
-                // Chat became unavailable - let's redirect the user to the first available chat
-                var chats = await Chats.GetChats(Session, CancellationToken.None);
-                var chat1 = chats.FirstOrDefault();
-                if (chat1 != null)
-                    return new Model { NavigateToChatId = chat1.Id };
-            }
-            return new Model { IsUnavailable = true };
+        if (ChatId.IsNullOrEmpty()) {
+            Log.LogWarning("ChatId is null");
         }
+        var chat = await Chats.Get(Session, ChatId, cancellationToken);
+        if (chat == null)
+            return Model.Unavailable;
 
-        // We want to return the same Chat instance while it stays unchanged
-        var isTheSameModel = lastRenderedChat != null
-            && lastRenderedChat.Id == chat.Id
-            && lastRenderedChat.Version == chat.Version;
-        return isTheSameModel ? _lastRenderedModel! : new() { Chat = chat };
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var result = new Model(chat, account);
+        return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ChatUI.ActiveChatId.Value != ChatId) {
-            ChatUI.ActiveChatId.Value = ChatId;
-            await LocalStorage.SetActiveChatId(ChatId).ConfigureAwait(false);
-        }
-
+        var fullChatId = ChatId;
+        var chat = await Chats.Get(Session, ChatId, default);
+        if (chat != null)
+            fullChatId = chat.Id;
+        if (ChatUI.ActiveChatId.Value != fullChatId)
+            ChatUI.ActiveChatId.Value = fullChatId;
         await base.OnParametersSetAsync();
     }
 
     private void OnUnreadMessagesClick()
         => _ = _chatView.NavigateToUnreadEntry();
 
-    public sealed record Model {
-        public static Model None { get; } = new();
+    public sealed record Model(Chat? Chat, Account? Account) {
+        public static Model None { get; } = new(null, null);
+        public static Model Unavailable { get; } = new(null, null) { IsUnavailable = true };
 
         public bool IsUnavailable { get; init; }
-        public string? NavigateToChatId { get; init; }
-        public bool MustLogin { get; init; }
-        public Chat? Chat { get; init; }
+
+        public bool IsSame(Model? other) {
+            if (other == null)
+                return false;
+            return ReferenceEquals(Chat, other.Chat) && ReferenceEquals(Account, other.Account);
+        }
     }
 }

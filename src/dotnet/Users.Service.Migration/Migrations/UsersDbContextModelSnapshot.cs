@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "6.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -124,6 +124,42 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_kvas_entries");
 
                     b.ToTable("kvas_entries");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbRecentEntry", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("ShardKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("shard_key");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recent_entries");
+
+                    b.ToTable("recent_entries");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
@@ -273,6 +309,10 @@ namespace ActualChat.Users.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
+
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_favorite");
 
                     b.Property<string>("Name")
                         .IsRequired()

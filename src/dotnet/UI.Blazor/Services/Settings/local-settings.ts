@@ -1,11 +1,11 @@
 const LogScope: string = 'LocalSettings';
 const DebugMode: boolean = true;
 
-export class LocalStorage {
+export class LocalSettings {
     private static _isInitialized: boolean = false;
 
-    public static initialize() {
-        if (LocalStorage._isInitialized)
+    public static initialize(): void {
+        if (LocalSettings._isInitialized)
             return
         const tagKey = ".App.sessionHash";
         // @ts-ignore
@@ -18,8 +18,8 @@ export class LocalStorage {
         }
     }
 
-    public static getMany(keys: string[]) {
-        LocalStorage.initialize();
+    public static getMany(keys: string[]): Array<string> {
+        LocalSettings.initialize();
         const result = new Array<string>();
         if (DebugMode)
             console.debug(`${LogScope}: getMany(${result.length} keys):`);
@@ -32,8 +32,8 @@ export class LocalStorage {
         return result;
     }
 
-    public static setMany(updates: Record<string, string>) {
-        LocalStorage.initialize();
+    public static setMany(updates: Record<string, string>): void {
+        LocalSettings.initialize();
         if (DebugMode)
             console.debug(`${LogScope}: setMany(${Object.keys(updates).length} keys):`);
         for (const [key, value] of Object.entries(updates)) {

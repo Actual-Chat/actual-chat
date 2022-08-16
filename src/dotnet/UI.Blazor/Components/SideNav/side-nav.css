@@ -7,23 +7,17 @@
 
 .side-nav-right {
     @apply translate-x-full;
-    @apply left-0;
-    @apply top-0;
-    @apply z-60;
-    @apply md:w-80
+    @apply z-60 left-0 md:w-120;
 }
 
 .side-nav-left {
     @apply -translate-x-full;
-    @apply left-0;
-    @apply z-60;
-    @apply md:w-120;
+    @apply z-60 left-0 md:w-120;
 }
 
 .side-nav-drawer {
     @apply fixed;
-    @apply top-0 bottom-0;
-    @apply w-[15px];
+    @apply top-0 bottom-0 w-[15px];
     @apply bg-transparent;
 }
 

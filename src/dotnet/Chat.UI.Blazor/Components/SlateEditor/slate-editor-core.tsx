@@ -14,7 +14,7 @@ import { serialize } from './serializer';
 
 export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
-    const [placeholder, setPlaceholder] = useState('')
+    const [placeholder, setPlaceholder] = useState(handle.getPlaceholder())
     const [hasContent, setHasContent] = useState(false)
     const renderElement = useCallback(props => <Element {...props} />, [])
     const editor = useMemo(
@@ -44,7 +44,9 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
         Transforms.select(editor, Editor.end(editor, []));
     };
 
-    handle.setPlaceholder = setPlaceholder;
+    handle.onPlaceholderUpdated = () => {
+        setPlaceholder(handle.getPlaceholder());
+    }
 
     handle.clearText = () => {
         if (debug) console.log('clear text');

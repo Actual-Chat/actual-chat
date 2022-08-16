@@ -5,20 +5,17 @@
 /* DeleteMessageModal */
 
 .delete-message-modal .message-content {
+    @apply max-h-48 rounded-sm p-1 ml-1;
     @apply overflow-y-auto break-words;
-    @apply max-h-48 rounded-sm ml-1;
-    @apply p-1;
 }
 .delete-message-modal .message-content > * {
     @apply pointer-events-none;
 }
 
-
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative z-20 py-1 px-2;
-    @apply flex-x;
+    @apply relative flex-x z-20 py-1 px-2;
     @apply bg-01 shadow-lg text-02;
     @apply border-b border-bg-04;
     @apply animate-display-from-top-slow;
@@ -27,7 +24,6 @@
     @apply flex-x w-full items-center;
 }
 .historical-playback-sub-header-content .c-text {
-    @apply pb-0.5;
     @apply font-light;
 }
 .historical-playback-sub-header-content .c-moment {
@@ -36,7 +32,6 @@
 .historical-playback-sub-header-content .c-stop .btn {
     @apply bg-transparent;
 }
-
 
 .unread-messages-sub-header {
     @apply relative z-10 mx-4 px-2 pb-0.5;
@@ -52,24 +47,13 @@
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
-    @apply flex-1 flex flex-row items-center justify-center gap-x-2;
+    @apply flex flex-1 flex-row items-center justify-center gap-x-2;
 }
 .recording-elsewhere-sub-header-content .c-text {
     @apply font-light;
 }
 .recording-elsewhere-sub-header-content a {
     @apply font-semibold underline;
-}
-
-.chat-message-transcript {
-    @apply text-02 whitespace-normal;
-    @apply underline decoration-dotted decoration-audio-message;
-}
-.chat-message-markup {
-    @apply text-02;
-}
-.playable-text-markup {
-    @apply underline decoration-dotted decoration-audio-message;
 }
 
 .btn-round.attach-btn {
@@ -97,7 +81,7 @@
 }
 
 .btn-square.add-user-btn {
-    @apply min-w-8 bg-transparent rounded-none border-b-2 border-transparent flex-1 left-0;
+    @apply flex-1 left-0 min-w-8 bg-transparent rounded-none border-b-2 border-transparent;
 }
 .btn-square.add-user-btn .btn-content {
     @apply justify-center bg-transparent;
@@ -116,7 +100,7 @@
     @apply min-w-full md:min-w-modal max-w-full;
 }
 .author-settings-modal .user-avatar-editor {
-    @apply gap-x-2 overflow-y-auto max-h-96;
+    @apply max-h-96 gap-x-2 overflow-y-auto;
 }
 .author-settings-modal .dialog-body {
     @apply m-4;
@@ -126,22 +110,20 @@
 }
 
 .invite-chat-author-modal .dialog-body input:not([type='checkbox']) {
-    @apply pl-8 py-2 w-full;
+    @apply w-full pl-8 py-2;
 }
 .people-tab .author-badge {
-    @apply rounded-xl cursor-pointer p-0.5 mx-1;
+    @apply p-0.5 mr-1 rounded-xl cursor-pointer;
 }
 .people-tab .author-badge .author-avatar-badge {
     @apply m-0.5;
 }
-.people-tab .author-badge:hover .author-badge-name {
-}
 .people-tab .author-badge:hover {
-    @apply bg-02;
+    @apply bg-round-hover;
 }
 
 .wide-left-panel-tabs {
-    @apply border-b border-bg-04 pb-0 mb-0;
+    @apply pb-0 mb-0 border-b border-bg-04;
 }
 .wide-left-panel-tabs .btn-group {
     @apply min-h-mobile-header justify-between px-4;
@@ -150,7 +132,7 @@
     @apply min-h-mobile-header self-center;
 }
 .wide-left-panel-tabs .btn {
-    @apply min-w-0 min-h-0 rounded-lg p-0;
+    @apply min-w-0 min-h-0 p-0 rounded-lg;
 }
 .wide-left-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-03;
@@ -165,39 +147,47 @@
     @apply p-1.5 rounded-xl;
 }
 
-.navbar-chats {
-    @apply overflow-hidden h-full;
+.navbar-chats,
+.navbar-contacts {
+    @apply h-full overflow-hidden;
 }
-.tab-panel .chats-tab.tab .navbar-item {
+.tab-panel .chats-tab.tab .navbar-item,
+.tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;
 }
-.tab-panel .chats-tab.tab .navbar-item-content {
+.tab-panel .chats-tab.tab .navbar-item-content,
+.tab-panel .contacts-tab.tab .navbar-item-content {
     @apply w-full;
 }
-.chats-tab .btn-round {
+.chats-tab .btn-round,
+.contacts-tab .btn-round {
     @apply w-6 h-6;
 }
-.chats-tab .btn.btn-round .btn-content {
+.chats-tab .btn.btn-round .btn-content,
+.contacts-tab .btn.btn-round .btn-content {
     @apply bg-transparent;
 }
-.chats-tab .btn.btn-round.pin-toggle.btn-content {
+.chats-tab .btn.btn-round.pin-toggle.btn-content,
+.contacts-tab .btn.btn-round.pin-toggle.btn-content {
     @apply bg-transparent;
 }
-.chats-tab .btn.btn-round.pin-toggle.play-pinned.on {
+.chats-tab .btn.btn-round.pin-toggle.play-pinned.on,
+.contacts-tab .btn.btn-round.pin-toggle.play-pinned.on {
     @apply text-primary;
 }
-
-.pinned-chats {
+.pinned-chats,
+.pinned-contacts {
     @apply flex-y pb-2 px-2 gap-y-0.5;
 }
 
-.unpinned-chats {
+.unpinned-chats,
+.unpinned-contacts {
     @apply flex-y h-full px-2 gap-y-0.5;
 }
 
 .listened-chats {
-    @apply py-1 relative bottom-0 flex-y px-2 gap-y-0.5;
-    @apply border-t-8 border-bg-04 bg-01;
+    @apply relative flex-y bottom-0 py-1 px-2 gap-y-0.5;
+    @apply bg-01 border-t-8 border-bg-04;
 }
 .listened-chats .navbar-item.active {
     @apply bg-selected;
@@ -210,13 +200,14 @@
 }
 
 .chat-footer {
-    @apply bg-01 py-0 md:py-1.5 px-2 md:px-2 flex justify-center w-full;
+    @apply flex justify-center w-full bg-01;
+    @apply py-0 md:py-1.5 px-2;
 }
 .signin-footer {
     @apply flex w-full md:w-auto py-1 justify-center min-h-footer items-center;
 }
 .signin-footer .btn {
-    @apply rounded-full md:rounded-md h-10 min-h-10 min-w-0 px-4;
+    @apply h-10 min-h-10 min-w-0 px-4 rounded-full md:rounded-md;
 }
 .signin-footer .btn .btn-content {
     @apply text-lg;
@@ -226,6 +217,5 @@
     @apply flex-x gap-x-1;
 }
 .chat-header-control-panel .btn.btn-round .btn-content {
-    min-height: 2.5rem;
-    min-width: 2.5rem;
+    @apply min-h-10 min-w-10;
 }

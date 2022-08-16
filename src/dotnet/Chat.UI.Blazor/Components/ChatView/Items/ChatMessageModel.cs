@@ -15,6 +15,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
     public bool IsQuote { get; init; }
+    public bool ShowEntryType { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
     {
@@ -54,14 +55,16 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
+        IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
-
+        var firstOldItemId = int.Parse(oldItems?.FirstOrDefault()?.Key ?? "0", CultureInfo.InvariantCulture);
         var isBlockStart = true;
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
+        var isPrevAudio = false;
         for (var index = 0; index < chatEntries.Count; index++) {
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
@@ -71,27 +74,35 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             var isUnread = entry.Id > (lastReadEntryId ?? 0);
+            var isAudio = entry.AudioEntryId != null;
+            var contentKindChanged = isPrevAudio ^ isAudio;
             var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
                 IsFirstUnread = isUnread && !isPrevUnread,
+                ShowEntryType = isBlockStart || contentKindChanged
             };
             result.Add(model);
 
             isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
             lastDate = date;
+            isPrevAudio = isAudio;
         }
 
         return result;
 
-        bool ShouldSplit(ChatEntry entry, ChatEntry? nextEntry)
+        bool ShouldSplit(
+            ChatEntry entry,
+            ChatEntry? nextEntry)
         {
             if (nextEntry == null)
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
+                return true;
+            if (nextEntry.Id == firstOldItemId)
                 return true;
 
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;

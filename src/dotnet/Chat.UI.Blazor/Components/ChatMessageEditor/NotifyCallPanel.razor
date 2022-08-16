@@ -3,33 +3,38 @@
 
 @{
     var panelCls = _panelState switch {
+        PanelState.Closed => "panel-closed",
         PanelState.Opening => "panel-opening",
         PanelState.Closing => "panel-closing",
-        _ => "panel-closed",
-        };
+        _ => "",
+    };
 }
 
-<div class="notify-call-panel @panelCls">
+<div class="@panelCls notify-call-panel">
     <ButtonRound Class="notify-call-toggle blackout" Click="OnClick">
         <i class="icon-hand text-2xl"></i>
     </ButtonRound>
     <div class="notify-call-content">
-        <Button Class="notify-all-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify-call-panel/notify-all", "Notify all"))">
-            <div class="w-full px-4 flex-x items-center gap-x-2">
-                <i class="icon-at text-2xl"></i>
-                <div>
-                    Notify all
+        <div class="actions">
+            <Button Class="notify-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify", "Notify"))">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
+                    <i class="icon-at text-2xl"></i>
+                    <div>
+                        Notify
+                    </div>
                 </div>
-            </div>
-        </Button>
-        <Button Class="call-all-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify-call-panel/call-all", "Call all"))">
-            <div class="w-full px-4 flex-x items-center gap-x-2">
-                <i class="icon-phone text-2xl"></i>
-                <div>
-                    Call all
+            </Button>
+            or
+            <Button Class="btn-primary" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("call", "Call"))">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
+                    <i class="icon-phone text-2xl"></i>
+                    <div>
+                        Call
+                    </div>
                 </div>
-            </div>
-        </Button>
+            </Button>
+            everyone
+        </div>
         <ButtonRound Class="close-btn blackout" Click="OnClick">
             <i class="icon-close text-2xl"></i>
         </ButtonRound>
@@ -38,19 +43,24 @@
 
 @code {
     enum PanelState {
-        Closed,
+        Closed = 0,
         Opening,
         Closing,
     }
 
     private PanelState _panelState = PanelState.Closed;
 
-    private void OnClick() {
+    public void OnClick() {
         _panelState = _panelState switch {
             PanelState.Closed => PanelState.Opening,
             PanelState.Opening => PanelState.Closing,
             PanelState.Closing => PanelState.Opening,
             _ => PanelState.Closed,
         };
+    }
+
+    public void OnCloseClick() {
+        _panelState = PanelState.Closing;
+        StateHasChanged();
     }
 }

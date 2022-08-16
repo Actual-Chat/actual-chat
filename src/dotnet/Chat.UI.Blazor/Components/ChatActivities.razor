@@ -2,35 +2,13 @@
 @inherits ComputedStateComponent<ChatActivities.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var recordingAuthorIds = m.RecordingAuthorIds;
-    var maxLength = MaxIconCount > recordingAuthorIds.Length ? recordingAuthorIds.Length : MaxIconCount;
-    var cls = "-mr-2 border border-bg-02 rounded-full";
 }
 
-@if (recordingAuthorIds.Length != 0) {
-    <div class="chat-activity-panel flex-x gap-x-2 pr-3">
-    @{
-        var zIndex = 1;
-        for (var i = 0; i < maxLength; i++) {
-            var authorId = recordingAuthorIds[i];
-            <div class="@cls" style="z-index: @zIndex;">
-                <ChatAuthorCircle AuthorId="@authorId" Size="SquareSize.Size6" />
-            </div>
-            zIndex++;
-        }
-        if (recordingAuthorIds.Length > MaxIconCount) {
-            <div class="@cls" style="z-index: @(maxLength + 1);">
-                @{
-                    var avatarText = recordingAuthorIds.Length < 11
-                        ? "+" + (recordingAuthorIds.Length - MaxIconCount)
-                        : "...";
-                }
-                <TextualAuthorBadge Size="SquareSize.Size6" Text="@avatarText" />
-            </div>
-        }
-    }
-    </div>
-}
+<ChatAuthorCirclesGroup
+    Class="chat-activity-panel"
+    MaxIconCount="@MaxIconCount"
+    Size="SquareSize.Size6"
+    AuthorIds="@m.RecordingAuthorIds" />
 
 @code {
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;

@@ -27,49 +27,51 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
+    var visibleKeys = (VisibleKeysState?.LatestNonErrorValue ?? new List<string>()).ToHashSet();
     var items = Data.Items;
     LastData = Data;
+    var itemClassBase = Data.Query.IsNone
+        ? "item flex-none"
+        : "item flex-none new";
 }
 
 <div @ref="Ref"
-     class="virtual-list @invFlexClass @Class"
+     class="@invFlexClass @Class virtual-list"
      style="@Style">
 
     <div @key="VirtualListSpecialKeys.RenderIndex"
          data-render-index="@renderIndex"
-         class="data render-index hidden @flexClass flex-none">
+         class="@flexClass flex-none data render-index hidden">
     </div>
 
     <div @key="VirtualListSpecialKeys.RenderState"
-         class="data render-state hidden @flexClass flex-none">
+         class="@flexClass flex-none data render-state hidden">
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
     <div @key="VirtualListSpecialKeys.EndSpacer"
-         class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+         class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
          style="height: @(endSpacerSize)px">
-        <SkeletonContainer Class="@flexClass">
-            @for (var i = 0; i < SkeletonCount; ++i) {
-                <div @key="@i" class="skeleton">
-                    @Skeleton(i)
-                </div>
-            }
-        </SkeletonContainer>
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="VirtualListSpecialKeys.Container"
-        class="virtual-container @flexClass">
+        class="@flexClass virtual-container">
         @foreach (var item in items) {
+            var itemClass = visibleKeys.Contains(item.Key)
+                ? "item flex-none"
+                : itemClassBase;
+
             @if (item.CountAs != 1) {
                 <li @key="item.Key"
-                    class="item flex-none new"
+                    class="@itemClass"
                     data-key="@item.Key"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
                 <li @key="item.Key"
-                    class="item flex-none new"
+                    class="@itemClass"
                     data-key="@item.Key">
                     @Item(item)
                 </li>
@@ -78,14 +80,8 @@
     </ul>
 
     <div @key="VirtualListSpecialKeys.Spacer"
-         class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+         class="@invFlexClass flex-none spacer spacer-start overflow-y-hidden"
          style="height: @(spacerSize)px">
-        <SkeletonContainer Class="@flexClass">
-            @for (var i = -SkeletonCount; i < 0; i++) {
-                <div @key="@i" class="skeleton">
-                    @Skeleton(i)
-                </div>
-            }
-        </SkeletonContainer>
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 </div>

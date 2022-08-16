@@ -1,7 +1,9 @@
 namespace ActualChat.Kvas;
 
 public interface ISyncedState<T> : IMutableState<T>, IDisposable
-{ }
+{
+    Task WhenFirstTimeRead { get; }
+}
 
 public class SyncedState<T> : MutableState<T>, ISyncedState<T>
 {
@@ -15,6 +17,9 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected Options Settings { get; }
 
+    protected TaskSource<Unit> WhenFirstTimeReadSource { get; }
+
+    public Task WhenFirstTimeRead => WhenFirstTimeReadSource.Task;
     public IUpdateDelayer UpdateDelayer {
         get => _updateDelayer;
         set => _updateDelayer = value;
@@ -30,6 +35,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
         Settings = options;
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
+        WhenFirstTimeReadSource = TaskSource.New<Unit>(true);
         _updateDelayer = options.UpdateDelayer ?? Services.GetRequiredService<IUpdateDelayer>();
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
@@ -123,6 +129,8 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                     if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
                         // Read sync
                         Set(readResult);
+                        if (!WhenFirstTimeRead.IsCompleted)
+                            WhenFirstTimeReadSource.TrySetResult(default);
                         _lastReadComputed = readComputed;
                         _lastWrittenSnapshot = Snapshot;
                     }

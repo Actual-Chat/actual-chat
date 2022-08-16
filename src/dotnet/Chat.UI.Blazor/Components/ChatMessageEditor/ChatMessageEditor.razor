@@ -17,6 +17,7 @@
                                RemoveRequested="@(RemoveAttachment)"
                                ClearAllRequested="@(ClearAttachments)"
                                Post="@(_ => OnPosted(clearEditor:true))"/>
+        <LinkedMessagePanel/>
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:p-2 md:px-10 md:pt-0 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
@@ -36,10 +37,9 @@
                                 </svg>
                             </button>
                         </label>
-                        <NotifyCallPanel/>
+                        <NotifyCallPanel @ref="NotifyCallPanelRef" />
                     </div>
                 </div>
-                <LinkedMessagePanel/>
                 <MobileControlPanel/>
             </div>
             <RecorderPanel/>
@@ -58,6 +58,8 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
+    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
+    [Inject] private IUserContacts UserContacts { get; init; } = null!;
     [Inject] private UICommander Commander { get; init; } = null!;
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
@@ -65,6 +67,7 @@
     private ElementReference Ref { get; set; }
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
+    private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
     private IPersistentState<long>? LastReadEntryId { get; set; }
 
@@ -120,6 +123,8 @@
         catch (Exception e) {
             ErrorUI.ShowError(e);
         }
+
+        await UpdateRecentContacts().ConfigureAwait(false);
     }
 
     private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
@@ -130,12 +135,16 @@
 
     private async Task<long> UpdateMessage(ChatEntry chatEntry, string text) {
         ChatUI.LinkedChatEntry.Value = null;
-        await Commander.Call(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
+        await Commander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
 
         return chatEntry.Id;
     }
 
     private Task OnFocusRequested(FocusChatMessageEditor @event, CancellationToken cancellationToken) => SlateEditorRef.Focus(cancellationToken);
+
+    [JSInvokable]
+    public void CloseNotifyPanel()
+        => NotifyCallPanelRef.OnCloseClick();
 
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
@@ -196,6 +205,14 @@
         ChatUI.LinkedChatEntry.Value = null;
         await SlateEditorRef.Clear();
         await SlateEditorRef.Focus(cancellationToken);
+    }
+
+    private async Task UpdateRecentContacts() {
+        if (Chat.ChatType == ChatType.Peer) {
+            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
+            var command = new IRecentEntries.UpdateUserContactCommand(Session, contact.Id, Clocks.SystemClock.UtcNow);
+            await Commander.Run(command, CancellationToken.None);
+        }
     }
 
 }

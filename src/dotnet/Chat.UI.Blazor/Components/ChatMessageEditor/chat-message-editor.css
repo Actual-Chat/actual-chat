@@ -11,7 +11,7 @@
     @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-05 md:bg-03;
 }
 .post-panel {
-    @apply bg-05 md:bg-03 rounded-3xl min-h-3 items-center outline-none;
+    @apply bg-05 md:bg-03 rounded-3xl min-h-12 items-center outline-none;
 }
 
 .not-recording {
@@ -26,68 +26,69 @@
     @apply text-placeholder truncate text-base;
     content:attr(data-text)
 }
+/* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex flex-row-reverse right-0 h-8 w-auto bg-transparent;
+    @apply flex flex-row-reverse right-2 h-12 w-12 bg-transparent;
 }
-.notify-call-panel.panel-opening {
-    @apply bg-05 md:bg-transparent;
-}
-.notify-call-panel.panel-closed {
-    @apply gap-x-0;
-}
-.btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none text-05 md:text-icons-01 p-0 h-8 bg-05 md:bg-03 mr-2;
-}
-.panel-closed .notify-call-content * {
-    @apply w-0 scale-0;
-}
-.panel-opening .btn.btn-round.notify-call-toggle {
-    @apply scale-0 animate-notify-toggle-hide w-0;
-}
-.panel-closing .btn.btn-round.notify-call-toggle {
-    @apply scale-100 animate-notify-toggle-show;
+.btn.btn-round.notify-call-toggle,
+.panel-closed .btn.btn-round.notify-call-toggle {
+    @apply flex self-end outline-none p-0 h-12 scale-100;
+    @apply text-05 md:text-icons-01 bg-05 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
     @apply rounded-full bg-transparent;
-    min-width: 2rem;
-    min-height: 2rem;
+    @apply min-w-12 min-h-12;
 }
 .notify-call-content,
 .panel-closed .notify-call-content {
-    @apply relative right-4 flex-x gap-x-4 md:gap-x-8 justify-end w-0 opacity-0 w-0;
+    @apply flex-x gap-x-0 justify-end items-center cursor-text;
+    @apply w-0 scale-0;
 }
-.panel-opening .notify-call-content {
-    @apply relative w-full opacity-100 animate-notify-panel-opening translate-x-0 -mt-1 -mr-4;
-    @apply md:-translate-x-0 md:-mr-5 md:mt-0;
-}
-.panel-closing .notify-call-content {
-    @apply w-0 opacity-0 animate-notify-panel-closing translate-x-full;
+.notify-call-content .actions {
+    @apply flex-x items-center gap-x-2 max-h-12 md:mr-4;
+    @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
     @apply rounded-full min-h-0 h-auto px-0 min-w-0;
+}
+.notify-call-content .btn.notify-btn {
+    @apply md:bg-04 md:border-bg-04 md:text-03;
     @apply bg-06 text-04 border-bg-06;
 }
-.notify-call-content .btn.notify-all-btn {
-    @apply md:bg-04 md:border-bg-04 md:text-03;
-}
-.notify-call-content .btn.call-all-btn {
-    @apply md:bg-primary md:border-primary md:text-04;
-}
-.notify-call-content .btn .btn-content{
-    @apply rounded-full mx-0 items-center;
+.notify-call-content .btn .btn-content {
+    @apply rounded-full mx-0 -my-1 px-2 items-center;
 }
 .notify-call-content .btn.close-btn {
-    @apply flex self-end outline-none text-04 md:text-icons-01 p-0 mr-2 h-8;
+    @apply flex self-end p-0 h-12 w-12;
+    @apply outline-none text-04 md:text-icons-01;
     @apply bg-transparent;
 }
 .notify-call-content .btn.close-btn .btn-content{
     @apply rounded-full mx-0 items-center bg-transparent;
-    min-width: 2rem;
-    min-height: 2rem;
+    @apply min-w-8 min-h-12;
 }
 .text-mode .notify-call-panel {
     @apply hidden;
+}
+
+/* Opening panel */
+.panel-opening.notify-call-panel {
+    @apply bg-05 md:bg-transparent w-full;
+}
+.panel-opening .btn.btn-round.notify-call-toggle {
+    @apply animate-notify-toggle-hide scale-0 w-0;
+}
+.panel-opening .notify-call-content {
+    @apply scale-100 w-full animate-notify-panel-opening;
+}
+
+/* Closing panel */
+.panel-closing .btn.btn-round.notify-call-toggle {
+    @apply scale-100 animate-notify-toggle-show;
+}
+.panel-closing .notify-call-content {
+    @apply scale-0 animate-notify-panel-closing;
 }
 
 .btn.btn-round.post-message {
@@ -100,14 +101,6 @@
 
 .text-mode .recorder-buttons .btn {
     @apply disabled;
-}
-
-.record-mode .btn.btn-round.post-message {
-    @apply hidden;
-}
-
-.record-mode .language-button {
-    @apply flex animate-scale-from-right;
 }
 
 .attachment-list {
@@ -128,14 +121,10 @@
     @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
-    @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
-    max-width: 12rem;
-    min-width: 12rem;
+    @apply relative min-w-48 max-w-48 mr-2 pl-2 first:pl-0 last:mr-0;
 }
 .attachment-item {
-    @apply relative p-3 rounded-none grid overflow-y-auto overflow-x-hidden;
-    min-height: 10rem;
-    max-height: 12rem;
+    @apply relative grid min-h-40 max-h-48 p-3 rounded-none overflow-y-auto overflow-x-hidden;
 }
 .attachment-wrapper .btn.btn-round {
     @apply w-8 h-8 text-04 m-0 self-center;
@@ -158,20 +147,19 @@
 
 /* Desktop control panel */
 .recorder-panel {
-    @apply hidden;
-    @apply md:-flex-x justify-center;
-    @apply bg-01 outline-none;
-    @apply rounded-none gap-x-2.5;
+    @apply hidden md:-flex-x;
+    @apply justify-center gap-x-2.5;
+    @apply bg-01 outline-none rounded-none;
     @apply self-stretch md:self-end;
 }
 .recorder-panel > div {
-    @apply flex flex-1 rounded-full w-fit h-fit self-end;
+    @apply flex flex-1 w-fit h-fit self-end rounded-full;
 }
 .recorder-panel .desktop-button {
     @apply flex rounded-full;
 }
 .recorder-panel .recorder-wrapper {
-    @apply border justify-center flex h-14 w-14 relative top-1 border-primary;
+    @apply relative flex top-1 justify-center h-14 w-14 border border-primary;
 }
 .recorder-panel .recorder-wrapper .btn {
     @apply self-center m-0.5;
@@ -197,30 +185,34 @@
     @apply shadow-lg shadow-secondary;
 }
 .recorder-panel .recorder-wrapper.record-off .record-on-btn.btn {
-    @apply scale-0 absolute;
+    @apply absolute scale-0;
 }
 .recorder-panel .recorder-wrapper.record-off .record-off-btn.btn {
     @apply scale-100;
 }
 .recorder-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
-    @apply animate-scale-to-5 scale-0 absolute;
+    @apply absolute animate-scale-to-5 scale-0;
 }
 .recorder-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
     @apply animate-scale-to-full scale-100;
 }
 .recorder-panel .recorder-wrapper.record-on .record-off-btn.btn {
-    @apply scale-0 absolute;
+    @apply absolute scale-0;
 }
 .recorder-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply scale-100;
 }
 .recorder-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
-    @apply animate-scale-to-5 scale-0 absolute;
+    @apply absolute animate-scale-to-5 scale-0;
 }
 .recorder-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply animate-scale-to-full scale-100;
 }
 
 .btn.chat-language-toggle {
-    @apply font-semibold text-base;
+    @apply font-semibold text-lg md:text-base text-icons-01;
+}
+
+.linked-message-panel {
+    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:px-10;
 }

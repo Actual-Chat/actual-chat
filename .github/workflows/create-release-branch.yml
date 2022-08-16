@@ -64,6 +64,6 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.CREATE_RELEASE_GITHUB_TOKEN }} # trigger workflow on create release branch!
-          branch: release/v${NBGV_MajorMinorVersion}
+          branch: release/v${{ steps.nbgv.MajorMinorVersion }}
 
-      - run: echo 'Branch release/v${NBGV_MajorMinorVersion} has been created'
+      - run: echo 'Branch release/v${{ steps.nbgv.MajorMinorVersion }} has been created'

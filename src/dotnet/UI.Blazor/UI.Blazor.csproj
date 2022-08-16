@@ -8,7 +8,6 @@
   <ItemGroup>
     <PackageReference Include="Blazor.ContextMenu" />
     <PackageReference Include="Blazored.Modal" />
-    <PackageReference Include="Blazored.LocalStorage" />
     <PackageReference Include="Blazored.SessionStorage" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
@@ -17,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
     <ProjectReference Include="..\Invite.Contracts\Invite.Contracts.csproj" />
@@ -34,6 +34,7 @@
     <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-statistics.ts" />
     <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-accessor.ts" />
     <TypeScriptCompile Include="Layouts\base-layout.ts" />
+    <TypeScriptCompile Include="Services\UserInteraction\user-interaction.ts" />
     <TypeScriptCompile Include="theme.ts" />
   </ItemGroup>
 

@@ -4,7 +4,9 @@
 <MainHeader>Audio Recorder Test Page</MainHeader>
 
 <div class="text-xl text-bold p-3">
-    <button @onclick="_ => ToggleRecording()" class="px-3 py-2 @(IsRecording ? "bg-red-200" : "bg-yellow-200") rounded-lg"> @(IsRecording ? "StopTask" : "Record")</button>
+    <button @onclick="_ => ToggleRecording()" class=" @(IsRecording ? "bg-red-200" : "bg-yellow-200") rounded-lg px-3 py-2">
+         @(IsRecording ? "StopTask" : "Record")
+    </button>
 </div>
 <div class="mt-3 text-xl text-bold p-3" @ref="_recordsRef">
 </div>

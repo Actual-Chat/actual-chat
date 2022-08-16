@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
@@ -42,6 +41,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<string> GetPeerChatTitle(string chatId, Account account, CancellationToken cancellationToken)
     {
+        var (userId, contact) = await GetPeerChatContact(chatId, account, cancellationToken).ConfigureAwait(false);
+        return contact?.Name
+            ?? await UserContactsBackend.SuggestContactName(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<(string UserId, UserContact? Contact)> GetPeerChatContact(string chatId, Account account, CancellationToken cancellationToken)
+    {
         var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
 
@@ -50,9 +56,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
 
         var contact = await UserContactsBackend.Get(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
-        if (contact != null)
-            return contact.Name;
-        return await UserContactsBackend.SuggestContactName(otherUserId, cancellationToken).ConfigureAwait(false);
+        return (otherUserId, contact);
     }
 
     [ComputeMethod]
@@ -206,6 +210,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return true;
     }
 
+    // [ComputeMethod]
     public virtual async Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
         if (!await CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken).ConfigureAwait(false))
@@ -218,6 +223,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
 
         return ParsedChatId.FormatShortPeerChatId(userId2);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        var (_, contact) = await GetPeerChatContact(chatId, account, cancellationToken).ConfigureAwait(false);
+        return contact;
     }
 
     public virtual async Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
@@ -519,7 +532,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         if (chatEntry.IsRemoved)
-            throw ActualChat.StandardError.NotFound<ChatEntry>();
+            throw StandardError.NotFound<ChatEntry>();
 
         var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)

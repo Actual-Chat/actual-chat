@@ -144,6 +144,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
+        fusion.AddComputeService<IRecentEntries, RecentEntries>();
+        fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
 
         // ChatUserSettings
         services.AddSingleton(c => {

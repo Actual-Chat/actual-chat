@@ -5,16 +5,16 @@ public sealed record Account(Symbol Id, User User) : IHasId<Symbol>, IRequiremen
     public static Account Guest { get; } = new(Symbol.Empty, User.NewGuest()) { Status = AccountStatus.Inactive };
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
-        new(() => new NoAccountException()),
+        new(() => StandardError.Account.None()),
         (Account? p) => p != null);
     public static Requirement<Account> MustBeAdmin { get; } = MustExist & Requirement.New(
-        new(() => new NonAdminAccountException()),
+        new(() => StandardError.Account.NonAdmin()),
         (Account? p) => p?.IsAdmin ?? false);
     public static Requirement<Account> MustNotBeInactive { get; } = MustExist & Requirement.New(
-        new(() => new InactiveAccountException()),
+        new(() => StandardError.Account.Inactive()),
         (Account? p) => p != null && (p.Status != AccountStatus.Inactive || p.IsAdmin));
     public static Requirement<Account> MustNotBeSuspended { get; } = MustExist & Requirement.New(
-        new(() => new SuspendedAccountException()),
+        new(() => StandardError.Account.Suspended()),
         (Account? p) => p != null && (p.Status != AccountStatus.Suspended || p.IsAdmin));
     public static Requirement<Account> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
 

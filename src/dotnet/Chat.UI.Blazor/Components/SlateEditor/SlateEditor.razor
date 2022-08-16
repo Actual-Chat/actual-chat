@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
 
-<div @ref="EditorRef" id="@Id" class="slate-editor-root @Class"></div>
+<div @ref="EditorRef" id="@Id" class="@Class slate-editor-root break-words"></div>
 
 @code {
     private bool _rendered;

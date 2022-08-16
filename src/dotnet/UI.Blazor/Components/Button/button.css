@@ -174,10 +174,10 @@
     @apply opacity-100;
 }
 .btn.btn-round .btn-content {
-    @apply bg-round min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+    @apply bg-round min-h-12 min-w-12 max-h-12 max-w-12 items-center justify-center;
 }
 .btn.btn-round.transparent .btn-content {
-    @apply bg-transparent min-h-3 min-w-3 max-h-3 max-w-3 items-center justify-center;
+    @apply bg-transparent min-h-12 min-w-12 max-h-12 max-w-12 items-center justify-center;
 }
 .btn.btn-round.primary-icon .btn-content {
     @apply text-primary;
@@ -203,6 +203,12 @@
 }
 .btn.btn-round .btn-content-inner {
     @apply p-1 self-center;
+}
+
+@media not (min-width: 768px) {
+    .btn.mobile-hidden {
+        @apply hidden;
+    }
 }
 
 /*Default horizontal*/

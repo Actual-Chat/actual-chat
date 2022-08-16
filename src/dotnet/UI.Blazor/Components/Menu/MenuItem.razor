@@ -6,7 +6,7 @@
 
 <div class="relative">
     <button @onclick="OnClick" disabled="@IsDisabled"
-        class="menu-item @cls" name="@Name">
+        class="@cls menu-item" name="@Name">
         @if (Icon != null) {
             <div class="menu-item-icon">
                 @Icon

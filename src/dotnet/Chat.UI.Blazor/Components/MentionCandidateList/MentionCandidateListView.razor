@@ -8,10 +8,10 @@
     var selection = Selection;
     if (selection == null || Array.IndexOf(candidates, selection) < 0)
         _selection = selection = candidates[0];
-    <div class="mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full @Class">
+    <div class="@Class mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full">
         @foreach (var c in candidates) {
             var cls = c == selection ? "bg-04" : "";
-            <div class="px-1 rounded hover:cursor-pointer @cls"
+            <div class="@cls px-1 rounded hover:cursor-pointer"
                  @onmouseover="_ => Selection = c"
                  @onclick="@(_ => Manager.TriggerSelected(c))">
                 @c.Name
@@ -38,7 +38,7 @@
     }
 
     protected override ComputedState<MentionCandidate[]?>.Options GetStateOptions() {
-        return new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        return new() { UpdateDelayer = UpdateDelayer.MinDelay };
     }
 
     protected override Task<MentionCandidate[]?> ComputeState(CancellationToken cancellationToken)

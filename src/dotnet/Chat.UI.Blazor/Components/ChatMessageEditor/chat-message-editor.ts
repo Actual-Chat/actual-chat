@@ -5,22 +5,16 @@ const LogScope: string = 'MessageEditor';
 
 export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
-    private editorDiv: HTMLDivElement;
-    private input: HTMLDivElement;
-    private filesPicker: HTMLInputElement;
-    private postButton: HTMLButtonElement;
-    private recorderPanel: HTMLDivElement;
-    private recorderButtonDiv: HTMLDivElement;
-    private recordButton: HTMLButtonElement;
-    private notifyPanel: HTMLDivElement;
-    private recordButtonObserver : MutationObserver;
-    private notifyPanelObserver : MutationObserver;
+    private readonly editorDiv: HTMLDivElement;
+    private readonly input: HTMLDivElement;
+    private readonly filesPicker: HTMLInputElement;
+    private readonly postButton: HTMLButtonElement;
+    private readonly notifyPanel: HTMLDivElement;
+    private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
-    private isRecording: boolean = false;
     private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
-    private audioButtons: HTMLDivElement;
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -28,13 +22,11 @@ export class ChatMessageEditor {
 
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
-        this.input = this.editorDiv.querySelector('div.message-input');
-        this.filesPicker = this.editorDiv.querySelector('input.files-picker');
-        this.postButton = this.editorDiv.querySelector('.post-message');
         this.blazorRef = blazorRef;
-        this.recorderPanel = this.editorDiv.querySelector('.recorder-panel');
-        this.recorderButtonDiv = this.recorderPanel.querySelector('div.recorder-button');
-        this.audioButtons = this.recorderPanel.querySelector('.recorder-buttons');
+        this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
+        this.filesPicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
+        this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
@@ -42,19 +34,21 @@ export class ChatMessageEditor {
         this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
-        const observeAttributeChanges = {
-            attributes: true,
-            childList: false,
-            subtree: false,
-        };
-        this.notifyPanel = this.editorDiv.querySelector('.notify-call-panel');
+        this.notifyPanel.addEventListener('click', this.notifyPanelListener);
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
-        this.notifyPanelObserver.observe(this.notifyPanel, observeAttributeChanges);
-        this.recordButton = this.recorderButtonDiv.querySelector('button');
-        this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
-        this.recordButtonObserver.observe(this.recordButton, observeAttributeChanges);
+        this.notifyPanelObserver.observe(this.notifyPanel, {
+            attributes: true,
+        });
         this.changeMode();
     }
+
+    private notifyPanelListener = (async (event: Event & { target: Element; }) => {
+        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
+            if (this.notifyPanel.classList.contains('panel-opening')) {
+                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
+            }
+        }
+    });
 
     private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
@@ -76,7 +70,9 @@ export class ChatMessageEditor {
     });
 
     private inputFocusOutListener = ((event: Event & { target: Element; }) => {
-        this.editorDiv.classList.remove('narrow-panel');
+        setTimeout(() => {
+            this.editorDiv.classList.remove('narrow-panel');
+        }, 200)
     });
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
@@ -94,33 +90,23 @@ export class ChatMessageEditor {
         this.changeMode();
     });
 
-    private syncLanguageButtonVisibility = () => {
-        const isRecording = this.recordButton.classList.contains('on');
-        if (this.isRecording === isRecording)
-            return;
-        this.isRecording = isRecording;
-        if (isRecording) {
-            this.editorDiv.classList.add('record-mode');
-        } else {
-            this.editorDiv.classList.remove('record-mode');
-        }
-    };
-
     private syncAttachDropdownVisibility = () => {
         const isPanelOpened = this.notifyPanel.classList.contains('panel-opening');
         if (this.isPanelOpened === isPanelOpened)
             return;
         this.isPanelOpened = isPanelOpened;
-        const attachBtn = this.editorDiv.querySelector('.attach-btn');
+        const attach = this.editorDiv.querySelector(':scope .dropdown');
+        const label = this.editorDiv.querySelector(':scope label');
         if (isPanelOpened) {
             setTimeout(() => {
-                attachBtn.classList.add('invisible');
-                this.input.classList.add('invisible');
+                attach.classList.add('hidden');
+                label.classList.add('w-0');
             }, 500);
         } else {
-            attachBtn.classList.remove('invisible');
-            this.input.classList.remove('invisible');
+            attach.classList.remove('hidden');
+            label.classList.remove('w-0');
         }
+
         if (this.notifyPanel.classList.contains('panel-closing')) {
             setTimeout(() => {
                 this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
@@ -270,9 +256,12 @@ export class ChatMessageEditor {
 
     public dispose() {
         this.input.removeEventListener('paste', this.inputPasteListener);
+        this.input.removeEventListener('focusin', this.inputFocusInListener);
+        this.input.removeEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
-        this.recordButtonObserver.disconnect();
+        this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
+        this.notifyPanelObserver.disconnect();
     }
 }
 

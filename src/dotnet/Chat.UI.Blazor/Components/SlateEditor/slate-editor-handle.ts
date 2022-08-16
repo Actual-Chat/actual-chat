@@ -2,9 +2,11 @@ import { MarkupNode } from './slate-editor-core';
 
 export class SlateEditorHandle {
     private readonly mention : Mention
+    private placeholder : string;
 
     constructor() {
         this.mention = new Mention(this);
+        this.placeholder = '';
     }
 
     public getText = () : string => ""
@@ -29,7 +31,16 @@ export class SlateEditorHandle {
         return this.mention;
     }
 
-    public setPlaceholder = (placeholder: string) => {}
+    public getPlaceholder() : string {
+        return this.placeholder;
+    }
+
+    public setPlaceholder = (placeholder: string) => {
+        this.placeholder = placeholder;
+        this.onPlaceholderUpdated();
+    }
+
+    public onPlaceholderUpdated = () => {}
 
     public moveCursorToEnd = () => {}
 

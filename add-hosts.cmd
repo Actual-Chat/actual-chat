@@ -23,6 +23,10 @@
     set wd=%~dp0
     certutil -addstore -f "ROOT" "%wd%.config\local.actual.chat\ssl\local.actual.chat.crt"
 
+    REM dotnet dev certs
+    dotnet dev-certs https -ep $env:USERPROFILE\.aspnet\https\aspnetapp.pfx -p crypticpassword
+    dotnet dev-certs https --trust
+
     pause
     exit /b
 BATCH

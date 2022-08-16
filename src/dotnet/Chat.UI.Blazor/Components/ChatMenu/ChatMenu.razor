@@ -1,0 +1,22 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using BlazorContextMenu
+
+<RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
+    <ContextMenu Id="@MenuId">
+        <ChildContent>
+            @if (context.Data is Chat chat) {
+                <CascadingValue Value="@chat">
+                    <ChatMenuRecord/>
+                    <ChatMenuPin/>
+                    <ChatMenuPlayback/>
+                    <Seperator/>
+                    <ChatMenuLeave/>
+                </CascadingValue>
+            }
+        </ChildContent>
+    </ContextMenu>
+</RenderIntoStack>
+
+@code{
+    public const string MenuId = "menu-ChatMenu";
+}

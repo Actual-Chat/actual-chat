@@ -39,7 +39,7 @@
     protected override ComputedState<FailedRequirementSet>.Options GetStateOptions()
         => new() {
             InitialValue = FailedRequirementSet.Empty,
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = UpdateDelayer.MinDelay,
         };
 
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {

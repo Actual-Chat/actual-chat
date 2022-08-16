@@ -4,15 +4,17 @@
 <RequireAccount MustBeActive="false"/>
 <MainHeader>Joining via invite link</MainHeader>
 
-@if (_useResult is { } useResult) {
-    if (useResult.Error is { } error) {
-        <div>Failed to activate your account: @error.Message</div>
+<div class="text-03 ml-2 mt-1">
+    @if (_useResult is { } useResult) {
+        if (useResult.Error is { } error) {
+            <div>Failed to activate your account: @error.Message</div>
+        } else {
+            <div>Your account has been successfully activated!</div>
+        }
     } else {
-        <div>Your account has been successfully activated!</div>
+        <div>Processing activation code...</div>
     }
-} else {
-    <div>Processing activation code...</div>
-}
+</div>
 
 
 @code {

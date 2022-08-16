@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-public static class StandardError
+public static partial class StandardError
 {
     public static Exception NotFound(string message)
         => new KeyNotFoundException(message);

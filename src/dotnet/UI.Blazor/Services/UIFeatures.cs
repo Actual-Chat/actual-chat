@@ -11,8 +11,8 @@ public static class UIFeatures
         public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
             var blazorUISettings = services.GetRequiredService<BlazorUISettings>();
-            if (blazorUISettings.EnableIncompleteUI is { } enableIncompleteFeatures)
-                return enableIncompleteFeatures;
+            if (blazorUISettings.EnableIncompleteUI is { } enableIncompleteUI)
+                return enableIncompleteUI;
 
             var hostInfo = services.GetRequiredService<HostInfo>();
             if (!hostInfo.IsDevelopmentInstance)

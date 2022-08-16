@@ -14,7 +14,7 @@ public class LocalSettingsBackend : IBatchingKvasBackend
         => await JS.InvokeAsync<string?[]>(
             $"{BlazorUICoreModule.ImportName}.LocalSettings.getMany",
             cancellationToken,
-            keys);
+            new object[] { keys });
 
     public async Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
     {

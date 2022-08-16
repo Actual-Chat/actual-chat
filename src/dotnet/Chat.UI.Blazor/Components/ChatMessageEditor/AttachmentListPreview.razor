@@ -7,7 +7,7 @@
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="-flex-x overflow-hidden h-8 bg-04 rounded-full m-1">
-                            <ButtonRound Click="@(() => OnRemoveItemClicked(attachment))" Class="remove-attachment-btn">
+                            <ButtonRound Click="@(() => OnRemoveItemClick(attachment))" Class="remove-attachment-btn">
                                 <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
                                     <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M10 16C10 16.55 9.55 17 9 17C8.45 17 8 16.55 8 16V12C8 11.45 8.45 11 9 11C9.55 11 10 11.45 10 12V16ZM16 16C16 16.55 15.55 17 15 17C14.45 17 14 16.55 14 16V12C14 11.45 14.45 11 15 11C15.55 11 16 11.45 16 12V16ZM18 19C18 19.551 17.552 20 17 20H7C6.448 20 6 19.551 6 19V8H18V19ZM10 4.328C10 4.173 10.214 4 10.5 4H13.5C13.786 4 14 4.173 14 4.328V6H10V4.328ZM21 6H20H16V4.328C16 3.044 14.879 2 13.5 2H10.5C9.121 2 8 3.044 8 4.328V6H4H3C2.45 6 2 6.45 2 7C2 7.55 2.45 8 3 8H4V19C4 20.654 5.346 22 7 22H17C18.654 22 20 20.654 20 19V8H21C21.55 8 22 7.55 22 7C22 6.45 21.55 6 21 6Z"/>
                                 </svg>
@@ -33,12 +33,12 @@
             }
         </ul>
         <div class="relative flex-y self-center gap-y-8">
-            <ButtonRound Click="@(OnClearAllClicked)" Class="clear-attachments-btn" Title="Clear All">
+            <ButtonRound Click="OnClearAllClick" Class="clear-attachments-btn" Title="Clear All">
                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
                     <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M10 16C10 16.55 9.55 17 9 17C8.45 17 8 16.55 8 16V12C8 11.45 8.45 11 9 11C9.55 11 10 11.45 10 12V16ZM16 16C16 16.55 15.55 17 15 17C14.45 17 14 16.55 14 16V12C14 11.45 14.45 11 15 11C15.55 11 16 11.45 16 12V16ZM18 19C18 19.551 17.552 20 17 20H7C6.448 20 6 19.551 6 19V8H18V19ZM10 4.328C10 4.173 10.214 4 10.5 4H13.5C13.786 4 14 4.173 14 4.328V6H10V4.328ZM21 6H20H16V4.328C16 3.044 14.879 2 13.5 2H10.5C9.121 2 8 3.044 8 4.328V6H4H3C2.45 6 2 6.45 2 7C2 7.55 2.45 8 3 8H4V19C4 20.654 5.346 22 7 22H17C18.654 22 20 20.654 20 19V8H21C21.55 8 22 7.55 22 7C22 6.45 21.55 6 21 6Z"/>
                 </svg>
             </ButtonRound>
-            <ButtonRound Click="@(Post)" Class="post-attachments-btn" Title="Clear All">
+            <ButtonRound Click="Post" Class="post-attachments-btn" Title="Clear All">
                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M15 17.835L13.144 12.268L18.712 6.699L15 17.835ZM17.298 5.285L11.73 10.853L6.162 8.997L17.298 5.285ZM21.99 2.945C21.985 2.852 21.968 2.762 21.937 2.675C21.927 2.644 21.916 2.614 21.902 2.584C21.854 2.477 21.793 2.376 21.707 2.29C21.621 2.204 21.52 2.143 21.412 2.095C21.383 2.081 21.354 2.07 21.323 2.06C21.234 2.029 21.143 2.011 21.048 2.006C21.026 2.005 21.006 2 20.983 2C20.883 2.002 20.782 2.016 20.684 2.048L2.684 8.048C2.275 8.185 2 8.566 2 8.997C2 9.428 2.275 9.81 2.684 9.946L11.209 12.788L14.052 21.314C14.188 21.722 14.569 21.997 15 21.997C15.431 21.997 15.812 21.722 15.948 21.314L21.948 3.314C21.98 3.215 21.995 3.115 21.996 3.015C21.997 2.991 21.991 2.969 21.99 2.945Z"/>
                 </svg>
@@ -58,7 +58,7 @@
     public IReadOnlyCollection<Attachment> GetAttachments()
         => _attachments;
 
-    public void OnClearAllClicked() {
+    public void OnClearAllClick() {
         ClearAllRequested.InvokeAsync(_attachments);
         Clear();
     }
@@ -91,7 +91,7 @@
         return true;
     }
 
-    private void OnRemoveItemClicked(Attachment attachment) {
+    private void OnRemoveItemClick(Attachment attachment) {
         RemoveRequested.InvokeAsync(attachment);
         _attachments = _attachments.Remove(attachment);
     }

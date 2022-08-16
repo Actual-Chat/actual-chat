@@ -4,15 +4,19 @@
     var m = State.LatestNonErrorValue;
     var userAuthor = m.UserAuthor;
     if (userAuthor == null) {
-        if (ReferenceEquals(m, Model.Unavailable))
-            Nav.Unavailable("user");
+        if (ReferenceEquals(m, Model.Unavailable)) {
+            <RequireUserAuthor/>
+            return;
+        }
+        // Model isn't loaded yet
         return;
     }
 }
 
 <RequireAccount/>
 <MainHeader>
-    <span class="text-03">User: @userAuthor.Name</span>
+    <span>User:&nbsp;</span>
+    <span class="text-01">@userAuthor.Name</span>
 </MainHeader>
 
 <div class="user-info_badge">
@@ -66,15 +70,6 @@
         };
     }
 
-    public sealed record Model {
-        public static Model None { get; } = new();
-        public static Model Unavailable { get; } = new();
-
-        public UserAuthor? UserAuthor { get; init; }
-        public bool CanAddContact { get; init; }
-        public bool CanSendMessage { get; init; }
-    }
-
     private async Task OnAddContactClick() {
         if (IsAddingContact)
             return;
@@ -94,5 +89,16 @@
         if (peerChatId.IsNullOrEmpty())
             return;
         Nav.NavigateTo(Links.ChatPage(peerChatId));
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+        public static Model Unavailable { get; } = new();
+
+        public UserAuthor? UserAuthor { get; init; }
+        public bool CanAddContact { get; init; }
+        public bool CanSendMessage { get; init; }
     }
 }

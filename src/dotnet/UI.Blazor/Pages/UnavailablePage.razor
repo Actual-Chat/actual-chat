@@ -3,9 +3,7 @@
 
 <MainHeader>Unavailable</MainHeader>
 
-<div>
-    This @(What.NullIfEmpty() ?? "page") doesn't exist.
-</div>
+This @(What.NullIfEmpty() ?? "page") doesn't exist.
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;

@@ -6,7 +6,7 @@
         var cls = m == theme ? "on" : "";
         return
             @<button type="button"
-                     class="block bg-04 rounded-md w-full h-10 @cls"
+                     class="@cls block bg-04 rounded-md w-full h-10"
                      onclick="@(() => SetTheme(theme))">
                 <div class="flex-x self-center items-center px-1">
                     <Dot/>

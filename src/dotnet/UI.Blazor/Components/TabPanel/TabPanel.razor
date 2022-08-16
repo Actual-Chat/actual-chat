@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="tab-panel @Class">
-        <div class="tab-panel-tabs @TabsClass" role="tablist">
+    <div class="@Class tab-panel">
+        <div class="@TabsClass tab-panel-tabs" role="tablist">
             <div class="relative btn-group min-w-full">
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
@@ -13,7 +13,7 @@
                     </Button>
                     @if (BottomHill) {
                         var lineCls = isActive ? "bg-primary" : "bg-transparent";
-                        <div class="shape @lineCls"></div>
+                        <div class="@lineCls shape"></div>
                     }
                 </div>
             }
@@ -32,7 +32,7 @@
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public EventCallback<Tab> ActiveTabChanged { get; set; }
+    [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
     public Tab? ActiveTab {
@@ -50,4 +50,13 @@
         ActiveTab ??= tab;
         StateHasChanged();
     }
+
+    public void UnregisterTab(Tab tab) {
+        var tabIndex = _tabs.IndexOf(tab);
+        _tabs.Remove(tab);
+        tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
+        ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
+        StateHasChanged();
+    }
+
 }

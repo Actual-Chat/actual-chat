@@ -13,10 +13,12 @@ public interface IUserContactsBackend : IComputeService
     public Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task<UserContact> CreateContact(CreateContactCommand command, CancellationToken cancellationToken);
+    public Task<UserContact?> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record CreateContactCommand(
-        [property: DataMember] UserContact Contact
-    ) : ICommand<UserContact>, IBackendCommand;
+    public sealed record ChangeCommand(
+        [property: DataMember] Symbol Id,
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] Change<UserContactDiff> Change
+    ) : ICommand<UserContact?>;
 }

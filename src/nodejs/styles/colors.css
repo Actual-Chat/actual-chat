@@ -7,6 +7,8 @@
     --background-04: #E7E7E7;
     --background-05: #444444;
     --background-06: #626262;
+    --background-07: var(--primary);
+    --background-08: #B9B9B9;
 
     --text-01: #000000;
     --text-02: #444444;
@@ -73,7 +75,7 @@
     --recorder-on: #FF7070;
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
-    --message-hover: #f3f4f6;
+    --message-hover: #F8FBFE;
     --mention: #fed7aa;
     --mention-hover: #fb923c;
     --mention-message: #fff7ed;

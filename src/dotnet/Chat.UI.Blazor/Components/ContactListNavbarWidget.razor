@@ -1,8 +1,9 @@
+@using BlazorContextMenu
 @inherits ComputedStateComponent<ContactListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
     var mustPlayPinned = m.MustPlayPinned;
-    var isPlaying = mustPlayPinned && m.IsPlaying;
+    var isPlaying = mustPlayPinned && m.IsListening;
     var mustPlayPinnedClass = "pin-toggle play-pinned"
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
@@ -12,45 +13,77 @@
              Url="@($"/chat/{c.ShortChatId.UrlEncode()}")"
              IsOnline="@c.IsOnline"
              IsActive="@(m.ActiveChatId == c.ShortChatId || m.ActiveChatId == c.FullChatId)">
-            <ChildContent>@c.Contact.Name</ChildContent>
+            <ChildContent>
+                <div class="flex-x items-center gap-x-2">
+                    <UserAuthorCircle UserId="@c.UserId" ShowsPresence="true"/>
+                    <div>@c.Contact.Name</div>
+                </div>
+            </ChildContent>
             <Ending>
-                <ChatListPinToggle ChatId="@c.FullChatId"/>
-                <ChatListRecordingToggle ChatId="@c.FullChatId"/>
+                <ChatListPlaybackToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
+                <ChatListRecordingToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
+                <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@c.Contact">
+                    <div class="flex">
+                        <Button Class="btn-round chat-menu-btn blackout">
+                            <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 7C13.104 7 14 6.104 14 5C14 3.896 13.104 3 12 3C10.896 3 10 3.896 10 5C10 6.104 10.896 7 12 7ZM12 10C10.896 10 10 10.896 10 12C10 13.104 10.896 14 12 14C13.104 14 14 13.104 14 12C14 10.896 13.104 10 12 10ZM10 19C10 17.896 10.896 17 12 17C13.104 17 14 17.896 14 19C14 20.104 13.104 21 12 21C10.896 21 10 20.104 10 19Z"/>
+                            </svg>
+                        </Button>
+                        <div class="fixed -right-2">
+                            <div class="placement -mt-2">
+                                @* <div class="bg-blue-500 w-6 h-6"></div> *@
+                            </div>
+                        </div>
+                    </div>
+                </ContextMenuToggleTrigger>
             </Ending>
         </NavbarItem>;
+
+    RenderFragment RenderTab(ContactGroup group, string title) =>
+        @<Tab Title="@title" Id="@group.ToString()" Class="flex-y relative overflow-y-hidden h-full contacts-tab">
+            <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+                @if (group == Group.Value) {
+                    @if (m.PinnedContacts.Length > 0) {
+                        <div class="pinned-contacts">
+                            @foreach (var c in m.PinnedContacts) {
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
+                                    @RenderItem(c)
+                                </ContextMenuTrigger>
+                            }
+                        </div>
+                        <div class="mx-4 mb-2 border-b border-bg-04"></div>
+
+                        if (m.UnpinnedContacts.Length > 0) {
+                            <div class="unpinned-contacts custom-scrollbar">
+                                @foreach (var c in m.UnpinnedContacts) {
+                                    <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
+                                        @RenderItem(c)
+                                    </ContextMenuTrigger>
+                                }
+                            </div>
+                        }
+                    } else {
+                        <div class="unpinned-contacts custom-scrollbar">
+                            @foreach (var c in m.UnpinnedContacts) {
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
+                                    @RenderItem(c)
+                                </ContextMenuTrigger>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </Tab>;
 }
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
-        @if (m.PinnedContacts.Length > 0) {
-            <NavbarSubgroup Class="first">
-                <ChildContent>Pinned</ChildContent>
-                <Ending>
-                    <ButtonSquare
-                        Class="@mustPlayPinnedClass"
-                        Click="@(() => ChatUI.MustPlayPinnedContactChats.Value = !mustPlayPinned)"
-                        Title="When listening, also listen all pinned contact chats">
-                        <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-                            @if (mustPlayPinned) {
-                                <path d="M 0 24 C 0 17.021 7.555 12.66 13.599 16.149 C 16.403 17.768 18.131 20.762 18.131 24 L 0 24 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 23.285 -0.042 C 24.371 2.147 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z" style=""></path>
-                            } else {
-                                <path d="M 23.285 -0.042 C 24.371 2.1470000000000002 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 11.428 15.146 L 11.428 24 L 0 24 C -0.001 18.022 5.639 13.651 11.428 15.146 Z M 9.142 13.714 C 5.355 13.714 2.286 10.645 2.286 6.8580000000000005 C 2.286 3.069 5.355 0 9.142 0 C 12.931000000000001 0 15.999 3.069 15.999 6.8580000000000005 C 15.999 10.645 12.931000000000001 13.714 9.142 13.714 Z M 15.999 18.286 L 15.999 14.857 L 18.284 14.857 L 18.284 18.286 L 21.713 18.286 L 21.713 20.571 L 18.284 20.571 L 18.284 24 L 15.999 24 L 15.999 20.571 L 12.571 20.571 L 12.571 18.286 L 15.999 18.286 Z" style=""></path>
-                            }
-                        </svg>
-                    </ButtonSquare>
-                </Ending>
-            </NavbarSubgroup>
-            foreach (var c in m.PinnedContacts)
-                @RenderItem(c)
-            if (m.UnpinnedContacts.Length > 0) {
-                <NavbarSubgroup>Unpinned</NavbarSubgroup>
-                foreach (var c in m.UnpinnedContacts)
-                    @RenderItem(c)
-            }
-        } else {
-            foreach (var c in m.UnpinnedContacts)
-                @RenderItem(c)
-        }
+        <TabPanel BottomHill="true" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
+            @RenderTab(ContactGroup.All, "All")
+            @RenderTab(ContactGroup.Recent, "Recent")
+            @RenderTab(ContactGroup.Favorites, "Favorites")
+        </TabPanel>
+        <ContactMenu/>
     </ChildContent>
 </NavbarGroup>
 
@@ -59,6 +92,15 @@
     [Inject] private IUserContacts Contacts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
+    private IMutableState<ContactGroup> Group { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+
+        Group = StateFactory.NewMutable<ContactGroup>();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -67,7 +109,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userContacts = await Contacts.GetAll(Session, cancellationToken).ConfigureAwait(false);
+        var group = await Group.Use(cancellationToken).ConfigureAwait(false);
+        var userContacts = await ListContacts(group, cancellationToken);
+        var criteria = await SearchUI.Criteria.Use(cancellationToken).ConfigureAwait(false);
+        if (!criteria.IsNullOrEmpty())
+            userContacts = userContacts.Where(x => x.Name.Contains(criteria)).ToImmutableArray();
+
         var contacts = await userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
@@ -75,6 +122,7 @@
                     IsOnline = presence is Presence.Online or Presence.Recording,
                     FullChatId = ParsedChatId.FormatFullPeerChatId(userContact.OwnerUserId, userContact.TargetUserId),
                     ShortChatId = ParsedChatId.FormatShortPeerChatId(userContact.TargetUserId),
+                    UserId = userContact.TargetUserId,
                 };
             })
             .Collect()
@@ -82,25 +130,39 @@
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.FullChatId))
+            .Where(c => pinnedChatIds.ContainsKey(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.FullChatId))
+            .Where(c => !pinnedChatIds.ContainsKey(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var mustPlayPinned = await ChatUI.MustPlayPinnedContactChats.Use(cancellationToken).ConfigureAwait(false);
+        var isListening = await ChatUI.IsListening(activeChatId, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             PinnedContacts = pinnedContacts,
             UnpinnedContacts = unpinnedContacts,
             ActiveChatId = activeChatId,
-            IsPlaying = isPlaying,
-            MustPlayPinned = mustPlayPinned,
+            IsListening = isListening,
         };
+    }
+
+    private async Task<ImmutableArray<UserContact>> ListContacts(ContactGroup group, CancellationToken cancellationToken)
+    {
+        var contacts = await Contacts.List(Session, cancellationToken);
+        switch (group) {
+            case ContactGroup.All:
+                return contacts;
+            case ContactGroup.Favorites:
+                return contacts.Where(x => x.IsFavorite).ToImmutableArray();
+            case ContactGroup.Recent:
+                var recent = await RecentEntries.ListUserContactIds(Session, 20, cancellationToken).ConfigureAwait(false);
+                return contacts.Where(x => recent.Contains(x.Id)).ToImmutableArray();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(group), group, null);
+        }
     }
 
     public sealed record Model {
@@ -109,7 +171,7 @@
         public ContactModel[] PinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public ContactModel[] UnpinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public Symbol ActiveChatId { get; init; }
-        public bool IsPlaying { get; init; }
+        public bool IsListening { get; init; }
         public bool MustPlayPinned { get; init; }
     }
 
@@ -117,5 +179,10 @@
         public string FullChatId { get; init; } = "";
         public string ShortChatId { get; init; } = "";
         public bool IsOnline { get; init; }
+        public string UserId { get; init; } = "";
     };
+
+    private void OnActiveTabChanged(Tab? tab) {
+        Group.Value = tab == null ? ContactGroup.All : Enum.Parse<ContactGroup>(tab.Id);
+    }
 }

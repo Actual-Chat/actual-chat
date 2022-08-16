@@ -1,9 +1,5 @@
-.chat-page {
-    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
-}
-
 .message-wrapper {
-    @apply flex-x relative;
+    @apply flex-x relative w-full;
     @apply border-l-2 border-bg-01;
 }
 .message-wrapper:hover {
@@ -11,9 +7,6 @@
 }
 .message-wrapper:hover .author-badge {
     @apply bg-message-hover;
-}
-.message-wrapper:hover .context-menu-old-button.show-on-hover {
-    @apply visible;
 }
 .message-wrapper.own-message {
     @apply border-l-2 border-own-message-hover bg-own-message;
@@ -36,7 +29,7 @@
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-current break-all;
+    @apply text-current break-words;
 }
 
 .chat-message-modal .chat-message:hover {
@@ -59,7 +52,7 @@
 }
 
 .chat-quote {
-    @apply flex w-full bg-04 py-2 px-6 text-base rounded-full;
+    @apply flex w-full bg-secondary-hover py-2 px-6 text-base rounded-md;
 }
 .chat-quote .btn.btn-square {
     @apply bg-02;
@@ -69,9 +62,13 @@
 }
 
 .quoted-message {
-    @apply flex-x items-center mt-1;
+    @apply px-1.5 opacity-75;
+    @apply flex-x items-center mt-1 gap-x-1;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-03 cursor-pointer;
+}
+.quoted-message * {
+    @apply max-h-5 flex-x;
 }
 
 .chat-message-quoted {
@@ -126,37 +123,91 @@
     @apply visible;
 }
 
+.chat-message-markup {
+    @apply text-02;
+    word-break: break-all;
+}
+
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
-}
-
-.chat-message:hover .chat-message-menu .context-menu-old-button {
-    @apply visible;
-}
-
-.chat-message-menu .context-menu-old-menu {
-    @apply absolute z-10 right-16 -mt-3 -mr-2;
-    @apply rounded-xl;
-    @apply shadow-context border border-context-border bg-01;
-}
-.chat-message-menu .context-menu-old-menu-inner {
-    @apply p-0;
 }
 .chat-message-menu .menu-item {
     @apply h-8 text-left w-full;
 }
 
-.chat-message-markup .playable {
-    @apply cursor-pointer;
-    transition: color 300ms ease-in, text-shadow 300ms ease-in;
+.chat-message-markup .chat-entry-type-markup {
+    @apply inline-block relative top-0.5 mr-2;
 }
 
-.chat-message-markup .playable:hover {
-    text-shadow: 0 0 2px var(--glow-max), 0 0 4px var(--glow-mid), 0 0 8px var(--glow-min);
+.chat-message-transcript {
+    @apply text-02 whitespace-normal;
+    @apply underline decoration-dotted decoration-audio-message;
 }
 
-.chat-message-markup .playing {
-    text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
+.playable-text-markup {
+}
+
+.playable-text-markup > span {
+    @apply inline-block cursor-pointer;
+}
+
+.playable-text-markup > span:hover {
+}
+
+.playable-text-markup .playing-start {
+    border-radius: 6px 0 0 6px;
+}
+
+.playable-text-markup .playing-end {
+    border-radius: 0 6px 6px 0;
+}
+
+.playable-text-markup .playing-start-end {
+    border-radius: 6px;
+}
+
+.playable-text-markup .played-start {
+    border-radius: 6px 0 0 0;
+}
+
+.playable-text-color-blue .playing {
+    background: #2970FF;
+    color: white;
+}
+
+.playable-text-color-blue .played {
+    background: #E1EFFA;
+}
+
+.playable-text-color-green .playing {
+    background: #13BA6A;
+    color: white;
+}
+
+.playable-text-color-green .played {
+    background: #B8FFDD;
+}
+
+.playable-text-color-purple .playing {
+    background: #5429FF;
+    color: white;
+}
+
+.playable-text-color-purple .played {
+    background: #E6E0FF;
+}
+
+.playable-text-color-cyan .playing {
+    background: #00B1D8;
+    color: white;
+}
+
+.playable-text-color-cyan .played {
+    background: #D3F7FF;
+}
+
+.plain-text-markup {
+    word-break: break-word;
 }
 
 .chat-header-title:hover {
@@ -171,15 +222,22 @@
     @apply bg-04 text-02 rounded-md;
 }
 
-.message-menu-button {
-    @apply h-8 w-12 right-4 -mt-3 bg-01;
-    @apply rounded-r-lg rounded-l-lg border-r border-t border-b border-l;
-    @apply border-bg-03 shadow-context;
+.message-hover-menu {
+    @apply absolute z-20 right-2 -mt-6 p-1 mx-0 flex-x gap-x-0.5;
+    @apply rounded-full bg-01 border border-bg-03;
+    @apply invisible;
+}
+.message-wrapper:hover .message-hover-menu {
+    @apply invisible md:visible;
+}
+.message-hover-menu .btn.btn-round .btn-content {
+    @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
+}
+.message-hover-menu .btn.btn-round:hover .btn-content {
+    @apply bg-round-hover;
 }
 
-.message-menu-button.show {
-    @apply visible z-20 absolute bg-context-menu ;
-}
 .message-attachment-image img.skeleton {
     @apply bg-skeleton rounded-md animate-pulse;
 }
+

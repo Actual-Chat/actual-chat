@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<SkeletonContainer Class="flex flex-nowrap items-stretch content-start justify-start flex-col">
+    @if (Skeleton != null) {
+        @for (var i = 0; i < SkeletonCount; ++i) {
+            <div @key="@i" class="skeleton">
+                @Skeleton(i)
+            </div>
+        }
+    }
+</SkeletonContainer>
+
+@code {
+    [Parameter] public int SkeletonCount { get; set; }
+    [Parameter] [EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
+}

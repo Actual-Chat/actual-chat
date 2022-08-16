@@ -1,0 +1,19 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using BlazorContextMenu
+
+<RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
+    <ContextMenu Id="@MenuId">
+        <ChildContent>
+            @if (context.Data is UserContact userContact) {
+                <CascadingValue Value="@userContact">
+                    <ContactMenuAddToFavorites/>
+                    <ContactMenuPin/>
+                </CascadingValue>
+            }
+        </ChildContent>
+    </ContextMenu>
+</RenderIntoStack>
+
+@code{
+    public const string MenuId = "menu-ContactMenu";
+}
