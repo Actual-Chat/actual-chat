@@ -14,6 +14,7 @@ public class ChatUIStateSync : WorkerBase
     private IChatUserSettings? _chatUserSettings;
     private AudioRecorder? _audioRecorder;
     private AudioSettings? _chatSettings;
+    private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
     private UserInteractionUI? _userInteractionUI;
     private IJSRuntime? _js;
@@ -30,6 +31,7 @@ public class ChatUIStateSync : WorkerBase
     private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
+    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
     private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
@@ -168,7 +170,7 @@ public class ChatUIStateSync : WorkerBase
             var mustKeepAwake = cUpdate.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 // TODO(AY): Send this update to JS
-                await JS.InvokeVoidAsync($"{JSConstants.SharedJSModuleName}.setNoSleepEnabled", cancellationToken, mustKeepAwake).ConfigureAwait(false);
+                await KeepAwakeUI.SetNoSleepEnabled(mustKeepAwake, cancellationToken);
                 lastMustKeepAwake = mustKeepAwake;
             }
         }

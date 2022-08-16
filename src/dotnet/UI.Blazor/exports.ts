@@ -34,6 +34,7 @@ export * from './Components/SideNav/side-nav';
 export * from './Layouts/base-layout';
 
 export * from './messaging-init';
+export * from './keep-screen-awake';
 export * from './theme';
 
 export * from './Components/FileUpload/file-upload';

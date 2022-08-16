@@ -82,6 +82,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
         services.AddScoped<ThemeUI>();
+        services.AddScoped<KeepAwakeUI>();
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
