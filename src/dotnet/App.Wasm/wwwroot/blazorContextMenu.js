@@ -200,10 +200,18 @@ var blazorContextMenu = function (blazorContextMenu) {
                         if (autoHideEvent === 'escape')
                             blazorContextMenu.Hide(currentMenu.id);
                         else if (menuElement.dataset["autohideevent"] == autoHideEvent) {
+                            var mustClose = false;
                             var clickedInsideMenu = menuElement.contains(e.target);
                             var clickedInsideToggle = currentMenu.toggle && currentMenu.toggle.contains(e.target);
-                            if (!(clickedInsideMenu || clickedInsideToggle)) {
-                                blazorContextMenu.Hide(currentMenu.id);
+                            var clickedMenuItem = e.target.closest('.blazor-context-menu__item');
+                            if (!(clickedInsideMenu || clickedInsideToggle))
+                                mustClose = true;
+                            else if (clickedInsideMenu && !clickedMenuItem.classList.contains('.blazor-context-menu__item--with-submenu'))
+                                mustClose = true;
+                            if (mustClose) {
+                                setTimeout(() => {
+                                    blazorContextMenu.Hide(currentMenu.id);
+                                }, 200)
                             }
                         }
                     }

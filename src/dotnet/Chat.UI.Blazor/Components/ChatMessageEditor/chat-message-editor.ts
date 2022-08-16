@@ -70,7 +70,9 @@ export class ChatMessageEditor {
     });
 
     private inputFocusOutListener = ((event: Event & { target: Element; }) => {
-        this.editorDiv.classList.remove('narrow-panel');
+        setTimeout(() => {
+            this.editorDiv.classList.remove('narrow-panel');
+        }, 200)
     });
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
