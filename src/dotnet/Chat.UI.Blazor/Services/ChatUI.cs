@@ -100,24 +100,33 @@ public partial class ChatUI
     }
 
     public void SetPinState(Symbol chatId, bool mustPin)
-        => PinnedChatIds.Set(pinnedChatIdsResult => {
+    {
+        if (chatId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+        PinnedChatIds.Set(pinnedChatIdsResult => {
             var pinnedChatIds = pinnedChatIdsResult.Value;
             return mustPin
                 ? pinnedChatIds.Add(chatId, Clocks.SystemClock.Now)
                 : pinnedChatIds.Remove(chatId);
         });
+    }
 
-    public void SetListeningState(string chatId, bool mustListen)
-        => ListeningChatIds.Set(rListeningChatIds => {
+    public void SetListeningState(Symbol chatId, bool mustListen)
+    {
+        if (chatId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+        ListeningChatIds.Set(rListeningChatIds => {
             var listeningChatIds = rListeningChatIds.ValueOrDefault ?? ImmutableList<Symbol>.Empty;
             if (!mustListen)
                 return listeningChatIds.Remove(chatId);
             if (listeningChatIds.Contains(chatId))
                 return listeningChatIds;
+
             if (listeningChatIds.Count >= 4)
                 listeningChatIds = listeningChatIds.RemoveAt(0);
             return listeningChatIds.Add(chatId);
         });
+    }
 
     public void ShowChatAuthorModal(string authorId)
         => ModalUI.Show(new ChatAuthorModal.Model(authorId));
