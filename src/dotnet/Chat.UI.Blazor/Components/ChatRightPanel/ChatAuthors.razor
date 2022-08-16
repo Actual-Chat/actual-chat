@@ -56,7 +56,7 @@
     }
 
     private void OnChatAuthorClick(string authorId)
-        => ModalUI.Show(new ChatAuthorDialog.Model(authorId));
+        => ModalUI.Show(new ChatAuthorModal.Model(authorId));
 
     private void OnSelfClick()
         => ModalUI.Show(new AuthorSettingsModal.Model(Chat));

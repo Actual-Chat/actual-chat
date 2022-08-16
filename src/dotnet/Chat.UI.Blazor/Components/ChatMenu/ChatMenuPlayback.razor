@@ -1,16 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
-@inherits ComputedStateComponent<ChatMenuPlayback.Model>
+@inherits ComputedStateComponent<SingleChatPlaybackState>
 
 @{
-    var m = State.ValueOrDefault ?? Model.None;
+    var m = State.ValueOrDefault ?? SingleChatPlaybackState.None;
     var playingHistoricalClass = m.IsPlayingHistorical ? " opacity-60" : "";
-    var cls = "context-menu-item play " + (m.IsPlayingActive ? "on" : "off") + playingHistoricalClass;
-    var isListening = m.IsPlayingActive || m.IsPlayingHistorical;
+    var cls = "context-menu-item play " + (m.IsListening ? "on" : "off") + playingHistoricalClass;
+    var isListening = m.IsListening || m.IsPlayingHistorical;
 }
 
 @if (!isListening) {
-    <Item OnClick="@OnPlaybackClick" CssClass="@cls">
+    <Item OnClick="@OnListenClick" CssClass="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
@@ -23,7 +23,7 @@
         </div>
     </Item>
 } else {
-    <Item OnClick="@OnPlaybackClick" CssClass="@cls">
+    <Item OnClick="@OnListenClick" CssClass="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
@@ -44,35 +44,17 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    private void OnPlaybackClick()
-        => ChatUI.IsPlaying.Value = State.ValueOrDefault is {IsPlayingActive: false };
+    private void OnListenClick() {
+        var isListening = State.ValueOrDefault is { IsListening: true };
+        ChatUI.SetListeningState(ChatId, !isListening);
+    }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = SingleChatPlaybackState.None,
             UpdateDelayer = UpdateDelayer.ZeroDelay,
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isPlayingActive = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
-        if (!isPlayingActive)
-            return new Model {
-                IsPlayingActive = isPlayingActive,
-                IsPlayingHistorical = isPlayingHistorical,
-            };
-
-        return new Model {
-            IsPlayingActive = isPlayingActive,
-            IsPlayingHistorical = isPlayingHistorical,
-        };
-    }
-
-    public sealed record Model {
-        public static Model None { get; } = new();
-
-        public bool IsPlayingActive { get; init; }
-        public bool IsPlayingHistorical { get; init; }
-    }
+    protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetSingleChatPlaybackState(ChatId, cancellationToken);
 }

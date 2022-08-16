@@ -6,19 +6,19 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ModalUI
 {
-    private readonly IModalService _modalService;
-    private readonly IMatchingTypeFinder _matchingTypeFinder;
+    private IModalService ModalService { get; }
+    private IMatchingTypeFinder MatchingTypeFinder { get; }
 
     public ModalUI(IModalService modalService, IMatchingTypeFinder matchingTypeFinder)
     {
-        _modalService = modalService;
-        _matchingTypeFinder = matchingTypeFinder;
+        ModalService = modalService;
+        MatchingTypeFinder = matchingTypeFinder;
     }
 
     public IModalReference Show<TModel>(TModel model)
         where TModel : class
     {
-        var componentType = _matchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
+        var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
         if (componentType == null)
             throw StandardError.NotFound<IModalView>(
                 $"No modal view component for '{model.GetType()}' model.");
@@ -29,6 +29,6 @@ public sealed class ModalUI
         };
         var modalParameters = new ModalParameters();
         modalParameters.Add(nameof(IModalView<TModel>.ModalModel), model);
-        return _modalService.Show(componentType, "", modalParameters, modalOptions);
+        return ModalService.Show(componentType, "", modalParameters, modalOptions);
     }
 }

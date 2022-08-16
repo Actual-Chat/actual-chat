@@ -34,6 +34,7 @@
     <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-statistics.ts" />
     <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-accessor.ts" />
     <TypeScriptCompile Include="Layouts\base-layout.ts" />
+    <TypeScriptCompile Include="Services\UserInteraction\user-interaction.ts" />
     <TypeScriptCompile Include="theme.ts" />
   </ItemGroup>
 

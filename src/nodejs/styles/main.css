@@ -60,8 +60,8 @@ label {
 }
 
 code {
-    @apply px-0.5;
     @apply rounded-sm border border-bg-03;
+    @apply px-0.5;
     @apply bg-01;
     @apply font-mono;
 }

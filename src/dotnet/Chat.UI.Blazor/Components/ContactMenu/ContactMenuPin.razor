@@ -43,13 +43,11 @@
     private string ChatId => ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return pinnedChatIds.ContainsKey(ChatId);
-    }
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.IsPinned(ChatId, cancellationToken);
 
     private void Toggle()
-        => ChatUI.TogglePinState(ChatId);
+        => ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
 }

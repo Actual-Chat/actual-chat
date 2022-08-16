@@ -2,7 +2,8 @@ import { Disposable } from 'disposable';
 
 const LogScope = 'FirstInteraction';
 
-const _handlers = new Array<Handler>();
+const _interactionHandlers = new Array<Handler>();
+const _postInteractionHandlers = new Array<() => void>();
 let _isInteractionHappened = false;
 
 export class Handler implements Disposable {
@@ -41,9 +42,9 @@ export class Handler implements Disposable {
         if (this.isDisposed)
             return;
         this.isDisposed = true;
-        const index = _handlers.indexOf(this);
+        const index = _interactionHandlers.indexOf(this);
         if (index >= 0)
-            _handlers.splice(index, 1);
+            _interactionHandlers.splice(index, 1);
     }
 }
 
@@ -53,20 +54,41 @@ export function isInteractionHappened() : boolean {
 
 export function addInteractionHandler(name: string, handler: () => Promise<boolean>): Handler {
     const h = new Handler(name, handler);
-    _handlers.push(h);
+    _interactionHandlers.push(h);
     if (_isInteractionHappened)
-        runHandlers();
+        runInteractionHandlers();
     return h;
 }
 
-function runHandlers() {
-    for (const handler of _handlers)
+export function addPostInteractionHandler(handler: () => void): void {
+    _postInteractionHandlers.push(handler);
+    if (_isInteractionHappened)
+        runPostInteractionHandlers();
+}
+
+export function removePostInteractionHandler(handler: () => void): boolean {
+    const index = _postInteractionHandlers.indexOf(handler);
+    if (index < 0)
+        return false;
+    _postInteractionHandlers.splice(index, 1);
+    return true;
+}
+
+function runInteractionHandlers() {
+    for (const handler of _interactionHandlers)
         void handler.run();
 }
 
+function runPostInteractionHandlers() {
+    while (_postInteractionHandlers.length > 0) {
+        const handler = _postInteractionHandlers.pop();
+        handler();
+    }
+}
+
 function onEvent(eventName: string, event: object) {
-    console.log(`${LogScope}.onEvent: triggered with event '${eventName}', data =`, event);
-    runHandlers();
+    console.debug(`${LogScope}.onEvent: triggered with event '${eventName}', data =`, event);
+    runInteractionHandlers();
 }
 
 function onInteractionHappened() {
@@ -77,6 +99,7 @@ function onInteractionHappened() {
     self.removeEventListener('doubleclick', onDoubleClick);
     self.removeEventListener('onkeydown', onKeyDown);
     self.removeEventListener('touchend',  onTouchEnd);
+    runPostInteractionHandlers();
 }
 
 const onClick = (event: object) => onEvent('click', event)

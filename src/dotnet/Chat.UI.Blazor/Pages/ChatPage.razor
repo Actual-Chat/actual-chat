@@ -117,10 +117,8 @@
         var chat = await Chats.Get(Session, ChatId, default);
         if (chat != null)
             fullChatId = chat.Id;
-        if (ChatUI.ActiveChatId.Value != fullChatId) {
+        if (ChatUI.ActiveChatId.Value != fullChatId)
             ChatUI.ActiveChatId.Value = fullChatId;
-            LocalSettings.SetActiveChatId(ChatId);
-        }
         await base.OnParametersSetAsync();
     }
 
