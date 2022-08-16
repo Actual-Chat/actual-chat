@@ -1,7 +1,7 @@
 @using Stl.Extensibility
-@implements IModalView<ChatAuthorDialog.Model>
+@implements IModalView<ChatAuthorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
-@inherits ComputedStateComponent<ChatAuthorDialog.ComputedModel>
+@inherits ComputedStateComponent<ChatAuthorModal.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
     var title = $"User: {m.Author.Name}";

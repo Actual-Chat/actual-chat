@@ -4,7 +4,7 @@ const DebugMode: boolean = true;
 export class LocalSettings {
     private static _isInitialized: boolean = false;
 
-    public static initialize() {
+    public static initialize(): void {
         if (LocalSettings._isInitialized)
             return
         const tagKey = ".App.sessionHash";
@@ -18,7 +18,7 @@ export class LocalSettings {
         }
     }
 
-    public static getMany(keys: string[]) {
+    public static getMany(keys: string[]): Array<string> {
         LocalSettings.initialize();
         const result = new Array<string>();
         if (DebugMode)
@@ -32,7 +32,7 @@ export class LocalSettings {
         return result;
     }
 
-    public static setMany(updates: Record<string, string>) {
+    public static setMany(updates: Record<string, string>): void {
         LocalSettings.initialize();
         if (DebugMode)
             console.debug(`${LogScope}: setMany(${Object.keys(updates).length} keys):`);

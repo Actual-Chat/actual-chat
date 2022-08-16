@@ -58,7 +58,7 @@
 @if (_isJoined && _isEntryAuthor && !Model.Entry.IsStreaming) {
     <Seperator/>
 
-    <Item OnClick="@(() => ChatUI.ShowDeleteMessageRequest(Model))" CssClass="context-menu-item warning-item">
+    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(Model))" CssClass="context-menu-item warning-item">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-trash text-xl"></i>

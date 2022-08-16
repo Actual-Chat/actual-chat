@@ -14,8 +14,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    private void OnClick() {
-        var listened = ChatUI.ListeningChatIds.ValueOrDefault;
-        ChatUI.ListeningChatIds.Value = listened.Remove(ChatId);
-    }
+    private void OnClick()
+        => ChatUI.SetListeningState(ChatId, false);
 }

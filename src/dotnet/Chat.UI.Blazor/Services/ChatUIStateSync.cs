@@ -1,5 +1,6 @@
 ﻿using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -8,12 +9,13 @@ public class ChatUIStateSync : WorkerBase
 {
     // All properties are resolved in lazy fashion because otherwise we'll get a dependency cycle
     private ILogger? _log;
-    private ChatUI? _chatUI;
     private ChatPlayers? _chatPlayers;
-    private AudioRecorder? _audioRecorder;
-    private IChatUserSettings? _chatUserSettings;
     private IChats? _chats;
+    private IChatUserSettings? _chatUserSettings;
+    private AudioRecorder? _audioRecorder;
     private AudioSettings? _chatSettings;
+    private ChatUI? _chatUI;
+    private UserInteractionUI? _userInteractionUI;
     private IJSRuntime? _js;
 
     private LanguageId? _lastLanguageId;
@@ -23,12 +25,13 @@ public class ChatUIStateSync : WorkerBase
     private IServiceProvider Services { get; }
     private Session Session { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
-    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
+    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
+    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
+    private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
     private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
@@ -61,8 +64,11 @@ public class ChatUIStateSync : WorkerBase
 
             var playbackStateValue = playbackState.Value;
             if (playbackStateValue is null or RealtimeChatPlaybackState) {
-                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState))
+                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
+                    if (!UserInteractionUI.IsInteractionHappened.Value)
+                        await UserInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
                     playbackState.Value = expectedPlaybackState;
+                }
             }
 
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
@@ -112,7 +118,7 @@ public class ChatUIStateSync : WorkerBase
                 // Update _lastLanguageId
                 await IsLanguageChanged().ConfigureAwait(false);
                 // Start recording = start realtime playback
-                ChatUI.IsPlaying.Value = true;
+                ChatUI.SetListeningState(recordingChatId, true);
             }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
@@ -144,6 +150,8 @@ public class ChatUIStateSync : WorkerBase
                 }
                 if (!chatIdToStartRecording.IsEmpty) {
                     // And start the recording if we must
+                    if (!UserInteractionUI.IsInteractionHappened.Value)
+                        await UserInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
                     await AudioRecorder.StartRecording(chatIdToStartRecording, cancellationToken).WhenCompleted.ConfigureAwait(false);
                 }
             },

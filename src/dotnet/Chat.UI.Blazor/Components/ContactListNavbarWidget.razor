@@ -3,7 +3,7 @@
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
     var mustPlayPinned = m.MustPlayPinned;
-    var isPlaying = mustPlayPinned && m.IsPlaying;
+    var isPlaying = mustPlayPinned && m.IsListening;
     var mustPlayPinnedClass = "pin-toggle play-pinned"
         + (mustPlayPinned ? "" : " opacity-50")
         + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
@@ -22,7 +22,7 @@
             <Ending>
                 <ChatListPlaybackToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
                 <ChatListRecordingToggle ChatId="@c.FullChatId" Class="chat-menu-btn blackout"/>
-                <ContextMenuToggleTrigger MenuId="@ContactContextMenu.Id" Data="@c.Contact">
+                <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                     <div class="flex">
                         <Button Class="btn-round chat-menu-btn blackout">
                             <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
@@ -46,7 +46,7 @@
                     @if (m.PinnedContacts.Length > 0) {
                         <div class="pinned-contacts">
                             @foreach (var c in m.PinnedContacts) {
-                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.Id" Data="@c.Contact">
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                     @RenderItem(c)
                                 </ContextMenuTrigger>
                             }
@@ -56,7 +56,7 @@
                         if (m.UnpinnedContacts.Length > 0) {
                             <div class="unpinned-contacts custom-scrollbar">
                                 @foreach (var c in m.UnpinnedContacts) {
-                                    <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.Id" Data="@c.Contact">
+                                    <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                         @RenderItem(c)
                                     </ContextMenuTrigger>
                                 }
@@ -65,7 +65,7 @@
                     } else {
                         <div class="unpinned-contacts custom-scrollbar">
                             @foreach (var c in m.UnpinnedContacts) {
-                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactContextMenu.Id" Data="@c.Contact">
+                                <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@c.Contact">
                                     @RenderItem(c)
                                 </ContextMenuTrigger>
                             }
@@ -83,7 +83,7 @@
             @RenderTab(ContactGroup.Recent, "Recent")
             @RenderTab(ContactGroup.Favorites, "Favorites")
         </TabPanel>
-        <ContactContextMenu/>
+        <ContactMenu/>
     </ChildContent>
 </NavbarGroup>
 
@@ -130,24 +130,22 @@
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.FullChatId))
+            .Where(c => pinnedChatIds.ContainsKey(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.FullChatId))
+            .Where(c => !pinnedChatIds.ContainsKey(c.FullChatId))
             .OrderBy(c => c.Contact.Name)
             .ToArray();
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var mustPlayPinned = await ChatUI.MustPlayPinnedContactChats.Use(cancellationToken).ConfigureAwait(false);
+        var isListening = await ChatUI.IsListening(activeChatId, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             PinnedContacts = pinnedContacts,
             UnpinnedContacts = unpinnedContacts,
             ActiveChatId = activeChatId,
-            IsPlaying = isPlaying,
-            MustPlayPinned = mustPlayPinned,
+            IsListening = isListening,
         };
     }
 
@@ -173,7 +171,7 @@
         public ContactModel[] PinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public ContactModel[] UnpinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public Symbol ActiveChatId { get; init; }
-        public bool IsPlaying { get; init; }
+        public bool IsListening { get; init; }
         public bool MustPlayPinned { get; init; }
     }
 

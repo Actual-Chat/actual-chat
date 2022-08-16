@@ -1,11 +1,6 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
-    var mustPlayPinned = m.MustPlayPinned;
-    var isPlaying = mustPlayPinned && m.IsPlaying;
-    var mustPlayPinnedClass = "pin-toggle play-pinned"
-        + (mustPlayPinned ? "" : " opacity-50")
-        + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
     var firstTabTitle = m.EnableIncompleteUI ? "All" : "Chats";
 }
 
@@ -17,19 +12,7 @@
                     @if (m.ListenedChats.Count > 0) {
                         <div class="listened-chats">
                             <div class="flex-x h-6 px-2 text-sm font-medium my-1 items-center gap-x-4">
-                                <div>Actual chats</div>
-                                <ButtonRound
-                                    Class="@mustPlayPinnedClass"
-                                    Click="@(() => ChatUI.MustPlayPinnedChats.Value = !mustPlayPinned)"
-                                    Title="When listening, also listen all pinned chats">
-                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-                                        @if (mustPlayPinned) {
-                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M18 19C16.897 19 16 18.103 16 17C16 15.897 16.897 15 18 15C19.103 15 20 15.897 20 17C20 18.103 19.103 19 18 19ZM6 15C7.103 15 8 15.897 8 17C8 18.103 7.103 19 6 19C4.897 19 4 18.103 4 17C4 15.897 4.897 15 6 15ZM12 2C6.486 2 2 6.65 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 7.753 7.589 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C15.794 13 14 14.794 14 17C14 19.206 15.794 21 18 21C20.206 21 22 19.206 22 17V12.366C22 6.65 17.514 2 12 2Z"/>
-                                        } else {
-                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.72434 6.55256C2.63637 8.21149 2 10.2131 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 10.7689 4.4302 9.27487 5.17578 8.004L3.72434 6.55256ZM14.0035 16.8317C14.0012 16.8875 14 16.9436 14 17C14 19.206 15.794 21 18 21C18.0564 21 18.1125 20.9988 18.1683 20.9965L14.0035 16.8317ZM20.9529 19.6957C20.5188 20.1709 19.9719 20.5412 19.3548 20.7639C19.3336 20.746 19.313 20.727 19.293 20.707L17.5303 18.9443C17.681 18.9807 17.8383 19 18 19C18.6569 19 19.2407 18.6819 19.6055 18.1915L20.707 19.293C20.824 19.41 20.906 19.5485 20.9529 19.6957ZM21.5831 18.7776C21.8499 18.2418 22 17.6382 22 17V12.366C22 6.65 17.514 2 12 2C9.98007 2 8.09809 2.62401 6.52406 3.69585L7.96956 5.14135C9.15383 4.41604 10.5314 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C17.3679 13 16.7696 13.1473 16.2376 13.4094L17.835 15.0067C17.8894 15.0023 17.9444 15 18 15C19.103 15 20 15.897 20 17C20 17.0556 19.9977 17.1106 19.9933 17.165L21.4141 18.5859C21.4752 18.647 21.5315 18.711 21.5831 18.7776ZM16.8085 15.3945L15.3873 13.9733C14.8713 14.4193 14.4701 14.9948 14.2348 15.6488L16.0557 17.4697C16.0193 17.319 16 17.1617 16 17C16 16.3431 16.3181 15.7593 16.8085 15.3945ZM7.13939 5.72539C6.62041 6.1418 6.15144 6.62314 5.74368 7.15768L4.32 5.734C4.7403 5.21187 5.20912 4.7331 5.71921 4.30521L7.13939 5.72539ZM8 17C8 15.897 7.103 15 6 15C4.897 15 4 15.897 4 17C4 18.103 4.897 19 6 19C7.103 19 8 18.103 8 17Z"/>
-                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M20.707 19.293L4.70701 3.29301C4.31601 2.90201 3.68401 2.90201 3.29301 3.29301C2.90201 3.68401 2.90201 4.31601 3.29301 4.70701L19.293 20.707C19.488 20.902 19.744 21 20 21C20.256 21 20.512 20.902 20.707 20.707C21.098 20.316 21.098 19.684 20.707 19.293Z"/>}
-                                    </svg>
-                                </ButtonRound>
+                                <div>Listening in</div>
                             </div>
 
                             <ChatsTab ChatList="@m.ListenedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Listening"/>
@@ -64,7 +47,7 @@
                 }
             </TabPanel>
         </div>
-        <ChatContextMenu />
+        <ChatMenu />
     </ChildContent>
 </NavbarGroup>
 
@@ -93,39 +76,34 @@
         if (!criteria.IsNullOrEmpty())
             chats = chats.Where(x => x.Title.Contains(criteria)).ToArray();
 
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
-            .Where(c => pinnedChatIds.Contains(c.Id))
+            .Where(c => pinnedChatIds.ContainsKey(c.Id))
             .OrderBy(c => c.Title)
             .ToList();
         var unpinnedChats = chats
-            .Where(c => !pinnedChatIds.Contains(c.Id))
+            .Where(c => !pinnedChatIds.ContainsKey(c.Id))
             .OrderBy(c => c.Title)
             .ToList();
 
         var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
         var listenedChats = new List<Chat>();
-        foreach (var t in listenedChatIds)
-        {
+        foreach (var t in listenedChatIds) {
             var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
             if (chat != null)
                 listenedChats.Add(chat);
         }
         listenedChats.Reverse();
 
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var mustPlayPinned = await ChatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
-
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, Boolean>(cancellationToken).ConfigureAwait(false);
 
         return new Model {
+            ActiveChatId = activeChatId,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
             ListenedChats = listenedChats,
-            ActiveChatId = activeChatId,
-            IsPlaying = isPlaying,
-            MustPlayPinned = mustPlayPinned,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -136,13 +114,10 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
+        public Symbol ActiveChatId { get; init; }
         public List<Chat> PinnedChats { get; init; } = new ();
         public List<Chat> UnpinnedChats { get; init; } = new ();
         public List<Chat> ListenedChats { get; init; } = new ();
-        public Symbol ActiveChatId { get; init; }
-        public bool IsPlaying { get; init; }
-        public bool MustPlayPinned { get; init; }
         public bool EnableIncompleteUI { get; init; }
-
     }
 }

@@ -42,19 +42,11 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return pinnedChatIds.Contains(Chat.Id);
-    }
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.IsPinned(Chat.Id, cancellationToken);
 
-    private Task Toggle() {
-        var pinnedChatIds = ChatUI.PinnedChatIds.Value;
-        pinnedChatIds = pinnedChatIds.Contains(Chat.Id)
-            ? pinnedChatIds.Remove(Chat.Id)
-            : pinnedChatIds.Add(Chat.Id);
-        ChatUI.PinnedChatIds.Value = pinnedChatIds;
-        return Task.CompletedTask;
-    }
+    private void Toggle()
+        => ChatUI.SetPinState(Chat.Id, !State.ValueOrDefault);
 }

@@ -37,7 +37,7 @@
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
-<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageContextMenu.Id" Data="@Message">
+<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageMenu.MenuId" Data="@Message">
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
         <div class="flex-y w-full">
             @if (isReply) {
@@ -98,7 +98,7 @@
                 <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
                     <i class="icon-reply text-xl text-icon-01"></i>
                 </ButtonRound>
-                <ContextMenuToggleTrigger MenuId="@MessageContextMenu.Id" Data="@Message">
+                <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
                     <ButtonRound Title="More options" Class="more-btn">
                         <i class="icon-more-vertical text-xl text-icon-01"></i>
                     </ButtonRound>
@@ -191,7 +191,7 @@
     }
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorDialog(Message.Entry.AuthorId);
+        => ChatUI.ShowChatAuthorModal(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {

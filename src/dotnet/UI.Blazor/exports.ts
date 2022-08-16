@@ -19,6 +19,7 @@ import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 
 export * from './Services/Settings/local-settings';
+export * from './Services/UserInteraction/user-interaction';
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/Dropdown/dropdown';

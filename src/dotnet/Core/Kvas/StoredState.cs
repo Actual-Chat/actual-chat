@@ -1,7 +1,9 @@
 namespace ActualChat.Kvas;
 
 public interface IStoredState<T> : IMutableState<T>
-{ }
+{
+    Task WhenRead { get; }
+}
 
 public class StoredState<T> : MutableState<T>, IStoredState<T>
 {
@@ -10,11 +12,15 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
 
     protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected Options Settings { get; }
+    protected TaskSource<Unit> WhenReadSource { get; }
+
+    public Task WhenRead => WhenReadSource.Task;
 
     public StoredState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
         Settings = options;
+        WhenReadSource = TaskSource.New<Unit>(false);
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -45,6 +51,7 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
                         }
                     }
                 }
+                WhenReadSource.TrySetResult(default);
             });
         }
         else {

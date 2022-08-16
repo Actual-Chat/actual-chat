@@ -73,7 +73,7 @@
     }
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorDialog(Message.Entry.AuthorId);
+        => ChatUI.ShowChatAuthorModal(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
