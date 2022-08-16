@@ -10,7 +10,7 @@
 }
 
 <div class="welcome-page">
-    <div class="relative flex-y h-1/3 md:h-full md:w-1/3 md:px-8">
+    <div class="relative hidden md:flex-y h-1/3 md:h-full md:w-1/3 md:px-8">
         <div class="flex-y md:h-1/2 justify-end">
             <div class="text-5xl md:text-6xl font-black text-02">
                 Welcome
@@ -23,13 +23,11 @@
             About Actual.chat
         </div>
     </div>
-    <div class="hidden md:flex md:w-1/3">
-
-    </div>
-    <div class="flex h-2/3 md:w-1/3 justify-end items-end">
+    <div class="hidden md:flex md:w-1/3"></div>
+    <div class="flex h-full md:w-1/3 justify-end items-center md:items-end">
         <div class="welcome-menu">
-            <div class="text-3xl font-black text-02">The future of digital communication</div>
-            <div class="text-base font-medium text-02">Try in two taps:</div>
+            <div class="text-3xl font-black md:font-semibold font-sans text-02">The future of digital communication</div>
+            <div class="text-base font-medium text-02 my-2 md:my-0">Try in two taps:</div>
             <Button Class="welcome-btn" Click="@(() => SignIn(googleAuth.Name))">
                 <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="12" fill="#F5F5F5"/>

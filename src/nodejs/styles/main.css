@@ -197,14 +197,20 @@ input.input-underlined {
 /* Welcome page */
 .welcome-page {
     @apply fixed flex-y md:flex-x h-full w-full p-8;
-    background-image: linear-gradient(to right bottom, #7dc6f0, #70d1ef, #6edbe9, #78e4df, #8cebd2, #82e7d1, #77e4d1, #6ce0d1, #3ccfde, #2abce6, #4ca6e4, #738dd5);
+    background-image: linear-gradient(to right bottom, #96d6f9, #8bdef6, #88e6ee, #8febe2, #9ff0d4, #97ecd2, #8fe9d0, #87e5ce, #65d7da, #54c7e3, #5eb5e4, #76a1db);
+}
+@media not (min-width: 768px) {
+    .welcome-page {
+        @apply fixed flex-y md:flex-x h-full w-full p-1;
+        background-image: linear-gradient(to right bottom, #bff0f5, #c8f1f9, #d1f2fc, #daf4fe, #e3f5ff, #dceffc, #d6eafa, #d1e4f7, #bcd6f1, #a7c8ea, #93bae4, #7eacde);
+    }
 }
 .welcome-menu {
     @apply flex-y md:w-96 h-fit gap-y-4 float-right mt-16;
-    @apply bg-01 rounded-2xl px-4 py-12;
+    @apply bg-transparent md:bg-01 rounded-2xl px-4 py-12;
 }
 .welcome-btn.btn {
-    @apply bg-01 border-primary text-01 h-12 max-w-full justify-start;
+    @apply bg-01 border-transparent md:border-primary text-01 h-12 max-w-full justify-start;
 }
 .welcome-btn.btn .btn-content {
     @apply flex-x gap-x-4 items-center text-primary;
