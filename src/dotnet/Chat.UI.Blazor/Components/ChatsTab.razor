@@ -13,11 +13,11 @@
             </ChildContent>
             <Ending>
                 @if (Group == ChatGroup.Listening) {
-                    <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
+                    <ChatListListenToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ListeningChatRemoveButton ChatId="@c.Id"/>
                 } else {
-                    <ChatListPlaybackToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
+                    <ChatListListenToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
                     <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
 
                     <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@c">

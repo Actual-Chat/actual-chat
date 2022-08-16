@@ -1,6 +1,6 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue ?? Model.None;
+    var m = State.LatestNonErrorValue;
     var firstTabTitle = m.EnableIncompleteUI ? "All" : "Chats";
 }
 

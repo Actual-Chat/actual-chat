@@ -5,11 +5,11 @@ const LogScope = 'KeepAwakeUI';
 const noSleep = new NoSleep();
 
 export class KeepAwakeUI {
-    public static async setKeepAwake(enable: boolean) {
-        if (enable && !noSleep.isEnabled) {
+    public static async setKeepAwake(mustKeepAwake: boolean) {
+        if (mustKeepAwake && !noSleep.isEnabled) {
             console.debug(`${LogScope}.setKeepAwake: enabling`);
             await noSleep.enable();
-        } else if (!enable && noSleep.isEnabled) {
+        } else if (!mustKeepAwake && noSleep.isEnabled) {
             console.debug(`${LogScope}.setKeepAwake: disabling`);
             noSleep.disable();
         }

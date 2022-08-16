@@ -1,15 +1,14 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
 @inherits ComputedStateComponent<SingleChatPlaybackState>
-
 @{
-    var m = State.ValueOrDefault ?? SingleChatPlaybackState.None;
-    var playingHistoricalClass = m.IsPlayingHistorical ? " opacity-60" : "";
-    var cls = "context-menu-item play " + (m.IsListening ? "on" : "off") + playingHistoricalClass;
-    var isListening = m.IsListening || m.IsPlayingHistorical;
+    var m = State.LatestNonErrorValue;
+    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
+    var listeningClass = m.IsListening ? "on" : "off";
+    var cls = $"context-menu-item play {listeningClass} {playingHistoricalClass}";
 }
 
-@if (!isListening) {
+@if (!m.IsListening) {
     <Item OnClick="@OnListenClick" CssClass="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
@@ -42,12 +41,10 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnListenClick() {
-        var isListening = State.ValueOrDefault is { IsListening: true };
-        ChatUI.SetListeningState(ChatId, !isListening);
-    }
+    private void OnListenClick()
+        => ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
@@ -56,5 +53,5 @@
         };
 
     protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetSingleChatPlaybackState(ChatId, cancellationToken);
+        => ChatUI.GetSingleChatPlaybackState(Chat.Id, cancellationToken);
 }

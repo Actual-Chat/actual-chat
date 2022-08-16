@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<SingleChatPlaybackState>
 @{
-    var m = State.ValueOrDefault ?? SingleChatPlaybackState.None;
+    var m = State.LatestNonErrorValue;
     if (m.ChatId.IsEmpty)
         return; // Not computed yet
 
-    var playingHistoricalClass = m.IsPlayingHistorical ? " opacity-60" : "";
-    var cls = (m.IsListening ? "on" : "off") + playingHistoricalClass;
+    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"{(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
     var lastRenderedState = _lastRenderedState ?? m;
     var isListeningChange = (lastRenderedState.IsListening, m.IsListening);
     var wrapperCls = isListeningChange switch {
@@ -32,13 +32,6 @@
 </div>
 
 @code {
-    public enum ListeningState {
-        On,
-        Off,
-        OnToOff,
-        OffToOn,
-    }
-
     private SingleChatPlaybackState? _lastRenderedState;
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
@@ -46,10 +39,8 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    private void OnListenClick() {
-        var isListening = State.ValueOrDefault is { IsListening: true };
-        ChatUI.SetListeningState(ChatId, !isListening);
-    }
+    private void OnListenClick()
+        => ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
