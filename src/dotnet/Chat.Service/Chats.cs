@@ -172,6 +172,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return invited;
     }
 
+    public virtual Task<bool> CanLeave(Session session, string chatId, CancellationToken cancellationToken)
+        => Task.FromResult(Constants.Chat.AnnouncementsChatId != chatId);
+
     public virtual Task<bool> CanSeeMembers(Session session, string chatId, CancellationToken cancellationToken)
         => Task.FromResult(Constants.Chat.AnnouncementsChatId != chatId);
 
@@ -395,6 +398,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId) = command;
+        if (!await CanLeave(session, chatId, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Unauthorized("You can not leave the chat.");
+
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;

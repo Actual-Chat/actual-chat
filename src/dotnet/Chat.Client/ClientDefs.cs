@@ -61,6 +61,12 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
+    [Get(nameof(CanLeave))]
+    Task<bool> CanLeave(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
     [Get(nameof(CanSeeMembers))]
     Task<bool> CanSeeMembers(
         Session session,
