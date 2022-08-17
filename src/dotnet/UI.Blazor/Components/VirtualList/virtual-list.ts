@@ -259,12 +259,19 @@ export class VirtualList implements VirtualListAccessor {
                 this._sizeObserver.observe(itemRef, { box: 'border-box' });
                 this._visibilityObserver.observe(itemRef);
             }
+        }
+
+        requestAnimationFrame(time => {
+            // make rendered items visible
+            for (const itemRef of this.getNewItemRefs()) {
+                itemRef.classList.remove('new');
+            }
 
             const rs = this.getRenderState();
             if (rs) {
                 void this.onRenderEnd(rs);
             }
-        }
+        });
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
@@ -279,12 +286,6 @@ export class VirtualList implements VirtualListAccessor {
             const item = this.items[key];
             if (item) {
                 item.size = contentBoxSize.blockSize;
-            }
-        }
-        if (this._unmeasuredItems.size === 0) {
-            const rs = this.getRenderState();
-            if (rs) {
-                void this.onRenderEnd(rs);
             }
         }
     }
@@ -388,11 +389,6 @@ export class VirtualList implements VirtualListAccessor {
 
             await new Promise<void>(resolve => {
                 requestAnimationFrame(time => {
-                    // make rendered items visible
-                    for (const itemRef of this.getNewItemRefs()) {
-                        itemRef.classList.remove('new');
-                    }
-
                     const scrollToItemRef = this.getItemRef(rs.scrollToKey);
                     if (scrollToItemRef != null) {
                         // Server-side scroll request
