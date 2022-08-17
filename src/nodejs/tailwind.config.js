@@ -1167,7 +1167,6 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       footer: '3.75rem',
-      'mobile-header': '3.5rem',
     }),
     minWidth: ({ theme }) => ({
       ...theme('spacing'),

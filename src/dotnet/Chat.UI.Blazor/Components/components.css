@@ -126,10 +126,10 @@
     @apply pb-0 mb-0 border-b border-bg-04;
 }
 .wide-left-panel-tabs .btn-group {
-    @apply min-h-mobile-header justify-between px-4;
+    @apply min-h-14 justify-between px-4;
 }
 .wide-left-panel-tabs .btn-group .btn-group-container {
-    @apply min-h-mobile-header self-center;
+    @apply min-h-14 self-center;
 }
 .wide-left-panel-tabs .btn {
     @apply min-w-0 min-h-0 p-0 rounded-lg;

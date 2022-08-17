@@ -5,15 +5,15 @@
     var model = ModalModel.MessageModel;
 }
 
-<DialogFrame Title="Delete message" Class="delete-message-modal chat-message-modal">
+<DialogFrame Title="Delete message" Class="delete-message-modal">
     <Body>
-        <div class="mb-2 min-h-8">
+        <div class="mb-4">
             Are you sure you want to delete this message?
         </div>
-        <div class="bg-01 rounded-md border border-bg-02 py-1 drop-shadow-lg">
+        <div class="bg-01 rounded-lg border border-bg-04 py-1">
             <div class="chat-message group px-1">
                 <div class="flex-1">
-                    <div class="header chat-message-header ml-1 flex-x py-2">
+                    <div class="ml-1 flex-x py-2">
                         <div class="">
                             <ChatMessageAuthorCircle AuthorId="@model.Entry.AuthorId"/>
                         </div>

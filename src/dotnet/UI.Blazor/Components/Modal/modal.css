@@ -25,14 +25,16 @@
 
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
-    @apply bg-02 text-03;
+    @apply bg-01 text-03;
     @apply overflow-hidden;
     @apply z-10;
 }
 .modal-frame {
-    @apply h-full md:h-auto w-full md:w-modal;
-    @apply md:rounded-lg rounded-none;
-    @apply flex flex-col;
+    @apply flex-y gap-y-4 h-full md:h-auto w-full md:w-modal p-8 pb-4;
+    @apply md:rounded-2xl rounded-none font-medium;
+}
+.modal-frame * {
+    @apply cursor-default;
 }
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
@@ -40,10 +42,12 @@
 .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-transparent opacity-90;
 }
+.modal-header {
+    @apply flex justify-between items-center;
+}
 
 .dialog-body {
-    @apply grow m-4 mb-0;
-    @apply flex flex-col;
+    @apply flex-y grow;
 }
 .dialog-body input:not([type='checkbox']) {
     @apply border rounded-md outline-none p-1 px-2;
@@ -59,8 +63,11 @@
     @apply border-error;
 }
 .dialog-buttons {
-    @apply m-4;
     @apply flex flex-row justify-end;
+}
+.dialog-buttons .btn,
+.dialog-buttons .btn * {
+    @apply cursor-pointer;
 }
 
 div.blazored-modal-content > form {
