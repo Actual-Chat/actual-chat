@@ -1,0 +1,59 @@
+@inherits ComputedStateComponent<ListeningChatsNavbarWidget.Model>
+
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+@if (m.ListenedChats.Count > 0) {
+    <div class="listened-chats">
+        <div class="flex-x h-6 px-2 text-sm font-medium my-1 items-center gap-x-4">
+            <div>Listening in</div>
+        </div>
+
+        <ChatsTab ChatList="@m.ListenedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Listening"/>
+
+        <Divider Class="mx-4 mb-2 border-b border-bg-04"/>
+    </div>
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return Model.None;
+
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+
+        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChats = new List<Chat>();
+        foreach (var t in listenedChatIds) {
+            var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
+            if (chat != null)
+                listenedChats.Add(chat);
+        }
+        listenedChats.Reverse();
+
+        return new Model {
+            ActiveChatId = activeChatId,
+            ListenedChats = listenedChats,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public Symbol ActiveChatId { get; init; }
+        public List<Chat> ListenedChats { get; init; } = new ();
+    }
+}
