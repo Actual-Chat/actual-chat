@@ -295,6 +295,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId) = command;
+        await RequirePermissions(session, chatId, ChatPermissions.Leave, cancellationToken).ConfigureAwait(false);
+
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;

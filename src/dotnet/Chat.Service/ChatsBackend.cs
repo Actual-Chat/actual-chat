@@ -314,7 +314,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                     Create = new ChatRoleDiff() {
                         SystemRole = SystemChatRole.Anyone,
-                        Permissions = ChatPermissions.Write | ChatPermissions.Invite | ChatPermissions.SeeMembers | ChatPermissions.Leave,
+                        Permissions =
+                            ChatPermissions.Write
+                            | ChatPermissions.Invite
+                            | ChatPermissions.SeeMembers
+                            | ChatPermissions.Leave,
                     },
                 });
                 await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
@@ -491,7 +495,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                 Create = new ChatRoleDiff() {
                     SystemRole = SystemChatRole.Anyone,
-                    Permissions = ChatPermissions.Write | ChatPermissions.Invite | ChatPermissions.SeeMembers | ChatPermissions.Leave,
+                    Permissions =
+                        ChatPermissions.Write
+                        | ChatPermissions.Invite
+                        | ChatPermissions.SeeMembers
+                        | ChatPermissions.Leave,
                 },
             });
             await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);

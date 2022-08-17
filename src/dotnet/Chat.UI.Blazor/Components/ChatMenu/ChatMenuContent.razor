@@ -8,7 +8,7 @@
 <ChatMenuRecord/>
 <ChatMenuPin/>
 <ChatMenuListen/>
-@if (m.CanLeaveChat) {
+@if (m.CanLeave) {
     <Seperator/>
     <ChatMenuLeave/>
 }
@@ -29,12 +29,12 @@
     {
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         var canLeave = rules.CanLeave();
-        return new Model { CanLeaveChat = canLeave };
+        return new Model { CanLeave = canLeave };
     }
 
     public record Model {
         public static readonly Model None = new Model();
 
-        public bool CanLeaveChat { get; init; }
+        public bool CanLeave { get; init; }
     }
 }
