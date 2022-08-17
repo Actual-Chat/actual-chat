@@ -80,10 +80,10 @@ form label.checkbox-label {
     @apply block w-0 h-0 absolute opacity-0 z-minus;
 }
 .checkbox input[type=checkbox]:checked + .checkbox-switch {
-    @apply bg-07;
+    @apply bg-primary;
 }
 .checkbox input[type=checkbox]:checked + .checkbox-switch:before {
-    @apply bg-01 border border-bg-07 translate-x-3.5;
+    @apply bg-01 border border-primary translate-x-3.5;
 }
 
 /* Hover */

@@ -5,14 +5,12 @@
 }
 
 @if (m.ListenedChats.Count > 0) {
-    <div class="listened-chats">
-        <div class="flex-x h-6 px-2 text-sm font-medium my-1 items-center gap-x-4">
+    <div class="listening-chats">
+        <div class="flex-x h-5 px-2 text-sm font-medium my-1 items-center gap-x-4">
             <div>Listening in</div>
         </div>
 
         <ChatsTab ChatList="@m.ListenedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Listening"/>
-
-        <Divider Class="mx-4 mb-2 border-b border-bg-04"/>
     </div>
 }
 
