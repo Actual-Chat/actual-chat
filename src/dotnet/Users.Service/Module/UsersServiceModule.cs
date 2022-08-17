@@ -1,9 +1,11 @@
 using ActualChat.Db;
 using ActualChat.Db.Module;
+using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
+using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
@@ -133,6 +135,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         // Module's own services
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
+        services.AddSingleton<IUsersTempBackend, UsersTempBackend>();
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
@@ -155,6 +158,9 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<ChatUserSettingsService>();
         services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
         services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
+
+        // Events
+        services.AddEvent<NewUserEvent>();
 
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);

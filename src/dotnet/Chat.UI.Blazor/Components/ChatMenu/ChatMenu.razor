@@ -6,11 +6,7 @@
         <ChildContent>
             @if (context.Data is Chat chat) {
                 <CascadingValue Value="@chat">
-                    <ChatMenuRecord/>
-                    <ChatMenuPin/>
-                    <ChatMenuListen/>
-                    <Seperator/>
-                    <ChatMenuLeave/>
+                    <ChatMenuContent />
                 </CascadingValue>
             }
         </ChildContent>

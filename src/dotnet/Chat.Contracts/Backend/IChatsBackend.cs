@@ -80,6 +80,9 @@ public interface IChatsBackend : IComputeService
     [CommandHandler]
     Task UpgradeChat(UpgradeChatCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task<Chat> CreateAnnouncementsChat(CreateAnnouncementsChatCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record ChangeChatCommand(
         [property: DataMember] string ChatId,
@@ -110,4 +113,8 @@ public interface IChatsBackend : IComputeService
     public sealed record UpgradeChatCommand(
         [property: DataMember] string ChatId
     ) : ICommand<Unit>, IBackendCommand;
+
+    [DataContract]
+    public sealed record CreateAnnouncementsChatCommand(
+    ) : ICommand<Chat>, IBackendCommand;
 }

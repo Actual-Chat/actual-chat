@@ -13,7 +13,9 @@ public record ChatAuthorRules(
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite() => Permissions.Has(ChatPermissions.Write);
+    public bool CanSeeMembers() => Permissions.Has(ChatPermissions.SeeMembers);
     public bool CanJoin() => Permissions.Has(ChatPermissions.Join);
+    public bool CanLeave() => Permissions.Has(ChatPermissions.Leave);
     public bool CanInvite() => Permissions.Has(ChatPermissions.Invite);
     public bool CanEditProperties() => Permissions.Has(ChatPermissions.EditProperties);
     public bool CanEditRoles() => Permissions.Has(ChatPermissions.EditRoles);
