@@ -178,31 +178,6 @@ public class MobileAuthController : Controller
         }
     }
 
-    [HttpGet("signInGoogleWithIdToken/{sessionId}/{idToken}")]
-    public async Task<IActionResult> SignInGoogleWithIdToken(string sessionId, string idToken, CancellationToken cancellationToken)
-    {
-        idToken = WebUtility.UrlDecode(idToken);
-
-        var options = _services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
-            .Get(GoogleDefaults.AuthenticationScheme);
-        var clientId = options.ClientId;
-
-        try {
-            var payload = await GoogleJsonWebSignature.ValidateAsync(idToken,
-                    new GoogleJsonWebSignature.ValidationSettings {
-                        Audience = new[] {clientId}
-                    })
-                .ConfigureAwait(false);
-            var json = payload.JsonSerialise();
-
-            throw new NotImplementedException("Create a principal");
-            return Content(json);
-        }
-        catch (Exception e) {
-            return BadRequest(e.ToString());
-        }
-    }
-
     private static async Task<string> Display(HttpResponseMessage response)
     {
         var output = new StringBuilder();
@@ -222,7 +197,6 @@ public class MobileAuthController : Controller
         await _commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
 
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
-
     }
 
     private async Task WriteAutoClosingMessage(CancellationToken cancellationToken)
