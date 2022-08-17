@@ -44,7 +44,7 @@
                 <QuotedMessage Message="@model.RepliedChatMessage"/>
             }
 
-            <div class="chat-message group px-1.5 py-0.5 relative">
+            <div class="chat-message group px-1.5 py-1 relative">
                 @if (showPicture || isReply) {
                     <div class="m-1.5">
                         <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
@@ -54,7 +54,7 @@
                         <span class="chat-message-timestamp-secondary text-03 text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
                     </div>
                 }
-                <div class="flex-1 overflow-hidden mb-1 mt-1">
+                <div class="flex-1 overflow-hidden">
                     @if (showHeader || isReply) {
                         <div class="header chat-message-header ml-1">
                             <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-03"/>
