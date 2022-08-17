@@ -24,9 +24,11 @@ public class DbChatRole : IHasId<string>
     public bool CanRead { get; set; }
     public bool CanWrite { get; set; }
     public bool CanJoin { get; set; }
+    public bool CanLeave { get; set; }
     public bool CanInvite { get; set; }
     public bool CanEditProperties { get; set; }
     public bool CanEditRoles { get; set; }
+    public bool CanSeeMembers { get; set; }
 
     public DbChatRole() { }
     public DbChatRole(ChatRole model) => UpdateFrom(model);
@@ -38,8 +40,12 @@ public class DbChatRole : IHasId<string>
             permissions |= ChatPermissions.Read;
         if (CanWrite)
             permissions |= ChatPermissions.Write;
+        if (CanSeeMembers)
+            permissions |= ChatPermissions.SeeMembers;
         if (CanJoin)
             permissions |= ChatPermissions.Join;
+        if (CanLeave)
+            permissions |= ChatPermissions.Leave;
         if (CanInvite)
             permissions |= ChatPermissions.Invite;
         if (CanEditProperties)
@@ -70,7 +76,9 @@ public class DbChatRole : IHasId<string>
         Picture = model.Picture;
         CanRead = model.Permissions.Has(ChatPermissions.Read);
         CanWrite = model.Permissions.Has(ChatPermissions.Write);
+        CanSeeMembers = model.Permissions.Has(ChatPermissions.SeeMembers);
         CanJoin = model.Permissions.Has(ChatPermissions.Join);
+        CanLeave = model.Permissions.Has(ChatPermissions.Leave);
         CanInvite = model.Permissions.Has(ChatPermissions.Invite);
         CanEditProperties = model.Permissions.Has(ChatPermissions.EditProperties);
         CanEditRoles = model.Permissions.Has(ChatPermissions.EditRoles);

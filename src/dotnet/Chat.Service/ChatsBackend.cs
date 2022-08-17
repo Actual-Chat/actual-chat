@@ -79,16 +79,24 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             : await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
 
         var roles = ImmutableArray<ChatRole>.Empty;
-        if (author is { HasLeft: false }) {
+        var isJoined = author is { HasLeft: false };
+        if (isJoined) {
             var isAuthenticated = account != null;
             var isAnonymous = author is { IsAnonymous: true };
             roles = await ChatRolesBackend
-                .List(chatId, author.Id, isAuthenticated, isAnonymous, cancellationToken)
+                .List(chatId, author!.Id, isAuthenticated, isAnonymous, cancellationToken)
                 .ConfigureAwait(false);
         }
         var permissions = roles.ToPermissions();
-        if (chat.IsPublic)
+        if (chat.IsPublic) {
             permissions |= ChatPermissions.Join;
+            if (!isJoined) {
+                var systemRoles = await ChatRolesBackend.ListSystem(chatId, cancellationToken).ConfigureAwait(false);
+                var anyoneSystemRole = systemRoles.FirstOrDefault(c => c.SystemRole == SystemChatRole.Anyone);
+                if (anyoneSystemRole != null && anyoneSystemRole.Permissions.Has(ChatPermissions.SeeMembers))
+                    permissions |= ChatPermissions.SeeMembers;
+            }
+        }
         if (account?.IsAdmin == true)
             permissions |= ChatPermissions.Owner;
         permissions = permissions.AddImplied();
@@ -306,7 +314,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                     Create = new ChatRoleDiff() {
                         SystemRole = SystemChatRole.Anyone,
-                        Permissions = ChatPermissions.Write | ChatPermissions.Invite,
+                        Permissions = ChatPermissions.Write | ChatPermissions.Invite | ChatPermissions.SeeMembers | ChatPermissions.Leave,
                     },
                 });
                 await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
@@ -483,7 +491,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
                 Create = new ChatRoleDiff() {
                     SystemRole = SystemChatRole.Anyone,
-                    Permissions = ChatPermissions.Write | ChatPermissions.Invite,
+                    Permissions = ChatPermissions.Write | ChatPermissions.Invite | ChatPermissions.SeeMembers | ChatPermissions.Leave,
                 },
             });
             await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);

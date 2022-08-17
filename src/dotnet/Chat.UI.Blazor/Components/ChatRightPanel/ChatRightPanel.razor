@@ -55,7 +55,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, Boolean>(cancellationToken).ConfigureAwait(false);
-        var canSeeMembers = await Chats.CanSeeMembers(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var canSeeMembers = rules.CanSeeMembers();
         return new () {
             IsRightPanelVisible = isRightPanelVisible,
             EnableIncompleteUI = enableIncompleteUI,

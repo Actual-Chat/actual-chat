@@ -79,14 +79,6 @@ public class ChatsController : ControllerBase, IChats
         => _service.CanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CanLeave(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.CanLeave(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<bool> CanSeeMembers(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.CanSeeMembers(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken)

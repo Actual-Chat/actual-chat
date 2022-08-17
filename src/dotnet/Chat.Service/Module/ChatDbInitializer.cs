@@ -102,11 +102,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
 
             await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
             await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
             await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
             await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
 
@@ -162,6 +164,39 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to upgrade chats!");
+            throw;
+        }
+    }
+
+    private async Task UpgradeChatRolesPermissions(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var candidateRoles = await dbContext.ChatRoles
+            .Where(c => c.SystemRole == SystemChatRole.Anyone)
+            .Where(c => c.ChatId != chatId)
+            .Where(c => !c.CanLeave || !c.CanSeeMembers)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (candidateRoles.Count == 0) {
+            Log.LogInformation("No chat roles to upgrade");
+            return;
+        }
+
+        try {
+            Log.LogInformation("Upgrading chat roles ({RolesNumber}) permissions...", candidateRoles.Count);
+
+            foreach (var chatRole in candidateRoles) {
+                chatRole.CanLeave = true;
+                chatRole.CanSeeMembers = true;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            Log.LogInformation("Chat roles permissions are upgraded");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to upgrade chat roles permissions!");
             throw;
         }
     }
