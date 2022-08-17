@@ -212,7 +212,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             return;
 
         try {
-            Log.LogInformation("There is no 'Announcements' chat, will create one");
+            Log.LogInformation("There is no 'Announcements' chat, creating one");
             var cmd = new IChatsBackend.CreateAnnouncementsChatCommand();
             await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Announcements' chat is created");
