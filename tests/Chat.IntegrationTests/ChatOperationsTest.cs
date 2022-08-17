@@ -242,6 +242,7 @@ public class ChatOperationsTest : AppHostTestBase
     private static async Task AssertUserNotJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
+        var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         var author = await chatAuthors.Get(session, chatId, default);
         author!.HasLeft.Should().BeTrue();
 
@@ -250,7 +251,8 @@ public class ChatOperationsTest : AppHostTestBase
 
         var userIds = await chatAuthors.ListUserIds(session, chatId, default);
         userIds.Should().NotContain(user.Id);
-        var authorIds = await chatAuthors.ListAuthorIds(session, chatId, default);
+        // use backend service to avoid permissions check
+        var authorIds = await chatAuthorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);
     }
 }
