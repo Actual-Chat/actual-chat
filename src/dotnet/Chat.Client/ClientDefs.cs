@@ -9,8 +9,8 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(GetChats))]
-    Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
+    [Get(nameof(List))]
+    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
@@ -75,8 +75,8 @@ public interface IChatsClientDef
     [Get(nameof(GetPeerChatContact))]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(GetMentionCandidates))]
-    Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(ListMentionCandidates))]
+    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(ChangeChat))]
     Task<Chat?> ChangeChat([Body] IChats.ChangeChatCommand command, CancellationToken cancellationToken);

@@ -22,8 +22,8 @@ public class ChatsController : ControllerBase, IChats
         => _service.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
-        => _service.GetChats(session, cancellationToken);
+    public Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
+        => _service.List(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(
@@ -97,8 +97,8 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
     [HttpGet]
-    public Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetMentionCandidates(session, chatId, cancellationToken);
+    public Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListMentionCandidates(session, chatId, cancellationToken);
 
     // Commands
 

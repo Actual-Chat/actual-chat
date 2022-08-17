@@ -14,7 +14,7 @@ import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/tooltip.css'
 import './Components/SideNav/side-nav.css'
-import './Components/Search/search.css'
+import './Components/SearchBox/search-box.css'
 import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 

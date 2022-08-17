@@ -8,7 +8,7 @@ public interface IChats : IComputeService
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<long> GetEntryCount(
@@ -75,7 +75,7 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 

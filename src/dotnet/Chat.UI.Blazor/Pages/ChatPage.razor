@@ -80,6 +80,16 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
+    protected override async Task OnParametersSetAsync() {
+        var fullChatId = ChatId;
+        var chat = await Chats.Get(Session, ChatId, default);
+        if (chat != null)
+            fullChatId = chat.Id;
+        if (ChatUI.ActiveChatId.Value != fullChatId)
+            ChatUI.ActiveChatId.Value = fullChatId;
+        await base.OnParametersSetAsync();
+    }
+
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
             || State.HasError
@@ -101,8 +111,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (ChatId.IsNullOrEmpty()) {
-            Log.LogWarning("ChatId is null");
+            Log.LogWarning("ChatId is null or empty");
+            return Model.Unavailable;
         }
+
         var chat = await Chats.Get(Session, ChatId, cancellationToken);
         if (chat == null)
             return Model.Unavailable;
@@ -110,16 +122,6 @@
         var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
         var result = new Model(chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        var fullChatId = ChatId;
-        var chat = await Chats.Get(Session, ChatId, default);
-        if (chat != null)
-            fullChatId = chat.Id;
-        if (ChatUI.ActiveChatId.Value != fullChatId)
-            ChatUI.ActiveChatId.Value = fullChatId;
-        await base.OnParametersSetAsync();
     }
 
     private void OnUnreadMessagesClick()

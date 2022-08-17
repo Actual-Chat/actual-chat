@@ -73,6 +73,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ContentUrlMapper>();
 
         // Misc. UI services
+        services.AddScoped<LinkInfoBuilder>();
         services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
@@ -82,12 +83,11 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ModalUI>();
         services.AddScoped<ThemeUI>();
         services.AddScoped<KeepAwakeUI>();
+        fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
-        services.AddScoped<LinkInfoBuilder>();
-        services.AddScoped<SearchUI>();
 
         // UI events
         services.AddScoped<IEventAggregator, EventAggregator>();

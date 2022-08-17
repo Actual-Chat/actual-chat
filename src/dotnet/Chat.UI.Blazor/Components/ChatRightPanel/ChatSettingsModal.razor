@@ -78,7 +78,7 @@
         };
 
     protected override async Task OnParametersSetAsync() {
-        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default);
+        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         _form ??= new(ComponentIdGenerator);
         _form.Title = chat.Title;
         _form.Picture = chat.Picture;
@@ -97,7 +97,7 @@
         => ModalInstance.CancelAsync();
 
     private async Task OnSave() {
-        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default);
+        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,

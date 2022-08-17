@@ -38,44 +38,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             : await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    [ComputeMethod]
-    protected virtual async Task<string> GetPeerChatTitle(string chatId, Account account, CancellationToken cancellationToken)
-    {
-        var (userId, contact) = await GetPeerChatContact(chatId, account, cancellationToken).ConfigureAwait(false);
-        return contact?.Name
-            ?? await UserContactsBackend.SuggestContactName(userId, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<(string UserId, UserContact? Contact)> GetPeerChatContact(string chatId, Account account, CancellationToken cancellationToken)
-    {
-        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
-        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-
-        var otherUserId = (userId1, userId2).OtherThan(account.Id);
-        if (otherUserId.IsEmpty)
-            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
-
-        var contact = await UserContactsBackend.Get(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
-        return (otherUserId, contact);
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<string> GetFullPeerChatId(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var parsedChatId = new ParsedChatId(chatId).AssertValid();
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.PeerFull:
-            return chatId;
-        case ChatIdKind.PeerShort:
-            var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
-            return ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1);
-        default:
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-        }
-    }
-
     // [ComputeMethod]
-    public virtual async Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
     {
         var chatIds = await ChatAuthors.ListChatIds(session, cancellationToken).ConfigureAwait(false);
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
@@ -86,7 +50,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Select(id => Get(session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return chats.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
+        return chats.Where(c => c is { ChatType: ChatType.Group }).ToImmutableArray()!;
     }
 
     // [ComputeMethod]
@@ -180,6 +144,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await Backend.GetTextEntryAttachments(chatId, entryId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
     public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
     {
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
@@ -228,12 +193,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
-        var (_, contact) = await GetPeerChatContact(chatId, account, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return null;
+
+        var (_, contact) = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         return contact;
     }
 
-    public virtual async Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -247,7 +216,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Select(c => c!)
             .OrderBy(c => c.Name)
             .Select(c => new MentionCandidate("a:" + c.Id, c.Name))
-            .ToArray();
+            .ToImmutableArray();
         return items;
     }
 
@@ -296,6 +265,145 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return command.Id != null
             ? UpdateTextEntry(command, cancellationToken)
             : CreateTextEntry(command, cancellationToken);
+    }
+
+    // [CommandHandler]
+    public virtual async Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, entryId) = command;
+        var entry = await GetChatEntry(session,
+                chatId,
+                entryId,
+                ChatEntryType.Text,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await AssertCanRemoveTextEntry(entry, session, cancellationToken).ConfigureAwait(false);
+
+        var textEntry = await RemoveChatEntry(session, chatId, entryId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
+
+        if (textEntry.AudioEntryId != null)
+            await RemoveChatEntry(session, chatId, textEntry.AudioEntryId.Value, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task LeaveChat(IChats.LeaveChatCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId) = command;
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return;
+        var chatAuthor = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null || chatAuthor.HasLeft)
+            return;
+
+        var leaveAuthorCommand = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, true);
+        await Commander.Call(leaveAuthorCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Protected methods
+
+    [ComputeMethod]
+    protected virtual async Task<Chat?> GetGroupChat(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canRead)
+            return null;
+        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var parsedChatId = new ParsedChatId(chatId);
+        if (!parsedChatId.IsValid)
+            return null;
+
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.PeerShort:
+            var fullChatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (fullChatId.IsNullOrEmpty())
+                return null;
+            return await GetPeerChat(session, fullChatId, cancellationToken).ConfigureAwait(false);
+        case ChatIdKind.PeerFull:
+            break;
+        default:
+            return null;
+        }
+
+        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        if (!canRead)
+            return null;
+
+        var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        chat ??= new Chat {
+            Id = chatId,
+            ChatType = ChatType.Peer,
+        };
+
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return null;
+
+        var (contactUserId, contact) = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        var title = contact?.Name ?? await UserContactsBackend.SuggestContactName(contactUserId, cancellationToken).ConfigureAwait(false);
+        chat = chat with { Title = title };
+        return chat;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<string?> GetFullPeerChatId(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsNullOrEmpty())
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
+        var parsedChatId = new ParsedChatId(chatId).AssertValid();
+        if (!parsedChatId.IsValid)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.PeerFull:
+            return chatId;
+        case ChatIdKind.PeerShort:
+            var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return null;
+            return ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1);
+        default:
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual  async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
+        string chatId, Symbol ownerUserId, CancellationToken cancellationToken)
+    {
+        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+
+        var targetUserId = (userId1, userId2).OtherThan(ownerUserId);
+        if (targetUserId.IsEmpty)
+            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
+
+        var contact = await UserContactsBackend.Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
+        return (targetUserId, contact);
+    }
+
+    // Private methods
+
+    private async Task<ChatEntry> GetChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
+    {
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
+        var tile = await GetTile(session, chatId, type, idTile.Range, cancellationToken)
+            .ConfigureAwait(false);
+        var chatEntry = tile.Entries.Single(e => e.Id == entryId);
+        return chatEntry;
     }
 
     private async Task<ChatEntry> CreateTextEntry(
@@ -365,80 +473,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 
-    // [CommandHandler]
-    public virtual async Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var (session, chatId, entryId) = command;
-        var entry = await GetChatEntry(session,
-                chatId,
-                entryId,
-                ChatEntryType.Text,
-                cancellationToken)
-            .ConfigureAwait(false);
-        await AssertCanRemoveTextEntry(entry, session, cancellationToken).ConfigureAwait(false);
-
-        var textEntry = await RemoveChatEntry(session, chatId, entryId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-
-        if (textEntry.AudioEntryId != null)
-            await RemoveChatEntry(session, chatId, textEntry.AudioEntryId.Value, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
-    }
-
-    public virtual async Task LeaveChat(IChats.LeaveChatCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var (session, chatId) = command;
-        await RequirePermissions(session, chatId, ChatPermissions.Leave, cancellationToken).ConfigureAwait(false);
-
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return;
-        var chatAuthor = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor == null || chatAuthor.HasLeft)
-            return;
-
-        var leaveAuthorCommand = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, true);
-        await Commander.Call(leaveAuthorCommand, cancellationToken).ConfigureAwait(false);
-    }
-
-    // Protected methods
-
-    [ComputeMethod]
-    protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var parsedChatId = new ParsedChatId(chatId);
-        if (!parsedChatId.IsValid)
-            return null;
-
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.PeerShort:
-            chatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
-            return await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
-        case ChatIdKind.PeerFull:
-            break;
-        default:
-            return null;
-        }
-
-        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
-            return null;
-
-        var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        chat ??= new Chat {
-            Id = chatId,
-            ChatType = ChatType.Peer,
-        };
-
-        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
-        var title = await GetPeerChatTitle(chatId, account, cancellationToken).ConfigureAwait(false);
-        chat = chat with { Title = title };
-        return chat;
-    }
 
     // Private methods
 
@@ -453,15 +487,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chatEntry = chatEntry with { IsRemoved = true };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-        return chatEntry;
-    }
-
-    private async Task<ChatEntry> GetChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
-    {
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
-        var tile = await GetTile(session, chatId, type, idTile.Range, cancellationToken)
-            .ConfigureAwait(false);
-        var chatEntry = tile.Entries.Single(e => e.Id == entryId);
         return chatEntry;
     }
 
@@ -485,46 +510,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
     }
 
-    private async Task RequirePermissions(
-        Session session, string chatId, ChatPermissions required,
-        CancellationToken cancellationToken)
-    {
-        if (!await HasPermissions(session, chatId, required, cancellationToken).ConfigureAwait(false))
-            throw ChatPermissionsExt.NotEnoughPermissions(required);
-    }
-
-    private async Task<bool> HasPermissions(
-        Session session, string chatId, ChatPermissions required,
-        CancellationToken cancellationToken)
-    {
-        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        var hasPermissions = rules.Has(required);
-        if (!hasPermissions && required == ChatPermissions.Read) {
-            // NOTE(AY): Maybe makes sense to move this to UI code - i.e. process the invite there
-            // in case there is not enough permissions & retry.
-            return await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
-        }
-        return hasPermissions;
-    }
-
-    private async Task<Chat?> GetGroupChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken)
-            .ConfigureAwait(false);
-        if (!canRead)
-            return null;
-        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<bool> IsInvited(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken)
-    {
-        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        return options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId)
-            && OrdinalEquals(chatId, inviteChatId as string);
-    }
+    // Assertions & permission checks
 
     private async Task AssertCanUpdateTextEntry(
         ChatEntry chatEntry,
@@ -560,5 +546,37 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         if (chatEntry.IsStreaming)
             throw StandardError.Constraint("This chat entry is streaming.");
+    }
+
+    private async Task RequirePermissions(
+        Session session, string chatId, ChatPermissions required,
+        CancellationToken cancellationToken)
+    {
+        if (!await HasPermissions(session, chatId, required, cancellationToken).ConfigureAwait(false))
+            throw ChatPermissionsExt.NotEnoughPermissions(required);
+    }
+
+    private async Task<bool> HasPermissions(
+        Session session, string chatId, ChatPermissions required,
+        CancellationToken cancellationToken)
+    {
+        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        var hasPermissions = rules.Has(required);
+        if (!hasPermissions && required == ChatPermissions.Read) {
+            // NOTE(AY): Maybe makes sense to move this to UI code - i.e. process the invite there
+            // in case there is not enough permissions & retry.
+            return await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
+        }
+        return hasPermissions;
+    }
+
+    private async Task<bool> IsInvited(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        return options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId)
+            && OrdinalEquals(chatId, inviteChatId as string);
     }
 }

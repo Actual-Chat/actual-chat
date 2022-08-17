@@ -71,21 +71,38 @@
         if (!account.IsActive())
             return Model.None;
 
-        var chats = await Chats.GetChats(Session, cancellationToken).ConfigureAwait(false);
-        var criteria = await SearchUI.Criteria.Use(cancellationToken).ConfigureAwait(false);
-        if (!criteria.IsNullOrEmpty())
-            chats = chats.Where(x => x.Title.Contains(criteria)).ToArray();
+        var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var parsedChatId = ParsedChatId.Parse(activeChatId);
+        if (!parsedChatId.IsValid || parsedChatId.Kind != ChatIdKind.Group)
+            activeChatId = Symbol.Empty; // We only display group chats here
+        var activeChat = activeChatId.IsEmpty
+            ? null
+            : await Chats.Get(Session, activeChatId, cancellationToken).ConfigureAwait(false);
+        if (activeChat == null)
+            activeChatId = Symbol.Empty;
+        else if (activeChat is { ChatType: ChatType.Group } && !chats.Any(c => c.Id == activeChat.Id))
+            chats = chats.Add(activeChat);
+
+        var keywords = await SearchUI.GetKeywords(cancellationToken).ConfigureAwait(false);
+        if (keywords.Count > 0)
+            chats = (
+                from c in chats
+                let rank = SearchUI.GetMatchRank(c.Title, keywords)
+                where rank > 0 || c.Id == activeChatId
+                orderby rank descending, c.Title
+                select c
+            ).ToImmutableArray();
+        else
+            chats = chats.OrderBy(c => c.Title).ToImmutableArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
             .Where(c => pinnedChatIds.ContainsKey(c.Id))
-            .OrderBy(c => c.Title)
             .ToList();
         var unpinnedChats = chats
             .Where(c => !pinnedChatIds.ContainsKey(c.Id))
-            .OrderBy(c => c.Title)
             .ToList();
 
         var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
@@ -97,7 +114,9 @@
         }
         listenedChats.Reverse();
 
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, Boolean>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+
+        Services.LogFor(GetType()).LogInformation("Here");
 
         return new Model {
             ActiveChatId = activeChatId,

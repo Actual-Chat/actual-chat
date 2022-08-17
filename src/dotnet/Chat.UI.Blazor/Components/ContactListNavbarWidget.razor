@@ -84,6 +84,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IUserContacts Contacts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -91,11 +92,8 @@
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
     private IMutableState<ContactGroup> Group { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
-
-        Group = StateFactory.NewMutable<ContactGroup>();
-    }
+    protected override async Task OnInitializedAsync()
+        => Group = StateFactory.NewMutable<ContactGroup>();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -104,12 +102,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return Model.None;
+
         var group = await Group.Use(cancellationToken).ConfigureAwait(false);
         var userContacts = await ListContacts(group, cancellationToken);
-        var criteria = await SearchUI.Criteria.Use(cancellationToken).ConfigureAwait(false);
-        if (!criteria.IsNullOrEmpty())
-            userContacts = userContacts.Where(x => x.Name.Contains(criteria)).ToImmutableArray();
-
         var contacts = await userContacts
             .Select(async userContact => {
                 var presence = await UserPresences.Get(userContact.TargetUserId, cancellationToken).ConfigureAwait(false);
@@ -123,24 +121,38 @@
             .Collect()
             .ConfigureAwait(false);
 
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var parsedChatId = ParsedChatId.Parse(activeChatId);
+        var activeContactId = parsedChatId.IsValid && parsedChatId.Kind == ChatIdKind.PeerFull
+            ? parsedChatId.UserId2.Id
+            : Symbol.Empty;
+        if (contacts.All(c => c.UserId != activeContactId))
+            activeContactId = Symbol.Empty; // No active contact in the current group
+
+        var keywords = await SearchUI.GetKeywords(cancellationToken).ConfigureAwait(false);
+        if (keywords.Count > 0)
+            contacts = (
+                from c in contacts
+                let rank = SearchUI.GetMatchRank(c.Contact.Name, keywords)
+                where rank > 0 || c.UserId == activeContactId
+                orderby rank descending, c.Contact.Name
+                select c
+                ).ToList();
+        else
+            contacts = contacts.OrderBy(c => c.Contact.Name).ToList();
+
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts
             .Where(c => pinnedChatIds.ContainsKey(c.FullChatId))
-            .OrderBy(c => c.Contact.Name)
             .ToArray();
         var unpinnedContacts = contacts
             .Where(c => !pinnedChatIds.ContainsKey(c.FullChatId))
-            .OrderBy(c => c.Contact.Name)
             .ToArray();
-
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isListening = await ChatUI.IsListening(activeChatId, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             PinnedContacts = pinnedContacts,
             UnpinnedContacts = unpinnedContacts,
             ActiveChatId = activeChatId,
-            IsListening = isListening,
         };
     }
 
@@ -160,13 +172,16 @@
         }
     }
 
+
+    private void OnActiveTabChanged(Tab? tab) {
+        Group.Value = tab == null ? ContactGroup.All : Enum.Parse<ContactGroup>(tab.Id);
+    }
     public sealed record Model {
         public static Model None { get; } = new();
 
         public ContactModel[] PinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public ContactModel[] UnpinnedContacts { get; init; } = Array.Empty<ContactModel>();
         public Symbol ActiveChatId { get; init; }
-        public bool IsListening { get; init; }
     }
 
     public sealed record ContactModel(UserContact Contact) {
@@ -175,8 +190,4 @@
         public bool IsOnline { get; init; }
         public string UserId { get; init; } = "";
     };
-
-    private void OnActiveTabChanged(Tab? tab) {
-        Group.Value = tab == null ? ContactGroup.All : Enum.Parse<ContactGroup>(tab.Id);
-    }
 }

@@ -8,7 +8,7 @@
                 <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@IsOpen"/>
                 <NavbarToggle/>
             </div>
-            <Search Applied="OnSearch"/>
+            <SearchBox TextChanged="OnSearchBoxTextChanged"/>
             <div class="w-12 ml-2">
                 <ButtonRound Click="@OnClick" Class="add-to-chat transparent">
                     <i class="icon-message-add text-2xl"></i>
@@ -36,12 +36,10 @@
     }
 
     private void OnClick() {
-        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction)) {
+        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
             addAction();
-        }
     }
 
-    private void OnSearch(string? criteria) {
-        SearchUI.Criteria.Value = criteria ?? "";
-    }
+    private void OnSearchBoxTextChanged(string text)
+        => SearchUI.Text.Value = text;
 }

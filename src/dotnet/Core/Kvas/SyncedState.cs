@@ -114,7 +114,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                     readResult = await Settings.Read(ct).ConfigureAwait(false);
                 }
                 catch (Exception e) {
-                    readResult = Result.Error<T>(e);
+                    readResult = Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
                     Log.LogWarning(e, "Failed to read the initial value");
                 }
             }),
@@ -156,6 +156,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     public new abstract record Options : MutableState<T>.Options
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
+        public bool ExposeReadErrors { get; init; }
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
