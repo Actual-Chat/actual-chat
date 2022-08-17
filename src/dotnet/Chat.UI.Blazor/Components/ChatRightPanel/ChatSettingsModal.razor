@@ -1,0 +1,150 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using Stl.Extensibility
+@using System.ComponentModel.DataAnnotations
+@implements IModalView<ChatSettingsModal.ModalInput>
+@inherits ComputedStateComponent<ChatSettingsModal.Model>
+@attribute [MatchFor(typeof(ModalInput), typeof(IModalView))]
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<Form Model="@_form" OnValidSubmit="@OnSave">
+    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal">
+        <Body>
+        <div class="flex-y text-03 p-3">
+            @if (m.Rules != null) {
+                @if (m.Rules.CanEditProperties()) {
+                    <DataAnnotationsValidator/>
+
+                    <div class="pb-2 mb-4 border-b border-bg-03">
+                        <FormSection>
+                            <ChatMuteToggle ChatId="@ModalModel.Chat.Id" />
+                        </FormSection>
+                    </div>
+
+                    <ChatIcon
+                        ShowImagePicker="true"
+                        ImageUploadUrl="@_form.ImageUploadUrl"
+                        ImagePicked="OnImagePicked"
+                        PictureClick="OnPictureClick"
+                        Size="SquareSize.Size20"
+                        Title="@_form.Title"
+                        Picture="@_form.Picture">
+                    </ChatIcon>
+
+                    <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+                        <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true" Class="right-panel-input"/>
+                    </FormSection>
+
+                    <FormSection Class="flex h-12 md:h-8 justify-center">
+                        <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
+                    </FormSection>
+                }
+                @if (m.Rules.CanInvite()) {
+                    <CascadingValue Value="@ModalModel.Chat" @key="ModalModel.Chat.Id">
+                        <ChatInviteSettings />
+                    </CascadingValue>
+                }
+            }
+        </div>
+        </Body>
+        <Buttons>
+            <div class="btn-group">
+                <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-secondary" IsAutofocused="true">Cancel</Button>
+                <Button Type="@ButtonType.Submit" IsDisabled="@(!context.Validate())">Save</Button>
+            </div>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private FormModel _form = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public ModalInput ModalModel { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task OnParametersSetAsync() {
+        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default);
+        _form ??= new(ComponentIdGenerator);
+        _form.Title = chat.Title;
+        _form.Picture = chat.Picture;
+        _form.IsPublic = chat.IsPublic;
+        _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var rules = await Chats.GetRules(Session, ModalModel.Chat.Id, cancellationToken);
+        return new() {
+            Rules = rules,
+        };
+    }
+
+    private void OnCancel()
+        => ModalInstance.CancelAsync();
+
+    private async Task OnSave() {
+        var chat = await Chats.Get(Session, ModalModel.Chat.Id, default);
+        var newChat = chat with {
+            Title = _form.Title,
+            IsPublic = _form.IsPublic,
+            Picture = _form.Picture,
+        };
+        var cmd = new IChats.ChangeChatCommand(Session, chat.Id, chat.Version, new() {
+            Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
+        });
+        await UICommander.Run(cmd);
+        await ModalInstance.CloseAsync();
+    }
+
+    public sealed class FormModel
+    {
+        [Required] public string Title { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public bool IsPublic { get; set; }
+        public string ImageUploadUrl { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string PictureId { get; }
+        public string IsPublicId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            PictureId = $"{FormId}-picture";
+            IsPublicId = $"{FormId}-is-public";
+        }
+    }
+
+    private void OnImagePicked(string imageUrl) {
+        _form.Picture = imageUrl;
+        StateHasChanged();
+    }
+
+    private async Task OnPictureClick(MouseEventArgs arg) {
+        var url = ContentUrlMapper.ContentUrl(_form.Picture);
+        await ImagePreviewUI.Show(url);
+    }
+
+    public sealed record ModalInput(Chat Chat);
+
+    public record Model {
+        public static Model None { get; } = new();
+
+        public ChatAuthorRules? Rules { get; init; }
+    }
+}
