@@ -97,8 +97,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     permissions |= ChatPermissions.SeeMembers;
             }
         }
-        if (account?.IsAdmin == true)
-            permissions |= ChatPermissions.Owner;
         permissions = permissions.AddImplied();
 
         var rules = new ChatAuthorRules(chatId, author, account, permissions);

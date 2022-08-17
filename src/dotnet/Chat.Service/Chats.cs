@@ -42,10 +42,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public virtual async Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
     {
         var chatIds = await ChatAuthors.ListChatIds(session, cancellationToken).ConfigureAwait(false);
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        if (account is { IsAdmin: true } && !chatIds.Contains(Constants.Chat.DefaultChatId))
-            chatIds = chatIds.Add(Constants.Chat.DefaultChatId);
-
         var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
             .Collect()
