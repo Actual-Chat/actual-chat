@@ -116,8 +116,6 @@
 
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
-        Services.LogFor(GetType()).LogInformation("Here");
-
         return new Model {
             ActiveChatId = activeChatId,
             PinnedChats = pinnedChats,
