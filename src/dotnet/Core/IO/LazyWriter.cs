@@ -1,3 +1,5 @@
+using Stl.Internal;
+
 namespace ActualChat.IO;
 
 public class LazyWriter<T> : IAsyncDisposable
@@ -12,6 +14,7 @@ public class LazyWriter<T> : IAsyncDisposable
 
     public int FlushLimit { get; init; } = 64;
     public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(1);
+    public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
     public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     public Func<List<T>, Task> Implementation { get; init; } = _ => Task.CompletedTask;
     public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
@@ -26,7 +29,8 @@ public class LazyWriter<T> : IAsyncDisposable
             UnsafeEndFlushDelay();
         }
         try {
-            await Flush().WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+            using var disposeDelayCts = new CancellationTokenSource(DisposeTimeout);
+            await Flush(disposeDelayCts.Token).ConfigureAwait(false);
         }
         catch {
             // Intended
@@ -36,6 +40,8 @@ public class LazyWriter<T> : IAsyncDisposable
     public void Add(T item)
     {
         lock (Lock) {
+            if (_isDisposed)
+                throw Errors.AlreadyDisposedOrDisposing();
             _buffer.Add(item);
             _itemIndex++;
             if (_buffer.Count < FlushLimit) {
@@ -46,20 +52,22 @@ public class LazyWriter<T> : IAsyncDisposable
         Flush();
     }
 
-    public Task Flush()
+    public Task Flush(CancellationToken cancellationToken = default)
     {
         lock (Lock) // Lock is needed here b/c of _itemIndex access
-            return Flush(_itemIndex);
+            return Flush(_itemIndex, cancellationToken);
     }
 
-    private async Task Flush(long expectedFlushedItemIndex)
+    // Private methods
+
+    private async Task Flush(long expectedFlushedItemIndex, CancellationToken cancellationToken)
     {
         while (true) {
             Task flushTask;
             lock (Lock) {
                 if (expectedFlushedItemIndex <= _flushedItemIndex)
                     return;
-                flushTask = UnsafeDelayedFlush(TimeSpan.Zero);
+                flushTask = UnsafeDelayedFlush(TimeSpan.Zero).WaitAsync(cancellationToken);
             }
             await flushTask.ConfigureAwait(false);
         }

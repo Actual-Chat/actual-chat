@@ -1,3 +1,5 @@
+using ActualChat.Pooling;
+
 namespace ActualChat.Kvas;
 
 public interface ISyncedState<T> : IMutableState<T>, IDisposable
@@ -195,4 +197,11 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
             return Kvas.Set(Key, data, cancellationToken);
         }
     }
+}
+
+public class SyncedStateLease<T> : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
+{
+    public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
+
+    public SyncedStateLease(SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease) : base(lease) { }
 }

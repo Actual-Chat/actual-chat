@@ -3,15 +3,15 @@ namespace ActualChat.Users;
 public interface IChatReadPositions : IComputeService
 {
     [ComputeMethod]
-    Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken);
+    Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task UpdateReadPosition(UpdateReadPositionCommand command, CancellationToken cancellationToken);
+    Task Set(SetReadPositionCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record UpdateReadPositionCommand(
+    public sealed record SetReadPositionCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
-        [property: DataMember] long EntryId
+        [property: DataMember] long LastReadEntryId
         ) : ISessionCommand<UserAvatar>;
 }

@@ -17,7 +17,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
     }
 
     // [ComputeMethod]
-    public virtual async Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
@@ -29,11 +29,11 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
     }
 
     // [CommandHandler]
-    public virtual async Task UpdateReadPosition(IChatReadPositions.UpdateReadPositionCommand command, CancellationToken cancellationToken)
+    public virtual async Task Set(IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken)
     {
         var (session, chatId, entryId) = command;
         if (Computed.IsInvalidating()) {
-            _ = GetReadPosition(session, chatId, default);
+            _ = Get(session, chatId, default);
             return;
         }
 

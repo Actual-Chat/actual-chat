@@ -33,7 +33,6 @@
     [Inject] private IPluginHost Plugins { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
-    [Inject] private StateRestore StateRestore { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -55,8 +54,6 @@
         if (!CircuitContext.IsPrerendering) {
             CircuitContext.RootComponent = this;
             _ = InitializeTimeZoneConverter();
-            // This method should be called only when ISessionProvider.Session is set!
-            _ = StateRestore.Restore(CancellationToken.None);
         }
 
         UIAssembly ??= typeof(App).Assembly;

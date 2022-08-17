@@ -6,18 +6,20 @@ using ActualChat.Users;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI
+public class ChatUI
 {
     private ChatPlayers? _chatPlayers;
+    private readonly SharedResourcePool<Symbol, ISyncedState<long>> _lastReadEntryStates;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
+    private Session Session { get; }
     private IChats Chats { get; }
     private IChatReadPositions ChatReadPositions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     private ModalUI ModalUI { get; }
     private MomentClockSet Clocks { get; }
-    private Session Session { get; }
+    private UICommander UICommander { get; }
 
     public IStoredState<Symbol> ActiveChatId { get; }
     public ISyncedState<ImmutableDictionary<string, Moment>> PinnedChatIds { get; }
@@ -30,11 +32,12 @@ public partial class ChatUI
     {
         Services = services;
         StateFactory = services.StateFactory();
+        Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
         ChatReadPositions = services.GetRequiredService<IChatReadPositions>();
         ModalUI = services.GetRequiredService<ModalUI>();
         Clocks = services.Clocks();
-        Session = services.GetRequiredService<Session>();
+        UICommander = services.UICommander();
 
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(ChatUI));
         var accountSettings = services.GetRequiredService<AccountSettings>().WithPrefix(nameof(ChatUI));
@@ -52,7 +55,7 @@ public partial class ChatUI
         LinkedChatEntry = StateFactory.NewMutable<ChatEntryLink?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
-        _lastReadEntryIds = new SharedResourcePool<Symbol, IPersistentState<long>>(RestoreLastReadEntryId);
+        _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long>>(CreateLastReadEntryState);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
     }
@@ -133,6 +136,26 @@ public partial class ChatUI
 
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
+
+    public async Task<SyncedStateLease<long>> LeaseLastReadEntryState(
+        Symbol chatId,
+        CancellationToken cancellationToken)
+    {
+        var lease = await _lastReadEntryStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
+        return new SyncedStateLease<long>(lease);
+    }
+
+    private Task<ISyncedState<long>> CreateLastReadEntryState(Symbol chatId, CancellationToken cancellationToken)
+        => Task.FromResult(StateFactory.NewCustomSynced<long>(
+            new(
+                // Reader
+                async ct => await ChatReadPositions.Get(Session, chatId, ct).ConfigureAwait(false) ?? 0,
+                // Writer
+                async (lastReadEntryId, ct) => {
+                    var command = new IChatReadPositions.SetReadPositionCommand(Session, chatId, lastReadEntryId);
+                    await UICommander.Run(command, ct);
+                })
+            ));
 
     // Private methods
 

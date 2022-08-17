@@ -1,10 +1,11 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IAsyncDisposable
+public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
@@ -31,15 +32,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
-    private IPersistentState<long> LastReadEntryId { get; set; } = null!;
+    private SyncedStateLease<long> LastReadEntryState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
         Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
-        await LastReadEntryId.DisposeSilentlyAsync().ConfigureAwait(false);
+        LastReadEntryState.Dispose();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -52,7 +53,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public async Task NavigateToUnreadEntry()
     {
         long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryId?.Value ?? 0;
+        var lastReadEntryId = LastReadEntryState?.Value ?? 0;
         if (lastReadEntryId > 0)
             navigateToEntryId = lastReadEntryId;
         else {
@@ -74,8 +75,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
-            _initialLastReadEntryId = LastReadEntryId.Value;
+            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
+            _initialLastReadEntryId = LastReadEntryState.Value;
         }
         finally {
             await TimeZoneConverter.WhenInitialized;
@@ -110,16 +111,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 visibleEntryIds.Remove(minVisibleEntryId);
                 await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
 
-                if (LastReadEntryId?.Value >= maxVisibleEntryId)
+                if (LastReadEntryState?.Value >= maxVisibleEntryId)
                     continue;
 
-                if (LastReadEntryId != null)
-                    LastReadEntryId.Value = maxVisibleEntryId;
+                if (LastReadEntryState != null)
+                    LastReadEntryState.Value = maxVisibleEntryId;
             }
             catch (Exception e) when(e is not OperationCanceledException) {
                 Log.LogWarning(e,
                     "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
-                    LastReadEntryId!.Value);
+                    LastReadEntryState!.Value);
             }
     }
 
@@ -135,7 +136,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var author = await ChatAuthors.Get(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
-        var lastReadEntryId = LastReadEntryId?.Value ?? 0;
+        var lastReadEntryId = LastReadEntryState?.Value ?? 0;
         var entryId = lastReadEntryId;
         var mustScrollToEntry = query.IsNone && entryId != 0;
 

@@ -1,3 +1,5 @@
+using ActualChat.Pooling;
+
 namespace ActualChat.Kvas;
 
 public interface IStoredState<T> : IMutableState<T>
@@ -107,4 +109,11 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             return Kvas.Set(Key, data, cancellationToken);
         }
     }
+}
+
+public class StoredStateLease<T> : MutableStateLease<T, IStoredState<T>>, IStoredState<T>
+{
+    public Task WhenRead => State.WhenRead;
+
+    public StoredStateLease(SharedResourcePool<Symbol, IStoredState<T>>.Lease lease) : base(lease) { }
 }

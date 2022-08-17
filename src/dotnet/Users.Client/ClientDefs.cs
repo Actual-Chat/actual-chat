@@ -53,13 +53,11 @@ public interface IRecentEntriesClientDef
 [BasePath("chatReadPositions")]
 public interface IChatReadPositionsClientDef
 {
-    [Get(nameof(GetReadPosition))]
-    public Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [Post(nameof(UpdateReadPosition))]
-    public Task UpdateReadPosition(
-        [Body] IChatReadPositions.UpdateReadPositionCommand command,
-        CancellationToken cancellationToken);
+    [Post(nameof(Set))]
+    public Task Set([Body] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]

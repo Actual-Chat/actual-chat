@@ -13,9 +13,11 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         public int ReadBatchMaxSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(100);
         public int FlushMaxItemCount { get; init; } = 64;
+        public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
         public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     }
 
+    protected Options Settings { get; }
     protected IBatchingKvasBackend Backend { get; }
     protected IThreadSafeLruCache<Symbol, string?> ReadCache { get; }
     protected BatchProcessor<string, string?> Reader { get; }
@@ -24,6 +26,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
 
     public BatchingKvas(Options options, IBatchingKvasBackend backend, ILogger<BatchingKvas>? log = null)
     {
+        Settings = options;
         Log = log ?? NullLogger<BatchingKvas>.Instance;
         Backend = backend;
         ReadCache = options.ReadCacheFactory.Invoke();
@@ -37,13 +40,14 @@ public class BatchingKvas : IKvas, IAsyncDisposable
             FlushDelay = options.FlushDelay,
             FlushLimit = options.FlushMaxItemCount,
             FlushRetryDelays = options.FlushRetryDelays,
+            DisposeTimeout = options.DisposeTimeout,
             Implementation = BatchWrite,
             Log = Log,
         };
     }
 
-    public virtual async ValueTask DisposeAsync()
-        => await Flush().ConfigureAwait(false);
+    public virtual ValueTask DisposeAsync()
+        => Writer.DisposeAsync();
 
     public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
@@ -66,7 +70,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     }
 
     public Task Flush(CancellationToken cancellationToken = default)
-        => Writer.Flush().WaitAsync(cancellationToken);
+        => Writer.Flush(cancellationToken);
 
     public void ClearReadCache()
         => ReadCache.Clear();

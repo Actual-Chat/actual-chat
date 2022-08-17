@@ -1,16 +1,16 @@
-using ActualChat.UI.Blazor.Services;
+using ActualChat.Kvas;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class UnreadMessages : IAsyncDisposable
+public class UnreadMessages : IDisposable
 {
     private readonly Session _session;
     private readonly IChats _chats;
     private readonly Symbol _chatId;
     private readonly ChatUI _chatUI;
     private readonly AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
-    private IPersistentState<long>? _lastReadEntryId;
+    private SyncedStateLease<long>? _lastReadEntryState;
 
     public UnreadMessages(Session session, Symbol chatId, ChatUI chatUI, IChats chats)
     {
@@ -20,12 +20,15 @@ public class UnreadMessages : IAsyncDisposable
         _chatUI = chatUI;
     }
 
+    public void Dispose()
+        => _lastReadEntryState?.Dispose();
+
     public async Task<int?> GetCount(CancellationToken cancellationToken)
     {
         using (var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false))
-            _lastReadEntryId ??= await _chatUI.GetLastReadEntryId(_chatId, cancellationToken).ConfigureAwait(false);
+            _lastReadEntryState ??= await _chatUI.LeaseLastReadEntryState(_chatId, cancellationToken).ConfigureAwait(false);
 
-        var lastReadEntryId = await _lastReadEntryId.Use(cancellationToken).ConfigureAwait(false);
+        var lastReadEntryId = await _lastReadEntryState.Use(cancellationToken).ConfigureAwait(false);
         if (lastReadEntryId == 0)
             return null;
 
@@ -58,7 +61,4 @@ public class UnreadMessages : IAsyncDisposable
             return unreadCount;
         }}
     }
-
-    public ValueTask DisposeAsync()
-        => _lastReadEntryId.DisposeSilentlyAsync();
 }

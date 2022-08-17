@@ -6,6 +6,7 @@
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Events
 @using ActualChat.Hosting
+@using ActualChat.Kvas
 @using ActualChat.MediaPlayback
 
 <EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
@@ -69,21 +70,20 @@
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
-    private IPersistentState<long>? LastReadEntryId { get; set; }
+    private SyncedStateLease<long>? LastReadEntryState { get; set; }
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
-    }
+    protected override async Task OnInitializedAsync()
+        => LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        if (LastReadEntryId != null)
-            await LastReadEntryId.DisposeAsync();
+        LastReadEntryState?.Dispose();
+        LastReadEntryState = null;
     }
 
     protected override void OnParametersSet()
@@ -117,8 +117,8 @@
 
             await JSRef.InvokeVoidAsync("onPostSucceeded");
 
-            if (LastReadEntryId != null)
-                LastReadEntryId.Value = entryId;
+            if (LastReadEntryState != null)
+                LastReadEntryState.Value = entryId;
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);

@@ -17,10 +17,10 @@ public class ChatReadPositionsController: ControllerBase, IChatReadPositions
     }
 
     [HttpGet, Publish]
-    public Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetReadPosition(session, chatId, cancellationToken);
+    public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.Get(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task UpdateReadPosition([FromBody] IChatReadPositions.UpdateReadPositionCommand command, CancellationToken cancellationToken)
+    public Task Set([FromBody] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }
