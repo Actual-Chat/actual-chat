@@ -172,6 +172,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return invited;
     }
 
+    public virtual Task<bool> CanSeeMembers(Session session, string chatId, CancellationToken cancellationToken)
+        => Task.FromResult(Constants.Chat.AnnouncementsChatId != chatId);
+
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId, CancellationToken cancellationToken)

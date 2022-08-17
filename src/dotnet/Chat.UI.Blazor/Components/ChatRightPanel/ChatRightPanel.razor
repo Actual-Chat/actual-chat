@@ -14,22 +14,26 @@
         <RightPanelChatInfo/>
         <div class="flex w-full min-h-2 bg-04"></div>
         <div class="flex flex-col w-full h-full overflow-hidden">
-            <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
-                <Tab Title="Members">
-                    <ChatAuthors/>
-                </Tab>
-                @if (m.EnableIncompleteUI) {
-                    <Tab Title="Media">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab Title="Files">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab Title="Links">
-                        <ToBeDone/>
-                    </Tab>
-                }
-            </TabPanel>
+            @if (m.EnableMembersUI || m.EnableIncompleteUI) {
+                <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
+                    @if (m.EnableMembersUI) {
+                        <Tab Title="Members">
+                            <ChatAuthors/>
+                        </Tab>
+                    }
+                    @if (m.EnableIncompleteUI) {
+                        <Tab Title="Media">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab Title="Files">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab Title="Links">
+                            <ToBeDone/>
+                        </Tab>
+                    }
+                </TabPanel>
+            }
         </div>
     </div>
 </SideNav>
@@ -37,6 +41,8 @@
 @code {
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -49,9 +55,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, Boolean>(cancellationToken).ConfigureAwait(false);
+        var canSeeMembers = await Chats.CanSeeMembers(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
         return new () {
             IsRightPanelVisible = isRightPanelVisible,
             EnableIncompleteUI = enableIncompleteUI,
+            EnableMembersUI = canSeeMembers,
         };
     }
 
@@ -59,5 +67,6 @@
         public static Model None { get; } = new();
         public bool IsRightPanelVisible { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool EnableMembersUI { get; init; }
     }
 }

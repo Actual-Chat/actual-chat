@@ -66,6 +66,9 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (account == null)
             return ImmutableArray<Symbol>.Empty;
 
+        if (!await Chats.CanSeeMembers(session, chatId, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Unauthorized("You can not see the chat members.");
+
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 

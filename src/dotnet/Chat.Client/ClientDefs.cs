@@ -61,6 +61,12 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
+    [Get(nameof(CanSeeMembers))]
+    Task<bool> CanSeeMembers(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
     [Get(nameof(GetTextEntryAttachments))]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,

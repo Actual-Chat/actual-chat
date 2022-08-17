@@ -62,6 +62,12 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<bool> CanSeeMembers(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken);
