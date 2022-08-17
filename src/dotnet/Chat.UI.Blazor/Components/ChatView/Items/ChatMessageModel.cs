@@ -60,7 +60,10 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
-        var firstOldItemId = int.Parse(oldItems?.FirstOrDefault()?.Key ?? "0", CultureInfo.InvariantCulture);
+        var oldBlockStartIds = oldItems?
+            .Where(i => i.IsBlockStart)
+            .Select(i => long.Parse(i.Key, CultureInfo.InvariantCulture))
+            .ToHashSet();
         var isBlockStart = true;
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
@@ -102,7 +105,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
                 return true;
-            if (nextEntry.Id == firstOldItemId)
+            if (oldBlockStartIds != null && oldBlockStartIds.Contains(nextEntry.Id))
                 return true;
 
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;

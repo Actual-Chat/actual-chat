@@ -68,7 +68,7 @@
                             <ChatMessageTranscript Model="@message" Class="mx-1"/>
                         } else {
                             <p class="chat-message-markup mx-1">
-                                <CascadingValue Value="@entry">
+                                <CascadingValue Value="@entry" IsFixed="true">
                                     <MarkupView Markup="@model.Markup"/>
                                 </CascadingValue>
                             </p>

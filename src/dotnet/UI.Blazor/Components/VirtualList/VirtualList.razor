@@ -9,7 +9,11 @@
 
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem ? 0 : SpacerSize;
-    var endSpacerSize = Data.HasVeryLastItem ? 0 : SpacerSize;
+    var endSpacerSize = Data.HasVeryLastItem
+        ? 0
+        : renderIndex == 0
+            ? 0
+            : SpacerSize;
     var startExpansion = Data.Items
         .TakeWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.Start) < 0)
         .Sum(i => i.CountAs);
