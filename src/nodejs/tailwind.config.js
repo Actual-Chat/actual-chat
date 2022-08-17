@@ -145,7 +145,6 @@ module.exports = {
         'bg-05': 'var(--background-05)',
         'text-05': 'var(--text-05)',
         'bg-06': 'var(--background-06)',
-        'bg-07': 'var(--background-07)',
         'bg-08': 'var(--background-08)',
       },
       backgroundColor: {

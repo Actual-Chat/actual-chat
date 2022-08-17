@@ -123,7 +123,7 @@
 }
 
 .wide-left-panel-tabs {
-    @apply pb-0 mb-0 border-b border-bg-04;
+    @apply relative top-0 pb-0 mb-0 border-b border-bg-04;
 }
 .wide-left-panel-tabs .btn-group {
     @apply min-h-14 justify-between px-4;
@@ -160,11 +160,13 @@
     @apply w-full;
 }
 .chats-tab .btn-round,
-.contacts-tab .btn-round {
+.contacts-tab .btn-round,
+.listening-chats .btn-round {
     @apply w-6 h-6;
 }
 .chats-tab .btn.btn-round .btn-content,
-.contacts-tab .btn.btn-round .btn-content {
+.contacts-tab .btn.btn-round .btn-content,
+.listening-chats .btn.btn-round .btn-content {
     @apply bg-transparent;
 }
 .chats-tab .btn.btn-round.pin-toggle.btn-content,
@@ -185,17 +187,17 @@
     @apply flex-y h-full px-2 gap-y-0.5;
 }
 
-.listened-chats {
-    @apply relative flex-y bottom-0 py-1 px-2 gap-y-0.5;
-    @apply bg-01 border-t-8 border-bg-04;
+.listening-chats {
+    @apply relative flex-y bottom-0 p-2;
+    @apply bg-02 border-t-8 border-bg-04;
 }
-.listened-chats .navbar-item.active {
+.listening-chats .navbar-item.active {
     @apply bg-selected;
 }
-.listened-chats .navbar-item.active .navbar-item-content {
+.listening-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
-.listened-chats .navbar-item-ending {
+.listening-chats .navbar-item-ending {
     @apply gap-x-3;
 }
 
