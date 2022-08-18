@@ -221,25 +221,24 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
 
-        if (!isNodesAdded)
-            return;
+        if (isNodesAdded) {
+            for (const itemRef of this.getNewItemRefs()) {
+                const key = getItemKey(itemRef);
+                const countAs = getItemCountAs(itemRef);
 
-        for (const itemRef of this.getNewItemRefs()) {
-            const key = getItemKey(itemRef);
-            const countAs = getItemCountAs(itemRef);
+                if (this.items.hasOwnProperty(key)) {
+                    itemRef.classList.remove('new');
+                    continue;
+                }
 
-            if (this.items.hasOwnProperty(key)) {
-                itemRef.classList.remove('new');
-                continue;
+                this.items[key] = {
+                    size: -1,
+                    countAs: countAs ?? 1,
+                }
+                this._unmeasuredItems.add(key);
+                this._sizeObserver.observe(itemRef, { box: 'border-box' });
+                this._visibilityObserver.observe(itemRef);
             }
-
-            this.items[key] = {
-                size: -1,
-                countAs: countAs ?? 1,
-            }
-            this._unmeasuredItems.add(key);
-            this._sizeObserver.observe(itemRef, { box: 'border-box' });
-            this._visibilityObserver.observe(itemRef);
         }
 
         if (this._unmeasuredItems.size === 0) {
@@ -270,6 +269,9 @@ export class VirtualList implements VirtualListAccessor {
             const rs = this.getRenderState();
             if (rs) {
                 void this.onRenderEnd(rs);
+            }
+            else {
+                this._isRendering = false;
             }
         });
     };
