@@ -10,9 +10,9 @@
     <span class="@Class select-none">
         <span class="relative">
             <div class="@(IsOpen ? "" : "hidden") absolute bottom-6 left-0 w-48">
-                <div class="relative rounded-md shadow-lg border bg-white py-1 flex-y">
+                <div class="relative rounded-xl shadow-lg border bg-white p-1 flex-y">
                     @foreach (var (name, displayName) in unusedAuthSchemas) {
-                        <a @onclick="_ => SignIn(name)" href="#" class="flex-auto p-3 text-01 hover:bg-primary hover:text-04">
+                        <a @onclick="_ => SignIn(name)" href="#" class="menu-item flex-auto p-3 text-01">
                             Sign in with @displayName
                         </a>
                     }

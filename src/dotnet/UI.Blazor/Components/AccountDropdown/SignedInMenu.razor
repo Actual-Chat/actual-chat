@@ -2,6 +2,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
+@inject NavigationManager Navigator
 
 <Dropdown Class="flex items-center justify-end" ButtonClass="account-btn btn-square">
     <ButtonTemplate>
@@ -56,5 +57,6 @@
     private async Task OnSignOutClick() {
         IsOpen = false;
         await ClientAuth.SignOut();
+        Navigator.NavigateTo("/");
     }
 }
