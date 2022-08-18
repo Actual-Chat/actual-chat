@@ -42,10 +42,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             .Where(c => c.Id == (string)Constants.Chat.DefaultChatId)
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
-        var shouldRecreateDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);
-
-        if (shouldRecreateDb) {
-            Log.LogInformation("Recreating DB...");
+        var isNewDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);
+        if (isNewDb) {
+            Log.LogInformation("Filling chats db with data...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
