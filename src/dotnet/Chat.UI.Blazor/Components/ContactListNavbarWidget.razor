@@ -35,7 +35,6 @@
 
     RenderFragment RenderTab(ContactGroup group, string title) =>
         @<Tab Title="@title" Id="@group.ToString()" Class="-flex-y relative overflow-y-hidden h-full contacts-tab">
-            @* <ListeningChatsNavbarWidget/> *@
             <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
                 @if (group == Group.Value) {
                     @if (m.PinnedContacts.Length > 0) {

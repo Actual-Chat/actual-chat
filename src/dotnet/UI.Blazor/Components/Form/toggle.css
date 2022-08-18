@@ -67,11 +67,11 @@ form label.checkbox-label {
     @apply font-normal;
 }
 .checkbox .checkbox-switch {
-    @apply inline-block relative h-3.5 w-8 rounded-3xl top-1.5 align-top bg-08;
+    @apply inline-block relative h-3.5 w-8 rounded-3xl top-1.5 align-top bg-icons-02;
     transition: .2s;
 }
 .checkbox .checkbox-switch:before {
-    @apply inline-block absolute w-5 h-5 -left-px bg-01 border border-bg-08 rounded-full;
+    @apply inline-block absolute w-5 h-5 -left-px bg-01 border border-icons-02 rounded-full;
     content: '';
     top: -3px;
     transition: .15s;
@@ -103,9 +103,9 @@ form label.checkbox-label {
 
 /* Disabled */
 .checkbox input[type=checkbox]:disabled + .checkbox-switch {
-    @apply border-bg-08;
+    @apply border-icons-02;
     filter: grayscale(60%);
 }
 .checkbox input[type=checkbox]:disabled + .checkbox-switch:before {
-    @apply bg-08;
+    @apply bg-icons-02;
 }
