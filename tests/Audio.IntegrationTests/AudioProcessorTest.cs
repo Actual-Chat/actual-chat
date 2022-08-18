@@ -24,7 +24,7 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = audioProcessor.AudioStreamer;
 
         var audioRecord = new AudioRecord(
-            session.Id, "1",
+            session.Id, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
         await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
