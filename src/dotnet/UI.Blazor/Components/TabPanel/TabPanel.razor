@@ -46,7 +46,20 @@
     }
 
     internal void RegisterTab(Tab tab) {
-        _tabs.Add(tab);
+        var indexToInsert = -1;
+        if (tab.TabIndex.HasValue && _tabs.Count > 0) {
+            for (var i = 0; i < _tabs.Count; i++) {
+                var c = _tabs[i];
+                if (!c.TabIndex.HasValue || c.TabIndex > tab.TabIndex) {
+                    indexToInsert = i;
+                    break;
+                }
+            }
+        }
+        if (indexToInsert >= 0)
+            _tabs.Insert(indexToInsert, tab);
+        else
+            _tabs.Add(tab);
         ActiveTab ??= tab;
         StateHasChanged();
     }
@@ -58,5 +71,4 @@
         ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
         StateHasChanged();
     }
-
 }

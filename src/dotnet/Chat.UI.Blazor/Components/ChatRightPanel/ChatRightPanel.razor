@@ -17,18 +17,18 @@
             @if (m.EnableMembersUI || m.EnableIncompleteUI) {
                 <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
                     @if (m.EnableMembersUI) {
-                        <Tab Title="Members">
+                        <Tab Title="Members" TabIndex="0">
                             <ChatAuthors/>
                         </Tab>
                     }
                     @if (m.EnableIncompleteUI) {
-                        <Tab Title="Media">
+                        <Tab Title="Media" TabIndex="1">
                             <ToBeDone/>
                         </Tab>
-                        <Tab Title="Files">
+                        <Tab Title="Files" TabIndex="2">
                             <ToBeDone/>
                         </Tab>
-                        <Tab Title="Links">
+                        <Tab Title="Links" TabIndex="3">
                             <ToBeDone/>
                         </Tab>
                     }
