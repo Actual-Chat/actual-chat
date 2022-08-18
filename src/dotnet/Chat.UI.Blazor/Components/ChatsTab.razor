@@ -2,50 +2,12 @@
 @using BlazorContextMenu
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-@{
-    RenderFragment RenderChat(Chat c) =>
-        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(ActiveChatId == c.Id)">
-            <ChildContent>
-                <div class="flex-x items-center gap-x-2">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size10" />
-                    <span class="text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
-            </ChildContent>
-            <Ending>
-                @if (Group == ChatGroup.Listening) {
-                    <ChatListListenToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
-                    <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
-                    <ListeningChatRemoveButton ChatId="@c.Id"/>
-                } else {
-                    <ChatListListenToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
-                    <ChatListRecordingToggle ChatId="@c.Id" Class="chat-menu-btn blackout"/>
-
-                    <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@c">
-                        <div class="flex">
-                            <Button Class="btn-round chat-menu-btn blackout">
-                                <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 7C13.104 7 14 6.104 14 5C14 3.896 13.104 3 12 3C10.896 3 10 3.896 10 5C10 6.104 10.896 7 12 7ZM12 10C10.896 10 10 10.896 10 12C10 13.104 10.896 14 12 14C13.104 14 14 13.104 14 12C14 10.896 13.104 10 12 10ZM10 19C10 17.896 10.896 17 12 17C13.104 17 14 17.896 14 19C14 20.104 13.104 21 12 21C10.896 21 10 20.104 10 19Z"/>
-                                </svg>
-                            </Button>
-                            <div class="absolute -right-4">
-                                <div class="placement -mt-2">
-                                </div>
-                            </div>
-                        </div>
-                    </ContextMenuToggleTrigger>
-
-                    <UnreadMessageCounter ChatId="@c.Id"/>
-                }
-            </Ending>
-        </NavbarItem>;
-}
-
 @if (ChatList != null) {
     <div class="@GetCss(Group)">
         @foreach (var c in ChatList) {
-            <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@c" CssClass="flex-x items-center gap-x-2">
-                @RenderChat(c)
-            </ContextMenuTrigger>
+            <ChatNavbarItem Chat="@c"
+                            IsListeningPanel="@(Group == ChatGroup.Listening)"
+                            IsActive="@(ActiveChatId == c.Id)" />
         }
     </div>
 }
@@ -56,11 +18,6 @@
         Unpinned,
         Listening,
     }
-
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public ChatGroup Group { get; set; } = ChatGroup.Listening;
     [Parameter] public List<Chat>? ChatList { get; set; }

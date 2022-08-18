@@ -95,9 +95,11 @@
                 @if (entry.AudioEntryId != null) {
                     <MessageMenuPlay Entry="@entry"/>
                 }
-                <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
-                    <i class="icon-reply text-xl text-icon-01"></i>
-                </ButtonRound>
+                @if (model.CanReply) {
+                    <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
+                        <i class="icon-reply text-xl text-icon-01"></i>
+                    </ButtonRound>
+                }
                 <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
                     <ButtonRound Title="More options" Class="more-btn">
                         <i class="icon-more-vertical text-xl text-icon-01"></i>
@@ -140,19 +142,33 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var entry = Message.Entry;
+        var chatId = entry.ChatId;
         var principalId = await ChatAuthor
-            .GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None)
+            .GetPrincipalId(Session, chatId, CancellationToken.None)
             .ConfigureAwait(false);
 
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var canReply = rules.CanWrite();
         var attachments = await LoadAttachments(cancellationToken).ConfigureAwait(false);
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
-        var isReplied = Message.Entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.ChatEntry;
-        var isHighlighted = Message.Entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
+        var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.ChatEntry;
+        var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         if (Message.ShowEntryType)
             markup = EnrichMarkupWithEntryType(markup);
-        return new (Message, markup, principalId, attachments, isMentioned, repliedChatMessage, isHighlighted, isReplied);
+        return new Model {
+            Message = Message,
+            Markup = markup,
+            PrincipalId = principalId,
+            Attachments = attachments,
+            RepliedChatMessage = repliedChatMessage,
+            IsMentioned = isMentioned,
+            IsHighlighted = isHighlighted,
+            IsReplied = isReplied,
+            CanReply = canReply,
+        };
     }
 
     private Markup EnrichMarkupWithEntryType(Markup markup) {
@@ -216,14 +232,15 @@
         return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    public record Model(
-        ChatMessageModel Message,
-        Markup Markup,
-        Symbol PrincipalId,
-        ImmutableArray<TextEntryAttachment> Attachments,
-        bool IsMentioned,
-        ChatMessageModel? RepliedChatMessage,
-        bool IsHighlighted,
-        bool IsReplied);
-
+    public record Model {
+        public ChatMessageModel Message { get; init; } = null!;
+        public Markup Markup { get; init; } = null!;
+        public Symbol PrincipalId { get; init; }
+        public ImmutableArray<TextEntryAttachment> Attachments { get; init; }
+        public ChatMessageModel? RepliedChatMessage { get; init; }
+        public bool IsMentioned { get; init; }
+        public bool IsHighlighted { get; init; }
+        public bool IsReplied { get; init; }
+        public bool CanReply { get; init; }
+    }
 }
