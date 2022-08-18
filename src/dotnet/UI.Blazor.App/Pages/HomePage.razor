@@ -1,26 +1,23 @@
 @page "/"
 @using ActualChat.Chat
 @using ActualChat.Chat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@inherits ComputedStateComponent<Account?>
+@inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
 @{
-    var account = State.LatestNonErrorValue;
+    var model = State.LatestNonErrorValue;
+    var account = model.Account;
     if (account == null)
         return; // Not yet computed
     if (account.IsGuest()) {
         <Welcome/>
     }
-    else {
-        Nav.NavigateTo(Links.ChatPage(_defaultChatId));
-        return;
+    else if(!model.DefaultChatId.IsEmpty) {
+        Nav.NavigateTo(Links.ChatPage(model.DefaultChatId));
     }
 }
 
 @code {
-    private string _defaultChatId = "";
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -30,14 +27,23 @@
     protected override async Task OnInitializedAsync() {
         var activeChatIdState = ChatUI.ActiveChatId;
         await activeChatIdState.WhenRead.ConfigureAwait(true);
-        _defaultChatId = ChatUI.ActiveChatId.ValueOrDefault;
-        if (_defaultChatId.IsNullOrEmpty()) {
-            var chats = await Chats.List(Session, CancellationToken.None);
-            var defaultChat = chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
-            _defaultChatId = defaultChat?.Id ?? "";
-        }
     }
 
-    protected override async Task<Account?> ComputeState(CancellationToken cancellationToken)
-        => await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() { InitialValue = new Model(null, Symbol.Empty) };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var defaultChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
+        if (defaultChatId.IsEmpty) {
+            var chats = await Chats.List(Session, CancellationToken.None);
+            var defaultChat = chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
+            defaultChatId = defaultChat?.Id ?? "";
+        }
+
+        var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
+        return new(account, defaultChatId);
+    }
+
+    public record Model(Account? Account, Symbol DefaultChatId);
 }
