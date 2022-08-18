@@ -36,11 +36,24 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
     }
 
     private async Task JoinToAnnouncementsChat(string userId, CancellationToken cancellationToken)
-        => _ = await _chatAuthorsBackend.GetOrCreate(
-            Constants.Chat.AnnouncementsChatId,
-            userId,
-            false,
-            cancellationToken).ConfigureAwait(false);
+    {
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        var chatAuthor = await _chatAuthorsBackend.GetOrCreate(
+                chatId,
+                userId,
+                false,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!_hostInfo.IsDevelopmentInstance)
+            return;
+
+        var account = await _accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null || !account.IsAdmin)
+            return;
+
+        await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task JoinAdminToDefaultChat(string userId, CancellationToken cancellationToken)
     {
@@ -56,18 +69,26 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
                 cancellationToken)
             .ConfigureAwait(false);
 
-        var systemRoles = await _chatRolesBackend.ListSystem(chatId, cancellationToken).ConfigureAwait(false);
-        var ownerRole = systemRoles.FirstOrDefault(c => c.SystemRole == SystemChatRole.Owner);
+        await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task AddOwner(string chatId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
+    {
+        var ownerRole = await _chatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
         if (ownerRole == null)
             return;
-        var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, ownerRole.Id, null,
-        new () {
-            Update = new ChatRoleDiff() {
-                AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
-                    AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
+
+        var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId,
+            ownerRole.Id,
+            null,
+            new Change<ChatRoleDiff> {
+                Update = new ChatRoleDiff {
+                    AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol> {
+                        AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
+                    },
                 },
-            },
-        });
+            });
         await _commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
     }
 }
