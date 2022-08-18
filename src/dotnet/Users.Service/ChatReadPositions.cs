@@ -31,7 +31,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
     // [CommandHandler]
     public virtual async Task Set(IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken)
     {
-        var (session, chatId, entryId) = command;
+        var (session, chatId, readEntryId) = command;
         if (Computed.IsInvalidating()) {
             _ = Get(session, chatId, default);
             return;
@@ -50,13 +50,13 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
         if (dbPosition == null) {
             dbPosition = new DbChatReadPosition {
                 Id = DbChatReadPosition.ComposeId(account.Id, chatId),
-                ReadEntryId = entryId,
+                ReadEntryId = readEntryId,
             };
             dbContext.Add(dbPosition);
         }
         else {
-            if (entryId > dbPosition.ReadEntryId)
-                dbPosition.ReadEntryId = entryId;
+            if (readEntryId > dbPosition.ReadEntryId)
+                dbPosition.ReadEntryId = readEntryId;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

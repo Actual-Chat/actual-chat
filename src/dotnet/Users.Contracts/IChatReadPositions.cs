@@ -12,6 +12,6 @@ public interface IChatReadPositions : IComputeService
     public sealed record SetReadPositionCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
-        [property: DataMember] long LastReadEntryId
+        [property: DataMember] long ReadEntryId
         ) : ISessionCommand<UserAvatar>;
 }
