@@ -67,7 +67,7 @@ public class ChatUIStateSync : WorkerBase
             var playbackStateValue = playbackState.Value;
             if (playbackStateValue is null or RealtimeChatPlaybackState) {
                 if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
-                    if (!UserInteractionUI.IsInteractionHappened.Value)
+                    if (playbackStateValue is not null && !UserInteractionUI.IsInteractionHappened.Value)
                         await UserInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
                     playbackState.Value = expectedPlaybackState;
                 }

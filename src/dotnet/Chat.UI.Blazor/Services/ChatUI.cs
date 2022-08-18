@@ -51,6 +51,7 @@ public class ChatUI
         ListeningChatIds = StateFactory.NewKvasStored<ImmutableList<Symbol>>(
             new(localSettings, nameof(ListeningChatIds)) {
                 InitialValue = ImmutableList<Symbol>.Empty,
+                Corrector = FixListeningChatIds,
             });
         LinkedChatEntry = StateFactory.NewMutable<ChatEntryLink?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
@@ -179,5 +180,22 @@ public class ChatUI
             result = result.Remove(r.ChatId);
         }
         return result;
+    }
+
+    private async ValueTask<ImmutableList<Symbol>> FixListeningChatIds(
+        ImmutableList<Symbol> listeningChatIds,
+        CancellationToken cancellationToken)
+    {
+        var rules = await listeningChatIds
+            .Select(chatId => Chats.GetRules(Session, chatId, default))
+            .Collect()
+            .ConfigureAwait(false);
+
+        foreach (var r in rules) {
+            if (r.CanRead())
+                continue;
+            listeningChatIds = listeningChatIds.RemoveAll(chatId => chatId == r.ChatId);
+        }
+        return listeningChatIds;
     }
 }
