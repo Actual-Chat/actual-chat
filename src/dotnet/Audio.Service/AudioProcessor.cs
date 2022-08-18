@@ -29,6 +29,7 @@ public sealed class AudioProcessor : IAudioProcessor
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
+    public IChats Chats { get; }
     public IChatAuthorsBackend ChatAuthorsBackend { get; }
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
@@ -43,6 +44,7 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamer = services.GetRequiredService<TranscriptStreamer>();
+        Chats = services.GetRequiredService<IChats>();
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
@@ -57,6 +59,10 @@ public sealed class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         Log.LogInformation(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
+
+        var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        rules.Require(ChatPermissions.Write);
+
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
