@@ -164,6 +164,9 @@
 .listening-chats .btn-round {
     @apply w-6 h-6;
 }
+.listening-chats .recording-in-chat.btn.btn-round.on {
+    @apply flex visible;
+}
 .chats-tab .btn.btn-round .btn-content,
 .contacts-tab .btn.btn-round .btn-content,
 .listening-chats .btn.btn-round .btn-content {
