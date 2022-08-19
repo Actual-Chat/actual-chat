@@ -17,6 +17,7 @@ import './Components/SideNav/side-nav.css'
 import './Components/SearchBox/search-box.css'
 import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
+import './Components/Tooltip/tooltip.css'
 
 export * from './Services/Settings/local-settings';
 export * from './Services/UserInteractionUI/user-interaction-ui';
@@ -31,6 +32,7 @@ export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/TextBox/text-box';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/SideNav/side-nav';
+export * from './Components/Tooltip/tooltip';
 
 export * from './Layouts/base-layout';
 
