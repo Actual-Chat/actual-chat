@@ -1,0 +1,27 @@
+@using ActualChat.Users
+@using BlazorContextMenu
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@if (Chats == null || Chats.Count == 0) {
+    return;
+}
+<div class="@GetCss(Kind)">
+    @foreach (var chat in Chats) {
+        <ChatListItem Chat="@chat" ListKind="@Kind" IsActive="@(ActiveChatId == chat.Id)"/>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatListKind Kind { get; set; } = ChatListKind.Listening;
+    [Parameter, EditorRequired] public List<Chat>? Chats { get; set; }
+    [Parameter] public string ActiveChatId { get; set; } = "";
+
+    private string GetCss(ChatListKind kind)
+        => kind switch {
+            ChatListKind.Pinned => "pinned-chats",
+            ChatListKind.Unpinned => "unpinned-chats custom-scrollbar",
+            ChatListKind.Listening => "flex-y gap-y-0.5",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+}
+
