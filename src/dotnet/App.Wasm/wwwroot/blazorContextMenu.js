@@ -160,32 +160,17 @@ var blazorContextMenu = function (blazorContextMenu) {
         return false;
     };
 
-    var showMenuCommon = function (menu, menuId, x, y, target, triggerDotnetRef) {
-        let btnHeight = 0;
-        let isMessageMenu = false;
-        let rightSideNav = document.querySelector('.side-nav-right');
-        let isRightPanelOpen = false;
-        if (menuId === 'menu-MessageMenu') {
-            isMessageMenu = true;
-            let menuBtn = document.querySelectorAll('.message-hover-menu')[0];
-            if (menuBtn != null)
-                btnHeight = menuBtn.getBoundingClientRect().height;
-            if (rightSideNav != null && rightSideNav.classList.contains('side-nav-open')) {
-                isRightPanelOpen = true;
-            }
-        }
+    let showMenuCommon = function (menu, menuId, x, y, target, triggerDotnetRef) {
+        let isLeftHalf = x < window.innerWidth / 2;
         return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
-            //check for overflow
-            var leftOverflownPixels = menu.offsetLeft + menu.clientWidth - window.innerWidth;
-            if (leftOverflownPixels > 0) {
-                menu.style.left = (menu.offsetLeft - menu.clientWidth) + "px";
-            } else if (isMessageMenu && isRightPanelOpen) {
-                menu.style.left = (window.innerWidth - rightSideNav.clientWidth - menu.clientWidth - 44) + "px";
-            }
+            if (isLeftHalf)
+                menu.style.left = x + "px";
+            else
+                menu.style.left = (x - menu.clientWidth) + "px";
 
-            var topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
+            let topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
             if (topOverflownPixels > 0) {
-                menu.style.top = (menu.offsetTop - menu.clientHeight + btnHeight) + "px";
+                menu.style.top = (window.innerHeight - menu.clientHeight - 10) + "px";
             }
 
             //openingMenu = false;
