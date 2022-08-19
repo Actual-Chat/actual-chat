@@ -10,41 +10,41 @@ internal class Invites : IInvites
     private readonly IInvitesBackend _backend;
     private readonly ICommander _commander;
     private readonly IAuth _auth;
+    private readonly IAccounts _accounts;
     private readonly IChats _chats;
-    private readonly IUserProfiles _userProfiles;
 
     public Invites(
         IInvitesBackend backend,
         ICommander commander,
         IAuth auth,
         IChats chats,
-        IUserProfiles userProfiles)
+        IAccounts accounts)
     {
         _backend = backend;
         _commander = commander;
         _auth = auth;
         _chats = chats;
-        _userProfiles = userProfiles;
+        _accounts = accounts;
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetUserInvites(
+    public virtual async Task<ImmutableArray<Invite>> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)
     {
-        await AssertCanGetUserInvites(session, cancellationToken).ConfigureAwait(false);
+        await AssertCanListUserInvites(session, cancellationToken).ConfigureAwait(false);
 
         var details = new InviteDetails() { User = new UserInviteDetails() };
         return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetChatInvites(
+    public virtual async Task<ImmutableArray<Invite>> ListChatInvites(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
     {
-        await AssertReadChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
+        await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var details = new InviteDetails() { Chat = new ChatInviteDetails(chatId) };
         return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
@@ -57,9 +57,9 @@ internal class Invites : IInvites
             return default!;
 
         var (session, invite) = command;
-        var userProfile = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
+        var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
-        invite = command.Invite with { CreatedBy = userProfile.Id };
+        invite = command.Invite with { CreatedBy = account.Id };
         return await _commander.Call(new IInvitesBackend.GenerateCommand(invite), cancellationToken)
             .ConfigureAwait(false);
     }
@@ -77,36 +77,38 @@ internal class Invites : IInvites
         return invite.Mask();
     }
 
-    private async Task AssertCanGetUserInvites(Session session, CancellationToken cancellationToken)
+    // Assertions
+
+    private Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
+        => _accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeAdmin);
+
+    private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
     {
-        if (!await _auth.IsAdmin(session, cancellationToken).ConfigureAwait(false))
-            throw new SecurityException("Not allowed to read user invites");
+        var rules = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        rules.Require(ChatPermissions.Invite);
     }
 
-    private async Task AssertReadChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task<Account> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var permissions = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        permissions.Demand(ChatPermissions.Invite);
-    }
-
-    private async Task<UserProfile> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
-    {
-        var userProfile = await _userProfiles.RequireActive(session, cancellationToken).ConfigureAwait(false);
+        var account = await _accounts.Get(session, cancellationToken)
+            .Require(Account.MustBeActive)
+            .ConfigureAwait(false);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
-            if (!userProfile.IsAdmin)
-                throw new SecurityException("Only admins can generate user invites");
+            if (!account.IsAdmin)
+                throw StandardError.Unauthorized("Only admins can generate user invites.");
         }
 
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
-            var permissions = await _chats
+            var rules = await _chats
                 .GetRules(session, chatInviteDetails.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            permissions.Demand(ChatPermissions.Invite);
+            rules.Require(ChatPermissions.Invite);
         }
 
-        return userProfile;
+        return account;
     }
 }

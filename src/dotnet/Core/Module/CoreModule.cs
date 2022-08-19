@@ -2,6 +2,7 @@
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
+using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
 using Stl.Plugins;
 
@@ -25,17 +26,33 @@ public class CoreModule : HostModule<CoreSettings>
             .Distinct()
             .ToList();
 
-        // Common services
-        services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder(pluginAssemblies));
+        // Matching type finder
+        services.AddSingleton(new MatchingTypeFinder.Options() {
+            ScannedAssemblies = pluginAssemblies,
+        });
+        services.AddSingleton<IMatchingTypeFinder, MatchingTypeFinder>();
+
+        // DiffEngine
+        services.AddSingleton<DiffEngine>();
+
+        // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
             : new DefaultObjectPoolProvider());
         services.AddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
 
+        // Fusion
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
+
+        // Features
+        services.AddScoped<Features>();
+        fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
+
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
+        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
+            InjectClientServices(services);
     }
 
     private void InjectServerServices(IServiceCollection services)
@@ -47,5 +64,18 @@ public class CoreModule : HostModule<CoreSettings>
             services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
+
+        var fusion = services.AddFusion();
+        fusion.AddComputeService<IServerFeatures, ServerFeatures>();
+    }
+
+    private void InjectClientServices(IServiceCollection services)
+    {
+        var fusion = services.AddFusion();
+        var fusionClient = fusion.AddRestEaseClient();
+
+        // Features
+        fusionClient.AddReplicaService<ServerFeaturesClient.IClient, ServerFeaturesClient.IClientDef>();
+        fusion.AddComputeService<IServerFeatures, ServerFeaturesClient>();
     }
 }

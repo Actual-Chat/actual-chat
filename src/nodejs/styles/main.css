@@ -1,5 +1,13 @@
 /* Default styling */
 
+* {
+    font-family: 'TT Commons Pro', sans-serif;
+    /*font-family: 'Noto Sans', sans-serif;*/
+    /*font-family: 'Rubik', sans-serif;*/
+    /*font-family: 'Figtree', sans-serif;*/
+    /*font-family: 'Gantari', sans-serif;*/
+}
+
 html {
     height: 100%;
     @apply text-base;
@@ -21,10 +29,10 @@ a {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 a {
-    @apply bg-inherit text-primary;
+    @apply bg-inherit text-02;
 }
 a:focus {
-    @apply outline-none underline underline-offset-1 decoration-success;
+    @apply outline-none underline underline-offset-1 decoration-primary;
 }
 a.unfocusable:focus {
     @apply outline-none no-underline;
@@ -32,26 +40,29 @@ a.unfocusable:focus {
 
 input,
 textarea {
-    @apply bg-secondary text-primary border-accent;
+    @apply bg-01 text-02 border-bg-03;
 }
 input {
     @apply h-12 md:h-8;
 }
 
 input:focus {
-    @apply bg-primary;
+    @apply bg-03;
     @apply rounded-sm border-0 outline-none;
-    @apply ring-2 ring-success;
+    @apply ring-1 ring-secondary;
 }
 input:focus[type="text"]::selection {
-    @apply bg-selection text-accent;
+    @apply bg-selection text-02;
+}
+
+label {
+    @apply no-highlight;
 }
 
 code {
+    @apply rounded-sm border border-bg-03;
     @apply px-0.5;
-    @apply rounded-sm border border-accent;
-    /* @apply rounded-sm border-0 ring ring-1 ring-accent; */
-    @apply bg-secondary;
+    @apply bg-01;
     @apply font-mono;
 }
 
@@ -73,8 +84,8 @@ h3 {
 
 h1.section, h2.section, h3.section, h4.section {
     @apply mt-4 pt-1;
-    @apply border-0 border-t-2 border-accent;
-    @apply text-secondary subpixel-antialiased;
+    @apply border-0 border-t-2 border-bg-03;
+    @apply text-03 subpixel-antialiased;
 }
 
 h1.section-top, h2.section-top, h3.section-top, h4.section-top,
@@ -86,7 +97,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 /* Other inputs */
 
 input.input-imprinted {
-    @apply border-0 bg-accent;
+    @apply border-0 bg-04;
 }
 
 input.input-underlined {
@@ -98,7 +109,7 @@ input.input-underlined {
 }
 
 .error-toast .toast-header {
-    @apply flex flex-row w-full p-2 bg-error-toast-header rounded-t-md;
+    @apply flex flex-row items-center w-full px-2 bg-error-toast-header rounded-t-md;
 }
 
 .error-toast .header-icon {
@@ -111,4 +122,96 @@ input.input-underlined {
 
 .error-toast .toast-content {
     @apply flex p-2 rounded-b-md bg-error-toast-body;
+}
+
+/* BlazorContextMenu overridden classes */
+
+.context-menu {
+    @apply rounded-xl p-1;
+}
+.context-menu-list {
+    @apply p-0;
+}
+.context-menu-item {
+    @apply !flex rounded-xl h-10 whitespace-nowrap;
+}
+.context-menu-item:hover {
+    @apply bg-round-hover;
+}
+.context-menu-item:hover .context-menu-icon {
+    @apply text-primary;
+}
+.context-menu-content {
+    @apply flex-x gap-x-2 items-center;
+}
+.context-menu-text {
+    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+}
+.context-menu-icon {
+    @apply text-icons-01;
+}
+.context-menu-separator {
+    @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
+}
+.context-menu-separator > * {
+    @apply bg-transparent border-0 m-0 p-0;
+}
+/* Important ContextMenuItem */
+.context-menu-item.important-item .context-menu-icon,
+.context-menu-item.important-item.off .context-menu-icon,
+.context-menu-item.important-item .context-menu-text,
+.context-menu-item.important-item.off .context-menu-text {
+    @apply text-primary;
+}
+.context-menu-item.important-item.on .context-menu-icon,
+.context-menu-item.important-item.on .context-menu-text {
+    @apply text-error;
+}
+.context-menu-item.important-item.on:hover {
+    @apply bg-error-hover;
+}
+/* Warning Menu Item */
+.context-menu-item.warning-item:hover {
+    @apply bg-error-hover;
+}
+.context-menu-item.warning-item:hover .context-menu-icon,
+.context-menu-item.warning-item:hover .context-menu-text {
+    @apply text-error;
+}
+
+/* Layouts */
+
+.base-layout-body {
+    @apply flex-1 overflow-y-auto flex-y relative float-left;
+}
+
+.chat-layout .layout-body {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
+    @apply p-0;
+}
+
+.no-chat-layout .layout-body {
+    @apply p-4;
+}
+
+/* Welcome page */
+.welcome-page {
+    @apply fixed flex-y md:flex-x h-full w-full p-8;
+    background-image: linear-gradient(to right bottom, #96d6f9, #8bdef6, #88e6ee, #8febe2, #9ff0d4, #97ecd2, #8fe9d0, #87e5ce, #65d7da, #54c7e3, #5eb5e4, #76a1db);
+}
+@media not (min-width: 768px) {
+    .welcome-page {
+        @apply fixed flex-y md:flex-x h-full w-full p-1;
+        background-image: linear-gradient(to right bottom, #bff0f5, #c8f1f9, #d1f2fc, #daf4fe, #e3f5ff, #dceffc, #d6eafa, #d1e4f7, #bcd6f1, #a7c8ea, #93bae4, #7eacde);
+    }
+}
+.welcome-menu {
+    @apply flex-y md:w-96 h-fit gap-y-4 float-right mt-16;
+    @apply bg-transparent md:bg-01 rounded-2xl px-4 py-12;
+}
+.welcome-btn.btn {
+    @apply bg-01 border-transparent md:border-primary text-01 h-12 max-w-full justify-start;
+}
+.welcome-btn.btn .btn-content {
+    @apply flex-x gap-x-4 items-center text-primary;
 }

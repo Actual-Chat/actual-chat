@@ -2,7 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
+@layer base {
+    /* Base classes, don't use @apply here! */
+
+    .whitespace-break-spaces {
+        white-space: break-spaces;
+    }
+    .fill-available {
+        min-width: -webkit-fill-available;
+        min-width: -moz-available;
+    }
+    .no-highlight {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+@layer components {
     /* Flex shortcuts */
 
     .flex-x {
@@ -35,11 +50,7 @@
 
     /* Other */
 
-    .whitespace-break-spaces {
-        white-space: break-spaces;
-    }
-    .fill-available {
-        min-width: -webkit-fill-available;
-        min-width: -moz-available;
+    .disabled {
+        @apply pointer-events-none opacity-70;
     }
 }

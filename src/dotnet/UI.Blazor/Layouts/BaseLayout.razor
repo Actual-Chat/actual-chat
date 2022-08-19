@@ -1,93 +1,90 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using Microsoft.JSInterop.Implementation
+@using ActualChat.UI.Blazor.Components.SideNav
+@using System.Text.RegularExpressions
 @implements IDisposable
+@implements IBaseLayoutBackend
 @{
-    var failures = UICommandFailureList.Items;
-    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
+    var failures = UIActionFailureTracker.Items;
 }
 
-<div class="absolute z-50 min-h-mobile-header">
-    <NavbarToggle/>
-</div>
-<div class="bg-primary flex-1 flex-x justify-items-stretch h-full max-h-full relative">
-    <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
-    <nav id="navbar" class="navbar text-primary bg-primary z-50 absolute top-0 left-0 flex flex-row md:static justify-between h-full w-full md:w-64 lg:w-80 overflow-y-hidden transform -translate-x-full md:translate-x-0 transition-all duration-200 ease-in-out">
-        <div class="flex-1 flex-y overflow-y-hidden">
-            <div class="absolute">
-                <NavbarToggle/>
-            </div>
-            <div class="navbar-mobile-title md:hidden
-                        flex-1 flex flex-row items-center justify-end px-4 py-3
-                        bg-accent font-semibold min-h-mobile-header">
-                <NavbarMobileTitle/>
-            </div>
-            <div class="flex-x h-full overflow-y-hidden">
-                <div class="navbar-group-toggles">
-                    <NavbarGroupToggles/>
-                </div>
-                <div class="flex-y w-full h-full overflow-y-hidden">
-                    <div class="flex-x justify-center mt-2">
-                        <NavbarLogo />
-                    </div>
-                    <div class="navbar-content flex-auto flex-y overflow-y-auto custom-scrollbar px-2 m-2">
-                        <NavbarContent />
-                    </div>
-                    @* Bottom sticky panel *@
-                    <div class="flex-none flex-y">
-                            <div class="flex-y text-xxs p-3">
-                                <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
-                                <div class="pt-0.5"><BlazorModeToggle/></div>
-                            </div>
-                        <div class="flex-y justify-center items-start w-full h-full px-2.5 border-t-2 border-accent min-h-footer">
-                            <AccountDropdown/>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
+    <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
+    <SideNav Direction="SideNavDirection.LeftToRight"
+             Open="() => NavbarUI.IsVisible = true"
+             Closed="() => NavbarUI.IsVisible = false"
+             IsOpen="@NavbarUI.IsVisible">
+        <div class="h-full w-full overflow-hidden bg-04">
+            <LeftPanel/>
         </div>
-    </nav>
-    <div class="flex-1 overflow-y-auto flex-y relative float-left">
-        <div class="bg-secondary flex-1 overflow-y-auto">
+    </SideNav>
+    <div class="base-layout-body">
+        <div class="bg-01 flex-1 overflow-y-auto">
             @if (failures.Count != 0) {
-                <div class="flex-y absolute z-50 right-0 mr-2 mt-12 md:mt-2 w-4/5 md:w-1/4 overflow-y-auto">
+                <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
                     @foreach (var failure in failures) {
-                        <WhenCommandError
-                            Error="failure.Result?.Error"
-                            Dismissed="@(_ => UICommandFailureList.Remove(failure.CommandId))"/>
+                        <Error @key="failure"
+                               Title="Action failed!"
+                               Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                            @failure.Error!.Message
+                        </Error>
                     }
                 </div>
             }
-            @Body
+            <NoComponent @key="BodyKey">
+                @Body
+            </NoComponent>
         </div>
     </div>
 </div>
 
 @code {
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UICommandFailureList UICommandFailureList { get; init; } = null!;
+    private static readonly object BodyKey = new();
+    private DotNetObjectReference<IBaseLayoutBackend> BlazorRef { get; set; } = null!;
+
+    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     protected override void OnInitialized() {
+        BlazorRef = DotNetObjectReference.Create<IBaseLayoutBackend>(this);
         Nav.LocationChanged += OnLocationChanged;
-        UICommandFailureList.Changed += OnCommandFailureListChanged;
+        UIActionFailureTracker.Changed += OnCommandFailureListChanged;
     }
 
     protected override async Task OnInitializedAsync() {
-        if (BlazorModeHelper.IsServerSideBlazor) {
+        if (BlazorModeHelper.IsServerSideBlazor)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
-        }
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
     }
 
     public void Dispose() {
         Nav.LocationChanged -= OnLocationChanged;
-        UICommandFailureList.Changed -= OnCommandFailureListChanged;
+        UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
+    }
+
+    [JSInvokable]
+    public Task HandleNotificationNavigation(string url) {
+        var origin = Nav.BaseUri.TrimEnd('/');
+        if (url.IsNullOrEmpty() || !url.StartsWith(origin))
+            return Task.CompletedTask;
+
+        var chatPageRe = new Regex($"^{origin}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
+        var match = chatPageRe.Match(url);
+        if (!match.Success)
+            return Task.CompletedTask;
+
+        var chatIdGroup = match.Groups["chatid"];
+        if (chatIdGroup.Success) {
+            Nav.NavigateTo(url, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
+        }
+        return Task.CompletedTask;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        UICommandFailureList.Clear();
+        UIActionFailureTracker.Clear();
         NavbarUI.IsVisible = false;
         StateHasChanged();
     }

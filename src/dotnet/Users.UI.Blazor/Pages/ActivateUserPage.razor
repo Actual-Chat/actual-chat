@@ -1,28 +1,32 @@
 @page "/user/activate/{InviteId}"
 @using ActualChat.Invite
-@attribute [Authorize]
 
+<RequireAccount MustBeActive="false"/>
 <MainHeader>Joining via invite link</MainHeader>
 
-@if (_useResult is { } useResult) {
-    if (useResult.Error is { } error) {
-        <div>Failed to activate your account: @error.Message</div>
+<div class="text-03 ml-2 mt-1">
+    @if (_useResult is { } useResult) {
+        if (useResult.Error is { } error) {
+            <div>Failed to activate your account: @error.Message</div>
+        } else {
+            <div>Your account has been successfully activated!</div>
+        }
     } else {
-        <div>Your account has been successfully activated!</div>
+        <div>Processing activation code...</div>
     }
-}
+</div>
+
 
 @code {
     private Result<Invite>? _useResult;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 
-    protected override async Task OnParametersSetAsync() {
-        await base.OnParametersSetAsync();
-        var cmd = new IInvites.UseCommand(Session, InviteId);
-        _useResult = await Cmd.Run(cmd, CancellationToken.None).AsResult().ConfigureAwait(true);
+    protected override async Task OnInitializedAsync() {
+        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        _useResult = await UICommander.Run(useCommand, CancellationToken.None);
     }
 }

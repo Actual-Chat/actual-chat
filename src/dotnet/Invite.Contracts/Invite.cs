@@ -1,10 +1,9 @@
-using System.Text.Json.Serialization;
 using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 namespace ActualChat.Invite;
 
-public sealed record Invite : IHasId<Symbol>
+public sealed record Invite : IHasId<Symbol>, IRequirementTarget
 {
     public Symbol Id { get; init; } = "";
     public long Version { get; init; }
@@ -18,7 +17,7 @@ public sealed record Invite : IHasId<Symbol>
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
     {
         if (Remaining < useCount)
-            throw new InvalidOperationException("The invite link is already used.");
+            throw StandardError.Unauthorized("The invite link is already used.");
         return this with {
             Version = versionGenerator.NextVersion(Version),
             Remaining = Remaining - useCount,

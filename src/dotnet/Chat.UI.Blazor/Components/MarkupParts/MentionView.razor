@@ -1,8 +1,11 @@
 @using Stl.Extensibility
 @inherits MarkupViewBase<Mention>
 @attribute [MatchFor(typeof(Mention), typeof(IMarkupView))]
+@{
+    var targetAsParsedAuthorId = new ParsedChatAuthorId(Target);
+}
 
-@if (ChatAuthor.IsValidId(Target)) {
+@if (targetAsParsedAuthorId.IsValid) {
     <ChatAuthorBadgeTemplate AuthorId="@Target">
         @if (!context.Author.Id.IsEmpty) {
             <div class="inline-block px-1 rounded-md bg-mention select-none cursor-pointer hover:bg-mention-hover"
@@ -23,5 +26,5 @@ else {
     private string Target => Markup.Target;
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorDialog(Target);
+        => ChatUI.ShowChatAuthorModal(Target);
 }

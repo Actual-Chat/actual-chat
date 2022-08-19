@@ -17,7 +17,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
     public virtual async Task Initialize(CancellationToken cancellationToken)
     {
-        var dbContext = await DbHub.DbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var dbContext = DbHub.CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var db = dbContext.Database;
@@ -25,11 +25,13 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
             return;
 
         if (DbInfo.ShouldRecreateDb) {
+            Log.LogInformation("Recreating DB '{DatabaseName}'...", db.GetDbConnection().Database);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             //await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
             await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
+            Log.LogInformation("Migrating DB '{DatabaseName}'...", db.GetDbConnection().Database);
             // var pendingMigrations = await db.GetPendingMigrationsAsync();
             // var appliedMigrations = await db.GetAppliedMigrationsAsync();
             await db.MigrateAsync(cancellationToken).ConfigureAwait(false);

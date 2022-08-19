@@ -1,0 +1,53 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<SingleChatPlaybackState>
+@{
+    var m = State.LatestNonErrorValue;
+    if (m.ChatId.IsEmpty)
+        return; // Not computed yet
+
+    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"{(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var lastRenderedState = _lastRenderedState ?? m;
+    var isListeningChange = (lastRenderedState.IsListening, m.IsListening);
+    var wrapperCls = isListeningChange switch {
+        (false, true) => "listen-off-to-on",
+        (true, false) => "listen-on-to-off",
+        (_, false) => "listen-off",
+        (_, true) => "listen-on",
+    };
+    _lastRenderedState = m;
+}
+
+<div class="@wrapperCls playback-wrapper mobile-button">
+    <ButtonRound Click="@OnListenClick" Class="@cls">
+        <svg class="fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
+            <path d="M12 3C6.5 3 2 7.7 2 13.4V18C2 20.2 3.8 22 6 22C6.7 22 7.3 21.8 7.8 21.5C7.9 21.5 7.9 21.4 8 21.4C8.3 21.2 8.5 20.9 8.5 20.5V15.3C8.5 14.9 8.3 14.6 8 14.5C7.9 14.5 7.9 14.4 7.8 14.4C7.3 14.2 6.6 14 6 14C5.3 14 4.6 14.2 4 14.6V13.4C4 8.8 7.6 5 12 5C16.4 5 20 8.8 20 13.4V14.6C19.4 14.3 18.7 14 18 14C17.4 14 16.7 14.2 16.2 14.4C16.1 14.4 16.1 14.5 16 14.5C15.7 14.7 15.5 15 15.5 15.3V20.5C15.5 20.9 15.7 21.2 16 21.4C16.1 21.4 16.1 21.5 16.2 21.5C16.7 21.8 17.4 22 18 22C20.2 22 22 20.2 22 18V13.4C22 7.7 17.5 3 12 3ZM6 16C6.2 16 6.3 16 6.4 16.1V20C6.3 20 6.2 20 6 20C4.9 20 4 19.1 4 18C4 16.9 4.9 16 6 16ZM18 20C17.8 20 17.7 20 17.6 19.9V16C17.7 16 17.9 15.9 18 15.9C19.1 15.9 20 16.8 20 17.9C20 19 19.1 20 18 20Z"/>
+        </svg>
+    </ButtonRound>
+    <ButtonRound Click="@OnListenClick" Class="loud-btn">
+        <svg class="fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M13.5 18.1017L8.399 14.6037C8.232 14.4907 8.035 14.4287 7.833 14.4287H3.5V9.57165H7.833C8.035 9.57165 8.232 9.50965 8.399 9.39665L13.5 5.89865V18.1017ZM14.966 3.11565C14.637 2.94165 14.24 2.96465 13.935 3.17465L7.523 7.57165H2.5C1.948 7.57165 1.5 8.01865 1.5 8.57165V15.4287C1.5 15.9817 1.948 16.4287 2.5 16.4287H7.523L13.935 20.8257C14.104 20.9417 14.302 20.9997 14.5 20.9997C14.66 20.9997 14.82 20.9617 14.966 20.8847C15.294 20.7117 15.5 20.3717 15.5 19.9997V3.99965C15.5 3.62865 15.294 3.28865 14.966 3.11565ZM18.2793 8.37305C17.9323 7.94305 17.3033 7.87605 16.8733 8.22105C16.4433 8.56705 16.3743 9.19605 16.7203 9.62705C17.7563 10.9131 17.7563 13.0871 16.7203 14.3731C16.3743 14.8041 16.4433 15.4331 16.8733 15.7791C17.0583 15.9281 17.2793 16.0001 17.4993 16.0001C17.7913 16.0001 18.0813 15.8721 18.2793 15.6271C19.9153 13.5931 19.9153 10.4071 18.2793 8.37305ZM18.2297 5.36255C18.5817 4.93655 19.2127 4.87755 19.6377 5.22955C21.8057 7.02555 22.9997 9.43055 22.9997 12.0006C22.9997 14.5696 21.8057 16.9746 19.6377 18.7706C19.4507 18.9246 19.2247 19.0006 19.0007 19.0006C18.7127 19.0006 18.4277 18.8766 18.2297 18.6376C17.8777 18.2126 17.9367 17.5826 18.3627 17.2296C20.0627 15.8206 20.9997 13.9636 20.9997 12.0006C20.9997 10.0366 20.0627 8.17955 18.3627 6.77055C17.9367 6.41755 17.8777 5.78755 18.2297 5.36255Z"/>
+        </svg>
+    </ButtonRound>
+</div>
+
+@code {
+    private SingleChatPlaybackState? _lastRenderedState;
+
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
+
+    private void OnListenClick()
+        => ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+
+    protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
+        => new() {
+            InitialValue = SingleChatPlaybackState.None,
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+        };
+
+    protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetSingleChatPlaybackState(ChatId, cancellationToken);
+}

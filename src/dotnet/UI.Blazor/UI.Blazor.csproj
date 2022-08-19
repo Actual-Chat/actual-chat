@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
+  <PropertyGroup>
+    <!--    [MA0004]: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed-->
+    <NoWarn>$(NoWarn);MA0004</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Blazor.ContextMenu" />
     <PackageReference Include="Blazored.Modal" />
@@ -11,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
     <ProjectReference Include="..\Invite.Contracts\Invite.Contracts.csproj" />
@@ -18,12 +24,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
+    <ServiceWorker Include="ServiceWorkers\service-worker.ts" />
   </ItemGroup>
 
   <ItemGroup>
+    <TypeScriptCompile Include="Components\VirtualList\ts\math.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\range-ext.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-edge-ext.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-statistics.ts" />
+    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-accessor.ts" />
     <TypeScriptCompile Include="Layouts\base-layout.ts" />
+    <TypeScriptCompile Include="Services\UserInteractionUI\user-interaction-ui.ts" />
     <TypeScriptCompile Include="theme.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\ErrorHandling\Try.razor" />
   </ItemGroup>
 
 </Project>

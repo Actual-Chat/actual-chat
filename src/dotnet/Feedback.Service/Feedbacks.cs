@@ -17,14 +17,14 @@ public class Feedbacks : DbServiceBase<FeedbackDbContext>, IFeedbacks
 
         var (session, feature) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user.IsAuthenticated ? user.Id.ToString() : "";
+        var userId = user?.Id.Value ?? "";
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbFeatureRequest = new DbFeatureRequest {
             Id = Ulid.NewUlid().ToString(),
-            FeatureName = command.Feature,
+            FeatureName = feature,
             UserId = userId,
             SessionId = session.Id,
             CreatedAt = Clocks.SystemClock.Now,

@@ -19,7 +19,7 @@ public class ChatActivityTest : AppHostTestBase
         var clientServices = tester.ClientServices;
         var commander = services.GetRequiredService<ICommander>();
         var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var sessionProvider = clientServices.GetRequiredService<ISessionProvider>();
         sessionProvider.Session = session;

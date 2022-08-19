@@ -11,6 +11,7 @@ public abstract class TrackPlayer : ProcessorBase
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly object _stateUpdateLock = new();
+    private readonly Channel<IPlayerCommand> _commandsQueue;
 
     protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
     protected ILogger<TrackPlayer> Log { get; }
@@ -28,6 +29,12 @@ public abstract class TrackPlayer : ProcessorBase
         Log = log;
         Source = source;
         _whenCompletedSource = TaskSource.New<Unit>(true);
+        _commandsQueue = Channel.CreateBounded<IPlayerCommand>(new BoundedChannelOptions(10) {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false
+        });
     }
 
     protected override Task DisposeAsyncCore()
@@ -44,7 +51,7 @@ public abstract class TrackPlayer : ProcessorBase
 
         lock (Lock) {
             if (_whenPlaying != null)
-                throw new LifetimeException("Play is already started.");
+                throw StandardError.StateTransition(GetType(), "Play is already started.");
             this.ThrowIfDisposedOrDisposing();
 
             using (ExecutionContext.SuppressFlow()) {
@@ -65,7 +72,7 @@ public abstract class TrackPlayer : ProcessorBase
                         catch {
                             // Intended
                         }
-                    }, TaskScheduler.Default);
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 #pragma warning disable MA0100
                 return _whenPlaying;
 #pragma warning restore MA0100
@@ -100,6 +107,8 @@ public abstract class TrackPlayer : ProcessorBase
                     await playTask.ConfigureAwait(false);
                     isPlayCommandProcessed = true;
                 }
+                while (_commandsQueue.Reader.TryRead(out var command))
+                    await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
 
@@ -110,7 +119,16 @@ public abstract class TrackPlayer : ProcessorBase
             await ProcessCommand(EndCommand.Instance, CancellationToken.None).ConfigureAwait(false);
 
             // Now we're waiting for a report when the client side has actually played all frames or Cancel()
-            await WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // At the same time we need to pump commands queue in case pause or resume command arrive.
+            while (true) {
+                var readTask = _commandsQueue.Reader.ReadAsync(cancellationToken).AsTask();
+                var completedTask = await Task.WhenAny(readTask, WhenCompleted).ConfigureAwait(false);
+                await completedTask.ConfigureAwait(false);
+                if (completedTask == WhenCompleted)
+                    break;
+                var command = await readTask.ConfigureAwait(false);
+                await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception ex) {
             exception = ex;
@@ -120,21 +138,25 @@ public abstract class TrackPlayer : ProcessorBase
             // We should send stop command & await it even if thread is aborted,
             // that's why the exception handling is in the finally block
             if (exception != null && !WhenCompleted.IsCompleted) {
+                var clock = MomentClockSet.Default.CpuClock;
+                var stopTime = clock.Now + StopTimeout;
                 try {
                     if (!isPlayCommandProcessed)
                         await playTask.AsTask()
-                            .WithTimeout(StopTimeout, CancellationToken.None)
+                            .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
-                    var isStopCompleted = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
-                        .WithTimeout(StopTimeout, CancellationToken.None)
+                    var stopResult = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
+                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
-                    if (!isStopCompleted)
-                        OnStopped(exception);
-                    await WhenCompleted.WaitAsync(StopTimeout, default).ConfigureAwait(false);
+                    if (stopResult.HasError)
+                        OnStopped(stopResult.Error);
+                    await WhenCompleted
+                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception ex) {
                     if (ex is not JSDisconnectedException)
-                        Log.LogError(ex, $"Unhandled exception in {nameof(TrackPlayer)}, while sending stop command");
+                        Log.LogError(ex, $"Unhandled exception in {nameof(TrackPlayer)} while sending Stop command");
                 }
             }
         }
@@ -142,6 +164,12 @@ public abstract class TrackPlayer : ProcessorBase
 
     protected abstract ValueTask ProcessCommand(IPlayerCommand command, CancellationToken cancellationToken);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
+
+    public async Task Pause()
+        => await _commandsQueue.Writer.WriteAsync(PauseCommand.Instance, default).ConfigureAwait(false);
+
+    public async Task Resume()
+        => await _commandsQueue.Writer.WriteAsync(ResumeCommand.Instance, default).ConfigureAwait(false);
 
     protected void UpdateState<TArg>(Func<TArg, PlayerState, PlayerState> updater, TArg arg)
     {
@@ -169,6 +197,15 @@ public abstract class TrackPlayer : ProcessorBase
         var (offset1, self) = arg;
         return state with {
             IsStarted = true,
+            IsPaused = false,
+            PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
+        };
+    }, (offset, this));
+
+    protected virtual void OnPausedAt(TimeSpan offset) => UpdateState(static (arg, state) => {
+        var (offset1, self) = arg;
+        return state with {
+            IsPaused = true,
             PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
         };
     }, (offset, this));

@@ -3,8 +3,8 @@
 @using ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@((IMenu) this)" IsFixed="true">
-    <div class="menu @Class" name="@Name">
-        <div class="select-none flex @MenuDirection()">
+    <div class="@Class menu" name="@Name">
+        <div class="select-none flex-y">
             @ChildContent
         </div>
     </div>
@@ -16,14 +16,9 @@
     [Parameter] public string ItemClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Icon { get; set; } = "";
-    [Parameter] public MenuOrientation Orientation { get; set; } = MenuOrientation.Vertical;
-    [Parameter] public MenuIconPosition IconPosition { get; set; } = MenuIconPosition.Right;
     [Parameter] public MenuTooltipPosition TooltipPosition { get; set; } = MenuTooltipPosition.Top;
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
-
-    private string MenuDirection()
-        => Orientation == MenuOrientation.Vertical ? "flex-col" : "flex-row";
 
     public async Task OnItemClick(MenuItem item) {
         if (Dropdown != null)

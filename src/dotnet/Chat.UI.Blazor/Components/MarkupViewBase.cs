@@ -3,8 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 public abstract class MarkupViewBase<TMarkup> : ComponentBase, IMarkupView<TMarkup>
     where TMarkup : Markup
 {
-    [CascadingParameter]
-    public ChatEntry Entry { get; set; } = null!;
+    [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public TMarkup Markup { get; set; } = null!;
 

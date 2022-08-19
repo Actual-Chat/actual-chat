@@ -309,7 +309,7 @@ namespace ActualChat.Audio.WebM.Models
     }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{model.Descriptor.Identifier}'");
+                throw new EbmlDataFormatException($"Unexpected EBML element '{model.Descriptor.Identifier}'.");
             }
         }
 
@@ -397,7 +397,7 @@ namespace ActualChat.Audio.WebM.Models
         public static BaseModel CreateInstance(this EbmlElementDescriptor descriptor)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
-                throw new InvalidOperationException("Can't create instances of non-master element");
+                throw new InvalidOperationException("Can't create instances of non-master element.");
 
             switch (descriptor.Identifier.EncodedValue) {
 <#
@@ -418,7 +418,7 @@ namespace ActualChat.Audio.WebM.Models
     }
 #>
             default:
-                throw new InvalidOperationException("Unknown master element: " + descriptor.Identifier);
+                throw new InvalidOperationException("Unknown master element: " + descriptor.Identifier + ".");
             }
         }
 
@@ -520,7 +520,7 @@ namespace ActualChat.Audio.WebM.Models
         private static void FillScalar(this <#= className #> model, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             if (descriptor.Type == EbmlElementType.MasterElement)
-                throw new InvalidOperationException("Can't read master elements directly from the reader");
+                throw new InvalidOperationException("Can't read master elements directly from the reader.");
 
             switch (descriptor.Identifier.EncodedValue) {
 <#
@@ -555,7 +555,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+                throw new EbmlDataFormatException($"Unexpected EBML element '{descriptor.Identifier}'.");
             }
         }
 
@@ -570,7 +570,7 @@ namespace ActualChat.Audio.WebM.Models
         private static void FillComplex(this <#= className #> model, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
-                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' type");
+                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' type.");
 
             switch (descriptor.Identifier.EncodedValue) {
 <#
@@ -594,7 +594,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+                throw new EbmlDataFormatException($"Unexpected EBML element: '{descriptor.Identifier}'.");
             }
         }
 
@@ -609,7 +609,7 @@ namespace ActualChat.Audio.WebM.Models
         private static void FillListEntry(this <#= className #> model, EbmlElementDescriptor descriptor, object listItem)
         {
             if (descriptor.Type != EbmlElementType.MasterElement && descriptor.Type != EbmlElementType.Binary)
-                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' or 'binary' type");
+                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' or 'binary' type.");
 
             switch (descriptor.Identifier.EncodedValue) {
 <#
@@ -635,7 +635,7 @@ namespace ActualChat.Audio.WebM.Models
             }
 #>
             default:
-                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+                throw new EbmlDataFormatException($"Unexpected EBML element: '{descriptor.Identifier}'.");
             }
         }
 

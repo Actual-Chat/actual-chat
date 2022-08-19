@@ -1,0 +1,66 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inject FeedbackUI FeedbackUI;
+
+@{
+    var panelCls = _panelState switch {
+        PanelState.Closed => "panel-closed",
+        PanelState.Opening => "panel-opening",
+        PanelState.Closing => "panel-closing",
+        _ => "",
+    };
+}
+
+<div class="@panelCls notify-call-panel">
+    <ButtonRound Class="notify-call-toggle blackout" Click="OnClick">
+        <i class="icon-hand text-2xl"></i>
+    </ButtonRound>
+    <div class="notify-call-content">
+        <div class="actions">
+            <Button Class="notify-btn" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("notify", "Notify"))">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
+                    <i class="icon-at text-2xl"></i>
+                    <div>
+                        Notify
+                    </div>
+                </div>
+            </Button>
+            or
+            <Button Class="btn-primary" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("call", "Call"))">
+                <div class="w-full flex-x items-center gap-x-2 mx-2">
+                    <i class="icon-phone text-2xl"></i>
+                    <div>
+                        Call
+                    </div>
+                </div>
+            </Button>
+            everyone
+        </div>
+        <ButtonRound Class="close-btn blackout" Click="OnClick">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    enum PanelState {
+        Closed = 0,
+        Opening,
+        Closing,
+    }
+
+    private PanelState _panelState = PanelState.Closed;
+
+    public void OnClick() {
+        _panelState = _panelState switch {
+            PanelState.Closed => PanelState.Opening,
+            PanelState.Opening => PanelState.Closing,
+            PanelState.Closing => PanelState.Opening,
+            _ => PanelState.Closed,
+        };
+    }
+
+    public void OnCloseClick() {
+        _panelState = PanelState.Closing;
+        StateHasChanged();
+    }
+}

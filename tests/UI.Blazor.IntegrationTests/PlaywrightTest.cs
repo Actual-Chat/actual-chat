@@ -30,7 +30,7 @@ public class PlaywrightTest : AppHostTestBase
 
         await Task.Delay(2000).ConfigureAwait(false);
 
-        var chatPage = await page.QuerySelectorAsync(".chat-page").ConfigureAwait(false);
+        var chatPage = await page.QuerySelectorAsync(".chat-layout").ConfigureAwait(false);
         chatPage.Should().NotBeNull();
         var input = await page.QuerySelectorAsync("[role='textbox']").ConfigureAwait(false);
         input.Should().NotBeNull();
@@ -57,14 +57,14 @@ public class PlaywrightTest : AppHostTestBase
                 await Task.Delay(500).ConfigureAwait(false);
                 newMessages = await GetMessages(page).ConfigureAwait(false);
                 if (DateTime.Now >= stopTime) {
-                    throw new Exception($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
+                    throw new TimeoutException($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
                 }
             }
             return newMessages;
         }
 
         static async Task<IReadOnlyList<IElementHandle>> GetMessages(IPage page)
-            => await page.QuerySelectorAllAsync(".chat-page .content");
+            => await page.QuerySelectorAllAsync(".chat-layout .content");
 
         static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
             => await messages.Last().TextContentAsync().ConfigureAwait(false);
@@ -80,7 +80,7 @@ public class PlaywrightTest : AppHostTestBase
         await Task.Delay(1000);
         user.Id.Value.Should().NotBeNullOrEmpty();
         user.Name.Should().Be("ChatPageTester");
-        var messages = await page.QuerySelectorAllAsync(".chat-page .content");
+        var messages = await page.QuerySelectorAllAsync(".chat-layout .content");
         messages.Count.Should().BeGreaterThan(0);
         await Task.Delay(200);
     }

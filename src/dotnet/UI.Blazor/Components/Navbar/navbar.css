@@ -1,28 +1,47 @@
 /* Navbar */
 .navbar-content .btn.btn-square {
     @apply p-0 rounded;
-    @apply bg-transparent hover:bg-accent;
+    @apply bg-transparent hover:bg-04;
 }
 .navbar-content .btn.btn-square:hover {
     @apply text-toggle-hover;
 }
 
 .navbar-group-toggles {
-    @apply flex flex-1 flex-col text-secondary bg-accent min-w-navbar;
+    @apply flex-y items-start md:items-end text-square-title;
+    @apply bg-transparent md:bg-04 min-w-nav-left px-2 md:pr-4 gap-y-1 md:gap-y-2;
 }
-.navbar-group-toggles .navbar-group-toggle.btn {
-    @apply flex-none h-12 min-w-navbar;
-    @apply hover:scale-105;
+.navbar-group-toggles .btn.btn-square {
+    @apply h-auto rounded-xl;
 }
 .navbar-group-toggles .navbar-group-toggle.btn.on {
-    @apply text-primary bg-primary;
+    @apply text-primary;
 }
-.navbar-group-toggles .navbar-group-toggle .btn-content {
-    @apply p-1 justify-center;
+.navbar-group-toggles .navbar-group-toggle.btn.btn-square .btn-content {
+    @apply p-1 justify-center bg-transparent md:bg-white rounded-lg w-full md:w-12 h-12;
+}
+.navbar-group-toggles .navbar-group-toggle:hover .btn-content {
+    @apply bg-white;
+}
+.navbar-group-toggles .navbar-group-toggle .btn-content .btn-content-inner {
+    @apply flex-x items-center;
 }
 
-#navbar-toggle:checked~#navbar {
-    @apply translate-x-0;
+.navbar-places {
+    @apply flex-y items-start min-w-nav-left md:items-end px-2 md:pr-4 gap-y-1 md:gap-y-2;
+    @apply text-square-title bg-transparent;
+}
+.navbar-places .btn.btn-square {
+    @apply h-auto rounded-full md:rounded-xl;
+}
+.navbar-places .btn.btn-square .btn-content {
+    @apply h-12 w-12 justify-center bg-white;
+}
+.first-pinned.btn.btn-square .btn-content {
+    @apply bg-yellow-500;
+}
+.second-pinned.btn.btn-square .btn-content {
+    @apply bg-fuchsia-500;
 }
 
 .btn-square.navbar-group-toggle {
@@ -31,7 +50,7 @@
 
 /* Mobile title */
 .navbar-mobile-title .btn {
-    @apply p-0.5 text-base bg-transparent hover:bg-secondary;
+    @apply p-0.5 text-base bg-transparent hover:bg-01;
 }
 
 /* Navgar subgroup */
@@ -43,42 +62,33 @@
     @apply pt-0;
 }
 .navbar-subgroup .navbar-subgroup-content {
-    @apply text-secondary text-xs font-semibold uppercase opacity-75;
+    @apply text-03 text-xs font-semibold uppercase opacity-75;
 }
 .navbar-subgroup .navbar-subgroup-ending {
     @apply flex-1 justify-self-end;
     @apply flex flex-row justify-end gap-x-1;
-    @apply text-secondary text-xs font-light;
+    @apply text-03 text-xs font-light;
 }
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row justify-start items-center gap-x-1 w-full;
+    @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg;
 }
 .navbar-item .navbar-item-content {
-    @apply text-primary overflow-hidden mb-1;
+    @apply text-02 overflow-hidden my-0.5;
 }
-.navbar-item.active .navbar-item-content {
-    @apply font-semibold;
-}
-
 .navbar-item .navbar-item-status {
     @apply rounded-full block w-2 h-2 mr-2;
 }
-
-.navbar-item.status-unknown .navbar-item-status {
-    @apply hidden;
-}
-.navbar-item.status-online .navbar-item-status {
-    @apply bg-online;
-}
+.navbar-item.status-unknown .navbar-item-status,
+.navbar-item.status-online .navbar-item-status,
 .navbar-item.status-offline .navbar-item-status {
-    @apply border border-primary-inverted;
+    @apply hidden;
 }
 
 .navbar-item .navbar-item-ending {
-    @apply flex-1 justify-self-end;
-    @apply flex flex-row justify-end gap-x-0.5;
+    @apply flex-1 justify-self-end h-6;
+    @apply flex flex-row justify-end gap-x-3 w-fit;
 }
 
 .navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
@@ -89,16 +99,72 @@
 .navbar-item .pin-toggle.off {
     @apply invisible;
 }
+.pinned-chats .navbar-subgroup .pin-toggle,
+.pinned-chats .navbar-item .pin-toggle,
 .navbar-subgroup:hover .pin-toggle.off,
 .navbar-item:hover .pin-toggle.off {
     @apply visible;
 }
 
-.navbar-item .pin-toggle.recording-in-chat,
-.navbar-item:hover .pin-toggle.recording-in-chat {
-    @apply text-recorder-on;
+.navbar-item .btn.btn-round.pin-toggle,
+.navbar-item:hover .btn.btn-round.pin-toggle {
+    @apply text-icons-01 bg-transparent;
+}
+.navbar-item .btn.btn-round.recording-in-chat.on .btn-content,
+.navbar-item:hover .btn.btn-round.recording-in-chat.on .btn-content,
+.navbar-item .btn.btn-round.recording-in-chat.on:hover .btn-content {
+    @apply text-recorder-on bg-transparent;
 }
 
-.navbar-item .pin-toggle.recording-in-chat svg {
-    filter: drop-shadow(0px 0px 3px rgb(239 68 68 / 0.7));
+.navbar-item:hover {
+    @apply bg-round-hover;
+}
+.navbar-item.active {
+    @apply bg-selected;
+}
+
+.listening-chats .navbar-subgroup .pin-toggle,
+.listening-chats .navbar-item .pin-toggle {
+    @apply visible;
+}
+
+.add-to-chat.btn.btn-round {
+    @apply flex float-right self-center;
+}
+
+/*Wide left panel*/
+.wide-left-panel-wrapper {
+    @apply w-full min-w-full md:min-w-0;
+    @apply -translate-x-5/6 md:translate-x-0;
+}
+.thin-open .wide-left-panel-wrapper {
+    @apply translate-x-0 transition duration-300 ease-in-out;
+    @apply md:transition-none;
+}
+.thin-closed .wide-left-panel-wrapper {
+    @apply animate-show-wide-panel -translate-x-5/6;
+    @apply md:animate-none md:translate-x-0;
+}
+.wide-left-panel {
+    @apply flex-y h-full overflow-hidden bg-03 border-r border-bg-04 w-full;
+}
+
+/*Thin left panel*/
+.thin-left-panel {
+    @apply w-fit flex-y bg-01 z-10 items-start min-w-5/6 -translate-x-5/6;
+    @apply md:min-w-fit md:bg-04 md:translate-x-0;
+}
+.thin-open .thin-left-panel {
+    @apply translate-x-0 transition duration-300 ease-in-out;
+    @apply md:animate-none;
+}
+.thin-closed .thin-left-panel {
+    @apply animate-hide-thin-panel -translate-x-full;
+    @apply md:animate-none md:translate-x-0;
+}
+
+.left-line {
+    @apply hidden md:block h-8 self-center rounded-lg;
+    width: 2px;
+    margin-right: 3px;
 }

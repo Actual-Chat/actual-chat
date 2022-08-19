@@ -33,8 +33,7 @@
                 $"{BlazorUICoreModule.ImportName}.FileUpload.create",
                 InputRef,
                 BlazorRef,
-                options)
-            .ConfigureAwait(true);
+                options);
     }
 
     [JSInvokable]
@@ -51,9 +50,17 @@
     }
 
     public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+    }
+
+    // Nested types
+
+    public class Options
+    {
+        public int? MaxSize { get; set; }
+        public string? UploadUrl { get; set; }
     }
 }

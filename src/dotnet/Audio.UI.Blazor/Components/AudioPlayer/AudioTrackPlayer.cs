@@ -56,6 +56,14 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
+    public Task OnPausedAt(double offset)
+    {
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPausedAt: {Offset}", _id, offset);
+        OnPausedAt(TimeSpan.FromSeconds(offset));
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
     public Task OnChangeReadiness(bool isBufferReady)
     {
         UpdateBufferReadyState(isBufferReady);
@@ -68,7 +76,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 switch (command) {
                 case PlayCommand:
                     if (_jsRef != null)
-                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Repeated PlayCommand");
+                        throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await _js.InvokeAsync<IJSObjectReference>(
@@ -79,10 +87,32 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                                 _id
                             ).ConfigureAwait(true);
                     break;
+                case PauseCommand:
+                    if (!_isStopSent) {
+                        if (_jsRef == null)
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", _id);
+                        _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
+                    }
+                    else {
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Pause command was invoked after Stop command", _id);
+                    }
+                    break;
+                case ResumeCommand:
+                    if (!_isStopSent) {
+                        if (_jsRef == null)
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", _id);
+                        _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
+                    }
+                    else {
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Resume command was invoked after Stop command", _id);
+                    }
+                    break;
                 case StopCommand:
                     if (!_isStopSent) {
                         if (_jsRef == null)
-                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(StopCommand)}: Start command should be called first.");
+                            throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                         DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Stop command to JS", _id);
                         _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
                         _isStopSent = true;
@@ -90,12 +120,12 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     break;
                 case EndCommand:
                     if (_jsRef == null)
-                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(EndCommand)}: Start command should be called first.");
+                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);
                     _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
                     break;
                 default:
-                    throw new NotSupportedException($"[AudioTrackPlayer #{_id}] Unsupported command type: '{command.GetType()}'.");
+                    throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
                 }
             }).ConfigureAwait(false);
 
@@ -103,7 +133,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 if (_jsRef == null)
-                    throw new LifetimeException($"[AudioTrackPlayer #{_id}] Can't process media frame before initialization.");
+                    throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
                 _ = _jsRef.InvokeVoidAsync("data", cancellationToken, chunk);
@@ -120,7 +150,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     protected override Task PlayInternal(CancellationToken cancellationToken)
         => base.PlayInternal(cancellationToken)
-            .ContinueWith(async _ => await CircuitInvoke(
+            .ContinueWith(_ => CircuitInvoke(
                 async () => {
                     var (jsRef, blazorRef) = (_jsRef, _blazorRef);
                     (_jsRef, _blazorRef) = (null, null);
@@ -137,11 +167,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
-            ).ConfigureAwait(false),
-            CancellationToken.None,
-            TaskContinuationOptions.RunContinuationsAsynchronously,
-            TaskScheduler.Default
-        );
+            ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
@@ -150,7 +176,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         try {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null
+            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null!
                 ? Task.FromResult(default(TResult?))
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }

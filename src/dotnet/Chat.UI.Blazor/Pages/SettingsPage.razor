@@ -1,18 +1,16 @@
 @page "/settings"
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @using ActualChat.Chat.UI.Blazor.Components.Settings
 
-<MainHeader>
-    <span class="text-secondary">Settings</span>
-</MainHeader>
+<RequireAccount/>
+<MainHeader>Settings</MainHeader>
 
 <div class="flex-x justify-center w-full">
     <div class="flex-none flex-y w-full lg:w-2/3 xl:w-1/2 xxl:w-1/3 p-3">
-        <TabPanel>
-            <Tab Title="My Account">
+        <TabPanel BottomBorder="true">
+            <Tab Title="My Account" Class="px-2">
                 <UserSettings/>
             </Tab>
-            <Tab Title="Appearance">
+            <Tab Title="Appearance" Class="px-2">
                 <AppearanceSettings/>
             </Tab>
         </TabPanel>

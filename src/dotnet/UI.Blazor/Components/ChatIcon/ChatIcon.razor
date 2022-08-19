@@ -1,17 +1,17 @@
 @using Microsoft.Toolkit.HighPerformance
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.FileUpload
-@namespace ActualChat.UI.Blazor.Components.ChatIcon
+@namespace ActualChat.UI.Blazor.Components
 
-<div class="chat-icon @_iconClass">
+<div class="@_iconClass chat-icon">
     @if (_hasPicture) {
-        <img class="chat-icon-image @_iconClass"
+        <img class="@_iconClass chat-icon-image"
              alt=""
              src="@_pictureUrl"
              @onclick="OnPictureClick"
              @onclick:preventDefault="true"/>
     } else {
-        <div class="chat-icon-generated @_iconClass"
+        <div class="@_iconClass chat-icon-generated"
              style="@_iconStyle">
             @((Title.NullIfEmpty() ?? " ")[..1])
         </div>
@@ -43,7 +43,7 @@
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Picture { get; set; } = "";
-    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public bool ShowImagePicker { get; set; } = false;
     [Parameter] public string ImageUploadUrl { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }

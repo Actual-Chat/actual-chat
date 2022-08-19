@@ -12,7 +12,7 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     {
         if (cacheCount <= 0)
             cacheCount = HardwareInfo.ProcessorCountPo2;
-        if (!Bits.IsPowerOf2((ulong) cacheCount))
+        if (!Bits.IsPowerOf2((ulong)cacheCount))
             throw new ArgumentOutOfRangeException(nameof(cacheCount));
 
         var capacityPerCache = capacity / cacheCount;

@@ -3,8 +3,8 @@
 <CascadingValue TValue="MentionCandidateListManager" Value="@this" IsFixed="true">
     <div class="absolute left-0 right-0 px-1.5 z-50">
         <div class="relative w-full">
-            <div class="absolute bottom-0 w-full text-secondary">
-                <MentionCandidateListView Class="bg-secondary" @ref="ListView" />
+            <div class="absolute bottom-0 w-full text-03">
+                <MentionCandidateListView Class="bg-01" @ref="ListView" />
             </div>
         </div>
     </div>
@@ -41,8 +41,7 @@
             return;
 
         Candidates.Value = await MentionCandidateProvider
-            .GetMentionCandidates(search, Limit, default)
-            .ConfigureAwait(true);
+            .GetMentionCandidates(search, Limit, default);
         _lastSearch = search;
     }
 

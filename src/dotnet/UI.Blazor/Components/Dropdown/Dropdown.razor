@@ -4,15 +4,15 @@
 @implements IDropdownBackend
 @implements IAsyncDisposable
 @{
-    var buttonClass = ButtonClass;
+    var buttonClass = "dropdown-menu-btn blackout " + ButtonClass;
 }
 <CascadingValue Value="@this" IsFixed="true">
-    <div @ref="Ref" class="dropdown @Class">
-            <Button Class="@buttonClass" Click="_ => _isOpen = !_isOpen">
+    <div @ref="Ref" class="@Class dropdown">
+            <Button Class="@buttonClass" Click="_ => _isOpen = !_isOpen" Title="@ButtonTitle">
                 @ButtonTemplate
             </Button>
-            <div class="dropdown-menu absolute z-50 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">
-                <div class="dropdown-menu relative @(_isOpen ? "" : "hidden")">
+            <div class="@MenuClass @(_isOpen ? "dropdown-menu-opened" : "") dropdown-menu absolute z-50">
+                <div class="@(_isOpen ? "" : "hidden") dropdown-menu-inner relative">
                     @MenuTemplate
                 </div>
             </div>
@@ -30,6 +30,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string MenuClass { get; set; } = "";
+    [Parameter] public string ButtonTitle { get; set; } = "";
     [Parameter] public RenderFragment ButtonTemplate { get; set; } = default!;
     [Parameter] public RenderFragment MenuTemplate { get; set; } = default!;
     [Parameter] public EventCallback<bool> OpenStateChanged { get; set; }
@@ -47,7 +48,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -59,7 +60,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.Dropdown.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
         }
     }
 

@@ -4,12 +4,17 @@ using Stl.Fusion.Server;
 namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
-[ApiController, JsonifyErrors]
+[ApiController, JsonifyErrors, UseDefaultSession]
 public class UserAvatarsController : ControllerBase, IUserAvatars
 {
     private readonly IUserAvatars _service;
+    private readonly ICommander _commander;
 
-    public UserAvatarsController(IUserAvatars service) => _service = service;
+    public UserAvatarsController(IUserAvatars service, ICommander commander)
+    {
+        _service = service;
+        _commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken)
@@ -25,13 +30,13 @@ public class UserAvatarsController : ControllerBase, IUserAvatars
 
     [HttpPost]
     public Task<UserAvatar> Create([FromBody] IUserAvatars.CreateCommand command, CancellationToken cancellationToken)
-        => _service.Create(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task Update(IUserAvatars.UpdateCommand command, CancellationToken cancellationToken)
-        => _service.Update(command, cancellationToken);
+    public Task Update([FromBody] IUserAvatars.UpdateCommand command, CancellationToken cancellationToken)
+        => _commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task SetDefault([FromBody] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
-        => _service.SetDefault(command, cancellationToken);
+        => _commander.Call(command, cancellationToken);
 }

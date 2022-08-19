@@ -7,15 +7,15 @@ public class DeviceInfo
     private readonly object _lock = new();
     private readonly IJSRuntime _js;
     private readonly Session _session;
-    private readonly UICommandRunner _cmd;
+    private readonly UICommander _uiCommander;
 
     private string? _deviceId;
 
-    public DeviceInfo(IJSRuntime js, Session session, UICommandRunner cmd)
+    public DeviceInfo(Session session, IJSRuntime js, UICommander uiCommander)
     {
-        _js = js;
         _session = session;
-        _cmd = cmd;
+        _js = js;
+        _uiCommander = uiCommander;
     }
 
     [ComputeMethod]
@@ -56,6 +56,6 @@ public class DeviceInfo
         }
 
         var command = new INotifications.RegisterDeviceCommand(_session, deviceId, DeviceType.WebBrowser);
-        await _cmd.Run(command, cancellationToken).ConfigureAwait(true);
+        await _uiCommander.Run(command, cancellationToken).ConfigureAwait(true);
     }
 }

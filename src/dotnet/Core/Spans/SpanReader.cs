@@ -156,7 +156,7 @@ public ref struct SpanReader
         case 8:
             return (float?)new Union { ULong = num.Value }.Double;
         default:
-            throw new InvalidOperationException("Incorrect float length");
+            throw StandardError.Format("Incorrect float length.");
         }
     }
 
@@ -310,7 +310,7 @@ public ref struct SpanReader
             return null;
 
         if (byteReadJustNow > 0b_1111u)
-            throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
+            throw StandardError.Format("Too many bytes in what should have been a 7-bit encoded integer.");
 
         result |= (uint)byteReadJustNow << (maxBytesWithoutOverflow * 7);
         return (int)result;
@@ -351,7 +351,7 @@ public ref struct SpanReader
             return null;
 
         if (byteReadJustNow > 0b_1u)
-            throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
+            throw StandardError.Format("Too many bytes in what should have been a 7-bit encoded integer.");
 
         result |= (ulong)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
         return (long)result;

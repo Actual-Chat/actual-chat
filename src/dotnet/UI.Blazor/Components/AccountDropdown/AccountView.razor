@@ -1,31 +1,21 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@inherits ComputedStateComponent<AccountView.Model>
-
-@{
-    var m = State.LatestNonErrorValue;
-}
 
 <UserAuthorBadge
-    UserId="@m.UserId"
-    Size="SquareSize.Size9"
+    UserId="@(User?.Id ?? "")"
+    Size="SquareSize.Size12"
     ShowsPresence="true"
-    TextClass="leading-5 font-medium text-primary" />
+    TextClass="ml-2 font-semibold md:hidden" />
 
 @code {
+    private User? User { get; set; }
+
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new () { InitialValue = Model.None };
+    [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        return new Model() {UserId = user.Id};
-    }
-
-    public sealed record Model {
-        public static Model None => new ();
-        public Symbol UserId { get; init; } = null!;
+    protected override async Task OnParametersSetAsync() {
+        User = (await AuthStateTask).User;
+        StateHasChanged();
     }
 }

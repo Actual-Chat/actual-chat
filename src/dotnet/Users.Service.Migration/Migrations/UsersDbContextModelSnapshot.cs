@@ -17,10 +17,36 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("ProductVersion", "6.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbAccount", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AvatarId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_id");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accounts");
+
+                    b.ToTable("accounts");
+                });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatReadPosition", b =>
                 {
@@ -78,11 +104,69 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("chat_user_settings");
                 });
 
+            modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Key")
+                        .HasName("pk_kvas_entries");
+
+                    b.ToTable("kvas_entries");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbRecentEntry", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("ShardKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("shard_key");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recent_entries");
+
+                    b.ToTable("recent_entries");
+                });
+
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
                 {
                     b.Property<string>("Id")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("id");
 
                     b.Property<string>("AuthenticatedIdentity")
@@ -226,6 +310,10 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_favorite");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -269,32 +357,6 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_user_presences");
 
                     b.ToTable("user_presences");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserProfile", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.Property<string>("AvatarId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("avatar_id");
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint")
-                        .HasColumnName("status");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("UserId")
-                        .HasName("pk_user_profiles");
-
-                    b.ToTable("user_profiles");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>

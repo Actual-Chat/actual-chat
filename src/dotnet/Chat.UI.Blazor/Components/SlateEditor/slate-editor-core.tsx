@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useState } from 'react'
-import { Editor, Transforms, Range, createEditor, Descendant } from 'slate'
+import { Editor, Transforms, Range, createEditor, Descendant } from 'slate';
 import { withHistory } from 'slate-history'
 import {
     Slate,
@@ -14,7 +14,7 @@ import { serialize } from './serializer';
 
 export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
-    const [placeholder, setPlaceholder] = useState('')
+    const [placeholder, setPlaceholder] = useState(handle.getPlaceholder())
     const [hasContent, setHasContent] = useState(false)
     const renderElement = useCallback(props => <Element {...props} />, [])
     const editor = useMemo(
@@ -23,18 +23,40 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
     )
 
     handle.getText = () => trimLeftSpecial(serialize(editor));
-    handle.setPlaceholder = setPlaceholder;
 
-    handle.clearText = () => {
-        if (debug) console.log('clear text')
-        resetEditor(editor)
+    handle.setMarkup = nodes => {
+        for (let node of nodes) {
+            switch (node.type) {
+                case 'mention':
+                    handle.insertMention(node.content, node.displayContent);
+                    break;
+                case 'paragraph':
+                    editor.insertText(node.content);
+                    break;
+                default:
+                    throw new Error(`Unexpected markup node type '${node.type}'`);
+            }
+        }
+    };
+
+    handle.moveCursorToEnd = () => {
+        Transforms.deselect(editor);
+        Transforms.select(editor, Editor.end(editor, []));
+    };
+
+    handle.onPlaceholderUpdated = () => {
+        setPlaceholder(handle.getPlaceholder());
     }
 
-    handle.insertMention = (mention : any) => {
-        const { id, name } = mention;
-        Transforms.select(editor, target)
-        insertMention(editor, id, name)
-        setTarget(null)
+    handle.clearText = () => {
+        if (debug) console.log('clear text');
+        resetEditor(editor);
+    }
+
+    handle.insertMention = (id: string, name: string) => {
+        Transforms.select(editor, target);
+        insertMention(editor, id, name);
+        setTarget(null);
     }
 
     const onKeyDown = useCallback(
@@ -69,6 +91,20 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
                             handle.clearText()
                         }
                         break
+                    case 'Escape':
+                        if (!event.shiftKey) {
+                            event.preventDefault();
+                            handle.onCancel();
+                        }
+                        break;
+                    case 'ArrowUp':
+                        if (!event.shiftKey) {
+                            event.preventDefault();
+                            const text = handle.getText();
+                            if(!text)
+                                handle.onEditLastMessage();
+                        }
+                        break;
                 }
             }
         },
@@ -92,6 +128,10 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
         handle.onHasContentChanged(hasContent)
     }, [hasContent])
 
+    useEffect(() => {
+        handle.onRendered();
+    }, [])
+
     return (
         <Slate
             editor={editor}
@@ -110,6 +150,12 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
             />
         </Slate>
     )
+}
+
+export interface MarkupNode {
+    type: 'mention' | 'paragraph';
+    content: string;
+    displayContent: string;
 }
 
 const trimLeftSpecial = (str : string) : string => {

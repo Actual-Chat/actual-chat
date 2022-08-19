@@ -2,24 +2,28 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public interface IChatAuthors
+public interface IChatAuthors : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
+    Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 1)]
+    [ComputeMethod]
+    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Presence> GetAuthorPresence(
+        Session session,
+        string chatId,
+        string authorId,
+        CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     // Commands

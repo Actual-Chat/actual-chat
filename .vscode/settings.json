@@ -8,12 +8,12 @@
     "**/.vs": true,
     "**/bin": true,
     "**/CVS": true,
+    "**/dist": true,
     "**/node_modules": true,
     "**/obj": true,
     "**/tmp": false,
     "**/tools": false,
-    "**/*.cmd": true,
-    "src/dotnet/tsconfig.json": true
+    "artifacts": true
   },
   "typescript.enablePromptUseWorkspaceTsdk": false,
   "typescript.tsdk": "./src/nodejs/node_modules/typescript/lib",

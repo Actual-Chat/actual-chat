@@ -1,10 +1,25 @@
 @using Stl.Extensibility
 @inherits MarkupViewBase<UrlMarkup>
 @attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
+@{
+    var isChatUrl = Markup.Url.StartsWith(Nav.BaseUri);
+}
 
 @if (!Markup.IsImage) {
-    <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
-       href="@Markup.Url" target="_blank">@Markup.Url</a>
+    if (isChatUrl) {
+        <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
+           href="@Markup.Url"
+           @onclick="_ => Nav.NavigateTo(Markup.Url)"
+           @onclick:preventDefault="true">
+            @Markup.Url
+        </a>
+    } else {
+        <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
+           href="@Markup.Url"
+           target="_blank">
+            @Markup.Url
+        </a>
+    }
 } else {
     <a class="image-markup cursor-pointer" href="@Markup.Url" role="button"
        @onclick="OnClick" @onclick:preventDefault="true">
@@ -14,6 +29,7 @@
 
 @code {
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private Task OnClick()
         => ImagePreviewUI.Show(Markup.Url);

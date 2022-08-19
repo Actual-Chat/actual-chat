@@ -39,7 +39,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
             return this;
 
         if (ShouldStripWebM)
-            throw new InvalidOperationException("SkipTo is not supported when WebM container has been stripped");
+            throw new InvalidOperationException("SkipTo is not supported when WebM container has been stripped.");
 
         return new AudioSource(FormatTask, GetFrames(cancellationToken), skipTo, Log, cancellationToken);
     }

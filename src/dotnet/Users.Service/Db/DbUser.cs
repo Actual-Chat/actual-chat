@@ -2,7 +2,7 @@ using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users.Db;
 
-public class DbUser : DbUser<string>
+public class DbUser : DbUser<string>, IRequirementTarget
 {
     private DateTime _createdAt = CoarseSystemClock.Now;
 

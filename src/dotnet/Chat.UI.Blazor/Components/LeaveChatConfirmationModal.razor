@@ -1,0 +1,34 @@
+@using Stl.Extensibility
+@implements IModalView<LeaveChatConfirmationModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame Title="Leave chat">
+    <Body>
+        <p>Are you sure you want to leave the chat?</p>
+    </Body>
+    <Buttons>
+        <div class="btn-group">
+            <Button Class="btn-outline" Click="OnCancel">Cancel</Button>
+            <Button Class="btn-error" Click="OnLeave">Leave</Button>
+        </div>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnCancel()
+        => _ = ModalInstance.CloseAsync();
+
+    private async Task OnLeave(MouseEventArgs arg) {
+        var command = new IChats.LeaveChatCommand(Session, ModalModel.Chat.Id);
+        await UICommander.Run(command);
+        await ModalInstance.CloseAsync();
+    }
+
+    public sealed record Model(Chat Chat);
+}

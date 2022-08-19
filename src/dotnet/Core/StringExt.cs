@@ -1,5 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace ActualChat;
@@ -13,6 +14,12 @@ public static class StringExt
         new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
 #pragma warning restore MA0023
 
+    public static string RequireNonEmpty(this string? source, string name)
+        => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
+    [return: NotNullIfNotNull("source")]
+    public static string? RequireEmpty(this string? source, string name)
+        => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
+
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
 
@@ -23,8 +30,8 @@ public static class StringExt
                 .ToLower(CultureInfo.InvariantCulture)
                 .OrdinalReplace("__", "_");
 
-    public static string Capitalize(this string s)
-        => s.IsNullOrEmpty() ? s : s[..1].ToUpperInvariant() + s[1..];
+    public static string Capitalize(this string source)
+        => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
 
     public static bool OrdinalHasPrefix(this string source, string prefix, out string suffix)
         => source.HasPrefix(prefix, StringComparison.Ordinal, out suffix);
@@ -81,18 +88,12 @@ public static class StringExt
         return true;
     }
 
-    // ReSharper disable once InconsistentNaming
-    public static string GetMD5HashCode(this string input)
-    {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var inputBytes = Encoding.ASCII.GetBytes(input);
-        var hashBytes = md5.ComputeHash(inputBytes);
-        return Convert.ToHexString(hashBytes);
-    }
-
     public static string UrlEncode(this string input)
         => WebUtility.UrlEncode(input);
 
     public static string UrlDecode(this string input)
         => WebUtility.UrlDecode(input);
+
+    public static string EnsureSuffix(this string input, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        => input.EndsWith(suffix, comparison) ? input : input + suffix;
 }

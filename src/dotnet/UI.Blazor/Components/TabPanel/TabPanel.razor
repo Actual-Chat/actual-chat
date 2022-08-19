@@ -1,15 +1,21 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="tab-panel @Class">
-        <div class="tab-panel-tabs @TabsClass" role="tablist">
-            <div class="relative btn-group min-w-full right-1">
+    <div class="@Class tab-panel">
+        <div class="@TabsClass tab-panel-tabs" role="tablist">
+            <div class="relative btn-group min-w-full">
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
-                var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")}";
-                <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                    @tab.Title
-                </Button>
+                var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
+                <div class="flex-y btn-group-container">
+                    <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
+                        @tab.Title
+                    </Button>
+                    @if (BottomHill) {
+                        var lineCls = isActive ? "bg-primary" : "bg-transparent";
+                        <div class="@lineCls shape"></div>
+                    }
+                </div>
             }
             </div>
         </div>
@@ -23,8 +29,10 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string TabsClass { get; set; } = "";
+    [Parameter] public bool BottomHill { get; set; }
+    [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public EventCallback<Tab> ActiveTabChanged { get; set; }
+    [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
     public Tab? ActiveTab {
@@ -38,8 +46,29 @@
     }
 
     internal void RegisterTab(Tab tab) {
-        _tabs.Add(tab);
+        var indexToInsert = -1;
+        if (tab.TabIndex.HasValue && _tabs.Count > 0) {
+            for (var i = 0; i < _tabs.Count; i++) {
+                var c = _tabs[i];
+                if (!c.TabIndex.HasValue || c.TabIndex > tab.TabIndex) {
+                    indexToInsert = i;
+                    break;
+                }
+            }
+        }
+        if (indexToInsert >= 0)
+            _tabs.Insert(indexToInsert, tab);
+        else
+            _tabs.Add(tab);
         ActiveTab ??= tab;
+        StateHasChanged();
+    }
+
+    public void UnregisterTab(Tab tab) {
+        var tabIndex = _tabs.IndexOf(tab);
+        _tabs.Remove(tab);
+        tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
+        ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
         StateHasChanged();
     }
 }

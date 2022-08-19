@@ -1,14 +1,15 @@
-using ActualChat.Configuration;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
+using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
+using Stl.Testing.Output;
+using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing.Host;
 
@@ -47,25 +48,70 @@ public static class TestHostFactory
                         },
                     });
             },
-            AppServicesBuilder = (hb, services) => {
+            AppServicesBuilder = (host, services) => {
                 configureServices?.Invoke(services);
-                services.TryAddSingleton(new ServerAuthHelper.Options {
+                ConfigureLogging(services, output);
+                services.AddSingleton(new ServerAuthHelper.Options {
                     KeepSignedIn = true,
                 });
-                services.AddOptions<TestUsersOptions>(hb.Configuration, "Tests:Users");
+                services.AddSettings<TestSettings>();
+                services.AddSingleton(output);
+                services.AddSingleton<PostgreSqlPoolCleaner>();
             },
             AppConfigurationBuilder = builder => {
-                GetTestAppSettings(builder, output);
+                ConfigureTestApp(builder, output);
                 configureAppSettings?.Invoke(builder);
             },
         };
         await appHost.Build();
         await appHost.Initialize();
+        _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // force service instantiation
         await appHost.Start();
         return appHost;
     }
 
-    private static void GetTestAppSettings(IConfigurationBuilder config, ITestOutputHelper output)
+    public static void ConfigureLogging(IServiceCollection services, ITestOutputHelper output)
+        => services.AddLogging(logging => {
+            // Overriding default logging to more test-friendly one
+
+            var debugCategories = new List<string> {
+                "Stl.Fusion",
+                "Stl.CommandR",
+                // DbLoggerCategory.Database.Transaction.Name,
+                // DbLoggerCategory.Database.Connection.Name,
+                // DbLoggerCategory.Database.Command.Name,
+                // DbLoggerCategory.Query.Name,
+                // DbLoggerCategory.Update.Name,
+            };
+            var suppressedCategories = new List<string>() {
+                "Microsoft",
+                "Stl.Fusion.Interception",
+                "Stl.CommandR.Interception",
+                // "Microsoft.EntityFrameworkCore",
+                // "Microsoft.AspNetCore",
+            };
+
+            bool LogFilter(string category, LogLevel level)
+            {
+                if (suppressedCategories.Any(category.StartsWith))
+                    return false;
+                if (level is LogLevel.Debug && debugCategories.Any(category.StartsWith))
+                    return true;
+                return level >= LogLevel.Information;
+            }
+
+            logging.ClearProviders();
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddFilter(LogFilter);
+            logging.AddDebug();
+            // XUnit logging requires weird setup b/c otherwise it filters out
+            // everything below LogLevel.Information
+            logging.AddProvider(new XunitTestOutputLoggerProvider(
+                new TestOutputHelperAccessor(output),
+                LogFilter));
+        });
+
+    private static void ConfigureTestApp(IConfigurationBuilder config, ITestOutputHelper output)
     {
         var toDelete = config.Sources
             .Where(s => (s is JsonConfigurationSource source
@@ -75,7 +121,7 @@ public static class TestHostFactory
         foreach (var source in toDelete)
             config.Sources.Remove(source);
 
-        var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestSettings).Assembly.Location));
+        var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestBase).Assembly.Location));
         foreach (var (fileName, optional) in GetTestSettingsFiles())
             config.Sources.Add(new JsonConfigurationSource {
                 FileProvider = fileProvider,
@@ -106,6 +152,13 @@ public static class TestHostFactory
     {
         var test = output.GetTest();
         // Postgres identifier limit is 63 bytes
-        return FilePath.GetHashedName(test.TestCase.UniqueID, test.DisplayName);
+        var displayName = test.DisplayName;
+        // On build server displayName is generated based on class full name and method name,
+        // while in Rider only method name is used.
+        // Drop namespace to have more readable instance name (with test method name) after length is truncated.
+        var classNamespace = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
+        if (displayName.StartsWith(classNamespace))
+            displayName = displayName.Substring(classNamespace.Length + 1);
+        return FilePath.GetHashedName(test.TestCase.UniqueID, displayName);
     }
 }

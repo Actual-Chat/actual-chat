@@ -1,30 +1,43 @@
 
 :root, .theme-light {
     /* Main colors */
-    --background-primary: #edf0f3;
-    --background-secondary: #F9FAFB;
-    --background-accent: #e2e7ec;
-    --text-primary: #2b3641;
-    --text-secondary: #4b5e71;
-    --text-accent: #232c35;
+    --background-01: #FFFFFF;
+    --background-02: #FAFAFA;
+    --background-03: #F5F5F5;
+    --background-04: #E7E7E7;
+    --background-05: #ADADAD;
+    --background-06: #505050;
+    --background-07: #444444;
+
+    --text-01: #000000;
+    --text-02: #444444;
+    --text-03: #626262;
+    --text-04: #FFFFFF;
+    --text-05: #B9B9B9;
+
+    --icons-01: #898989;
+    --icons-02: #B9B9B9;
+    --icons-03: #757D8A;
+
+    --counter: #D0D0D0;
 
     /* Buttons */
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
-    --success-title: #edf0f3;
-    --success-ring: #94d2fc;
-    --success-outline-hover: #e0f2fe;
-    --success-outline-title: #0284c7;
+    --disabled: #E7E7E7;
 
-    --cancel: #64748b;
-    --cancel-hover: #546174;
-    --cancel-title: #edf0f3;
-    --cancel-ring: #9aa6b7;
-    --cancel-outline-hover: #eef1f4;
-    --cancel-outline-title: #64748b;
+    --primary: #2970FF;
+    --primary-hover: #2569F1;
+    --primary-title: #FFFFFF;
 
-    --error: #ef4444;
-    --error-hover: #ec2020;
+    --secondary: #E1EFFA;
+    --secondary-hover: #C5D8FF;
+    --secondary-title: #2970FF;
+
+    --outline: #FFFFFF;
+    --outline-hover: #C5D8FF;
+    --outline-title: #2970FF;
+
+    --error: #FF7070;
+    --error-hover: #FFE4E4;
     --error-title: #edf0f3;
     --error-ring: #f47a7a;
     --error-outline-hover: #fef4f4;
@@ -32,14 +45,25 @@
 
     --square: #e2e7ec;
     --square-active: #e2e7ec;
-    --square-hover: #edf0f3;
+    --square-hover: #E1E9FA;
     --square-focus: #cad3dc;
     --square-title: #4b5e71;
 
-    --shadow-main: #000000;
+    --round: #F5F5F5;
+    --round-active: #E1EFFA;
+    --round-hover: #E1EFFA;
+    --round-focus: #E1EFFA;
+    --round-title: #4b5e71;
+
+    --recorder: #e2e7ec;
+    --recorder-hover: #edf0f3;
+    --recorder-title: #4b5e71;
+
+    --shadow-main: #B9B9B9;
 
     /* Utils colors */
-    --online: #31d872;
+    --selected: #C5D8FF;
+    --online: #0AA489;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
@@ -47,16 +71,19 @@
     --rating: #fde047;
     --code: #D83E52;
     --avatar: #5a7188;
-    --recorder-on: #ef4444;
+    --recorder-on: #FF7070;
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
-    --message-hover: #f3f4f6;
+    --message-hover: #F8FBFE;
     --mention: #fed7aa;
     --mention-hover: #fb923c;
     --mention-message: #fff7ed;
     --mention-message-hover: #fff7e5;
     --own-message: #f6f8f9;
     --own-message-hover: #cbd5e1;
+    --replied-message: #dbeafe;
+    --replied-message-hover: #bfdbfe;
+    --replied-message-border: #3b82f6;
     --audio-message: #0ea5e9;
     --context-menu: #F9FAFB;
     --context-border: #e2e7ec;
@@ -65,7 +92,8 @@
     --dot-selected: #4b5e71;
     --skeleton: #edf0f3;
     --skeleton-border: #F9FAFB;
-    --scrollbar: #b3bfcc;
+    --scrollbar: #B9B9B9;
+    --quote: #d6dde4;
 
     --error-toast-header: #fd5757;
     --error-toast-body: #fd6a6a;
@@ -81,12 +109,14 @@
 
 .theme-dark {
     /* Main colors */
-    --background-primary: #2F3136;
-    --background-secondary: #36393F;
-    --background-accent: #292B2F;
-    --text-primary: #fafafa;
-    --text-secondary: #e5e6e8;
-    --text-accent: #d0d2d6;
+    --background-01: #36393F;
+    --background-02: #2F3136;
+    --background-03: #292B2F;
+    --background-04: #292B2F;
+    --text-01: #fafafa;
+    --text-02: #e5e6e8;
+    --text-03: #d0d2d6;
+    --text-04: #d0d2d6;
 
     /* Buttons */
     --success: #0ea5e9;

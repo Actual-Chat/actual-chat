@@ -34,10 +34,10 @@ To build & run the project:
 
 ```bash
 # Start Docker containers for PostgreSQL, Redis etc.
-./Docker-Start.cmd
+./docker-start.cmd
 
 # Install dependencies and run watch (dotnet watch + webpack watch)
-./run-build restore-tools npm-install watch
+./run-build.cmd restore-tools npm-install watch
 ```
 
 If you're getting `RpcException` with 
@@ -48,17 +48,17 @@ Other useful commands:
 
 ```powershell
 # What else build project can do?
-./run-build --help
+./run-build.cmd --help
  
 # List all available targets (you can combine them)
-./run-build -- --list-targets
+./run-build.cmd -- --list-targets
 
 # Run with observability services (opentelemetry collector + jaeger) locally:
 docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
 
 # Use either env. var or the matching option in your appsettings.local.json
 $env:HostSettings__OpenTelemetryEndpoint="localhost"
-./run-build -- watch
+./run-build.cmd -- watch
 ```
 
 You can add your own targets (as C# code) to `./build/Program.cs`, which is actually a [Bullseye](https://github.com/adamralph/bullseye) build project written in C#.
@@ -68,18 +68,41 @@ It's also useful to have an [alias](https://github.com/vchirikov/dotfiles/blob/7
 There are some shortcuts in `*.cmd` files, you can use them too.  
 
 ## Access on https://local.actual.chat
+### Prerequisites (only once)
+```bash
+./add-hosts.cmd
+```
+<details>
+    <summary>OR add hosts and trust certificate manually</summary>
+
 - Add line with ```local.actual.host``` aliases to [Hosts file](https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/).
  ```
  127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat
  ```
  - Import certificate [local.actual.chat.crt](./.config/local.actual.chat/ssl/local.actual.chat.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
+
+</details>
+
+### Usage
  - Start Docker containers for reverse proxy and image proxy.
 ```
-./Docker-Start.cmd
+./docker-start.cmd
  ```
  - Run Actual-chat app.
  - Navigate with browser to https://local.actual.chat/
- 
+
+## Publish MAUI app
+### Windows platform
+- install certificate [sign_app.cer](./.config/maui/sign_app.cer) to "Trusted Root Certification Authorities" (required only once).
+- build solution:
+  - with IDE or,
+  - run `msbuild` from repo root or,
+  - run `dotnet build` from repo root;
+- run publish command from repo root:<br>
+  `dotnet publish src/dotnet/ClientApp/ClientApp.csproj -f net6.0-windows10.0.19041.0 -c Debug-Maui --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A`
+
+I build solution in front and run `dotnet publish` with `--no-restore`, because otherwise I get an error:
+`'artefacts\obj\ClientApp\project.assets.json' doesn't have a target for 'net6.0-windows10.0.19041.0'`
 
 ## Conventions
 

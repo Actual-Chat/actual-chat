@@ -2,27 +2,48 @@ namespace ActualChat.Users;
 
 public class UserContacts : IUserContacts
 {
-    private readonly IAuth _auth;
-    private readonly IUserContactsBackend _contactsBackend;
+    private IAuth Auth { get; }
+    private IUserContactsBackend ContactsBackend {get; }
+    private ICommander Commander { get; }
 
-    public UserContacts(IAuth auth, IUserContactsBackend contactsBackend)
+    public UserContacts(IAuth auth, IUserContactsBackend contactsBackend, ICommander commander)
     {
-        _auth = auth;
-        _contactsBackend = contactsBackend;
+        Auth = auth;
+        ContactsBackend = contactsBackend;
+        Commander = commander;
     }
 
-    public virtual async Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<UserContact>> List(
+        Session session,
+        CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user == null)
             return ImmutableArray<UserContact>.Empty;
 
-        var contactIds = await _contactsBackend.GetContactIds(user.Id, cancellationToken).ConfigureAwait(false);
-        var contacts = await Task.WhenAll(
-            contactIds
-                .Select(c => _contactsBackend.Get(c, cancellationToken))
-                .ToArray()
-            ).ConfigureAwait(false);
-        return contacts.Where(c => c != null).Select(c => c!).ToImmutableArray();
+        var contactIds = await ContactsBackend.GetContactIds(user.Id, cancellationToken).ConfigureAwait(false);
+        var contacts = await contactIds.Select(c => ContactsBackend.Get(c, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+        return contacts.SkipNullItems().ToImmutableArray();
+    }
+
+    // [CommandHandler]
+    public virtual async Task<UserContact?> Change(IUserContacts.ChangeCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        // var (session, id, ownerUserId, targetUserId, expectedVersion, change) = command;
+        var (session, id, expectedVersion, change) = command;
+        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
+        var contact = await ContactsBackend.Get(id, cancellationToken).Require().ConfigureAwait(false);
+        if (contact.OwnerUserId != user.Id)
+            throw StandardError.Unauthorized("Users can change only their own contacts");
+
+        return await Commander
+            .Call(new IUserContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)
+            .ConfigureAwait(false);
     }
 }

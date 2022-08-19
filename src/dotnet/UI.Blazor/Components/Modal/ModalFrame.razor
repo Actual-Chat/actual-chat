@@ -5,24 +5,15 @@
 
 <ModalChrome Class="@cls">
     @if (HasHeader) {
-        <div class="modal-header flex justify-between items-center px-5 py-3 border-b border-accent bg-accent top-0 min-h-modal-header md:min-h-auto">
+        <div class="modal-header">
             <h3 class="modal-title flex flex-1 text-lg font-bold">@Title</h3>
-            @if (HasCloseButton) {
-                <div class="flex my-1">
-                    <ButtonSquare Class="modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-1 -1 26 26">
-                            <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"/>
-                        </svg>
-                    </ButtonSquare>
-                </div>
-            }
         </div>
     }
     @ChildContent
 </ModalChrome>
 
 @code {
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }

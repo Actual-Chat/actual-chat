@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
@@ -9,7 +9,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class AdminGrantTest : AppHostTestBase
 {
     private WebClientTester _tester = null!;
-    private IUserProfilesBackend _userProfiles = null!;
+    private IAccountsBackend _accounts = null!;
     private AppHost _appHost = null!;
 
     public AdminGrantTest(ITestOutputHelper @out) : base(@out)
@@ -19,7 +19,7 @@ public class AdminGrantTest : AppHostTestBase
     {
         _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester();
-        _userProfiles = _appHost.Services.GetRequiredService<IUserProfilesBackend>();
+        _accounts = _appHost.Services.GetRequiredService<IAccountsBackend>();
     }
 
     public override async Task DisposeAsync()
@@ -32,32 +32,34 @@ public class AdminGrantTest : AppHostTestBase
     public async Task UserWithActualChatDomainAndGoogleIdentityShouldBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "BobAdmin").WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
+        var user = new User("", "BobAdmin")
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
             .WithClaim(ClaimTypes.Email, "bob@actual.chat");
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
-        userProfile!.IsAdmin.Should().BeTrue();
+        user.Should().NotBeNull();
+        account!.IsAdmin.Should().BeTrue();
     }
 
     [Fact]
     public async Task UserWithoutGoogleIdentityShouldNotBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "JackNotAdmin").WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
+        var user = new User("", "JackNotAdmin")
+            .WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
             .WithClaim(ClaimTypes.Email, "jack@actual.chat");
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
-        userProfile!.IsAdmin.Should().BeFalse();
+        user.Should().NotBeNull();
+        account!.IsAdmin.Should().BeFalse();
     }
 
     [Fact]
@@ -68,10 +70,10 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
+        var account = await _accounts.Get(user.Id, CancellationToken.None);
 
         // assert
-        user.IsAuthenticated.Should().BeTrue();
-        userProfile!.IsAdmin.Should().BeFalse();
+        user.Should().NotBeNull();
+        account!.IsAdmin.Should().BeFalse();
     }
 }

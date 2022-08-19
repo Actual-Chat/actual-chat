@@ -1,23 +1,28 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 [DataContract]
 public record ChatAuthorRules(
+    [property: DataMember] Symbol ChatId,
     [property: DataMember] ChatAuthor? Author,
-    [property: DataMember] User? User,
+    [property: DataMember] Account? Account,
     [property: DataMember] ChatPermissions Permissions = 0)
 {
-    public bool CanRead => Permissions.Has(ChatPermissions.Read);
-    public bool CanWrite => Permissions.Has(ChatPermissions.Write);
-    public bool CanReadWrite => Permissions.Has(ChatPermissions.ReadWrite);
-    public bool CanInvite => Permissions.Has(ChatPermissions.Invite);
-    public bool CanEditProperties => Permissions.Has(ChatPermissions.EditProperties);
-    public bool IsOwner => Permissions.Has(ChatPermissions.Owner);
+    public static ChatAuthorRules None(Symbol chatId) => new(chatId, null, null);
 
-    public static ChatAuthorRules None { get; } = new(null, null);
+    public bool CanRead() => Permissions.Has(ChatPermissions.Read);
+    public bool CanWrite() => Permissions.Has(ChatPermissions.Write);
+    public bool CanSeeMembers() => Permissions.Has(ChatPermissions.SeeMembers);
+    public bool CanJoin() => Permissions.Has(ChatPermissions.Join);
+    public bool CanLeave() => Permissions.Has(ChatPermissions.Leave);
+    public bool CanInvite() => Permissions.Has(ChatPermissions.Invite);
+    public bool CanEditProperties() => Permissions.Has(ChatPermissions.EditProperties);
+    public bool CanEditRoles() => Permissions.Has(ChatPermissions.EditRoles);
+    public bool IsOwner() => Permissions.Has(ChatPermissions.Owner);
 
     public bool Has(ChatPermissions required)
         => Permissions.Has(required);
-    public void Demand(ChatPermissions required)
-        => Permissions.Demand(required);
+    public void Require(ChatPermissions required)
+        => Permissions.Require(required);
 }
-

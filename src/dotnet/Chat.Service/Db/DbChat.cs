@@ -5,7 +5,7 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("Chats")]
-public class DbChat : IHasId<string>, IHasVersion<long>
+public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
 
@@ -37,7 +37,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>
             IsPublic = IsPublic,
             ChatType = ChatType,
             Picture = Picture,
-            OwnerIds = Owners.Select(o => (Symbol)o.UserId).ToImmutableArray(),
         };
 
     public void UpdateFrom(Chat model)
@@ -49,10 +48,5 @@ public class DbChat : IHasId<string>, IHasVersion<long>
         IsPublic = model.IsPublic;
         ChatType = model.ChatType;
         Picture = model.Picture;
-        Owners = model.OwnerIds.Select(x => new DbChatOwner() {
-            ChatId = model.Id,
-            UserId = x.Value,
-        }).ToList();
     }
 }
-

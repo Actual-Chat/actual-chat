@@ -1,26 +1,27 @@
 namespace ActualChat.Chat;
 
-public interface IChatRolesBackend
+public interface IChatRolesBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ChatRole?> Get(string chatId, string roleId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
-    Task<ImmutableArray<Symbol>> ListRoleIds(string chatId, string authorId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ImmutableArray<ChatRole>> List(string chatId, string authorId,
+        bool isAuthenticated, bool isAnonymous,
+        CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ImmutableArray<ChatRole>> ListSystem(string chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, string roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task Upsert(UpsertCommand command, CancellationToken cancellationToken);
+    Task<ChatRole?> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record UpsertCommand(
+    public sealed record ChangeCommand(
         [property: DataMember] string ChatId,
-        [property: DataMember] string RoleId
-    ) : ICommand<Unit>
-    {
-        [DataMember] public string? Title { get; init; }
-        [DataMember] public string[] AddAuthorIds { get; init; } = Array.Empty<string>();
-        [DataMember] public string[] RemoveAuthorIds { get; init; } = Array.Empty<string>();
-        [DataMember] public bool MustRemove { get; init; }
-    }
+        [property: DataMember] string RoleId,
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] Change<ChatRoleDiff> Change
+    ) : ICommand<ChatRole?>;
 }

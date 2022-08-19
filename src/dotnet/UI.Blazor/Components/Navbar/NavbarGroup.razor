@@ -4,22 +4,11 @@
 @{
     var isVisible = NavbarUI.ActiveGroupId == Id;
     var cls = isVisible ? "flex-y" : "hidden";
-    var groupTitleSlotName = "NavbarGroupTitle-" + Id;
 }
 
-<div class="navbar-group flex space-y-1 @Class @cls">
-    <div class="hidden md:flex flex-row justify-start items-initial mt-2
-                text-secondary font-medium max-h-5">
-        <RenderSlot Name="@groupTitleSlotName" />
-    </div>
-    <div class="py-0.5"></div>
+<div class="@Class @cls navbar-group flex space-y-1">
     @ChildContent
 </div>
-
-<RenderIntoSlot Name="@groupTitleSlotName">
-    <div class="flex-1 self-center uppercase font-bold">@Title</div>
-    <div class="right-0 min-w-0">@Icons</div>
-</RenderIntoSlot>
 
 @code{
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
@@ -30,12 +19,18 @@
     [Parameter] public RenderFragment? Icons { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public Action? AddClick { get; set; }
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
+        if (AddClick != null)
+            NavbarUI.AddButtonAction.Add(Id, AddClick);
         NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
     }
 
-    public void Dispose()
-        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+    public void Dispose() {
+        NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+        NavbarUI.AddButtonAction.Remove(Id);
+    }
+
 }

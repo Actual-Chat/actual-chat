@@ -1,5 +1,5 @@
 import Denque from 'denque';
-import { isPromise } from './is-promise';
+import { isPromise } from 'is-promise';
 
 /** Object that can be reused after reset() call (for example for object pooling). */
 export interface Resettable {
@@ -8,7 +8,7 @@ export interface Resettable {
 }
 
 export function isResettable<T>(obj: T | Resettable): obj is Resettable {
-    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj["reset"] === 'function';
+    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['reset'] === 'function';
 }
 
 /** Usage: new ObjectPool<Foo, [number, number]>((arg1, arg2) => new Foo(arg1, arg2)); can be async. */

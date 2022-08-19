@@ -1,0 +1,3 @@
+.dropdown-menu .menu {
+    @apply rounded-xl shadow-context border border-context-border bg-01;
+}

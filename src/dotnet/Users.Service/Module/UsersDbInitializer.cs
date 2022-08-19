@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
@@ -8,7 +9,9 @@ namespace ActualChat.Users.Module;
 
 public class UsersDbInitializer : DbInitializer<UsersDbContext>
 {
-    public UsersDbInitializer(IServiceProvider services) : base(services) { }
+    private HostInfo HostInfo { get; init; } = null!;
+    public UsersDbInitializer(IServiceProvider services, HostInfo hostInfo) : base(services)
+        => HostInfo = hostInfo;
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
@@ -17,13 +20,18 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        if (DbInfo.ShouldRecreateDb) {
-            Log.LogInformation("Recreating DB...");
+        var admin = await dbContext.Users
+            .Get(UserConstants.Admin.UserId, cancellationToken)
+            .ConfigureAwait(false);
+        var isNewDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || admin is null);
+        if (isNewDb) {
+            Log.LogInformation("Filling users db with data...");
+            var commander = Services.Commander();
             var authBackend = Services.GetRequiredService<IAuthBackend>();
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
             // Creating admin user
-            var adminIdentity = new UserIdentity("internal", "admin");
+            var adminIdentity = new UserIdentity("internal", UserConstants.Admin.UserId);
             dbContext.Users.Add(new DbUser() {
                 Id = UserConstants.Admin.UserId,
                 Name = UserConstants.Admin.Name,
@@ -36,9 +44,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 },
             });
             var avatarId = Ulid.NewUlid().ToString();
-            dbContext.UserProfiles.Add(new DbUserProfile {
-                UserId = UserConstants.Admin.UserId,
-                Status = UserStatus.Active,
+            dbContext.Accounts.Add(new DbAccount {
+                Id = UserConstants.Admin.UserId,
+                Status = AccountStatus.Active,
                 AvatarId = avatarId,
             });
             dbContext.UserAvatars.Add(new DbUserAvatar() {
@@ -58,11 +66,12 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
-            var user = await authBackend.GetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException("Failed to create 'admin' user.");
-            await authBackend.SignIn(
-                new SignInCommand(session, user, user.Identities.Keys.Single()),
-                cancellationToken).ConfigureAwait(false);
+            var user = await authBackend.GetUser(default, UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
+                ?? throw StandardError.Internal("Failed to create 'admin' user.");
+            await commander.Call(
+                    new SignInCommand(session, user, user.Identities.Keys.Single()),
+                    cancellationToken)
+                .ConfigureAwait(false);
             UserConstants.Admin.Session = session;
 
             await AddUsers(dbContext, cancellationToken).ConfigureAwait(false);
@@ -87,9 +96,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 },
             });
             var avatarId = Ulid.NewUlid().ToString();
-            dbContext.UserProfiles.Add(new DbUserProfile {
-                UserId = userId,
-                Status = UserStatus.Active,
+            dbContext.Accounts.Add(new DbAccount {
+                Id = userId,
+                Status = AccountStatus.Active,
                 AvatarId = avatarId,
             });
             dbContext.UserAvatars.Add(new DbUserAvatar() {

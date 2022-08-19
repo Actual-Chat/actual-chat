@@ -26,5 +26,5 @@ public class ChatMediaResolver : IChatMediaResolver
     }
 
     public Uri GetVideoBlobUri(ChatEntry videoEntry)
-        => throw new NotSupportedException("Video isn't supported yet.");
+        => throw StandardError.NotSupported("Video isn't supported yet.");
 }

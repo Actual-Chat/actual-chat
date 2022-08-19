@@ -1,15 +1,17 @@
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Users.IntegrationTests;
 
 public class UserStatusTest : AppHostTestBase
 {
-    private static readonly UserStatus NewUserStatus = UserStatus.Active;
+    private const AccountStatus NewAccountStatus = AccountStatus.Active;
+
     private WebClientTester _tester = null!;
-    private IUserProfiles _userProfiles = null!;
+    private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
+    private ISessionFactory _sessionFactory = null!;
+    private Session _adminSession = null!;
 
     public UserStatusTest(ITestOutputHelper @out) : base(@out)
     { }
@@ -17,9 +19,13 @@ public class UserStatusTest : AppHostTestBase
     public override async Task InitializeAsync()
     {
         _appHost = await NewAppHost(
-            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewUserStatus.ToString())));
+            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
-        _userProfiles = _appHost.Services.GetRequiredService<IUserProfiles>();
+        _accounts = _appHost.Services.GetRequiredService<IAccounts>();
+        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _adminSession = _sessionFactory.CreateSession();
+
+        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
     public override async Task DisposeAsync()
@@ -32,28 +38,31 @@ public class UserStatusTest : AppHostTestBase
     public async Task ShouldUpdateStatus()
     {
         // arrange
-        await _tester.SignIn(new User("", "Bob"));
+        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
+        await _tester.SignIn(new User("Bob"));
 
         // act
-        var userProfile = await GetUserProfile();
+        var account = await RequireAccount();
 
         // assert
-        userProfile.Status.Should().Be(NewUserStatus);
+        account.Status.Should().Be(NewAccountStatus);
 
         // act
-        foreach (var newStatus in new[] {
-                     UserStatus.Inactive, UserStatus.Suspended, UserStatus.Active, UserStatus.Inactive,
-                     UserStatus.Suspended, UserStatus.Active,
-                 }) {
-            userProfile.Status = newStatus;
-            await _userProfiles.Update(new IUserProfiles.UpdateCommand(_tester.Session, userProfile), default);
+        var newStatuses = new[] {
+            AccountStatus.Inactive, AccountStatus.Suspended,
+            AccountStatus.Active, AccountStatus.Inactive,
+            AccountStatus.Suspended, AccountStatus.Active,
+        };
+        foreach (var newStatus in newStatuses) {
+            var newAccount = account with { Status = newStatus };
+            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount));
 
             // assert
-            userProfile = await GetUserProfile();
-            userProfile.Status.Should().Be(newStatus);
+            account = await RequireAccount();
+            account.Status.Should().Be(newStatus);
         }
     }
 
-    private async Task<UserProfile> GetUserProfile()
-        => await _userProfiles.Get(_tester.Session, default) ?? throw new Exception("User profile not found");
+    private Task<Account> RequireAccount()
+        => _accounts.Get(_tester.Session, default).Require();
 }

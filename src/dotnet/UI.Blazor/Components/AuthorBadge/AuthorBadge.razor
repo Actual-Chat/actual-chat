@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 
-<div class="author-badge flex-x items-center">
+<div class="author-badge" onclick="@Click">
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="flex-y @_contentClass">
-        <div>
-            <span class="@_nameClass">@Author.Name</span>
+    <div class="@_contentClass flex-y">
+        <div class="author-badge-name">
+            <AuthorName Author="@Author" Size="@Size" Class="@TextClass"/>
         </div>
         @if (ShowsStatusText && !_statusText.IsNullOrEmpty()) {
             <div>
@@ -17,11 +17,10 @@
 
 @code {
     private string _contentClass = "";
-    private string _nameClass = "";
     private string _statusTextClass = "";
     private string _statusText = "";
 
-    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
     [Parameter] public string TextClass { get; set; } = "";
     [Parameter] public IAuthorLike Author { get; set; } = null!;
@@ -30,7 +29,6 @@
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        _nameClass = GetNameClass();
         _contentClass = GetContentClass();
         _statusText = GetStatusText();
         _statusTextClass = GetStatusTextClass();
@@ -44,22 +42,7 @@
         };
 
     private string GetStatusTextClass()
-        => Size switch {
-            SquareSize.Size12 => "",
-            _ => "text-xxs leading-4",
-        };
-
-    private string GetNameClass() {
-        if (!TextClass.IsNullOrEmpty())
-            return TextClass;
-
-        var sizeClass = Size switch {
-            SquareSize.Size6 => "",
-            SquareSize.Size8 => "",
-            _ => "text-md",
-            };
-        return "select-none " + sizeClass;
-    }
+        => (int)Size < 12 ? "text-xxs leading-4" : "";
 
     private string GetContentClass()
         => "ml-3";

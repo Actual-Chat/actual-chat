@@ -1,19 +1,17 @@
 @using ActualChat.Hosting
-@using ActualChat.UI.Blazor.Authorization
 @using ActualChat.Users
-@using Microsoft.AspNetCore.Authorization
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
     var m = State.LatestNonErrorValue;
 }
 
-@if (m.UserProfile.Status == UserStatus.Active) {
+@if (m.Account.IsActive()) {
     @foreach (var widget in Widgets.OrderBy(c => c.Order)) {
         @widget.Content
     }
 }
-@if (m.UserProfile.IsAdmin) {
+@if (m.Account.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/user/invite">Invite Users</NavbarItem>
     </NavbarGroup>
@@ -24,9 +22,14 @@
         <NavbarItem Url="/test/audio-player">Audio Player</NavbarItem>
         <NavbarItem Url="/test/audio-recorder">Audio Recorder</NavbarItem>
         <NavbarItem Url="/test/render-slot">Render Slot</NavbarItem>
+        <NavbarItem Url="/test/requirements">Requirements</NavbarItem>
+        <NavbarItem Url="/test/features">Features</NavbarItem>
         <NavbarItem Url="/test/slate-editor">Slate Editor</NavbarItem>
-        <NavbarItem Url="/test/fusion">Fusion</NavbarItem>
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
+        @if (HostInfo.HostKind == HostKind.Maui) {
+            <NavbarItem Url="/test/maui">Maui</NavbarItem>
+        }
+        <NavbarItem Url="/test/system">System</NavbarItem>
     </NavbarGroup>
 }
 

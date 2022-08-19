@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat;
 
-public interface IContentSaverBackend
+public interface IContentSaverBackend : IComputeService
 {
     [CommandHandler]
     Task SaveContent(SaveContentCommand command, CancellationToken cancellationToken);

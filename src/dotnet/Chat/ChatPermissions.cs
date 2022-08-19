@@ -1,16 +1,21 @@
 ﻿namespace ActualChat.Chat;
 
 #pragma warning disable MA0062
+#pragma warning disable RCS1157
 
 [Flags]
 public enum ChatPermissions
 {
     Read           = 0x1,
     Write          = 0x2,
-    ReadWrite      = Read + Write,
+    SeeMembers     = 0x4,
 
-    Invite         = 0x100 + ReadWrite,
+    Join           = 0x80,
+    Invite         = 0x100,
+    Leave          = 0x200,
 
-    EditProperties = 0x1000 + Invite,
-    Owner          = 0x10_000 + EditProperties,
+    EditProperties = 0x1000,
+    EditRoles      = 0x2000,
+
+    Owner          = 0x10_000,
 }

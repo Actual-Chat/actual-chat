@@ -14,15 +14,14 @@ public class ChatEntryReaderTest : AppHostTestBase
     public async Task BasicTest()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
-        var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        await using var tester = appHost.NewWebClientTester();
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -55,9 +54,9 @@ public class ChatEntryReaderTest : AppHostTestBase
     public async Task FindByMinBeginsAtTest()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
+        await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 
@@ -98,15 +97,14 @@ public class ChatEntryReaderTest : AppHostTestBase
     public async Task ReadTilesTest()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
-        var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        await using var tester = appHost.NewWebClientTester();
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -130,18 +128,91 @@ public class ChatEntryReaderTest : AppHostTestBase
     }
 
     [Fact]
-    public async Task ObserveTest1()
+    public async Task ShouldReadTilesReverse()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
-        var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        await using var tester = appHost.NewWebClientTester();
+
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
+        u.Name.Should().Be(user.Name);
+
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        chat.Should().NotBeNull();
+        chat?.Title.Should().Be("The Actual One");
+
+        await CreateChatEntries(chats, session, ChatId, 3);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
+        var tiles = await reader.ReadTilesReverse(idRange, CancellationToken.None).ToListAsync();
+
+        tiles.Should().HaveCount(2);
+        tiles[0]
+            .Entries
+            .TakeLast(3)
+            .Select(x => x.Content)
+            .Should()
+            .BeEquivalentTo("back in black i hit the sack",
+                "rape me rape me my friend",
+                "it was a teenage wedding and the all folks wished them well");
+    }
+
+    [Theory]
+    [InlineData(0, "it was a teenage wedding and the all folks wished them well")]
+    [InlineData(1, "rape me rape me my friend")]
+    [InlineData(2, "back in black i hit the sack")]
+    [InlineData(3, null)]
+    public async Task GetLastShouldSkipDeleted(int removeLastCount, string? expected)
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewWebClientTester();
+
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
+        var session = tester.Session;
+
+        var auth = services.GetRequiredService<IAuth>();
+        var u = await auth.GetUser(session, CancellationToken.None);
+        u!.Id.Should().Be(user.Id);
+        u.Name.Should().Be(user.Name);
+
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        chat.Should().NotBeNull();
+        chat?.Title.Should().Be("The Actual One");
+
+        await CreateChatEntries(chats, session, ChatId, 3);
+        var author = await services.GetRequiredService<IChatAuthors>()
+            .Get(session, ChatId, CancellationToken.None)
+            .Require();
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
+        var tile = await reader.ReadTilesReverse(idRange, CancellationToken.None).FirstAsync();
+        foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
+            await services.Commander().Call(new IChats.RemoveTextEntryCommand(session, ChatId, chatEntry.Id), CancellationToken.None);
+
+        var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, CancellationToken.None);
+        entry?.Content.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task ObserveTest1()
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewWebClientTester();
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
+        var session = tester.Session;
+
+        var auth = services.GetRequiredService<IAuth>();
+        var u = await auth.GetUser(session, CancellationToken.None);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -164,11 +235,11 @@ public class ChatEntryReaderTest : AppHostTestBase
             result.Count.Should().Be(1);
         }
 
-        { // Test 3
+        { // Test 3 + entry creation
             using var cts = new CancellationTokenSource(1000);
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
-                    chats, session, ChatId,
+                    tester.AppServices.GetRequiredService<IChats>(), session, ChatId,
                     (int)Constants.Chat.IdTileStack.MinTileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
@@ -179,15 +250,14 @@ public class ChatEntryReaderTest : AppHostTestBase
     public async Task ObserveTest2()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
-        var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
+        await using var tester = appHost.NewWebClientTester();
+        var services = tester.AppServices;
+        var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
         var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
+        u!.Id.Should().Be(user.Id);
         u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
@@ -203,7 +273,7 @@ public class ChatEntryReaderTest : AppHostTestBase
             var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, ChatId,
-                    (int) Constants.Chat.IdTileStack.MinTileSize));
+                    (int)Constants.Chat.IdTileStack.MinTileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
         }
@@ -220,14 +290,15 @@ public class ChatEntryReaderTest : AppHostTestBase
             "rape me rape me my friend",
             "it was a teenage wedding and the all folks wished them well",
         };
+        var commander = chats.GetCommander();
 
         while (true)
             foreach (var text in phrases) {
                 if (count-- <= 0)
                     return;
-                await chats
-                    .CreateTextEntry(new (session, chatId, text), CancellationToken.None)
-                    .ConfigureAwait(false);
+
+                var command = new IChats.UpsertTextEntryCommand(session, chatId, null, text);
+                await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
             }
     }
 }

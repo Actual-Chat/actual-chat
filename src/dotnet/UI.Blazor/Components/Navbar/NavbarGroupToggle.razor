@@ -6,13 +6,19 @@
     var isActive = NavbarUI.ActiveGroupId == Id;
     var cls = isActive ? "on" : "";
     var btnClass = $"navbar-group-toggle {cls} {Class}";
+    var lineClass = isActive ? "bg-primary" : "bg-transparent";
 }
 
-<ButtonSquare Click="@OnClicked" Title="@Title" Class="@btnClass">
-    <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
-        <path d="@IconPath"></path>
-    </svg>
-</ButtonSquare>
+<div class="flex-x">
+    <div class="@lineClass left-line">
+    </div>
+    <ButtonSquare Click="@OnClick" Title="@Title" Class="@btnClass">
+        <div class="flex w-12 md:justify-center pl-1 md:pl-0">
+            @ChildContent
+        </div>
+        <div class="@cls navbar-group-title ml-2 md:hidden">@Title</div>
+    </ButtonSquare>
+</div>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
@@ -20,12 +26,10 @@
     private EventHandler? _onActiveGroupChanged;
 
     [Parameter] public string? Class { get; set; } = "";
-    [Parameter] public string? IconPath { get; set; }
-    [Parameter] public int IconHeight { get; set; } = 8;
-    [Parameter] public int IconWidth { get; set; } = 8;
     [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
@@ -35,7 +39,7 @@
     public void Dispose()
         => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 
-    private void OnClicked()
+    private void OnClick()
         => NavbarUI.ActivateGroup(Id, Title);
 
 }

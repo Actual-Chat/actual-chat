@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Cysharp.Text;
 using Stl.Internal;
@@ -58,7 +57,7 @@ public sealed class Transcript
         var textRange = TextToTimeMap.XRange;
         TextRange = ((int)textRange.Start, (int)textRange.End);
         if (TextRange.Size() != Text.Length)
-            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
+            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length.");
         TimeRange = TextToTimeMap.YRange;
         Flags = flags;
     }
@@ -106,7 +105,7 @@ public sealed class Transcript
         var map = TextToTimeMap;
         var mapStart = map.Points.IndexOfGreaterOrEqualX(start - 0.1f);
         if (mapStart < 0)
-            throw new InvalidOperationException("Invalid TextToTimeMap (it doesn't contain start).");
+            throw StandardError.Constraint("Invalid TextToTimeMap (it doesn't contain start).");
 
         var textStart = start - TextRange.Start;
         var timeStart = map.Map(start);
@@ -131,7 +130,7 @@ public sealed class Transcript
     public Transcript DiffWith(Transcript @base, bool noDiffFlag = false)
     {
         if (IsDiff || @base.IsDiff)
-            throw new InvalidOperationException("Can't compute diff for diffs.");
+            throw StandardError.NotSupported("Can't compute diff for diffs.");
         var text = Text;
         var map = TextToTimeMap;
         var baseText = @base.Text;
@@ -213,6 +212,6 @@ public sealed class Transcript
     {
         TextToTimeMap.AssertValid();
         if (TextRange.Size() != Text.Length)
-            throw Errors.InternalError("TextRange.Size() != Text.Length.");
+            throw StandardError.Internal("TextRange.Size() != Text.Length.");
     }
 }

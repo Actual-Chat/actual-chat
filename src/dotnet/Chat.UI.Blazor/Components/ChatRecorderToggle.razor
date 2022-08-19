@@ -1,48 +1,104 @@
-﻿@namespace ActualChat.Audio.UI.Blazor.Components
-@inherits ComputedStateComponent<Symbol>
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatRecorderToggle.Model?>
 @{
-    var isRecordingInThisChat = RecordingChatId == ChatId;
-    var recordingStatus = isRecordingInThisChat ? "on" : "off";
-    var cls = $"audio-recorder-toggle !rounded-xl {recordingStatus}";
+    var m = State.LatestNonErrorValue;
+    if (m == null)
+        return;
+    var recordState = m.RecordingState;
+    var wrapperCls = recordState switch
+    {
+        RecordingState.OffToOn => "record-off-to-on",
+        RecordingState.OnToOff => "record-on-to-off",
+        RecordingState.Off => "record-off",
+        _ => "record-on",
+        };
 }
 
-<ButtonSquare Class="@cls"
-              Click="OnClick"
-              @ontouchend="OnLongPressStop"
-              @onmouseup="OnLongPressStop"
-              @onlongpress="OnLongPressStart"
-              data-long-press-delay="200">
-    <svg class="fill-current w-14 h-14 m-1.5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-        <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
-    </svg>
-</ButtonSquare>
+@if (CanRecord) {
+    <div class="@wrapperCls recorder-wrapper desktop-button">
+        <ButtonRound Class="record-off-btn"
+                     Click="OnClick"
+                     @ontouchend="OnLongPressStop"
+                     @onmouseup="OnLongPressStop"
+                     @onlongpress="OnLongPressStart"
+                     data-long-press-delay="200">
+            <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12.4 15.9C14.4 15.9 16.1 14.3 16.1 12.2V7.7C16.1 5.7 14.5 4 12.4 4C10.3 4 8.7 5.7 8.7 7.7V12.3C8.7 14.3 10.4 15.9 12.4 15.9ZM10.6 7.7C10.6 6.7 11.4 5.9 12.4 5.9C13.4 5.9 14.2 6.7 14.2 7.7V12.3C14.2 13.3 13.4 14.1 12.4 14.1C11.4 14.1 10.6 13.3 10.6 12.3V7.7Z"/>
+                <path d="M18.8 12.3C18.8 11.8 18.4 11.4 17.9 11.4C17.4 11.4 17 11.8 17 12.3C17 14.8 14.9 16.9 12.4 16.9C9.9 16.9 7.8 14.8 7.8 12.3C7.8 11.8 7.4 11.4 6.9 11.4C6.4 11.4 6 11.8 6 12.3C6 15.5 8.4 18.2 11.5 18.6V20.5H13.3V18.6C16.4 18.2 18.8 15.5 18.8 12.3Z"/>
+                <path d="M11.5 17.5V20.9C11.5 21.4 11.9 21.7 12.3 21.7H12.5C13 21.7 13.3 21.3 13.3 20.9V19V17.6H11.5V17.5Z"/>
+            </svg>
+        </ButtonRound>
+        <ButtonRound Class="record-on-btn"
+                     Click="OnClick"
+                     @ontouchend="OnLongPressStop"
+                     @onmouseup="OnLongPressStop"
+                     @onlongpress="OnLongPressStart"
+                     data-long-press-delay="200">
+            <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 36 36">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M23.111 5.3335H8.88881C6.92851 5.3335 5.33325 6.92876 5.33325 8.88905V23.1113C5.33325 25.0716 6.92851 26.6668 8.88881 26.6668H23.111C25.0713 26.6668 26.6666 25.0716 26.6666 23.1113V8.88905C26.6666 6.92876 25.0713 5.3335 23.111 5.3335Z"/>
+            </svg>
+        </ButtonRound>
+    </div>
+} else {
+    <ButtonRound Class="audio-recorder-toggle recorder-disabled"
+                  IsDisabled="true">
+        <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M8.70794 11.5362C8.82772 13.3106 10.2867 14.7206 12.0559 14.8841L8.70794 11.5362ZM13.0274 15.8556C12.8218 15.8849 12.6124 15.9 12.4 15.9C9.9 15.9 7.8 13.8 7.8 11.3C7.8 10.8 7.4 10.4 6.9 10.4C6.4 10.4 6 10.8 6 11.3C6 14.5 8.4 17.2 11.5 17.6V19.5V19.9C11.5 20.4 11.9 20.7 12.3 20.7H12.5C13 20.7 13.3 20.3 13.3 19.9V19.5V18V17.6C13.7119 17.5469 14.1115 17.4531 14.4947 17.323L13.0274 15.8556ZM15.4774 16.8914L14.1351 15.5491C14.7676 15.2838 15.3329 14.8796 15.7908 14.3768L17.0705 15.6565C16.6096 16.1481 16.072 16.5666 15.4774 16.8914ZM17.6992 14.871C18.3936 13.849 18.8 12.6168 18.8 11.3C18.8 10.8 18.4 10.4 17.9 10.4C17.4 10.4 17 10.8 17 11.3C17 12.1157 16.7765 12.8888 16.3884 13.5602L17.6992 14.871ZM15.7042 12.876C15.9566 12.3775 16.1 11.8098 16.1 11.2V6.7C16.1 4.7 14.5 3 12.4 3C10.5693 3 9.11855 4.29198 8.7766 5.94839L10.6 7.77178V6.7C10.6 5.7 11.4 4.9 12.4 4.9C13.4 4.9 14.2 5.7 14.2 6.7V11.3C14.2 11.3236 14.1996 11.3471 14.1987 11.3705L15.7042 12.876ZM10.6 9.186L8.7 7.286V10.114L10.9302 12.3442C10.722 12.0504 10.6 11.6905 10.6 11.3V9.186ZM11.3558 12.7698C11.6496 12.978 12.0095 13.1 12.4 13.1C12.9807 13.1 13.4939 12.8303 13.8222 12.4082L15.1239 13.7099C14.653 14.2188 14.0421 14.5915 13.36 14.774L11.3558 12.7698Z"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M20.7073 19.2932L4.70725 3.29325C4.31625 2.90225 3.68425 2.90225 3.29325 3.29325C2.90225 3.68425 2.90225 4.31625 3.29325 4.70725L19.2932 20.7073C19.4882 20.9023 19.7442 21.0002 20.0002 21.0002C20.2563 21.0002 20.5123 20.9023 20.7073 20.7073C21.0983 20.3162 21.0983 19.6842 20.7073 19.2932Z"/>
+        </svg>
+    </ButtonRound>
+}
 
 @code {
+    public enum RecordingState {
+        On,
+        Off,
+        OnToOff,
+        OffToOn,
+    }
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    private Symbol RecordingChatId => State.ValueOrDefault;
     private bool IsLongPress { get; set; } = false;
+    private bool CanRecord { get; set; } = true;
 
-    protected override ComputedState<Symbol>.Options GetStateOptions()
+    protected override ComputedState<Model?>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<Symbol> ComputeState(CancellationToken cancellationToken) {
-        return await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var isRecording = recordingChatId == ChatId;
+        if (State.LatestNonErrorValue == null)
+            return new Model(isRecording ? RecordingState.On : RecordingState.Off);
+        return new Model(isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);
     }
 
-    private void OnClick() {
-        var recordingChatId = RecordingChatId;
-        var isRecordingInThisChat = recordingChatId.IsEmpty || recordingChatId == ChatId;
-        ChatUI.RecordingChatId.Value = isRecordingInThisChat
-            ? (recordingChatId.IsEmpty ? ChatId : Symbol.Empty)
-            : ChatId;
+    private async Task OnClick() {
+        var m = State.LatestNonErrorValue!;
+        var isRecordingInThisChat = m.RecordingState is RecordingState.On or RecordingState.OffToOn;
+        if (isRecordingInThisChat) {
+            ChatUI.RecordingChatId.Value = Symbol.Empty;
+            return;
+        }
+        CanRecord = await AudioRecorder.CanRecord();
+        if (!CanRecord) {
+            StateHasChanged();
+            return;
+        }
+        ChatUI.RecordingChatId.Value = ChatId;
     }
 
-    private void OnLongPressStart() {
+    private async Task OnLongPressStart() {
         if (IsLongPress)
             return;
+        CanRecord = await AudioRecorder.CanRecord();
+        if (!CanRecord) {
+            StateHasChanged();
+            return;
+        }
         IsLongPress = true;
         ChatUI.RecordingChatId.Value = ChatId;
     }
@@ -53,4 +109,6 @@
         IsLongPress = false;
         ChatUI.RecordingChatId.Value = Symbol.Empty;
     }
+
+    public record Model(RecordingState RecordingState);
 }

@@ -1,0 +1,34 @@
+@using ActualChat.Users
+@using BlazorContextMenu
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@if (ChatList != null) {
+    <div class="@GetCss(Group)">
+        @foreach (var c in ChatList) {
+            <ChatNavbarItem Chat="@c"
+                            IsListeningPanel="@(Group == ChatGroup.Listening)"
+                            IsActive="@(ActiveChatId == c.Id)" />
+        }
+    </div>
+}
+
+@code {
+    public enum ChatGroup {
+        Pinned,
+        Unpinned,
+        Listening,
+    }
+
+    [Parameter] public ChatGroup Group { get; set; } = ChatGroup.Listening;
+    [Parameter] public List<Chat>? ChatList { get; set; }
+    [Parameter] public string ActiveChatId { get; set; } = "";
+
+    private string GetCss(ChatGroup group) {
+        return group switch
+        {
+            ChatGroup.Pinned => "pinned-chats",
+            ChatGroup.Unpinned => "unpinned-chats custom-scrollbar",
+            _ => "flex-y gap-y-0.5",
+            };
+    }
+}

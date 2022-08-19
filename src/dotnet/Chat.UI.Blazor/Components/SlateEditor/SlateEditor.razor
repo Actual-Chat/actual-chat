@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
 
-<div @ref="EditorRef" id="@Id" class="slate-editor-root @Class"></div>
+<div @ref="EditorRef" id="@Id" class="@Class slate-editor-root break-words"></div>
 
 @code {
     private bool _rendered;
@@ -16,12 +16,15 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
+    [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool Autofocus { get; set; }
     [Parameter] public EventCallback<string> Posted { get; set; }
+    [Parameter] public EventCallback Canceled { get; set; }
     [Parameter] public EventCallback Rendered { get; set; }
-    [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
+    [Parameter] public EventCallback LastMessageEditRequested { get; set; }
 
     protected override void OnParametersSet() {
         if (_lastMentionCandidateListManager != null)
@@ -38,7 +41,7 @@
         if (_lastMentionCandidateListManager != null)
             _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
         _rendered = false;
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -49,8 +52,8 @@
             BlazorRef = DotNetObjectReference.Create<ISlateEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
-                EditorRef, BlazorRef, Constants.DebugMode.SlateEditor
-                ).ConfigureAwait(true);
+                EditorRef, BlazorRef, Constants.DebugMode.SlateEditor, Autofocus
+                );
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
             await Rendered.InvokeAsync().ConfigureAwait(false);
@@ -60,9 +63,20 @@
     public async Task<string> GetText()
         => await JSRef.InvokeAsync<string>("getText").ConfigureAwait(false);
 
+    public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
+        => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
+
     [JSInvokable]
     public Task Post(string? text = null)
         => Posted.InvokeAsync(text);
+
+    [JSInvokable]
+    public Task Cancel()
+        => Canceled.InvokeAsync();
+
+    [JSInvokable]
+    public Task EditLastMessage()
+        => LastMessageEditRequested.InvokeAsync();
 
     public async Task Clear()
         => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
@@ -74,7 +88,7 @@
             return;
         switch (cmd) {
             case "insert": {
-                await Insert(manager.ListView?.Selection).ConfigureAwait(true);
+                await Insert(manager.ListView?.Selection);
                 break;
             }
             case "moveUp": {
@@ -86,15 +100,19 @@
                 break;
             }
             case "close": {
-                await manager.Hide().ConfigureAwait(true);
+                await manager.Hide();
                 break;
             }
             case "show": {
-                await manager.Show(args).ConfigureAwait(true);
+                await manager.Show(args);
                 break;
             }
         }
     }
+
+    public Task Focus(CancellationToken cancellationToken = default) => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
+
+    public Task MoveCursorToEnd(CancellationToken cancellationToken = default) => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
 
     private async Task SetPlaceholder(string placeholder) {
         _placeholder = placeholder;
@@ -108,7 +126,10 @@
         MentionCandidateListManager?.Hide();
         if (mentionCandidate == null)
             return;
-        await JSRef.InvokeVoidAsync("focus").ConfigureAwait(false);
-        await JSRef.InvokeVoidAsync("insertMention", mentionCandidate).ConfigureAwait(false);
+        await Focus();
+        await InsertMention(mentionCandidate);
     }
+
+    private Task InsertMention(MentionCandidate mentionCandidate) => JSRef.InvokeVoidAsync("insertMention", mentionCandidate).AsTask();
+
 }

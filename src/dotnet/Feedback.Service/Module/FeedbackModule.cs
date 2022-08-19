@@ -30,12 +30,12 @@ public class FeedbackModule : HostModule<FeedbackSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<FeedbackDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, FeedbackDbInitializer>();
+        dbModule.AddDbContextServices<FeedbackDbContext>(services, Settings.Db);
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<FeedbackDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -47,7 +47,12 @@ public class FeedbackModule : HostModule<FeedbackSettings>
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
+        // Module's own services
         fusion.AddComputeService<IFeedbacks, Feedbacks>();
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

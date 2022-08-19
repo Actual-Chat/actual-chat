@@ -49,7 +49,7 @@ public abstract class MessageProcess : IMessageProcess
                 typeof(MessageProcess<>)
                     .MakeGenericType(t)
                     .GetConstructorDelegate(typeof(object), typeof(CancellationToken), typeof(Task<Unit>), typeof(Task<object>))!);
-        return (IMessageProcess) ctor.Invoke(message, cancellationToken, whenStarted, whenCompleted);
+        return (IMessageProcess)ctor.Invoke(message, cancellationToken, whenStarted, whenCompleted);
     }
 }
 

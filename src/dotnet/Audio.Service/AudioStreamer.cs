@@ -6,6 +6,7 @@ namespace ActualChat.Audio;
 
 public class AudioStreamer : AudioProcessorBase, IAudioStreamer
 {
+    private readonly AudioSettings _settings;
     private const int StreamBufferSize = 64;
     private const int MaxStreamDuration = 600;
 
@@ -17,6 +18,7 @@ public class AudioStreamer : AudioProcessorBase, IAudioStreamer
         AudioSourceLog = Services.LogFor<AudioSource>();
         var audioRedisDb = Services.GetRequiredService<RedisDb<AudioContext>>();
         RedisDb = audioRedisDb.WithKeyPrefix("audio-sources");
+        _settings = Services.GetRequiredService<AudioSettings>();
     }
 
     public Task<AudioSource> GetAudio(
@@ -59,6 +61,7 @@ public class AudioStreamer : AudioProcessorBase, IAudioStreamer
     {
         var streamer = RedisDb.GetStreamer<byte[]>(streamId, new() {
             MaxStreamLength = 10 * 1024,
+            ExpirationPeriod = _settings.StreamExpirationPeriod,
         });
         var audioStream = audio
             .GetFrames(cancellationToken)

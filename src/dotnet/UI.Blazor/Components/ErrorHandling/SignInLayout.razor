@@ -1,0 +1,27 @@
+@using ActualChat.Hosting
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
+}
+
+<div class="flex-y bg-02 h-full max-h-full">
+    <div class="flex-x justify-center mt-2">
+        @* NavbarLogo Class is intentionally set to empty string
+           to discard default hidden behavior for logo in mobile mode *@
+        <NavbarLogo Class=""/>
+    </div>
+    <div class="flex-1 flex-y justify-center items-center">
+        @ChildContent
+    </div>
+    @if (HostInfo.IsDevelopmentInstance) {
+        <div class="flex-none flex-y justify-center items-start w-full py-2 px-2.5 border-t-2 border-bg-03 min-h-footer text-xxs">
+            <div class="px-0.5"><b class="text-02 font-medium">@version</b></div>
+            <div class="pt-0.5"><BlazorModeToggle/></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] protected HostInfo HostInfo { get; init; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

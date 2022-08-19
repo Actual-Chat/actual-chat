@@ -1,0 +1,34 @@
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<Account?>
+@{
+    var account = State.LatestNonErrorValue;
+    if (account == null) {
+        <SignInBlock/>
+        return;
+    }
+}
+
+<SignInLayout>
+    <h1 class="text-02">Welcome to Actual Chat, @(account.User.Name)!</h1>
+    <p class="text-02 my-5">
+        @ChildContent
+    </p>
+    <div class="mt-5">
+        <SignOutButton/>
+    </div>
+</SignInLayout>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override ComputedState<Account?>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
+}

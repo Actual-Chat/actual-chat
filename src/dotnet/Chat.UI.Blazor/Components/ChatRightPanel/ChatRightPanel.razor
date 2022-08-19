@@ -1,18 +1,73 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Components.SideNav
+@inherits ComputedStateComponent<ChatRightPanel.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
 
-<div class="flex-y w-full h-full md:w-80 border-l border-accent p-3 animate-from-right">
-    <TabPanel TabsClass="right-panel-tabs">
-        <div class="overflow-y-hidden">
-            <Tab Title="People" Class="people-tab">
-                <ChatAuthorsTab/>
-            </Tab>
-            <Tab Title="Chat">
-                <ChatTab/>
-            </Tab>
+<SideNav Direction="SideNavDirection.RightToLeft"
+         Open="() => RightPanelUI.IsVisible.Value = true"
+         Closed="() => RightPanelUI.IsVisible.Value = false"
+         IsOpen="@m.IsRightPanelVisible">
+    <div class="flex-y w-full h-full border-l border-bg-04">
+        <RightPanelHeader/>
+        <RightPanelChatInfo/>
+        <div class="flex w-full min-h-2 bg-04"></div>
+        <div class="flex flex-col w-full h-full overflow-hidden">
+            @if (m.EnableMembersUI || m.EnableIncompleteUI) {
+                <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
+                    @if (m.EnableMembersUI) {
+                        <Tab Title="Members" TabIndex="0">
+                            <ChatAuthors/>
+                        </Tab>
+                    }
+                    @if (m.EnableIncompleteUI) {
+                        <Tab Title="Media" TabIndex="1">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab Title="Files" TabIndex="2">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab Title="Links" TabIndex="3">
+                            <ToBeDone/>
+                        </Tab>
+                    }
+                </TabPanel>
+            }
         </div>
-    </TabPanel>
-</div>
+    </div>
+</SideNav>
 
 @code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var canSeeMembers = rules.CanSeeMembers();
+        return new () {
+            IsRightPanelVisible = isRightPanelVisible,
+            EnableIncompleteUI = enableIncompleteUI,
+            EnableMembersUI = canSeeMembers,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+        public bool IsRightPanelVisible { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+        public bool EnableMembersUI { get; init; }
+    }
 }

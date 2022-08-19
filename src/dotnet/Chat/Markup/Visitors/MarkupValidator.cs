@@ -40,4 +40,5 @@ public class MarkupValidator : MarkupVisitor<bool>
     protected override bool VisitPlayableText(PlayableTextMarkup markup) => _predicate(markup);
     protected override bool VisitPreformattedText(PreformattedTextMarkup markup) => _predicate(markup);
     protected override bool VisitUnparsed(UnparsedTextMarkup markup) => _predicate(markup);
+    protected override bool VisitCustom(CustomMarkup markup) => _predicate(markup);
 }

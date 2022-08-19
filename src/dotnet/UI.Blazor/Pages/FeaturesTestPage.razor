@@ -1,0 +1,31 @@
+@page "/test/features"
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<FeaturesTestPage.Model?>
+@inject Features Features
+@{
+    var m = State.ValueOrDefault ?? new();
+}
+
+<MainHeader>Features Test Page</MainHeader>
+
+<p>Client user: @(m.ClientUser?.Name ?? "n/a")</p>
+<p>Server time: @(m.ServerTime)</p>
+<p>Enable incomplete UI: @(m.EnableIncompleteUI)</p>
+
+@code {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
+        => new() {
+            ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),
+            ServerTime = await Features.Get<TestFeatures.ServerTime, Moment>(cancellationToken),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
+        };
+
+    // Nested types
+
+    public record Model
+    {
+        public User? ClientUser { get; init; }
+        public Moment ServerTime { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}

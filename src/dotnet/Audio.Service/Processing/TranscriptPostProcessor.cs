@@ -24,7 +24,7 @@ public sealed class TranscriptPostProcessor : TranscriptionProcessorBase
             }
 
             var firstLetter = text[contentStart];
-            var firstLetterUpper = Char.ToUpperInvariant(firstLetter);
+            var firstLetterUpper = char.ToUpperInvariant(firstLetter);
             if (firstLetter == firstLetterUpper) {
                 yield return transcript;
                 continue;

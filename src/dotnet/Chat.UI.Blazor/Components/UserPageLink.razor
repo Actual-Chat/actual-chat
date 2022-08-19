@@ -1,28 +1,27 @@
-@inherits ComputedStateComponent<User>
+@inherits ComputedStateComponent<User?>
 @{
     var user = State.LatestNonErrorValue;
-    if (!user.IsAuthenticated)
+    if (user == null)
         return;
-    var url = Nav.ToAbsoluteUri("/u/" + user.Id).ToString();
+    var relativeUri = Links.UserPage(user.Id);
+    var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
 }
+
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
-    <div class="flex-none text-primary">
-        <a href="@url">@url</a>
+    <div class="flex-none text-02">
+        <a href="@linkInfo.NavigateLink">@linkInfo.DisplayLink</a>
     </div>
-    <CopyToClipboard Class="flex-none text-secondary" InputClass="hidden" Text="@url"/>
+    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@linkInfo.CopyLink.ToString()"/>
 </div>
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IAuth Auth { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
-    protected override ComputedState<User>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = UpdateDelayer.MinDelay,
-            InitialValue = new User(String.Empty, "")
-        };
+    protected override ComputedState<User?>.Options GetStateOptions()
+    => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override Task<User> ComputeState(CancellationToken cancellationToken)
+    protected override Task<User?> ComputeState(CancellationToken cancellationToken)
         => Auth.GetUser(Session, default);
 }

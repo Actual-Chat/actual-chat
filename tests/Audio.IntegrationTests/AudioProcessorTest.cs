@@ -1,6 +1,6 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
-using ActualChat.Host;
+using ActualChat.App.Server;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;
@@ -10,10 +10,7 @@ namespace ActualChat.Audio.IntegrationTests;
 
 public class AudioProcessorTest : AppHostTestBase
 {
-    private readonly ILogger _log;
-
-    public AudioProcessorTest(ITestOutputHelper @out, ILogger log) : base(@out)
-        => _log = log;
+    public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task EmptyRecordingTest()
@@ -22,21 +19,19 @@ public class AudioProcessorTest : AppHostTestBase
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
 
         var audioRecord = new AudioRecord(
-            session.Id, "1",
+            session.Id, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
         await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
-        var readSizeOpt = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
-            .WithTimeout(TimeSpan.FromSeconds(1), CancellationToken.None);
-
-        readSizeOpt.HasValue.Should().BeTrue();
-        readSizeOpt.Value.Should().Be(0);
+        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
+            .WaitAsync(TimeSpan.FromSeconds(1), cts.Token);
+        readSize.Should().Be(0);
         cts.Cancel();
     }
 
@@ -45,18 +40,27 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
+        var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
         var transcriptStreamer = audioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChats>();
         var chatUserSettings = services.GetRequiredService<IChatUserSettings>();
 
-        var chat = await chatService.CreateChat(new(session, "Test"), default);
+        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = "Test",
+                ChatType = ChatType.Group,
+            },
+        }));
+        chat = chat.Require();
+
         using var cts = new CancellationTokenSource();
-        await chatUserSettings.Set(new IChatUserSettings.SetCommand(session, chat.Id, new ChatUserSettings {
+
+        await commander.Call(new IChatUserSettings.SetCommand(session, chat.Id, new ChatUserSettings {
             Language = LanguageId.Russian,
         }), CancellationToken.None);
 
@@ -75,14 +79,22 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
+        var commander = services.Commander();
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
+        _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = audioProcessor.AudioStreamer;
         var chatService = services.GetRequiredService<IChats>();
 
-        var chat = await chatService.CreateChat(new(session, "Test"), default);
+        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = "Test",
+                ChatType = ChatType.Group,
+            },
+        }));
+        chat = chat.Require();
+
         using var cts = new CancellationTokenSource();
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, session, chat.Id);
@@ -136,6 +148,7 @@ public class AudioProcessorTest : AppHostTestBase
         string fileName = "file.webm",
         bool webMStream = true)
     {
+        var log = audioProcessor.Commander.Services.LogFor(GetType());
         var record = new AudioRecord(
             session.Id, chatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
@@ -144,8 +157,8 @@ public class AudioProcessorTest : AppHostTestBase
         var fileSize = (int)filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(_log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_log);
+            ? new WebMStreamAdapter(log)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);

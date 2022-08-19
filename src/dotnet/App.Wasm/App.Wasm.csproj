@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!-- Publish & runtime properties -->
+  <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>link</TrimMode>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <!-- <workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
+    <ProjectCapability Include="AspNetCore" />
+    <!-- </workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
+</Project>

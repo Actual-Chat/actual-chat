@@ -72,8 +72,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         }
 
         BackgroundTask.Run(async () => {
-            var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, AbortToken).ConfigureAwait(false);
             try {
+                var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, AbortToken).ConfigureAwait(false);
                 await playProcess.WhenCompleted.ConfigureAwait(false);
             }
             catch (Exception e) {
@@ -102,7 +102,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         try {
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
-                throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
+                throw StandardError.NotSupported($"The entry's Type must be {ChatEntryType.Audio}.");
             if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
                 return PlayTrackCommand.PlayNothingProcess;
             return await (audioEntry.IsStreaming

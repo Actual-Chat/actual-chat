@@ -1,78 +1,54 @@
-@using ActualChat.UI.Blazor.Components.ChatIcon
-
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue ?? Model.None;
-    var mustPlayPinned = m.MustPlayPinned;
-    var isPlaying = mustPlayPinned && m.IsPlaying;
-    var mustPlayPinnedClass = "pin-toggle play-pinned"
-        + (mustPlayPinned ? "" : " opacity-50")
-        + (isPlaying ? " on" : mustPlayPinned ? "" : " off");
-
-    RenderFragment RenderItem(Chat c) =>
-        @<NavbarItem Url="@($"/chat/{c.Id}")" IsActive="@(m.ActiveChatId == c.Id)">
-            <ChildContent>
-                <div class="flex-x items-center">
-                    <ChatIcon Title="@c.Title" Picture="@c.Picture" Size="SquareSize.Size6"/>
-                    <span class="ml-1 text-ellipsis whitespace-nowrap overflow-hidden">@c.Title</span>
-                </div>
-            </ChildContent>
-            <Ending>
-                <ChatListPinToggle ChatId="@c.Id"/>
-                <ChatListRecordingToggle ChatId="@c.Id"/>
-            </Ending>
-        </NavbarItem>;
+    var m = State.LatestNonErrorValue;
+    var firstTabTitle = m.EnableIncompleteUI ? "All" : "Chats";
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
-    <Icons>
-        @if (m.CanCreateChat) {
-            <ButtonSquare Title="Create new chat" Click="OnCreateNewChatClick">
-                <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-4 h-4" viewBox="-2 -2 28 28">
-                    <path d="M24 9h-9v-9h-6v9h-9v6h9v9h6v-9h9z"/>
-                </svg>
-            </ButtonSquare>
-        }
-    </Icons>
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
-        @if (m.PinnedChats.Length > 0) {
-            <NavbarSubgroup Class="first">
-                <ChildContent>Pinned</ChildContent>
-                <Ending>
-                    <ButtonSquare
-                        Class="@mustPlayPinnedClass"
-                        Click="@(() => ChatUI.MustPlayPinnedChats.Value = !mustPlayPinned)"
-                        Title="When listening, also listen all pinned chats">
-                        <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-                            @if (mustPlayPinned) {
-                                <path d="M 0 24 C 0 17.021 7.555 12.66 13.599 16.149 C 16.403 17.768 18.131 20.762 18.131 24 L 0 24 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 23.285 -0.042 C 24.371 2.147 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z" style=""></path>
-                            } else {
-                                <path d="M 23.285 -0.042 C 24.371 2.1470000000000002 24.934 4.559 24.93 7.002 C 24.93 9.533 24.338 11.925 23.285 14.047 L 21.42 12.691 C 22.242 10.907 22.667 8.966 22.664 7.002 C 22.664 4.971 22.219 3.044 21.42 1.313 L 23.285 -0.042 Z M 19.543 2.678 C 20.109 4.049 20.399 5.518 20.398 7.002 C 20.399 8.485 20.109 9.955 19.543 11.326 L 17.643 9.944 C 17.967 8.997 18.132 8.003 18.131 7.002 C 18.133 6.002 17.968 5.007 17.644 4.06 L 19.543 2.678 Z M 9.065 13.802 C 5.309 13.802 2.266 10.759 2.266 7.002 C 2.266 3.246 5.309 0.203 9.065 0.203 C 12.823 0.203 15.864 3.246 15.864 7.002 C 15.864 10.759 12.823 13.802 9.065 13.802 Z M 11.428 15.146 L 11.428 24 L 0 24 C -0.001 18.022 5.639 13.651 11.428 15.146 Z M 9.142 13.714 C 5.355 13.714 2.286 10.645 2.286 6.8580000000000005 C 2.286 3.069 5.355 0 9.142 0 C 12.931000000000001 0 15.999 3.069 15.999 6.8580000000000005 C 15.999 10.645 12.931000000000001 13.714 9.142 13.714 Z M 15.999 18.286 L 15.999 14.857 L 18.284 14.857 L 18.284 18.286 L 21.713 18.286 L 21.713 20.571 L 18.284 20.571 L 18.284 24 L 15.999 24 L 15.999 20.571 L 12.571 20.571 L 12.571 18.286 L 15.999 18.286 Z" style=""></path>
+        <div class="-flex-y w-full h-full">
+            <ListeningChatsNavbarWidget/>
+            <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true" class="overflow-y-hidden">
+                <Tab Title="@firstTabTitle" Class="flex-y relative overflow-y-hidden h-full chats-tab">
+                    <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+                        @if (m.PinnedChats.Count > 0) {
+                            <ChatsTab ChatList="@m.PinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Pinned"/>
+
+                            <div class="mx-4 mb-2 border-b border-bg-04"></div>
+
+                            if (m.UnpinnedChats.Count > 0) {
+                                <ChatsTab ChatList="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Unpinned"/>
                             }
-                        </svg>
-                    </ButtonSquare>
-                </Ending>
-            </NavbarSubgroup>
-            foreach (var c in m.PinnedChats)
-                @RenderItem(c)
-            if (m.UnpinnedChats.Length > 0) {
-                <NavbarSubgroup>Unpinned</NavbarSubgroup>
-                foreach (var c in m.UnpinnedChats)
-                    @RenderItem(c)
-            }
-        } else {
-            foreach (var c in m.UnpinnedChats)
-                @RenderItem(c)
-        }
+                        } else {
+                            <ChatsTab ChatList="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId" Group="ChatsTab.ChatGroup.Unpinned"/>
+                        }
+                    </div>
+                </Tab>
+                @if (m.EnableIncompleteUI) {
+                    <Tab Title="Family">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab Title="Friends">
+                        <ToBeDone/>
+                    </Tab>
+                    <Tab Title="Work">
+                        <ToBeDone/>
+                    </Tab>
+                }
+            </TabPanel>
+        </div>
+        <ChatMenu />
     </ChildContent>
 </NavbarGroup>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -81,39 +57,61 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
-        if (userProfile is not { Status: UserStatus.Active })
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
             return Model.None;
 
-        var chats = await Chats.GetChats(Session, cancellationToken).ConfigureAwait(false);
-        var mustAddDefaultChat = userProfile.IsAdmin && chats.All(c => c.Id != Constants.Chat.DefaultChatId);
-        if (mustAddDefaultChat) {
-            var defaultChat = await Chats.Get(Session, Constants.Chat.DefaultChatId, cancellationToken);
-            if (defaultChat != null)
-                chats = chats.Append(defaultChat).ToArray();
-        }
+        var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
+
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var parsedChatId = ParsedChatId.Parse(activeChatId);
+        if (!parsedChatId.IsValid || parsedChatId.Kind != ChatIdKind.Group)
+            activeChatId = Symbol.Empty; // We only display group chats here
+        var activeChat = activeChatId.IsEmpty
+            ? null
+            : await Chats.Get(Session, activeChatId, cancellationToken).ConfigureAwait(false);
+        if (activeChat == null)
+            activeChatId = Symbol.Empty;
+        else if (activeChat is { ChatType: ChatType.Group } && !chats.Any(c => c.Id == activeChat.Id))
+            chats = chats.Add(activeChat);
+
+        var keywords = await SearchUI.GetKeywords(cancellationToken).ConfigureAwait(false);
+        if (keywords.Count > 0)
+            chats = (
+                from c in chats
+                let rank = SearchUI.GetMatchRank(c.Title, keywords)
+                where rank > 0 || c.Id == activeChatId
+                orderby rank descending, c.Title
+                select c
+            ).ToImmutableArray();
+        else
+            chats = chats.OrderBy(c => c.Title).ToImmutableArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
-            .Where(c => pinnedChatIds.Contains(c.Id))
-            .OrderBy(c => c.Title)
-            .ToArray();
+            .Where(c => pinnedChatIds.ContainsKey(c.Id))
+            .ToList();
         var unpinnedChats = chats
-            .Where(c => !pinnedChatIds.Contains(c.Id))
-            .OrderBy(c => c.Title)
-            .ToArray();
+            .Where(c => !pinnedChatIds.ContainsKey(c.Id))
+            .ToList();
 
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isPlaying = await ChatUI.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var mustPlayPinned = await ChatUI.MustPlayPinnedChats.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var listenedChats = new List<Chat>();
+        foreach (var t in listenedChatIds) {
+            var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
+            if (chat != null)
+                listenedChats.Add(chat);
+        }
+        listenedChats.Reverse();
 
-        return new Model() {
-            CanCreateChat = true,
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+
+        return new Model {
+            ActiveChatId = activeChatId,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
-            ActiveChatId = activeChatId,
-            IsPlaying = isPlaying,
-            MustPlayPinned = mustPlayPinned,
+            ListenedChats = listenedChats,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -123,11 +121,10 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public bool CanCreateChat { get; init; }
-        public Chat[] PinnedChats { get; init; } = Array.Empty<Chat>();
-        public Chat[] UnpinnedChats { get; init; } = Array.Empty<Chat>();
         public Symbol ActiveChatId { get; init; }
-        public bool IsPlaying { get; init; }
-        public bool MustPlayPinned { get; init; }
+        public List<Chat> PinnedChats { get; init; } = new ();
+        public List<Chat> UnpinnedChats { get; init; } = new ();
+        public List<Chat> ListenedChats { get; init; } = new ();
+        public bool EnableIncompleteUI { get; init; }
     }
 }

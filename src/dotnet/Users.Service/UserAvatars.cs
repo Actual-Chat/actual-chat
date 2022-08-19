@@ -3,19 +3,22 @@
 public class UserAvatars : IUserAvatars
 {
     private readonly IAuth _auth;
+    private readonly IAccounts _accounts;
+    private readonly IAccountsBackend _accountsBackend;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
-    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly ICommander _commander;
 
     public UserAvatars(
         IAuth auth,
+        IAccounts accounts,
+        IAccountsBackend accountsBackend,
         IUserAvatarsBackend userAvatarsBackend,
-        IUserProfilesBackend userProfilesBackend,
         ICommander commander)
     {
         _auth = auth;
+        _accounts = accounts;
+        _accountsBackend = accountsBackend;
         _userAvatarsBackend = userAvatarsBackend;
-        _userProfilesBackend = userProfilesBackend;
         _commander = commander;
     }
 
@@ -26,9 +29,12 @@ public class UserAvatars : IUserAvatars
             return null;
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user == null)
+            return null;
+
         var userAvatarRequested = avatarId.OrdinalStartsWith("0:");
         if (userAvatarRequested)
-            user.MustBeAuthenticated();
+            user.Require();
 
         var userAvatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)
@@ -42,15 +48,14 @@ public class UserAvatars : IUserAvatars
     // [ComputeMethod]
     public virtual async Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
-        var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-        return profile?.AvatarId ?? Symbol.Empty;
+        var account = await _accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        return account.AvatarId;
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         return await _userAvatarsBackend.ListAvatarIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -60,19 +65,16 @@ public class UserAvatars : IUserAvatars
         if (Computed.IsInvalidating())
             return;
 
-        var user = await _auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
+        var account = await _accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
-            if (avatar == null || avatar.UserId != user.Id)
-                throw new InvalidOperationException("Invalid AvatarId");
+            if (avatar == null || avatar.UserId != account.Id)
+                throw StandardError.Constraint("Invalid AvatarId.");
         }
 
-        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-        if (userProfile == null)
-            throw new InvalidOperationException("User profile does not exist");
-        userProfile = userProfile with { AvatarId = avatarId };
-        var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile);
+        account = account with { AvatarId = avatarId };
+        var updateCommand = new IAccountsBackend.UpdateCommand(account);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -83,7 +85,7 @@ public class UserAvatars : IUserAvatars
             return default!;
 
         var session = command.Session;
-        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         var cmd = new IUserAvatarsBackend.CreateCommand( user.Id, user.Name);
         var userAvatar = await _commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return userAvatar;
@@ -96,9 +98,7 @@ public class UserAvatars : IUserAvatars
             return;
 
         var avatarId = command.AvatarId;
-        var avatar = await Get(command.Session, avatarId, cancellationToken).ConfigureAwait(false);
-        if (avatar == null)
-            throw new InvalidOperationException("Invalid avatar id");
+        _ = await Get(command.Session, avatarId, cancellationToken).Require().ConfigureAwait(false);
 
         var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatarId, command.Name, command.Picture, command.Bio);
         await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);

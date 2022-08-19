@@ -42,9 +42,9 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x", out _);
         m.Items.Length.Should().Be(2);
-        var url = (UrlMarkup) m.Items[0];
+        var url = (UrlMarkup)m.Items[0];
         url.Url.Should().EndWith("344");
-        var text = (PlainTextMarkup) m.Items[1];
+        var text = (PlainTextMarkup)m.Items[1];
         text.Text.Should().Be(" x");
     }
 
@@ -148,7 +148,7 @@ code
     {
         var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *", out _);
         m.Items.Length.Should().Be(11);
-        var um = (UnparsedTextMarkup) m.Items.Last();
+        var um = (UnparsedTextMarkup)m.Items.Last();
         um.Text.Should().Be("*");
     }
 

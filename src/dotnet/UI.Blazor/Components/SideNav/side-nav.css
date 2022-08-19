@@ -1,0 +1,46 @@
+.side-nav {
+    @apply fixed md:static;
+    @apply h-full w-full;
+    @apply text-02 bg-02;
+    @apply top-0 bottom-0;
+}
+
+.side-nav-right {
+    @apply translate-x-full;
+    @apply z-60 left-0 md:w-120;
+}
+
+.side-nav-left {
+    @apply -translate-x-full;
+    @apply z-60 left-0 md:w-120;
+}
+
+.side-nav-drawer {
+    @apply fixed;
+    @apply top-0 bottom-0 w-[15px];
+    @apply bg-transparent;
+}
+
+.side-nav-right .side-nav-drawer {
+    @apply -left-[15px]
+}
+
+.side-nav-left .side-nav-drawer {
+    @apply -right-[15px];
+}
+
+.side-nav-right.side-nav-closed {
+    @apply md:hidden;
+}
+
+.side-nav-left.side-nav-closed {
+    @apply md:translate-x-0;
+}
+
+.side-nav-open {
+    @apply translate-x-0;
+}
+
+.side-nav-animate {
+    @apply transition-transform duration-250 ease-in-out;
+}

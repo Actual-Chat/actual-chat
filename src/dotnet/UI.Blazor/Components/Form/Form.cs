@@ -12,7 +12,7 @@ public class Form : EditForm
 
     public Form()
         // The same private field declared in the base class, we just need to pull its value here
-        => _handleSubmitCached = (Func<Task>) typeof(EditForm)
+        => _handleSubmitCached = (Func<Task>)typeof(EditForm)
             .GetField("_handleSubmitDelegate", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(this)!;
 

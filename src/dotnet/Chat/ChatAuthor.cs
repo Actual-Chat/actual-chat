@@ -1,32 +1,17 @@
+using System.Security;
 using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public sealed record ChatAuthor : Author
+[DataContract]
+public sealed record ChatAuthor : Author, IRequirementTarget
 {
-    public Symbol ChatId { get; init; }
-    public Symbol UserId { get; init; }
+    public static Requirement<ChatAuthor> MustExist { get; } = Requirement.New(
+        new(() => new SecurityException("You are not a participant of this chat.")),
+        (ChatAuthor? p) => p != null);
 
-    public static bool TryParseId(string chatAuthorId, out string chatId, out long localId)
-    {
-        chatId = "";
-        localId = 0;
-        if (chatAuthorId.IsNullOrEmpty())
-            return false;
-        var chatIdLength = chatAuthorId.OrdinalIndexOf(":");
-        if (chatIdLength == -1)
-            return false;
-        chatId = chatAuthorId.Substring(0, chatIdLength);
-        var tail = chatAuthorId.Substring(chatIdLength + 1);
-        return long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out localId);
-    }
-
-    public static void ParseId(string chatAuthorId, out string chatId, out long localId)
-    {
-        if (!TryParseId(chatAuthorId, out chatId, out localId))
-            throw new FormatException("Invalid chat author ID format.");
-    }
-
-    public static bool IsValidId(string chatAuthorId)
-        => TryParseId(chatAuthorId, out var chatId, out _) && Chat.IsValidId(chatId);
+    [DataMember] public Symbol ChatId { get; init; }
+    [DataMember] public Symbol UserId { get; init; }
+    [DataMember] public bool HasLeft { get; init; }
+    [DataMember] public ImmutableArray<Symbol> RoleIds { get; init; } = ImmutableArray<Symbol>.Empty;
 }

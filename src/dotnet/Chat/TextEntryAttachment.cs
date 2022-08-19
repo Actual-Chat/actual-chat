@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 public record TextEntryAttachment
 {
@@ -18,48 +16,55 @@ public record TextEntryAttachment
         set => _metadata.Data = value;
     }
 
-    [JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ImmutableOptionSet Metadata {
         get => _metadata.Value;
         set => _metadata.Value = value;
     }
 
-    private T GetMetadataValue<T>(Symbol symbol, T defaultValue)
+    private T GetMetadataValue<T>(T @default = default!, [CallerMemberName] string symbol = "")
     {
-        var obj = Metadata[symbol];
-        return obj != null ? (T)obj : defaultValue;
+        var value = Metadata[symbol];
+        if (value == null)
+            return @default;
+
+        // TODO: remove this workaround when int is not deserialized as long
+        if (typeof(T) == typeof(int))
+            value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+
+        return (T)value;
     }
 
-    private void SetMetadataValue<T>(Symbol symbol, T value)
+    private void SetMetadataValue<T>(T value, [CallerMemberName] string symbol = "")
         => Metadata = Metadata.Set(symbol, value);
 
     public long Length {
-        get => GetMetadataValue(nameof(Length), 0L);
-        init => SetMetadataValue(nameof(Length), value);
+        get => GetMetadataValue(0L);
+        init => SetMetadataValue(value);
     }
 
     public string FileName {
-        get => GetMetadataValue<string>(nameof(FileName), "");
-        init => SetMetadataValue(nameof(FileName), value);
+        get => GetMetadataValue("");
+        init => SetMetadataValue(value);
     }
 
     public string Description {
-        get => GetMetadataValue<string>(nameof(Description), "");
-        init => SetMetadataValue(nameof(Description), value);
+        get => GetMetadataValue("");
+        init => SetMetadataValue(value);
     }
 
     public string ContentType {
-        get => GetMetadataValue<string>(nameof(ContentType), "");
-        init => SetMetadataValue(nameof(ContentType), value);
+        get => GetMetadataValue("");
+        init => SetMetadataValue(value);
     }
 
     public int Width {
-        get => GetMetadataValue(nameof(Width), 0);
-        init => SetMetadataValue(nameof(Width), value);
+        get => GetMetadataValue<int>();
+        init => SetMetadataValue(value);
     }
 
     public int Height {
-        get => GetMetadataValue(nameof(Height), 0);
-        init => SetMetadataValue(nameof(Height), value);
+        get => GetMetadataValue<int>();
+        init => SetMetadataValue(value);
     }
 }

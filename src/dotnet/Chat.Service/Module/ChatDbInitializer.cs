@@ -38,13 +38,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chatExists= await dbContext.Chats
+        var defaultChatExists = await dbContext.Chats
             .Where(c => c.Id == (string)Constants.Chat.DefaultChatId)
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
-
-        if ((DbInfo.ShouldRecreateDb && HostInfo.IsDevelopmentInstance) || (!chatExists && HostInfo.IsDevelopmentInstance)) {
-            Log.LogInformation("Recreating DB...");
+        var isNewDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);
+        if (isNewDb) {
+            Log.LogInformation("Filling chats db with data...");
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
@@ -56,8 +56,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 IsPublic = true,
                 Owners = {
                     new DbChatOwner {
-                        ChatId = defaultChatId,
-                        UserId = adminUserId,
+                        DbChatId = defaultChatId,
+                        DbUserId = adminUserId,
                     },
                 },
             };
@@ -99,9 +99,16 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                     cancellationToken)
                 .ConfigureAwait(false);
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
+            await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             // Post-migration upgrades
+            await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+            await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
+            await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -131,6 +138,87 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         e.Type,
                         e.Content);
             }
+        }
+    }
+
+    private async Task UpgradeChats(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var candidateChatIds = await dbContext.Chats
+            .Where(c => c.Owners.Any())
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (candidateChatIds.Count == 0) {
+            Log.LogInformation("No chats to upgrade");
+            return;
+        }
+
+        try {
+            Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
+            foreach (var chatId in candidateChatIds) {
+                var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
+                await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            }
+            Log.LogInformation("Chats are upgraded");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to upgrade chats!");
+            throw;
+        }
+    }
+
+    private async Task UpgradeChatRolesPermissions(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var candidateRoles = await dbContext.ChatRoles
+            .Where(c => c.SystemRole == SystemChatRole.Anyone)
+            .Where(c => c.ChatId != chatId)
+            .Where(c => !c.CanLeave || !c.CanSeeMembers)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (candidateRoles.Count == 0) {
+            Log.LogInformation("No chat roles to upgrade");
+            return;
+        }
+
+        try {
+            Log.LogInformation("Upgrading chat roles ({RolesNumber}) permissions...", candidateRoles.Count);
+
+            foreach (var chatRole in candidateRoles) {
+                chatRole.CanLeave = true;
+                chatRole.CanSeeMembers = true;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            Log.LogInformation("Chat roles permissions are upgraded");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to upgrade chat roles permissions!");
+            throw;
+        }
+    }
+
+    private async Task EnsureAnnouncementsChatExists(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var exists = await dbContext.Chats
+            .Where(c => c.Id == chatId)
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (exists)
+            return;
+
+        try {
+            Log.LogInformation("There is no 'Announcements' chat, creating one");
+            var cmd = new IChatsBackend.CreateAnnouncementsChatCommand();
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("'Announcements' chat is created");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Announcements' chat!");
+            throw;
         }
     }
 

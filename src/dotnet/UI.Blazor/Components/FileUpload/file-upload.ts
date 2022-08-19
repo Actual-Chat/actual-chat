@@ -1,6 +1,10 @@
 import { Disposable } from 'disposable';
 import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
-import { Options } from './options';
+
+export interface Options {
+    maxSize?: number;
+    uploadUrl: string;
+}
 
 export class FileUpload implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();

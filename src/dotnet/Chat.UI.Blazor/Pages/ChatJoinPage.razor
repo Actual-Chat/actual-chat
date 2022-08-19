@@ -1,7 +1,7 @@
 ﻿@page "/join/{InviteId}"
 @using ActualChat.Invite
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
+<RequireAccount/>
 <MainHeader>Joining via invite link</MainHeader>
 
 @if (_useResult is { } useResult) {
@@ -16,18 +16,20 @@
     private Result<Invite>? _useResult;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
-        var cmd = new IInvites.UseCommand(Session, InviteId);
-        _useResult = await Cmd.Run(cmd).AsResult().ConfigureAwait(true);
+        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        _useResult = await UICommander.Run(useCommand);
         if (_useResult is not { } useResult || useResult.HasError)
             return;
         var invite = useResult.Value;
-        var uri = $"/chat/{invite.Details!.Chat!.ChatId}";
-        Nav.NavigateTo(uri);
+        // Wait till subsequent commands that set session options are executed.
+        // TODO(AY): provide a durable way to wait for subsequent commands completion.
+        await Task.Delay(1000);
+        Nav.NavigateTo(Links.ChatPage(invite.Details!.Chat!.ChatId));
     }
 }

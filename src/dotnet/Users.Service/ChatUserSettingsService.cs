@@ -11,11 +11,8 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     private readonly IAuth _auth;
     private readonly ICommander _commander;
 
-    public ChatUserSettingsService(
-        IAuth auth,
-        ICommander commander,
-        IServiceProvider serviceProvider
-    ) : base(serviceProvider)
+    public ChatUserSettingsService(IAuth auth, ICommander commander)
+        : base(commander.Services)
     {
         _auth = auth;
         _commander = commander;
@@ -25,7 +22,7 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     public virtual async Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user.IsAuthenticated)
+        if (user != null)
             return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
 
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
@@ -47,7 +44,7 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
 
         var (session, chatId, settings) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user.IsAuthenticated) {
+        if (user != null) {
             var command1 = new IChatUserSettingsBackend.UpsertCommand(user.Id, chatId, settings);
             await _commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
         }

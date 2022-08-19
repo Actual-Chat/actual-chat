@@ -35,7 +35,7 @@ public class EventListener<T>: WorkerBase where T: IEvent
                         .Handle(@event, _commander, cancellationToken)
                         .ContinueWith(
                             _ => _eventReader.Ack(id, cancellationToken),
-                            TaskScheduler.Default);
+                            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                     ackTasks.Add(task);
                 }
                 await Task.WhenAll(ackTasks).ConfigureAwait(false);

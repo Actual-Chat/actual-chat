@@ -1,50 +1,47 @@
 @using System.ComponentModel.DataAnnotations
 @using Stl.Fusion.Authentication.Commands
-@{
-    var m = _model;
-}
+@using Stl.Reflection
 
-<Form Model="@m" OnValidSubmit="@OnSave" >
+<Form Model="@M" OnValidSubmit="@OnSave" >
     <ValidationSummary />
 
-    <FormSection InputId="@m.NameId" Label="Name" IsRequired="true">
-        <TextBox @bind-Value="@m.Name" Id="@m.NameId" Autofocus="true" />
+    <FormSection InputId="@M.NameFieldId" Label="Name" IsRequired="true">
+        <TextBox @bind-Value="@M.Name" Id="@M.NameFieldId" Autofocus="true" />
     </FormSection>
 
     <FormButtons>
-        <Button Type="@ButtonType.Submit" class="btn-success my-2">Save</Button>
+        <Button Type="@ButtonType.Submit" class="btn-primary my-2">Save</Button>
     </FormButtons>
 </Form>
 
 @code {
-    private Model _model = null!;
-
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
-    protected override async Task OnParametersSetAsync() {
-        _model ??= new Model(ComponentIdGenerator);
-        var user = await Auth.GetUser(Session, default).ConfigureAwait(true);
-        _model.Name = user.Name;
+    private FormModel M { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        var account = await Accounts.Get(Session, default);
+        M.Name = account?.User.Name ?? "";
+        M.CopyToBase();
     }
 
     private async void OnSave() {
-        var command = new EditUserCommand(Session, _model.Name);
-        await Cmd.Run(command).ConfigureAwait(true);
+        var command = new EditUserCommand(Session, M.Name);
+        await UICommander.Run(command);
     }
 
-    public sealed class Model {
-        public string FormId { get; }
-        public string NameId { get; }
+    public sealed class FormModel : FormModel<FormModel> {
 
         [Required, MinLength(4)]
         public string Name { get; set; } = "";
+        public string NameFieldId { get; set; } = "";
 
-        public Model(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("user-name-editor");
-            NameId = $"{FormId}-name";
-        }
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("user-name-editor", componentIdGenerator)
+        { }
     }
 }

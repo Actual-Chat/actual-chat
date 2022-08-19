@@ -1,18 +1,19 @@
+using ActualChat.Kvas;
 using RestEase;
 
 namespace ActualChat.Users.Client;
 
-[BasePath("userProfiles")]
-public interface IUserProfilesClientDef
+[BasePath("accounts")]
+public interface IAccountsClientDef
 {
     [Get(nameof(Get))]
-    Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, CancellationToken cancellationToken);
     [Get(nameof(GetByUserId))]
-    Task<UserProfile?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
+    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
     [Get(nameof(GetUserAuthor))]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
-    Task Update([Body] IUserProfiles.UpdateCommand command, CancellationToken cancellationToken);
+    Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]
@@ -40,14 +41,42 @@ public interface IUserAvatarsClientDef
     Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
+[BasePath("recentEntries")]
+public interface IRecentEntriesClientDef
+{
+    [Get(nameof(ListUserContactIds))]
+    Task<ImmutableHashSet<string>> ListUserContactIds(Session session, int limit, CancellationToken cancellationToken);
+    [Post(nameof(Update))]
+    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateUserContactCommand command, CancellationToken cancellationToken);
+}
+
 [BasePath("chatReadPositions")]
 public interface IChatReadPositionsClientDef
 {
-    [Get(nameof(GetReadPosition))]
-    public Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [Post(nameof(UpdateReadPosition))]
-    public Task UpdateReadPosition(
-        [Body] IChatReadPositions.UpdateReadPositionCommand command,
-        CancellationToken cancellationToken);
+    [Post(nameof(Set))]
+    public Task Set([Body] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken);
+}
+
+[BasePath("serverKvas")]
+public interface IServerKvasClientDef
+{
+    [Get(nameof(Get))]
+    Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default);
+
+    [Post(nameof(Set))]
+    Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
+    [Post(nameof(SetMany))]
+    Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
+}
+
+[BasePath("userContacts")]
+public interface IUserContactsClientDef
+{
+    [Get(nameof(List))]
+    Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
+    [Post(nameof(Change))]
+    Task<UserContact?> Change([Body] IUserContacts.ChangeCommand command, CancellationToken cancellationToken);
 }

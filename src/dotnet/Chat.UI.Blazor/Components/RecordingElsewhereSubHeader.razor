@@ -24,7 +24,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
@@ -46,20 +46,19 @@
             return Model.None;
 
         if (recordingChat.ChatType == ChatType.Group)
-            return new Model() {
+            return new Model {
                 RecordingChat = recordingChat,
-                RecordingChatUrl = $"/chat/{recordingChat.Id.Value.UrlEncode()}",
+                RecordingChatUrl = Links.ChatPage(recordingChat.Id),
             };
 
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return Model.None;
 
-        var (userId1, userId2) = ChatId.ParseFullPeerChatId(recordingChat.Id);
-        var peerUserId = user.Id.Value != userId1 ? userId1 : userId2;
-        return new Model() {
+        var parsedChatId = new ParsedChatId(recordingChat.Id);
+        return new Model {
             RecordingChat = recordingChat,
-            RecordingChatUrl = $"/chat/{ChatId.FormatShortPeerChatId(peerUserId).UrlEncode()}",
+            RecordingChatUrl = Links.ChatPage(parsedChatId.Shorten(account.Id)),
         };
     }
 

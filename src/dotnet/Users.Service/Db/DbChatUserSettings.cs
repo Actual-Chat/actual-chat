@@ -7,7 +7,7 @@ namespace ActualChat.Users.Db;
 
 [Table("ChatUserSettings")]
 [Index(nameof(ChatId), nameof(UserId))]
-public class DbChatUserSettings : IHasId<string>
+public class DbChatUserSettings : IHasId<string>, IRequirementTarget
 {
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!; // See ComposeId(...)

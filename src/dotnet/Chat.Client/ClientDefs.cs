@@ -9,11 +9,25 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(GetChats))]
-    Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
+    [Get(nameof(List))]
+    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
+        Session session,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken);
+
+    [Get(nameof(GetLastIdTile0))]
+    Task<Range<long>> GetLastIdTile0(
+        Session session,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken);
+
+    [Get(nameof(GetLastIdTile1))]
+    Task<Range<long>> GetLastIdTile1(
         Session session,
         string chatId,
         ChatEntryType entryType,
@@ -41,8 +55,8 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
-    [Get(nameof(CheckCanJoin))]
-    Task<bool> CheckCanJoin(
+    [Get(nameof(CanJoin))]
+    Task<bool> CanJoin(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
@@ -58,17 +72,21 @@ public interface IChatsClientDef
     [Get(nameof(GetPeerChatId))]
     Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
-    [Get(nameof(GetMentionCandidates))]
-    Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetPeerChatContact))]
+    Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    [Post(nameof(CreateChat))]
-    Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(UpdateChat))]
-    Task<Unit> UpdateChat([Body] IChats.UpdateChatCommand command, CancellationToken cancellationToken);
+    [Get(nameof(ListMentionCandidates))]
+    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+
+    [Post(nameof(ChangeChat))]
+    Task<Chat?> ChangeChat([Body] IChats.ChangeChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(JoinChat))]
     Task<Unit> JoinChat([Body] IChats.JoinChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(CreateTextEntry))]
-    Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(LeaveChat))]
+    Task LeaveChat([Body] IChats.LeaveChatCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(UpsertTextEntry))]
+    Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }
@@ -76,26 +94,26 @@ public interface IChatsClientDef
 [BasePath("chatAuthors")]
 public interface IChatAuthorsClientDef
 {
-    [Get(nameof(GetOwnAuthor))]
-    Task<ChatAuthor?> GetOwnAuthor(Session session, string chatId, CancellationToken cancellationToken);
-    [Get(nameof(GetOwnPrincipalId))]
-    Task<Symbol> GetOwnPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
-    [Get(nameof(ListOwnChatIds))]
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetPrincipalId))]
+    Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(ListChatIds))]
+    Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListUserIds))]
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetAuthor))]
-    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetAuthorPresence))]
-    Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(CanAddToContacts))]
     Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
     [Post(nameof(AddToContacts))]
-    Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
+    Task AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateChatAuthors))]
     Task CreateChatAuthors([Body] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken);
 }
@@ -103,11 +121,16 @@ public interface IChatAuthorsClientDef
 [BasePath("chatRoles")]
 public interface IChatRolesClientDef
 {
-    [Get(nameof(ListOwnRoleIds))]
-    Task<ImmutableArray<Symbol>> ListOwnRoleIds(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<ChatRole?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken);
 
-    [Post(nameof(Upsert))]
-    Task Upsert(IChatRoles.UpsertCommand command, CancellationToken cancellationToken);
+    [Get(nameof(List))]
+    Task<ImmutableArray<ChatRole>> List(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(ListAuthorIds))]
+    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken);
+
+    [Post(nameof(Change))]
+    Task<ChatRole?> Change([Body] IChatRoles.ChangeCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]
@@ -118,11 +141,4 @@ public interface IChatUserSettingsClientDef
 
     [Post(nameof(Set))]
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
-}
-
-[BasePath("userContacts")]
-public interface IUserContactsClientDef
-{
-    [Get(nameof(GetAll))]
-    Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken);
 }

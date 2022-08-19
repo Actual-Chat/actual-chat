@@ -1,0 +1,29 @@
+.blazor-mode-toggle {
+    @apply flex-x overflow-hidden w-max px-1;
+    @apply rounded-full outline-none;
+}
+.blazor-mode-toggle .btn.btn-square {
+    @apply h-5 text-xxs text-01 rounded-none;
+}
+.blazor-mode-toggle .btn.btn-square.left {
+    @apply rounded-l-full;
+}
+.blazor-mode-toggle .btn.btn-square.left .btn-content-inner {
+    @apply mx-2;
+}
+.blazor-mode-toggle .btn.btn-square.right {
+    @apply rounded-r-full;
+}
+.blazor-mode-toggle .btn.btn-square.right .btn-content-inner {
+    @apply mx-2;
+}
+.blazor-mode-toggle .btn.btn-square .btn-content {
+    @apply bg-round subpixel-antialiased rounded-none;
+}
+.blazor-mode-toggle .btn.btn-square:disabled .btn-content,
+.blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
+    @apply bg-round underline opacity-80;
+}
+.blazor-mode-toggle .btn.btn-square:hover .btn-content {
+    @apply bg-round-hover;
+}

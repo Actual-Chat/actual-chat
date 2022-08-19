@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
@@ -28,8 +27,8 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long Id { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
     public bool IsRemoved { get; set; }
-
     public string AuthorId { get; set; } = null!;
+    public long? RepliedChatEntryId { get; set; }
 
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -83,6 +82,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
+            RepliedChatEntryId = RepliedChatEntryId!,
 #pragma warning disable IL2026
             TextToTimeMap = Type == ChatEntryType.Text
                 ? TextToTimeMap != null
@@ -112,6 +112,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
+        RepliedChatEntryId = model.RepliedChatEntryId;
 #pragma warning disable IL2026
         TextToTimeMap = !model.TextToTimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TextToTimeMap)

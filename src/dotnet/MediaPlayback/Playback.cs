@@ -16,6 +16,7 @@ public sealed class Playback : ProcessorBase
 
     public IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
     public IMutableState<bool> IsPlaying { get; }
+    public IMutableState<bool> IsPaused { get; }
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
@@ -31,6 +32,7 @@ public sealed class Playback : ProcessorBase
         };
         PlayingTracks = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
         IsPlaying = stateFactory.NewMutable(false);
+        IsPaused = stateFactory.NewMutable(false);
     }
 
     protected override async Task DisposeAsyncCore()
@@ -54,6 +56,12 @@ public sealed class Playback : ProcessorBase
         return _messageProcessor.Enqueue(command, cancellationToken);
     }
 
+    public IMessageProcess<PauseCommand> Pause(CancellationToken cancellationToken)
+        => _messageProcessor.Enqueue(PauseCommand.Instance, cancellationToken);
+
+    public IMessageProcess<ResumeCommand> Resume(CancellationToken cancellationToken)
+        => _messageProcessor.Enqueue(ResumeCommand.Instance, cancellationToken);
+
     public IMessageProcess<StopCommand> Stop(CancellationToken cancellationToken)
         => _messageProcessor.Enqueue(StopCommand.Instance, cancellationToken);
 
@@ -61,6 +69,8 @@ public sealed class Playback : ProcessorBase
     {
         return command switch {
             PlayTrackCommand playTrackCommand => OnPlayTrackCommand(playTrackCommand),
+            PauseCommand => OnPauseCommand(),
+            ResumeCommand => OnResumeCommand(),
             StopCommand => OnStopCommand(),
             _ => throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.")
         };
@@ -68,7 +78,8 @@ public sealed class Playback : ProcessorBase
         async Task<object?> OnPlayTrackCommand(PlayTrackCommand cmd)
         {
             if (_trackPlayers.ContainsKey(cmd))
-                throw new LifetimeException($"The same {nameof(PlayTrackCommand)} is enqueued twice!");
+                throw StandardError.StateTransition(GetType(),
+                    $"The same {nameof(PlayTrackCommand)} is enqueued twice!");
 
             var trackPlayer = _trackPlayerFactory.Create(cmd.Source);
             // ReSharper disable once ConvertToLocalFunction
@@ -78,7 +89,7 @@ public sealed class Playback : ProcessorBase
             var playTask = PlayTrack();
             if (!_trackPlayers.TryAdd(cmd, (trackPlayer, playTask))) {
                 await trackPlayer.DisposeAsync().ConfigureAwait(false);
-                throw new LifetimeException(
+                throw StandardError.StateTransition(GetType(),
                     $"Can't register playback task; likely, the same {nameof(PlayTrackCommand)} is enqueued twice!");
             }
 
@@ -96,6 +107,20 @@ public sealed class Playback : ProcessorBase
                     await trackPlayer.DisposeAsync().ConfigureAwait(false);
                 }
             }
+        }
+
+        async Task<object?> OnPauseCommand()
+        {
+            var pauseTasks = _trackPlayers.Values.Select(x => x.Player.Pause());
+            await Task.WhenAll(pauseTasks).ConfigureAwait(false);
+            return null;
+        }
+
+        async Task<object?> OnResumeCommand()
+        {
+            var resumeTasks = _trackPlayers.Values.Select(x => x.Player.Resume());
+            await Task.WhenAll(resumeTasks).ConfigureAwait(false);
+            return null;
         }
 
         async Task<object?> OnStopCommand()
@@ -124,8 +149,15 @@ public sealed class Playback : ProcessorBase
         else if (state.IsCompleted && !prev.IsCompleted) {
             lock (_stateUpdateLock) {
                 PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
-                if (PlayingTracks.Value.Count == 0)
+                if (PlayingTracks.Value.Count == 0) {
                     IsPlaying.Value = false;
+                    IsPaused.Value = false;
+                }
+            }
+        }
+        if (prev.IsPaused ^ state.IsPaused) {
+            lock (_stateUpdateLock) {
+                IsPaused.Value = state.IsPaused;
             }
         }
     }

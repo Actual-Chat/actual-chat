@@ -20,7 +20,7 @@
     <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.pdb</AllowedReferenceRelatedFileExtensions>
     <UseDefaultStartup>true</UseDefaultStartup>
     <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
-    <XunitStartupFullName>$(BaseName).Testing.StartupBase</XunitStartupFullName>
+    <XunitStartupFullName>$(BaseName).Testing.DefaultStartup</XunitStartupFullName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -51,6 +51,8 @@
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />
+    <Using Include="System.Text.Json" />
+    <Using Include="System.Text.Json.Serialization" />
     <Using Include="System.Threading.Channels" />
     <Using Include="Stl" />
     <Using Include="Stl.Async" />
@@ -85,7 +87,6 @@
     <Using Include="ActualChat.UI.Blazor.Components" />
     <Using Include="ActualChat.UI.Blazor.Layouts" />
     <Using Include="Microsoft.AspNetCore.Components" />
-    <Using Include="Microsoft.AspNetCore.Components.Authorization" />
     <Using Include="Microsoft.AspNetCore.Components.Forms" />
     <Using Include="Microsoft.AspNetCore.Components.Routing" />
     <Using Include="Microsoft.AspNetCore.Components.Web" />

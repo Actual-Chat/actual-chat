@@ -10,17 +10,53 @@ function _(file) {
 }
 
 const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
-  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0 && d.name !== "UI.Blazor.Host")
+  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0)
   .map(d => `${_(`./../dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
-  .concat(`${_('./../dotnet/Host')}${path.sep}**/*.{razor,cshtml}`);
+  .concat(`${_('./../dotnet/App.Server')}${path.sep}**/*.{razor,cshtml}`);
 
 module.exports = {
   content: dirs,
+  safelist: [
+    // Used by in Avatar sizes and skeletons
+    'w-9',
+    'w-10',
+    'w-11',
+    'w-12',
+    'w-14',
+    'w-16',
+    'w-20',
+    'w-24',
+    'w-28',
+    'w-32',
+    'w-36',
+    'w-40',
+    'h-9',
+    'h-10',
+    'h-11',
+    'h-12',
+    'h-14',
+    'h-16',
+    'h-20',
+    'h-24',
+    'h-28',
+    'h-32',
+    'h-36',
+    'h-40',
+    '-r-46',
+    'flex-x',
+    '-flex-x',
+    'flex-y',
+    '-flex-y',
+  ],
   presets: [],
   darkMode: 'media',
   theme: {
     extend: {
       colors: {
+        'counter': 'var(--counter)',
+        'icons-01': 'var(--icons-01)',
+        'icons-02': 'var(--icons-02)',
+        'icons-03': 'var(--icons-03)',
         'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
         'error-toast-text': 'var(--error-toast-text)',
@@ -31,18 +67,18 @@ module.exports = {
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'rating': 'var(--rating)',
-        'success': 'var(--success)',
-        'success-hover': 'var(--success-hover)',
-        'success-title': 'var(--success-title)',
-        'success-ring': 'var(--success-ring)',
-        'success-outline-hover': 'var(--success-outline-hover)',
-        'success-outline-title': 'var(--success-outline-title)',
-        'cancel': 'var(--cancel)',
-        'cancel-hover': 'var(--cancel-hover)',
-        'cancel-title': 'var(--cancel-title)',
-        'cancel-ring': 'var(--cancel-ring)',
-        'cancel-outline-hover': 'var(--cancel-outline-hover)',
-        'cancel-outline-title': 'var(--cancel-outline-title)',
+
+        'disabled': 'var(--disabled)',
+        'primary': 'var(--primary)',
+        'primary-hover': 'var(--primary-hover)',
+        'primary-title': 'var(--primary-title)',
+        'secondary': 'var(--secondary)',
+        'secondary-hover': 'var(--secondary-hover)',
+        'secondary-title': 'var(--secondary-title)',
+        'outline': 'var(--outline)',
+        'outline-hover': 'var(--outline-hover)',
+        'outline-title': 'var(--outline-title)',
+
         'error': 'var(--error)',
         'error-hover': 'var(--error-hover)',
         'error-title': 'var(--error-title)',
@@ -54,6 +90,14 @@ module.exports = {
         'square-active': 'var(--square-active)',
         'square-focus': 'var(--square-focus)',
         'square-title': 'var(--square-title)',
+        'round': 'var(--round)',
+        'round-hover': 'var(--round-hover)',
+        'round-active': 'var(--round-active)',
+        'round-focus': 'var(--round-focus)',
+        'round-title': 'var(--round-title)',
+        'recorder': 'var(--recorder)',
+        'recorder-hover': 'var(--recorder-hover)',
+        'recorder-title': 'var(--recorder-title)',
         'code': 'var(--code)',
         'avatar': 'var(--avatar)',
         'recorder-on': 'var(--recorder-on)',
@@ -66,34 +110,51 @@ module.exports = {
         'mention-message-hover': 'var(--mention-message-hover)',
         'own-message': 'var(--own-message)',
         'own-message-hover': 'var(--own-message-hover)',
+        'replied-message': 'var(--replied-message)',
+        'replied-message-hover': 'var(--replied-message-hover)',
+        'replied-message-border': 'var(--replied-message-border)',
         'context-menu': 'var(--context-menu)',
         'context-border': 'var(--context-border)',
         'selection': 'var(--selection)',
         'dot': 'var(--dot)',
         'dot-selected': 'var(--dot-selected)',
-        'shadow-main': 'var(--shadow-main)',
+        'shadow-main': 'var(--background-04)',
         'skeleton': 'var(--skeleton)',
         'skeleton-border': 'var(--skeleton-border)',
         'scrollbar': 'var(--scrollbar)',
+        'quote': 'var(--quote)',
+        'selected': 'var(--selected)',
       },
       textColor: {
-        'primary': 'var(--text-primary)',
-        'primary-inverted': 'var(--background-primary)',
-        'secondary': 'var(--text-secondary)',
-        'accent': 'var(--text-accent)',
+        '01': 'var(--text-01)',
+        '02': 'var(--text-02)',
+        '03': 'var(--text-03)',
+        '04': 'var(--text-04)',
+        '05': 'var(--text-05)',
+        '07': 'var(--text-07)',
       },
       borderColor: {
-        'primary': 'var(--background-primary)',
-        'primary-inverted': 'var(--text-primary)',
-        'secondary': 'var(--background-secondary)',
-        'secondary-inverted': 'var(--text-secondary)',
-        'accent': 'var(--background-accent)',
-        'accent-inverted': 'var(--text-accent)',
+        'bg-01': 'var(--background-01)',
+        'text-01': 'var(--text-01)',
+        'bg-02': 'var(--background-02)',
+        'text-02': 'var(--text-02)',
+        'bg-03': 'var(--background-03)',
+        'text-03': 'var(--text-03)',
+        'bg-04': 'var(--background-04)',
+        'text-04': 'var(--text-04)',
+        'bg-05': 'var(--background-05)',
+        'text-05': 'var(--text-05)',
+        'bg-06': 'var(--background-06)',
+        'bg-07': 'var(--background-07)',
       },
       backgroundColor: {
-        'primary': 'var(--background-primary)',
-        'secondary': 'var(--background-secondary)',
-        'accent': 'var(--background-accent)',
+        '01': 'var(--background-01)',
+        '02': 'var(--background-02)',
+        '03': 'var(--background-03)',
+        '04': 'var(--background-04)',
+        '05': 'var(--background-05)',
+        '06': 'var(--background-06)',
+        '07': 'var(--background-07)',
       },
     },
     screens: {
@@ -182,6 +243,7 @@ module.exports = {
       12: '3rem',
       14: '3.5rem',
       16: '4rem',
+      18: '4.5rem',
       20: '5rem',
       24: '6rem',
       28: '7rem',
@@ -189,6 +251,7 @@ module.exports = {
       36: '9rem',
       40: '10rem',
       44: '11rem',
+      46: '11.5rem',
       48: '12rem',
       52: '13rem',
       56: '14rem',
@@ -197,7 +260,15 @@ module.exports = {
       72: '18rem',
       80: '20rem',
       96: '24rem',
+      120: '30rem',
       144: '36rem',
+    },
+    'relativeSpacing' : {
+      '1/2': '50%',
+      '2/3': '66.666666%',
+      '3/4': '75%',
+      '4/5': '80%',
+      '5/6': '83.333333%',
     },
     animation: {
       none: 'none',
@@ -205,6 +276,9 @@ module.exports = {
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'decrease': 'decrease 500ms ease-in-out',
+      'increase': 'increase 500ms ease-in-out',
       bounce: 'bounce 1s infinite',
       'instant-display': 'display-element-from-left 0s',
       'display-from-left': 'display-element-from-left 150ms ease-in-out',
@@ -219,13 +293,34 @@ module.exports = {
       'scale-from-right': 'scale-from-right 150ms ease-in-out',
       'from-left': 'from-left 150ms ease-in-out',
       'from-right': 'from-right 150ms ease-in-out',
-      'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
-      'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
+      'hide-thin-panel': 'hide-thin-panel 300ms ease-in-out',
+      'show-thin-panel': 'show-thin-panel 300ms ease-in-out',
+      'hide-wide-panel': 'hide-wide-panel 300ms ease-in-out',
+      'show-wide-panel': 'show-wide-panel 300ms ease-in-out',
+      'width-to-zero': 'width-to-zero 150ms ease-in-out',
+      'width-to-full': 'width-to-full 150ms ease-in-out',
+      'hide-to-left': 'hide-to-left 150ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
+      'highlight': 'highlight 1s ease-in-out forwards',
+      'width-half-to-full': 'width-half-to-full 500ms ease-in-out',
+      'width-60-to-full': 'width-60-to-full 500ms ease-in-out',
+      'width-full-to-half': 'width-full-to-half 500ms ease-in-out',
+      'width-full-to-60': 'width-full-to-60 500ms ease-in-out',
+      'loud-show': 'loud-show 500ms ease-in-out',
+      'loud-show-text-mode': 'loud-show-text-mode 500ms ease-in-out',
+      'loud-hide': 'loud-hide 500ms ease-in-out',
+      'loud-hide-text-mode': 'loud-hide-text-mode 500ms ease-in-out',
+      'scale-to-full': 'scale-to-full 1s ease-in-out',
+      'scale-to-5': 'scale-to-5 500ms ease-in-out',
+      'notify-panel-opening': 'notify-panel-opening 500ms ease-in-out',
+      'notify-panel-closing': 'notify-panel-closing 500ms ease-in-out',
+      'notify-toggle-hide': 'notify-toggle-hide 500ms ease-in-out',
+      'notify-toggle-show': 'notify-toggle-show 500ms ease-in-out',
+
     },
     aspectRatio: {
       auto: 'auto',
@@ -314,6 +409,7 @@ module.exports = {
       DEFAULT: '1px',
       0: '0px',
       2: '2px',
+      3: '3px',
       4: '4px',
       5: '5px',
       8: '8px',
@@ -330,6 +426,8 @@ module.exports = {
       'recorder': '0 35px 60px -15px rgb(0 0 0 / 0.25)',
       none: 'none',
       context: '5px 5px 4px 0px rgba(34, 60, 80, 0.2);',
+      'mobile-button': '0px 4px 6px 3px rgba(0, 0, 0, 0.2);',
+      'up': '0px -6px 8px 2px rgba(200, 200, 200, 0.2);;',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
     caretColor: ({ theme }) => theme('colors'),
@@ -694,6 +792,27 @@ module.exports = {
           opacity: '.1',
         },
       },
+      'scale': {
+        '50%': {
+          transform: 'scale(0.3)',
+        },
+      },
+      'decrease': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(0.05)',
+        },
+      },
+      'increase': {
+        from: {
+          transform: 'scale(.05)',
+        },
+        to: {
+          transform: 'scale(1)',
+        },
+      },
       bounce: {
         '0%, 100%': {
           transform: 'translateY(-25%)',
@@ -728,14 +847,189 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'hide-element-to-left': {
+      'hide-thin-panel': {
         from: {
-          transform: 'translateX(0rem) scale(1)',
-            opacity: 1,
+          transform: 'translateX(0%)',
         },
         to: {
-          transform: 'translateX(-1rem) scale(.1)',
-            opacity: 0,
+          transform: '-translateX(100%)',
+        },
+      },
+      'show-thin-panel': {
+        from: {
+          transform: '-translateX(100%)',
+        },
+        to: {
+          transform: 'translateX(0%)',
+        },
+      },
+      'hide-wide-panel': {
+        from: {
+          transform: '-translateX(84%)',
+        },
+        to: {
+          transform: 'translateX(0%)',
+        },
+      },
+      'show-wide-panel': {
+        from: {
+          transform: 'translateX(0%)',
+        },
+        to: {
+          transform: '-translateX(84%)',
+        },
+      },
+      'width-to-zero': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '16%',
+        },
+      },
+      'width-to-full': {
+        from: {
+          width: '0%',
+          opacity: '0',
+        },
+        to: {
+          width: '84%',
+          opacity: '1'
+        },
+      },
+      'width-full-to-half': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '50%',
+        },
+      },
+      'width-full-to-60': {
+        from: {
+          width: '100%',
+        },
+        to: {
+          width: '60%',
+        },
+      },
+      'width-half-to-full': {
+        from: {
+          width: '50%',
+        },
+        to: {
+          width: '100%',
+        },
+      },
+      'width-60-to-full': {
+        from: {
+          width: '60%',
+        },
+        to: {
+          width: '100%',
+        },
+      },
+      'loud-show': {
+        from: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+        to: {
+          transform: 'translateX(3.5rem) scale(1)',
+        },
+      },
+      'loud-show-text-mode': {
+        from: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+        to: {
+          transform: 'translateX(3rem) scale(1)',
+        },
+      },
+      'loud-hide': {
+        from: {
+          transform: 'translateX(3.5rem) scale(1)',
+        },
+        to: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+      },
+      'loud-hide-text-mode': {
+        from: {
+          transform: 'translateX(3rem) scale(1)',
+        },
+        to: {
+          transform: 'translateX(1.5rem) scale(.05)',
+        },
+      },
+      'scale-to-full': {
+        '0%': {
+          transform: 'scale(0)',
+        },
+        '50%': {
+          transform: 'scale(0.05)'
+        },
+        '99%': {
+          transform: 'scale(1)',
+        },
+      },
+      'scale-to-5': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(0.05)',
+        },
+      },
+      'notify-panel-opening': {
+        '0%': {
+          transform: 'scale(0)',
+          width: '0',
+        },
+        '50%': {
+          transform: 'scale(0)',
+            width: '0',
+        },
+        '100%': {
+          transform: 'scale(1)',
+          width: '100%',
+        },
+      },
+      'notify-panel-closing': {
+        '0%': {
+          transform: 'scale(1)',
+        },
+        '50%': {
+          transform: 'scale(0)',
+        },
+        '100%': {
+          transform: 'scale(0)',
+        },
+      },
+      'notify-toggle-hide': {
+        '0%': {
+          transform: 'scale(1)',
+        },
+        '50%': {
+          transform: 'scale(0)',
+        },
+        '100%': {
+          transform: 'scale(0)',
+        },
+      },
+      'notify-toggle-show': {
+        '0%': {
+          transform: 'scale(0)',
+        },
+        '50%': {
+          transform: 'scale(0)',
+        },
+        '100%': {
+          transform: 'scale(1)',
+        },
+      },
+      'hide-to-left': {
+        to: {
+          transform: '-translateX(300%)',
         },
       },
       'scale-from-right': {
@@ -752,16 +1046,6 @@ module.exports = {
         },
         to: {
           transform: 'translate(0rem, 0rem) scale(1)',
-        },
-      },
-      'hide-element-to-right': {
-        from: {
-          transform: 'translateX(0rem) scale(1)',
-            opacity: 1,
-          },
-        to: {
-          transform: 'translateX(1rem) scale(.1)',
-            opacity: 0,
         },
       },
       'display-element-from-bottom': {
@@ -793,6 +1077,16 @@ module.exports = {
           transform: 'translate(0, -50%)',
           opacity: 1,
         },
+      },
+      'highlight': {
+          '0%': {
+              'background': 'var(--replied-message-hover)',
+              'border-left': '2px solid var(--replied-message-border)',
+          },
+          '99%': {
+              'background': '',
+              'border-left': '2px solid transparent',
+          },
       },
     },
     letterSpacing: {
@@ -830,16 +1124,17 @@ module.exports = {
     }),
     maxHeight: ({ theme }) => ({
       ...theme('spacing'),
+      ...theme('relativeSpacing'),
       full: '100%',
       screen: '100vh',
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
-      '60': '60vh',
-      '75': '75vh',
+      footer: '3.75rem',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       ...theme('spacing'),
+      ...theme('relativeSpacing'),
       none: 'none',
       xxs: '10rem',
       xs: '20rem',
@@ -858,29 +1153,28 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       prose: '65ch',
-      'modal': '480px',
+      modal: '480px',
       ...breakpoints(theme('screens')),
     }),
     minHeight: ({ theme }) => ({
       ...theme('spacing'),
+      ...theme('relativeSpacing'),
       full: '100%',
       screen: '100vh',
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
-      'footer': '3.75rem',
-      'modal-header': '4rem',
-      'mobile-header': '3.5rem',
+      footer: '3.75rem',
     }),
     minWidth: ({ theme }) => ({
       ...theme('spacing'),
+      ...theme('relativeSpacing'),
       full: '100%',
-      '1/2': '50%',
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
-      'navbar': '3.5rem',
+      'nav-left': '7.5rem',
     }),
     objectPosition: {
       bottom: 'bottom',
@@ -1074,6 +1368,7 @@ module.exports = {
       100: '100ms',
       150: '150ms',
       200: '200ms',
+      250: '250ms',
       300: '300ms',
       500: '500ms',
       700: '700ms',
@@ -1102,8 +1397,11 @@ module.exports = {
       '1/3': '33.333333%',
       '2/3': '66.666667%',
       '1/4': '25%',
+      '1/5': '20%',
       '2/4': '50%',
       '3/4': '75%',
+      '4/5': '80%',
+      '5/6': '83.333333%',
       full: '100%',
     }),
     width: ({ theme }) => ({
@@ -1158,6 +1456,10 @@ module.exports = {
       30: '30',
       40: '40',
       50: '50',
+      60: '60',
+      70: '70',
+      80: '80',
+      90: '90',
       'minus': '-1',
     },
   },

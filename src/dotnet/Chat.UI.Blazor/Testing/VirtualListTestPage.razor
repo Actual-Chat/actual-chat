@@ -1,15 +1,16 @@
 @page "/test/virtual-list"
 @using ActualChat.Comparison
+@implements IVirtualListDataSource<TestListItemRef>
 @inject VirtualListTestService Service
 @inject ILogger<VirtualListTestPage> Log
 
 <MainHeader>VirtualList Test Page</MainHeader>
 
-<VirtualList Style="height: 600px;"
-             AlignmentEdge="@(IsEndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
-             SpacerSize="10_000"
-             LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
-             DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
+<VirtualList
+    Style="height: 600px;"
+    SpacerSize="10_000"
+    LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
+    DataSource="this" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
         <TestListItemBadge ItemRef="@context" />
     </Item>
@@ -23,7 +24,6 @@
 <div class="m-3 pl-4">
     <p>URL parameters:</p>
     <ul class="list-disc">
-        <li><b>IsEndAligned:</b> @IsEndAligned</li>
         <li><b>RangeSeed:</b> @RangeSeed</li>
         <li><b>ContentSeed:</b> @ContentSeed</li>
     </ul>
@@ -32,14 +32,13 @@
 
 @code {
     [Parameter, SupplyParameterFromQuery]
-    public bool IsEndAligned { get; set; } = false;
-    [Parameter, SupplyParameterFromQuery]
     public int? RangeSeed { get; set; } = null;
     [Parameter, SupplyParameterFromQuery]
     public int? ContentSeed { get; set; } = null;
 
-    private Task<VirtualListData<TestListItemRef>> GetVirtualListItems(
+    public Task<VirtualListData<TestListItemRef>> GetData(
         VirtualListDataQuery query,
+        VirtualListData<TestListItemRef> oldData,
         CancellationToken cancellationToken)
-        => Service.GetItemKeys(query, RangeSeed, ContentSeed, IsEndAligned, cancellationToken);
+        => Service.GetItemKeys(query, RangeSeed, ContentSeed, cancellationToken);
 }

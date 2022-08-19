@@ -5,18 +5,16 @@ const LogScope: string = 'MessageEditor';
 
 export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
-    private editorDiv: HTMLDivElement;
-    private input: HTMLDivElement;
-    private filesPicker: HTMLInputElement;
-    private postButton: HTMLButtonElement;
-    private recorderButtonDiv: HTMLDivElement;
-    private recordButton: HTMLButtonElement;
-    private recordButtonObserver : MutationObserver;
+    private readonly editorDiv: HTMLDivElement;
+    private readonly input: HTMLDivElement;
+    private readonly filesPicker: HTMLInputElement;
+    private readonly postButton: HTMLButtonElement;
+    private readonly notifyPanel: HTMLDivElement;
+    private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
-    private isRecording: boolean = false;
+    private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
-    private audioButtons: HTMLDivElement;
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -24,27 +22,33 @@ export class ChatMessageEditor {
 
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
-        this.input = this.editorDiv.querySelector('div.message-input');
-        this.filesPicker = this.editorDiv.querySelector('input.files-picker');
-        this.postButton = this.editorDiv.querySelector('.post-message');
         this.blazorRef = blazorRef;
-        this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
-        this.recordButton = this.recorderButtonDiv.querySelector('button');
-        this.audioButtons = this.editorDiv.querySelector('.recorder-buttons');
+        this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
+        this.filesPicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
+        this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
         this.input.addEventListener('paste', this.inputPasteListener);
-        this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
+        this.input.addEventListener('focusin', this.inputFocusInListener);
+        this.input.addEventListener('focusout', this.inputFocusOutListener);
+        this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
-        this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
-        const recordButtonObserverConfig = {
+        this.notifyPanel.addEventListener('click', this.notifyPanelListener);
+        this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
+        this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
-            childList: false,
-            subtree: false
-        };
-        this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
+        });
         this.changeMode();
     }
+
+    private notifyPanelListener = (async (event: Event & { target: Element; }) => {
+        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
+            if (this.notifyPanel.classList.contains('panel-opening')) {
+                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
+            }
+        }
+    });
 
     private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
@@ -58,42 +62,85 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
-    })
+    });
+
+    private inputFocusInListener = ((event: Event & { target: Element; }) => {
+        if (!this.editorDiv.classList.contains('narrow-panel'))
+            this.editorDiv.classList.add('narrow-panel');
+    });
+
+    private inputFocusOutListener = ((event: Event & { target: Element; }) => {
+        setTimeout(() => {
+            this.editorDiv.classList.remove('narrow-panel');
+        }, 200)
+    });
 
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filesPicker.files)
-            await this.addAttachment(file);
+        for (const file of this.filesPicker.files) {
+            const added : boolean = await this.addAttachment(file);
+            if (!added)
+                break;
+        }
         this.filesPicker.value = '';
-    })
+    });
 
     private postClickListener = ((event: MouseEvent & { target: Element; }) => {
         const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
         input.focus();
         this.changeMode();
-    })
+    });
 
-    private syncLanguageButtonVisibility = () => {
-        const isRecording = this.recordButton.classList.contains('on');
-        if (this.isRecording === isRecording)
+    private syncAttachDropdownVisibility = () => {
+        const isPanelOpened = this.notifyPanel.classList.contains('panel-opening');
+        if (this.isPanelOpened === isPanelOpened)
             return;
-        this.isRecording = isRecording;
-        if (isRecording) {
-            this.editorDiv.classList.add('record-mode');
+        this.isPanelOpened = isPanelOpened;
+        const attach = this.editorDiv.querySelector(':scope .dropdown');
+        const label = this.editorDiv.querySelector(':scope label');
+        if (isPanelOpened) {
+            setTimeout(() => {
+                attach.classList.add('hidden');
+                label.classList.add('w-0');
+            }, 500);
         } else {
-            this.editorDiv.classList.remove('record-mode');
+            attach.classList.remove('hidden');
+            label.classList.remove('w-0');
         }
-    }
+
+        if (this.notifyPanel.classList.contains('panel-closing')) {
+            setTimeout(() => {
+                this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
+            }, 500);
+        }
+    };
 
     private changeMode() {
         const text = this.getText();
-        const isTextMode = text != "" || this.attachments.size > 0;
+        const isTextMode = text != '' || this.attachments.size > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
-        if (isTextMode) {
+        if (isTextMode)
             this.editorDiv.classList.add('text-mode');
-        } else {
+        else
             this.editorDiv.classList.remove('text-mode');
+        this.playbackAnimationOff();
+        this.notifyPanelAnimationOff();
+    }
+
+    private notifyPanelAnimationOff() : void {
+        let classes = this.notifyPanel.classList;
+        classes.remove('panel-opening', 'panel-closing');
+    }
+
+    private playbackAnimationOff() : void {
+        const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
+        let classes = playbackWrapper.classList;
+        if (classes.contains('listen-on-to-off')) {
+            classes.replace('listen-on-to-off', 'listen-off');
+        }
+        else if (classes.contains('listen-off-to-on')) {
+            classes.replace('listen-off-to-on', 'listen-on');
         }
     }
 
@@ -104,11 +151,11 @@ export class ChatMessageEditor {
         return editorHandle.getText();
     }
 
-    private async addAttachment(file: File): Promise<void> {
+    private async addAttachment(file: File): Promise<boolean> {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added = await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
+        const added : boolean = await this.blazorRef.invokeMethodAsync('AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!added) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -118,6 +165,7 @@ export class ChatMessageEditor {
             this.attachments.set(attachment.Id, attachment);
             this.changeMode();
         }
+        return added;
     }
 
     public removeAttachment(id: number) {
@@ -128,35 +176,53 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    public postMessage = async (chatId: string, text : string): Promise<number> => {
+    public clearAttachments() {
+        const attachments = this.attachments;
+        attachments.forEach(a => {
+            if (a && a.Url)
+                URL.revokeObjectURL(a.Url);
+        });
+        this.attachments.clear();
+        this.changeMode();
+    }
+
+    public postMessage = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachmentsList = [];
         if (this.attachments.size > 0) {
             let i = 0;
             this.attachments.forEach(attachment => {
-                formData.append("files[" + i + "]", attachment.File);
-                attachmentsList.push({ "id": i, "filename": attachment.File.name, "description": '' });
+                formData.append('files[' + i + ']', attachment.File);
+                attachmentsList.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
                 i++;
-            })
+            });
         }
 
-        const payload = { "text": text, "attachments": attachmentsList };
+        const payload = { 'text': text, 'attachments': attachmentsList, 'repliedChatEntryId': repliedChatEntryId };
         const payloadJson = JSON.stringify(payload);
-        formData.append("payload_json", payloadJson);
+        formData.append('payload_json', payloadJson);
 
         console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
-        const url = "api/chats/" + chatId + "/message";
-        const response = await fetch(url, { method: 'POST', body: formData });
+        let url = 'api/chats/' + chatId + '/message';
+        // @ts-ignore
+        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
+        if (baseUri)
+            url = new URL(url, baseUri).toString();
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include' // required to include third-party cookies in cross origin request when running in MAUI
+        });
 
         if (!response.ok) {
             let reason = response.statusText;
             if (!reason)
-                reason = "unknown";
+                reason = 'unknown';
             throw new Error('Failed to send message. Reason: ' + reason);
         }
         const entryId = await response.text();
         return Number(entryId);
-    }
+    };
 
     public onPostSucceeded = () => {
         for (const attachment of this.attachments.values()) {
@@ -166,18 +232,18 @@ export class ChatMessageEditor {
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
         this.changeMode();
-    }
+    };
 
     public showFilesPicker = () => {
         this.filesPicker.click();
-    }
+    };
 
     public onSlateEditorRendered()
     {
         const editorHandle = this.editorHandle();
         if (!editorHandle) {
             console.error('SlateEditorHandle is undefined');
-            return
+            return;
         }
         this.changeMode();
         editorHandle.onHasContentChanged = () => this.changeMode();
@@ -186,13 +252,16 @@ export class ChatMessageEditor {
     private editorHandle = () : SlateEditorHandle => {
         // @ts-ignore
         return this.input.editorHandle as SlateEditorHandle;
-    }
+    };
 
     public dispose() {
         this.input.removeEventListener('paste', this.inputPasteListener);
-        this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
+        this.input.removeEventListener('focusin', this.inputFocusInListener);
+        this.input.removeEventListener('focusout', this.inputFocusOutListener);
+        this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
-        this.recordButtonObserver.disconnect();
+        this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
+        this.notifyPanelObserver.disconnect();
     }
 }
 

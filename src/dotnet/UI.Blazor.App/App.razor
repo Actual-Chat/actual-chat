@@ -1,0 +1,86 @@
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
+@using Blazored.Modal
+@using Stl.OS
+@using Stl.Plugins
+@using System.Reflection
+@implements IDisposable
+
+<CascadingBlazoredModal>
+    <CascadingAuthState>
+        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+            <Found>
+                <ErrorWrapper>
+                    <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
+                </ErrorWrapper>
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(NoChatLayout)">
+                    <p>Sorry, there's nothing here.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingAuthState>
+</CascadingBlazoredModal>
+<ContextMenuContainer />
+
+@code {
+    private static Assembly? UIAssembly { get; set; }
+    private static Assembly[]? UIModuleAssemblies { get; set; }
+
+    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+
+    [Inject] private IPluginHost Plugins { get; init; } = null!;
+    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ILogger<App> Log { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    protected override Task OnInitializedAsync()
+    {
+        if (!SessionId.IsNullOrEmpty()) {
+            var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
+            if (SessionProvider.HasSession) {
+                if (SessionProvider.Session != session)
+                    // No way to change Session other than page reload
+                    Nav.NavigateTo(Nav.Uri, true);
+            }
+            else
+                SessionProvider.Session = session;
+        }
+        if (!CircuitContext.IsPrerendering) {
+            CircuitContext.RootComponent = this;
+            _ = InitializeTimeZoneConverter();
+        }
+
+        UIAssembly ??= typeof(App).Assembly;
+        UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
+            .Select(p => p.GetType().Assembly)
+            .Where(a => a != UIAssembly)
+            .ToArray();
+
+        return Task.CompletedTask;
+    }
+
+    private async Task InitializeTimeZoneConverter() {
+        if (TimeZoneConverter is not ServerSideTimeZoneConverter serverSideTimeZoneConverter)
+            return;
+
+        // Useful JS functions:
+        // Intl.DateTimeFormat().resolvedOptions().timeZone
+        // new Date().getTimezoneOffset()
+        try {
+            var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()").ConfigureAwait(false);
+            serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
+        }
+    }
+
+    public void Dispose()
+        => CircuitContext.Dispose();
+}

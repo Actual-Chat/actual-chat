@@ -6,8 +6,8 @@ using ActualChat.Db.Module;
 using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
@@ -33,39 +33,41 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
-        services.AddDbContextServices<ChatDbContext>(dbContext => {
-            dbContext.AddEntityResolver<string, DbChat>((_, options) => {
-                options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
+        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
+            db.AddEntityResolver<string, DbChat>(_ => new() {
+                QueryTransformer = query => query.Include(chat => chat.Owners),
             });
-            dbContext.AddEntityResolver<string, DbChatAuthor>();
-            dbContext.AddEntityResolver<string, DbChatRole>();
-            dbContext.AddShardLocalIdGenerator(db => db.ChatAuthors, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            dbContext.AddShardLocalIdGenerator(db => db.ChatRoles, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            dbContext.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
-                db => db.ChatEntries,
+            db.AddEntityResolver<string, DbChatAuthor>(_ => new() {
+                QueryTransformer = query => query.Include(a => a.Roles),
+            });
+            db.AddEntityResolver<string, DbChatRole>();
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatRoles,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
+                dbContext => dbContext.ChatEntries,
                 (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
                 e => e.Id);
         });
 
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
+            // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
+            if (handler is not InterfaceCommandHandler<ICommand> ich)
+                return true;
+            if (ich.ServiceType != typeof(DbOperationScopeProvider<ChatDbContext>))
+                return true;
+
+            // 2. Make sure it's intact only for local commands
+            var commandAssembly = commandType.Assembly;
+            return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
+                || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
+                || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
+        });
         var fusion = services.AddFusion();
-        services.AddCommander()
-            .AddHandlerFilter((handler, commandType) => {
-                // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
-                if (handler is not InterfaceCommandHandler<ICommand> ich)
-                    return true;
-                if (ich.ServiceType != typeof(DbOperationScopeProvider<ChatDbContext>))
-                    return true;
-
-                // 2. Make sure it's intact only for local commands
-                var commandAssembly = commandType.Assembly;
-                return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
-                    || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
-                    || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
-            });
-
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
 
         // Chats
         services.AddSingleton(c => {
@@ -83,15 +85,24 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IChatAuthors, ChatAuthors>();
         fusion.AddComputeService<IChatAuthorsBackend, ChatAuthorsBackend>();
 
+        // ChatRoles
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatRole>("seq." + nameof(ChatRole));
+        });
+        fusion.AddComputeService<IChatRoles, ChatRoles>();
+        fusion.AddComputeService<IChatRolesBackend, ChatRolesBackend>();
+
         // ContentSaver
         services.AddResponseCaching();
-        services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+        commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Events
-        services.AddSingleton<IEventPublisher, LocalEventPublisher>();
-        services.AddSingleton<LocalEventHub<NewChatEntryEvent>>();
-        services.AddSingleton(c => c.GetRequiredService<LocalEventHub<NewChatEntryEvent>>().Reader);
-        services.AddSingleton<IEventHandler<NewChatEntryEvent>, NewChatEntryEventHandler>();
-        services.AddHostedService<EventListener<NewChatEntryEvent>>();
+        services.AddEvent<NewChatEntryEvent>();
+        services.AddEventHandler<NewChatEntryEvent, NewChatEntryEventHandler>();
+        services.AddEventHandler<NewUserEvent, NewUserEventHandler>();
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

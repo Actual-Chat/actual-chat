@@ -21,7 +21,8 @@ public class DbModule : HostModule<DbSettings>
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
-        string? connectionString)
+        string? connectionString,
+        Action<DbContextBuilder<TDbContext>>? configure = null)
         where TDbContext : DbContext
     {
         if (connectionString.IsNullOrEmpty())
@@ -47,7 +48,7 @@ public class DbModule : HostModule<DbSettings>
                 => (DbKind.PostgreSql, suffix.Trim()),
             { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
                 => (DbKind.MySql, suffix.Trim()),
-            _ => throw new InvalidOperationException("Unrecognized database connection string"),
+            _ => throw StandardError.Format("Unrecognized database connection string."),
         };
         var dbInfo = new DbInfo<TDbContext> {
             DbKind = dbKind,
@@ -88,24 +89,28 @@ public class DbModule : HostModule<DbSettings>
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;
             default:
-                throw new NotSupportedException();
+                throw StandardError.NotSupported("Unsupported database kind.");
             }
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
         });
-        services.AddDbContextServices<TDbContext>(dbContext => {
+        services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
-                IsLoggingEnabled = true,
+                LogLevel = LogLevel.Information,
             });
             /*
             services.AddTransient(c => new DbOperationScope<TDbContext>(c) {
                 IsolationLevel = IsolationLevel.RepeatableRead,
             });
             */
-            dbContext.AddOperations((_, o) => {
-                o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
+            db.AddOperations(operations => {
+                operations.ConfigureOperationLogReader(_ => new() {
+                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
+                });
+                operations.AddRedisOperationLogChangeTracking();
             });
-            dbContext.AddRedisOperationLogChangeTracking();
+
+            configure?.Invoke(db);
         });
     }
 

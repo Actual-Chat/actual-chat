@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="form-toggle form-input @Class">
+<div class="@Class form-toggle form-input">
     <label class="checkbox">
         <input type="checkbox" id="@Id" checked="@CurrentValue" @onchange="OnChange" disabled="@IsDisabled">
         <span class="checkbox-switch"></span>
     </label>
     @if (!Label.IsNullOrEmpty()) {
-        <label class="checkbox-label @LabelClass" for="@(Id.NullIfEmpty() ?? "-")">@Label</label>
+        <label class="@LabelClass checkbox-label" for="@(Id.NullIfEmpty() ?? "-")">@Label</label>
     }
 </div>
 

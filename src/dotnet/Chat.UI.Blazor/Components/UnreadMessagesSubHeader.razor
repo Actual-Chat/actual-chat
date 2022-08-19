@@ -7,42 +7,37 @@
 }
 
 <div class="unread-messages-sub-header" @onclick="Click">
-    @m.Count unread @PluralizeMessage(m.Count)
+    @GetUnreadCountMessage()
 </div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
 
-    private IPersistentState<long>? LastReadEntryId { get; set; }
     private UnreadMessages UnreadMessages { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-
-        LastReadEntryId = await ChatUI.GetLastReadEntryId(Chat.Id, default).ConfigureAwait(false);
-        UnreadMessages = new(Session, Chat.Id, LastReadEntryId, Chats);
+    protected override Task OnInitializedAsync() {
+        UnreadMessages = UnreadMessagesFactory.Get(Chat.Id);
+        return Task.CompletedTask;
     }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
-        if (LastReadEntryId != null)
-            await LastReadEntryId.DisposeAsync();
+        UnreadMessages.DisposeSilently();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = new UpdateDelayer(UICommandTracker.None, 2),
+            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 2),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await UnreadMessages.GetCount(cancellationToken).ConfigureAwait(true);
+        var count = await UnreadMessages.GetCount(cancellationToken);
         if (!count.HasValue)
             return Model.None;
 
@@ -55,6 +50,15 @@
         return count switch {
             1 => "message",
             _ => "messages",
+        };
+    }
+
+    private string GetUnreadCountMessage() {
+        var model = State.ValueOrDefault;
+        return model?.Count switch {
+            > 0 and < 10 => $"{ model.Count } unread { PluralizeMessage(model.Count) }",
+            > 0 => $"{ model.Count }+ unread messages",
+            _ => string.Empty
         };
     }
 

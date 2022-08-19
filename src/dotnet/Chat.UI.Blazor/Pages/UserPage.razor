@@ -1,34 +1,37 @@
 @page "/u/{UserId}"
-@using System.Net
 @inherits ComputedStateComponent<UserPage.Model>
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var m = State.LatestNonErrorValue;
-    var user = m.User;
-    if (user == null) {
-        if (ReferenceEquals(m, Model.Unavailable))
-            Nav.Unavailable("user");
+    var userAuthor = m.UserAuthor;
+    if (userAuthor == null) {
+        if (ReferenceEquals(m, Model.Unavailable)) {
+            <RequireUserAuthor/>
+            return;
+        }
+        // Model isn't loaded yet
         return;
     }
 }
 
+<RequireAccount/>
 <MainHeader>
-    <span class="text-secondary">User: @user.Name</span>
+    <span>User:&nbsp;</span>
+    <span class="text-01">@userAuthor.Name</span>
 </MainHeader>
 
 <div class="user-info_badge">
-    <UserAuthorCircle UserId="@user.Id" Size="SquareSize.Size12" ShowsPresence="true" />
-    <UserAuthorName UserId="@user.Id" Class="text-primary font-semibold text-lg"/>
+    <UserAuthorCircle UserId="@UserId" Size="SquareSize.Size12" ShowsPresence="true" />
+    <UserAuthorName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
 </div>
 
 @if (m.CanAddContact || m.CanSendMessage) {
     <div class="user-info_buttons">
         <div class="btn-group btn-group-font-normal">
             @if (m.CanAddContact) {
-                <Button Class="btn-success" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
+                <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
             @if (m.CanSendMessage) {
-                <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
+                <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
             }
         </div>
     </div>
@@ -39,11 +42,11 @@
 
 @code {
     [Inject] public Session Session { get; init; } = null!;
-    [Inject] public IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] public IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
 
@@ -56,24 +59,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userProfile = await UserProfiles.GetByUserId(Session, UserId, cancellationToken);
-        if (userProfile == null)
+        var userAuthor = await Accounts.GetUserAuthor(UserId, cancellationToken);
+        if (userAuthor == null)
             return Model.Unavailable;
 
         return new Model {
-            User = userProfile.User,
+            UserAuthor = userAuthor,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
             CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
         };
-    }
-
-    public sealed record Model {
-        public static Model None { get; } = new();
-        public static Model Unavailable { get; } = new();
-
-        public User? User { get; init; }
-        public bool CanAddContact { get; init; }
-        public bool CanSendMessage { get; init; }
     }
 
     private async Task OnAddContactClick() {
@@ -82,7 +76,7 @@
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
+            var (_, e) = await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
         }
         finally {
             IsAddingContact = false;
@@ -94,6 +88,17 @@
         var peerChatId = await Chats.GetPeerChatId(Session, UserId, default);
         if (peerChatId.IsNullOrEmpty())
             return;
-        Nav.NavigateTo($"/chat/{peerChatId.UrlEncode()}");
+        Nav.NavigateTo(Links.ChatPage(peerChatId));
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+        public static Model Unavailable { get; } = new();
+
+        public UserAuthor? UserAuthor { get; init; }
+        public bool CanAddContact { get; init; }
+        public bool CanSendMessage { get; init; }
     }
 }

@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
 
 @if (Panel.ActiveTab == this) {
-    <div class="tab @Class">
+    <div class="@Class tab">
         @ChildContent
     </div>
 }
@@ -12,11 +13,18 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override void OnInitialized() {
         if (Panel == null)
-            throw new InvalidOperationException("<Tab> component must be nested into <TabPanel> component.");
+            throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
         Panel.RegisterTab(this);
+    }
+
+    public void Dispose() {
+        if (Panel == null)
+            throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
+        Panel.UnregisterTab(this);
     }
 }

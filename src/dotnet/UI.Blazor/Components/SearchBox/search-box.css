@@ -1,0 +1,15 @@
+.search-box {
+    @apply w-full;
+}
+.search-box input {
+    @apply h-10 rounded-full px-2 text-center bg-04;
+}
+.search-box .btn.btn-round {
+    @apply w-10 h-10 absolute right-0 self-center;
+}
+.search-box .btn.btn-round .btn-content {
+    @apply bg-transparent text-icons-01;
+}
+.search-box label {
+    @apply relative flex-x;
+}

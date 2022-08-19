@@ -10,6 +10,8 @@ namespace ActualChat.Audio.UI.Blazor.Pages;
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
     private bool _isPlaying;
+    private bool _isPaused;
+    private IJSObjectReference _jsRef = null!;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
@@ -60,19 +62,19 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await CreateAudioSource(_uri, _cts.Token).ConfigureAwait(false);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var stopWatch = Stopwatch.StartNew();
-            var jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token,
-                blazorRef).ConfigureAwait(true);
+                blazorRef);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {
                     Log.LogInformation("Playing was cancelled");
-                    await jsRef.InvokeVoidAsync("stop", CancellationToken.None).ConfigureAwait(true);
-                    await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
+                    await _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
+                    await _jsRef.DisposeSilentlyAsync();
                     if (_registration != default) {
-                        await _registration.DisposeAsync().ConfigureAwait(true);
+                        await _registration.DisposeAsync();
                     }
                 }
                 catch (Exception ex) {
@@ -80,11 +82,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
                 finally {
                     _isPlaying = false;
+                    _isPaused = false;
                     _registration = default;
                     StateHasChanged();
                 }
             });
-            var frames = await audioSource.GetFrames(_cts.Token).ToListAsync(_cts.Token).ConfigureAwait(true);
+            var frames = await audioSource.GetFrames(_cts.Token).ToListAsync(_cts.Token);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
@@ -94,12 +97,19 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data)
-                    .ConfigureAwait(true);
+                _ = _jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data);
             }
             if (!_cts.Token.IsCancellationRequested)
-                await jsRef.InvokeVoidAsync("end", _cts.Token).ConfigureAwait(true);
+                await _jsRef.InvokeVoidAsync("end", _cts.Token);
         }
+    }
+
+    private async Task OnPauseToggleClick()
+    {
+        if (!_isPlaying)
+            return;
+        await _jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
+        _isPaused = !_isPaused;
     }
 
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
@@ -109,7 +119,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
             _audioBlobStreamUri = audioUri;
         }
-        await _audioSource.WhenFormatAvailable.ConfigureAwait(true);
+        await _audioSource.WhenFormatAvailable;
         return _audioSource;
     }
 
@@ -123,7 +133,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         // might run stop()  after end(), we shouldn't do this, fix it later
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
-            await _registration.DisposeAsync().ConfigureAwait(true);
+            await _registration.DisposeAsync();
         }
     }
 
@@ -133,6 +143,15 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         if (true) {
             Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
         }
+        _offset = offset;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnPausedAt(double offset)
+    {
+        Log.LogInformation("OnPausedAt(offset={Offset}s)", offset);
         _offset = offset;
         StateHasChanged();
         return Task.CompletedTask;

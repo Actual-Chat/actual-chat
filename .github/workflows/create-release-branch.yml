@@ -23,6 +23,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
+          # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+          persist-credentials: false
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
           lfs: false
@@ -51,13 +53,17 @@ jobs:
           git checkout release/v$NBGV_MajorMinorVersion
           echo "::set-output name=RELEASE_VERSION_COMMIT_MESSAGE::$(git log --format=%B -n 1)"
           git checkout dev
-      
+
       - name: ⏩ Push version.json updates to dev
-        run: git push origin dev
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # doesn't trigger workflow
+          branch: dev
 
       - name: ⏩ Push release branch to origin
-        env:
-          GITHUB_TOKEN: ${{ secrets.CREATE_RELEASE_GITHUB_TOKEN }} # trigger workflow on create release branch!
-        run: git push origin release/v$NBGV_MajorMinorVersion
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.CREATE_RELEASE_GITHUB_TOKEN }} # trigger workflow on create release branch!
+          branch: release/v${{ steps.nbgv.MajorMinorVersion }}
 
-      - run: echo 'Branch release/v${NBGV_MajorMinorVersion} has been created'
+      - run: echo 'Branch release/v${{ steps.nbgv.MajorMinorVersion }} has been created'

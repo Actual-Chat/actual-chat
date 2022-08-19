@@ -16,21 +16,21 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
     private readonly ILogger _log;
     private readonly ICommander _commander;
-    private readonly IUserProfiles _userProfiles;
-    private readonly IUserProfilesBackend _userProfilesBackend;
+    private readonly IAccounts _accounts;
+    private readonly IAccountsBackend _accountsBackend;
     private readonly IChatsBackend _chatsBackend;
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
         _log = services.LogFor(GetType());
         _commander = services.Commander();
-        _userProfiles = services.GetRequiredService<IUserProfiles>();
-        _userProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
+        _accounts = services.GetRequiredService<IAccounts>();
+        _accountsBackend = services.GetRequiredService<IAccountsBackend>();
         _chatsBackend = services.GetRequiredService<IChatsBackend>();
     }
 
     // [ComputeMethod]
-    public virtual async Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
         await PseudoGetAll(searchKey, cancellationToken).ConfigureAwait(false);
 
@@ -107,7 +107,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var userProfile = await _userProfiles.Require(command.Session, cancellationToken).ConfigureAwait(false);
+        var account = await _accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -115,26 +115,22 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var dbInvite = await dbContext.Invites
                 .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
                 .ConfigureAwait(false)
-            ?? throw new KeyNotFoundException($"Invite code '{command.InviteId}' is not found.");
+            ?? throw StandardError.NotFound($"Invite code '{command.InviteId}' is not found.");
 
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
         var userInviteDetails = invite.Details?.User;
         if (userInviteDetails != null) {
-            if (userProfile.Status == UserStatus.Suspended)
-                throw new SecurityException(
-                    "Your account cannot be activated because your current status is suspended.");
-            if (userProfile.Status == UserStatus.Active)
-                throw new InvalidOperationException("Your account is already active.");
+            if (account.Status == AccountStatus.Suspended)
+                throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
+            if (account.IsActive())
+                throw StandardError.StateTransition("Your account is already active.");
         }
 
         var chatInviteDetails = invite.Details?.Chat;
-        if (chatInviteDetails != null) {
-            var chat = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                throw new KeyNotFoundException("Chat not found.");
-        }
+        if (chatInviteDetails != null)
+            _ = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
 
         dbInvite.UpdateFrom(invite);
 
@@ -148,8 +144,10 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             // If we're here, the command has completed w/o an error
 
             if (userInviteDetails != null) {
-                userProfile.Status = UserStatus.Active;
-                await _commander.Call(new IUserProfilesBackend.UpdateCommand(userProfile), true, cancellationToken)
+                 var updateCommand = new IAccountsBackend.UpdateCommand(account with {
+                     Status = AccountStatus.Active,
+                 });
+                 await _commander.Call(updateCommand, true, cancellationToken)
                     .ConfigureAwait(false);
                 return;
             }
@@ -166,7 +164,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 return;
             }
 
-            throw new InvalidOperationException("Invite has no details.");
+            throw StandardError.Constraint("Invite has no details.");
         }, _log, "Invite-specific action failed", cancellationToken);
 
         return invite;

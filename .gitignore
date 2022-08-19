@@ -1,9 +1,9 @@
-src/dotnet/Host/appsettings.local.json
-tests/Testing/testsettings.local.json
-src/dotnet/UI.Blazor.Host/wwwroot/dist/
-src/dotnet/ClientApp/wwwroot/dist/
+*settings.local.json
+src/dotnet/App.Wasm/wwwroot/dist/
+src/dotnet/App.Maui/wwwroot/dist/
 build/Build.sln
 Nerdbank.GitVersioning.*
+
 # IDE folders & files
 .vs/
 .vscode/

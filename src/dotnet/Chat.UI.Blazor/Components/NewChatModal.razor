@@ -13,8 +13,8 @@
         </Body>
         <Buttons>
             <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-cancel-outline">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="btn-success" IsDisabled="@(!context.Validate())">Create</Button>
+                <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-secondary">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="btn-primary" IsDisabled="@(!context.Validate())">Create</Button>
             </div>
         </Buttons>
     </DialogFrame>
@@ -24,11 +24,11 @@
     private FormModel _form = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
@@ -36,13 +36,21 @@
 
     private async Task OnCreate()
     {
-        var command = new IChats.CreateChatCommand(Session, _form.Title);
-        var result = await Cmd.Run(command, default);
-        if (!result.CommandEvent.IsCompletedSuccessfully)
-            return;
-        await ModalInstance.CancelAsync();
-        var chatId = result.Result.Id;
-        Nav.NavigateTo($"/chat/{chatId}");
+        var cmd = new IChats.ChangeChatCommand(Session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = _form.Title,
+                ChatType = ChatType.Group,
+            },
+        });
+        try {
+            var chat = await UICommander.Call(cmd);
+            chat = chat.Require();
+            await ModalInstance.CancelAsync();
+            Nav.NavigateTo(Links.ChatPage(chat.Id));
+        }
+        catch {
+            // Intended: command errors are shown in the UI anyway
+        }
     }
 
     private void OnCancel()

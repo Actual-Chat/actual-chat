@@ -2,48 +2,24 @@
 @using ActualChat.UI.Blazor.Components
 @{
     var cls = $"{Class} {Menu.ItemClass}";
-    var leftContainerClass = "float-left h-full";
-    var rightContainerClass  = "float-right h-full";
-    var tooltipFlow = Menu.TooltipPosition.ToString().ToLower();
 }
 
 <div class="relative">
-    @if (Menu.Orientation == MenuOrientation.Horizontal) {
-        <button @onclick="OnClick" tooltip="@Title" flow="@tooltipFlow" disabled="@IsDisabled"
-                class="menu-item flex h-8 w-full text-secondary @cls" name="@Name">
-            <div class="icon-container horizontal-item relative flex-auto mx-1 h-full">
-                <div class="rounded-sm text-xxs relative">@Icon</div>
+    <button @onclick="OnClick" disabled="@IsDisabled"
+        class="@cls menu-item" name="@Name">
+        @if (Icon != null) {
+            <div class="menu-item-icon">
+                @Icon
             </div>
-        </button>
-    } else {
-        <button @onclick="OnClick" disabled="@IsDisabled"
-                class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-4 @cls" name="@Name">
-            @if (Menu.IconPosition == MenuIconPosition.Left) {
-                @if (Icon != null) {
-                    <div class="@leftContainerClass">
-                        <div class="flex">@Icon</div>
-                    </div>
-                }
-                <div class="w-full @rightContainerClass">
-                    <div class="flex">@Title</div>
-                </div>
-            } else {
-                <div class="w-full @rightContainerClass">
-                    <div class="flex">@Title</div>
-                </div>
-                @if (Icon != null) {
-                    <div class="@leftContainerClass">
-                        <div class="flex">@Icon</div>
-                    </div>
-                }
-            }
-        </button>
-    }
+        }
+        <div class="menu-item-text">
+            @Title
+        </div>
+    </button>
 </div>
 
 @code {
     [CascadingParameter] public IMenu Menu { get; set; } = null!;
-
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public string Class { get; set; } = "";
@@ -52,7 +28,7 @@
     [Parameter] public EventCallback Click { get; set; }
 
     private async Task OnClick() {
-        await Menu.OnItemClick(this).ConfigureAwait(true);
-        await Click.InvokeAsync().ConfigureAwait(true);
+        await Menu.OnItemClick(this);
+        await Click.InvokeAsync();
     }
 }

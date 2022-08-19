@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
@@ -12,9 +13,8 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthors? _frontend;
 
-    private ICommander Commander { get; }
-    private IAuth Auth { get; }
-    private IUserProfilesBackend UserProfilesBackend { get; }
+    private IAccounts Accounts { get; }
+    private IAccountsBackend AccountsBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
     private RedisSequenceSet<ChatAuthor> IdSequences { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
@@ -25,9 +25,8 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
-        Commander = services.Commander();
-        Auth = services.GetRequiredService<IAuth>();
-        UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
@@ -80,7 +79,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.ChatAuthors
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId && !a.HasLeft)
             .Select(a => a.ChatId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -90,22 +89,34 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await Frontend.GetOwnAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await Frontend.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var userId = account?.Id ?? Symbol.Empty;
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
-        chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
+        chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (!user.IsAuthenticated) {
+        if (account == null) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));
             await Commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         }
+        return chatAuthor;
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken)
+    {
+        var chatAuthor = await GetByUserId(chatId, userId, inherit, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor != null)
+            return chatAuthor;
+
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId);
+        chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return chatAuthor;
     }
 
@@ -119,7 +130,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authorIds = await dbContext.ChatAuthors
-            .Where(a => a.ChatId == chatId)
+            .Where(a => a.ChatId == chatId && !a.HasLeft)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -136,7 +147,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.ChatAuthors
-            .Where(a => a.ChatId == chatId && a.UserId != null)
+            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -146,7 +157,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     // [CommandHandler]
     public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, userId) = command;
+        var (chatId, userId, requireAuthenticated) = command;
         if (Computed.IsInvalidating()) {
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
@@ -158,8 +169,14 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return default!;
         }
 
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNullOrEmpty()) {
+            if (requireAuthenticated)
+                throw StandardError.Constraint("Can't create unauthenticated author here.");
+
             var name = RandomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
@@ -167,15 +184,17 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             };
         }
         else {
-            var userAuthor = await UserProfilesBackend.GetUserAuthor(userId, cancellationToken).ConfigureAwait(false)
-                ?? throw new KeyNotFoundException();
+            dbChatAuthor = await dbContext.ChatAuthors
+                .FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbChatAuthor != null)
+                return dbChatAuthor.ToModel(); // Author already exists
+
+            var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).Require().ConfigureAwait(false);
             dbChatAuthor = new DbChatAuthor() {
                 IsAnonymous = userAuthor.IsAnonymous,
             };
         }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
 
         dbChatAuthor.ChatId = chatId;
         dbChatAuthor.LocalId = await DbChatAuthorLocalIdGenerator
@@ -191,16 +210,55 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         return chatAuthor;
     }
 
-    /// <summary> The filter which creates default avatar for anonymous chat author</summary>
-    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task<ChatAuthor> ChangeHasLeft(IChatAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        var (authorId, hasLeft) = command;
+        if (Computed.IsInvalidating()) {
+            var invChatAuthor = context.Operation().Items.Get<ChatAuthor>()!;
+            var userId = (string)invChatAuthor.UserId;
+            var chatId = (string)invChatAuthor.ChatId;
+            if (!userId.IsNullOrEmpty()) {
+                _ = GetByUserId(chatId, userId, true, default);
+                _ = GetByUserId(chatId, userId, false, default);
+                _ = ListUserIds(chatId, default);
+                _ = ListUserChatIds(userId, default);
+            }
+            _ = Get(invChatAuthor.ChatId, invChatAuthor.Id, false, default);
+            _ = Get(invChatAuthor.ChatId, invChatAuthor.Id, true, default);
+            _ = ListAuthorIds(chatId, default);
+
+            return default!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleAsync(a => a.Id == authorId, cancellationToken)
+            .ConfigureAwait(false);
+        dbChatAuthor.HasLeft = hasLeft;
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var chatAuthor = dbChatAuthor.ToModel();
+        context.Operation().Items.Set(chatAuthor);
+        return chatAuthor;
+    }
+
+    [CommandHandler(IsFilter = true, Priority = 1001)] // 1000 = DbOperationScopeProvider, we must "wrap" it
     public virtual async Task OnChatAuthorCreated(
         IChatAuthorsBackend.CreateCommand command,
         CancellationToken cancellationToken)
     {
+        // This filter creates default avatar for anonymous chat author
+
         var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-        if (Computed.IsInvalidating())
+        if (Computed.IsInvalidating()) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;
+        }
+
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var chatAuthor = context.Items.Get<ChatAuthor>()!;
         if (!chatAuthor.UserId.IsEmpty)
@@ -226,7 +284,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
                 return chatAuthor.InheritFrom(avatar);
             }
 
-            var userAuthor = await UserProfilesBackend.GetUserAuthor(chatAuthor.UserId, cancellationToken)
+            var userAuthor = await AccountsBackend.GetUserAuthor(chatAuthor.UserId, cancellationToken)
                 .ConfigureAwait(false);
             return chatAuthor.InheritFrom(userAuthor);
         }

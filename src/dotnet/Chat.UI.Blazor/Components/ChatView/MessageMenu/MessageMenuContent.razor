@@ -1,0 +1,132 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using BlazorContextMenu
+@inherits ComputedStateComponent<MessageMenuContent.Model>
+@{
+    var m = State.LatestNonErrorValue;
+    var entry = ChatMessageModel.Entry;
+}
+
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })" CssClass="context-menu-item">
+    <div class="context-menu-content">
+        <div class="context-menu-icon">
+            <i class="icon-heart-fill text-xl"></i>
+        </div>
+        <div class="context-menu-text">
+            Reaction
+        </div>
+    </div>
+</Item>
+@if (m.CanReply) {
+    <Item OnClick="@(() => Reply(entry))" CssClass="context-menu-item">
+        <div class="context-menu-content">
+            <div class="context-menu-icon">
+                <i class="icon-reply text-xl"></i>
+            </div>
+            <div class="context-menu-text">
+                Reply
+            </div>
+        </div>
+    </Item>
+}
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })" CssClass="context-menu-item">
+    <div class="context-menu-content">
+        <div class="context-menu-icon">
+            <i class="icon-hash-fill text-xl"></i>
+        </div>
+        <div class="context-menu-text">
+            Create thread
+        </div>
+    </div>
+</Item>
+<Item OnClick="@(() => CopyLink(entry))" CssClass="context-menu-item">
+    <div class="context-menu-content">
+        <div class="context-menu-icon">
+            <i class="icon-link-2 text-xl"></i>
+        </div>
+        <div class="context-menu-text">
+            Copy link
+        </div>
+    </div>
+</Item>
+@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
+    <Item OnClick="@(() => Edit(entry))" CssClass="context-menu-item">
+        <div class="context-menu-content">
+            <div class="context-menu-icon">
+                <i class="icon-edit text-xl"></i>
+            </div>
+            <div class="context-menu-text">
+                Edit
+            </div>
+        </div>
+    </Item>
+}
+@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
+    <Seperator/>
+
+    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" CssClass="context-menu-item warning-item">
+        <div class="context-menu-content">
+            <div class="context-menu-icon">
+                <i class="icon-trash text-xl"></i>
+            </div>
+            <div class="context-menu-text">
+                Delete message
+            </div>
+        </div>
+    </Item>
+}
+
+@code{
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IEventAggregator EventAggregator { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; set; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; set; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; set; } = null!;
+
+    [CascadingParameter] public ChatMessageModel ChatMessageModel { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new ComputedState<Model>.Options() {
+            InitialValue = Model.None
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var chatEntry = ChatMessageModel.Entry;
+        var chatId = chatEntry.ChatId;
+        var requestAuthor = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var сanReply = rules.CanWrite();
+
+        return new Model {
+            CanReply = сanReply,
+            IsJoined = requestAuthor != null,
+            IsEntryAuthor = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId
+        };
+    }
+
+    private async Task Reply(ChatEntry chatEntry) {
+        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        await EventAggregator.Publish(new FocusChatMessageEditor());
+    }
+
+    private async Task CopyLink(ChatEntry chatEntry) {
+        var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId.Value}#{chatEntry.Id}";
+        await ClipboardUI.WriteText(url);
+    }
+
+    private Task Edit(ChatEntry chatEntry) {
+        return EventAggregator.Publish(new EditMessage(chatEntry));
+    }
+
+    public record Model {
+        public static readonly Model None = new Model();
+
+        public bool IsJoined { get; init; }
+        public bool IsEntryAuthor { get; init; }
+        public bool CanReply { get; init; }
+    }
+}

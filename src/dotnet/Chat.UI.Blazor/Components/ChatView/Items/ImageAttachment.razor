@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+
 @{
     var attachment = Attachment;
     var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
@@ -19,7 +20,7 @@
 <div class="message-attachment-image mt-1">
     <a class="cursor-pointer" href="@url"
        role="button" @onclick="_ => ImagePreviewUI.Show(url)" @onclick:preventDefault="true">
-        <img class="inline" style="@imgStyle" src="@previewUrl" alt="image" />
+        <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>
 </div>
 

@@ -107,7 +107,7 @@ internal static class Program
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
-                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "Host")),
+                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "App.Server")),
                     EnvironmentVariables = {
                         ["ASPNETCORE_ENVIRONMENT"] = "Development",
                         ["EnableAnalyzer"] = "false",
@@ -198,7 +198,7 @@ internal static class Program
         });
 
         Target("clean-dist", () => {
-            var extensionDir = Path.Combine("src", "dotnet", "UI.Blazor.Host", "wwwroot", "dist");
+            var extensionDir = Path.Combine("src", "dotnet", "App.Wasm", "wwwroot", "dist");
             if (Directory.Exists(extensionDir)) {
                 Directory.Delete(extensionDir, recursive: true);
             }

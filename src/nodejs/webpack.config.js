@@ -5,6 +5,7 @@ const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require("copy-webpack-plugin");
 const FileManagerPlugin = require('filemanager-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 /**
  * @param {string} file
@@ -48,8 +49,8 @@ class WatchRunPlugin {
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
-const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
-const mauiOutputPath = _('./../dotnet/ClientApp/wwwroot/dist');
+const outputPath = _('./../dotnet/App.Wasm/wwwroot/dist');
+const mauiOutputPath = _('./../dotnet/App.Maui/wwwroot/dist');
 
 module.exports = (env, args) => {
 
@@ -82,6 +83,11 @@ module.exports = (env, args) => {
       // removes '1.bundle.js' and other trash from emitting
       removeEmptyChunks: true,
       usedExports: true,
+      minimizer: [
+        new TerserPlugin({
+            exclude: 'config/firebase.config.js',
+        }),
+      ],
       splitChunks: {
         cacheGroups: {
           styles: {
@@ -292,8 +298,8 @@ module.exports = (env, args) => {
           type: 'module',
         }
       },
-      messagingServiceWorker: {
-        import: './../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts',
+      sw: {
+        import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,

@@ -50,10 +50,11 @@ insert_final_newline = true
 
 [{*.cs, *.razor}]
 # ReSharper properties
+resharper_csharp_keep_existing_attribute_arrangement = true
 resharper_csharp_can_use_global_alias = false
 resharper_csharp_object_creation_when_type_evident = target_typed
 resharper_csharp_object_creation_when_type_not_evident = explicitly_typed
-resharper_csharp_max_attribute_length_for_same_line = 12
+resharper_csharp_max_attribute_length_for_same_line = 22
 resharper_csharp_place_accessorholder_attribute_on_same_line = if_owner_is_single_line
 resharper_csharp_place_accessor_attribute_on_same_line = if_owner_is_single_line
 resharper_csharp_place_simple_embedded_statement_on_same_line = never

@@ -6,7 +6,9 @@ import {
     ProcessorMessage,
     StateChangedProcessorMessage,
     StateProcessorMessage,
-    StopNodeMessage
+    PauseNodeMessage,
+    ResumeNodeMessage,
+    StopNodeMessage,
 } from './feeder-audio-worklet-message';
 
 const LogScope: string = 'FeederNode';
@@ -18,6 +20,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     public onBufferLow?: () => void = null;
     public onBufferTooMuch?: () => void = null;
     public onStarving?: () => void = null;
+    public onPaused?: () => void = null;
+    public onResumed?: () => void = null;
     /** If playing was started and now it's stopped */
     public onStopped?: () => void = null;
     /** Called at the end of the queue, even if the playing wasn't started */
@@ -54,6 +58,16 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
 
     public stop(): void {
         const msg: StopNodeMessage = { type: 'stop' };
+        this.port.postMessage(msg);
+    }
+
+    public pause(): void {
+        const msg: PauseNodeMessage = { type: 'pause' };
+        this.port.postMessage(msg);
+    }
+
+    public resume(): void {
+        const msg: ResumeNodeMessage = { type: 'resume' };
         this.port.postMessage(msg);
     }
 
@@ -133,6 +147,12 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         }
         else if (message.state === 'ended' && this.onEnded !== null) {
             this.onEnded();
+        }
+        else if (message.state === 'paused' && this.onPaused !== null) {
+            this.onPaused();
+        }
+        else if (message.state === 'resumed' && this.onResumed !== null) {
+            this.onResumed();
         }
     }
 

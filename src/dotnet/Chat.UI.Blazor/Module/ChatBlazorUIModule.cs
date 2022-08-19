@@ -1,6 +1,7 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
@@ -38,10 +39,14 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
-        services.AddStateRestoreHandler<ChatUIStatePersister>();
+        services.AddScoped<EditedMarkupConverter>();
+        services.AddScoped<MentionedNameResolver>();
+        services.AddScoped<ChatMarkupToTextConverter>();
+        services.AddScoped<PlayableTextPaletteProvider>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();
+        services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
     }
 }

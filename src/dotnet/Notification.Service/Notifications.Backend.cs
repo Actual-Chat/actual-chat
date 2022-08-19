@@ -1,4 +1,4 @@
-using System.Text;
+using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -29,12 +29,23 @@ public partial class Notifications
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var subscriberIds = await dbContext.ChatSubscriptions
+        var mutedSubscribersTask = dbContext.MutedChatSubscriptions
             .Where(cs => cs.ChatId == chatId)
             .Select(cs => cs.UserId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return subscriberIds.Select(x => new Symbol(x)).ToImmutableArray();
+            .ToListAsync(cancellationToken);
+        var userIdsTask = _chatAuthorsBackend
+            .ListUserIds(chatId, cancellationToken);
+        await Task.WhenAll(mutedSubscribersTask, userIdsTask).ConfigureAwait(false);
+
+        var mutedSubscribersList = await mutedSubscribersTask.ConfigureAwait(false);
+        var mutedSubscribers = mutedSubscribersList
+            .Select(id => (Symbol)id)
+            .ToHashSet();
+
+        var userIds = await userIdsTask.ConfigureAwait(false);
+
+        var subscriberIds = userIds.Except(mutedSubscribers);
+        return subscriberIds.Select(id => id).ToImmutableArray();
     }
 
     // [CommandHandler]
@@ -46,12 +57,17 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, content) = notifyCommand;
+        var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
+        var textContent = await markupToTextConverter.Apply(
+            MarkupParser.ParseRaw(content),
+            cancellationToken
+            ).ConfigureAwait(false);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = content,
+                Body = textContent,
                 // ImageUrl = ??? TODO(AK): set image url
             },
             Android = new AndroidConfig {
@@ -87,10 +103,9 @@ public partial class Notifications
                     // Icon = ??? TODO(AK): Set icon
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    // Link = ??? TODO(AK): Set anchor to open particular entry
                     Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
                         ? null
-                        : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString(),
+                        : _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
                 }
             },
         };
@@ -106,20 +121,34 @@ public partial class Notifications
                 .ConfigureAwait(false);
 
             if (batchResponse.FailureCount > 0) {
-                var errorInfoItems = await Task.WhenAll(batchResponse.Responses
-                    .Where(r => !r.IsSuccess)
-                    .Select(async r => new {
-                        r.Exception.MessagingErrorCode,
-                        r.Exception.HttpResponse.StatusCode,
-                        Content = await r.Exception.HttpResponse.Content.ReadAsStringAsync(cancellationToken)
-                            .ConfigureAwait(false),
-                    })).ConfigureAwait(false);
-                var errorDetails = errorInfoItems
-                    .Select(x => $"MessagingError = {x.MessagingErrorCode}; HttpCode = {x.StatusCode}; Content = {x.Content}")
-                    .Aggregate(new StringBuilder(), (sb, item) => sb.AppendLine(item))
-                    .ToString();
-                _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}; {Details}",
-                    batchResponse.FailureCount, errorDetails);
+                var responses = batchResponse.Responses
+                    .Zip(deviceGroup)
+                    .Select(p => new {
+                        p.Second.DeviceId,
+                        p.First.IsSuccess,
+                        p.First.Exception?.MessagingErrorCode,
+                        p.First.Exception?.HttpResponse,
+                    })
+                    .ToList();
+                var responseGroups = responses
+                    .GroupBy(x => x.MessagingErrorCode);
+                foreach (var responseGroup in responseGroups)
+                    if (responseGroup.Key == MessagingErrorCode.Unregistered) {
+                        var tokensToRemove = responseGroup
+                            .Select(g => g.DeviceId)
+                            .ToImmutableArray();
+                        _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
+                    }
+                    else if (responseGroup.Key.HasValue) {
+                        var firstErrorItem = responseGroup.First();
+                        var errorContent = firstErrorItem.HttpResponse == null
+                            ? ""
+                            : await firstErrorItem.HttpResponse.Content
+                                .ReadAsStringAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                        _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                            responseGroup.Key, responseGroup.Count(), errorContent);
+                    }
             }
 
             if (batchResponse.SuccessCount > 0)
@@ -130,6 +159,19 @@ public partial class Notifications
                         batchResponse.Responses,
                         cancellationToken),
                     cancellationToken);
+
+        }
+
+        async Task<string> AuthorNameResolver(string authorId, CancellationToken cancellationToken1)
+        {
+            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken1).ConfigureAwait(false);
+            return author?.Name ?? "";
+        }
+
+        async Task<string> UserNameResolver(string userId1, CancellationToken cancellationToken1)
+        {
+            var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken1).ConfigureAwait(false);
+            return author?.Name ?? "";
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
@@ -166,5 +208,35 @@ public partial class Notifications
             await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task RemoveDevices(INotificationsBackend.RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invUserIds = context.Operation().Items.Get<HashSet<string>>();
+            if (invUserIds is { Count: > 0 })
+                foreach (var invUserId in invUserIds)
+                    _ = ListDevices(invUserId, default);
+            return;
+        }
+        var affectedUserIds = new HashSet<string>(StringComparer.Ordinal);
+        var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        foreach (var deviceId in removeDevicesCommand.DeviceIds) {
+            var dbDevice = await dbContext.Devices
+                .FindAsync(new object?[] { deviceId }, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbDevice == null)
+                continue;
+
+            dbContext.Devices.Remove(dbDevice);
+            affectedUserIds.Add(dbDevice.UserId);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(affectedUserIds);
     }
 }

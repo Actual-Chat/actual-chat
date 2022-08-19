@@ -31,4 +31,8 @@
       <DependentUpon>StringIdentifiers.tt</DependentUpon>
     </Compile>
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Kvas\Internal" />
+  </ItemGroup>
 </Project>

@@ -96,6 +96,27 @@ public class SharedResourcePoolTest : TestBase
 
     }
 
+    [Fact (Timeout = 5000)]
+    public async Task ShouldNotStuckWhenCancellationTokenIsFired()
+    {
+        // When resource factory task fails asynchronously with non-transient error,
+        // it causes that pool infinitely tries to execute Lease.BeginRent.
+        async Task<Resource> ResourceFactory1(int _, CancellationToken cancellationToken) {
+            await Task.Delay(1000, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new Resource();
+        }
+
+        var cancellationTokenSource = new CancellationTokenSource(200);
+        var cancellationToken = cancellationTokenSource.Token;
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory1) {
+            ResourceDisposeDelay = TimeSpan.Zero,
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () => await pool.Rent(10, cancellationToken));
+    }
+
     private Task<Resource> ResourceFactory(int _, CancellationToken cancellationToken)
         => Task.FromResult(new Resource());
 

@@ -16,7 +16,7 @@ public class AsyncEnumerableOnce<T> : IAsyncEnumerable<T>
     {
         var isUsed = Interlocked.CompareExchange(ref _getAsyncEnumeratorCount, 1, 0) != 0;
         if (isUsed)
-            throw new InvalidOperationException(
+            throw StandardError.StateTransition(
                 $"{nameof(GetAsyncEnumerator)} can be called just once on this sequence.");
         try {
             cancellationToken.ThrowIfCancellationRequested();

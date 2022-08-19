@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Google;
 
@@ -16,7 +15,9 @@ public class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         var process = new GoogleTranscriberProcess(options, audioSource, cancellationToken, Log);
-        process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
+        process.Run().ContinueWith(
+            _ => process.DisposeAsync(),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
     }
 }

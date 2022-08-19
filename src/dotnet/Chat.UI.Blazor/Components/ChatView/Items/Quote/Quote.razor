@@ -1,0 +1,69 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var message = Message;
+    var entry = message.Entry;
+}
+
+<div class="chat-quote cursor-pointer mt-0 md:mt-2" @onclick="OnQuoteClick">
+    @if (LinkType == ChatEntryLinkType.Reply) {
+        <div class="w-full break-all">
+            Replying to <ChatAuthorName AuthorId="@entry.AuthorId" Class="text-02 font-bold"/>
+            <div class="break-words">@Text</div>
+        </div>
+    } else {
+        <div class="w-full">
+            Editing
+            <div>@Text</div>
+        </div>
+    }
+    <ButtonSquare Class="mr-6 rounded-full close-reply modal-close" Click="OnCancelClick" tabindex="-1" aria-label="close">
+        <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-3 h-3" viewBox="-1 -1 26 26">
+            <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"/>
+        </svg>
+    </ButtonSquare>
+</div>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
+    [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
+
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public ChatMessageModel Message { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public ChatEntryLinkType LinkType { get; set; }
+    private string Text { get; set; } = null!;
+
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
+
+    public override async Task SetParametersAsync(ParameterView parameters) {
+        if (this.HasChangedParameters(parameters)) {
+            await base.SetParametersAsync(parameters);
+            Text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content);
+        }
+    }
+
+    protected override async Task OnInitializedAsync() {
+        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
+    }
+
+    private async Task OnQuoteClick() {
+        if (Message.IsQuote) {
+            await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
+        }
+    }
+
+    private Task OnCancelClick() => EventAggregator.Publish<CancelMessageEdit>();
+
+}

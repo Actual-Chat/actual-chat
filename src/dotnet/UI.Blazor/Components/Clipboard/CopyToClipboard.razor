@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 
-<div class="copy-to-clipboard @Class">
+<div class="@Class copy-to-clipboard">
     <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
     <ButtonSquare Click="OnClick" ContentClass="flex-x gap-x-1">
         <i class="fa fa-files-o py-0.5" aria-hidden="true"></i>

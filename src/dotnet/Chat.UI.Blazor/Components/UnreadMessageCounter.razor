@@ -1,0 +1,84 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@inherits ComputedStateComponent<UnreadMessageCounter.Model>
+@{
+    var m = State.ValueOrDefault ?? Model.None;
+    if (m.Count == 0)
+        return;
+
+    var bgColor = m.IsSubscribed
+        ? "bg-primary"
+        : "bg-counter";
+}
+
+<div class="@bgColor message-counter-badge">
+    <div class="h-6 py-0.5 rounded-full">
+        @GetUnreadCountValue()
+    </div>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; init; } = null!;
+    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
+
+    private UnreadMessages UnreadMessages { get; set; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
+
+    protected override Task OnInitializedAsync() {
+        UnreadMessages = UnreadMessagesFactory.Get(ChatId);
+        return Task.CompletedTask;
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        UnreadMessages.DisposeSilently();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = Model.None,
+            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 2),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var countTask = UnreadMessages.GetCount(cancellationToken);
+        var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
+        await Task.WhenAll(countTask, notificationStatusTask);
+
+        var count = await countTask;
+        if (!count.HasValue)
+            return Model.None;
+
+        var notificationStatus = await notificationStatusTask;
+        return new() {
+            Count = count.Value,
+            IsSubscribed = notificationStatus.IsSubscribed
+        };
+    }
+
+    private string PluralizeMessage(int count) {
+        return count switch {
+            1 => "message",
+            _ => "messages",
+        };
+    }
+
+    private string GetUnreadCountValue() {
+        var model = State.ValueOrDefault;
+        return model?.Count switch {
+            > 0 and < 10 => $"{ model.Count }",
+            > 0 => $"{ model.Count }+",
+            _ => string.Empty
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public int Count { get; init; }
+        public bool IsSubscribed { get; init; }
+    }
+}

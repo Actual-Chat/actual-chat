@@ -2,12 +2,12 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-@if (Invites.Count > 0) {
+@if (Invites.Length > 0) {
     @foreach (var invite in Invites) {
-        <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-primary">
+        <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-02">
             <CopyToClipboard
                 Class="flex-auto"
-                Text="@invite.Id" CopyText="@GenerateLink(invite)"/>
+                Text="@invite.Id" CopyText="@GenerateLink(invite).CopyLink.ToString()"/>
             <div class="flex-auto text-xxs">
                 @if (invite.Remaining > 1) {
                     <span><b>@(invite.Remaining)</b> activations remaining, </span>
@@ -24,11 +24,11 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
-    [Parameter] public IImmutableList<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
+    [Parameter] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
     [Parameter] public string LinkFormat { get; set; } = "";
 
-    private string GenerateLink(Invite invite)
-        => Nav.BaseUri + string.Format(LinkFormat, invite.Id);
+    private LinkInfo GenerateLink(Invite invite)
+        => LinkInfoBuilder.GetFrom(Links.InviteLink(LinkFormat, invite.Id));
 }

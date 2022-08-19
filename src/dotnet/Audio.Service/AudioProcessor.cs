@@ -29,6 +29,7 @@ public sealed class AudioProcessor : IAudioProcessor
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
+    public IChats Chats { get; }
     public IChatAuthorsBackend ChatAuthorsBackend { get; }
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
@@ -43,6 +44,7 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamer = services.GetRequiredService<TranscriptStreamer>();
+        Chats = services.GetRequiredService<IChats>();
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
@@ -57,6 +59,10 @@ public sealed class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         Log.LogInformation(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
+
+        var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        rules.Require(ChatPermissions.Write);
+
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
@@ -181,14 +187,21 @@ public sealed class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
-        DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
         var beginsAt = now;
-        // Any delay here contributes to the overall delay,
-        // so we don't want to wait for too long for RecordedAtTask
-        var recordedAtOpt = await audioSegment.RecordedAtTask
-            .WithTimeout(TimeSpan.FromMilliseconds(25), cancellationToken)
-            .ConfigureAwait(false);
-        var recordedAt = (recordedAtOpt.IsSome(out var v) ? v : null) ?? beginsAt;
+        var recordedAt = beginsAt;
+        try {
+            DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
+            recordedAt = await audioSegment.RecordedAtTask
+                .WaitAsync(TimeSpan.FromMilliseconds(25), cancellationToken)
+                .ConfigureAwait(false)
+                ?? recordedAt;
+        }
+        catch (TimeoutException) {
+            // In case of delay recordedAt = beginsAt.
+            // Any delay here contributes to the overall delay,
+            // so we don't want to wait for too long for RecordedAtTask.
+        }
+
         var delay = now - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 

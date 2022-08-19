@@ -1,29 +1,18 @@
 @namespace ActualChat.UI.Blazor.Components
-@inject ClientAuthHelper ClientAuthHelper
 
-<AuthorizeView>
-    <Authorized>
-        <AccountMenu/>
-    </Authorized>
-    <NotAuthorized>
-        <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="bottom-12"/>
-    </NotAuthorized>
-</AuthorizeView>
+@if (User != null) {
+    <SignedInMenu/>
+} else {
+    <SignInMenu ButtonType="SignInMenu.MenuButton.Round" ContentPositionClass="bottom-14"/>
+}
 
 @code{
-    [CascadingParameter]
-    private Task<AuthState> AuthStateTask { get; set; } = null!;
-    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
-    private User User => AuthState.User;
-    private bool IsOpen { get; set; }
+    private User? User { get; set; }
 
-    protected override async Task OnParametersSetAsync()
-        => AuthState = await AuthStateTask;
+    [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender) {
-            // Update required to get actual User
-            StateHasChanged();
-        }
+    protected override async Task OnParametersSetAsync() {
+        User = (await AuthStateTask).User;
+        StateHasChanged();
     }
 }

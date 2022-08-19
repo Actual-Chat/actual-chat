@@ -1,0 +1,20 @@
+.navbar-item .chat-menu-btn {
+    @apply hidden;
+}
+.navbar-item:hover .chat-menu-btn {
+    @apply flex;
+}
+
+.chat-menu-btn.btn.btn-round.on:hover .btn-content {
+    @apply text-primary;
+}
+.chat-menu .dropdown-menu {
+    @apply fixed md:-right-46 -mt-2;
+}
+
+.message-counter-badge {
+    @apply flex-x justify-center items-center rounded-full text-04 text-base min-w-8;
+}
+.navbar-item:hover .message-counter-badge {
+    @apply hidden;
+}

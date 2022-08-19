@@ -1,12 +1,12 @@
 ﻿namespace ActualChat.Users;
 
-public interface IUserAvatars
+public interface IUserAvatars : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod(MinCacheDuration = 10)]
     Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod(MinCacheDuration = 10)]
     Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]

@@ -1,0 +1,62 @@
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Components.SideNav
+@implements IAsyncDisposable
+
+<div @ref="ElementRef" class="@Class side-nav">
+    <div class="side-nav-drawer"></div>
+    @ChildContent
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter] public SideNavDirection Direction { get; set; } = SideNavDirection.LeftToRight;
+    [Parameter] public bool IsOpen { get; set; } = false;
+    [Parameter] public EventCallback Closed { get; set; }
+    [Parameter] public EventCallback Open { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    private string Class { get; set; } = "";
+
+    private ElementReference ElementRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<SideNav> BlazorRef { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        Class = "side-nav-animate";
+        Class += Direction == SideNavDirection.LeftToRight
+            ? " side-nav-left"
+            : " side-nav-right";
+        Class += IsOpen
+            ? " side-nav-open"
+            : " side-nav-closed";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.SideNav.create";
+            var options = new SideNavOptions {
+                Direction = Direction,
+            };
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                identifier,
+                ElementRef,
+                BlazorRef,
+                options);
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    [JSInvokable]
+    public Task OnClosed() => Closed.InvokeAsync();
+
+    [JSInvokable]
+    public Task OnOpen() => Open.InvokeAsync();
+}

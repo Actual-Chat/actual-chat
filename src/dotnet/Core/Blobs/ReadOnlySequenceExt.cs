@@ -20,7 +20,7 @@ public static class ReadOnlySequenceExt
         var startIndex = start.GetInteger();
         var endSegment = end.GetObject() as MemorySegment<T>;
         if (startSegment == null || endSegment == null)
-            throw new InvalidOperationException("ReadOnlySequence.Append supports only MemorySegment-based sources");
+            throw StandardError.NotSupported("ReadOnlySequence.Append supports only MemorySegment-based sources.");
 
         var newEndSegment = endSegment.Append(chunk);
         return new ReadOnlySequence<T>(startSegment, startIndex, newEndSegment, chunk.Length);

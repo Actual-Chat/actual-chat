@@ -5,6 +5,7 @@
     "build:Debug": "webpack --mode development",
     "build:Release": "webpack --mode production",
     "watch": "webpack --mode development --watch",
+    "font": "svgtofont --sources ./icons --output ./fonts",
     "lint": "eslint --ext .ts --config .eslintrc.yml ../"
   },
   "devDependencies": {
@@ -32,6 +33,7 @@
     "mini-css-extract-plugin": "^2.4.6",
     "postcss-loader": "^6.2.1",
     "prettier": "^2.5.1",
+    "svgtofont": "^3.17.8",
     "tailwindcss": "^0.0.0-insiders.50024e4",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.4",
@@ -40,11 +42,12 @@
   },
   "dependencies": {
     "@actual-chat/codec": "0.1.216",
+    "@floating-ui/dom": "^1.0.1",
     "@microsoft/signalr": "^6.0.1",
     "@microsoft/signalr-protocol-msgpack": "^6.0.1",
     "buffer": "^6.0.3",
     "denque": "^2.0.1",
-    "firebase": "^9.6.8",
+    "firebase": "^9.8.3",
     "is-plain-object": "5.0.0",
     "long-press-event": "^2.4.4",
     "nosleep.js": "^0.12.0",

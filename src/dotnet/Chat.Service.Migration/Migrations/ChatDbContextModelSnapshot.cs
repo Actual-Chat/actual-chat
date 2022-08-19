@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("ProductVersion", "6.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -72,6 +72,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
 
+                    b.Property<bool>("HasLeft")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_left");
+
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("boolean")
                         .HasColumnName("is_anonymous");
@@ -104,6 +108,26 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_chat_authors_chat_id_user_id");
 
                     b.ToTable("chat_authors");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatAuthorRole", b =>
+                {
+                    b.Property<string>("DbChatAuthorId")
+                        .HasColumnType("text")
+                        .HasColumnName("chat_author_id");
+
+                    b.Property<string>("DbChatRoleId")
+                        .HasColumnType("text")
+                        .HasColumnName("chat_role_id");
+
+                    b.HasKey("DbChatAuthorId", "DbChatRoleId")
+                        .HasName("pk_chat_author_roles");
+
+                    b.HasIndex("DbChatRoleId", "DbChatAuthorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_author_roles_chat_role_id_chat_author_id");
+
+                    b.ToTable("chat_author_roles");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntry", b =>
@@ -163,6 +187,10 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_removed");
 
+                    b.Property<long?>("RepliedChatEntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("replied_chat_entry_id");
+
                     b.Property<string>("StreamId")
                         .HasColumnType("text")
                         .HasColumnName("stream_id");
@@ -207,25 +235,96 @@ namespace ActualChat.Chat.Migrations
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatOwner", b =>
                 {
-                    b.Property<string>("ChatId")
+                    b.Property<string>("DbChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
 
-                    b.Property<string>("UserId")
+                    b.Property<string>("DbUserId")
                         .HasColumnType("text")
                         .HasColumnName("user_id");
 
-                    b.Property<string>("DbChatId")
-                        .HasColumnType("text")
-                        .HasColumnName("db_chat_id");
-
-                    b.HasKey("ChatId", "UserId")
+                    b.HasKey("DbChatId", "DbUserId")
                         .HasName("pk_chat_owners");
 
-                    b.HasIndex("DbChatId")
-                        .HasDatabaseName("ix_chat_owners_db_chat_id");
-
                     b.ToTable("chat_owners");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatRole", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("CanEditProperties")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_edit_properties");
+
+                    b.Property<bool>("CanEditRoles")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_edit_roles");
+
+                    b.Property<bool>("CanInvite")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_invite");
+
+                    b.Property<bool>("CanJoin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_join");
+
+                    b.Property<bool>("CanLeave")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_leave");
+
+                    b.Property<bool>("CanRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_read");
+
+                    b.Property<bool>("CanSeeMembers")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_see_members");
+
+                    b.Property<bool>("CanWrite")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_write");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
+
+                    b.Property<long>("LocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("local_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Picture")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("picture");
+
+                    b.Property<short>("SystemRole")
+                        .HasColumnType("smallint")
+                        .HasColumnName("system_role");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_roles");
+
+                    b.HasIndex("ChatId", "LocalId")
+                        .HasDatabaseName("ix_chat_roles_chat_id_local_id");
+
+                    b.HasIndex("ChatId", "Name")
+                        .HasDatabaseName("ix_chat_roles_chat_id_name");
+
+                    b.ToTable("chat_roles");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>
@@ -309,17 +408,34 @@ namespace ActualChat.Chat.Migrations
                     b.ToTable("_operations");
                 });
 
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatAuthorRole", b =>
+                {
+                    b.HasOne("ActualChat.Chat.Db.DbChatAuthor", null)
+                        .WithMany("Roles")
+                        .HasForeignKey("DbChatAuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_author_roles_chat_authors_chat_author_id");
+                });
+
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatOwner", b =>
                 {
                     b.HasOne("ActualChat.Chat.Db.DbChat", null)
                         .WithMany("Owners")
                         .HasForeignKey("DbChatId")
-                        .HasConstraintName("fk_chat_owners_chats_db_chat_id");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_chat_owners_chats_chat_id");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChat", b =>
                 {
                     b.Navigation("Owners");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbChatAuthor", b =>
+                {
+                    b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618
         }

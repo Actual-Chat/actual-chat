@@ -1,0 +1,36 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatUserSettings?>
+@{
+    var language = State.LatestNonErrorValue.LanguageOrDefault();
+}
+
+<ButtonRound
+    Class="chat-language-toggle shadow-mobile-button shadow-shadow-main"
+    Click="OnClick">
+    <span class="w-8 h-8 m-1">
+        @language.Shortcut
+    </span>
+</ButtonRound>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
+        => await ChatUserSettings.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+
+    private async Task OnClick()
+    {
+        var settings = State.Value ?? new() { Language = LanguageId.Default };
+        settings = settings with { Language = settings.LanguageOrDefault().Next() };
+        var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
+        await UICommander.Run(command).ConfigureAwait(false);
+    }
+}

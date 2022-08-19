@@ -3,6 +3,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 on:
+  workflow_dispatch:
   create:
   push:
     branches:
@@ -28,7 +29,7 @@ permissions:
 
 jobs:
   build:
-    name: Build image
+    name: Build image for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
       github.ref == 'refs/heads/dev' ||
@@ -59,17 +60,6 @@ jobs:
       - name: Replace npm creds
         run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
 
-      - name: Build restore image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          target: all-restore
-          tags: |
-            ghcr.io/actual-chat/actual-chat-app-restore:latest
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
@@ -97,15 +87,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
+      - name: Build image 'actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}'
         uses: docker/build-push-action@v3
         with:
           context: .
           tags: |
             ghcr.io/actual-chat/actual-chat-app:${{ steps.nbgv.outputs.SemVer2 }}
           push: ${{github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/release/')}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   unit-tests:
     name: Run Unit tests
@@ -186,7 +174,7 @@ jobs:
       - name: Run integration tests
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{github.workspace}}/.config/gcp-key.json
-          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/UI.Blazor.Host/wwwroot/
+          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/App.Wasm/wwwroot/
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
           USERSSETTINGS__GOOGLECLIENTID: ${{secrets.USERSSETTINGS__GOOGLECLIENTID}}
@@ -196,7 +184,7 @@ jobs:
           TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
-          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
@@ -216,7 +204,7 @@ jobs:
     name: Deploy dev
     if: |
       github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/dev'    ||
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
@@ -225,7 +213,7 @@ jobs:
       - integration-tests
     environment: dev
     steps:
-      - name: Checkout
+      - name: Checking out ${{ github.ref }}
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
@@ -272,8 +260,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
-      - unit-tests
-      - integration-tests
       - deploy-dev
     environment: prod
     steps:

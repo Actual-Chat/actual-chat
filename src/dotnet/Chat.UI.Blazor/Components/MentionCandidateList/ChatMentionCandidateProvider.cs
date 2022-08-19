@@ -22,7 +22,7 @@ public class ChatMentionCandidateProvider : IMentionCandidateProvider
         string search, int limit,
         CancellationToken cancellationToken)
     {
-        var authors = await _chats.GetMentionCandidates(_session, _chatId, cancellationToken).ConfigureAwait(false);
+        var authors = await _chats.ListMentionCandidates(_session, _chatId, cancellationToken).ConfigureAwait(false);
         var candidates = authors
             .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
             .OrderBy(c => c.Name)

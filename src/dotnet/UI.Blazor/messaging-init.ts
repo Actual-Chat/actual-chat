@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { addInteractionHandler } from '../../nodejs/src/first-interaction';
+import { addInteractionHandler } from 'first-interaction';
 
 const LogScope = 'MessagingInit';
 
@@ -17,14 +17,13 @@ export async function getDeviceToken(): Promise<string | null> {
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
-            const workerPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
+            const workerPath = new URL('/sw.js', origin).toString();
             const workerUrl = `${workerPath}?config=${configBase64}`;
             let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
             if (!workerRegistration) {
-                workerRegistration = await navigator.serviceWorker.register(workerUrl, {
-                    scope: '/dist/firebase-cloud-messaging-push-scope'
-                });
+                workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/' });
             }
+
             const tokenOptions: GetTokenOptions = {
                 vapidKey: publicKey,
                 serviceWorkerRegistration: workerRegistration,
@@ -65,6 +64,25 @@ export async function requestNotificationPermission(): Promise<boolean> {
         return Notification.permission === 'granted';
     }
 }
+
+let baseLayoutRef: DotNet.DotNetObject = null;
+
+export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): void {
+    const isAlreadyRegistered = baseLayoutRef !== null;
+    baseLayoutRef = blazorRef;
+    if (!isAlreadyRegistered) {
+        navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
+            if (evt.origin !== window.location.origin)
+                return;
+            if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
+                return;
+
+            const url = evt.data?.url;
+            await baseLayoutRef.invokeMethodAsync('HandleNotificationNavigation', url);
+        });
+    }
+}
+
 
 function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information

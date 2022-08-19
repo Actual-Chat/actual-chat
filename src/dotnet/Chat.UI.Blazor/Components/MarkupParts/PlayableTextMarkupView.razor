@@ -1,14 +1,23 @@
 @using Stl.Extensibility
 @using ActualChat.MediaPlayback
-@inherits ComputedMarkupViewBase<PlayableTextMarkup, float?>
+@inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
-    var playingAt = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var colorCls = m.Color switch {
+        PlayableTextColor.Blue => "playable-text-color-blue",
+        PlayableTextColor.Purple => "playable-text-color-purple",
+        PlayableTextColor.Cyan => "playable-text-color-cyan",
+        PlayableTextColor.Green => "playable-text-color-green",
+        null => "",
+        _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
+        };
 }
-<span class="playable-text-markup whitespace-break-spaces">
-    @foreach (var word in Markup.Words) {
-        var isWordPlaying = playingAt.HasValue && word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt.GetValueOrDefault());
-        var cls = isWordPlaying ? "playable playing" : "playable";
+<span class="playable-text-markup @colorCls whitespace-break-spaces">
+    @for (var i = 0; i < Markup.Words.Length; i++) {
+        var word = Markup.Words[i];
+        var status = m.Map != null ? m.Map[i] : WordPlayback.None;
+        var cls = GetPlayingClass(status);
         <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
     }
 </span>
@@ -16,8 +25,10 @@
 @code {
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private Model? _lastRenderedModel;
 
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
 
     private async Task OnClick(int startIndex) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
@@ -44,29 +55,173 @@
         chatPlayers.StartHistoricalPlayback(chatId, startAt);
     }
 
-    protected override async Task<float?> ComputeState(CancellationToken cancellationToken) {
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var model = await InnerComputeState(cancellationToken);
+        if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
+            return model;
+        var colorLease = ActualizeColorLease(model, _lastRenderedModel);
+        var map = EnrichMapWithPlayedStatus(model.Map, _lastRenderedModel.Map);
+        return new Model {
+            Map = map,
+            ColorLease = colorLease,
+            Color = colorLease?.Color ?? _lastRenderedModel.Color
+        };
+    }
+
+    private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
+    {
+        WordPlayback[] enrichedMap;
+        if (map == null) {
+            enrichedMap = lastMap
+                .Select(c => c == WordPlayback.None ? WordPlayback.None : WordPlayback.Played)
+                .ToArray();
+        }
+        else {
+            enrichedMap = lastMap.Zip(map,
+                (last, current) => current != WordPlayback.None
+                    ? current
+                    : last == WordPlayback.None
+                        ? WordPlayback.None
+                        : WordPlayback.Played)
+                .ToArray();
+        }
+
+        var prev = WordPlayback.None;
+        for (int i = 0; i < enrichedMap.Length; i++) {
+            var current = enrichedMap[i];
+            if (current == WordPlayback.Played && prev == WordPlayback.None)
+                enrichedMap[i] = WordPlayback.Played | WordPlayback.PlayedStart;
+            prev = current;
+        }
+
+        return enrichedMap;
+    }
+
+    private IPlayableTextColorLease? ActualizeColorLease(Model model, Model lastModel)
+    {
+        var colorLease = lastModel.ColorLease;
+        var hasActivePlaying = model.HasActivePlaying;
+        if (hasActivePlaying) {
+            colorLease ??= PaletteProvider
+                .GetPalette(Entry.ChatId)
+                .RentColor(Entry.AuthorId, Entry.Id);
+        }
+        else {
+            if (colorLease != null) {
+                colorLease.Release();
+                colorLease = null;
+            }
+        }
+        return colorLease;
+    }
+
+    private async Task<Model> InnerComputeState(CancellationToken cancellationToken)
+    {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var audioEntryId = Entry.AudioEntryId;
         if (audioEntryId == null)
-            return null;
+            return Model.None;
 
         var timeRange = Markup.TimeRange;
         if (timeRange.IsEmpty)
-            return null;
+            return Model.None;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
-            return null;
+        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not
+            ChatAudioTrackInfo trackInfo)
+            return Model.None;
 
         var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
         if (playbackState == null || playbackState.IsCompleted)
-            return null;
+            return Model.None;
 
-        var playingAt = (float)(trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt).TotalSeconds;
+        var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
+            .TotalSeconds;
         var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
         if (!playingAtNearbyRange.Overlaps(timeRange))
-            return null;
+            return Model.None;
 
-        return playingAt;
+        var map = new WordPlayback[Markup.Words.Length];
+        for (var i = 0; i < Markup.Words.Length; i++) {
+            var word = Markup.Words[i];
+            var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
+            map[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
+        }
+
+        var isEmpty = map.All(c => c == WordPlayback.None);
+        if (isEmpty)
+            return Model.None;
+
+        for (var i = 0; i < Markup.Words.Length; i++) {
+            var prev = i > 0 ? map[i - 1] : WordPlayback.None;
+            var current = map[i];
+            var next = i < map.Length - 1 ? map[i + 1] : WordPlayback.None;
+            var actual = current;
+            if (current == WordPlayback.Playing) {
+                if (prev == WordPlayback.None)
+                    actual |= WordPlayback.PlayingStart;
+                if (next == WordPlayback.None)
+                    actual |= WordPlayback.PlayingEnd;
+            }
+            map[i] = actual;
+        }
+
+        return new Model { Map = map };
+    }
+
+    private string GetPlayingClass(WordPlayback status) {
+        if (status == WordPlayback.None)
+            return "";
+        if (status.HasFlag(WordPlayback.Played)) {
+            var cls = "played";
+            var start = status.HasFlag(WordPlayback.PlayedStart);
+            if (start)
+                cls += " played-start";
+            return cls;
+        }
+        if (status.HasFlag(WordPlayback.Playing)) {
+            var cls = "playing";
+            var start = status.HasFlag(WordPlayback.PlayingStart);
+            var end = status.HasFlag(WordPlayback.PlayingEnd);
+            if (start && end)
+                cls += " playing-start-end";
+            else if (start)
+                cls += " playing-start";
+            else if (end)
+                cls += " playing-end";
+            return cls;
+        }
+        return "";
+    }
+
+    public override ValueTask DisposeAsync() {
+        var m = State.LatestNonErrorValue;
+        m.ColorLease?.Release();
+        return base.DisposeAsync();
+    }
+
+    [Flags]
+    public enum WordPlayback {
+        None         = 0x00,
+        Playing      = 0x10,
+        PlayingStart = Playing | 0x01,
+        PlayingEnd   = Playing | 0x02,
+        Played       = 0x80,
+        PlayedStart =  Played | 0x01,
+    }
+
+    public record Model {
+        public static readonly Model None = new Model();
+
+        public WordPlayback[]? Map { get; init; }
+
+        public PlayableTextColor? Color { get; init; }
+
+        public IPlayableTextColorLease? ColorLease { get; init; }
+
+        public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
     }
 }

@@ -6,8 +6,8 @@
 <DialogFrame Class="invite-chat-author-modal" Title="Invite users" HasCloseButton="true">
     <Body>
     <div class="flex-y h-full w-full">
-        <div class="relative text-gray-400 -ml-0.5">
-            <span class="absolute inset-y-0 left-0 flex items-center">
+        <div class="relative text-placeholder -ml-0.5">
+            <span class="absolute inset-y-0 left-1 flex items-center">
                 <button type="submit" class="focus:outline-none focus:shadow-outline">
                     <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" class="w-6 h-6">
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -16,29 +16,24 @@
             </span>
             <input type="search"
                    name="q"
-                   class="pl-7 py-2 focus:outline-none border-gray-400 border-b bg-transparent text-gray-600 w-full"
                    @oninput="OnFilter"
                    placeholder="Search..."
                    autocomplete="off">
         </div>
-        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 -ml-5 -mr-5 mt-5 max-h-[60vh] min-h-[60vh]">
+        <div class="flex-1 overflow-y-auto custom-scrollbar mt-2 max-h-[60vh] min-h-[60vh]">
             @foreach (var contact in FilteredChatContacts) {
-                <div class="flex-x w-full hover:bg-gray-200"
+                <div class="flex-x w-full gap-x-2 hover:bg-02"
                      @key="@contact.Author.Id"
                      @onclick="() => OnContactClick(contact)">
                     @if (contact.IsExisting) {
-                        <input type="checkbox"
-                               checked
-                               disabled
-                               class="ml-5 mr-3 self-center"/>
+                        <Checkbox Checked="true" Disabled="true" Class="self-center ml-4"/>
                     } else {
-                        <input type="checkbox"
-                               checked="@contact.IsChecked"
-                               class="ml-5 mr-3 self-center"/>
+                        <Checkbox Checked="@contact.IsChecked" Class="self-center ml-4"/>
                     }
-                    <AuthorBadge Author="@contact.Author"
-                                 Presence="@contact.Presence"
-                                 Size="SquareSize.Size12"/>
+                    <AuthorBadge
+                        Author="@contact.Author"
+                        Presence="@contact.Presence"
+                        Size="SquareSize.Size8"/>
                 </div>
             }
         </div>
@@ -48,14 +43,14 @@
         <div class="btn-group">
             <Button
                 Click="OnCancel"
-                Class="btn-cancel-outline">
+                Class="btn-outline">
                 Cancel
             </Button>
             <Button
                 Click="OnInvite"
                 Type="@ButtonType.Submit"
                 IsDisabled="@(!CanInvite)"
-                Class="btn-success">
+                Class="btn-primary">
                 Invite
             </Button>
         </div>
@@ -65,12 +60,13 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
     private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();
@@ -80,16 +76,14 @@
     protected override async Task OnInitializedAsync() {
         var existingChatUserIds = new HashSet<Symbol>(
             await ChatAuthors
-                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token)
-                .ConfigureAwait(true));
+                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
 
-        var contacts = await UserContacts.GetAll(Session, DisposeTokenSource.Token).ConfigureAwait(false);
-        var chatContacts = new ConcurrentBag<Contact>();
-        var resolveChatContacts = contacts
+        var contacts = await UserContacts.List(Session, DisposeTokenSource.Token).ConfigureAwait(false);
+        var resolvedContacts = await contacts
             .Select(async userContact => {
-                var userAuthor = await UserProfiles.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
+                var userAuthor = await Accounts.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 if (userAuthor == null)
-                    return;
+                    return null;
 
                 if (string.IsNullOrWhiteSpace(userAuthor.Picture)) {
                     userAuthor = userAuthor with {
@@ -98,12 +92,12 @@
                 }
 
                 var presence = await UserPresences.Get(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
-                chatContacts.Add(new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id)));
+                return new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id));
             })
-            .ToList();
-        await Task.WhenAll(resolveChatContacts).ConfigureAwait(false);
+            .Collect()
+            .ConfigureAwait(false);
 
-        AllChatContacts = chatContacts.OrderBy(x => x.Author.Name).ToArray();
+        AllChatContacts = resolvedContacts.SkipNullItems().OrderBy(x => x.Author.Name).ToArray();
         FilteredChatContacts = AllChatContacts;
     }
 
@@ -117,7 +111,7 @@
             .Select(x => x.Author.Id.Value)
             .ToArray();
         var createChatAuthorsCommand = new IChatAuthors.CreateChatAuthorsCommand(Session, ModalModel.Chat.Id, userIds);
-        await ChatAuthors.CreateChatAuthors(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
+        await UICommander.Run(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
         await ModalInstance.CloseAsync().ConfigureAwait(false);
     }
 

@@ -2,10 +2,12 @@ using ActualChat.Comparison;
 
 namespace ActualChat.Users;
 
-public record Author : IAuthorLike
+public record Author : IAuthorLike, IRequirementTarget
 {
     private static IEqualityComparer<Author> EqualityComparer { get; } =
         VersionBasedEqualityComparer<Author, Symbol>.Instance;
+
+    public static Author None { get; } = new();
 
     public Symbol Id { get; init; } = Symbol.Empty;
     public long Version { get; init; }

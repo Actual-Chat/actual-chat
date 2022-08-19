@@ -1,4 +1,5 @@
-﻿using ActualChat.Testing.Host;
+﻿using System.Diagnostics;
+using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -9,12 +10,15 @@ public class ChatAuthorsTest : AppHostTestBase
     [Fact]
     public async Task NullAuthorResult()
     {
+        var sw = Stopwatch.StartNew();
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
+        Out.WriteLine($"{sw.Elapsed}: app host init");
         var session = tester.Session;
 
         var chatAuthors = tester.ClientServices.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetOwnAuthor(session, Constants.Chat.DefaultChatId, default);
+        var author = await chatAuthors.Get(session, Constants.Chat.DefaultChatId, default);
+        Out.WriteLine($"{sw.Elapsed}: get author");
         author.Should().BeNull();
     }
 }

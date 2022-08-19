@@ -1,5 +1,6 @@
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR;
+using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Audio;
 
@@ -8,15 +9,18 @@ public class AudioHub : Hub
     private readonly IAudioProcessor _audioProcessor;
     private readonly AudioStreamer _audioStreamer;
     private readonly TranscriptStreamer _transcriptStreamer;
+    private readonly SessionMiddleware _sessionMiddleware;
 
     public AudioHub(
         IAudioProcessor audioProcessor,
         AudioStreamer audioStreamer,
-        TranscriptStreamer transcriptStreamer)
+        TranscriptStreamer transcriptStreamer,
+        SessionMiddleware sessionMiddleware)
     {
         _audioProcessor = audioProcessor;
         _audioStreamer = audioStreamer;
         _transcriptStreamer = transcriptStreamer;
+        _sessionMiddleware = sessionMiddleware;
     }
 
     public IAsyncEnumerable<byte[]> GetAudioStream(
@@ -33,13 +37,18 @@ public class AudioHub : Hub
     public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        var audioRecord = new AudioRecord(sessionId, chatId, clientStartOffset);
+
+        var httpContext = Context.GetHttpContext()!;
+        var cancellationToken = httpContext.RequestAborted;
+        var session = _sessionMiddleware.GetSession(httpContext).Require();
+
+        var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
         var frameStream = opusPacketStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        await _audioProcessor.ProcessAudio(audioRecord, frameStream, default)
+        await _audioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
             .ConfigureAwait(false);
     }
 }

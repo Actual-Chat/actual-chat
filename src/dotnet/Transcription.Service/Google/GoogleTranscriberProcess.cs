@@ -4,7 +4,6 @@ using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Google;
 

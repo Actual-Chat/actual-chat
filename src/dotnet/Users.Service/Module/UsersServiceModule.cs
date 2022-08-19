@@ -1,19 +1,20 @@
 using ActualChat.Db;
 using ActualChat.Db.Module;
+using ActualChat.Events;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
+using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 using Stl.Redis;
 
@@ -69,31 +70,34 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
-        services.AddDbContextServices<UsersDbContext>(dbContext => {
+        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton(_ => new DbAuthService<UsersDbContext>.Options() {
                 MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
             });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
-            services.TryAddSingleton<DbUserByNameResolver>();
-            dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
-            dbContext.AddEntityResolver<string, DbUserPresence>();
-            dbContext.AddEntityResolver<string, DbUserAvatar>();
-            dbContext.AddEntityResolver<string, DbUserContact>();
-            dbContext.AddEntityResolver<string, DbChatReadPosition>();
-            dbContext.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
+            db.AddEntityResolver<string, DbUserIdentity<string>>();
+            db.AddEntityResolver<string, DbAccount>();
+            db.AddEntityResolver<string, DbUserPresence>();
+            db.AddEntityResolver<string, DbUserAvatar>();
+            db.AddEntityResolver<string, DbUserContact>();
+            db.AddEntityResolver<string, DbChatReadPosition>();
+            db.AddEntityResolver<string, DbKvasEntry>();
+            db.AddShardLocalIdGenerator(dbContext => dbContext.UserAvatars,
+                (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
             // DB authentication services
-            dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
-                options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
+            db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
+                auth.ConfigureAuthService(_ => new() {
+                    MinUpdatePresencePeriod = TimeSpan.FromSeconds(55),
+                });
             });
         });
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -104,32 +108,36 @@ public class UsersServiceModule : HostModule<UsersSettings>
             if (commandAssembly == typeof(EditUserCommand).Assembly
                 && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
-            if (commandAssembly == typeof(UserProfile).Assembly)
+            if (commandAssembly == typeof(Account).Assembly)
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
-
-        // Auth services
+        // Auth
         var fusionAuth = fusion.AddAuthentication();
         services.TryAddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
-            signInControllerSettingsFactory: _ => SignInController.DefaultSettings with {
+            signInControllerOptionsFactory: _ => new() {
                 DefaultScheme = GoogleDefaults.AuthenticationScheme,
                 SignInPropertiesBuilder = (_, properties) => {
                     properties.IsPersistent = true;
                 },
             },
-            serverAuthHelperSettingsFactory: _ => new() {
+            serverAuthHelperOptionsFactory: _ => new() {
                 NameClaimKeys = Array.Empty<string>(),
             });
+        commander.AddCommandService<AuthCommandFilters>();
+        services.AddSingleton<ClaimMapper>();
+        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
+        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
 
         // Module's own services
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IUserProfiles, UserProfiles>();
-        fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
+        services.AddSingleton<IUsersTempBackend, UsersTempBackend>();
+        fusion.AddComputeService<IAccounts, Accounts>();
+        fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();
         fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
@@ -137,11 +145,10 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
-        services.AddCommander()
-            .AddCommandService<AuthCommandFilters>();
-        services.AddSingleton<ClaimMapper>();
-        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
-        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
+        fusion.AddComputeService<IServerKvas, ServerKvas>();
+        fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
+        fusion.AddComputeService<IRecentEntries, RecentEntries>();
+        fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
 
         // ChatUserSettings
         services.AddSingleton(c => {
@@ -151,5 +158,11 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<ChatUserSettingsService>();
         services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
         services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
+
+        // Events
+        services.AddEvent<NewUserEvent>();
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

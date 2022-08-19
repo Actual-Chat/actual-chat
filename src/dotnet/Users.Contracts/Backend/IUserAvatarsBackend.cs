@@ -1,10 +1,10 @@
 ﻿namespace ActualChat.Users;
 
-public interface IUserAvatarsBackend
+public interface IUserAvatarsBackend : IComputeService
 {
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<UserAvatar?> Get(string avatarId, CancellationToken cancellationToken);
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAvatarIds(string userId, CancellationToken cancellationToken);
 
     Task<Symbol> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken);

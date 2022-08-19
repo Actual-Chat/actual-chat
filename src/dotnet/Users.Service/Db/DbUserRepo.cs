@@ -5,11 +5,11 @@ namespace ActualChat.Users.Db;
 
 public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
 {
-    private readonly UsersSettings _usersSettings;
+    private UsersSettings UsersSettings { get; }
 
     public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
         : base(options, services)
-        => _usersSettings = services.GetRequiredService<UsersSettings>();
+        => UsersSettings = services.GetRequiredService<UsersSettings>();
 
     public override async Task<DbUser> Create(
         UsersDbContext dbContext,
@@ -19,13 +19,13 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         user = UserConverter.ToModel(dbUser);
 
-        var isAdmin = UserProfilesBackend.IsAdmin(user);
-        var dbUserProfile = new DbUserProfile {
-            UserId = user.Id,
-            Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
+        var isAdmin = AccountsBackend.IsAdmin(user);
+        var dbAccount = new DbAccount {
+            Id = user.Id,
+            Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
         };
-        dbContext.UserProfiles.Add(dbUserProfile);
+        dbContext.Accounts.Add(dbAccount);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;

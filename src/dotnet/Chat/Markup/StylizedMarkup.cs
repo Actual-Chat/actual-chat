@@ -9,13 +9,17 @@ public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
     public override string ToMarkupText()
     {
         var markupText = Content.ToMarkupText();
-        return Style switch {
-            0 => markupText,
-            TextStyle.Italic => $"*{markupText}*",
-            TextStyle.Bold => $"**{markupText}**",
-            _ => throw new InvalidOperationException($"Invalid {nameof(Style)} property value."),
-        };
+        var token = GetWrapToken();
+        return $"{GetWrapToken()}{markupText}{GetWrapToken()}";
     }
+
+    public string GetWrapToken()
+        => Style switch {
+            TextStyle.None => "",
+            TextStyle.Italic => "*",
+            TextStyle.Bold => "**",
+            _ => throw StandardError.Internal($"Invalid {nameof(Style)} property value."),
+        };
 
     public override Markup Simplify()
     {

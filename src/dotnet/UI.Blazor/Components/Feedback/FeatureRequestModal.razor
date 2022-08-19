@@ -31,12 +31,12 @@
         </div>
         <div>
             <label>Comment:</label>
-            <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
+            <textarea class="feedback-textarea border border-bg-03 w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
         </div>
     </Body>
     <Buttons>
         <div class="btn-group">
-            <Button Class="btn-cancel-outline" Click="OnCancel" IsAutofocused="true">Cancel</Button>
+            <Button Class="btn-secondary" Click="OnCancel" IsAutofocused="true">Cancel</Button>
             <Button Click="OnSubmit">Send Feedback</Button>
         </div>
     </Buttons>
@@ -52,12 +52,12 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public async ValueTask DisposeAsync()
     {
-        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -66,7 +66,7 @@
     [JSInvokable]
     private async Task SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;
-        await JSRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("updateRating", _rating - 1);
     }
 
     private void OnSubmit() {
@@ -85,7 +85,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.Feedback.create",
                 Ref, BlazorRef
-                ).ConfigureAwait(true);
+                );
         }
     }
 

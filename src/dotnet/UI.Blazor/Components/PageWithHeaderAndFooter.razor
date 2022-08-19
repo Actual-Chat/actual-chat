@@ -1,29 +1,30 @@
-<div class="page-with-header-and-footer h-full w-full flex-y flex-nowrap justify-between overflow-hidden @Class">
-    <div class="flex-none flex-y w-full overflow-hidden shadow-md z-40">
-        @Header
-    </div>
-    <div class="flex-1 flex-x h-full overflow-hidden">
-        <div class="flex-1 -flex-y h-full overflow-hidden relative">
-            <div class="flex-none flex-y w-full absolute overflow-hidden z-50 top-0">
-                @SubHeader
-            </div>
-            <div class="flex-none flex-y w-full overflow-hidden z-40">
-                @Footer
-            </div>
-            <div class="flex-none flex-y w-full overflow-hidden z-30">
-                @SubFooter
-            </div>
-            <div class="flex-1 flex-y overflow-y-auto custom-scrollbar z-10 @BodyClass">
-                @Body
+<div class="page-with-header-and-footer h-full w-full flex-x">
+    <div class="@Class h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+        <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02 z-50">
+            @Header
+        </div>
+        <div class="flex-1 flex-x h-full overflow-hidden">
+            <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                <div class="layout-subheader flex-none flex-y w-full absolute overflow-hidden z-60 top-0">
+                    @SubHeader
+                </div>
+                <div class="layout-footer flex-none flex-y w-full overflow-hidden z-40 min-h-footer shadow-up md:shadow-none border-t md:border-none border-bg-04">
+                    @Footer
+                </div>
+                <div class="layout-subfooter flex-none flex-y w-full overflow-hidden z-30">
+                    @SubFooter
+                </div>
+                <div class="layout-body flex-1 flex-y overflow-y-auto custom-scrollbar z-10">
+                    @Body
+                </div>
             </div>
         </div>
-        @RightPanel
     </div>
+    @RightPanel
 </div>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string BodyClass { get; set; } = "";
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? SubHeader { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }

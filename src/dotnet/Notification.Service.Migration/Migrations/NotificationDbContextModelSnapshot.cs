@@ -17,40 +17,10 @@ namespace ActualChat.Notification.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("ProductVersion", "6.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ActualChat.Notification.Db.DbChatSubscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_id");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_chat_subscriptions");
-
-                    b.HasIndex("UserId", "ChatId")
-                        .HasDatabaseName("ix_chat_subscriptions_user_id_chat_id");
-
-                    b.ToTable("chat_subscriptions");
-                });
 
             modelBuilder.Entity("ActualChat.Notification.Db.DbDevice", b =>
                 {
@@ -123,6 +93,36 @@ namespace ActualChat.Notification.Migrations
                         .HasDatabaseName("ix_messages_device_id");
 
                     b.ToTable("messages");
+                });
+
+            modelBuilder.Entity("ActualChat.Notification.Db.DbMutedChatSubscription", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_muted_chat_subscriptions");
+
+                    b.HasIndex("UserId", "ChatId")
+                        .HasDatabaseName("ix_muted_chat_subscriptions_user_id_chat_id");
+
+                    b.ToTable("muted_chat_subscriptions");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>

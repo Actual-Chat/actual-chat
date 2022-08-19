@@ -3,83 +3,107 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.SignalR.Client;
 
-public abstract class HubClientBase
+public abstract class HubClientBase : WorkerBase
 {
-    private static readonly TimeSpan[] ReconnectDelays =
-        new[] {
-            TimeSpan.FromMilliseconds(10),
-            TimeSpan.FromMilliseconds(20),
-            TimeSpan.FromMilliseconds(40),
-            TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromMilliseconds(500),
-            TimeSpan.FromSeconds(1),
-            TimeSpan.FromSeconds(2),
-            TimeSpan.FromSeconds(4),
-            TimeSpan.FromSeconds(8),
-            TimeSpan.FromSeconds(15),
-            TimeSpan.FromSeconds(30),
-        }.Concat(Enumerable.Range(0, 60).Select(_ => TimeSpan.FromMinutes(1))).ToArray();
-    private readonly Lazy<HubConnection> _hubConnectionLazy;
-    private ILogger? _log;
+    private Task<HubConnection>? _connectTask;
+
+    private Task<HubConnection>? ConnectTask {
+        get => Interlocked.CompareExchange(ref _connectTask, null, null);
+        set => Interlocked.Exchange(ref _connectTask, value);
+    }
 
     protected IServiceProvider Services { get; }
-    protected Uri HubUrl { get; }
-    protected HubConnection HubConnection => _hubConnectionLazy.Value;
     protected MomentClockSet Clocks { get; }
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+    protected ILogger Log { get; }
+
+    protected Uri HubUrl { get; }
+    protected Func<IHubConnectionBuilder> ConnectionBuilderFactory { get; init; }
+    protected TimeSpan GetConnectionRetryDelay { get; init; } = TimeSpan.FromSeconds(0.1);
+    protected RetryDelaySeq RetryDelays { get; init; } = new(0.5, 10, 0.25);
 
     protected HubClientBase(string hubUrl, IServiceProvider services)
     {
         Services = services;
         Clocks = Services.Clocks();
+        Log = Services.LogFor(GetType());
+
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
-        _hubConnectionLazy = new(CreateHubConnection);
-
-        Task.Run(() => EnsureConnected(CancellationToken.None).AsTask());
-    }
-
-    protected HubConnection CreateHubConnection()
-    {
-        Log.LogDebug("CreateHubConnection: started");
-        try {
+        ConnectionBuilderFactory = () => {
             var builder = new HubConnectionBuilder()
                 .WithUrl(HubUrl, options => {
                     options.SkipNegotiation = true;
                     options.Transports = HttpTransportType.WebSockets;
-                })
-                .WithAutomaticReconnect(ReconnectDelays);
+                });
             if (!Constants.DebugMode.SignalR)
                 builder = builder.AddMessagePackProtocol();
-            return builder.Build();
-        }
-        finally {
-            Log.LogDebug("CreateHubConnection: completed");
+            return builder;
+        };
+    }
+
+    protected async ValueTask<HubConnection> GetHubConnection(CancellationToken cancellationToken)
+    {
+        Start();
+        while (true) {
+            var connectTask = ConnectTask;
+            if (connectTask != null) {
+                var connectResult = await connectTask.WaitResultAsync(cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (connectResult.IsValue(out var hubConnection) && hubConnection.State == HubConnectionState.Connected)
+                    return hubConnection;
+            }
+            // Technically there could be no delay at all, but let's have a short one
+            await Task.Delay(GetConnectionRetryDelay, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    protected async ValueTask EnsureConnected(CancellationToken cancellationToken)
+    protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        if (HubConnection.State == HubConnectionState.Connected)
-            return;
-
-        var retryDelay = 0.5d;
-        var attempt = 0;
-        while (HubConnection.State != HubConnectionState.Connected || attempt < 10) {
+        var retryIndex = 0;
+        while (true) {
             try {
-                attempt++;
-                if (HubConnection.State == HubConnectionState.Disconnected)
-                    await HubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
-                else
-                    await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
+                ConnectTask = Connect(cancellationToken);
+                var hubConnection = await ConnectTask.ConfigureAwait(false);
+                await using var connection = hubConnection.ConfigureAwait(false);
+                retryIndex = 0; // Reset on connect
+
+                var closedTaskSource = TaskSource.New<string?>(false);
+                var onClosed = (Func<Exception?, Task>) null!;
+                onClosed = error => {
+                    error ??= new ChannelClosedException("SignalR connection is closed.");
+                    hubConnection.Closed -= onClosed;
+                    closedTaskSource.TrySetException(error);
+                    return Task.CompletedTask;
+                };
+                hubConnection.Closed += onClosed;
+                try {
+                    await closedTaskSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally {
+                    hubConnection.Closed -= onClosed;
+                }
             }
             catch (Exception e) when (e is not OperationCanceledException) {
+                var retryDelay = RetryDelays[++retryIndex];
                 Log.LogError(e,
-                    "EnsureConnected failed to reconnect SignalR Hub, will retry after {RetryDelay}s",
-                    retryDelay);
-                await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(retryDelay), cancellationToken)
-                    .ConfigureAwait(false);
-                retryDelay = Math.Min(10d, retryDelay * (1 + Random.Shared.NextDouble())); // Exp. growth to 10s
+                    "Failed to connect to SignalR hub @ {HugUrl}, will retry in {RetryDelay} (#{RetryIndex})",
+                    HubUrl, retryDelay.ToShortString(), retryIndex);
+                await Clocks.CpuClock.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async Task<HubConnection> Connect(CancellationToken cancellationToken)
+    {
+        Log.LogDebug("Connecting to SignalR hub @ {HubUrl}", HubUrl);
+        var hubConnection = ConnectionBuilderFactory.Invoke().Build();
+        try {
+            await hubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
+            Log.LogDebug("Connected to SignalR hub @ {HubUrl}", HubUrl);
+            return hubConnection;
+        }
+        catch (Exception) {
+            await hubConnection.DisposeSilentlyAsync().ConfigureAwait(false);
+            throw;
         }
     }
 }

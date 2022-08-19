@@ -5,7 +5,7 @@
   }
 
 .account-dropdown-menu {
-    @apply rounded-md p-1 ml-2 absolute bottom-6 -left-40 w-48 shadow-context;
+    @apply absolute;
 }
 
 .account-dropdown-menu.menu {
@@ -16,11 +16,31 @@
     @apply flex flex-1 ml-1 bg-transparent rounded-none;
 }
 .btn-square.account-btn .author-badge {
-    @apply bg-transparent px-1;
+    @apply bg-transparent p-0;
+}
+.btn-square.account-btn .btn-content {
+    @apply p-2;
+}
+.btn-square.account-btn .author-badge > * {
+    @apply m-0;
 }
 .btn.btn-square.account-btn:hover > .btn-content {
     @apply bg-transparent;
 }
 .btn.btn-square.account-btn:focus {
     @apply ring-4 ring-square-focus rounded-sm;
+}
+
+.left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
+    @apply bg-primary text-primary-title;
+}
+.left-panel-account-menu .dropdown-menu-btn.btn-round .btn-content {
+    @apply bg-primary text-primary-title h-10 w-10 min-h-0 min-w-0;
+}
+.left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-content {
+    @apply bg-primary-hover text-primary-title;
+}
+
+.footer-account-menu {
+    @apply w-full;
 }

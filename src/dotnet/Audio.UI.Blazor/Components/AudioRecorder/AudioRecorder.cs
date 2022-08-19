@@ -57,6 +57,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         BlazorRef?.Dispose();
     }
 
+    public async Task<bool> CanRecord()
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        return await JSRef!.InvokeAsync<bool>("canRecord").ConfigureAwait(false);
+    }
+
     public IMessageProcess<StartAudioRecorderCommand> StartRecording(Symbol chatId, CancellationToken cancellationToken = default)
     {
         if (chatId.IsEmpty)
@@ -77,12 +83,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             break;
         case StopAudioRecorderCommand:
             if (!WhenInitialized.IsCompletedSuccessfully)
-                throw new LifetimeException("Recorder is not initialized yet.");
+                throw StandardError.StateTransition(GetType(), "Recorder is not initialized yet.");
 
             await StopRecordingInternal().ConfigureAwait(false);
             break;
         default:
-            throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+            throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
         }
         return null;
     }
@@ -108,9 +114,9 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
                 if (State.Value?.Id != state?.Id)
                     return; // We don't want to stop the next recording here
 
-                _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by _js backend");
+                _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
                 await OnRecordingStopped().ConfigureAwait(true);
-            }, TaskScheduler.Current);
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("stopRecording").ConfigureAwait(false);

@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
-using System.Text.Json;
 using Microsoft.Extensions.Primitives;
+using Npgsql.Replication.PgOutput.Messages;
+using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -11,11 +12,13 @@ public class MessageController : ControllerBase
 {
     private readonly ISessionResolver _sessionResolver;
     private readonly ICommander _commander;
+    private readonly ILogger<MessageController> _log;
 
-    public MessageController(ISessionResolver sessionResolver, ICommander commander)
+    public MessageController(ISessionResolver sessionResolver, ICommander commander, ILogger<MessageController> log)
     {
         _sessionResolver = sessionResolver;
         _commander = commander;
+        _log = log;
     }
 
     [HttpPost]
@@ -88,15 +91,19 @@ public class MessageController : ControllerBase
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
-        var command = new IChats.CreateTextEntryCommand(_sessionResolver.Session, chatId, post.Payload!.Text);
+        var command = new IChats.UpsertTextEntryCommand(_sessionResolver.Session, chatId, null, post.Payload!.Text)
+            { RepliedChatEntryId = post.Payload!.RepliedChatEntryId };
         if (post.Files.Count > 0) {
             var uploads = new List<TextEntryAttachmentUpload>();
             foreach (var file in post.Files) {
                 var attributes = post.Payload.Attachments.First(c => c.Id == file.Id);
                 var fileName = attributes.FileName.IsNullOrEmpty() ? file.FileName : attributes.FileName;
                 var description = attributes.Description ?? "";
+                var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
                 var upload = new TextEntryAttachmentUpload(fileName, file.Content, file.ContentType) {
-                    Description = description
+                    Description = description,
+                    Width = imageInfo?.Width ?? 0,
+                    Height = imageInfo?.Height ?? 0,
                 };
                 uploads.Add(upload);
             }
@@ -109,6 +116,21 @@ public class MessageController : ControllerBase
         }
         catch {
             return BadRequest("Failed to process command");
+        }
+    }
+
+    private async Task<IImageInfo?> GetImageInfo(FileInfo file)
+    {
+        if (!file.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try {
+            using var stream = new MemoryStream(file.Content);
+            return await Image.IdentifyAsync(stream).ConfigureAwait(false);
+        }
+        catch (Exception exc) {
+            _log.LogError(exc, "Failed to extract image info from '{FileName}'", file.FileName);
+            throw;
         }
     }
 
@@ -201,7 +223,8 @@ public class MessageController : ControllerBase
             messagePost.Payload = payload;
             return true;
         }
-        catch {
+        catch (Exception exc) {
+            _log.LogDebug(exc, "Failed to deserialize message payload");
             return false;
         }
     }
@@ -225,6 +248,7 @@ public class MessageController : ControllerBase
     {
         public string Text { get; init; } = "";
         public IList<FileAttributes> Attachments { get; init; } = new List<FileAttributes>();
+        public long? RepliedChatEntryId { get; init; }
     }
 
     private sealed class MessagePost

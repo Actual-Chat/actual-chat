@@ -1,0 +1,82 @@
+@page "/test/requirements"
+@using System.ComponentModel.DataAnnotations
+
+<MainHeader>Requirements Test Page</MainHeader>
+
+<EditForm Model="_form">
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.ShowNestedRequirementChecker" id="1"/>
+        <label for="1" class="p-1.5">Show nested requirement checker</label>
+    </div>
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.MustRequireAccount" id="2"/>
+        <label for="2" class="p-1.5">Require account</label>
+    </div>
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.MustRequireActiveAccount" id="3"/>
+        <label for="3" class="p-1.5">Require active account</label>
+    </div>
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.MustRequireAdminAccount" id="4"/>
+        <label for="4" class="p-1.5">Require admin account</label>
+    </div>
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.MustFail" id="5"/>
+        <label for="5" class="p-1.5">Just fail, please!</label>
+    </div>
+    <div class="flex-x">
+        <InputCheckbox @bind-Value="_form.MustFailTwice" id="6"/>
+        <label for="6" class="p-1.5">Just fail - twice, please!</label>
+    </div>
+</EditForm>
+
+@if (_form.ShowNestedRequirementChecker) {
+    <RequirementChecker>
+        <ChildContent>
+            <div class="pt-2">
+                Nested requirement checker is here.
+            </div>
+            <RequireAccount MustBeAdmin="true"/>
+            <RequireAccount MustBeActive="true"/>
+        </ChildContent>
+        <ErrorContent>
+            <div>
+                Errors:
+                <ul>
+                    @foreach (var error in context.Errors) {
+                        <li><b>@error.GetType().Name</b>: @error.Message</li>
+                    }
+                </ul>
+            </div>
+        </ErrorContent>
+    </RequirementChecker>
+}
+@if (_form.MustRequireAccount) {
+    <RequireAccount MustBeActive="false"/>
+}
+@if (_form.MustRequireActiveAccount) {
+    <RequireAccount/>
+}
+@if (_form.MustRequireAdminAccount) {
+    <RequireAccount MustBeAdmin="true"/>
+}
+@if (_form.MustFail) {
+    <RequireFailure ErrorFactory="@(() => new InvalidOperationException("Here we go!"))"/>
+}
+@if (_form.MustFailTwice) {
+    <RequireFailure ErrorFactory="@(() => new InvalidOperationException("Here I go again."))"/>
+    <RequireFailure ErrorFactory="@(() => new ValidationException("It's time for me to fade away."))"/>
+}
+
+@code {
+    private readonly FormModel _form = new();
+
+    public class FormModel {
+        public bool ShowNestedRequirementChecker { get; set; }
+        public bool MustRequireAccount { get; set; }
+        public bool MustRequireActiveAccount { get; set; }
+        public bool MustRequireAdminAccount { get; set; }
+        public bool MustFail { get; set; }
+        public bool MustFailTwice { get; set; }
+    }
+}

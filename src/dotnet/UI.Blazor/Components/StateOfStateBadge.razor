@@ -9,18 +9,18 @@
     <span>Component state: </span>
     @if (IsLoading)
     {
-        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <div class="spinner-border spinner-border-sm text-02" role="status"></div>
         <b>Loading...</b>
     }
     else if (IsUpdating)
     {
-        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <div class="spinner-border spinner-border-sm text-02" role="status"></div>
         <b>Updating...</b>
     }
     else if (IsUpdatePending)
     {
-        <div class="spinner-grow spinner-grow-sm text-secondary" role="status"></div>
-        <b class="text-secondary">Update pending...</b>
+        <div class="spinner-grow spinner-grow-sm text-03" role="status"></div>
+        <b class="text-03">Update pending...</b>
     }
     else
     {

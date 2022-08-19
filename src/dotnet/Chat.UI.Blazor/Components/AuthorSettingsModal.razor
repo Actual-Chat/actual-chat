@@ -8,6 +8,9 @@
             <UserNameEditor/>
         </section>
 
+        <h4 class="section"></h4>
+        <Button class="btn-error-outline mt-3" Click="OnLeaveChatClick">Leave chat</Button>
+
         <h4 class="section">User avatars</h4>
         <div class="mt-2">
             <UserAvatarsEditor ChatId="@ModalModel.Chat.Id"/>
@@ -18,8 +21,14 @@
 
 @code {
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public sealed record Model(Chat Chat);
+
+    private void OnLeaveChatClick() {
+        _ = ModalInstance.CloseAsync();
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ModalModel.Chat));
+    }
 }

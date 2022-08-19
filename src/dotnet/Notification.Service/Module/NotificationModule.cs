@@ -33,12 +33,12 @@ public class NotificationModule : HostModule<NotificationSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
+        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -50,13 +50,19 @@ public class NotificationModule : HostModule<NotificationSettings>
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
+        // Module's own services
         fusion.AddComputeService<Notifications>();
         services.AddSingleton<INotifications>(c => c.GetRequiredService<Notifications>());
         services.AddSingleton<INotificationsBackend>(c => c.GetRequiredService<Notifications>());
 
+        // Firebase
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
         services.AddSingleton(firebaseMessaging);
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

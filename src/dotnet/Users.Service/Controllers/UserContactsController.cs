@@ -4,15 +4,24 @@ using Stl.Fusion.Server;
 namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
-[ApiController, JsonifyErrors]
+[ApiController, JsonifyErrors, UseDefaultSession]
 public class UserContactsController : ControllerBase, IUserContacts
 {
-    private readonly IUserContacts _service;
+    private IUserContacts Service { get; }
+    private ICommander Commander { get; }
 
-    public UserContactsController(IUserContacts service)
-        => _service = service;
+    public UserContactsController(IUserContacts service, ICommander commander)
+    {
+        Service = service;
+        Commander = commander;
+    }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<UserContact>> GetAll(Session session, CancellationToken cancellationToken)
-        => _service.GetAll(session, cancellationToken);
+    public Task<ImmutableArray<UserContact>> List(
+        Session session,
+        CancellationToken cancellationToken)
+        => Service.List(session, cancellationToken);
+
+    public Task<UserContact?> Change(IUserContacts.ChangeCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 }

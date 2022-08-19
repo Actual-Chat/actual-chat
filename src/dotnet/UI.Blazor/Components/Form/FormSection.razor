@@ -3,7 +3,7 @@
 
 <section data-control-id="@InputId" class="@Class">
     @if (!Label.IsNullOrEmpty()) {
-        <div class="form-section-label @LabelClass">
+        <div class="@LabelClass form-section-label">
             <label for="@(InputId.NullIfEmpty() ?? "-")">
                 <span>@Label</span>
                 @if (IsRequired) {
@@ -12,7 +12,7 @@
             </label>
         </div>
     }
-    <div class="form-section-content @ContentClass">
+    <div class="@ContentClass form-section-content">
         @ChildContent
     </div>
 </section>

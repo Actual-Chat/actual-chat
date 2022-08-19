@@ -11,6 +11,7 @@ public class ChatPlayers : WorkerBase
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
     public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
+    public IMutableState<Symbol> HistoricalPlaybackChatId { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
@@ -20,6 +21,7 @@ public class ChatPlayers : WorkerBase
 
         var stateFactory = services.StateFactory();
         ChatPlaybackState = stateFactory.NewMutable<ChatPlaybackState?>();
+        HistoricalPlaybackChatId = stateFactory.NewMutable<Symbol>();
         Start();
     }
 
@@ -56,7 +58,7 @@ public class ChatPlayers : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         // TODO(AY): Implement _players cleanup here
-        var lastPlaybackState = (ChatPlaybackState?) null;
+        var lastPlaybackState = (ChatPlaybackState?)null;
         var cPlaybackState = ChatPlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
             if (!cPlaybackState.IsConsistent())
@@ -100,7 +102,7 @@ public class ChatPlayers : WorkerBase
             await EnterState(historical, cancellationToken).ConfigureAwait(false);
             break;
         case RealtimeChatPlaybackState realtime:
-            var lastRealtime = (RealtimeChatPlaybackState) lastPlaybackState!;
+            var lastRealtime = (RealtimeChatPlaybackState)lastPlaybackState!;
             var removedChatIds = lastRealtime.ChatIds.Except(realtime.ChatIds);
             var addedChatIds = realtime.ChatIds.Except(lastRealtime.ChatIds);
             await Stop(removedChatIds, ChatPlayerKind.Realtime, cancellationToken).ConfigureAwait(false);
@@ -115,6 +117,7 @@ public class ChatPlayers : WorkerBase
         Task EnterState(ChatPlaybackState? state, CancellationToken ct)
         {
             if (state is HistoricalChatPlaybackState historical) {
+                HistoricalPlaybackChatId.Value = historical.ChatId;
                 var result = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await result.ConfigureAwait(false);
@@ -130,13 +133,14 @@ public class ChatPlayers : WorkerBase
             return Task.CompletedTask;
         }
 
-        Task ExitState(ChatPlaybackState? state, CancellationToken ct)
+        async Task ExitState(ChatPlaybackState? state, CancellationToken ct)
         {
-            if (state is HistoricalChatPlaybackState historical)
-                return Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
-            if (state is RealtimeChatPlaybackState realtime)
-                return Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
-            return Task.CompletedTask;
+            if (state is HistoricalChatPlaybackState historical) {
+                await Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
+                HistoricalPlaybackChatId.Value = Symbol.Empty;
+            }
+            else if (state is RealtimeChatPlaybackState realtime)
+                await Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
         }
     }
 
@@ -191,9 +195,11 @@ public class ChatPlayers : WorkerBase
 
     private async Task<Task> ResumeRealtimePlayback(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
     {
-        var tasks = chatIds.Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken));
-        var playTasks = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return Task.WhenAll(playTasks);
+        var resultPlayingTasks = await chatIds
+            .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
+            .Collect(0)
+            .ConfigureAwait(false);
+        return Task.WhenAll(resultPlayingTasks);
     }
 
     private Task<Task> StartHistoricalPlayback(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
@@ -212,15 +218,13 @@ public class ChatPlayers : WorkerBase
     }
 
     private Task Stop(IEnumerable<Symbol> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
-    {
-        var tasks = chatIds.Select(chatId => Stop(chatId, playerKind, cancellationToken));
-        return Task.WhenAll(tasks);
-    }
+        => chatIds
+            .Select(chatId => Stop(chatId, playerKind, cancellationToken))
+            .Collect(0);
 
     private Task Stop(CancellationToken cancellationToken)
-    {
         // ReSharper disable once InconsistentlySynchronizedField
-        var playerStopTasks = _players.Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken));
-        return Task.WhenAll(playerStopTasks);
-    }
+        => _players
+            .Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken))
+            .Collect(0);
 }

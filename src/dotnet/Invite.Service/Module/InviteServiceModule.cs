@@ -21,7 +21,6 @@ public class InviteServiceModule : HostModule<InviteSettings>
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
@@ -31,12 +30,12 @@ public class InviteServiceModule : HostModule<InviteSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
+        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
+        // Commander & Fusion
+        var commander = services.AddCommander();
+        commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<InviteDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
@@ -48,10 +47,14 @@ public class InviteServiceModule : HostModule<InviteSettings>
                 return true;
             return false;
         });
+        var fusion = services.AddFusion();
 
-        // module services
+        // Module's own services
         fusion.AddComputeService<IInvites, Invites>();
         fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
+
+        // API controllers
+        services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

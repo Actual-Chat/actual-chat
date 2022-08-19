@@ -1,64 +1,159 @@
 ﻿@using ActualChat.Chat.UI.Blazor.Pages
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
-    var m = State.LatestNonErrorValue ?? new();
+    var m = State.LatestNonErrorValue;
 }
 
-@if (m.HasFooter) {
-    <div class="flex-y w-full">
+<div class="flex-y w-full bg-05 md:bg-01" oncontextmenu="return false;">
+    @if (m == Model.None) {
+        // render skeletons until State is computed
+        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:p-2 md:px-10 md:pt-0 gap-x-2.5 animate-pulse">
+            <div class="-flex-y w-full overflow-x-hidden">
+                <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
+                    <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
+                    </div>
+                </div>
+                <div class="mobile-control-panel flex-x gap-x-6">
+                    <div class="mobile-language-button mobile-button flex">
+                        <div class="chat-language-toggle shadow-mobile-button shadow-shadow-main btn btn-round">
+                            <div class=" btn-content" tabindex="-1">
+                                <div class="btn-content-inner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recorder-button">
+                        <div class="record-off recorder-wrapper mobile-button">
+                            <div class="record-off-btn btn btn-round">
+                                <div class=" btn-content" tabindex="-1">
+                                    <div class="btn-content-inner">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="record-on-btn btn btn-round">
+                                <div class=" btn-content" tabindex="-1">
+                                    <div class="btn-content-inner">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mobile-playback-toggle">
+                        <div class="listen-off playback-wrapper mobile-button">
+                            <div class="off btn btn-round">
+                                <div class=" btn-content" tabindex="-1">
+                                    <div class="btn-content-inner">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="loud-btn btn btn-round">
+                                <div class=" btn-content" tabindex="-1">
+                                    <div class="btn-content-inner">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="recorder-panel">
+                <div class="playback-toggle desktop-button">
+                    <div class="play off btn btn-round">
+                        <div class=" btn-content" tabindex="-1">
+                        </div>
+                    </div>
+                </div>
+                <div class="recorder-button desktop-button flex">
+                    <div class="record-off recorder-wrapper desktop-button">
+                        <div class="record-off-btn btn btn-round">
+                            <div class=" btn-content" tabindex="-1">
+                                <div class="btn-content-inner">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="record-on-btn btn btn-round">
+                            <div class=" btn-content" tabindex="-1">
+                                <div class="btn-content-inner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="language-button desktop-button flex">
+                    <div class="chat-language-toggle btn btn-round">
+                        <div class=" btn-content" tabindex="-1">
+                            <div class="btn-content-inner">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    } else {
         @if (m.CanPost) {
             <ChatMessageEditor/>
         } else if (m.CanJoin) {
-            <div class="bg-secondary rounded-md mx-3 py-1.5 px-2 flex justify-center">
-                <AuthorizeView>
-                    <Authorized>
-                        <div>
-                            <span class="inline-flex">To post or talk,</span>
-                            <Button Click="@OnJoin">Join this chat</Button>
+            <div class="chat-footer">
+                @if (m.IsAuthenticated) {
+                    <div>
+                        <span class="inline-flex">To post or talk,</span>
+                        <Button Click="@OnJoin">Join this chat</Button>
+                    </div>
+                } else {
+                    <div class="signin-footer">
+                        <div class="inline-flex">
+                            <SignInMenu ButtonClass="w-full"/>
                         </div>
-                    </Authorized>
-                    <NotAuthorized>
-                        <div>
-                            <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="bottom-14"/></div>
-                            <span class="inline-flex mx-1">or</span>
-                            <Button Click="@OnJoin" Class="btn-cancel">Join this chat anonymously</Button>
-                        </div>
-                    </NotAuthorized>
-                </AuthorizeView>
+                        <span class="inline-flex mx-2 items-center">or</span>
+                        <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                    </div>
+                }
             </div>
+        } else {
+            <ReadOnlyChatFooter/>
         }
-    </div>
-}
+    }
+</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new () { InitialValue = Model.None };
+    }
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var permissions = await Chats.GetRules(Session, chatId, cancellationToken);
-        var canSend = permissions.CanWrite;
-        var canJoin = false;
-        if (!canSend) {
-            canJoin = await Chats.CanJoin(Session, chatId, cancellationToken);
-        }
-        return new () { CanPost = canSend, CanJoin = canJoin, };
+        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var canPost = rules.CanWrite();
+        var canJoin = !canPost && await Chats.CanJoin(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return new () {
+            CanPost = canPost,
+            CanJoin = canJoin,
+            IsAuthenticated = account != null,
+        };
     }
 
     private async Task OnJoin() {
         string chatId = Chat.Id;
         var command = new IChats.JoinChatCommand(Session, chatId);
-        await Cmd.Run(command, default);
+        await UICommander.Run(command, default);
     }
 
-    public record Model {
+    public sealed class Model {
+        public static Model None { get; } = new();
+
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
         public bool HasFooter => CanPost || CanJoin;
+        public bool IsAuthenticated { get; init; }
     }
 }

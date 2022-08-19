@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Feedback;
 
-public interface IFeedbacks
+public interface IFeedbacks : IComputeService
 {
     [CommandHandler]
     public Task CreateFeatureRequest(FeatureRequestCommand command, CancellationToken cancellationToken);

@@ -6,7 +6,7 @@
     @apply bg-transparent border-b border-placeholder;
 }
 .copy-to-clipboard .btn.btn-square {
-    @apply bg-transparent hover:bg-accent;
+    @apply bg-transparent hover:bg-04;
 }
 .copy-to-clipboard .btn.btn-square .btn-content-inner {
     @apply flex-none flex-x gap-x-1;

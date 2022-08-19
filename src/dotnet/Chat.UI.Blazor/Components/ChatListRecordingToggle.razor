@@ -2,21 +2,32 @@
 @inherits ComputedStateComponent<Symbol>
 @{
     var isRecording = RecordingChatId == ChatId;
-    var cls = "pin-toggle recording-in-chat " + (isRecording ? "on" : "off");
+    var cls = $"recording-in-chat {(isRecording ? "on" : "off")} {Class}";
 }
 
 @if (isRecording) {
-    <ButtonSquare Class="@cls" Click="_ => RecordingChatId = Symbol.Empty">
-        <svg class="fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
-            <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
+    <ButtonRound Class="@cls" Click="_ => RecordingChatId = Symbol.Empty">
+        <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12.4 15.9C14.4 15.9 16.1 14.3 16.1 12.2V7.7C16.1 5.7 14.5 4 12.4 4C10.3 4 8.7 5.7 8.7 7.7V12.3C8.7 14.3 10.4 15.9 12.4 15.9ZM10.6 7.7C10.6 6.7 11.4 5.9 12.4 5.9C13.4 5.9 14.2 6.7 14.2 7.7V12.3C14.2 13.3 13.4 14.1 12.4 14.1C11.4 14.1 10.6 13.3 10.6 12.3V7.7Z"/>
+            <path d="M18.8 12.3C18.8 11.8 18.4 11.4 17.9 11.4C17.4 11.4 17 11.8 17 12.3C17 14.8 14.9 16.9 12.4 16.9C9.9 16.9 7.8 14.8 7.8 12.3C7.8 11.8 7.4 11.4 6.9 11.4C6.4 11.4 6 11.8 6 12.3C6 15.5 8.4 18.2 11.5 18.6V20.5H13.3V18.6C16.4 18.2 18.8 15.5 18.8 12.3Z"/>
+            <path d="M11.5 17.5V20.9C11.5 21.4 11.9 21.7 12.3 21.7H12.5C13 21.7 13.3 21.3 13.3 20.9V19V17.6H11.5V17.5Z"/>
         </svg>
-    </ButtonSquare>
+    </ButtonRound>
+} else {
+    <ButtonRound Class="@cls" Click="_ => RecordingChatId = ChatId">
+        <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12.4 15.9C14.4 15.9 16.1 14.3 16.1 12.2V7.7C16.1 5.7 14.5 4 12.4 4C10.3 4 8.7 5.7 8.7 7.7V12.3C8.7 14.3 10.4 15.9 12.4 15.9ZM10.6 7.7C10.6 6.7 11.4 5.9 12.4 5.9C13.4 5.9 14.2 6.7 14.2 7.7V12.3C14.2 13.3 13.4 14.1 12.4 14.1C11.4 14.1 10.6 13.3 10.6 12.3V7.7Z"/>
+            <path d="M18.8 12.3C18.8 11.8 18.4 11.4 17.9 11.4C17.4 11.4 17 11.8 17 12.3C17 14.8 14.9 16.9 12.4 16.9C9.9 16.9 7.8 14.8 7.8 12.3C7.8 11.8 7.4 11.4 6.9 11.4C6.4 11.4 6 11.8 6 12.3C6 15.5 8.4 18.2 11.5 18.6V20.5H13.3V18.6C16.4 18.2 18.8 15.5 18.8 12.3Z"/>
+            <path d="M11.5 17.5V20.9C11.5 21.4 11.9 21.7 12.3 21.7H12.5C13 21.7 13.3 21.3 13.3 20.9V19V17.6H11.5V17.5Z"/>
+        </svg>
+    </ButtonRound>
 }
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
 
     private Symbol RecordingChatId {
         get => State.ValueOrDefault;

@@ -21,10 +21,12 @@
   "UsersSettings": {
     "Db": "",
     "Redis": ""
-
-
-
-
+  },
+  "TestSettings": {
+    "User1": {
+      "Email": "test@test.com",
+      "Password": "no password"
+    }
   },
   "Logging": {
     "LogLevel": {

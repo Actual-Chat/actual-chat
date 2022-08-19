@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface ISessionOptionsBackend
+public interface ISessionOptionsBackend : IComputeService
 {
     // Commands
 

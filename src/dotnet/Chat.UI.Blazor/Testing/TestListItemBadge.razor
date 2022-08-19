@@ -5,7 +5,7 @@
     var item = State.ValueOrDefault ?? new(0, "Loading...");
 }
 
-<div style="font-size: @(item.FontSize)em">
+<div class="m-1" style="font-size: @(item.FontSize)em">
     <div style="font-weight: bold">@item.Title</div>
     <div>@item.Description</div>
 </div>

@@ -42,14 +42,12 @@ public class AsyncMemoizerTest : TestBase
             cSource.Writer.Complete();
             var memoizer = cSource.Reader.Memoize();
             var cTarget = Channel.CreateUnbounded<int>();
-            var success = await memoizer.AddReplayTarget(cTarget)
-                .WithTimeout(TimeSpan.FromSeconds(5))
+            await memoizer.AddReplayTarget(cTarget)
+                    .WaitAsync(TimeSpan.FromSeconds(5))
+                    .ConfigureAwait(false);
+            await cTarget.Reader.Completion
+                .WaitAsync(TimeSpan.FromSeconds(5))
                 .ConfigureAwait(false);
-            Assert.True(success);
-            success = await cTarget.Reader.Completion
-                .WithTimeout(TimeSpan.FromSeconds(5))
-                .ConfigureAwait(false);
-            Assert.True(success);
         }).ToArray();
         foreach (var task in tasks)
             await task.ConfigureAwait(false);
@@ -64,10 +62,8 @@ public class AsyncMemoizerTest : TestBase
             var cTarget = Channel.CreateUnbounded<int>();
             await memoizer.AddReplayTarget(cTarget).ConfigureAwait(false);
             cSource.Writer.Complete();
-            var success = await cTarget.Reader.Completion
-                .WithTimeout(TimeSpan.FromSeconds(5))
-                .ConfigureAwait(false);
-            Assert.True(success);
+            await cTarget.Reader.Completion
+                .WaitAsync(TimeSpan.FromSeconds(5));
         }).ToArray();
         foreach (var task in tasks)
             await task.ConfigureAwait(false);
@@ -85,11 +81,13 @@ public class AsyncMemoizerTest : TestBase
 
     private async Task RunRangeTest<T>(IEnumerable<T> source)
     {
+        // ReSharper disable once PossibleMultipleEnumeration
         var memo = source.ToAsyncEnumerable().Memoize();
         var replays = Enumerable.Range(0, 2)
             .Select(_ => memo.Replay());
         foreach (var replay in replays) {
             var items = replay.ToEnumerable();
+            // ReSharper disable once PossibleMultipleEnumeration
             items.Should().BeEquivalentTo(source);
         }
         await memo.WriteTask;

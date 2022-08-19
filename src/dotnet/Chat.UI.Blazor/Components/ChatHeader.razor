@@ -1,31 +1,50 @@
-@using ActualChat.UI.Blazor.Components.ChatIcon
-
-<div class="flex-x justify-items-stretch items-center bg-primary md:bg-secondary text-primary font-medium px-1 min-h-mobile-header">
-    <div class="flex-none self-start invisible">
-        @* This thing just reserves the space *@
-        <NavbarToggle/>
+<div class="flex-x justify-items-stretch items-center px-1 min-h-14 border-b border-bg-04">
+    <div class="flex-none self-start">
+        <NavbarButton/>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-3 p-2 px-3 group">
-        <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" />
-        <div class="flex-1 flex-x text-secondary chat-header-title cursor-pointer" @onclick="OnTitleClick">
-            <div class="flex self-center">@Chat.Title</div>
+    <div class="flex-auto flex-x justify-between items-center w-full gap-x-2 py-0.5 pl-2 group">
+        <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" Size="SquareSize.Size10" />
+        <div class="flex-1 flex-x chat-header-title select-none no-highlight">
+            <div class="flex-y self-center">
+                <div class="text-01 font-medium">@Chat.Title</div>
+                <div class="text-icons-02">@_subTitle</div>
+            </div>
             <div class="flex-1"></div>
-            <ButtonSquare Class="chat-header-panel-hint">
-                @(RightPanelUI.IsVisible.Value ? "Hide" : "Show") settings
-            </ButtonSquare>
+            <div class="flex-none flex-x items-center gap-x-3 px-0.5">
+                <ChatActivities/>
+            </div>
+            <div class="chat-header-control-panel mx-2">
+                <div class="hidden md:flex-x gap-x-1">
+                    <ButtonRound Click="OnChatSearchClick" Class="transparent">
+                        <i class="icon-search text-2xl"></i>
+                    </ButtonRound>
+                    <ButtonRound Click="OnInviteClick" Class="transparent">
+                        <i class="icon-person-add text-2xl ml-1"></i>
+                    </ButtonRound>
+                </div>
+                <ButtonRound Click="OnSwitchRightPanelClick" Class="transparent">
+                    <i class="icon-more-vertical text-2xl"></i>
+                </ButtonRound>
+            </div>
         </div>
-    </div>
-    <div class="flex-none flex-x items-center gap-x-3 px-0.5">
-        <ChatActivities/>
-        <ChatPlaybackToggle/>
     </div>
 </div>
 
 @code {
+    private string _subTitle = " ";
+
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnTitleClick()
+    private void OnChatSearchClick()
+        => _ = FeedbackUI.AskFeatureRequestFeedback("chat-search", "Chat search");
+
+    private void OnInviteClick()
+        => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+
+    private void OnSwitchRightPanelClick()
         => RightPanelUI.IsVisible.Value = !RightPanelUI.IsVisible.Value;
 }

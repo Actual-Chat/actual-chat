@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service", "src\dotnet\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "src\dotnet\Core\Core.csproj", "{5D6530AD-4640-488B-9FA9-B63BC5AFB872}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Host", "src\dotnet\Host\Host.csproj", "{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Server", "src\dotnet\App.Server\App.Server.csproj", "{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service", "src\dotnet\Users.Service\Users.Service.csproj", "{AA165163-F9A3-4910-9DD3-59543948BCA0}"
 EndProject
@@ -34,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor", "src\dotne
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor", "src\dotnet\UI.Blazor\UI.Blazor.csproj", "{ECBC1E77-D8BB-424B-83AB-61F039D5C512}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.Host", "src\dotnet\UI.Blazor.Host\UI.Blazor.Host.csproj", "{F32DB753-635A-4702-98C7-5DF2ED90045A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Wasm", "src\dotnet\App.Wasm\App.Wasm.csproj", "{F32DB753-635A-4702-98C7-5DF2ED90045A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Contracts", "src\dotnet\Audio.Contracts\Audio.Contracts.csproj", "{8462C6EB-95F5-4E02-951F-9D791B123D8A}"
 EndProject
@@ -79,6 +79,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		Packages.props = Packages.props
 		README.md = README.md
 		version.json = version.json
+		add-hosts.cmd = add-hosts.cmd
+		clean.cmd = clean.cmd
+		docker-start.cmd = docker-start.cmd
+		ef-migrations.cmd = ef-migrations.cmd
+		npm-install.cmd = npm-install.cmd
+		npm-watch.cmd = npm-watch.cmd
+		rider-with-tiered-pgo.cmd = rider-with-tiered-pgo.cmd
+		run.cmd = run.cmd
+		run-build.cmd = run-build.cmd
+		run-prebuilt.cmd = run-prebuilt.cmd
+		run-published.cmd = run-published.cmd
+		run-watch.cmd = run-watch.cmd
+		.editorconfig = .editorconfig
+		dotnet-watch.cmd = dotnet-watch.cmd
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -173,6 +187,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\keep-screen-awake.ts = src\nodejs\src\keep-screen-awake.ts
 		src\nodejs\src\on-device-awake.ts = src\nodejs\src\on-device-awake.ts
 		src\nodejs\src\on-device-awake-worker.ts = src\nodejs\src\on-device-awake-worker.ts
+		src\nodejs\src\exports.ts = src\nodejs\src\exports.ts
+		src\nodejs\src\debounce.ts = src\nodejs\src\debounce.ts
+		src\nodejs\src\serialize.ts = src\nodejs\src\serialize.ts
+		src\nodejs\src\when.ts = src\nodejs\src\when.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -192,7 +210,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Service.Migration", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Client", "src\dotnet\Invite.Client\Invite.Client.csproj", "{7C181A66-C2AC-4CBB-8B4E-EECB675653A6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientApp", "src\dotnet\ClientApp\ClientApp.csproj", "{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Maui", "src\dotnet\App.Maui\App.Maui.csproj", "{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.App", "src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj", "{C9869B09-9993-4BB2-9235-D2435B313685}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{C9531717-EDD1-4D1D-9144-FB5B4D369B48}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -536,6 +558,12 @@ Global
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug-MAUI|Any CPU.Build.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug-MAUI|Any CPU.Deploy.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug-MAUI|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug-MAUI|Any CPU.Build.0 = Debug|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -547,14 +575,12 @@ Global
 		{44DAF807-F9DA-4C33-8C54-255397E4157F} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{F6D12083-4E1A-49B5-92FA-6681C6E79125} = {82FCC17A-E824-491C-99A3-24403C73434C}
 		{5D6530AD-4640-488B-9FA9-B63BC5AFB872} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
-		{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{AA165163-F9A3-4910-9DD3-59543948BCA0} = {9EF8D096-E543-418C-A491-331E60F146FA}
 		{AAAB715E-AC7B-43C4-9686-14EB1B4EACE7} = {1211F9CD-78FA-4F2D-A366-AA36880B6357}
 		{E5854379-1F29-4D9C-B961-82DAFAEF0753} = {9EF8D096-E543-418C-A491-331E60F146FA}
 		{36FB127F-BF3B-4792-9F21-0632EBB755CA} = {F5074C77-FCB5-432D-B5AC-74C0748D069E}
 		{663B0AB3-BF84-42C0-8D10-60A1B6C647DA} = {82FCC17A-E824-491C-99A3-24403C73434C}
 		{ECBC1E77-D8BB-424B-83AB-61F039D5C512} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
-		{F32DB753-635A-4702-98C7-5DF2ED90045A} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
 		{8462C6EB-95F5-4E02-951F-9D791B123D8A} = {1211F9CD-78FA-4F2D-A366-AA36880B6357}
 		{536FFD56-80E7-4DD4-ABDC-90FA26ED21A8} = {1211F9CD-78FA-4F2D-A366-AA36880B6357}
 		{1AC3C41B-27F9-4BEA-B923-E6E7A0AC5C1F} = {9EF8D096-E543-418C-A491-331E60F146FA}
@@ -609,7 +635,11 @@ Global
 		{4349EC5E-9514-400D-8F32-22283B135850} = {14C8A0B0-8854-4B3F-A9C0-EADD9FAEB528}
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0} = {14C8A0B0-8854-4B3F-A9C0-EADD9FAEB528}
 		{7C181A66-C2AC-4CBB-8B4E-EECB675653A6} = {14C8A0B0-8854-4B3F-A9C0-EADD9FAEB528}
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{C9869B09-9993-4BB2-9235-D2435B313685} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
+		{C9531717-EDD1-4D1D-9144-FB5B4D369B48} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{F32DB753-635A-4702-98C7-5DF2ED90045A} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
+		{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

@@ -25,6 +25,15 @@ public sealed class ChatEntryReader
         return tile.Entries.SingleOrDefault(e => e.Id == id);
     }
 
+    public async Task<TextEntryAttachment> GetFirstAttachment(long entryId, CancellationToken cancellationToken)
+    {
+        var all = await Chats.GetTextEntryAttachments(Session, ChatId, entryId, cancellationToken).ConfigureAwait(false);
+        return all.First();
+    }
+
+    public Task<ImmutableArray<TextEntryAttachment>> GetAttachments(long entryId, CancellationToken cancellationToken)
+        => Chats.GetTextEntryAttachments(Session, ChatId, entryId, cancellationToken);
+
     public async Task<ChatEntry?> GetFirst(Range<long> idRange, CancellationToken cancellationToken)
     {
         var idTilesLayer0 = IdTileStack.FirstLayer;
@@ -61,6 +70,22 @@ public sealed class ChatEntryReader
         return null;
     }
 
+    public async Task<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, CancellationToken cancellationToken)
+    {
+        var (minId, maxId) = idRange;
+
+        await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
+            foreach (var entry in tile.Entries.Reverse()) {
+                if (entry.Id < minId)
+                    return null;
+                if (entry.Id <= maxId && filter(entry))
+                    return entry;
+            }
+        }
+
+        return null;
+    }
+
     public async Task<ChatEntry?> GetWhen(
         long id,
         Func<ChatEntry?, bool> predicate,
@@ -94,6 +119,21 @@ public sealed class ChatEntryReader
         }
     }
 
+    public async IAsyncEnumerable<ChatEntry> ReadReverse(
+        Range<long> idRange,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
+            foreach (var entry in tile.Entries.Reverse()) {
+                if (entry.Id >= idRange.End)
+                    continue;
+                if (entry.Id < idRange.Start)
+                    yield break;
+                yield return entry;
+            }
+        }
+    }
+
     // This method never returns empty tiles
     public async IAsyncEnumerable<ChatTile> ReadTiles(
         Range<long> idRange,
@@ -108,6 +148,28 @@ public sealed class ChatEntryReader
              idTile = idTile.Next())
         {
             var tile = await GetTile(idTile.Range, cancellationToken).ConfigureAwait(false);
+            // tile can be empty, i.e. when all entries are removed
+            if (tile.IsEmpty)
+                continue;
+            yield return tile;
+        }
+    }
+
+    // This method never returns empty tiles
+    public async IAsyncEnumerable<ChatTile> ReadTilesReverse(
+        Range<long> idRange,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (idRange.Size() <= 0)
+            yield break;
+
+        var idTilesLastLayer = IdTileStack.LastLayer;
+        for (var idTile = idTilesLastLayer.GetTile(idRange.End);
+             idTile.End > idRange.Start;
+             idTile = idTile.Prev())
+        {
+            var tile = await GetTile(idTile.Range, cancellationToken).ConfigureAwait(false);
+            // tile can be empty, i.e. when all entries are removed
             if (tile.IsEmpty)
                 continue;
             yield return tile;

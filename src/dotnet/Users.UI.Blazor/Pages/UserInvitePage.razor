@@ -1,29 +1,28 @@
 @page "/user/invite"
 @using ActualChat.Invite
-@inherits ComputedStateComponent<IImmutableList<Invite>>
-@attribute [Authorize(Policy = KnownPolicies.IsAdmin)]
-@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
+@inherits ComputedStateComponent<ImmutableArray<Invite>>
 @{
     var m = State.LatestNonErrorValue;
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>User invite codes</MainHeader>
 
 <div class="-flex-x">
-    <Button Click="OnNewInviteClick" Class="btn-success">New invite link</Button>
+    <Button Click="OnNewInviteClick" Class="btn-primary">New invite link</Button>
 </div>
 <InviteList Invites="@m" LinkFormat="user/activate/{0}"/>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private UICommander Cmd { get; init; } = null!;
 
-    protected override ComputedState<IImmutableList<Invite>>.Options GetStateOptions()
+    protected override ComputedState<ImmutableArray<Invite>>.Options GetStateOptions()
         => new() { InitialValue = ImmutableArray<Invite>.Empty };
 
-    protected override Task<IImmutableList<Invite>> ComputeState(CancellationToken cancellationToken)
-        => Invites.GetUserInvites(Session, cancellationToken);
+    protected override Task<ImmutableArray<Invite>> ComputeState(CancellationToken cancellationToken)
+        => Invites.ListUserInvites(Session, cancellationToken);
 
     private async Task OnNewInviteClick() {
         var invite = new Invite {

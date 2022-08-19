@@ -1,0 +1,88 @@
+@using ActualChat.Users
+@using ActualChat.Hosting
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<Account?>
+@{
+    var account = State.LatestNonErrorValue;
+}
+
+<RequirementChecker @ref="_requirementChecker">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent>
+        @if (context.Errors.Any(e => e is NoAccountException)) {
+            <SignInBlock/>
+        } else if (context.Errors.Any(e => e is SuspendedAccountException)) {
+            <SignOutBlock>
+                <b>Your account is suspended.</b><br/>
+                Please feel free to conact us &ndash; we'll try to help.
+            </SignOutBlock>
+        } else if (context.Errors.Any(e => e is InactiveAccountException)) {
+            <SignOutBlock>
+                You're successfully signed in, but your account is inactive.<br/>
+                We activate new accounts when we're ready to onboard more people.<br/>
+                If you have an invite code, you can use it now.
+            </SignOutBlock>
+        } else if (context.Errors.Any(e => e is NonAdminAccountException)) {
+            <SignOutBlock>
+                Sorry, but only service administrators can perform this action.
+            </SignOutBlock>
+        } else {
+            <LayoutView Layout="typeof(NoChatLayout)">
+                <MainHeader>Error!</MainHeader>
+                <div class="p-4 pr-5">
+                    @foreach (var (requirement, error) in context.Items) {
+                        var title = HostInfo.IsDevelopmentInstance
+                            ? $"Error ({error.GetType().Name}):"
+                            : "Error:";
+                        <Error @key="requirement"
+                               Title="@title"
+                               Dismissed="_ => OnDismiss(requirement)">@error.Message</Error>
+                    }
+                </div>
+                <div class="p-5 pt-0">
+                    @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
+                        @if (account == null) {
+                            <span>You can try to <SignInDropdown/> to resolve it.</span>
+                        } else {
+                            <span>You can try to <SignOutButton/> and sign in with another account to resolve it.</span>
+                        }
+                    }
+                </div>
+            </LayoutView>
+        }
+    </ErrorContent>
+</RequirementChecker>
+
+@code {
+    private RequirementChecker _requirementChecker = null!;
+    private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _onLocationChanged = OnLocationChanged;
+        Nav.LocationChanged += _onLocationChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        Nav.LocationChanged -= _onLocationChanged;
+        return base.DisposeAsync();
+    }
+
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => _requirementChecker.Reset();
+
+    private void OnDismiss(RequirementComponent requirement)
+        => _requirementChecker.Remove(requirement);
+}

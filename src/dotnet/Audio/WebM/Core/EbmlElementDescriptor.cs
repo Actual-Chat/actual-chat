@@ -15,7 +15,7 @@ public class EbmlElementDescriptor
     private EbmlElementDescriptor(VInt identifier, string name, EbmlElementType type,string? defaultValue, bool listEntry)
     {
         if (!identifier.IsValidIdentifier && type != EbmlElementType.None)
-            throw new ArgumentException("Value is not valid identifier", nameof(identifier));
+            throw new ArgumentException("Value is not valid identifier.", nameof(identifier));
 
         Identifier = identifier;
         Name = name;

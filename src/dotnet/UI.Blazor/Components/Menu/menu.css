@@ -1,15 +1,42 @@
 ﻿.menu {
-    @apply bg-context-menu shadow-lg min-w-max;
+    @apply bg-01 min-w-max p-1;
 }
 
+/* Ordinary Menu Item */
 .menu-item {
-    @apply text-secondary hover:bg-primary rounded-sm min-w-max;
+    @apply flex-x w-full gap-x-2 items-center;
+    @apply h-8 px-2 rounded-lg whitespace-nowrap;
 }
-
+.menu-item-text {
+    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+}
+.menu-item-icon {
+    @apply text-icons-01;
+}
 .menu-item:hover {
+    @apply bg-round-hover;
+}
+.menu-item:hover .menu-item-icon {
     @apply text-primary;
 }
-
-.menu-item:hover .horizontal-item {
-    @apply transition duration-300 ease-in-out scale-110;
+/* Important Menu Item */
+.menu-item.important-item .menu-item-icon,
+.menu-item.important-item.off .menu-item-icon,
+.menu-item.important-item .menu-item-text,
+.menu-item.important-item.off .menu-item-text {
+    @apply text-primary;
+}
+.menu-item.important-item.on .menu-item-icon,
+.menu-item.important-item.on .menu-item-text {
+    @apply text-error;
+}
+.menu-item.important-item.on:hover {
+    @apply bg-error-hover;
+}
+/* Warning Menu Item */
+.menu-item.warning-item:hover {
+    @apply bg-error-hover;
+}
+.menu-item.warning-item:hover > * {
+    @apply text-error;
 }

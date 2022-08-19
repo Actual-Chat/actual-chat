@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.Components
+@using System.Reflection
+@inject BlazorModeHelper BlazorModeHelper
+@inject BlazorCircuitContext CircuitContext
+@{
+    string GetButtonClass(bool isActive)
+        => isActive ? "is-active" : "";
+
+    var serverClass = $"{GetButtonClass(IsServerSideBlazor)} left";
+    var wasmClass = $"{GetButtonClass(!IsServerSideBlazor)} right";
+}
+
+<div class="blazor-mode-toggle">
+    <ButtonSquare Class="@serverClass" Click="_ => BlazorModeHelper.ChangeMode(true)" IsDisabled="@IsServerSideBlazor">Server</ButtonSquare>
+    <ButtonSquare Class="@wasmClass" Click="_ => BlazorModeHelper.ChangeMode(false)" IsDisabled="@(!IsServerSideBlazor)">WASM</ButtonSquare>
+</div>
+
+@code {
+    private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
+}
