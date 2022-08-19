@@ -131,6 +131,15 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         userContact = dbUserContact?.ToModel();
         context.Operation().Items.Set(userContact);
 
+        if (change.IsCreate(out _))
+            await Commander
+                .Call(new IRecentEntriesBackend.UpdateCommand(userContact!.OwnerUserId,
+                        RecentScope.UserContact,
+                        userContact.Id,
+                        Clocks.SystemClock.UtcNow),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
         return userContact;
     }
 }

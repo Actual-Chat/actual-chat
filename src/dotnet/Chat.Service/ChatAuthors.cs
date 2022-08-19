@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
@@ -16,7 +15,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IUserAvatarsBackend UserAvatarsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
     private IUserPresences UserPresences { get; }
     private IChatAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IChatAuthorsBackend>();
@@ -26,7 +24,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         Auth = Services.GetRequiredService<IAuth>();
         Accounts = Services.GetRequiredService<IAccounts>();
         AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
     }
@@ -155,7 +152,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (otherUserId.IsEmpty)
             return;
         _ = await UserContactsBackend.GetOrCreate(userId, otherUserId, cancellationToken).ConfigureAwait(false);
-        _ = await UserContactsBackend.GetOrCreate(otherUserId, userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
