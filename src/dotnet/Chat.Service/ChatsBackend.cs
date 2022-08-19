@@ -473,34 +473,71 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         else {
             // Group chat
+
+            // Removing duplicate system roles
+            var dbSystemRoles = await dbContext.ChatRoles.Where(r => r.ChatId == chatId && r.SystemRole != SystemChatRole.None)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var group in dbSystemRoles.GroupBy(r => r.SystemRole)) {
+                if (group.Count() <= 1)
+                    continue;
+                foreach (var dbChatRole in group.Skip(1))
+                    dbContext.ChatRoles.Remove(dbChatRole);
+            }
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            // Reload system roles
+            dbSystemRoles = await dbContext.ChatRoles.Where(r => r.ChatId == chatId && r.SystemRole != SystemChatRole.None)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var ownerUserIds = dbChat.Owners.Select(o => o.DbUserId).ToArray();
             await ownerUserIds
                 .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
 
-            var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
-                Create = new ChatRoleDiff() {
-                    SystemRole = SystemChatRole.Owner,
-                    Permissions = ChatPermissions.Owner,
-                    AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
-                        AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerUserIds.Select(id => (Symbol)id)),
-                    },
-                },
-            });
-            await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+            if (ownerUserIds.Length > 0) {
+                var dbOwnerRole = dbSystemRoles.SingleOrDefault(r => r.SystemRole == SystemChatRole.Owner);
+                if (dbOwnerRole == null) {
+                    var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
+                        Create = new ChatRoleDiff() {
+                            SystemRole = SystemChatRole.Owner,
+                            Permissions = ChatPermissions.Owner,
+                            AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
+                                AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerUserIds.Select(id => (Symbol)id)),
+                            },
+                        },
+                    });
+                    await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    var changeOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
+                        Update = new ChatRoleDiff() {
+                            Permissions = ChatPermissions.Owner,
+                            AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
+                                AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerUserIds.Select(id => (Symbol)id)),
+                            },
+                        },
+                    });
+                    await Commander.Call(changeOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
+            }
 
-            var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
-                Create = new ChatRoleDiff() {
-                    SystemRole = SystemChatRole.Anyone,
-                    Permissions =
-                        ChatPermissions.Write
-                        | ChatPermissions.Invite
-                        | ChatPermissions.SeeMembers
-                        | ChatPermissions.Leave,
-                },
-            });
-            await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
+            var dbAnyoneRole = dbSystemRoles.SingleOrDefault(r => r.SystemRole == SystemChatRole.Anyone);
+            if (dbAnyoneRole == null) {
+                var createAnyoneRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
+                    Create = new ChatRoleDiff() {
+                        SystemRole = SystemChatRole.Anyone,
+                        Permissions =
+                            ChatPermissions.Write
+                            | ChatPermissions.Invite
+                            | ChatPermissions.SeeMembers
+                            | ChatPermissions.Leave,
+                    },
+                });
+                await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         dbChat.Owners.Clear();

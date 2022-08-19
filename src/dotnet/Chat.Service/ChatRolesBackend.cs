@@ -156,6 +156,13 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             };
             chatRole = DiffEngine.Patch(chatRole, update).Fix();
             dbChatRole = new DbChatRole(chatRole);
+            if (chatRole.SystemRole != SystemChatRole.None) {
+                var dbSameSystemRole = await dbContext.ChatRoles
+                    .SingleOrDefaultAsync(r => r.ChatId == dbChatRole.ChatId && r.SystemRole == dbChatRole.SystemRole, cancellationToken)
+                    .ConfigureAwait(false);
+                if (dbSameSystemRole != null)
+                    throw StandardError.Constraint("Only one system role of a given kind is allowed.");
+            }
             dbContext.Add(dbChatRole);
         }
         else {
