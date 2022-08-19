@@ -91,6 +91,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
             .Select(c => c.Value)
             .Where(c => c.OrdinalEndsWith(AuthorIdSuffix))
             .Select(c => new Symbol(c.Substring(0, c.Length - AuthorIdSuffix.Length)))
+            .Union(new[] { Constants.Chat.AnnouncementsChatId })
             .ToImmutableArray();
         return chatIds;
     }
