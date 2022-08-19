@@ -1,4 +1,4 @@
-@media not (min-width: 768px) {
+@media not (min-width: 1024px) {
     .mobile-hidden {
         @apply hidden;
     }

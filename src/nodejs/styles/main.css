@@ -199,7 +199,7 @@ input.input-underlined {
     @apply fixed flex-y md:flex-x h-full w-full p-8;
     background-image: linear-gradient(to right bottom, #96d6f9, #8bdef6, #88e6ee, #8febe2, #9ff0d4, #97ecd2, #8fe9d0, #87e5ce, #65d7da, #54c7e3, #5eb5e4, #76a1db);
 }
-@media not (min-width: 768px) {
+@media not (min-width: 1024px) {
     .welcome-page {
         @apply fixed flex-y md:flex-x h-full w-full p-1;
         background-image: linear-gradient(to right bottom, #bff0f5, #c8f1f9, #d1f2fc, #daf4fe, #e3f5ff, #dceffc, #d6eafa, #d1e4f7, #bcd6f1, #a7c8ea, #93bae4, #7eacde);
