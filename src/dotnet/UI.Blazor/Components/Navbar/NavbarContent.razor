@@ -6,10 +6,8 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (m.Account.IsActive()) {
-    @foreach (var widget in Widgets.OrderBy(c => c.Order)) {
-        @widget.Content
-    }
+@foreach (var widget in Widgets.OrderBy(c => c.Order)) {
+    @widget.Content
 }
 @if (m.Account.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
