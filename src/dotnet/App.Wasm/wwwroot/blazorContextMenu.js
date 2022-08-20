@@ -170,7 +170,7 @@ var blazorContextMenu = function (blazorContextMenu) {
 
             let topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
             if (topOverflownPixels > 0) {
-                menu.style.top = (window.innerHeight - menu.clientHeight - 10) + "px";
+                menu.style.top = (window.innerHeight - menu.clientHeight - 8) + "px";
             }
 
             //openingMenu = false;
