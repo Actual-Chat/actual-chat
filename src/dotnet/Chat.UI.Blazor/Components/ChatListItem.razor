@@ -18,7 +18,7 @@
                 @if (m.CanRecord) {
                     <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                 }
-                <ListeningChatRemoveButton ChatId="@Chat.Id"/>
+                <ActiveChatRemoveButton ChatId="@Chat.Id"/>
             } else {
                 <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                 @if (m.CanRecord) {
