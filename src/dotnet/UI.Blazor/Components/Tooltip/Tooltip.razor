@@ -14,9 +14,9 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
+    [Parameter, EditorRequired] public ElementReference TriggerRef { get; set; }
     [Parameter] public TooltipOptions Options { get; set; } = TooltipOptions.Default;
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter, EditorRequired] public ElementReference TriggerRef { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
