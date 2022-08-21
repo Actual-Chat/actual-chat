@@ -17,6 +17,7 @@ public abstract class MarkupVisitor<TResult>
     protected virtual TResult VisitText(TextMarkup markup)
         => markup switch {
             PlainTextMarkup plainTextMarkup => VisitPlainText(plainTextMarkup),
+            NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup),
             PlayableTextMarkup playableTextMarkup => VisitPlayableText(playableTextMarkup),
             PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup),
@@ -31,6 +32,7 @@ public abstract class MarkupVisitor<TResult>
     protected abstract TResult VisitStylized(StylizedMarkup markup);
 
     protected abstract TResult VisitPlainText(PlainTextMarkup markup);
+    protected abstract TResult VisitNewLine(NewLineMarkup markup);
     protected abstract TResult VisitPlayableText(PlayableTextMarkup markup);
     protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup);
     protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup);

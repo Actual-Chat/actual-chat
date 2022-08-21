@@ -3,6 +3,7 @@
 public abstract record Markup
 {
     public static Markup Empty { get; } = new PlainTextMarkup("");
+    public static Markup NewLine { get; } = new NewLineMarkup();
 
     public static Markup Join(Markup first, Markup second)
     {

@@ -76,6 +76,9 @@ public class EditedMarkupConverter
         protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
             => AddParagraph(markup);
 
+        protected override ValueTask<Unit> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken)
+            => AddParagraph(markup);
+
         protected override ValueTask<Unit> VisitPlayableText(
             PlayableTextMarkup markup,
             CancellationToken cancellationToken)
