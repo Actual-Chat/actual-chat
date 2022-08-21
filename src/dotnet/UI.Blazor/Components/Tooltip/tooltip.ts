@@ -9,6 +9,8 @@ import {
     arrow,
 } from '@floating-ui/dom';
 
+const LogScope = 'Tooltip';
+
 interface TooltipOptions {
     position: TooltipPosition;
 }
@@ -61,7 +63,8 @@ export class Tooltip implements Disposable {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.hideTooltip());
         }
-        catch (TypeError) {
+        catch (error) {
+            console.error(`${LogScope}.constructor: error:`, error)
             this.dispose();
         }
     }
