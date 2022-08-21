@@ -99,7 +99,7 @@ export class SideNav implements Disposable {
 
         fromEvent(this.element, 'touchend')
             .pipe(takeUntil(this.disposed$))
-            .subscribe(()  => {
+            .subscribe(() => {
                 element.classList.add('side-nav-animate');
                 element.style.transform = null;
 
@@ -139,6 +139,9 @@ export class SideNav implements Disposable {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }

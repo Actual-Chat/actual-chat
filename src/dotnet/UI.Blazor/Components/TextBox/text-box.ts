@@ -14,7 +14,7 @@ export class TextBox implements Disposable {
         fromEvent(input, 'input')
             .pipe(takeUntil(this.disposed$))
             .pipe(debounceTime(800))
-            .subscribe(event => {
+            .subscribe(() => {
                 console.log("text-box, emit on change. value: " + input.value);
                 input.dispatchEvent(new Event('change'));
             });
@@ -25,6 +25,9 @@ export class TextBox implements Disposable {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }

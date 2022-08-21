@@ -7,31 +7,28 @@
 </div>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    [Parameter] public TooltipPosition Position { get; set; } = TooltipPosition.Bottom;
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter] public ElementReference Reference { get; set; }
-
     private ElementReference TooltipRef { get; set; }
     private ElementReference ArrowRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<Tooltip> BlazorRef { get; set; } = null!;
 
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter] public TooltipOptions Options { get; set; } = TooltipOptions.Default;
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter, EditorRequired] public ElementReference TriggerRef { get; set; }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.Tooltip.create";
-            var options = new TooltipOptions {
-                Position = Position,
-            };
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
+                TriggerRef,
                 TooltipRef,
-                Reference,
                 ArrowRef,
                 BlazorRef,
-                options);
+                Options);
         }
     }
 
@@ -40,27 +37,5 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-    }
-
-    public class TooltipOptions
-    {
-        public TooltipPosition Position { get; set; }
-    }
-
-    public enum TooltipPosition
-    {
-        None,
-        Top,
-        TopStart,
-        TopEnd,
-        Right,
-        RightStart,
-        RightEnd,
-        Bottom,
-        BottomStart,
-        BottomEnd,
-        Left,
-        LeftStart,
-        LeftEnd,
     }
 }

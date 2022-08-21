@@ -18,8 +18,8 @@
         </div>
     </div>
 </button>
-@if (HasTooltip) {
-    <Tooltip Reference="_ref">@Tooltip</Tooltip>
+@if (!Tooltip.IsNullOrEmpty()) {
+    <Tooltip TriggerRef="_ref" Options="TooltipOptions">@Tooltip</Tooltip>
 }
 
 @code {
@@ -29,6 +29,7 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public TooltipOptions TooltipOptions { get; set; } = TooltipOptions.Default;
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
@@ -41,6 +42,4 @@
 
     private string GetButtonType()
         => Type.ToString().ToLower();
-
-    private bool HasTooltip => !Tooltip.IsNullOrEmpty();
 }

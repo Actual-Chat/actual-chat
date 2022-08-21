@@ -13,8 +13,7 @@ interface TooltipOptions {
     position: TooltipPosition;
 }
 
-enum TooltipPosition
-{
+enum TooltipPosition {
     None,
     Top,
     TopStart,
@@ -34,50 +33,54 @@ export class Tooltip implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
 
     public static create(
-        tooltip: HTMLDivElement,
-        reference: HTMLDivElement,
-        arrow: HTMLDivElement,
+        triggerRef: HTMLElement,
+        tooltipRef: HTMLElement,
+        arrowRef: HTMLElement,
         blazorRef: DotNet.DotNetObject,
         options?: TooltipOptions): Tooltip {
-        return new Tooltip(tooltip, reference, arrow, blazorRef, options);
+        return new Tooltip(triggerRef, tooltipRef, arrowRef, blazorRef, options);
     }
 
     constructor(
-        private readonly tooltip: HTMLDivElement,
-        private readonly reference: HTMLDivElement,
-        private readonly arrow: HTMLDivElement,
+        private readonly triggerRef: HTMLElement,
+        private readonly tooltipRef: HTMLElement,
+        private readonly arrowRef: HTMLElement,
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options?: TooltipOptions,
     ) {
-        const mouseenterEvents$ = fromEvent(this.reference, 'mouseenter');
-        const focusEvent$ = fromEvent(this.reference, 'focus');
-        merge(mouseenterEvents$, focusEvent$)
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => {
-                this.showTooltip();
-            });
+        try {
+            const mouseEnterEvents$ = fromEvent(this.triggerRef, 'mouseenter');
+            const focusEvents$ = fromEvent(this.triggerRef, 'focus');
+            merge(mouseEnterEvents$, focusEvents$)
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.showTooltip());
 
-        const mouseleaveEvent$ = fromEvent(this.reference, 'mouseleave');
-        const blurEvent$ = fromEvent(this.reference, 'blur');
-        merge(mouseleaveEvent$, blurEvent$)
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => {
-                this.hideTooltip();
-            });
+            const mouseLeaveEvents$ = fromEvent(this.triggerRef, 'mouseleave');
+            const blurEvents$ = fromEvent(this.triggerRef, 'blur');
+            merge(mouseLeaveEvents$, blurEvents$)
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.hideTooltip());
+        }
+        catch (TypeError) {
+            this.dispose();
+        }
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }
 
     private showTooltip() {
-        this.tooltip.style.display = 'block';
+        this.tooltipRef.style.display = 'block';
         this.update();
     }
 
     private hideTooltip() {
-        this.tooltip.style.display = '';
+        this.tooltipRef.style.display = '';
     }
 
     private getPlacement(): Placement {
@@ -89,16 +92,16 @@ export class Tooltip implements Disposable {
 
     private update() {
         const placement = this.getPlacement();
-        computePosition(this.reference, this.tooltip, {
+        computePosition(this.triggerRef, this.tooltipRef, {
             placement: placement,
             middleware: [
                 offset(6),
                 flip(),
                 shift({padding: 5}),
-                arrow({element: this.arrow}),
+                arrow({element: this.arrowRef}),
             ],
         }).then(({x, y, placement, middlewareData}) => {
-            Object.assign(this.tooltip.style, {
+            Object.assign(this.tooltipRef.style, {
                 left: `${x}px`,
                 top: `${y}px`,
             });
@@ -112,7 +115,7 @@ export class Tooltip implements Disposable {
                 left: 'right',
             }[placement.split('-')[0]];
 
-            Object.assign(this.arrow.style, {
+            Object.assign(this.arrowRef.style, {
                 left: arrowX != null ? `${arrowX}px` : '',
                 top: arrowY != null ? `${arrowY}px` : '',
                 right: '',
