@@ -121,7 +121,7 @@ code
 code
 ```
 2", out _);
-        m.Items.Length.Should().Be(3);
+        m.Items.Length.Should().Be(6);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ code
 code
 ```
 2 ```cs", out _);
-        m.Items.Length.Should().Be(9);
+        m.Items.Length.Should().Be(10);
     }
 
     [Fact]
@@ -172,6 +172,16 @@ code
     {
         var m = Parse<PlainTextMarkup>(":) :)", out var text);
         m.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void SpecialTest_MultilineCase()
+    {
+        var m = Parse<MarkupSeq>("line1 \nline2", out var text);
+        m.Items.Length.Should().Be(3);
+        m.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1 ");
+        m.Items[1].Should().Be(Markup.NewLine);
+        m.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
     }
 
     // Helpers

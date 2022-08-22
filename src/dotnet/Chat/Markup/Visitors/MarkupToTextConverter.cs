@@ -76,6 +76,9 @@ public class MarkupToTextConverter : AsyncMarkupVisitor<Unit>
     protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
         => VisitText(markup, cancellationToken);
 
+    protected override ValueTask<Unit> VisitNewLine(NewLineMarkup newLineMarkup, CancellationToken cancellationToken)
+        => VisitText(newLineMarkup, cancellationToken);
+
     protected override ValueTask<Unit> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
         => VisitText(markup, cancellationToken);
 

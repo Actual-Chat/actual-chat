@@ -28,7 +28,9 @@ public abstract class MarkupRewriter : MarkupVisitor<Markup>
     protected override Markup VisitMention(Mention markup) => markup;
     protected override Markup VisitCodeBlock(CodeBlockMarkup markup) => markup;
     protected override Markup VisitPlainText(PlainTextMarkup markup) => markup;
+    protected override Markup VisitNewLine(NewLineMarkup markup) => markup;
     protected override Markup VisitPlayableText(PlayableTextMarkup markup) => markup;
     protected override Markup VisitPreformattedText(PreformattedTextMarkup markup) => markup;
     protected override Markup VisitUnparsed(UnparsedTextMarkup markup) => markup;
+    protected override Markup VisitCustom(CustomMarkup markup) => markup;
 }

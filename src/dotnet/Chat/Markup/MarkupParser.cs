@@ -193,6 +193,8 @@ public class MarkupParser : IMarkupParser
     {
         var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
-        return result.Success ? result.Value : Markup.Empty;
+        if (!result.Success)
+            return Markup.Empty;
+        return NewLineRewriter.Instance.Rewrite(result.Value);
     }
 }
