@@ -53,7 +53,7 @@
     [Parameter] public bool IsActive { get; init; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new ComputedState<Model>.Options() {
+        return new ComputedState<Model>.Options {
             InitialValue = Model.None
         };
     }
