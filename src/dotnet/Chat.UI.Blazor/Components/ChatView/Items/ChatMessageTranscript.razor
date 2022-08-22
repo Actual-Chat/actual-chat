@@ -1,7 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Transcription
 @implements IAsyncDisposable
-
 @{
     var diff = CalculateDiff(_lastTranscriptText, Transcript.Text);
     _lastTranscriptText = Transcript.Text;
@@ -9,8 +8,8 @@
 
 <p class="@Class chat-message-transcript">
     <span class="chat-entry-type-markup icon-volume-up"></span>
-    <span class="retained">@diff.RetainedPart</span>
-    <span class="changes">@diff.ChangedPart</span>
+    <span class="retained">@diff.RetainedPart</span>@*
+    *@<span class="changes">@diff.ChangedPart</span>
 </p>
 
 @code {

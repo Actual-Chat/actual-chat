@@ -147,7 +147,7 @@
 }
 
 .chat-message-transcript .changes {
-    @apply underline decoration-audio-message;
+    @apply underline;
 }
 
 .playable-text-markup {
