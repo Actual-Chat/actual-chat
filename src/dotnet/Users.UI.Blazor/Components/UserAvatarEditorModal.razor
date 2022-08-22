@@ -1,8 +1,7 @@
-@using Stl.Reflection
 @implements IModalView<UserAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<Form Model="@M" OnValidSubmit="@OnSave">
+<Form Model="@M" OnSubmit="@OnSave">
     <DialogFrame Title="Edit avatar">
         <Body>
             <DataAnnotationsValidator />
