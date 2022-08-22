@@ -144,13 +144,10 @@
 }
 
 .chat-message-transcript .retained {
-    background: #E1EFFA;
 }
 
 .chat-message-transcript .changes {
-    background: #2970FF;
-    color: white;
-    border-radius: 6px;
+    @apply underline decoration-audio-message;
 }
 
 .playable-text-markup {

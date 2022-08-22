@@ -76,7 +76,7 @@
             return new Diff("", newTranscript);
         var diffStartIndex = 0;
         for (int i = 0; i < Math.Min(prevTranscript.Length, newTranscript.Length); i++) {
-            if (prevTranscript[i] != newTranscript[i])
+            if (!StringComparer.OrdinalIgnoreCase.Equals(prevTranscript[i], newTranscript[i]))
                 break;
             diffStartIndex++;
         }
