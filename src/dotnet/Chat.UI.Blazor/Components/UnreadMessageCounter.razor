@@ -26,9 +26,10 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override Task OnInitializedAsync() {
+    protected override Task OnParametersSetAsync() {
+        UnreadMessages.DisposeSilently();
         UnreadMessages = UnreadMessagesFactory.Get(ChatId);
-        return Task.CompletedTask;
+        return base.OnParametersSetAsync();
     }
 
     public override async ValueTask DisposeAsync() {
@@ -46,7 +47,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var countTask = UnreadMessages.GetCount(cancellationToken);
         var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
-        await Task.WhenAll(countTask, notificationStatusTask);
+        await Task.WhenAll(countTask, notificationStatusTask).ConfigureAwait(false);
 
         var count = await countTask;
         if (!count.HasValue)
@@ -55,7 +56,7 @@
         var notificationStatus = await notificationStatusTask;
         return new() {
             Count = count.Value,
-            IsSubscribed = notificationStatus.IsSubscribed
+            IsSubscribed = notificationStatus.IsSubscribed,
         };
     }
 

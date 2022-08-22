@@ -7,7 +7,7 @@
 }
 <div class="@GetCss(Kind)">
     @foreach (var chat in Chats) {
-        <ChatListItem Chat="@chat" ListKind="@Kind" IsActive="@(ActiveChatId == chat.Id)"/>
+        <ChatListItem @key="chat" Chat="@chat" ListKind="@Kind" IsActive="@(ActiveChatId == chat.Id)"/>
     }
 </div>
 
