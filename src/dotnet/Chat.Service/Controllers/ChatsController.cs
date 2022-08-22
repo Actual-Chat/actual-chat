@@ -18,8 +18,11 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpGet, Publish]
-    public Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.Get(session, chatId, cancellationToken);
+    // NOTE(AY): We use string? chatId here to make sure this method can be invoked with "" -
+    // and even though this is not valid parameter value, we want it to pass ASP.NET Core
+    // parameter validation & trigger the error later.
+    public Task<Chat?> Get(Session session, string? chatId, CancellationToken cancellationToken)
+        => _service.Get(session, chatId ?? "", cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)

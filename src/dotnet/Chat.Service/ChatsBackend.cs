@@ -45,6 +45,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
     {
+        if (chatId.IsNullOrEmpty())
+            throw new ArgumentOutOfRangeException(chatId);
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
     }
@@ -55,9 +57,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId);
-        if (!parsedChatId.IsValid)
-            return ChatAuthorRules.None(chatId);
+        var parsedChatId = new ParsedChatId(chatId).AssertValid();
 
         // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
@@ -743,11 +743,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId);
-        if (!(parsedChatId.IsValid && parsedChatId.Kind is ChatIdKind.PeerFull))
-            return ChatAuthorRules.None(chatId);
-        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
 
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
         if (!parsedChatPrincipalId.IsValid)
             return ChatAuthorRules.None(chatId);

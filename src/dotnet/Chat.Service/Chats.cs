@@ -319,9 +319,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId);
-        if (!parsedChatId.IsValid)
-            return null;
+        var parsedChatId = new ParsedChatId(chatId).AssertValid();
 
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerShort:
@@ -362,8 +360,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         var parsedChatId = new ParsedChatId(chatId).AssertValid();
-        if (!parsedChatId.IsValid)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
 
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerFull:

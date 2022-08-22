@@ -12,5 +12,5 @@
 
 @code {
     [Parameter] public int SkeletonCount { get; set; }
-    [Parameter] [EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
 }

@@ -26,17 +26,22 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var chats = (await listenedChatIds.Append(recordingChatId)
-            .Distinct()
+        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+
+        var chatIds = listeningChatIds;
+        if (!recordingChatId.IsEmpty && !chatIds.Contains(recordingChatId))
+            chatIds = chatIds.Add(recordingChatId);
+
+        var chats = (await chatIds
             .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false)
             ).OfType<Chat>()
             .Reverse()
             .ToList();
+
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             Chats = chats,
             ActiveChatId = activeChatId,

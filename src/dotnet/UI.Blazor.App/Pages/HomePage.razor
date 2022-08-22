@@ -5,15 +5,15 @@
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
 @{
-    var model = State.LatestNonErrorValue;
-    var account = model.Account;
+    var m = State.LatestNonErrorValue;
+    var account = m.Account;
     if (account == null)
         return; // Not yet computed
     if (account.IsGuest()) {
         <Welcome/>
     }
-    else if(!model.DefaultChatId.IsEmpty) {
-        Nav.NavigateTo(Links.ChatPage(model.DefaultChatId));
+    else if (!m.DefaultChatId.IsEmpty) {
+        Nav.NavigateTo(Links.ChatPage(m.DefaultChatId));
     }
 }
 

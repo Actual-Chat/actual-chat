@@ -12,5 +12,5 @@ public static class Links
         => "/settings";
 
     public static string InviteLink(string linkFormat, string inviteId)
-        => String.Format(CultureInfo.InvariantCulture, linkFormat, inviteId.UrlEncode());
+        => string.Format(CultureInfo.InvariantCulture, linkFormat, inviteId.UrlEncode());
 }

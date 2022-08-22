@@ -60,9 +60,8 @@
         var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var parsedChatId = ParsedChatId.Parse(activeChatId);
-        if (!parsedChatId.IsValid || parsedChatId.Kind != ChatIdKind.Group)
-            activeChatId = Symbol.Empty; // We only display group chats here
+        if (!ParsedChatId.Parse(activeChatId).IsValid)
+            activeChatId = Symbol.Empty;
         var activeChat = activeChatId.IsEmpty
             ? null
             : await Chats.Get(Session, activeChatId, cancellationToken).ConfigureAwait(false);
@@ -91,14 +90,6 @@
             .Where(c => !pinnedChatIds.ContainsKey(c.Id))
             .ToList();
 
-        var listenedChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var listenedChats = new List<Chat>();
-        foreach (var t in listenedChatIds) {
-            var chat = await Chats.Get(Session, t, cancellationToken).ConfigureAwait(false);
-            if (chat != null)
-                listenedChats.Add(chat);
-        }
-        listenedChats.Reverse();
 
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
@@ -106,7 +97,6 @@
             ActiveChatId = activeChatId,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
-            ListenedChats = listenedChats,
             EnableIncompleteUI = enableIncompleteUI,
         };
     }
@@ -120,7 +110,6 @@
         public Symbol ActiveChatId { get; init; }
         public List<Chat> PinnedChats { get; init; } = new ();
         public List<Chat> UnpinnedChats { get; init; } = new ();
-        public List<Chat> ListenedChats { get; init; } = new ();
         public bool EnableIncompleteUI { get; init; }
     }
 }
