@@ -162,6 +162,16 @@ var blazorContextMenu = function (blazorContextMenu) {
 
     let showMenuCommon = function (menu, menuId, x, y, target, triggerDotnetRef) {
         let isLeftHalf = x < window.innerWidth / 2;
+        if (menuId === 'menu-AttachMenu') {
+            return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
+                let btn = target.closest('button');
+                let offset = 0;
+                let menuItem = menu.querySelectorAll('.context-menu-item')[0];
+                if (menuItem != null)
+                    offset = menuItem.clientHeight + 10;
+                menu.style.top = (btn.offsetTop - menu.clientHeight + offset) + "px";
+            });
+        }
         return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
             if (isLeftHalf)
                 menu.style.left = x + "px";

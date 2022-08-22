@@ -95,7 +95,7 @@ export class ChatMessageEditor {
         if (this.isPanelOpened === isPanelOpened)
             return;
         this.isPanelOpened = isPanelOpened;
-        const attach = this.editorDiv.querySelector(':scope .dropdown');
+        const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
         const label = this.editorDiv.querySelector(':scope label');
         if (isPanelOpened) {
             setTimeout(() => {

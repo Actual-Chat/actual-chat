@@ -24,7 +24,16 @@
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
-                        <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
+                        <ContextMenuToggleTrigger MenuId="@AttachMenu.MenuId" CssClass="self-start">
+                            <div class="flex attach-dropdown">
+                                <ButtonRound Class="attach-btn">
+                                    <i class="icon-attach-2 text-2xl"></i>
+                                </ButtonRound>
+                                <div class="relative right-12">
+                                    <div class="placement"></div>
+                                </div>
+                            </div>
+                        </ContextMenuToggleTrigger>
                         <input class="files-picker" type="file" hidden multiple/>
                         <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                             <SlateEditor @ref="SlateEditorRef" Id="message-input"
@@ -47,6 +56,7 @@
             <RecorderPanel/>
         </div>
     </MentionListManager>
+    <AttachMenu UploadFilesRequested="OnUploadFilesRequested"/>
 </div>
 
 @code {
