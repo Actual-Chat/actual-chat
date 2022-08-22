@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
@@ -61,6 +60,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             await using var _ = dbContext.ConfigureAwait(false);
 
             var dbChatAuthor = await dbContext.ChatAuthors
+                .Include(a => a.Roles)
                 .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             chatAuthor = dbChatAuthor?.ToModel();
@@ -185,7 +185,8 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         }
         else {
             dbChatAuthor = await dbContext.ChatAuthors
-                .FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                .Include(a => a.Roles)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             if (dbChatAuthor != null)
                 return dbChatAuthor.ToModel(); // Author already exists
@@ -235,6 +236,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatAuthor = await dbContext.ChatAuthors
+            .Include(a => a.Roles)
             .SingleAsync(a => a.Id == authorId, cancellationToken)
             .ConfigureAwait(false);
         dbChatAuthor.HasLeft = hasLeft;
