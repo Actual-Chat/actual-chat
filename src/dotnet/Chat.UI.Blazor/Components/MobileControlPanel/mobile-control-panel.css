@@ -41,11 +41,11 @@
 }
 .mobile-control-panel .recorder-wrapper.record-off,
 .mobile-control-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-700;
+    @apply border-primary transition-colors duration-300;
 }
 .mobile-control-panel .recorder-wrapper.record-on,
 .mobile-control-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-700;
+    @apply border-error transition-colors duration-300;
 }
 .mobile-control-panel .recorder-wrapper .record-on-btn.btn {
     @apply shadow-mobile-button shadow-error-hover;
@@ -111,7 +111,7 @@
     @apply animate-width-full-to-half w-14;
 }
 .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply animate-loud-hide absolute transition duration-500 opacity-0 scale-0;
+    @apply animate-loud-hide absolute transition duration-300 opacity-0 scale-0;
 }
 .playback-wrapper.listen-off-to-on {
     @apply animate-width-half-to-full w-28;
@@ -179,7 +179,7 @@
     @apply animate-width-full-to-60 w-20;
 }
 .narrow-panel .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply animate-loud-hide-text-mode absolute transition duration-500 opacity-0 scale-0;
+    @apply animate-loud-hide-text-mode absolute transition duration-300 opacity-0 scale-0;
 }
 .narrow-panel .playback-wrapper.listen-off-to-on {
     @apply animate-width-60-to-full w-32;

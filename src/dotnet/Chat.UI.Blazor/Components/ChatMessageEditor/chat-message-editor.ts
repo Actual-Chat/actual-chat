@@ -101,7 +101,7 @@ export class ChatMessageEditor {
             setTimeout(() => {
                 attach.classList.add('hidden');
                 label.classList.add('w-0');
-            }, 500);
+            }, 150);
         } else {
             attach.classList.remove('hidden');
             label.classList.remove('w-0');
@@ -110,7 +110,7 @@ export class ChatMessageEditor {
         if (this.notifyPanel.classList.contains('panel-closing')) {
             setTimeout(() => {
                 this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
-            }, 500);
+            }, 150);
         }
     };
 

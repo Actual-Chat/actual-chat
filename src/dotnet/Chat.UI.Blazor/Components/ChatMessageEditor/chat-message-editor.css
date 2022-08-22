@@ -43,7 +43,7 @@
 .notify-call-content,
 .panel-closed .notify-call-content {
     @apply flex-x gap-x-0 justify-end items-center cursor-text;
-    @apply w-0 scale-0;
+    @apply w-0 scale-0 translate-x-full;
 }
 .notify-call-content .actions {
     @apply flex-x items-center gap-x-2 max-h-12 md:mr-4;
@@ -80,7 +80,7 @@
     @apply animate-notify-toggle-hide scale-0 w-0;
 }
 .panel-opening .notify-call-content {
-    @apply scale-100 w-full animate-notify-panel-opening;
+    @apply scale-100 w-full translate-x-0 transition duration-300 ease-in-out;
 }
 
 /* Closing panel */
@@ -172,11 +172,11 @@
 }
 .recorder-panel .recorder-wrapper.record-off,
 .recorder-panel-control-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-700;
+    @apply border-primary transition-colors duration-300;
 }
 .recorder-panel .recorder-wrapper.record-on,
 .recorder-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-700;
+    @apply border-error transition-colors duration-300;
 }
 .recorder-panel .recorder-wrapper .record-on-btn.btn .btn-content {
     @apply shadow-mobile-button shadow-error-hover;
