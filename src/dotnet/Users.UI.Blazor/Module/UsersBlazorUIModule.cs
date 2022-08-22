@@ -14,8 +14,8 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
     public override void InjectServices(IServiceCollection services)
     {
         // Presence
-        services.AddSingleton(_ => new PresenceService.Options() {
-            UpdatePeriod = TimeSpan.FromSeconds(50),
+        services.AddSingleton(_ => new PresenceService.Options {
+            UpdatePeriod = UserConstants.Presence.UpdatePeriod,
         });
     }
 }

@@ -14,4 +14,11 @@ public static class UserConstants
     {
         public static string Status => "urn:actual.chat:status";
     }
+
+    public static class Presence
+    {
+        // TODO: move this to configurable options when client side settings API is implemented
+        public static TimeSpan UpdatePeriod { get; } = TimeSpan.FromSeconds(50);
+        public static TimeSpan MinUpdatePeriod { get; } = TimeSpan.FromSeconds(40);
+    }
 }
