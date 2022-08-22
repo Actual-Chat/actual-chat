@@ -3,12 +3,15 @@
 @implements IModalView<NewChatModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<Form Model="@_form" OnValidSubmit="@OnCreate">
+<Form Model="@_form" OnSubmit="@OnCreate">
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
             <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
-                <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true"/>
+                <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true"/>
+            </FormSection>
+            <FormSection Class="flex h-12 md:h-8 justify-center">
+                <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
             </FormSection>
         </Body>
         <Buttons>
@@ -40,6 +43,7 @@
             Create = new ChatDiff() {
                 Title = _form.Title,
                 ChatType = ChatType.Group,
+                IsPublic = _form.IsPublic,
             },
         });
         try {
@@ -59,13 +63,16 @@
     public class FormModel
     {
         [Required] public string Title { get; set; } = "";
+        [Required] public bool IsPublic { get; set; }
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string IsPublicId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            IsPublicId = $"{FormId}-isPublic";
         }
     }
 

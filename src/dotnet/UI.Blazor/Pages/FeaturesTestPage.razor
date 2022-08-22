@@ -1,7 +1,6 @@
 @page "/test/features"
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<FeaturesTestPage.Model?>
-@inject Features Features
 @{
     var m = State.ValueOrDefault ?? new();
 }
@@ -13,6 +12,8 @@
 <p>Enable incomplete UI: @(m.EnableIncompleteUI)</p>
 
 @code {
+    [Inject] private Features Features { get; init; } = null!;
+
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
         => new() {
             ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),

@@ -1,5 +1,9 @@
 @page "/settings"
 @using ActualChat.Chat.UI.Blazor.Components.Settings
+@inherits ComputedStateComponent<SettingsPage.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
 
 <RequireAccount/>
 <MainHeader>Settings</MainHeader>
@@ -10,9 +14,34 @@
             <Tab Title="My Account" Class="px-2">
                 <UserSettings/>
             </Tab>
-            <Tab Title="Appearance" Class="px-2">
-                <AppearanceSettings/>
-            </Tab>
+            @if (m.EnableIncompleteUI) {
+                <Tab Title="Appearance" Class="px-2">
+                    <AppearanceSettings/>
+                </Tab>
+            }
         </TabPanel>
     </div>
 </div>
+
+@code {
+    [Inject] private Features Features { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+        => new() {
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+        };
+
+    // Nested types
+
+    public record Model {
+        public static Model None { get; } = new();
+
+        public bool EnableIncompleteUI { get; init; }
+    }
+}

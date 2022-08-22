@@ -2,7 +2,7 @@
 @using Stl.Fusion.Authentication.Commands
 @using Stl.Reflection
 
-<Form Model="@M" OnValidSubmit="@OnSave" >
+<Form Model="@M" OnSubmit="@OnSave" >
     <ValidationSummary />
 
     <FormSection InputId="@M.NameFieldId" Label="Name" IsRequired="true">

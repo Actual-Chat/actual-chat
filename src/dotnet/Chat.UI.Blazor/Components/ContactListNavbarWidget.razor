@@ -95,8 +95,10 @@
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
     private IMutableState<ContactGroup> Group { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => Group = StateFactory.NewMutable<ContactGroup>();
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        Group = StateFactory.NewMutable<ContactGroup>();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
