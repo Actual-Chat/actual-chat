@@ -269,6 +269,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 CreatedAt = Clocks.SystemClock.Now,
             };
             chat = DiffEngine.Patch(chat, update);
+            if (chat.ChatType is not ChatType.Peer && chat.Title.IsNullOrEmpty())
+                throw new ValidationException("Chat title cannot be empty.");
 
             var isPeer = chat.ChatType is ChatType.Peer;
             var parsedChatId = new ParsedChatId(chatId);
@@ -336,11 +338,13 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 Version = VersionGenerator.NextVersion(chat.Version),
             };
             chat = DiffEngine.Patch(chat, update);
+            if (chat.ChatType is not ChatType.Peer && chat.Title.IsNullOrEmpty())
+                throw new ValidationException("Chat title cannot be empty.");
             dbChat.UpdateFrom(chat);
             dbContext.Update(dbChat);
         }
         else
-            throw StandardError.NotSupported("Chat removal is not implemented yet.");
+            throw StandardError.NotSupported("Chat removal is not supported yet.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();

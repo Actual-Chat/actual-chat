@@ -30,7 +30,7 @@
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
+    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
@@ -59,11 +59,11 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await GlobalEvents.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }
 
-    private Task OnCancelClick() => EventAggregator.Publish<CancelMessageEdit>();
+    private Task OnCancelClick() => GlobalEvents.Publish<CancelMessageEdit>();
 
 }

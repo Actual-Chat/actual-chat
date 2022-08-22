@@ -9,9 +9,9 @@
 @using ActualChat.Kvas
 @using ActualChat.MediaPlayback
 
-<EventHandler TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
-<EventHandler TEvent="@EditMessage" Handler="OnMessageEdit" />
-<EventHandler TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
+<OnGlobalEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
+<OnGlobalEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
+<OnGlobalEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"

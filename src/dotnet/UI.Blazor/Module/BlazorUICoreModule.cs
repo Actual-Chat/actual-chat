@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.SessionStorage;
@@ -90,7 +89,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
         // UI events
-        services.AddScoped<IEventAggregator, EventAggregator>();
+        services.AddScoped<IGlobalEvents, GlobalEvents>();
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();

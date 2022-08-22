@@ -6,15 +6,36 @@ namespace ActualChat.UI.Blazor.Components;
 public class Form : EditForm
 {
     private readonly Func<Task> _handleSubmitCached;
+    private readonly EventHandler<FieldChangedEventArgs> _editContextFieldChangedCached;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsHorizontal { get; set; }
 
-    public Form()
-        // The same private field declared in the base class, we just need to pull its value here
-        => _handleSubmitCached = (Func<Task>)typeof(EditForm)
+    public bool IsValid { get; private set; } = true;
+
+    public Form() // The same private field declared in the base class, we just need to pull its value here
+    {
+        _handleSubmitCached = (Func<Task>)typeof(EditForm)
             .GetField("_handleSubmitDelegate", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(this)!;
+        _editContextFieldChangedCached = (sender, args) => {
+            if (sender is not EditContext editContext)
+                return;
+            IsValid = editContext.Validate();
+            StateHasChanged();
+        };
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (EditContext is not { } editContext)
+            return;
+
+        IsValid = editContext.Validate();
+        editContext.OnFieldChanged += _editContextFieldChangedCached;
+        StateHasChanged();
+    }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {

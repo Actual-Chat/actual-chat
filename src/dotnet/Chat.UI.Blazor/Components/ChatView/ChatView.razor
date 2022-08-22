@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Comparison
 
-<EventHandler TEvent="@NavigateToChatEntry" Handler="@OnNavigateToChatEntry" />
+<OnGlobalEvent TEvent="@NavigateToChatEntry" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
     LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="1000" SkeletonCount="50"

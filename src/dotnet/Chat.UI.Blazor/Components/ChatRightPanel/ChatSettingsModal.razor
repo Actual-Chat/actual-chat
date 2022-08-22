@@ -8,7 +8,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<Form Model="@_form" OnSubmit="@OnSave">
+<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal">
         <Body>
         <div class="flex-y text-03 p-3">
@@ -50,14 +50,18 @@
         </Body>
         <Buttons>
             <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-secondary" IsAutofocused="true">Cancel</Button>
-                <Button Type="@ButtonType.Submit" IsDisabled="@(!context.Validate())">Save</Button>
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-secondary" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </div>
         </Buttons>
     </DialogFrame>
 </Form>
 
 @code {
+    private Form _formRef = null!;
     private FormModel _form = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -112,7 +116,8 @@
 
     public sealed class FormModel
     {
-        [Required] public string Title { get; set; } = "";
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
         public string Picture { get; set; } = "";
         public bool IsPublic { get; set; }
         public string ImageUploadUrl { get; set; } = "";

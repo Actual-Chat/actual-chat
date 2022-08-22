@@ -43,7 +43,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
-    [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
+    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
@@ -77,7 +77,7 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await GlobalEvents.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }

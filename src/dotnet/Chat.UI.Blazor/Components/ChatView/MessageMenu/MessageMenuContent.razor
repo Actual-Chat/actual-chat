@@ -79,7 +79,7 @@
     [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IEventAggregator EventAggregator { get; set; } = null!;
+    [Inject] private IGlobalEvents GlobalEvents { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
     [Inject] private ChatUI ChatUI { get; set; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; set; } = null!;
@@ -110,7 +110,7 @@
 
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
-        await EventAggregator.Publish(new FocusChatMessageEditor());
+        await GlobalEvents.Publish(new FocusChatMessageEditor());
     }
 
     private async Task CopyLink(ChatEntry chatEntry) {
@@ -119,7 +119,7 @@
     }
 
     private Task Edit(ChatEntry chatEntry) {
-        return EventAggregator.Publish(new EditMessage(chatEntry));
+        return GlobalEvents.Publish(new EditMessage(chatEntry));
     }
 
     public record Model {
