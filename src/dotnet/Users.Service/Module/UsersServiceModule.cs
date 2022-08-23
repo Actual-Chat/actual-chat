@@ -73,9 +73,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
-            services.AddSingleton(_ => new DbAuthService<UsersDbContext>.Options() {
-                MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
-            });
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbAccount>();
