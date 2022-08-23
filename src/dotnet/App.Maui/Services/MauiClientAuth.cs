@@ -15,7 +15,7 @@ internal sealed class MauiClientAuth : IClientAuth
 
     public async ValueTask SignIn(string scheme)
     {
-        if (string.Equals(IClientAuth.GoogleSchemeName, scheme, StringComparison.Ordinal)) {
+        if (OrdinalEquals(IClientAuth.GoogleSchemeName, scheme)) {
 #if ANDROID
             var activity = (MainActivity)Platform.CurrentActivity!;
             await activity.SignInWithGoogle().ConfigureAwait(false);

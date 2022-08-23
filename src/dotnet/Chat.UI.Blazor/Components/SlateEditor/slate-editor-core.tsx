@@ -102,7 +102,7 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
                             event.preventDefault();
                             const text = handle.getText();
                             if(!text)
-                                handle.onEditLastMessage();
+                                handle.onOpenPrevious();
                         }
                         break;
                 }

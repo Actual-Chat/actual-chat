@@ -122,7 +122,7 @@
         FilteredChatContacts = string.IsNullOrWhiteSpace(filter)
             ? AllChatContacts.ToArray()
             : AllChatContacts
-                .Where(x => x.Author.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.Author.Name.OrdinalIgnoreCaseContains(filter))
                 .ToArray();
     }
 

@@ -1,6 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public interface ISlateEditorBackend
+public interface IMessageEditorBackend
 {
     Task Post(string? text = null);
     Task Cancel();

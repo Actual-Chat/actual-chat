@@ -24,7 +24,7 @@ public class ChatMentionCandidateProvider : IMentionCandidateProvider
     {
         var authors = await _chats.ListMentionCandidates(_session, _chatId, cancellationToken).ConfigureAwait(false);
         var candidates = authors
-            .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .Where(c => c.Name.OrdinalIgnoreCaseContains(search))
             .OrderBy(c => c.Name)
             .Take(limit);
         var filteredCandidates = candidates.Select(c => new MentionCandidate(c.Id, c.Name)).ToArray();

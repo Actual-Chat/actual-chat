@@ -46,7 +46,7 @@ public class AppHost : IDisposable
         var transientDisposables = services.Where(x => x.Lifetime == ServiceLifetime.Transient)
             .Select(x => AsDisposable(x.ImplementationType))
             .SkipNullItems()
-            .Where(x => x.Namespace?.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) != true)
+            .Where(x => x.Namespace?.OrdinalIgnoreCaseStartsWith("Microsoft") != true)
             .ToList();
         if (transientDisposables.Any()) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));

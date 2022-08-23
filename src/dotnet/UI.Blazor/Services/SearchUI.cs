@@ -20,7 +20,7 @@ public class SearchUI
         foreach (var keyword in keywords) {
             var index = -1;
             while (true) {
-                index = text.IndexOf(keyword, index + 1, StringComparison.OrdinalIgnoreCase);
+                index = text.OrdinalIgnoreCaseIndexOf(keyword, index + 1);
                 if (index < 0)
                     break;
                 rank += 1.0 / (1 + index);

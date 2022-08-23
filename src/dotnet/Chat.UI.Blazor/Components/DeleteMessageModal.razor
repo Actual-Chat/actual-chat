@@ -24,7 +24,7 @@
                     </div>
                     <div class="content message-content custom-scrollbar">
                         @if (FirstAttachment != null) {
-                            var isImage = FirstAttachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                            var isImage = FirstAttachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                             @if (isImage) {
                                 <ImageAttachment Attachment="@FirstAttachment"/>
                             } else {

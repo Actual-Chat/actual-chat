@@ -19,7 +19,7 @@ export class SlateEditorHandle {
 
     public onCancel = () => {}
 
-    public onEditLastMessage = () => {}
+    public onOpenPrevious = () => {}
 
     public onHasContentChanged = (hasContent : boolean) => {}
 

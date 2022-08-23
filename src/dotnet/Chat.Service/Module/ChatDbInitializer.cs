@@ -430,7 +430,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     private static string ConvertOldTextToTimeMap(string textToTimeMapJson)
     {
-        if (!textToTimeMapJson.StartsWith("{\"SourcePoints\"", StringComparison.InvariantCultureIgnoreCase))
+        if (!textToTimeMapJson.OrdinalIgnoreCaseStartsWith("{\"SourcePoints\""))
             return textToTimeMapJson;
 
         var oldMap = NewtonsoftJsonSerialized.New<OldLinearMap>(textToTimeMapJson).Value;

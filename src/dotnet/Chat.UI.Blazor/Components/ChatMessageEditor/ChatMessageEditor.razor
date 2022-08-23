@@ -30,7 +30,7 @@
                                          Class="message-input -flex-y"
                                          Autofocus="true"
                                          Placeholder="@("#" + Chat.Title)"
-                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered" Canceled="@(() => CancelEdit())" LastMessageEditRequested="OnLastMessageEditRequested"/>
+                                         Posted="text => OnPosted(text)" Rendered="OnSlateEditorRendered" Canceled="@(() => CancelEdit())" PreviousOpened="OnLastMessageEditRequested"/>
                             <button class="btn btn-round post-message"
                                     @onclick="_ => OnPosted(clearEditor: true)">
                                 <svg class="fill-current w-8 h-8" viewBox="-1 -1 26 26" id="icon" xmlns="http://www.w3.org/2000/svg">

@@ -9,7 +9,7 @@ public class TestMentionCandidateProvider : IMentionCandidateProvider
         CancellationToken cancellationToken)
     {
         var candidates = Candidates
-            .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .Where(c => c.Name.OrdinalIgnoreCaseContains(search))
             .OrderBy(c => c.Name)
             .Take(limit);
         var filteredCandidates = candidates.Select(c => new MentionCandidate(c.Id, c.Name)).ToArray();

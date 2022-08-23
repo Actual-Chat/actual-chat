@@ -24,7 +24,7 @@ export class SlateEditor {
         this.editorHandle = new SlateEditorHandle();
         this.editorHandle.onPost = this.onPost;
         this.editorHandle.onCancel = this.onCancel;
-        this.editorHandle.onEditLastMessage = this.onEditLastMessage;
+        this.editorHandle.onOpenPrevious = this.onOpenPrevious;
         this.editorHandle.onMentionCommand = this.onMentionCommand;
         this.editorHandle.onRendered = this.onRendered;
 
@@ -51,8 +51,8 @@ export class SlateEditor {
     private onCancel = () =>
         this.blazorRef.invokeMethodAsync("Cancel");
 
-    private onEditLastMessage = () =>
-        this.blazorRef.invokeMethodAsync("EditLastMessage");
+    private onOpenPrevious = () =>
+        this.blazorRef.invokeMethodAsync("OpenPrevious");
 
     public clearText = () =>
         this.editorHandle.clearText();

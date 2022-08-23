@@ -1,6 +1,7 @@
-@page "/test/slate-editor"
+@namespace ActualChat.Chat.UI.Blazor.Components
+@page "/test/message-editor"
 
-<MainHeader>Slate Editor Test Page</MainHeader>
+<MainHeader>Editor Test Page</MainHeader>
 
 <PageWithHeaderAndFooter>
     <Body>
@@ -13,9 +14,12 @@
     <Footer>
         <div class="flex-y">
             <MentionCandidateListManager>
-                <SlateEditor @ref="_editor" Id="message-input" Class="bg-gray-200 min-h-[50px]"
-                             Placeholder="Enter some text..."
-                             Posted="OnPost"/>
+                <SlateEditor
+                    @ref="_editor"
+                    Id="message-input"
+                    Class="bg-gray-200 min-h-[50px]"
+                    Placeholder="Enter some text..."
+                    Posted="OnPost"/>
             </MentionCandidateListManager>
         </div>
     </Footer>

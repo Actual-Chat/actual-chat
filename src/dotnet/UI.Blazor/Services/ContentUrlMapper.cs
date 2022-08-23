@@ -10,12 +10,12 @@ public class ContentUrlMapper
     {
         var baseUri = uriMapper.BaseUri;
 
-        _transformUri = baseUri.Host.EndsWith("actual.chat", StringComparison.OrdinalIgnoreCase);
+        _transformUri = baseUri.Host.OrdinalIgnoreCaseEndsWith("actual.chat");
         _contentBaseUri = _transformUri ? $"{baseUri.Scheme}://cdn.{baseUri.Host}/" : "";
         _mediaBaseUri = _transformUri ? $"{baseUri.Scheme}://media.{baseUri.Host}/" : "";
 
         // TODO: remove this workaround when new cert is available
-        if (baseUri.Host.Equals("dev.actual.chat", StringComparison.OrdinalIgnoreCase)) {
+        if (OrdinalIgnoreCaseEquals(baseUri.Host, "dev.actual.chat")) {
             _contentBaseUri = $"{baseUri.Scheme}://cdn-{baseUri.Host}/";
             _mediaBaseUri = $"{baseUri.Scheme}://media-{baseUri.Host}/";
         }

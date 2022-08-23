@@ -597,14 +597,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 continue;
 
             if (hostInfo.IsDevelopmentInstance) {
-                if (email.EndsWith("actual.chat", StringComparison.OrdinalIgnoreCase))
+                if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
                     owners.Add(email, userId);
             }
             else {
-                if (email.Equals("alex.yakunin@actual.chat", StringComparison.OrdinalIgnoreCase)
-                    || email.Equals("alexey.kochetov@actual.chat", StringComparison.OrdinalIgnoreCase)) {
+                if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat") || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
                     owners.Add(email, userId);
-                }
             }
         }
 
@@ -648,7 +646,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             .ConfigureAwait(false)).Require();
         var ownerAuthorIds = ImmutableArray<Symbol>.Empty;
         foreach (var userId in owners.Values) {
-            if (string.Equals(userId, creatorId, StringComparison.Ordinal))
+            if (OrdinalEquals(userId, creatorId))
                 continue;
             if (!authorsByUserId.TryGetValue(userId, out var chatAuthor))
                 continue;

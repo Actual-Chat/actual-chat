@@ -33,18 +33,6 @@ public static class StringExt
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
 
-    public static bool OrdinalHasPrefix(this string source, string prefix, out string suffix)
-        => source.HasPrefix(prefix, StringComparison.Ordinal, out suffix);
-    public static bool HasPrefix(this string source, string prefix, StringComparison stringComparison, out string suffix)
-    {
-        if (source.StartsWith(prefix, stringComparison)) {
-            suffix = source[prefix.Length..];
-            return true;
-        }
-        suffix = "";
-        return false;
-    }
-
     public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)
     {
         var (host, port) = hostPort.ParseHostPort();

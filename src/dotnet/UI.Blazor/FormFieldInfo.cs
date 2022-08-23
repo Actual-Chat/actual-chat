@@ -23,7 +23,7 @@ public abstract class FormFieldInfo
             foreach (var fieldIdProperty in formType1.GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
                 if (fieldIdProperty.PropertyType != typeof(string))
                     continue;
-                if (!fieldIdProperty.Name.EndsWith(FieldIdSuffix, StringComparison.Ordinal))
+                if (!fieldIdProperty.Name.OrdinalEndsWith(FieldIdSuffix))
                     continue;
                 var field = New(formType1, fieldIdProperty);
                 fields.Add(field);
@@ -33,7 +33,7 @@ public abstract class FormFieldInfo
 
     public static FormFieldInfo New(Type formType, PropertyInfo fieldIdProperty)
     {
-        if (!fieldIdProperty.Name.EndsWith(FieldIdSuffix, StringComparison.Ordinal))
+        if (!fieldIdProperty.Name.OrdinalEndsWith(FieldIdSuffix))
             throw new ArgumentOutOfRangeException(nameof(fieldIdProperty),
                 $"'{fieldIdProperty.Name}' must end with '{FieldIdSuffix}'.");
         if (fieldIdProperty.PropertyType != typeof(string))
