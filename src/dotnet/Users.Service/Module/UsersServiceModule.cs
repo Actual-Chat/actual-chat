@@ -90,7 +90,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
                 auth.ConfigureAuthService(_ => new() {
-                    MinUpdatePresencePeriod = TimeSpan.FromSeconds(55),
+                    MinUpdatePresencePeriod = Constants.Presence.SkipCheckInPeriod,
                 });
             });
         });

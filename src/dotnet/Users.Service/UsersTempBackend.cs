@@ -8,8 +8,7 @@ namespace ActualChat.Users;
 public class UsersTempBackend : DbServiceBase<UsersDbContext>,  IUsersTempBackend
 {
     public UsersTempBackend(IServiceProvider services) : base(services)
-    {
-    }
+    { }
 
     public virtual async Task<ImmutableArray<string>> GetUserIds(CancellationToken cancellationToken)
     {

@@ -22,4 +22,11 @@ public static partial class Constants
     {
         public const string ContentType = "Content-Type";
     }
+
+    public static class Presence
+    {
+        public static RandomTimeSpan CheckInPeriod { get; } = TimeSpan.FromSeconds(50).ToRandom(TimeSpan.FromSeconds(1));
+        public static TimeSpan SkipCheckInPeriod { get; } = TimeSpan.FromSeconds(30);
+        public static TimeSpan CheckInTimeout { get; } = TimeSpan.FromSeconds(120);
+    }
 }
