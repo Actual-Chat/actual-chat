@@ -70,11 +70,11 @@
         else if (activeChat is { ChatType: ChatType.Group } && !chats.Any(c => c.Id == activeChat.Id))
             chats = chats.Add(activeChat);
 
-        var keywords = await SearchUI.GetKeywords(cancellationToken).ConfigureAwait(false);
-        if (keywords.Count > 0)
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        if (!searchPhrase.IsEmpty)
             chats = (
                 from c in chats
-                let rank = SearchUI.GetMatchRank(c.Title, keywords)
+                let rank = searchPhrase.GetMatchRank(c.Title)
                 where rank > 0 || c.Id == activeChatId
                 orderby rank descending, c.Title
                 select c

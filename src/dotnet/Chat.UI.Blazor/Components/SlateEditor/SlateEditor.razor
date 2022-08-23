@@ -88,7 +88,7 @@
             return;
         switch (cmd) {
             case "insert": {
-                await Insert(manager.ListView?.Selection);
+                await Insert(manager.ListView?.SelectedCandidate);
                 break;
             }
             case "moveUp": {

@@ -22,31 +22,29 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public MentionCandidateListView? ListView { get; private set; } = null!;
-    public IMutableState<MentionCandidate[]?> Candidates { get; private set; } = null!;
+    public IMutableState<MentionCandidate[]> Candidates { get; private set; } = null!;
     public event Action<MentionCandidate>? Selected;
 
     protected override void OnInitialized()
-        => Candidates = StateFactory.NewMutable<MentionCandidate[]?>();
+        => Candidates = StateFactory.NewMutable<MentionCandidate[]>();
 
     protected override void OnParametersSet()
-        => Candidates.Value = null;
+        => Candidates.Value = Array.Empty<MentionCandidate>();
 
     public void TriggerSelected(MentionCandidate mentionCandidate)
         => Selected?.Invoke(mentionCandidate);
 
-    public async Task Show(string search)
+    public async Task Show(string searchText)
     {
-        var candidates = Candidates.Value;
-        if (candidates != null && OrdinalEquals(_lastSearch, search))
+        if (OrdinalEquals(_lastSearch, searchText))
             return;
 
-        Candidates.Value = await MentionCandidateProvider
-            .GetMentionCandidates(search, Limit, default);
-        _lastSearch = search;
+        Candidates.Value = await MentionCandidateProvider.GetMentionCandidates(searchText, Limit, default);
+        _lastSearch = searchText;
     }
 
     public Task Hide() {
-        Candidates.Value = null;
+        Candidates.Value = Array.Empty<MentionCandidate>();
         return Task.CompletedTask;
     }
 }
