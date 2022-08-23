@@ -2,9 +2,9 @@ namespace ActualChat;
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct SearchMatch(
-    string Text,
-    double Rank,
-    SearchMatchPart[] Parts)
+    [property: DataMember(Order = 0)] string Text,
+    [property: DataMember(Order = 1)] double Rank,
+    [property: DataMember(Order = 2)] SearchMatchPart[] Parts)
 {
     public IEnumerable<SearchMatchPart> PartsWithGaps {
         get {

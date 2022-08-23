@@ -20,6 +20,9 @@ public static class StringExt
     public static string? RequireEmpty(this string? source, string name)
         => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
 
+    public static SearchPhrase ToSearchPhrase(this string text)
+        => new(text);
+
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
 

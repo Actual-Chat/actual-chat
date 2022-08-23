@@ -7,7 +7,7 @@ public sealed class SearchPhrase
     private string? _text;
     private Regex? _termRegex;
 
-    public string[] Terms { get; }
+    [DataMember] public string[] Terms { get; }
     public string Text => _text ??= Terms.ToDelimitedString(" ");
     public bool IsEmpty => Terms.Length == 0;
 
