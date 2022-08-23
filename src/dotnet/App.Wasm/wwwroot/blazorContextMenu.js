@@ -112,7 +112,7 @@ var blazorContextMenu = function (blazorContextMenu) {
         if (!menu) throw new Error("No context menu with id '" + menuId + "' was found");
         addToOpenMenus(menu, menuId, e.target);
         var triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
-        showMenuCommon(menu, menuId, e.x, e.y, e.target, triggerDotnetRef);
+        showMenuCommon(menu, menuId, e.x, e.y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
             e.stopPropagation();
@@ -152,7 +152,7 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
         addToOpenMenus(menu, menuId, e.target, target);
         const triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
-        showMenuCommon(menu, menuId, x, y, e.target, triggerDotnetRef);
+        showMenuCommon(menu, menuId, x, y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
             e.stopPropagation();
@@ -160,30 +160,54 @@ var blazorContextMenu = function (blazorContextMenu) {
         return false;
     };
 
-    let showMenuCommon = function (menu, menuId, x, y, target, triggerDotnetRef) {
-        let isLeftHalf = x < window.innerWidth / 2;
-        if (menuId === 'menu-AttachMenu') {
+    let showMenuCommon = function (menu, menuId, x, y, event, triggerDotnetRef) {
+        const target = event.target;
+        const offset = 5;
+        const isLeftHalf = x < window.innerWidth / 2;
+        const isTopHalf = y < window.innerHeight / 2;
+        if (event.button === 2) {
             return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
-                let btn = target.closest('button');
-                let offset = 0;
-                let menuItem = menu.querySelectorAll('.context-menu-item')[0];
-                if (menuItem != null)
-                    offset = menuItem.clientHeight + 10;
-                menu.style.top = (btn.offsetTop - menu.clientHeight + offset) + "px";
+                if (isLeftHalf)
+                    menu.style.left = x + "px";
+                else
+                    menu.style.left = (x - menu.clientWidth) + "px";
+                let topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
+                if (topOverflownPixels > 0) {
+                    menu.style.top = (window.innerHeight - menu.clientHeight - offset) + "px";
+                }
             });
         }
+        let btn = target.closest('button');
+        let rect = btn.getBoundingClientRect();
+        let left = rect.left;
+        let right = rect.right;
+        let top = rect.top;
+        let bottom = rect.bottom;
+        let menuLeft = right + offset;
+        let menuTop = top;
+
         return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
-            if (isLeftHalf)
-                menu.style.left = x + "px";
-            else
-                menu.style.left = (x - menu.clientWidth) + "px";
-
-            let topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
-            if (topOverflownPixels > 0) {
-                menu.style.top = (window.innerHeight - menu.clientHeight - 8) + "px";
+            let menuWidth = menu.clientWidth;
+            let menuHeight = menu.clientHeight;
+            let menuBottom = menu.getBoundingClientRect().bottom;
+            if (!isLeftHalf) {
+                menuLeft = left - menuWidth - offset;
             }
-
-            //openingMenu = false;
+            if (menuBottom > window.innerHeight) {
+                menuTop = window.innerHeight - menuHeight - offset;
+            }
+            if (menu.classList.contains('dropdown-menu')) {
+                menuLeft = left;
+                menuTop = bottom + offset;
+                if (!isTopHalf) {
+                    menuTop = top - menuHeight - offset;
+                }
+                if (!isLeftHalf) {
+                    menuLeft = right - menuWidth - offset;
+                }
+            }
+            menu.style.left = menuLeft + "px";
+            menu.style.top = menuTop + "px";
         });
     }
 

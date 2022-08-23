@@ -87,8 +87,8 @@
 }
 
 .navbar-item .navbar-item-ending {
-    @apply flex-1 justify-self-end h-6;
-    @apply flex flex-row justify-end gap-x-3 w-fit;
+    @apply flex-1 justify-self-end h-8 gap-x-2;
+    @apply flex flex-row justify-end w-fit items-center;
 }
 
 .navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
