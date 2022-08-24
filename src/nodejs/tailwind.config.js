@@ -108,8 +108,6 @@ module.exports = {
         'mention-hover': 'var(--mention-hover)',
         'mention-message': 'var(--mention-message)',
         'mention-message-hover': 'var(--mention-message-hover)',
-        'own-message': 'var(--own-message)',
-        'own-message-hover': 'var(--own-message-hover)',
         'replied-message': 'var(--replied-message)',
         'replied-message-hover': 'var(--replied-message-hover)',
         'replied-message-border': 'var(--replied-message-border)',
