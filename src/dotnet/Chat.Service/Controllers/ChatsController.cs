@@ -99,7 +99,7 @@ public class ChatsController : ControllerBase, IChats
     public Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
         => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
-    [HttpGet]
+    [HttpGet, Publish]
     public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
         => _service.ListMentionableAuthors(session, chatId, cancellationToken);
 
