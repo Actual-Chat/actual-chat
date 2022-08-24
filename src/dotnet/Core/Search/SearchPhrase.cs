@@ -3,6 +3,7 @@ using Cysharp.Text;
 
 namespace ActualChat.Search;
 
+[DataContract]
 public sealed class SearchPhrase
 {
     private static readonly Regex TermSplitRegex = new("[\\s_]+", RegexOptions.Compiled);

@@ -1,5 +1,6 @@
 namespace ActualChat.Search;
 
+[DataContract]
 public abstract class SearchResult
 {
     [DataMember] public string Id { get; }

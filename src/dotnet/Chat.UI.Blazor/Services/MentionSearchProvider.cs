@@ -24,7 +24,7 @@ public class MentionSearchProvider : ISearchProvider<MentionSearchResult>
             let searchMatch = searchPhrase.GetMatch(a.Name)
             where searchMatch.Rank > 0 || searchPhrase.IsEmpty
             orderby searchMatch.Rank descending, a.Name
-            select new MentionSearchResult(a.Id, searchMatch)
+            select new MentionSearchResult(a.Id, searchMatch, a.Picture)
             ).Take(limit)
             .ToArray();
         return mentions;

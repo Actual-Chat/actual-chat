@@ -1,6 +1,7 @@
 namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
+[DataContract]
 public readonly record struct SearchMatch(
     [property: DataMember(Order = 0)] string Text,
     [property: DataMember(Order = 1)] double Rank,
