@@ -14,9 +14,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    private void OnClick() {
-        if (ChatUI.RecordingChatId.Value == ChatId)
-            ChatUI.RecordingChatId.Value = Symbol.Empty;
-        ChatUI.SetListeningState(ChatId, false);
-    }
+    private void OnClick()
+        => _ = ChatUI.RemoveActiveChat(ChatId);
 }

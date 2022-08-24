@@ -2,14 +2,22 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ChatUI
 {
+    public const int ActiveChatsLimit = 4;
+
     private ChatPlayers? _chatPlayers;
     private readonly SharedResourcePool<Symbol, ISyncedState<long>> _lastReadEntryStates;
+    private readonly ISyncedState<ImmutableDictionary<string, Moment>> _pinnedChatIds;
+    private readonly IStoredState<Symbol> _recordingChatId;
+    private readonly IStoredState<ImmutableList<Symbol>> _listeningChatIds;
+    private readonly IMutableState<ImmutableList<Symbol>> _recentActiveChatIds;
+    private readonly AsyncLock _asyncLock = new AsyncLock(ReentryMode.CheckedPass);
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
@@ -22,9 +30,10 @@ public class ChatUI
     private UICommander UICommander { get; }
 
     public IStoredState<Symbol> ActiveChatId { get; }
-    public ISyncedState<ImmutableDictionary<string, Moment>> PinnedChatIds { get; }
-    public IStoredState<Symbol> RecordingChatId { get; }
-    public IStoredState<ImmutableList<Symbol>> ListeningChatIds { get; }
+    public IState<ImmutableDictionary<string, Moment>> PinnedChatIds => _pinnedChatIds;
+    public IState<Symbol> RecordingChatId => _recordingChatId;
+    public IState<ImmutableList<Symbol>> ListeningChatIds => _listeningChatIds;
+    public IState<ImmutableList<Symbol>> RecentActiveChatIds => _recentActiveChatIds;
     public IMutableState<ChatEntryLink?> LinkedChatEntry { get; }
     public IMutableState<long> HighlightedChatEntryId { get; }
 
@@ -42,17 +51,18 @@ public class ChatUI
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(ChatUI));
         var accountSettings = services.GetRequiredService<AccountSettings>().WithPrefix(nameof(ChatUI));
         ActiveChatId = StateFactory.NewKvasStored<Symbol>(new(localSettings, nameof(ActiveChatId)));
-        PinnedChatIds = StateFactory.NewKvasSynced<ImmutableDictionary<string, Moment>>(
+        _pinnedChatIds = StateFactory.NewKvasSynced<ImmutableDictionary<string, Moment>>(
             new(accountSettings, nameof(PinnedChatIds)) {
                 InitialValue = ImmutableDictionary<string, Moment>.Empty,
                 Corrector = FixPinnedChatIds,
             });
-        RecordingChatId = StateFactory.NewKvasStored<Symbol>(new(localSettings, nameof(RecordingChatId)));
-        ListeningChatIds = StateFactory.NewKvasStored<ImmutableList<Symbol>>(
+        _recordingChatId = StateFactory.NewKvasStored<Symbol>(new(localSettings, nameof(RecordingChatId)));
+        _listeningChatIds = StateFactory.NewKvasStored<ImmutableList<Symbol>>(
             new(localSettings, nameof(ListeningChatIds)) {
                 InitialValue = ImmutableList<Symbol>.Empty,
                 Corrector = FixListeningChatIds,
             });
+        _recentActiveChatIds = StateFactory.NewMutable(ImmutableList<Symbol>.Empty);
         LinkedChatEntry = StateFactory.NewMutable<ChatEntryLink?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
@@ -103,33 +113,63 @@ public class ChatUI
         return listeningChatIds.Any();
     }
 
-    public void SetPinState(Symbol chatId, bool mustPin)
+    public async Task SetPinState(Symbol chatId, bool mustPin)
     {
         if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(chatId));
-        PinnedChatIds.Set(pinnedChatIdsResult => {
-            var pinnedChatIds = pinnedChatIdsResult.Value;
-            return mustPin
-                ? pinnedChatIds.Add(chatId, Clocks.SystemClock.Now)
-                : pinnedChatIds.Remove(chatId);
-        });
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+        _pinnedChatIds.Value = mustPin
+            ? _pinnedChatIds.Value.Add(chatId, Clocks.SystemClock.Now)
+            : _pinnedChatIds.Value.Remove(chatId);
     }
 
-    public void SetListeningState(Symbol chatId, bool mustListen)
+    public async Task SetListeningState(Symbol chatId, bool mustListen)
     {
         if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(chatId));
-        ListeningChatIds.Set(rListeningChatIds => {
-            var listeningChatIds = rListeningChatIds.ValueOrDefault ?? ImmutableList<Symbol>.Empty;
-            if (!mustListen)
-                return listeningChatIds.Remove(chatId);
-            if (listeningChatIds.Contains(chatId))
-                return listeningChatIds;
 
-            if (listeningChatIds.Count >= 4)
-                listeningChatIds = listeningChatIds.RemoveAt(0);
-            return listeningChatIds.Add(chatId);
-        });
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+        var listeningChatIds = _listeningChatIds.ValueOrDefault ?? ImmutableList<Symbol>.Empty;
+
+        if (!mustListen)
+            listeningChatIds = listeningChatIds.Remove(chatId);
+        else if (!listeningChatIds.Contains(chatId)) {
+            var recordingChatId = RecordingChatId.Value;
+            var chatIdToEliminate = await GetListeningChatIdToEliminate(listeningChatIds, chatId, recordingChatId)
+                .ConfigureAwait(false);
+            if (!chatIdToEliminate.IsEmpty)
+                listeningChatIds = listeningChatIds.Remove(chatIdToEliminate);
+            listeningChatIds = listeningChatIds.Add(chatId);
+        }
+        _listeningChatIds.Value = listeningChatIds;
+
+        if (mustListen)
+            UpdateRecentActiveChatId(chatId);
+    }
+
+    public async Task SetRecordingState(Symbol chatId)
+    {
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+        if (!chatId.IsEmpty) {
+            var listenChatIdToEliminate = await GetListeningChatIdToEliminate(_listeningChatIds.Value, Symbol.Empty, chatId)
+                .ConfigureAwait(false);
+            if (!listenChatIdToEliminate.IsEmpty)
+                await SetListeningState(listenChatIdToEliminate, false).ConfigureAwait(false);
+        }
+        _recordingChatId.Value = chatId;
+        if (!chatId.IsEmpty)
+            UpdateRecentActiveChatId(chatId);
+    }
+
+    public async Task RemoveActiveChat(Symbol chatId)
+    {
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+        if (RecordingChatId.Value == chatId)
+            await SetRecordingState(Symbol.Empty).ConfigureAwait(false);
+        await SetListeningState(chatId, false).ConfigureAwait(false);
+
+        var list = _recentActiveChatIds.Value;
+        _recentActiveChatIds.Value = list.Remove(chatId);
     }
 
     public void ShowChatAuthorModal(string authorId)
@@ -197,5 +237,78 @@ public class ChatUI
             listeningChatIds = listeningChatIds.RemoveAll(chatId => chatId == r.ChatId);
         }
         return listeningChatIds;
+    }
+
+    private async Task<Symbol> GetListeningChatIdToEliminate(ImmutableList<Symbol> listeningChatIds, Symbol listenChatId, Symbol recordingChatId)
+    {
+        // When active chats panel limit exceeded, we look for a less important chat to eliminate it from the list.
+        var limit = ActiveChatsLimit;
+        if (!recordingChatId.IsEmpty && !listeningChatIds.Contains(recordingChatId) && listenChatId != recordingChatId)
+            limit--; // reserve one slot for recording chat
+        if (listeningChatIds.Count < limit)
+            return Symbol.Empty;
+
+        bool IsPinnedChat(Symbol c)
+            => PinnedChatIds.Value.Keys.Contains(c.Value, StringComparer.OrdinalIgnoreCase);
+
+        async Task<Symbol> GetChatToEliminate(ICollection<Symbol> chatIds)
+        {
+            if (chatIds.Count == 0)
+                return Symbol.Empty;
+            if (chatIds.Count == 1)
+                return chatIds.First();
+            var priority = await GetListeningChatPriorities(chatIds).ConfigureAwait(false);
+            return chatIds.MinBy(c => priority[c]);
+        }
+
+        var pinnedChats = listeningChatIds.Where(c => !IsPinnedChat(c)).ToArray();
+        var chatIdToEliminate = await GetChatToEliminate(pinnedChats).ConfigureAwait(false);
+        if (chatIdToEliminate.IsEmpty) {
+            var unpinnedChats = listeningChatIds.Where(c => IsPinnedChat(c)).ToArray();
+            chatIdToEliminate = await GetChatToEliminate(unpinnedChats).ConfigureAwait(false);
+        }
+
+        return chatIdToEliminate;
+    }
+
+    private async Task<Dictionary<Symbol, int>> GetListeningChatPriorities(ICollection<Symbol> chatIds)
+    {
+        var timestamps = await chatIds
+                .Select(chatId => GetLastEntryTimestamp(chatId))
+                .Collect()
+                .ConfigureAwait(false);
+
+        var orderedChatIds = chatIds.Zip(timestamps)
+            .OrderByDescending(c => c.Second)
+            .Select((c, i) => new { ChatId = c.First, Moment = c.Second, Index = i })
+            .ToList();
+
+        var priority = orderedChatIds.ToDictionary(c => c.ChatId, c => c.Index);
+        return priority;
+    }
+
+    private async Task<Moment> GetLastEntryTimestamp(Symbol chatId)
+    {
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Audio, CancellationToken.None);
+        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryType.Audio);
+        var lastEditableEntry = await chatEntryReader.GetLast(chatIdRange, x => true, CancellationToken.None);
+        if (lastEditableEntry == null)
+            return Moment.EpochStart;
+        return lastEditableEntry.BeginsAt;
+    }
+
+    private void UpdateRecentActiveChatId(Symbol chatId)
+    {
+        if (chatId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
+        var list = _recentActiveChatIds.Value;
+        if (list.Contains(chatId))
+            list = list.Remove(chatId);
+        list = list.Insert(0, chatId);
+        var limit = ActiveChatsLimit * 2;
+        if (list.Count > limit)
+            list = list.RemoveRange(limit, list.Count - limit);
+        _recentActiveChatIds.Value = list;
     }
 }

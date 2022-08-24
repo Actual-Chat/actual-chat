@@ -63,7 +63,7 @@
     }
 
     private void OnStop()
-        => ChatUI.RecordingChatId.Value = Symbol.Empty;
+        => _ = ChatUI.SetRecordingState(Symbol.Empty);
 
     public sealed record Model {
         public static Model None { get; } = new();

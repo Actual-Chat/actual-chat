@@ -33,6 +33,16 @@
         if (!recordingChatId.IsEmpty && !chatIds.Contains(recordingChatId))
             chatIds = chatIds.Add(recordingChatId);
 
+        if (chatIds.Count < ChatUI.ActiveChatsLimit) {
+            var recentActiveChatIds = await ChatUI.RecentActiveChatIds.Use(cancellationToken).ConfigureAwait(false);
+            foreach (var chatId in recentActiveChatIds) {
+                if (!chatIds.Contains(chatId))
+                    chatIds = chatIds.Insert(0, chatId);
+                if (chatIds.Count >= ChatUI.ActiveChatsLimit)
+                    break;
+            }
+        }
+
         var chats = (await chatIds
             .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
             .Collect()
