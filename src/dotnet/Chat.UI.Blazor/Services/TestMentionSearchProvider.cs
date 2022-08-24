@@ -8,7 +8,7 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
 
     public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
-        var searchPhrase = filter.ToSearchPhrase(true, false);
+        var searchPhrase = filter.ToSearchPhrase(true, true);
         var mentions = (
             from name in Names
             let searchMatch = searchPhrase.GetMatch(name)

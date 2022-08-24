@@ -17,7 +17,7 @@ public class MentionSearchProvider : ISearchProvider<MentionSearchResult>
 
     public async Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
-        var searchPhrase = filter[..Math.Min(64, filter.Length)].ToSearchPhrase(true, false);
+        var searchPhrase = filter[..Math.Min(64, filter.Length)].ToSearchPhrase(true, true);
         var authors = await _chats.ListMentionableAuthors(_session, _chatId, cancellationToken).ConfigureAwait(false);
         var mentions = (
             from a in authors

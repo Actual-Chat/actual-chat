@@ -77,8 +77,8 @@ public sealed class SearchPhrase
             var match = matches[i];
             var index = match.Index;
             var length = match.Length + (index == 0 ? 1 : 0);
-            var boundaryMatchRank = index == 0 ? 10 : char.IsWhiteSpace(text[index]) ? 3 : 0;
-            var partRank = (length / Math.Log10(10 + index)) + boundaryMatchRank;
+            var boundaryBoost = index == 0 ? 2 : char.IsWhiteSpace(text[index]) ? 1.5 : 0;
+            var partRank = boundaryBoost * Math.Exp(length) * 100 / (100 + index);
             parts[i] = new SearchMatchPart((index, index + match.Length), partRank);
             rank += partRank;
         }
@@ -97,8 +97,8 @@ public sealed class SearchPhrase
         foreach (Match match in matches) {
             var index = match.Index;
             var length = match.Length + (index == 0 ? 1 : 0);
-            var boundaryMatchRank = index == 0 ? 10 : char.IsWhiteSpace(text[index]) ? 3 : 0;
-            var partRank = (length / Math.Log10(10 + index)) + boundaryMatchRank;
+            var boundaryBoost = index == 0 ? 2 : char.IsWhiteSpace(text[index]) ? 1.5 : 0;
+            var partRank = boundaryBoost * Math.Exp(length) * 100 / (100 + index);
             rank += partRank;
         }
         return rank;
