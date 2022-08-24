@@ -1,3 +1,6 @@
+.chat-menu-btn.btn.btn-round {
+    @apply w-8 h-12;
+}
 .visible-menu {
     @apply flex;
 }
