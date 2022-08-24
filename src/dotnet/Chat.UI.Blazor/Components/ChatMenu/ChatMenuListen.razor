@@ -44,7 +44,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnListenClick()
-        => ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
+        => _ = ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {

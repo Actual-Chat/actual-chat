@@ -31,7 +31,7 @@
 
     private Symbol RecordingChatId {
         get => State.ValueOrDefault;
-        set => ChatUI.RecordingChatId.Value = value;
+        set => _ = ChatUI.SetRecordingState(value);
     }
 
     protected override ComputedState<Symbol>.Options GetStateOptions()

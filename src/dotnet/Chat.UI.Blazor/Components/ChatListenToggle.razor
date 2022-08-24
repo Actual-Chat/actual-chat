@@ -19,7 +19,7 @@
     [Parameter] public string ChatId { get; set; } = "";
 
     private void OnListenClick()
-        => ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {

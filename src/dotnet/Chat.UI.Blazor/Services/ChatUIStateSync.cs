@@ -120,11 +120,11 @@ public class ChatUIStateSync : WorkerBase
                 // Update _lastLanguageId
                 await IsLanguageChanged().ConfigureAwait(false);
                 // Start recording = start realtime playback
-                ChatUI.SetListeningState(recordingChatId, true);
+                await ChatUI.SetListeningState(recordingChatId, true).ConfigureAwait(false);
             }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
-            ChatUI.RecordingChatId.Value = recorderChatId;
+            await ChatUI.SetRecordingState(recorderChatId).ConfigureAwait(false);
         }
         return default;
 

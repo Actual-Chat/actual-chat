@@ -33,5 +33,5 @@
         => ChatUI.IsPinned(ChatId, cancellationToken);
 
     private void Toggle()
-        => ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
 }

@@ -80,7 +80,7 @@
         var m = State.LatestNonErrorValue!;
         var isRecordingInThisChat = m.RecordingState is RecordingState.On or RecordingState.OffToOn;
         if (isRecordingInThisChat) {
-            ChatUI.RecordingChatId.Value = Symbol.Empty;
+            _ = ChatUI.SetRecordingState(Symbol.Empty);
             return;
         }
         CanRecord = await AudioRecorder.CanRecord();
@@ -88,7 +88,7 @@
             StateHasChanged();
             return;
         }
-        ChatUI.RecordingChatId.Value = ChatId;
+        _ = ChatUI.SetRecordingState(ChatId);
     }
 
     private async Task OnLongPressStart() {
@@ -100,14 +100,14 @@
             return;
         }
         IsLongPress = true;
-        ChatUI.RecordingChatId.Value = ChatId;
+        _ = ChatUI.SetRecordingState(ChatId);
     }
 
     private void OnLongPressStop() {
         if (!IsLongPress)
             return;
         IsLongPress = false;
-        ChatUI.RecordingChatId.Value = Symbol.Empty;
+        _ = ChatUI.SetRecordingState(Symbol.Empty);
     }
 
     public record Model(RecordingState RecordingState);
