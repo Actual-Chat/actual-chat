@@ -147,10 +147,10 @@
 
 /* Desktop control panel */
 .recorder-panel {
-    @apply hidden md:-flex-x;
+    @apply hidden md:-flex-x h-12;
     @apply justify-center gap-x-2.5;
     @apply bg-01 outline-none rounded-none;
-    @apply self-stretch md:self-end;
+    @apply self-end;
 }
 .recorder-panel > div {
     @apply flex flex-1 w-fit h-fit self-end rounded-full;
@@ -214,5 +214,5 @@
 }
 
 .linked-message-panel {
-    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:px-10;
+    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:pl-4 md:pr-48;
 }
