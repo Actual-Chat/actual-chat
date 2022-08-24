@@ -104,7 +104,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile0(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLastIdTile1(chatId, entryType, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
