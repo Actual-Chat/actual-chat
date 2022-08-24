@@ -2,7 +2,6 @@ import './Components/components.css';
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/AuthorBadge/author-badge.css'
 import './Components/Button/button.css';
-import './Components/ChatIcon/chat-icon.css'
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
 import './Components/ContextMenu/context-menu.css';
@@ -11,6 +10,8 @@ import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
 import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
+import './Components/Pic/pic.css'
+import './Components/PicUpload/pic-upload.css'
 import './Components/TabPanel/tab.css'
 import './Components/tooltip.css'
 import './Components/SideNav/side-nav.css'
@@ -39,5 +40,6 @@ export * from './Layouts/base-layout';
 export * from './messaging-init';
 export * from './theme';
 
+export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';
 export { VirtualListEdge } from './Components/VirtualList/ts/virtual-list-edge';

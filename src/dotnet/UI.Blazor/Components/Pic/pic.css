@@ -1,0 +1,39 @@
+.pic {
+    @apply relative;
+}
+
+.pic-generated {
+    @apply flex items-center justify-center rounded-full cursor-default pointer-events-none select-none;
+}
+
+.pic-image {
+    @apply rounded-full;
+}
+
+.pic-show-cursor.pic-image {
+    @apply cursor-pointer;
+}
+
+.pic-size-6 {
+    @apply w-6 h-6;
+}
+
+.pic-size-8 {
+    @apply w-8 h-8;
+}
+
+.pic-size-9 {
+    @apply w-9 h-9;
+}
+
+.pic-size-10 {
+    @apply w-10 h-10;
+}
+
+.pic-size-16 {
+    @apply w-16 h-16;
+}
+
+.pic-size-20 {
+    @apply w-20 h-20 text-2xl;
+}

@@ -1,0 +1,65 @@
+@using Microsoft.Toolkit.HighPerformance
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Components.FileUpload
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
+@implements IAsyncDisposable
+
+<div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
+    <Pic Title="@Title" Size="@Size" ContentId="@ContentId" Click="PictureClick" NoPicture="NoPicture"/>
+    <div class="pic-upload-picker">
+        <FileUpload id="@InputId"
+                    UploadUrl="@ImageUploadUrl"
+                    Uploaded="OnUploaded"
+                    MaxSize="Constants.Chat.PictureFileSizeLimit"
+                    accept="image/*"
+                    hidden>
+        </FileUpload>
+        <label for="@InputId"
+               class="pic-upload-input-file-label">
+            <i class="fa fa-camera" aria-hidden="true"></i>
+        </label>
+    </div>
+</div>
+
+@code {
+    private string _pictureUrl = "";
+    private bool _hasPicture = false;
+    private ElementReference _dropZoneRef;
+    private FileUpload.FileUpload _inputRef = null!;
+    private IJSObjectReference _jsRef = null!;
+
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; set; } = null!;
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string ContentId { get; set; } = "";
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public string ImageUploadUrl { get; set; } = "";
+    [Parameter] public RenderFragment? NoPicture { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }
+    [Parameter] public EventCallback<string> ImagePicked { get; set; }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create", _dropZoneRef, InputId);
+        }
+    }
+
+    private string GenerateColor() {
+        var hash = Title.GetDjb2HashCode();
+        var h = hash % 360;
+        return $"hsl({h}, 30%, 80%)";
+    }
+
+    private async Task OnUploaded(string contentId) {
+        await ImagePicked.InvokeAsync(contentId).ConfigureAwait(false);
+    }
+
+    private const string InputId = "pic-upload-input-file";
+}

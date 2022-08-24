@@ -5,20 +5,26 @@
 <Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame Title="Edit avatar">
         <Body>
-            <DataAnnotationsValidator />
-            <ValidationSummary />
-
-            <FormSection InputId="@_form.PictureFieldId" Label="Picture">
-                <TextBox @bind-Value="@_form.Picture" Id="@_form.PictureFieldId" Autofocus="true" />
-            </FormSection>
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+            <PicUpload
+                ImageUploadUrl="@UploadUrl"
+                ImagePicked="OnImagePicked"
+                Size="SquareSize.Size20"
+                Title="@_form.Bio"
+                ContentId="@_form.Picture">
+                <NoPicture>
+                    <AnonymousIcon Class="w-20 h-20"/>
+                </NoPicture>
+            </PicUpload>
 
             <FormSection InputId="@_form.BioFieldId" Label="Bio">
-                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" />
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
             </FormSection>
 
             <FormSection InputId="@_form.IsDefaultFieldId">
                 <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"
-                            Label="Default for the user" />
+                            Label="Default for the user"/>
             </FormSection>
 
             @if (!ModalModel.ChatId.IsNullOrEmpty()) {
@@ -49,6 +55,7 @@
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -89,6 +96,11 @@
         CloseModal();
     }
 
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
+        StateHasChanged();
+    }
+
     private async Task SetDefaultAvatar(string avatarId)
     {
         var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
@@ -111,25 +123,18 @@
         => ModalInstance.CancelAsync();
 
     public sealed class FormModel : FormModel<FormModel> {
-        [Required, MinLength(1)]
-        public string Name { get; set; } = "";
-        public string NameFieldId { get; set; } = "";
-
+        [Required, MinLength(1)] public string Name { get; set; } = "";
         public string Picture { get; set; } = "";
-        public string PictureFieldId { get; set; } = "";
-
         public string Bio { get; set; } = "";
         public string BioFieldId { get; set; } = "";
-
         public bool IsDefault { get; set; }
         public string IsDefaultFieldId { get; set; } = "";
-
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("avatar-editor", componentIdGenerator)
-        { }
+            : base("avatar-editor", componentIdGenerator) {
+        }
     }
 
     public sealed record Model(string AvatarId, string ChatId);
