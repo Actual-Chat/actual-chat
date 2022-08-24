@@ -24,6 +24,13 @@
     @apply text-current break-words;
 }
 
+.author-name {
+    @apply font-bold text-03;
+}
+.message-wrapper.own-message .author-name {
+    @apply text-06;
+}
+
 .chat-message-modal .chat-message:hover {
     @apply bg-01;
 }

@@ -129,7 +129,7 @@ module.exports = {
         '03': 'var(--text-03)',
         '04': 'var(--text-04)',
         '05': 'var(--text-05)',
-        '07': 'var(--text-07)',
+        '06': 'var(--text-06)',
       },
       borderColor: {
         'bg-01': 'var(--background-01)',

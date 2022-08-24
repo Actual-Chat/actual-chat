@@ -57,7 +57,7 @@
                 <div class="flex-1 overflow-hidden">
                     @if (showHeader || isReply) {
                         <div class="header chat-message-header ml-1">
-                            <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-03"/>
+                            <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
                             <ChatMessageTimestamp Moment="entry.BeginsAt"/>
                             &nbsp;
                             <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span>
