@@ -186,7 +186,6 @@ var blazorContextMenu = function (blazorContextMenu) {
         let bottom = rect.bottom;
         let menuLeft = right + offset;
         let menuTop = top;
-
         return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
             let menuWidth = menu.clientWidth;
             let menuHeight = menu.clientHeight;
