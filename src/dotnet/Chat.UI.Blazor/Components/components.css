@@ -200,9 +200,6 @@
 .listening-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
-.listening-chats .navbar-item-ending {
-    @apply gap-x-3;
-}
 
 .chat-footer {
     @apply flex justify-center w-full bg-01;
