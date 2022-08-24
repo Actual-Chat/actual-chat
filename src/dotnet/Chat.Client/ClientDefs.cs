@@ -75,8 +75,8 @@ public interface IChatsClientDef
     [Get(nameof(GetPeerChatContact))]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(ListMentionableAuthor))]
-    Task<ImmutableArray<Author>> ListMentionableAuthor(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(ListMentionableAuthors))]
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(ChangeChat))]
     Task<Chat?> ChangeChat([Body] IChats.ChangeChatCommand command, CancellationToken cancellationToken);
