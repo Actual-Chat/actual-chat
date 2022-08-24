@@ -82,7 +82,7 @@ export class VirtualList implements VirtualListAccessor {
         bufferZoneSize: number,
         debugMode: boolean) {
         if (debugMode) {
-            console.log(`${LogScope}: .ctor`);
+            console.log(`${LogScope}.ctor`);
             window['virtualList'] = this;
         }
 

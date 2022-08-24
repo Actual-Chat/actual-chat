@@ -1,7 +1,9 @@
 @using BlazorContextMenu
+@using ActualChat.Search
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
     var m = State.LatestNonErrorValue;
+    var title = m.TitleSearchMatch.Text;
 }
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@Chat" CssClass="flex-x items-center gap-x-2">
@@ -11,13 +13,11 @@
                 <ChatIcon Title="@Chat.Title" Picture="@Chat.Picture" Size="SquareSize.Size10" />
                 <span class="text-ellipsis whitespace-nowrap overflow-hidden">
                     @if (m.TitleSearchMatch.Parts.Length == 0) {
-                        <span>@Chat.Title</span>
-                    }
-                    else {
+                        <span>@title</span>
+                    } else {
                         foreach (var part in m.TitleSearchMatch.PartsWithGaps) {
-                            var text = m.TitleSearchMatch.Text;
                             var textClass = part.Rank > 0 ? "font-semibold" : "";
-                            <span class="@textClass">@(text[part.Range.Start..part.Range.End])</span>
+                            <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>
                         }
                     }
                 </span>

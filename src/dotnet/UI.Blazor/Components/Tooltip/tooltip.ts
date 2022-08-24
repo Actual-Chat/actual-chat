@@ -64,7 +64,7 @@ export class Tooltip implements Disposable {
                 .subscribe(() => this.hideTooltip());
         }
         catch (error) {
-            console.error(`${LogScope}.constructor: error:`, error)
+            console.error(`${LogScope}.ctor: error:`, error)
             this.dispose();
         }
     }

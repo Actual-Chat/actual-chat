@@ -19,7 +19,7 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
 
         if (blazorRef == null)
-            console.error(`${LogScope}.constructor: blazorRef == null`);
+            console.error(`${LogScope}.ctor: blazorRef == null`);
 
         // Temporarily
         if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {

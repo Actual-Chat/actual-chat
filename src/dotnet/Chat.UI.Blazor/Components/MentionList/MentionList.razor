@@ -1,0 +1,90 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<MentionSearchResult[]>
+@{
+    var mentions = Mentions;
+    if (mentions.Length < 1)
+        return;
+    var selection = Selection;
+}
+
+<div class="@Class mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full">
+    @foreach (var mention in mentions) {
+        var searchMatch = mention.SearchMatch;
+        var title = searchMatch.Text;
+        var cls = mention == selection ? "bg-04" : "";
+        <div class="@cls px-1 rounded hover:cursor-pointer"
+             @onmouseover="_ => Selection = mention"
+             @onclick="@(_ => Manager.SelectMention(mention))">
+            @if (searchMatch.Parts.Length == 0) {
+                <span>@title</span>
+            }
+            else {
+                foreach (var part in searchMatch.PartsWithGaps) {
+                    var textClass = part.Rank > 0 ? "font-semibold" : "";
+                    <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string? _lastFilter;
+    private MentionSearchResult? _selection;
+
+    [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+
+    public IMutableState<string?> Filter { get; private set; } = null!;
+    public MentionSearchResult[] Mentions => State.LatestNonErrorValue;
+    public MentionSearchResult? Selection {
+        get => _selection;
+        set {
+            if (_selection == value)
+                return;
+            _selection = FixSelection(value, Mentions);
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        Filter = StateFactory.NewMutable<string?>();
+    }
+
+    protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
+        => new() {
+            InitialValue = Array.Empty<MentionSearchResult>(),
+            UpdateDelayer = UpdateDelayer.MinDelay,
+        };
+
+    protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {
+        var filter = await Filter.Use(cancellationToken);
+        var mentions = filter != null
+            ? await Manager.SearchProvider.Find(filter, Manager.Limit, cancellationToken)
+            : Array.Empty<MentionSearchResult>();
+        _selection = FixSelection(filter == _lastFilter ? _selection : null, mentions);
+        _lastFilter = filter;
+        return mentions;
+    }
+
+    public void MoveSelection(int offset) {
+        var mentions = Mentions;
+        var selection = FixSelection(_selection, mentions);
+        var selectionIndex = Array.IndexOf(mentions, selection) + offset;
+        if (selectionIndex < 0 || selectionIndex >= mentions.Length)
+            return;
+        _selection = mentions[selectionIndex];
+        StateHasChanged();
+    }
+
+    // Private methods
+
+    private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
+        if (mentions.Length == 0)
+            return null;
+        var firstMention = mentions[0];
+        selection ??= firstMention;
+        return mentions.FirstOrDefault(o => o.Id == selection.Id) ?? firstMention;
+    }
+}

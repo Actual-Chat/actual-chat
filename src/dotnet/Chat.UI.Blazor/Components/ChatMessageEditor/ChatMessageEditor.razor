@@ -8,12 +8,13 @@
 @using ActualChat.Hosting
 @using ActualChat.Kvas
 @using ActualChat.MediaPlayback
+@using ActualChat.Search
 
 <OnGlobalEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
 <OnGlobalEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
 <OnGlobalEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
-    <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
+    <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MentionSearchProvider">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"
                                RemoveRequested="@(RemoveAttachment)"
                                ClearAllRequested="@(ClearAttachments)"
@@ -45,23 +46,11 @@
             </div>
             <RecorderPanel/>
         </div>
-    </MentionCandidateListManager>
+    </MentionListManager>
 </div>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
-    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
-    [Inject] private IUserContacts UserContacts { get; init; } = null!;
-    [Inject] private UICommander Commander { get; init; } = null!;
+    private static object MentionListManagerKey { get; } = new();
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -69,8 +58,22 @@
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
-    private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
+    private ISearchProvider<MentionSearchResult> MentionSearchProvider { get; set; } = null!;
     private SyncedStateLease<long>? LastReadEntryState { get; set; }
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
+    [Inject] private IUserContacts UserContacts { get; init; } = null!;
+    [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
+    [Inject] private UICommander Commander { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -87,7 +90,7 @@
     }
 
     protected override void OnParametersSet()
-        => MentionCandidateProvider = new ChatMentionCandidateProvider(Session, Chat.Id, Chats);
+        => MentionSearchProvider = new MentionSearchProvider(Session, Chat.Id, Chats);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

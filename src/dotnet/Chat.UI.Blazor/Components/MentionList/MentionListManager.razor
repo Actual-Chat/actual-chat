@@ -1,0 +1,39 @@
+@using ActualChat.Search
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
+    <div class="absolute left-0 right-0 px-1.5 z-50">
+        <div class="relative w-full">
+            <div class="absolute bottom-0 w-full text-03">
+                <MentionList @ref="ListRef" Class="bg-01" />
+            </div>
+        </div>
+    </div>
+    @ChildContent
+</CascadingValue>
+
+
+@code {
+    [Inject] protected IStateFactory StateFactory { get; init; } = null!;
+
+    [Parameter] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = TestMentionSearchProvider.Instance;
+    [Parameter] public int Limit { get; set; } = 10;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public MentionList? ListRef { get; private set; }
+    public event Action<MentionSearchResult>? MentionSelected;
+
+    public void SelectMention(MentionSearchResult mention)
+        => MentionSelected?.Invoke(mention);
+
+    public void Show(string filter)
+    {
+        if (ListRef != null)
+            ListRef.Filter.Value = filter;
+    }
+
+    public void Hide() {
+        if (ListRef != null)
+            ListRef.Filter.Value = null;
+    }
+}

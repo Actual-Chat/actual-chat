@@ -100,8 +100,8 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
     [HttpGet]
-    public Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.ListMentionCandidates(session, chatId, cancellationToken);
+    public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListMentionableAuthors(session, chatId, cancellationToken);
 
     // Commands
 

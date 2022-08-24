@@ -1,3 +1,5 @@
+using ActualChat.Search;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public class SearchUI
@@ -8,7 +10,7 @@ public class SearchUI
     public virtual async Task<SearchPhrase> GetSearchPhrase(CancellationToken cancellationToken)
     {
         var text = await Text.Use(cancellationToken).ConfigureAwait(false);
-        return text.ToSearchPhrase();
+        return text.ToSearchPhrase(true, false);
     }
 
     public SearchUI(IStateFactory stateFactory)

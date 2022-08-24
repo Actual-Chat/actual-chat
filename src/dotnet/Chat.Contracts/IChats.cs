@@ -75,7 +75,7 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 

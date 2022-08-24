@@ -1,19 +1,23 @@
-namespace ActualChat.Chat.UI.Blazor.Components;
+using ActualChat.Search;
 
-public class TestMentionCandidateProvider : IMentionCandidateProvider
+namespace ActualChat.Chat.UI.Blazor.Services;
+
+public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
 {
-    public static TestMentionCandidateProvider Instance { get; } = new();
+    public static TestMentionSearchProvider Instance { get; } = new();
 
-    public Task<MentionCandidate[]> GetMentionCandidates(
-        string search, int limit,
-        CancellationToken cancellationToken)
+    public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
-        var candidates = Candidates
-            .Where(c => c.Name.OrdinalIgnoreCaseContains(search))
-            .OrderBy(c => c.Name)
-            .Take(limit);
-        var filteredCandidates = candidates.Select(c => new MentionCandidate(c.Id, c.Name)).ToArray();
-        return Task.FromResult(filteredCandidates);
+        var searchPhrase = filter.ToSearchPhrase(true, true);
+        var mentions = (
+            from name in Names
+            let searchMatch = searchPhrase.GetMatch(name)
+            where searchMatch.Rank > 0 || searchPhrase.IsEmpty
+            orderby searchMatch.Rank descending, name
+            select new MentionSearchResult(name, searchMatch)
+            ).Take(limit)
+            .ToArray();
+        return Task.FromResult(mentions);
     }
 
     private static string[] Names { get; } = {
@@ -421,7 +425,4 @@ public class TestMentionCandidateProvider : IMentionCandidateProvider
         "Ziro the Hutt",
         "Zuckuss",
     };
-
-    private static MentionCandidate[] Candidates { get; } =
-        Names.Select(c => new MentionCandidate(c.Replace(' ', '-') + Random.Shared.Next(1000), c)).ToArray();
 }

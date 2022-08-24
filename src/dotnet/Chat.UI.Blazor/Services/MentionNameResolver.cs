@@ -2,14 +2,14 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class MentionedNameResolver
+public class MentionNameResolver
 {
     private ChatUI ChatUI { get;  }
     private IChatAuthors ChatAuthors { get; }
     private IAccounts Accounts { get; }
     public Session Session { get; }
 
-    public MentionedNameResolver(ChatUI chatUI, IChatAuthors chatAuthors, IAccounts accounts, Session session)
+    public MentionNameResolver(ChatUI chatUI, IChatAuthors chatAuthors, IAccounts accounts, Session session)
     {
         ChatUI = chatUI;
         ChatAuthors = chatAuthors;

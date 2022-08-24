@@ -4,6 +4,8 @@ import { createSlateEditorCore, MarkupNode } from './slate-editor-core';
 import { SlateEditorHandle } from './slate-editor-handle';
 import './slate-editor.css';
 
+const LogScope = 'SlateEditor';
+
 export class SlateEditor {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
@@ -34,7 +36,8 @@ export class SlateEditor {
         const slateEditor = () => createSlateEditorCore(this.editorHandle, this.debug)
         this.reactDomRoot = ReactDOM.createRoot(this.editorDiv);
         this.reactDomRoot.render(React.createElement(slateEditor));
-        if (debug) console.log("SlateEditor.constructor");
+        if (debug)
+            console.debug(`${LogScope}.ctor`);
     }
 
     public getText = () =>
@@ -60,19 +63,20 @@ export class SlateEditor {
     private onMentionCommand = (cmd : string, args : string) : any =>
         this.blazorRef.invokeMethodAsync("MentionCommand", cmd, args);
 
-    public insertMention = (mention: { id: string, name: string }) =>
-        this.editorHandle.insertMention(mention.id, mention.name);
+    public insertMention = (id: string, name: string) =>
+        this.editorHandle.insertMention(id, name);
 
     public setPlaceholder = (placeholder: string) =>
         this.editorHandle.setPlaceholder(placeholder);
 
     public focus = () => {
+        if (this.debug)
+            console.debug(`${LogScope}.focus`);
         const input = this.editorDiv.querySelector('div');
         if (input)
             input.focus();
         else
-            console.log('slate-editor : no input to focus.');
-        if (this.debug) console.log('focus');
+            console.log(`${LogScope}.focus: no input to focus`);
     }
 
     public moveCursorToEnd = () => {
@@ -80,7 +84,8 @@ export class SlateEditor {
     }
 
     private onRendered = () => {
-        if (this.debug) console.log('slate-editor rendered.');
+        if (this.debug)
+            console.debug(`${LogScope}.onRendered`);
         if (this.autofocus) {
             const width = document.documentElement.clientWidth;
             if (width >= 768) {

@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct SearchMatch(

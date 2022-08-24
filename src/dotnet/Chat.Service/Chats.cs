@@ -198,22 +198,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-
         var authors = await chatAuthorIds
             .Select(id => ChatAuthors.GetAuthor(session, chatId, id, true, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        var items = authors
-            .Where(c => c != null)
-            .Select(c => c!)
-            .OrderBy(c => c.Name)
-            .Select(c => new MentionCandidate("a:" + c.Id, c.Name))
-            .ToImmutableArray();
-        return items;
+        return authors.OfType<Author>().ToImmutableArray();
     }
 
     // [CommandHandler]

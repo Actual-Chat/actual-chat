@@ -1,6 +1,6 @@
 using Microsoft.Toolkit.HighPerformance;
 
-namespace ActualChat.Core.UnitTests;
+namespace ActualChat.Core.UnitTests.Text;
 
 public class StringExtTest
 {

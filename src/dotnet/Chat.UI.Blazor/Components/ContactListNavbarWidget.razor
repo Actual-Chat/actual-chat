@@ -127,8 +127,7 @@
             .ConfigureAwait(false);
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var parsedChatId = ParsedChatId.Parse(activeChatId);
-        var activeContactId = parsedChatId.IsValid && parsedChatId.Kind == ChatIdKind.PeerFull
+        var activeContactId = ParsedChatId.TryParse(activeChatId, out var parsedChatId) && parsedChatId.Kind == ChatIdKind.PeerFull
             ? parsedChatId.UserId2.Id
             : Symbol.Empty;
         if (contacts.All(c => c.UserId != activeContactId))

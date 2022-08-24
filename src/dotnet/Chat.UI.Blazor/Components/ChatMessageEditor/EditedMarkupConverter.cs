@@ -5,21 +5,21 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 public class EditedMarkupConverter
 {
     private readonly IMarkupParser _markupParser;
-    private readonly MentionedNameResolver _mentionedNameResolver;
+    private readonly MentionNameResolver _mentionNameResolver;
 
     public EditedMarkupConverter(
         IMarkupParser markupParser,
-        MentionedNameResolver mentionedNameResolver)
+        MentionNameResolver mentionNameResolver)
     {
         _markupParser = markupParser;
-        _mentionedNameResolver = mentionedNameResolver;
+        _mentionNameResolver = mentionNameResolver;
     }
 
     public async Task<ImmutableArray<EditorNode>> Convert(
         string markdown,
         CancellationToken cancellationToken)
     {
-        var visitor = new Visitor(_mentionedNameResolver.GetName);
+        var visitor = new Visitor(_mentionNameResolver.GetName);
         var markup = _markupParser.Parse(markdown);
         return await visitor.Apply(markup, cancellationToken).ConfigureAwait(false);
     }

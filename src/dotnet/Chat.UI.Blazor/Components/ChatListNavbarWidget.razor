@@ -60,7 +60,7 @@
         var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
 
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (!ParsedChatId.Parse(activeChatId).IsValid)
+        if (!ParsedChatId.TryParse(activeChatId, out _))
             activeChatId = Symbol.Empty;
         var activeChat = activeChatId.IsEmpty
             ? null

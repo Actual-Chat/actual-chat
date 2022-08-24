@@ -9,31 +9,33 @@
             <Button Click="OnGetTextClick">Get text</Button>
         </div>
 
-        <div class="mt-2 bg-purple-200 min-h-[50px]">@_text</div>
-    </Body>
-    <Footer>
-        <div class="flex-y">
-            <MentionCandidateListManager>
-                <SlateEditor @ref="_editor" Id="message-input" Class="bg-gray-200 min-h-[50px]"
-                             Placeholder="Enter some text..."
-                             Posted="OnPost"/>
-            </MentionCandidateListManager>
+        <div class="my-2 bg-purple-200 min-h-[50px]">@_text</div>
+
+        <div class="flex-y h-40">
+            <MentionListManager Limit="5">
+                <SlateEditor
+                    @ref="_editorRef"
+                    Id="message-input"
+                    Class="bg-gray-200 min-h-[50px]"
+                    Placeholder="Enter some text..."
+                    Posted="OnPost"/>
+            </MentionListManager>
         </div>
-    </Footer>
+    </Body>
 </PageWithHeaderAndFooter>
 
 @code{
-    private SlateEditor? _editor;
+    private SlateEditor? _editorRef;
     private string _text = "";
 
     private async Task OnGetTextClick() {
-        if (_editor == null)
+        if (_editorRef == null)
             return;
-        _text = await _editor.GetText();
+        _text = await _editorRef.GetText();
     }
 
     private async Task OnPost(string text) {
         _text = text;
-        await _editor!.Clear();
+        await _editorRef!.Clear();
     }
 }

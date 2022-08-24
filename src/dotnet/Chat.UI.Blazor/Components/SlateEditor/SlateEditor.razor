@@ -8,7 +8,7 @@
 @code {
     private bool _rendered;
     private string _placeholder = "";
-    private MentionCandidateListManager? _lastMentionCandidateListManager;
+    private MentionListManager? _lastMentionListManager;
 
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -16,7 +16,7 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
+    [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -27,19 +27,19 @@
     [Parameter] public EventCallback PreviousOpened { get; set; }
 
     protected override void OnParametersSet() {
-        if (_lastMentionCandidateListManager != null)
-            _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
-        _lastMentionCandidateListManager = MentionCandidateListManager;
-        if (_lastMentionCandidateListManager != null)
-            _lastMentionCandidateListManager.Selected += OnMentionCandidateSelected;
+        if (_lastMentionListManager != null)
+            _lastMentionListManager.MentionSelected -= OnMentionSelected;
+        _lastMentionListManager = MentionListManager;
+        if (_lastMentionListManager != null)
+            _lastMentionListManager.MentionSelected += OnMentionSelected;
 
         if (_rendered && !OrdinalEquals(_placeholder, Placeholder))
             _ = SetPlaceholder(Placeholder);
     }
 
     public async ValueTask DisposeAsync() {
-        if (_lastMentionCandidateListManager != null)
-            _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
+        if (_lastMentionListManager != null)
+            _lastMentionListManager.MentionSelected -= OnMentionSelected;
         _rendered = false;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -83,28 +83,28 @@
 
     [JSInvokable]
     public async Task MentionCommand(string cmd, string args) {
-        var manager = MentionCandidateListManager;
+        var manager = MentionListManager;
         if (manager == null)
             return;
         switch (cmd) {
             case "insert": {
-                await Insert(manager.ListView?.SelectedCandidate);
+                await Insert(manager.ListRef?.Selection);
                 break;
             }
             case "moveUp": {
-                manager.ListView?.MoveSelectionUp();
+                manager.ListRef?.MoveSelection(-1);
                 break;
             }
             case "moveDown": {
-                manager.ListView?.MoveSelectionDown();
+                manager.ListRef?.MoveSelection(+1);
                 break;
             }
             case "close": {
-                await manager.Hide();
+                manager.Hide();
                 break;
             }
             case "show": {
-                await manager.Show(args);
+                manager.Show(args);
                 break;
             }
         }
@@ -121,17 +121,17 @@
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
     }
 
-    private void OnMentionCandidateSelected(MentionCandidate mentionCandidate)
-        => _ = Insert(mentionCandidate);
+    private void OnMentionSelected(MentionSearchResult mention)
+        => _ = Insert(mention);
 
-    private async Task Insert(MentionCandidate? mentionCandidate) {
-        MentionCandidateListManager?.Hide();
-        if (mentionCandidate == null)
+    private async Task Insert(MentionSearchResult? mention) {
+        MentionListManager?.Hide();
+        if (mention == null)
             return;
         await Focus();
-        await InsertMention(mentionCandidate);
+        await InsertMention(mention);
     }
 
-    private Task InsertMention(MentionCandidate mentionCandidate)
-        => JSRef.InvokeVoidAsync("insertMention", mentionCandidate).AsTask();
+    private Task InsertMention(MentionSearchResult mention)
+        => JSRef.InvokeVoidAsync("insertMention", mention.Id, mention.SearchMatch.Text).AsTask();
 }

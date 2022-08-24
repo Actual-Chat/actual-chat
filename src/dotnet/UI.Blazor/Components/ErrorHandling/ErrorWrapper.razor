@@ -6,7 +6,7 @@
     var account = State.LatestNonErrorValue;
 }
 
-<RequirementChecker @ref="_requirementChecker">
+<RequirementChecker @ref="_requirementCheckerRef">
     <ChildContent>
         @ChildContent
     </ChildContent>
@@ -56,7 +56,7 @@
 </RequirementChecker>
 
 @code {
-    private RequirementChecker _requirementChecker = null!;
+    private RequirementChecker _requirementCheckerRef = null!;
     private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -81,8 +81,8 @@
         => Accounts.Get(Session, cancellationToken);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => _requirementChecker.Reset();
+        => _requirementCheckerRef.Reset();
 
     private void OnDismiss(RequirementComponent requirement)
-        => _requirementChecker.Remove(requirement);
+        => _requirementCheckerRef.Remove(requirement);
 }

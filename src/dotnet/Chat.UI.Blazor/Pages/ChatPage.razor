@@ -61,12 +61,12 @@
 </RenderIntoSlot>
 
 <CascadingValue Value="chat" @key="chat.Id">
-    <ChatView @ref="_chatView" />
+    <ChatView @ref="_chatViewRef" />
 </CascadingValue>
 
 @code {
     private Model? _lastRenderedModel;
-    private ChatView _chatView = null!;
+    private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -125,7 +125,7 @@
     }
 
     private void OnUnreadMessagesClick()
-        => _ = _chatView.NavigateToUnreadEntry();
+        => _ = _chatViewRef.NavigateToUnreadEntry();
 
     public sealed record Model(Chat? Chat, Account? Account) {
         public static Model None { get; } = new(null, null);

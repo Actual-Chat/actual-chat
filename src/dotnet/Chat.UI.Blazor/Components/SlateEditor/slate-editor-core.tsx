@@ -12,6 +12,8 @@ import { CustomEditor, CustomText, MentionElement, ParagraphElement } from './cu
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
 
+const LogScope = 'SlateEditorCore';
+
 export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
     const [placeholder, setPlaceholder] = useState(handle.getPlaceholder())
@@ -49,7 +51,8 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
     }
 
     handle.clearText = () => {
-        if (debug) console.log('clear text');
+        if (debug)
+            console.debug(`${LogScope}.clearText`);
         resetEditor(editor);
     }
 
@@ -112,19 +115,24 @@ export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolea
     )
 
     useEffect(() => {
-        const search = target ? Editor.string(editor, target).substring(1) : ''
-        if (debug) {
-            console.log("search: " + search)
-            console.log("target: " + (target ? JSON.stringify(target) : 'null'))
+        try {
+            const filter = target ? Editor.string(editor, target).substring(1) : ''
+            if (debug)
+                console.debug(`${LogScope}.search: filter:`, filter, 'target:', target);
+            if (target)
+                handle.getMention.show(filter)
+            else
+                handle.getMention.close()
         }
-        if (target)
-            handle.getMention.show(search)
-        else
+        catch (e) {
+            console.error(`${LogScope}.search: error:`, e);
             handle.getMention.close()
+        }
     }, [target])
 
     useEffect(() => {
-        if (debug) console.log("hasContent: " + hasContent)
+        if (debug)
+            console.debug(`${LogScope}.hasContent:`, hasContent)
         handle.onHasContentChanged(hasContent)
     }, [hasContent])
 
@@ -215,7 +223,8 @@ const calculateMentionTarget = (editor : CustomEditor, debug : boolean) : Range 
         let targetCandidate: Range | undefined = undefined
 
         if (wordBeforeText) {
-            if (debug) console.log("wordBeforeText: " + wordBeforeText)
+            if (debug)
+                console.debug(`${LogScope}.calculateMentionTarget: wordBeforeText:`, wordBeforeText)
 
             if (wordBeforeText && wordBeforeText.endsWith('@')) {
                 // cursor is right after '@' character

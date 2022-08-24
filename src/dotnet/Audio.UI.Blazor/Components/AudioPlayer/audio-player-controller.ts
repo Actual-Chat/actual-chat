@@ -52,7 +52,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
-        console.warn(`${LogScope}.constructor: #${this.id}`);
+        console.warn(`${LogScope}.ctor: #${this.id}`);
     }
 
     /**
