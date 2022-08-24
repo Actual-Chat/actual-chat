@@ -26,25 +26,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-
-        var chatIds = listeningChatIds;
-        if (!recordingChatId.IsEmpty && !chatIds.Contains(recordingChatId))
-            chatIds = chatIds.Add(recordingChatId);
-
-        if (chatIds.Count < ChatUI.ActiveChatsLimit) {
-            var recentActiveChatIds = await ChatUI.RecentActiveChatIds.Use(cancellationToken).ConfigureAwait(false);
-            foreach (var chatId in recentActiveChatIds) {
-                if (!chatIds.Contains(chatId))
-                    chatIds = chatIds.Insert(0, chatId);
-                if (chatIds.Count >= ChatUI.ActiveChatsLimit)
-                    break;
-            }
-        }
-
-        var chats = (await chatIds
-            .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
+        var activeChatIds = await ChatUI.ActiveChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var chats = (await activeChatIds
+            .Select(c => Chats.Get(Session, c.Item1, cancellationToken))
             .Collect()
             .ConfigureAwait(false)
             ).OfType<Chat>()
