@@ -63,6 +63,7 @@ public class ChatUI
                 Corrector = FixListeningChatIds,
             });
         _recentActiveChatIds = StateFactory.NewMutable(ImmutableList<Symbol>.Empty);
+        Task.WhenAll(_listeningChatIds.WhenRead, _recordingChatId.WhenRead).ContinueWith(_ => InitializeRecentChatIds());
         LinkedChatEntry = StateFactory.NewMutable<ChatEntryLink?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
@@ -137,8 +138,15 @@ public class ChatUI
             var recordingChatId = RecordingChatId.Value;
             var chatIdToEliminate = await GetListeningChatIdToEliminate(listeningChatIds, chatId, recordingChatId)
                 .ConfigureAwait(false);
+            var copy = listeningChatIds;
             if (!chatIdToEliminate.IsEmpty)
                 listeningChatIds = listeningChatIds.Remove(chatIdToEliminate);
+            var x = listeningChatIds.Count;
+            if (!recordingChatId.IsEmpty && !listeningChatIds.Contains(recordingChatId) && recordingChatId != chatId)
+                x++;
+            if (x == 4) {
+
+            }
             listeningChatIds = listeningChatIds.Add(chatId);
         }
         _listeningChatIds.Value = listeningChatIds;
@@ -150,7 +158,7 @@ public class ChatUI
     public async Task SetRecordingState(Symbol chatId)
     {
         using var _ = await _asyncLock.Lock().ConfigureAwait(false);
-        if (!chatId.IsEmpty) {
+        if (!chatId.IsEmpty && !_listeningChatIds.Value.Contains(chatId)) {
             var listenChatIdToEliminate = await GetListeningChatIdToEliminate(_listeningChatIds.Value, Symbol.Empty, chatId)
                 .ConfigureAwait(false);
             if (!listenChatIdToEliminate.IsEmpty)
@@ -243,8 +251,11 @@ public class ChatUI
     {
         // When active chats panel limit exceeded, we look for a less important chat to eliminate it from the list.
         var limit = ActiveChatsLimit;
-        if (!recordingChatId.IsEmpty && !listeningChatIds.Contains(recordingChatId) && listenChatId != recordingChatId)
-            limit--; // reserve one slot for recording chat
+        if (!listenChatId.IsEmpty) {
+            if (!recordingChatId.IsEmpty && !listeningChatIds.Contains(recordingChatId) && listenChatId != recordingChatId)
+                limit--; // reserve one slot for recording chat
+        }
+
         if (listeningChatIds.Count < limit)
             return Symbol.Empty;
 
@@ -261,11 +272,14 @@ public class ChatUI
             return chatIds.MinBy(c => priority[c]);
         }
 
-        var pinnedChats = listeningChatIds.Where(c => !IsPinnedChat(c)).ToArray();
-        var chatIdToEliminate = await GetChatToEliminate(pinnedChats).ConfigureAwait(false);
+        var candidatesToEliminate = listeningChatIds;
+        if (!recordingChatId.IsEmpty)
+            candidatesToEliminate = candidatesToEliminate.Remove(recordingChatId);
+        var unpinnedChats = candidatesToEliminate.Where(c => !IsPinnedChat(c)).ToArray();
+        var chatIdToEliminate = await GetChatToEliminate(unpinnedChats).ConfigureAwait(false);
         if (chatIdToEliminate.IsEmpty) {
-            var unpinnedChats = listeningChatIds.Where(c => IsPinnedChat(c)).ToArray();
-            chatIdToEliminate = await GetChatToEliminate(unpinnedChats).ConfigureAwait(false);
+            var pinnedChats = candidatesToEliminate.Where(c => IsPinnedChat(c)).ToArray();
+            chatIdToEliminate = await GetChatToEliminate(pinnedChats).ConfigureAwait(false);
         }
 
         return chatIdToEliminate;
@@ -309,6 +323,21 @@ public class ChatUI
         var limit = ActiveChatsLimit * 2;
         if (list.Count > limit)
             list = list.RemoveRange(limit, list.Count - limit);
+        _recentActiveChatIds.Value = list;
+    }
+
+    private async Task InitializeRecentChatIds()
+    {
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+        var list = _recentActiveChatIds.Value;
+        var startIndex = list.Count;
+        foreach (var chatId in _listeningChatIds.Value) {
+            if (!list.Contains(chatId))
+                list = list.Insert(startIndex, chatId);
+        }
+        var recordingChatId = _recordingChatId.Value;
+        if (!recordingChatId.IsEmpty && !list.Contains(recordingChatId))
+            list = list.Insert(startIndex, recordingChatId);
         _recentActiveChatIds.Value = list;
     }
 }
