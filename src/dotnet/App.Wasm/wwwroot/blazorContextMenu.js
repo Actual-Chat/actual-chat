@@ -162,10 +162,11 @@ var blazorContextMenu = function (blazorContextMenu) {
 
     let showMenuCommon = function (menu, menuId, x, y, event, triggerDotnetRef) {
         const target = event.target;
+        const currentTarget = event.currentTarget;
         const offset = 5;
         const isLeftHalf = x < window.innerWidth / 2;
         const isTopHalf = y < window.innerHeight / 2;
-        if (event.button === 2) {
+        if (currentTarget.dataset.contextMenuToggle === undefined) {
             return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
                 if (isLeftHalf)
                     menu.style.left = x + "px";
