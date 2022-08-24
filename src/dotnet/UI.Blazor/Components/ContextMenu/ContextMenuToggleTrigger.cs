@@ -42,8 +42,9 @@ public class ContextMenuToggleTrigger : ContextMenuTrigger
         if (!string.IsNullOrWhiteSpace(CssClass))
             builder.AddAttribute(5, "class", CssClass);
         builder.AddAttribute(6, "id", Id);
-        builder.AddContent(7, ChildContent);
-        builder.AddElementReferenceCapture(8, SetContextMenuTriggerElementRef);
+        builder.AddAttribute(7, "data-context-menu-toggle", true);
+        builder.AddContent(8, ChildContent);
+        builder.AddElementReferenceCapture(9, SetContextMenuTriggerElementRef);
         builder.CloseElement();
     }
 
