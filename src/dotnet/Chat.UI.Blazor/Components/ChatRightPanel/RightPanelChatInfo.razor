@@ -10,12 +10,7 @@
 <div class="px-5 py-3 space-y-3">
     <div class="flex-x overflow-hidden">
         <div class="mr-3">
-            <ChatIcon
-                PictureClick="OnPictureClick"
-                Size="SquareSize.Size16"
-                Title="@m.Title"
-                Picture="@m.Picture">
-            </ChatIcon>
+            <Pic Size="SquareSize.Size16" Title="@m.Title" ContentId="@m.Picture" EnableImagePreview="true"/>
         </div>
         <div class="flex-y min-w-0 self-center">
             <div class="text-01 text-xl">
@@ -94,11 +89,6 @@
             PublicUrlTitle = publicUrlTitle,
             IsSubscribed = notificationStatus.IsSubscribed,
         };
-    }
-
-    private async Task OnPictureClick(MouseEventArgs arg) {
-        var url = ContentUrlMapper.ContentUrl(State.LatestNonErrorValue.Picture!);
-        await ImagePreviewUI.Show(url);
     }
 
     private async Task OnPublicUrlClick(string publicUrl) {

@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <TypeScriptCompile Include="Components\PicUpload\pic-upload.ts" />
     <TypeScriptCompile Include="Components\VirtualList\ts\math.ts" />
     <TypeScriptCompile Include="Components\VirtualList\ts\range-ext.ts" />
     <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-edge-ext.ts" />

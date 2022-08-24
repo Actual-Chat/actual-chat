@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+    <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -22,15 +22,13 @@
                         </FormSection>
                     </div>
 
-                    <ChatIcon
-                        ShowImagePicker="true"
+                    <PicUpload
                         ImageUploadUrl="@_form.ImageUploadUrl"
                         ImagePicked="OnImagePicked"
-                        PictureClick="OnPictureClick"
                         Size="SquareSize.Size20"
                         Title="@_form.Title"
-                        Picture="@_form.Picture">
-                    </ChatIcon>
+                        ContentId="@_form.Picture">
+                    </PicUpload>
 
                     <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
                         <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true" Class="right-panel-input"/>
@@ -135,14 +133,9 @@
         }
     }
 
-    private void OnImagePicked(string imageUrl) {
-        _form.Picture = imageUrl;
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
         StateHasChanged();
-    }
-
-    private async Task OnPictureClick(MouseEventArgs arg) {
-        var url = ContentUrlMapper.ContentUrl(_form.Picture);
-        await ImagePreviewUI.Show(url);
     }
 
     public sealed record ModalInput(Chat Chat);
