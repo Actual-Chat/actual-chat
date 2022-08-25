@@ -13,7 +13,7 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         AudioHubBackendClient = audioHubBackendClient;
     }
 
-    public IAsyncEnumerable<Transcript> Read(Symbol streamId, CancellationToken cancellationToken)
+    public Task<Option<IAsyncEnumerable<Transcript>>> Read(Symbol streamId, CancellationToken cancellationToken)
         => AudioHubBackendClient.Read(streamId, cancellationToken);
 
     public Task Write(Symbol streamId, IAsyncEnumerable<Transcript> transcriptStream, CancellationToken cancellationToken)

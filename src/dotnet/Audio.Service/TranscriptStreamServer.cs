@@ -23,16 +23,16 @@ public class TranscriptStreamServer : IAsyncDisposable, ITranscriptStreamServer
         _ = BackgroundTask.Run(() => BackgroundCleanup(_disposeCancellation.Token), _disposeCancellation.Token);
     }
 
-    public IAsyncEnumerable<Transcript> Read(
+    public Task<Option<IAsyncEnumerable<Transcript>>> Read(
         Symbol streamId,
         CancellationToken cancellationToken)
     {
         if (!_transcriptStreams.TryGetValue(streamId, out var memoizer))
-            return AsyncEnumerable.Empty<Transcript>();
+            return Task.FromResult(Option<IAsyncEnumerable<Transcript>>.None);
 
-        return memoizer
+        return Task.FromResult(Option<IAsyncEnumerable<Transcript>>.Some(memoizer
             .Replay(cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
+            .WithBuffer(StreamBufferSize, cancellationToken)));
     }
 
     public async Task Write(

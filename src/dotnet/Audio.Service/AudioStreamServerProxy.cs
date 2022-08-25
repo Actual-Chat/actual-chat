@@ -11,7 +11,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
         AudioHubBackendClient = audioHubBackendClient;
     }
 
-    public IAsyncEnumerable<byte[]> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public Task<Option<IAsyncEnumerable<byte[]>>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
         => AudioHubBackendClient.Read(streamId, skipTo, cancellationToken);
 
     public Task Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)

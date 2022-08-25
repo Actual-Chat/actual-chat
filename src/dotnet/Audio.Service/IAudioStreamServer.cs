@@ -2,7 +2,7 @@ namespace ActualChat.Audio;
 
 public interface IAudioStreamServer
 {
-    IAsyncEnumerable<byte[]> Read(
+    Task<Option<IAsyncEnumerable<byte[]>>> Read(
         Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
