@@ -51,13 +51,13 @@
 }
 
 .chat-quote {
-    @apply flex w-full bg-secondary-hover py-2 px-6 text-base rounded-md;
+    @apply flex-x w-full bg-03 py-2 px-2 text-base;
 }
-.chat-quote .btn.btn-square {
-    @apply bg-02;
+.close-reply.btn.btn-round .btn-content {
+    @apply bg-transparent min-w-8 max-w-8 min-h-8 max-h-8;
 }
-.chat-quote .btn.btn-square:hover {
-    @apply bg-01;
+.chat-quote .btn.btn-square:hover .btn-content {
+    @apply bg-transparent;
 }
 
 .quoted-message {

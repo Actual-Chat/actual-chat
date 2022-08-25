@@ -214,5 +214,5 @@
 }
 
 .linked-message-panel {
-    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:pl-4 md:pr-48;
+    @apply flex-x bg-03 w-full h-8 outline-none py-0 md:mt-1;
 }
