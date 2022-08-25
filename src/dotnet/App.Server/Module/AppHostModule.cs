@@ -119,6 +119,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             baseUri = serverAddressesFeature.Addresses.First();
             return new UriMapper(baseUri);
         });
+        services.AddSingleton<ContentUrlMapper>();
 
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);

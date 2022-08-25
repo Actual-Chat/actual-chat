@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat;
 
 public class ContentUrlMapper
 {
@@ -23,6 +23,8 @@ public class ContentUrlMapper
 
     public string ContentUrl(string contentId)
     {
+        if (Uri.TryCreate(contentId, UriKind.Absolute, out _))
+            return contentId;
         if (_transformUri)
             return _contentBaseUri + contentId;
         return "/api/content/" + contentId;
