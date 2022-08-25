@@ -18,7 +18,7 @@
                     Id="message-input"
                     Class="bg-gray-200 min-h-[50px]"
                     Placeholder="Enter some text..."
-                    Posted="OnPost"/>
+                    Posted="OnPostClick"/>
             </MentionListManager>
         </div>
     </Body>
@@ -34,7 +34,7 @@
         _text = await _editorRef.GetText();
     }
 
-    private async Task OnPost(string text) {
+    private async Task OnPostClick(string text) {
         _text = text;
         await _editorRef!.Clear();
     }

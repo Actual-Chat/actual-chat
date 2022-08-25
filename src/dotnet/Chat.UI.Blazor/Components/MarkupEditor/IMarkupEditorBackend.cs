@@ -1,8 +1,8 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public interface IMessageEditorBackend
+public interface IMarkupEditorBackend
 {
     Task Post(string? text = null);
     Task Cancel();
-    Task OpenPrevious();
+    Task ListCommand(string listId, MarkupEditorListCommand command);
 }

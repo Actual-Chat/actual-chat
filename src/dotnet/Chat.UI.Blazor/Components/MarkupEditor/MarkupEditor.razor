@@ -1,18 +1,20 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IMessageEditorBackend
+@implements IMarkupEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
 
-<div @ref="Ref" id="@Id" class="@Class editor" contenteditable="true"></div>
+<div @ref="Ref" id="@Id"
+     class="@Class editor"
+     contenteditable="true"
+     data-placeholder="@Placeholder"></div>
 
 @code {
-    private bool _isRendered;
-    private string _placeholder = "";
+    private string _lastPlaceholder = "";
     private MentionListManager? _lastMentionListManager;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<IMessageEditorBackend> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<IMarkupEditorBackend> BlazorRef { get; set; } = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -23,7 +25,6 @@
     [Parameter] public bool Autofocus { get; set; }
     [Parameter] public EventCallback<string> Posted { get; set; }
     [Parameter] public EventCallback Canceled { get; set; }
-    [Parameter] public EventCallback Rendered { get; set; }
     [Parameter] public EventCallback LastMessageEditRequested { get; set; }
 
     protected override void OnParametersSet() {
@@ -32,16 +33,12 @@
         _lastMentionListManager = MentionListManager;
         if (_lastMentionListManager != null)
             _lastMentionListManager.MentionSelected += OnMentionSelected;
-
-        if (_isRendered && !OrdinalEquals(_placeholder, Placeholder))
-            _ = SetPlaceholder(Placeholder);
     }
 
     public async ValueTask DisposeAsync() {
         if (_lastMentionListManager != null)
             _lastMentionListManager.MentionSelected -= OnMentionSelected;
-        _isRendered = false;
-        await JSRef.DisposeSilentlyAsync("dispose");
+        await JSRef.DisposeSilentlyAsync();
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
@@ -49,14 +46,13 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IMessageEditorBackend>(this);
+            BlazorRef = DotNetObjectReference.Create<IMarkupEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
-                Ref, BlazorRef, Constants.DebugMode.SlateEditor, Autofocus
-                );
-            _isRendered = true;
-            _ = SetPlaceholder(Placeholder);
-            await Rendered.InvokeAsync().ConfigureAwait(false);
+                $"{ChatBlazorUIModule.ImportName}.MarkupEditor.create",
+                Ref,
+                BlazorRef,
+                Autofocus,
+                Constants.DebugMode.MarkupEditor);
         }
     }
 
@@ -78,35 +74,37 @@
     public Task OpenPrevious()
         => LastMessageEditRequested.InvokeAsync();
 
-    public async Task Clear()
-        => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
+    public Task FindMention(string filter)
+        => throw new NotImplementedException();
 
-    [JSInvokable]
-    public async Task MentionCommand(string cmd, string args) {
+    public async Task Clear()
+        => await JSRef.InvokeAsync<string>("setHtml", "").ConfigureAwait(false);
+
+    public async Task ListCommand(string listId, MarkupEditorListCommand command) {
+        if (listId != "@")
+            throw new ArgumentOutOfRangeException(nameof(listId));
+
         var manager = MentionListManager;
         if (manager == null)
             return;
-        switch (cmd) {
-            case "insert": {
-                await Insert(manager.ListRef?.Selection);
-                break;
-            }
-            case "moveUp": {
-                manager.ListRef?.MoveSelection(-1);
-                break;
-            }
-            case "moveDown": {
-                manager.ListRef?.MoveSelection(+1);
-                break;
-            }
-            case "close": {
-                manager.Hide();
-                break;
-            }
-            case "show": {
-                manager.Show(args);
-                break;
-            }
+        switch (command.Kind) {
+        case MarkupEditorListCommandKind.Show:
+            manager.Show(command.Filter ?? "");
+            break;
+        case MarkupEditorListCommandKind.Hide:
+            manager.Hide();
+            break;
+        case MarkupEditorListCommandKind.GoToNextItem:
+            manager.ListRef?.MoveSelection(1);
+            break;
+        case MarkupEditorListCommandKind.GoToPreviousItem:
+            manager.ListRef?.MoveSelection(-1);
+            break;
+        case MarkupEditorListCommandKind.InsertItem:
+            await Insert(manager.ListRef?.Selection);
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(command));
         }
     }
 
@@ -117,7 +115,7 @@
         => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
 
     private async Task SetPlaceholder(string placeholder) {
-        _placeholder = placeholder;
+        _lastPlaceholder = placeholder;
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
     }
 

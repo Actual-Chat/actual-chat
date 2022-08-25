@@ -16,8 +16,6 @@ export class VirtualListStatistics {
     private _responseActualCountSum: number = 0;
     private _responseExpectedCountSum: number = 0;
 
-
-
     public get itemSize(): number {
         const num = this._itemCount == 0
             ? DefaultItemSize
