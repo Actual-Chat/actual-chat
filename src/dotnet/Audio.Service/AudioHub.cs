@@ -6,20 +6,21 @@ namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
+    private IAudioStreamServer AudioStreamServer { get; }
+    private ITranscriptStreamServer TranscriptStreamServer { get; }
+
     private readonly IAudioProcessor _audioProcessor;
-    private readonly AudioStreamer _audioStreamer;
-    private readonly TranscriptStreamer _transcriptStreamer;
     private readonly SessionMiddleware _sessionMiddleware;
 
     public AudioHub(
         IAudioProcessor audioProcessor,
-        AudioStreamer audioStreamer,
-        TranscriptStreamer transcriptStreamer,
+        IAudioStreamServer audioStreamServer,
+        ITranscriptStreamServer transcriptStreamServer,
         SessionMiddleware sessionMiddleware)
     {
+        AudioStreamServer = audioStreamServer;
+        TranscriptStreamServer = transcriptStreamServer;
         _audioProcessor = audioProcessor;
-        _audioStreamer = audioStreamer;
-        _transcriptStreamer = transcriptStreamer;
         _sessionMiddleware = sessionMiddleware;
     }
 
@@ -27,12 +28,12 @@ public class AudioHub : Hub
         string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
-        => _audioStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
+        => AudioStreamServer.Read(streamId, skipTo, cancellationToken);
 
     public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
         CancellationToken cancellationToken)
-        => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
+        => TranscriptStreamServer.Read(streamId, cancellationToken);
 
     public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
     {

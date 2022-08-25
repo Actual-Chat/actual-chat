@@ -17,7 +17,7 @@ public class AudioClient : HubClientBase,
         => AudioSourceLog = Services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
-        string streamId,
+        Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -42,7 +42,7 @@ public class AudioClient : HubClientBase,
     }
 
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
-        string streamId,
+        Symbol streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId);

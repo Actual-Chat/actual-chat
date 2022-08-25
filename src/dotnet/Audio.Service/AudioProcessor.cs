@@ -22,17 +22,17 @@ public sealed class AudioProcessor : IAudioProcessor
     private ILogger? DebugLog => DebugMode ? Log : null;
     private IChatUserSettings? ChatUserSettings { get; }
 
-    public Options Settings { get; }
-    public ITranscriber Transcriber { get; }
-    public AudioSegmentSaver AudioSegmentSaver { get; }
-    public AudioStreamer AudioStreamer { get; }
-    public TranscriptSplitter TranscriptSplitter { get; }
-    public TranscriptPostProcessor TranscriptPostProcessor { get; }
-    public TranscriptStreamer TranscriptStreamer { get; }
-    public IChats Chats { get; }
-    public IChatAuthorsBackend ChatAuthorsBackend { get; }
-    public ICommander Commander { get; }
-    public MomentClockSet Clocks { get; }
+    private Options Settings { get; }
+    private ITranscriber Transcriber { get; }
+    private AudioSegmentSaver AudioSegmentSaver { get; }
+    private IAudioStreamServer AudioStreamServer { get; }
+    private TranscriptSplitter TranscriptSplitter { get; }
+    private TranscriptPostProcessor TranscriptPostProcessor { get; }
+    private ITranscriptStreamServer TranscriptStreamServer { get; }
+    private IChats Chats { get; }
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
 
     public AudioProcessor(Options settings, IServiceProvider services)
     {
@@ -40,10 +40,10 @@ public sealed class AudioProcessor : IAudioProcessor
         Log = services.LogFor(GetType());
         Transcriber = services.GetRequiredService<ITranscriber>();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
-        AudioStreamer = services.GetRequiredService<AudioStreamer>();
+        AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
-        TranscriptStreamer = services.GetRequiredService<TranscriptStreamer>();
+        TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
         Chats = services.GetRequiredService<IChats>();
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         Commander = services.Commander();
@@ -89,10 +89,12 @@ public sealed class AudioProcessor : IAudioProcessor
             nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
             record.Id, openSegment.Index, openSegment.StreamId);
 
-        // TODO(AK): RedisStreamer should return Task<Task> where first Task indicates success of creating Redis stream!
+        var audioStream = openSegment.Audio
+            .GetFrames(cancellationToken)
+            .Select(f => f.Data);
         var publishAudioTask = BackgroundTask.Run(
-            () => AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken),
-            Log, $"{nameof(AudioStreamer.Publish)} failed",
+            () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
+            Log, $"{nameof(AudioStreamServer.Write)} failed",
             cancellationToken);
 
         var audioEntryTask = BackgroundTask.Run(
@@ -177,7 +179,7 @@ public sealed class AudioProcessor : IAudioProcessor
         cancellationToken = CancellationToken.None;
         // TODO(AY): review cancellation stuff
         var diffs = transcripts.GetDiffs(cancellationToken).Memoize(cancellationToken);
-        var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
+        var publishTask = TranscriptStreamServer.Write(streamId, diffs.Replay(cancellationToken), cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(audioEntryTask, streamId, diffs.Replay(cancellationToken), cancellationToken);
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
