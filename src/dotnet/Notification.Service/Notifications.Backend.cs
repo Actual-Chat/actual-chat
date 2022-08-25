@@ -98,6 +98,8 @@ public partial class Notifications
             Webpush = new WebpushConfig {
                 Notification = new WebpushNotification {
                     Renotify = false,
+                    Title = title,
+                    Body = textContent,
                     Tag = chatId,
                     RequireInteraction = false,
                     // Icon = ??? TODO(AK): Set icon
@@ -106,7 +108,10 @@ public partial class Notifications
                     Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
                         ? null
                         : _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
-                }
+                },
+                Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                    ["chatId"] = chatId,
+                },
             },
         };
         var deviceIdGroups = userIds

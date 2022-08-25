@@ -23,8 +23,15 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 
 const app = initializeApp(config);
 const messaging = getMessaging(app);
-onBackgroundMessage(messaging, payload => {
+onBackgroundMessage(messaging, async payload => {
     console.log('[messaging-service-worker.ts] Received background message ', payload);
+    const chatId = payload.notification.chatId;
+    const notificationsToClose = await sw.registration.getNotifications({tag: chatId});
+    for (let toClose of notificationsToClose) {
+        toClose.close();
+    }
+    const notification = Object.assign({tag: chatId}, payload.notification);
+    await sw.registration.showNotification(notification.title, notification);
 });
 
 
