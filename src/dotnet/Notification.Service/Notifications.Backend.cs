@@ -56,7 +56,7 @@ public partial class Notifications
         if (Computed.IsInvalidating())
             return;
 
-        var (chatId, entryId, userId, title, content) = notifyCommand;
+        var (chatId, entryId, userId, title, iconUrl, content) = notifyCommand;
         var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
         var textContent = await markupToTextConverter.Apply(
             MarkupParser.ParseRaw(content),
@@ -68,7 +68,6 @@ public partial class Notifications
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
                 Body = textContent,
-                // ImageUrl = ??? TODO(AK): set image url
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
@@ -81,7 +80,7 @@ public partial class Notifications
                     DefaultSound = true,
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
-                    // Icon = ??? TODO(AK): Set icon
+                    Icon = iconUrl,
                 },
                 Priority = Priority.Normal,
                 CollapseKey = "topics",
@@ -102,7 +101,7 @@ public partial class Notifications
                     Body = textContent,
                     Tag = chatId,
                     RequireInteraction = false,
-                    // Icon = ??? TODO(AK): Set icon
+                    Icon = iconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
                     Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
@@ -111,6 +110,7 @@ public partial class Notifications
                 },
                 Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
                     ["chatId"] = chatId,
+                    ["icon"] = iconUrl,
                 },
             },
         };

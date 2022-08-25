@@ -6,39 +6,50 @@ namespace ActualChat.Chat.EventHandlers;
 
 public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 {
-    private readonly IChatsBackend _chatsBackend;
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
+    private IChatsBackend ChatsBackend { get; }
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private ContentUrlMapper ContentUrlMapper { get; }
 
-    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend)
+    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend, ContentUrlMapper contentUrlMapper)
     {
-        _chatsBackend = chatsBackend;
-        _chatAuthorsBackend = chatAuthorsBackend;
+        ChatsBackend = chatsBackend;
+        ChatAuthorsBackend = chatAuthorsBackend;
+        ContentUrlMapper = contentUrlMapper;
     }
 
     public async Task Handle(NewChatEntryEvent @event, ICommander commander, CancellationToken cancellationToken)
     {
-        var chatAuthor = await _chatAuthorsBackend.Get(@event.ChatId, @event.AuthorId, false, cancellationToken).ConfigureAwait(false);
-        var userId = chatAuthor?.UserId;
-        if (userId == null)
-            return;
+        var chatAuthor = await ChatAuthorsBackend.Get(@event.ChatId, @event.AuthorId, true, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var chat = await ChatsBackend.Get(@event.ChatId, cancellationToken).Require().ConfigureAwait(false);
 
-        var title = await GetTitle(@event.ChatId, cancellationToken).ConfigureAwait(false);
+        var title = GetTitle(chat, chatAuthor);
+        var iconUrl = GetIconUrl(chat, chatAuthor);
         var content = GetContent(@event.Content);
         var command = new INotificationsBackend.NotifySubscribersCommand(
             @event.ChatId,
             @event.Id,
-            userId,
+            chatAuthor.UserId,
             title,
+            iconUrl,
             content);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<string> GetTitle(string chatId, CancellationToken cancellationToken)
-    {
-        // TODO(AK): Internationalization
-        var chat = await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        return chat?.Title ?? "New message";
-    }
+    private string GetIconUrl(Chat chat, ChatAuthor chatAuthor)
+        => chat.ChatType switch {
+            ChatType.Group => !chat.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
+            ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+            _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
+        };
+
+    private string GetTitle(Chat chat, ChatAuthor chatAuthor)
+        => chat.ChatType switch {
+            ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
+            ChatType.Peer => $"{chatAuthor.Name}",
+            _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
+        };
 
     private string GetContent(string chatEventContent)
     {

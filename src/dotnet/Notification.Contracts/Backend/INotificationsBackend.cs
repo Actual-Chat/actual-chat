@@ -19,6 +19,7 @@ public interface INotificationsBackend : IComputeService
         [property: DataMember] long EntryId,
         [property: DataMember] string AuthorUserId,
         [property: DataMember] string Title,
+        [property: DataMember] string IconUrl,
         [property: DataMember] string Content
     ) : ICommand<Unit>, IBackendCommand;
 
