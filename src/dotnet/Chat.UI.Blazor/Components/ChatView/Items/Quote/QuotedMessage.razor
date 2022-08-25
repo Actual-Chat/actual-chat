@@ -12,13 +12,15 @@
 @{
     var message = model.Message;
     var entry = message.Entry;
+    var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
+    authorNameCls += "font-bold text-base min-w-fit";
 }
 
 <div class="quoted-message" @onclick="OnQuoteClick">
     <div class="block bg-primary left-line min-h-10"></div>
     <div class="flex-y w-full px-2 opacity-90">
         <div class="flex pl-0.5">
-            <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base min-w-fit"/>
+            <ChatAuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
         </div>
         <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
             <div class="flex-x w-full overflow-hidden">
@@ -61,7 +63,8 @@
         var hasAttachments = Message.Entry.HasAttachments;
         var text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content, cancellationToken);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        return new (Message, _quoteText, hasAttachments);
+        var principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, cancellationToken).ConfigureAwait(false);
+        return new (Message, _quoteText, principalId);
     }
 
     private void OnChatAuthorClick()
@@ -74,6 +77,6 @@
         }
     }
 
-    public record Model(ChatMessageModel Message, string Quote, bool HasAttachments);
+    public record Model(ChatMessageModel Message, string Quote, Symbol PrincipalId);
 
 }
