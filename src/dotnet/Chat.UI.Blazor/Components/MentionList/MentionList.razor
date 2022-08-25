@@ -7,18 +7,21 @@
     var selection = Selection;
 }
 
-<div class="@Class mb-1 p-1 border border-mention rounded-md overflow-y-auto max-h-96 w-full">
+<div class="@Class mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var searchMatch = mention.SearchMatch;
         var title = searchMatch.Text;
-        var cls = mention == selection ? "bg-04" : "";
-        <div class="@cls px-1 rounded hover:cursor-pointer"
+        var cls = mention == selection ? "bg-mention-list-hover" : "";
+        <div class="@cls hover:cursor-pointer mention-item"
              @onmouseover="_ => Selection = mention"
              @onclick="@(_ => Manager.SelectMention(mention))">
             @if (searchMatch.Parts.Length == 0) {
-                <span>@title</span>
-            }
-            else {
+                <div class="flex-x gap-x-2 px-4 items-center h-8">
+                    <img class="w-7 h-7 rounded-full" src="@mention.Picture" alt="@title"/>
+                    <span class="font-medium">@title</span>
+                    <span class="opacity-80">@mention.Id</span>
+                </div>
+            } else {
                 foreach (var part in searchMatch.PartsWithGaps) {
                     var textClass = part.Rank > 0 ? "font-semibold" : "";
                     <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>

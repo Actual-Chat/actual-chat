@@ -221,3 +221,8 @@
 .chat-header-control-panel .btn.btn-round .btn-content {
     @apply min-h-10 min-w-10;
 }
+
+.mention-list {
+    @apply mb-1 overflow-y-auto max-h-48 w-full;
+    @apply border-y border-bg-04 bg-02;
+}
