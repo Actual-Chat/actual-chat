@@ -6,39 +6,24 @@ namespace ActualChat.Audio;
 
 public class TranscriptStreamer : ITranscriptStreamer
 {
-    private const int StreamBufferSize = 64;
-    // ReSharper disable once UnusedAutoPropertyAccessor.Local
+    private ITranscriptStreamServer TranscriptStreamServer { get; }
     private ILogger<TranscriptStreamer> Log { get; }
-    private RedisDb RedisDb { get; }
-    private AudioSettings Settings { get; }
 
     public TranscriptStreamer(
-        RedisDb<AudioContext> audioRedisDb,
-        AudioSettings settings,
+        ITranscriptStreamServer transcriptStreamServer,
         ILogger<TranscriptStreamer> log)
     {
-        Settings = settings;
+        TranscriptStreamServer = transcriptStreamServer;
         Log = log;
-        RedisDb = audioRedisDb.WithKeyPrefix("transcripts");
-    }
-
-    public Task Publish(
-        string streamId,
-        IAsyncEnumerable<Transcript> diffs,
-        CancellationToken cancellationToken)
-    {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new () { ExpirationPeriod = Settings.StreamExpirationPeriod });
-        return streamer.Write(diffs, cancellationToken);
     }
 
     public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
-        string streamId,
+        Symbol streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new() {
-            AppendCheckPeriod = TimeSpan.FromMilliseconds(250),
-        });
-        return streamer.Read(cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
+        var transcriptStream = TranscriptStreamServer.Read(streamId, cancellationToken);
+        if (transcriptStream == AsyncEnumerable.Empty<Transcript>())
+            Log.LogWarning("{TranscriptStreamServer} returns null transcript stream", TranscriptStreamServer.GetType().Name);
+        return transcriptStream;
     }
 }

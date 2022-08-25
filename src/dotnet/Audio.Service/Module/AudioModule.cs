@@ -20,6 +20,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {
             endpoints.MapHub<AudioHub>("/api/hub/audio");
+            endpoints.MapHub<AudioHubBackend>("/backend/hub/audio");
         });
 
     public override void InjectServices(IServiceCollection services)
@@ -44,6 +45,9 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
 
         // Module's own services
         services.AddScoped<AudioHub>();
+        services.AddSingleton<AudioHubBackend>();
+        // temporarily
+        services.AddSingleton<AudioHubBackendClient>();
 
         services.TryAddSingleton<AudioProcessor.Options>();
         services.AddSingleton<AudioProcessor>();
@@ -53,9 +57,15 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioStreamer>();
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
-        services.AddSingleton<TranscriptSplitter>();
-        services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
+        services.AddSingleton<TranscriptSplitter>();
+        services.AddSingleton<TranscriptPostProcessor>();
+        services.AddSingleton<AudioStreamServer>();
+        services.AddSingleton<AudioStreamServerProxy>();
+        services.AddTransient<IAudioStreamServer>(c => c.GetRequiredService<AudioStreamServerProxy>());
+        services.AddSingleton<TranscriptStreamServer>();
+        services.AddSingleton<TranscriptStreamServerProxy>();
+        services.AddTransient<ITranscriptStreamServer>(c => c.GetRequiredService<TranscriptStreamServerProxy>());
     }
 }
