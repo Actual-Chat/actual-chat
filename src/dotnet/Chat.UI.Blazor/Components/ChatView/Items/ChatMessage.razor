@@ -64,7 +64,7 @@
                             <QuotedMessage Message="@model.RepliedChatMessage"/>
                         }
                         @if (entry.IsStreaming) {
-                            <ChatMessageTranscript Model="@message" Class="mx-1"/>
+                            <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryType="@Message.ShowEntryType" />
                         } else {
                             <p class="chat-message-markup mx-1">
                                 <CascadingValue Value="@entry" IsFixed="true">

@@ -129,8 +129,8 @@
     @apply h-8 text-left w-full;
 }
 
-.chat-message-markup .chat-entry-type-markup {
-    @apply inline-block relative top-0.5 mr-2;
+.message-content .chat-entry-type-marker {
+    @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
 }
 
 .chat-message-transcript {
