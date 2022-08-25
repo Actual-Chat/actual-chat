@@ -61,13 +61,10 @@
 }
 
 .quoted-message {
-    @apply px-1.5 opacity-75;
-    @apply flex-x items-center mt-1 gap-x-1;
+    @apply px-1.5 w-full h-12;
+    @apply flex-x items-center;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-03 cursor-pointer;
-}
-.quoted-message * {
-    @apply max-h-5 flex-x;
 }
 
 .chat-message-quoted {
