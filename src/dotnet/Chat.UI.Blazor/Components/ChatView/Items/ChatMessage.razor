@@ -40,10 +40,6 @@
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageMenu.MenuId" Data="@Message">
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper">
         <div class="flex-y w-full">
-            @if (isReply) {
-                <QuotedMessage Message="@model.RepliedChatMessage"/>
-            }
-
             <div class="chat-message group px-1.5 py-1 relative">
                 @if (showPicture || isReply) {
                     <div class="m-1.5">
@@ -64,6 +60,9 @@
                         </div>
                     }
                     <div class="content message-content rounded-sm">
+                        @if (isReply) {
+                            <QuotedMessage Message="@model.RepliedChatMessage"/>
+                        }
                         @if (entry.IsStreaming) {
                             <ChatMessageTranscript Model="@message" Class="mx-1"/>
                         } else {

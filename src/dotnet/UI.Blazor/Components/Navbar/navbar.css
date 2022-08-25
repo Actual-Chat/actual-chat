@@ -164,7 +164,7 @@
 }
 
 .left-line {
-    @apply hidden md:block h-8 self-center rounded-lg;
-    width: 2px;
+    @apply h-8 self-center rounded-lg;
+    min-width: 2px;
     margin-right: 3px;
 }
