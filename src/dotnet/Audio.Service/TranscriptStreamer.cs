@@ -1,6 +1,4 @@
-using ActualChat.Audio.Db;
 using ActualChat.Transcription;
-using Stl.Redis;
 
 namespace ActualChat.Audio;
 
@@ -17,13 +15,17 @@ public class TranscriptStreamer : ITranscriptStreamer
         Log = log;
     }
 
-    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         Symbol streamId,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var transcriptStream = TranscriptStreamServer.Read(streamId, cancellationToken);
-        if (transcriptStream == AsyncEnumerable.Empty<Transcript>())
-            Log.LogWarning("{TranscriptStreamServer} returns null transcript stream", TranscriptStreamServer.GetType().Name);
-        return transcriptStream;
+        var transcriptStreamOption = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        if (!transcriptStreamOption.HasValue)
+            Log.LogWarning("{TranscriptStreamServer} doesn't have transcript stream", TranscriptStreamServer.GetType().Name);
+        var transcriptStream = transcriptStreamOption.HasValue
+            ? transcriptStreamOption.Value
+            : AsyncEnumerable.Empty<Transcript>();
+        await foreach(var transcript in transcriptStream.ConfigureAwait(false))
+            yield return transcript;
     }
 }

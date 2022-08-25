@@ -23,21 +23,21 @@ public class AudioStreamServer: IAudioStreamServer, IAsyncDisposable
         _ = BackgroundTask.Run(() => BackgroundCleanup(_disposeCancellation.Token), _disposeCancellation.Token);
     }
 
-    public IAsyncEnumerable<byte[]> Read(
+    public Task<Option<IAsyncEnumerable<byte[]>>> Read(
         Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         if (skipTo > TimeSpan.FromSeconds(MaxStreamDuration))
-            return AsyncEnumerable.Empty<byte[]>();
+            return Task.FromResult(Option<IAsyncEnumerable<byte[]>>.Some(AsyncEnumerable.Empty<byte[]>()));
 
         if (!_audioStreams.TryGetValue(streamId, out var memoizer))
-            return AsyncEnumerable.Empty<byte[]>();
+            return Task.FromResult(Option<IAsyncEnumerable<byte[]>>.None);
 
         var audioStream = memoizer
             .Replay(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        return SkipTo(audioStream, skipTo);
+        return Task.FromResult(Option<IAsyncEnumerable<byte[]>>.Some(SkipTo(audioStream, skipTo)));
     }
 
     public async Task Write(

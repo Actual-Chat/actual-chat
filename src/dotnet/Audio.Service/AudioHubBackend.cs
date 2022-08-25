@@ -14,16 +14,30 @@ public class AudioHubBackend : Hub
         TranscriptStreamServer = transcriptStreamServer;
     }
 
-    public IAsyncEnumerable<byte[]>? GetAudioStream(
+    public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
-        CancellationToken cancellationToken)
-        => AudioStreamServer.Read(streamId, skipTo, cancellationToken);
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var (hasValue, audioStream) = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        if (!hasValue)
+            yield break;
 
-    public IAsyncEnumerable<Transcript>? GetTranscriptStream(
+        await foreach (var chunk in audioStream!.ConfigureAwait(false))
+            yield return chunk;
+    }
+
+    public async IAsyncEnumerable<Transcript> GetTranscriptStream(
         string streamId,
-        CancellationToken cancellationToken)
-        => TranscriptStreamServer.Read(streamId, cancellationToken);
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var (hasValue, transcriptStream) = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        if (!hasValue)
+            yield break;
+
+        await foreach (var chunk in transcriptStream!.ConfigureAwait(false))
+            yield return chunk;
+    }
 
     public Task WriteAudioStream(
         string streamId,

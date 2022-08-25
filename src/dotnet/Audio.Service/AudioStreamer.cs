@@ -14,24 +14,28 @@ public class AudioStreamer : IAudioStreamer
         AudioSourceLog = audioSourceLog;
     }
 
-    public Task<AudioSource> GetAudio(
+    public async Task<AudioSource> GetAudio(
         Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var audioStream = AudioStreamServer.Read(streamId, skipTo, cancellationToken);
-        if (audioStream == AsyncEnumerable.Empty<byte[]>())
-            Log.LogWarning("{AudioStreamServer} returns null audio stream", AudioStreamServer.GetType().Name);
+        var audioStreamOption = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        if (!audioStreamOption.HasValue)
+            Log.LogWarning("{AudioStreamServer} doesn't have audio stream", AudioStreamServer.GetType().Name);
+        var audioStream = audioStreamOption.HasValue
+            ? audioStreamOption.Value
+            : AsyncEnumerable.Empty<byte[]>();
+
         var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        return Task.FromResult(new AudioSource(
+        return new AudioSource(
             Task.FromResult(AudioSource.DefaultFormat),
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
-            cancellationToken));
+            cancellationToken);
     }
 }

@@ -13,35 +13,53 @@ public class AudioHubBackendClient : HubClientBase,
     {
     }
 
-    public async IAsyncEnumerable<byte[]> Read(
+    public async Task<Option<IAsyncEnumerable<byte[]>>> Read(
         Symbol streamId,
         TimeSpan skipTo,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
         var audioStream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId.Value, skipTo, cancellationToken)
             .WithBuffer(AudioStreamServer.StreamBufferSize, cancellationToken);
-        await foreach(var chunk in audioStream.ConfigureAwait(false))
-            yield return chunk;
+
+        var enumerator = audioStream.GetAsyncEnumerator(cancellationToken);
+        if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+            return Option<IAsyncEnumerable<byte[]>>.None;
+
+        return Option<IAsyncEnumerable<byte[]>>.Some(Iterator(enumerator));
+
+        async IAsyncEnumerable<byte[]> Iterator(IAsyncEnumerator<byte[]> enumerator1)
+        {
+            yield return enumerator.Current;
+
+            while (await enumerator1.MoveNextAsync().ConfigureAwait(false))
+                yield return enumerator.Current;
+        }
     }
 
-    public async IAsyncEnumerable<Transcript> Read(
+    public async Task<Option<IAsyncEnumerable<Transcript>>> Read(
         Symbol streamId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
         var transcriptStream = connection
             .StreamAsync<Transcript>("GetTranscriptStream", streamId.Value, cancellationToken)
             .WithBuffer(TranscriptStreamServer.StreamBufferSize, cancellationToken);
 
-        // var enumerator = transcriptStream.GetAsyncEnumerator(cancellationToken);
-        // if (!await enumerator.MoveNextAsync())
-        //     return AsyncEnumerable.Empty<Transcript>();
+        var enumerator = transcriptStream.GetAsyncEnumerator(cancellationToken);
+        if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+            return Option<IAsyncEnumerable<Transcript>>.None;
 
-        // yield return enumerator.Current;
-        await foreach(var chunk in transcriptStream.ConfigureAwait(false))
-            yield return chunk;
+        return Option<IAsyncEnumerable<Transcript>>.Some(Iterator(enumerator));
+
+        async IAsyncEnumerable<Transcript> Iterator(IAsyncEnumerator<Transcript> enumerator1)
+        {
+            yield return enumerator.Current;
+
+            while (await enumerator1.MoveNextAsync().ConfigureAwait(false))
+                yield return enumerator.Current;
+        }
     }
 
     public async Task Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
