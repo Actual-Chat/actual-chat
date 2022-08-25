@@ -20,11 +20,11 @@ public class MentionSearchProvider : ISearchProvider<MentionSearchResult>
         var searchPhrase = filter[..Math.Min(64, filter.Length)].ToSearchPhrase(true, true);
         var authors = await _chats.ListMentionableAuthors(_session, _chatId, cancellationToken).ConfigureAwait(false);
         var mentions = (
-            from a in authors
-            let searchMatch = searchPhrase.GetMatch(a.Name)
+            from author in authors
+            let searchMatch = searchPhrase.GetMatch(author.Name)
             where searchMatch.Rank > 0 || searchPhrase.IsEmpty
-            orderby searchMatch.Rank descending, a.Name
-            select new MentionSearchResult(a.Id, searchMatch, a.Picture)
+            orderby searchMatch.Rank descending, author.Name
+            select new MentionSearchResult($"a:{author.Id}", searchMatch, author.Picture)
             ).Take(limit)
             .ToArray();
         return mentions;

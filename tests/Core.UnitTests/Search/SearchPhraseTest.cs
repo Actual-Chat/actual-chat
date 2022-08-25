@@ -7,9 +7,17 @@ public class SearchPhraseTest : TestBase
     [Fact]
     public void BasicTest()
     {
-        var sp = "dodd".ToSearchPhrase(true, false);
+        var sp = "дм фил".ToSearchPhrase(true, false);
         Out.WriteLine(sp.ToString());
-        Out.WriteLine(sp.GetMatch("Admiral Dodd Rancit").ToString());
+        var m = sp.GetMatch("Дмитрий Филиппов");
+        Out.WriteLine(m.ToString());
+        m.Parts.Length.Should().Be(2);
+
+        sp = "dodd".ToSearchPhrase(true, false);
+        Out.WriteLine(sp.ToString());
+        m = sp.GetMatch("Admiral Dodd Rancit");
+        Out.WriteLine(m.ToString());
+        m.Parts.Length.Should().Be(2);
 
         "".ToSearchPhrase(false, false).GetTermRegexString().Should().Be("");
         "".ToSearchPhrase(true, true).GetTermRegexString().Should().Be("");

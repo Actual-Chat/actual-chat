@@ -31,7 +31,7 @@ public readonly record struct SearchMatch(
         var text = Text;
         var parts = Parts.Select(p => p.ToString(text)).ToDelimitedString(", ");
         return
-            $"{GetType().Name}({JsonFormatter.Format(Text)}, {Rank:F3}, {{ {parts} }})";
+            $"{GetType().Name}(\"{Text}\", {Rank:F3}, {{ {parts} }})";
     }
 
     // Operators

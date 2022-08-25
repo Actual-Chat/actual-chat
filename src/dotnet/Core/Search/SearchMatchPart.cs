@@ -9,5 +9,5 @@ public readonly record struct SearchMatchPart(
     public override string ToString()
         => $"[{Range.Start}..{Range.End}) -> {Rank:F3}";
     public string ToString(string text)
-        => $"{JsonFormatter.Format(text[Range.Start..Range.End])} -> {Rank:F3}";
+        => $"\"{text[Range.Start..Range.End]}\" -> {Rank:F3}";
 }

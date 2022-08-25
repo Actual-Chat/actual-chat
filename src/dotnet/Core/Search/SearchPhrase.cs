@@ -30,7 +30,7 @@ public sealed class SearchPhrase
     }
 
     public override string ToString()
-        => $"{GetType().Name}({JsonFormatter.Format(Text)}, re'{GetTermRegexString()}')";
+        => $"{GetType().Name}(\"{Text}\", re'{GetTermRegexString()}')";
 
     public string GetTermRegexString()
     {
