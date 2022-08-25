@@ -1,12 +1,11 @@
 @using ActualChat.Search
+@using ActualChat.Chat.UI.Blazor.Module
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
-    <div class="absolute left-0 right-0 px-1.5 z-50">
-        <div class="relative w-full">
-            <div class="absolute bottom-0 w-full text-03">
-                <MentionList @ref="ListRef" Class="bg-01" />
-            </div>
+    <div @ref="Ref" class="absolute left-0 right-0 z-50">
+        <div class="absolute bottom-0 w-full text-03 overflow-y-hidden">
+            <MentionList @ref="ListRef" />
         </div>
     </div>
     @ChildContent
@@ -15,13 +14,28 @@
 
 @code {
     [Inject] protected IStateFactory StateFactory { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = TestMentionSearchProvider.Instance;
-    [Parameter] public int Limit { get; set; } = 10;
+    [Parameter] public int Limit { get; set; } = 100;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public MentionList? ListRef { get; private set; }
     public event Action<MentionSearchResult>? MentionSelected;
+
+    private DotNetObjectReference<MentionListManager> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.MentionList.create",
+                Ref, BlazorRef
+                );
+        }
+    }
 
     public void SelectMention(MentionSearchResult mention)
         => MentionSelected?.Invoke(mention);
