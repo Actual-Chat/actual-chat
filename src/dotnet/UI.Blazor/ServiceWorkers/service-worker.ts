@@ -25,7 +25,7 @@ const app = initializeApp(config);
 const messaging = getMessaging(app);
 onBackgroundMessage(messaging, async payload => {
     console.log('[messaging-service-worker.ts] Received background message ', payload);
-    const chatId = payload.notification.chatId;
+    const chatId = payload.notification['chatId'];
     const notificationsToClose = await sw.registration.getNotifications({tag: chatId});
     for (let toClose of notificationsToClose) {
         toClose.close();
