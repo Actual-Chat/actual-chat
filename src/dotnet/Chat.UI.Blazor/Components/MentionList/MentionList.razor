@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
 @inherits ComputedStateComponent<MentionSearchResult[]>
 @{
     var mentions = Mentions;
@@ -7,7 +8,7 @@
     var selection = Selection;
 }
 
-<div class="@Class mention-list custom-scrollbar">
+<div @ref="Ref" class="@Class mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var searchMatch = mention.SearchMatch;
         var title = searchMatch.Text;
@@ -32,8 +33,13 @@
 </div>
 
 @code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
     private string? _lastFilter;
     private MentionSearchResult? _selection;
+    private DotNetObjectReference<MentionList> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
 
     [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
@@ -71,7 +77,15 @@
         return mentions;
     }
 
-    public void MoveSelection(int offset) {
+    public async Task MoveSelection(int offset) {
+        if (!Manager.ListCreated) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.MentionList.create",
+                Ref, BlazorRef
+                );
+            Manager.ListCreated = true;
+        }
         var mentions = Mentions;
         var selection = FixSelection(_selection, mentions);
         var selectionIndex = Array.IndexOf(mentions, selection) + offset;
@@ -79,6 +93,16 @@
             return;
         _selection = mentions[selectionIndex];
         StateHasChanged();
+    }
+
+    public async Task CloseList() {
+        if (Manager.ListCreated) {
+            Manager.ListCreated = false;
+            await JSRef.DisposeSilentlyAsync("dispose");
+            JSRef = null!;
+            BlazorRef.DisposeSilently();
+            BlazorRef = null!;
+        }
     }
 
     // Private methods

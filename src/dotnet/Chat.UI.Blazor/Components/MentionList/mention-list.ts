@@ -2,50 +2,28 @@ const LogScope: string = 'MentionList';
 
 export class MentionList {
     private blazorRef: DotNet.DotNetObject;
-    private readonly manager: HTMLElement;
-    private readonly managerObserver : MutationObserver;
+    private readonly mentionList: HTMLElement;
     private mentionListObserver : MutationObserver;
     private listTop: number;
     private listBottom: number;
 
-    static create(manager: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
-        return new MentionList(manager, blazorRef);
+    static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
+        return new MentionList(mentionList, blazorRef);
     }
 
-    constructor(manager: HTMLElement, blazorRef: DotNet.DotNetObject) {
-        this.manager = manager;
+    constructor(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject) {
+        this.mentionList = mentionList;
         this.blazorRef = blazorRef;
-        this.managerObserver = new MutationObserver(this.getMentionList);
-        this.managerObserver.observe(this.manager, {
+        this.mentionListObserver = new MutationObserver(this.scrollAtCurrentItem);
+        this.mentionListObserver.observe(this.mentionList, {
             attributes: true,
             childList: true,
             subtree: true,
-        });
+        })
+        const rect = this.mentionList.getBoundingClientRect();
+        this.listTop = rect.top;
+        this.listBottom = rect.bottom;
     }
-
-    private getMentionList = (mutationsList, observer) => {
-        for(const mutation of mutationsList) {
-            for(const added_node of mutation.addedNodes) {
-                if (added_node.nodeName == 'DIV') {
-                    const element = added_node as HTMLElement;
-                    if(element.classList.contains('mention-list')) {
-                        const items = element.querySelectorAll('.mention-item');
-                        if (items.length > 6) {
-                            const rect = element.getBoundingClientRect();
-                            this.listTop = rect.top;
-                            this.listBottom = rect.bottom;
-                            this.mentionListObserver = new MutationObserver(this.scrollAtCurrentItem);
-                            this.mentionListObserver.observe(element, {
-                                attributes: true,
-                                childList: true,
-                                subtree: true,
-                            })
-                        }
-                    }
-                }
-            }
-        }
-    };
 
     private scrollAtCurrentItem = (mutationsList, observer) => {
         for(const mutation of mutationsList) {
@@ -62,5 +40,9 @@ export class MentionList {
             }
         }
     };
+
+    public dispose() {
+        this.mentionListObserver.disconnect();
+    }
 }
 
