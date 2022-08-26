@@ -12,8 +12,6 @@
 
 
 @code {
-    public bool ListCreated;
-
     [Inject] protected IStateFactory StateFactory { get; init; } = null!;
 
     [Parameter] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = TestMentionSearchProvider.Instance;
@@ -32,11 +30,8 @@
             ListRef.Filter.Value = filter;
     }
 
-    public async Task Hide() {
-        if (ListRef != null) {
+    public void Hide() {
+        if (ListRef != null)
             ListRef.Filter.Value = null;
-            if (ListCreated)
-                await ListRef.CloseList();
-        }
     }
 }
