@@ -5,5 +5,5 @@ public class RightPanelUI
     public IMutableState<bool> IsVisible { get; }
 
     public RightPanelUI(IStateFactory stateFactory)
-        => IsVisible = stateFactory.NewMutable(false);
+        => IsVisible = stateFactory.NewMutable(true);
 }
