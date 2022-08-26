@@ -1,0 +1,7 @@
+namespace ActualChat.Kubernetes.Contract;
+
+public record EndpointSliceList(
+    string Kind,
+    string ApiVersion,
+    IReadOnlyList<EndpointSlice> Items
+);
