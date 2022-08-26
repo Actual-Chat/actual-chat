@@ -4,8 +4,8 @@ export class MentionList {
     private blazorRef: DotNet.DotNetObject;
     private readonly mentionList: HTMLElement;
     private mentionListObserver : MutationObserver;
-    private listTop: number;
-    private listBottom: number;
+    private readonly listTop: number;
+    private readonly listBottom: number;
 
     static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
         return new MentionList(mentionList, blazorRef);

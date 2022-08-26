@@ -3,12 +3,13 @@
 @inherits ComputedStateComponent<MentionSearchResult[]>
 @{
     var mentions = Mentions;
+    var listCls = "";
     if (mentions.Length < 1)
-        return;
+        listCls += "hidden";
     var selection = Selection;
 }
 
-<div @ref="Ref" class="@Class mention-list custom-scrollbar">
+<div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var searchMatch = mention.SearchMatch;
         var title = searchMatch.Text;
@@ -20,13 +21,17 @@
                 <div class="flex-x gap-x-2 px-4 items-center h-8">
                     <img class="w-7 h-7 rounded-full" src="@mention.Picture" alt="@title"/>
                     <span class="font-medium">@title</span>
-                    <span class="opacity-80">@mention.Id</span>
                 </div>
             } else {
-                foreach (var part in searchMatch.PartsWithGaps) {
-                    var textClass = part.Rank > 0 ? "font-semibold" : "";
-                    <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>
-                }
+                <div class="flex-x gap-x-2 px-4 items-center h-8">
+                    <img class="w-7 h-7 rounded-full" src="@mention.Picture" alt="@title"/>
+                    <div class="flex-x gap-x-0">
+                        @foreach (var part in searchMatch.PartsWithGaps) {
+                            var textClass = part.Rank > 0 ? "font-semibold" : "";
+                                <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>
+                        }
+                    </div>
+                </div>
             }
         </div>
     }
@@ -61,6 +66,17 @@
         Filter = StateFactory.NewMutable<string?>();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.MentionList.create",
+                Ref, BlazorRef
+                );
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
         => new() {
             InitialValue = Array.Empty<MentionSearchResult>(),
@@ -77,15 +93,7 @@
         return mentions;
     }
 
-    public async Task MoveSelection(int offset) {
-        if (!Manager.ListCreated) {
-            BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{ChatBlazorUIModule.ImportName}.MentionList.create",
-                Ref, BlazorRef
-                );
-            Manager.ListCreated = true;
-        }
+    public void MoveSelection(int offset) {
         var mentions = Mentions;
         var selection = FixSelection(_selection, mentions);
         var selectionIndex = Array.IndexOf(mentions, selection) + offset;
@@ -95,14 +103,12 @@
         StateHasChanged();
     }
 
-    public async Task CloseList() {
-        if (Manager.ListCreated) {
-            Manager.ListCreated = false;
-            await JSRef.DisposeSilentlyAsync("dispose");
-            JSRef = null!;
-            BlazorRef.DisposeSilently();
-            BlazorRef = null!;
-        }
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        await base.DisposeAsync();
     }
 
     // Private methods
