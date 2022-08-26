@@ -1,5 +1,5 @@
 .markup-editor {
-    @apply text-xl md:text-md;
+    @apply text-xl md:text-base;
 }
 .markup-editor:empty:not(:focus)::before {
     content:attr(data-placeholder)

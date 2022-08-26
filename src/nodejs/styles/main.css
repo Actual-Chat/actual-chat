@@ -141,7 +141,7 @@ input.input-underlined {
     @apply flex-x gap-x-2 items-center;
 }
 .context-menu-text {
-    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+    @apply w-full text-02 text-base font-medium ml-2 mr-6;
 }
 .context-menu-icon {
     @apply text-icons-01;

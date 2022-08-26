@@ -11,7 +11,7 @@
 
 .tab-panel-tabs .btn.tab-btn {
     @apply border-0 rounded-none;
-    @apply text-03 text-md font-medium leading-tight tracking-wider;
+    @apply text-03 text-base font-medium leading-tight tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
     @apply border-transparent border-b-2;

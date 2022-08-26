@@ -118,12 +118,12 @@
 }
 
 .btn.btn-xs {
-    @apply text-md md:text-base;
+    @apply text-base md:text-base;
     @apply h-8 md:h-6 min-h-8 md:min-h-6;
     @apply min-w-0 md:min-w-16;
 }
 .btn.btn-sm {
-    @apply text-lg md:text-md;
+    @apply text-lg md:text-base;
     @apply h-10 md:h-8 min-h-10 md:min-h-8;
     @apply min-w-0 md:min-w-20;
 }

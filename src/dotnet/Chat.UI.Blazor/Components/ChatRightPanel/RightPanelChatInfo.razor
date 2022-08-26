@@ -16,7 +16,7 @@
             <div class="text-01 text-xl">
                 @m.Title
             </div>
-            <div class="text-03 text-md">
+            <div class="text-03 text-base">
                 @(m.IsPublic ? "Public" : "Private")
             </div>
         </div>
@@ -32,7 +32,7 @@
                 <div class="text-01 text-lg truncate">
                     @m.PublicUrlTitle
                 </div>
-                <div class="text-03 text-md">
+                <div class="text-03 text-base">
                     Public join link
                 </div>
             </div>
@@ -49,7 +49,7 @@
             <div class="text-01 text-lg truncate">
                 Notifications
             </div>
-            <div class="text-03 text-md">
+            <div class="text-03 text-base">
                 @(m.IsSubscribed ? "On" : "Off")
             </div>
         </div>
