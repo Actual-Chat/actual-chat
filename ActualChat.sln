@@ -218,6 +218,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{C9531717-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kubernetes", "src\dotnet\Kubernetes\Kubernetes.csproj", "{A1B45AE2-40EE-4B89-94D4-B5D6453DFCD5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kubernetes.IntegrationTests", "tests\Kubernetes.IntegrationTests\Kubernetes.IntegrationTests.csproj", "{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -572,6 +574,12 @@ Global
 		{A1B45AE2-40EE-4B89-94D4-B5D6453DFCD5}.Debug-MAUI|Any CPU.Build.0 = Debug|Any CPU
 		{A1B45AE2-40EE-4B89-94D4-B5D6453DFCD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B45AE2-40EE-4B89-94D4-B5D6453DFCD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Debug-MAUI|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Debug-MAUI|Any CPU.Build.0 = Debug|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -649,6 +657,7 @@ Global
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{A1B45AE2-40EE-4B89-94D4-B5D6453DFCD5} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{9A4F0C85-3C2C-4BD3-8F6D-3425E978CFB7} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

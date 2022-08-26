@@ -10,7 +10,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
 
-public class AudioModule : HostModule<AudioSettings>, IWebModule
+public class AudioModule : HostModule<Audio.AudioSettings>, IWebModule
 {
     public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
 
@@ -46,8 +46,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         // Module's own services
         services.AddScoped<AudioHub>();
         services.AddSingleton<AudioHubBackend>();
-        // temporarily
-        services.AddSingleton<AudioHubBackendClient>();
+        services.AddSingleton<AudioHubBackendClientFactory>();
 
         services.TryAddSingleton<AudioProcessor.Options>();
         services.AddSingleton<AudioProcessor>();
