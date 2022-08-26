@@ -13,8 +13,8 @@
     @foreach (var mention in mentions) {
         var searchMatch = mention.SearchMatch;
         var title = searchMatch.Text;
-        var cls = mention == selection ? "bg-mention-list-hover" : "";
-        <div class="@cls hover:cursor-pointer mention-item"
+        var cls = mention == selection ? "selected" : "";
+        <div class="@cls mention-list-item"
              @onmouseover="_ => Selection = mention"
              @onclick="@(_ => Manager.SelectMention(mention))">
             @if (searchMatch.Parts.Length == 0) {
@@ -38,13 +38,13 @@
 </div>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
     private string? _lastFilter;
     private MentionSearchResult? _selection;
     private DotNetObjectReference<MentionList> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

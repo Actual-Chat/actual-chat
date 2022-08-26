@@ -4,8 +4,6 @@ export class MentionList {
     private blazorRef: DotNet.DotNetObject;
     private readonly mentionList: HTMLElement;
     private mentionListObserver : MutationObserver;
-    private readonly listTop: number;
-    private readonly listBottom: number;
 
     static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
         return new MentionList(mentionList, blazorRef);
@@ -20,21 +18,21 @@ export class MentionList {
             childList: true,
             subtree: true,
         })
-        const rect = this.mentionList.getBoundingClientRect();
-        this.listTop = rect.top;
-        this.listBottom = rect.bottom;
     }
 
     private scrollAtCurrentItem = (mutationsList, observer) => {
         for(const mutation of mutationsList) {
-            if (mutation.type === 'attributes' && mutation.target.classList.contains('bg-mention-list-hover')) {
+            if (mutation.type === 'attributes' && mutation.target.classList.contains('selected')) {
                 const item = mutation.target as HTMLElement;
                 const rect = item.getBoundingClientRect();
                 const top = rect.top;
                 const bottom = rect.bottom;
-                if (top < this.listTop) {
+                const listRect = this.mentionList.getBoundingClientRect();
+                const listTop = listRect.top;
+                const listBottom = listRect.bottom;
+                if (top < listTop) {
                     item.scrollIntoView({behavior: 'smooth', block: 'start'});
-                } else if (bottom > this.listBottom) {
+                } else if (bottom > listBottom) {
                     item.scrollIntoView({behavior: 'smooth', block: 'end'});
                 }
             }
