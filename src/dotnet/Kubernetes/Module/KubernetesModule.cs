@@ -17,10 +17,12 @@ public class KubernetesModule : HostModule<KubernetesSettings>
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        var fusion = services.AddFusion();
+        services.AddFusion();
         services.AddHttpClient<ServiceRegistry>()
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
+
+        services.AddSingleton<ServiceRegistry>();
 
         static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {
