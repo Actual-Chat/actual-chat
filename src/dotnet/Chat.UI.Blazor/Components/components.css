@@ -226,3 +226,9 @@
     @apply mb-1 overflow-y-auto max-h-48 w-full;
     @apply border-y border-bg-04 bg-02;
 }
+.mention-list-item {
+    @apply hover:cursor-pointer;
+}
+.mention-list-item.selected {
+    @apply bg-mention-list-item-selected;
+}
