@@ -53,6 +53,17 @@ public class AudioStreamServer: IAudioStreamServer, IAsyncDisposable
         await memoizer.WriteTask.ConfigureAwait(false);
     }
 
+    public async Task Write(
+            Symbol streamId,
+            AsyncMemoizer<byte[]> memoizer)
+        {
+            var clock = Clocks.CoarseSystemClock;
+            if (_audioStreams.TryAdd(streamId, memoizer))
+                _expirationQueue.Enqueue((clock.Now, streamId));
+
+            await memoizer.WriteTask.ConfigureAwait(false);
+        }
+
     public ValueTask DisposeAsync()
     {
         _disposeCancellation.CancelAndDisposeSilently();

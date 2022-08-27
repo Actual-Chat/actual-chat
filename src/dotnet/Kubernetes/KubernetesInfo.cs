@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes;
 
-public class KubernetesInfo
+public static class KubernetesInfo
 {
     private static string? _podIp;
 

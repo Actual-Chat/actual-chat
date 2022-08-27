@@ -25,7 +25,7 @@ public sealed class KubernetesConfig : IDisposable
 
     public static async Task<KubernetesConfig> Get(IStateFactory stateFactory, CancellationToken cancellationToken)
     {
-        if (!await IsInCluster(cancellationToken))
+        if (!await IsInCluster(cancellationToken).ConfigureAwait(false))
             throw StandardError.NotSupported<KubernetesConfig>(
                 $"{nameof(Get)} should be executed withing Kubernetes cluster");
 
@@ -35,8 +35,8 @@ public sealed class KubernetesConfig : IDisposable
         using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
 
         var host = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")!;
-        var port = int.Parse(Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT")!, NumberStyles.Integer);
-        var token = await AuthToken.CreateToken(stateFactory, cancellationToken);
+        var port = int.Parse(Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT")!, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var token = await AuthToken.CreateToken(stateFactory, cancellationToken).ConfigureAwait(false);
         var kubernetesConfig = new KubernetesConfig(host, port, token);
         _config = kubernetesConfig;
 
@@ -59,7 +59,7 @@ public sealed class KubernetesConfig : IDisposable
         var tokenExistTask = Task.Run(() => File.Exists(TokenPath), cancellationToken);
         var caExistTask = Task.Run(() => File.Exists(CACertPath), cancellationToken);
         await Task.WhenAll(tokenExistTask, caExistTask).ConfigureAwait(false);
-        _isInCluster = await tokenExistTask && await caExistTask;
+        _isInCluster = await tokenExistTask.ConfigureAwait(false) && await caExistTask.ConfigureAwait(false);
         return _isInCluster.Value;
     }
 
@@ -75,7 +75,7 @@ public sealed class KubernetesConfig : IDisposable
 
         public static async Task<AuthToken> CreateToken(IStateFactory stateFactory, CancellationToken cancellationToken)
         {
-            if (!await IsInCluster(cancellationToken))
+            if (!await IsInCluster(cancellationToken).ConfigureAwait(false))
                 throw StandardError.NotSupported<AuthToken>(
                     $"{nameof(CreateToken)} should be executed withing Kubernetes cluster");
 
