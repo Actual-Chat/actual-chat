@@ -8,13 +8,20 @@ public class AudioStreamServerProxy : IAudioStreamServer
     private AudioHubBackendClientFactory AudioHubBackendClientFactory { get; }
     private ServiceRegistry ServiceRegistry { get; }
     private AudioSettings Settings { get; }
+    private ILogger<AudioStreamServerProxy> Log { get; }
 
-    public AudioStreamServerProxy(AudioStreamServer audioStreamServer, AudioHubBackendClientFactory audioHubBackendClientFactory, ServiceRegistry serviceRegistry, AudioSettings settings)
+    public AudioStreamServerProxy(
+        AudioStreamServer audioStreamServer,
+        AudioHubBackendClientFactory audioHubBackendClientFactory,
+        ServiceRegistry serviceRegistry,
+        AudioSettings settings,
+        ILogger<AudioStreamServerProxy> log)
     {
         AudioStreamServer = audioStreamServer;
         AudioHubBackendClientFactory = audioHubBackendClientFactory;
         ServiceRegistry = serviceRegistry;
         Settings = settings;
+        Log = log;
     }
 
     public async Task<Option<IAsyncEnumerable<byte[]>>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -41,7 +48,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
         if (alternateAddress == null || !port.HasValue)
             return audioStreamOption;
 
-        var client = AudioHubBackendClientFactory.Get(alternateAddress, port.Value);
+        var client = await AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
         return await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
     }
 
@@ -69,11 +76,26 @@ public class AudioStreamServerProxy : IAudioStreamServer
         }
 
         var memoized = audioStream.Memoize(cancellationToken);
-        foreach (var alternateAddress in alternateAddresses) {
-            var client = AudioHubBackendClientFactory.Get(alternateAddress, port.Value);
-            await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
-        }
+        var writeTasks = alternateAddresses
+            .Select(alternateAddress => AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken))
+            .Select(async clientTask => {
+                var client = await clientTask.ConfigureAwait(false);
+                return client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken);
+            })
+            .ToList();
 
-        await AudioStreamServer.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+        await AudioStreamServer.Write(streamId, memoized).ConfigureAwait(false);
+
+        _ = Task.Run(
+            async () => {
+                try {
+                    await Task.WhenAll(writeTasks).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e, "Sending audio stream {StreamId} to replicas has failed", streamId);
+                    throw;
+                }
+            },
+            cancellationToken);
     }
 }

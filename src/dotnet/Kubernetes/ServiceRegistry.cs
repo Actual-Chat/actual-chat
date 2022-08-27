@@ -27,10 +27,10 @@ public class ServiceRegistry
         string serviceName,
         CancellationToken cancellationToken)
     {
-        if (!await KubernetesConfig.IsInCluster(cancellationToken))
+        if (!await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
             throw StandardError.NotSupported<ServiceRegistry>("Should be executed withing Kubernetes cluster");
 
-        var worker = await _discoveryWorkerPool.Rent(new ServiceInfo(@namespace, serviceName), cancellationToken);
+        var worker = await _discoveryWorkerPool.Rent(new ServiceInfo(@namespace, serviceName), cancellationToken).ConfigureAwait(false);
         return new MutableStateLease<ServiceEndpoints, ServiceInfo, IMutableState<ServiceEndpoints>,
             EndpointDiscoveryWorker>(
             worker,
@@ -75,7 +75,7 @@ public class ServiceRegistry
 
         protected override async Task RunInternal(CancellationToken cancellationToken)
         {
-            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<EndpointInfo> Endpoints)>();
+            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<EndpointInfo> Endpoints)>(StringComparer.Ordinal);
 
             var config = await KubernetesConfig.Get(StateFactory, cancellationToken).ConfigureAwait(false);
             HttpClient.DefaultRequestHeaders.Authorization =
@@ -97,18 +97,20 @@ public class ServiceRegistry
                     "Kubernetes ClusterRole to read EndpointSlices is required for the service account");
 
             streamResponseMessage.EnsureSuccessStatusCode();
-            await using var stream = await streamResponseMessage.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var stream = await streamResponseMessage.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await using var _ = stream.ConfigureAwait(false);
             using var streamReader = new StreamReader(stream);
 
             // TODO(AK): add resilience and retries on failures plus error handling
             while (!streamReader.EndOfStream) {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var changeString = await streamReader.ReadLineAsync();
+                var changeString = await streamReader.ReadLineAsync().ConfigureAwait(false);
                 if (changeString == null) {
                     Log.LogWarning("Got null during reading watch results");
                     continue;
                 }
+                #pragma warning disable IL2026
                 var change = JsonSerializer.Deserialize<Contract.Change<EndpointSlice>>(changeString, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                 if (change == null) {
                     Log.LogWarning("Unable to deserialize watch result; {Change}", changeString);
@@ -138,7 +140,7 @@ public class ServiceRegistry
                         );
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw StandardError.Constraint<Contract.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
                 }
 
                 var currentValue = State.Value;

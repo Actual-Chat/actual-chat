@@ -21,13 +21,17 @@ public abstract class HubClientBase : WorkerBase
     protected TimeSpan GetConnectionRetryDelay { get; init; } = TimeSpan.FromSeconds(0.1);
     protected RetryDelaySeq RetryDelays { get; init; } = new(0.5, 10, 0.25);
 
-    protected HubClientBase(string hubUrl, IServiceProvider services)
+    protected HubClientBase(string hubRelativeUrl, IServiceProvider services)
+        : this(services.UriMapper().ToAbsolute(hubRelativeUrl), services)
+    { }
+
+    protected HubClientBase(Uri hubAbsoluteUrl, IServiceProvider services)
     {
         Services = services;
         Clocks = Services.Clocks();
         Log = Services.LogFor(GetType());
 
-        HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
+        HubUrl = hubAbsoluteUrl;
         ConnectionBuilderFactory = () => {
             var builder = new HubConnectionBuilder()
                 .WithUrl(HubUrl, options => {

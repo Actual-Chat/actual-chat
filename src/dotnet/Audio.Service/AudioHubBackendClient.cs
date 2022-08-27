@@ -5,13 +5,12 @@ using Microsoft.AspNetCore.SignalR.Client;
 namespace ActualChat.Audio;
 
 public class AudioHubBackendClient : HubClientBase,
-    IAudioStreamServer,
-    ITranscriptStreamServer
+    IAudioStreamClient,
+    ITranscriptStreamClient
 {
-    public AudioHubBackendClient(IServiceProvider services)
-        : base("backend/hub/audio", services)
-    {
-    }
+    internal AudioHubBackendClient(string address, int port, IServiceProvider services)
+        : base(BuildUri(address, port), services)
+    { }
 
     public async Task<Option<IAsyncEnumerable<byte[]>>> Read(
         Symbol streamId,
@@ -73,4 +72,14 @@ public class AudioHubBackendClient : HubClientBase,
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
         await connection.SendAsync("WriteTranscriptStream", streamId.Value, transcriptStream, cancellationToken).ConfigureAwait(false);
     }
+
+    private static Uri BuildUri(string address, int port)
+    {
+        var protocol = port.ToString(CultureInfo.InvariantCulture).EndsWith("80")
+            ? "http"
+            : "https";
+
+        return new Uri($"{protocol}://{address}:{port}/backend/hub/audio");
+    }
+
 }
