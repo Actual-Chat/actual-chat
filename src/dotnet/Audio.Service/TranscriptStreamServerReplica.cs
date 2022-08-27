@@ -13,7 +13,7 @@ public class TranscriptStreamServerReplica : ITranscriptStreamClient
     public Task<Option<IAsyncEnumerable<Transcript>>> Read(Symbol streamId, CancellationToken cancellationToken)
         => Lease.Resource.Read(streamId, cancellationToken);
 
-    public Task Write(
+    public Task<Task> Write(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)

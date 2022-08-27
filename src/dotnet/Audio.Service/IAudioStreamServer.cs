@@ -7,7 +7,7 @@ public interface IAudioStreamServer
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 
-    Task Write(
+    Task<Task> Write(
         Symbol streamId,
         IAsyncEnumerable<byte[]> audioStream,
         CancellationToken cancellationToken);

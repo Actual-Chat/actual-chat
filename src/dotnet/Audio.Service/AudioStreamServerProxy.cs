@@ -52,15 +52,16 @@ public class AudioStreamServerProxy : IAudioStreamServer
         return await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
+    public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
     {
-        if (KubernetesInfo.POD_IP.IsNullOrEmpty() || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false)) {
-            await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+if (KubernetesInfo.POD_IP.IsNullOrEmpty()
+            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+            return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
 
         // TODO(AK): use consistent hashing to get service replicas
-        var endpointState = await ServiceRegistry.GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken).ConfigureAwait(false);
+        var endpointState = await ServiceRegistry
+            .GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken)
+            .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
             .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
@@ -70,26 +71,30 @@ public class AudioStreamServerProxy : IAudioStreamServer
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
             .ToList();
-        if (alternateAddresses.Count == 0 || !port.HasValue) {
-            await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+        if (alternateAddresses.Count == 0 || !port.HasValue)
+            return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
 
         var memoized = audioStream.Memoize(cancellationToken);
-        var writeTasks = alternateAddresses
+        var completeOnSelfTask = AudioStreamServer.Write(streamId, memoized);
+        var writeTasks = await alternateAddresses
             .Select(alternateAddress => AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken))
             .Select(async clientTask => {
                 var client = await clientTask.ConfigureAwait(false);
                 return client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken);
             })
-            .ToList();
+            .Collect()
+            .ConfigureAwait(false);
 
-        await AudioStreamServer.Write(streamId, memoized).ConfigureAwait(false);
+        if (writeTasks.Count == 0)
+            return completeOnSelfTask;
+
+        var completeOnAnyOtherTask = await Task.WhenAny(writeTasks).ConfigureAwait(false);
 
         _ = Task.Run(
             async () => {
                 try {
                     await Task.WhenAll(writeTasks).ConfigureAwait(false);
+                    await completeOnSelfTask.ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is not OperationCanceledException) {
                     Log.LogError(e, "Sending audio stream {StreamId} to replicas has failed", streamId);
@@ -97,5 +102,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
                 }
             },
             cancellationToken);
+
+        return Task.WhenAny(completeOnSelfTask, completeOnAnyOtherTask);
     }
 }

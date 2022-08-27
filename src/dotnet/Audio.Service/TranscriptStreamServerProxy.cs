@@ -57,16 +57,14 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         return await client.Read(streamId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task Write(
+    public async Task<Task> Write(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)
     {
         if (KubernetesInfo.POD_IP.IsNullOrEmpty()
-            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false)) {
-            await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+            return await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
 
         // TODO(AK): use consistent hashing to get service replicas
         var endpointState = await ServiceRegistry
@@ -81,32 +79,38 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
             .ToList();
-        if (alternateAddresses.Count == 0 || !port.HasValue) {
-            await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+        if (alternateAddresses.Count == 0 || !port.HasValue)
+            return await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
 
         var memoized = transcriptStream.Memoize(cancellationToken);
-        var writeTasks = alternateAddresses
+        var completeOnSelfTask = TranscriptStreamServer.Write(streamId, memoized);
+        var writeTasks = await alternateAddresses
             .Select(alternateAddress => AudioHubBackendClientFactory.GetTranscriptStreamClient(alternateAddress, port.Value, cancellationToken))
             .Select(async clientTask => {
                 var client = await clientTask.ConfigureAwait(false);
                 return client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken);
             })
-            .ToList();
+            .Collect()
+            .ConfigureAwait(false);
 
-        await TranscriptStreamServer.Write(streamId, memoized).ConfigureAwait(false);
+        if (writeTasks.Count == 0)
+            return completeOnSelfTask;
+
+        var completeOnAnyOtherTask = await Task.WhenAny(writeTasks).ConfigureAwait(false);
 
         _ = Task.Run(
             async () => {
                 try {
                     await Task.WhenAll(writeTasks).ConfigureAwait(false);
+                    await completeOnSelfTask.ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is not OperationCanceledException) {
-                    Log.LogError(e, "Sending audio stream {StreamId} to replicas has failed", streamId);
+                    Log.LogError(e, "Sending transcript stream {StreamId} to replicas has failed", streamId);
                     throw;
                 }
             },
             cancellationToken);
+
+        return Task.WhenAny(completeOnSelfTask, completeOnAnyOtherTask);
     }
 }

@@ -12,7 +12,7 @@ public class AudioStreamServerReplica : IAudioStreamClient
     public Task<Option<IAsyncEnumerable<byte[]>>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
         => Lease.Resource.Read(streamId, skipTo, cancellationToken);
 
-    public Task Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
+    public Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
         => Lease.Resource.Write(streamId, audioStream, cancellationToken);
 
     public void Dispose()

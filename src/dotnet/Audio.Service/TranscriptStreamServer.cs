@@ -35,7 +35,7 @@ public class TranscriptStreamServer : IAsyncDisposable, ITranscriptStreamServer
             .WithBuffer(StreamBufferSize, cancellationToken)));
     }
 
-    public async Task Write(
+    public Task<Task> Write(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public class TranscriptStreamServer : IAsyncDisposable, ITranscriptStreamServer
         if (_transcriptStreams.TryAdd(streamId, memoizer))
             _expirationQueue.Enqueue((clock.Now, streamId));
 
-        await memoizer.WriteTask.ConfigureAwait(false);
+        return Task.FromResult(memoizer.WriteTask);
     }
 
     public async Task Write(

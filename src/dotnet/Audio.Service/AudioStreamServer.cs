@@ -40,7 +40,7 @@ public class AudioStreamServer: IAudioStreamServer, IAsyncDisposable
         return Task.FromResult(Option<IAsyncEnumerable<byte[]>>.Some(SkipTo(audioStream, skipTo)));
     }
 
-    public async Task Write(
+    public Task<Task> Write(
         Symbol streamId,
         IAsyncEnumerable<byte[]> audioStream,
         CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public class AudioStreamServer: IAudioStreamServer, IAsyncDisposable
         if (_audioStreams.TryAdd(streamId, memoizer))
             _expirationQueue.Enqueue((clock.Now, streamId));
 
-        await memoizer.WriteTask.ConfigureAwait(false);
+        return Task.FromResult(memoizer.WriteTask);
     }
 
     public async Task Write(
