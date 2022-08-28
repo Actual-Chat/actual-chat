@@ -18,20 +18,18 @@ public class KubernetesModule : HostModule<KubernetesSettings>
             return; // Server-side only module
 
         services.AddFusion();
-        services.AddHttpClient<ServiceRegistry>()
+        services.AddSingleton<KubeInfo>();
+        services.AddSingleton<KubeServices>();
+        services.AddHttpClient(Kube.HttpClientName)
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
 
-        services.AddSingleton<ServiceRegistry>();
-
         static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {
+            var retryDelays = new RetryDelaySeq(0.5, 10);
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
-                .WaitAndRetryAsync(
-                    5,
-                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+                .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);
         }
     }
 }
-

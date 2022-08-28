@@ -1,4 +1,4 @@
-namespace ActualChat.Kubernetes.Contract;
+namespace ActualChat.Kubernetes.Api;
 
 public record OwnerReference(
     string ApiVersion,

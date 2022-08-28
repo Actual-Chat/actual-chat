@@ -8,28 +8,28 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
 {
     private TranscriptStreamServer TranscriptStreamServer { get; }
     private AudioHubBackendClientFactory AudioHubBackendClientFactory { get; }
-    private ServiceRegistry ServiceRegistry { get; }
+    private KubeServices KubeServices { get; }
     private AudioSettings Settings { get; }
     private ILogger<TranscriptStreamServerProxy> Log { get; }
 
     public TranscriptStreamServerProxy(
         TranscriptStreamServer transcriptStreamServer,
         AudioHubBackendClientFactory audioHubBackendClientFactory,
-        ServiceRegistry serviceRegistry,
+        KubeServices kubeServices,
         AudioSettings settings,
         ILogger<TranscriptStreamServerProxy> log)
     {
         TranscriptStreamServer = transcriptStreamServer;
         AudioHubBackendClientFactory = audioHubBackendClientFactory;
-        ServiceRegistry = serviceRegistry;
+        KubeServices = kubeServices;
         Settings = settings;
         Log = log;
     }
 
     public async Task<Option<IAsyncEnumerable<Transcript>>> Read(Symbol streamId, CancellationToken cancellationToken)
     {
-        if (KubernetesInfo.POD_IP.IsNullOrEmpty()
-            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+        var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
+        if (kube == null)
             return await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
 
         var transcriptStreamOption =
@@ -38,7 +38,7 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             return transcriptStreamOption;
 
         // TODO(AK): use consistent hashing to get service replicas
-        var endpointState = await ServiceRegistry
+        var endpointState = await KubeServices
             .GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken)
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
@@ -49,7 +49,7 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         var alternateAddresses = serviceEndpoints.Endpoints
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
-            .Where(a => !OrdinalEquals(a, KubernetesInfo.POD_IP))
+            .Where(a => !OrdinalEquals(a, kube.PodIP))
             .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode % 33461)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
@@ -69,12 +69,12 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)
     {
-        if (KubernetesInfo.POD_IP.IsNullOrEmpty()
-            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+        var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
+        if (kube == null)
             return await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
 
         // TODO(AK): use consistent hashing to get service replicas
-        var endpointState = await ServiceRegistry
+        var endpointState = await KubeServices
             .GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken)
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;

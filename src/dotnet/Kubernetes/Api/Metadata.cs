@@ -1,6 +1,4 @@
-using Newtonsoft.Json;
-
-namespace ActualChat.Kubernetes.Contract;
+namespace ActualChat.Kubernetes.Api;
 
 public record Metadata(
     string ResourceVersion,
@@ -12,10 +10,4 @@ public record Metadata(
     DateTime CreationTimestamp,
     Labels Labels,
     IReadOnlyList<OwnerReference> OwnerReferences
-);
-
-public record Labels(
-    string App,
-    [property: JsonProperty("kubernetes.io/service-name")]
-    string ServiceName
 );

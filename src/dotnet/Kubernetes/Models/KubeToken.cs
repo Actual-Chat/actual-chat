@@ -1,0 +1,49 @@
+using Stl.IO;
+
+namespace ActualChat.Kubernetes;
+
+public sealed class KubeToken : WorkerBase
+{
+    private IServiceProvider Services { get; }
+    private FilePath Path { get; }
+    private ILogger Log { get; }
+
+    public IMutableState<string> State { get; }
+    public string Value => State.Value;
+
+    public KubeToken(IServiceProvider services, FilePath path)
+    {
+        Services = services;
+        Path = path;
+        Log = services.LogFor(GetType());
+
+        var value = File.ReadAllText(Path);
+        State = services.StateFactory().NewMutable(value.Trim());
+        Start();
+    }
+
+    protected override async Task RunInternal(CancellationToken cancellationToken)
+    {
+        using var watcher = new FileSystemWatcher();
+        watcher.Path = Path.DirectoryPath;
+        watcher.Filter = Path.FileName;
+        watcher.NotifyFilter = NotifyFilters.LastWrite;
+        watcher.Changed += OnChanged;
+        watcher.EnableRaisingEvents = true;
+
+        await WaitForCancellation().ConfigureAwait(false);
+
+        async Task WaitForCancellation() {
+            using var dTask = cancellationToken.ToTask();
+            await dTask.Resource.ConfigureAwait(false);
+        }
+
+        void OnChanged(object sender, FileSystemEventArgs e) {
+            _ = BackgroundTask.Run(async () => {
+                Log.LogInformation("Kubernetes token changed");
+                var value = await File.ReadAllTextAsync(Path, cancellationToken).ConfigureAwait(false);
+                State.Value = value.Trim();
+            }, cancellationToken);
+        }
+    }
+}

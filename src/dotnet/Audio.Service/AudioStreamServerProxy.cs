@@ -5,37 +5,38 @@ namespace ActualChat.Audio;
 
 public class AudioStreamServerProxy : IAudioStreamServer
 {
+    private AudioSettings Settings { get; }
     private AudioStreamServer AudioStreamServer { get; }
     private AudioHubBackendClientFactory AudioHubBackendClientFactory { get; }
-    private ServiceRegistry ServiceRegistry { get; }
-    private AudioSettings Settings { get; }
+    private KubeServices KubeServices { get; }
     private ILogger<AudioStreamServerProxy> Log { get; }
 
     public AudioStreamServerProxy(
         AudioStreamServer audioStreamServer,
         AudioHubBackendClientFactory audioHubBackendClientFactory,
-        ServiceRegistry serviceRegistry,
+        KubeServices kubeServices,
         AudioSettings settings,
         ILogger<AudioStreamServerProxy> log)
     {
+        Settings = settings;
         AudioStreamServer = audioStreamServer;
         AudioHubBackendClientFactory = audioHubBackendClientFactory;
-        ServiceRegistry = serviceRegistry;
-        Settings = settings;
+        KubeServices = kubeServices;
         Log = log;
     }
 
     public async Task<Option<IAsyncEnumerable<byte[]>>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
-        if (KubernetesInfo.POD_IP.IsNullOrEmpty() || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+        var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
+        if (kube == null)
             return await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
 
-        var audioStreamOption = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        if (audioStreamOption.HasValue)
-            return audioStreamOption;
+        var audioStreamOpt = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        if (audioStreamOpt.HasValue)
+            return audioStreamOpt;
 
         // TODO(AK): use consistent hashing to get service replicas
-        var endpointState = await ServiceRegistry.GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken).ConfigureAwait(false);
+        var endpointState = await KubeServices.GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
             .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
@@ -44,11 +45,11 @@ public class AudioStreamServerProxy : IAudioStreamServer
         var alternateAddresses = serviceEndpoints.Endpoints
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
-            .Where(a => !OrdinalEquals(a, KubernetesInfo.POD_IP))
+            .Where(a => !OrdinalEquals(a, kube.PodIP))
             .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode % 33461)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
-            return audioStreamOption;
+            return audioStreamOpt;
 
         foreach (var alternateAddress in alternateAddresses) {
             var client = await AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
@@ -56,17 +57,17 @@ public class AudioStreamServerProxy : IAudioStreamServer
             if (streamOption.HasValue)
                 return streamOption;
         }
-        return audioStreamOption;
+        return audioStreamOpt;
     }
 
     public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
     {
-        if (KubernetesInfo.POD_IP.IsNullOrEmpty()
-            || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
+        var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
+        if (kube == null)
             return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
 
         // TODO(AK): use consistent hashing to get service replicas
-        var endpointState = await ServiceRegistry
+        var endpointState = await KubeServices
             .GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken)
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;

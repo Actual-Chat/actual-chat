@@ -1,4 +1,4 @@
-namespace ActualChat.Kubernetes.Contract;
+namespace ActualChat.Kubernetes.Api;
 
 public record Change<T>(ChangeType Type, T Object);
 
