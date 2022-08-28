@@ -153,7 +153,7 @@ public class KubeServices : IKubeInfo
                     endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray(),
                     endpointsMap.Values
                         .SelectMany(p => p.Slice.Ports)
-                        .Select(p => new KubePort(p.Name, (KubeServiceProtocol) (int) p.Protocol, p.Port))
+                        .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
                         .Distinct()
                         .ToImmutableArray());
 

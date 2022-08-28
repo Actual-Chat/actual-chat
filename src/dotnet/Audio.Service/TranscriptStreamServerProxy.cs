@@ -43,7 +43,7 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
-            .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
+            .Where(p => OrdinalEquals(p.Name, "http"))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
         var alternateAddresses = serviceEndpoints.Endpoints
@@ -79,7 +79,7 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
-            .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
+            .Where(p => OrdinalEquals(p.Name, "http"))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
         var alternateAddresses = serviceEndpoints.Endpoints

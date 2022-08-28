@@ -39,7 +39,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
         var endpointState = await KubeServices.GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
-            .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
+            .Where(p => OrdinalEquals(p.Name, "http"))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
         var alternateAddresses = serviceEndpoints.Endpoints
@@ -72,7 +72,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
             .ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var port = serviceEndpoints.Ports
-            .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
+            .Where(p => OrdinalEquals(p.Name, "http"))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
         var alternateAddresses = serviceEndpoints.Endpoints
