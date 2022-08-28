@@ -45,7 +45,7 @@ public class AudioStreamServerProxy : IAudioStreamServer
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
             .Where(a => !OrdinalEquals(a, KubernetesInfo.POD_IP))
-            .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode)
+            .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode % 33461)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
             return audioStreamOption;
