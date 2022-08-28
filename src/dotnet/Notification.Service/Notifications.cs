@@ -1,30 +1,19 @@
-﻿using ActualChat.Chat;
-using ActualChat.Notification.Backend;
+﻿using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
-using ActualChat.Users;
-using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public partial class Notifications : DbServiceBase<NotificationDbContext>, INotifications, INotificationsBackend
+public class Notifications : DbServiceBase<NotificationDbContext>, INotifications
 {
     private IAuth Auth { get; }
-    private FirebaseMessaging FirebaseMessaging { get; }
-    private IAccountsBackend AccountsBackend { get; }
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private IMarkupParser MarkupParser { get; }
-    private UriMapper UriMapper { get; }
+    private INotificationsBackend Backend { get; }
 
-    public Notifications(IServiceProvider services) : base(services)
+    public Notifications(IAuth auth, INotificationsBackend backend, IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        Auth = services.GetRequiredService<IAuth>();
-        FirebaseMessaging = services.GetRequiredService<FirebaseMessaging>();
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
-        MarkupParser = services.GetRequiredService<IMarkupParser>();
-        UriMapper = services.GetRequiredService<UriMapper>();
+        Auth = auth;
+        Backend = backend;
     }
 
     // [ComputeMethod]
@@ -52,7 +41,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = ListDevices(device.UserId, default);
+                _ = Backend.ListDevices(device.UserId, default);
             return;
         }
 
@@ -96,7 +85,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var invWasMuted = context.Operation().Items.GetOrDefault(false);
             if (invWasMuted == mustSubscribe) {
                 _ = GetStatus(session, chatId, default);
-                _ = ListSubscriberIds(chatId, default);
+                _ = Backend.ListSubscriberIds(chatId, default);
             }
             return;
         }
