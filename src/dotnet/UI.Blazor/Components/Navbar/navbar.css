@@ -123,8 +123,8 @@
     @apply bg-selected;
 }
 
-.listening-chats .navbar-subgroup .pin-toggle,
-.listening-chats .navbar-item .pin-toggle {
+.active-chats .navbar-subgroup .pin-toggle,
+.active-chats .navbar-item .pin-toggle {
     @apply visible;
 }
 
