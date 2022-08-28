@@ -52,33 +52,35 @@ public class AudioHubBackend : Hub
         string streamId,
         IAsyncEnumerable<byte[]> audioStream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
-        var completeTask = await AudioStreamServer.Write(streamId, audioStream, Context.GetHttpContext()!.RequestAborted).ConfigureAwait(false);
-        await _ackStream.Writer.WriteAsync(new Ack(AckType.Received, StreamType.Audio, streamId)).ConfigureAwait(false);
+        var cancellationToken = Context.GetHttpContext()!.RequestAborted;
+        var completeTask = await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
+        await _ackStream.Writer
+            .WriteAsync(new Ack(AckType.Received, StreamType.Audio, streamId), CancellationToken.None)
+            .ConfigureAwait(false);
 
-        _ = Task.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             await completeTask.ConfigureAwait(false);
-            await _ackStream.Writer.WriteAsync(new Ack(AckType.Completed, StreamType.Audio, streamId)).ConfigureAwait(false);
-        });
+            await _ackStream.Writer
+                .WriteAsync(new Ack(AckType.Completed, StreamType.Audio, streamId), CancellationToken.None)
+                .ConfigureAwait(false);
+        }, CancellationToken.None);
     }
 
     public async Task WriteTranscriptStream(
         string streamId,
         IAsyncEnumerable<Transcript> transcriptStream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
+        var cancellationToken = Context.GetHttpContext()!.RequestAborted;
+        var completeTask = await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+        await _ackStream.Writer
+            .WriteAsync(new Ack(AckType.Received, StreamType.Transcription, streamId), CancellationToken.None)
+            .ConfigureAwait(false);
 
-        var completeTask = await TranscriptStreamServer.Write(streamId, transcriptStream, Context.GetHttpContext()!.RequestAborted).ConfigureAwait(false);
-        await _ackStream.Writer.WriteAsync(new Ack(AckType.Received, StreamType.Transcription, streamId)).ConfigureAwait(false);
-
-        _ = Task.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             await completeTask.ConfigureAwait(false);
-            await _ackStream.Writer.WriteAsync(new Ack(AckType.Completed, StreamType.Transcription, streamId)).ConfigureAwait(false);
-        });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        _ackStream.Writer.Complete();
-        base.Dispose(disposing);
+            await _ackStream.Writer
+                .WriteAsync(new Ack(AckType.Completed, StreamType.Transcription, streamId), CancellationToken.None)
+                .ConfigureAwait(false);
+        }, CancellationToken.None);
     }
 }
-

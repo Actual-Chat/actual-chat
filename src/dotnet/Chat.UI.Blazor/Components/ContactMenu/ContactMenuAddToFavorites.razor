@@ -15,9 +15,9 @@
 }
 
 @code {
-    [Inject] private UICommander Commander { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+    [Inject] private UICommander Commander { get; init; } = null!;
 
     [CascadingParameter] public UserContact Contact { get; set; } = null!;
 

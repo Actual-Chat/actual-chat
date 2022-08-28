@@ -37,7 +37,7 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
             // Initial value
             var firstSnapshot = Snapshot;
             using var _ = ExecutionContextExt.SuppressFlow();
-            Task.Run(async () => {
+            BackgroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
                     valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);

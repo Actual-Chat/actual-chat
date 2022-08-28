@@ -105,7 +105,7 @@ public static class AsyncEnumerableExt
             SingleReader = true,
         });
 
-        _ = Task.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             Exception? error = null;
             try {
                 await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))

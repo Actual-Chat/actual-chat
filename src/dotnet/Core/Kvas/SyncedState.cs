@@ -52,7 +52,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
         base.Initialize(options);
 
         using var _ = ExecutionContextExt.SuppressFlow();
-        SyncCycleTask = Task.Run(SyncCycle, CancellationToken.None);
+        SyncCycleTask = BackgroundTask.Run(SyncCycle, CancellationToken.None);
     }
 
     public virtual void Dispose()

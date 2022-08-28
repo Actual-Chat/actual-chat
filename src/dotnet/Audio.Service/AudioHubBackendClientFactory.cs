@@ -5,19 +5,19 @@ namespace ActualChat.Audio;
 public class AudioHubBackendClientFactory
 {
     private readonly SharedResourcePool<ClientKey, AudioHubBackendClient> _clientsPool;
-    private IServiceProvider ServiceProvider { get; }
+    private IServiceProvider Services { get; }
 
-    public AudioHubBackendClientFactory(IServiceProvider serviceProvider)
+    public AudioHubBackendClientFactory(IServiceProvider services)
     {
-        ServiceProvider = serviceProvider;
+        Services = services;
         _clientsPool = new SharedResourcePool<ClientKey, AudioHubBackendClient>(CreateAudioHubBackendClient) {
-            ResourceDisposeDelay = TimeSpan.FromMinutes(5)
+            ResourceDisposeDelay = TimeSpan.FromMinutes(5),
         };
     }
 
     private Task<AudioHubBackendClient> CreateAudioHubBackendClient(ClientKey key, CancellationToken cancellationToken)
     {
-        var client = new AudioHubBackendClient(key.Address, key.Port, ServiceProvider);
+        var client = new AudioHubBackendClient(key.Address, key.Port, Services);
         return Task.FromResult(client);
     }
 

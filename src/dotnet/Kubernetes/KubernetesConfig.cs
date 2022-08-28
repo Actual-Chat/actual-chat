@@ -1,3 +1,4 @@
+using Microsoft.Toolkit.HighPerformance;
 using Stl.Locking;
 
 namespace ActualChat.Kubernetes;
@@ -9,8 +10,8 @@ public sealed class KubernetesConfig : IDisposable
 
     private static readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
-    private static bool? _isInCluster;
-    private static KubernetesConfig? _config;
+    private static volatile object? _isInCluster; // Has to be atomic
+    private static volatile KubernetesConfig? _config;
 
     public string Host { get; }
     public int Port { get; }
@@ -29,24 +30,24 @@ public sealed class KubernetesConfig : IDisposable
             throw StandardError.NotSupported<KubernetesConfig>(
                 $"{nameof(Get)} should be executed withing Kubernetes cluster");
 
-        if (_config != null)
-            return _config;
-
+        // Double check locking
+        if (_config != null) return _config;
         using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        if (_config != null) return _config;
 
         var host = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")!;
         var port = int.Parse(Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT")!, NumberStyles.Integer, CultureInfo.InvariantCulture);
         var token = await AuthToken.CreateToken(stateFactory, cancellationToken).ConfigureAwait(false);
-        var kubernetesConfig = new KubernetesConfig(host, port, token);
-        _config = kubernetesConfig;
+        var config = new KubernetesConfig(host, port, token);
+        _config = config;
 
-        return kubernetesConfig;
+        return config;
     }
 
-    public static async Task<bool> IsInCluster(CancellationToken cancellationToken)
+    public static async ValueTask<bool> IsInCluster(CancellationToken cancellationToken)
     {
-        if (_isInCluster.HasValue)
-            return _isInCluster.Value;
+        if (_isInCluster is bool isInCluster)
+            return isInCluster;
 
         var host = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
         var port = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT");
@@ -56,11 +57,13 @@ public sealed class KubernetesConfig : IDisposable
             return false;
         }
 
-        var tokenExistTask = Task.Run(() => File.Exists(TokenPath), cancellationToken);
-        var caExistTask = Task.Run(() => File.Exists(CACertPath), cancellationToken);
-        await Task.WhenAll(tokenExistTask, caExistTask).ConfigureAwait(false);
-        _isInCluster = await tokenExistTask.ConfigureAwait(false) && await caExistTask.ConfigureAwait(false);
-        return _isInCluster.Value;
+        var tokenExistsTask = Task.Run(() => File.Exists(TokenPath), cancellationToken);
+        var caExistsTask = Task.Run(() => File.Exists(CACertPath), cancellationToken);
+        var tokenExists = await tokenExistsTask.ConfigureAwait(false);
+        var caExists = await caExistsTask.ConfigureAwait(false);
+        isInCluster = tokenExists && caExists;
+        _isInCluster = isInCluster;
+        return isInCluster;
     }
 
     public void Dispose()
@@ -103,16 +106,12 @@ public sealed class KubernetesConfig : IDisposable
                 await dTask.Resource.ConfigureAwait(false);
             }
 
-            void OnChanged(object sender, FileSystemEventArgs e)
-            {
-                _ = Task.Run(async () => {
-                        var tokenValue =
-                            (await File.ReadAllTextAsync(TokenPath, cancellationToken).ConfigureAwait(false))
-                            .Trim();
-                        State.Value = tokenValue;
-                    },
-                    cancellationToken);
-
+            void OnChanged(object sender, FileSystemEventArgs e) {
+                _ = BackgroundTask.Run(async () => {
+                    var tokenValue = await File.ReadAllTextAsync(TokenPath, cancellationToken).ConfigureAwait(false);
+                    tokenValue = tokenValue.Trim();
+                    State.Value = tokenValue;
+                }, cancellationToken);
             }
         }
     }

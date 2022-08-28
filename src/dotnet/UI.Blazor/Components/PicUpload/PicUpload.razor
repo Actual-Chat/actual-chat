@@ -8,14 +8,14 @@
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
     <Pic Title="@Title" Size="@Size" ContentId="@ContentId" Click="PictureClick" NoPicture="NoPicture"/>
     <div class="pic-upload-picker">
-        <FileUpload id="@InputId"
+        <FileUpload id="@_inputId"
                     UploadUrl="@ImageUploadUrl"
                     Uploaded="OnUploaded"
                     MaxSize="Constants.Chat.PictureFileSizeLimit"
                     accept="image/*"
                     hidden>
         </FileUpload>
-        <label for="@InputId"
+        <label for="@_inputId"
                class="pic-upload-input-file-label">
             <i class="fa fa-camera" aria-hidden="true"></i>
         </label>
@@ -23,14 +23,13 @@
 </div>
 
 @code {
-    private string _pictureUrl = "";
-    private bool _hasPicture = false;
+    private string _inputId = "";
     private ElementReference _dropZoneRef;
-    private FileUpload.FileUpload _inputRef = null!;
     private IJSObjectReference _jsRef = null!;
 
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
-    [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string ContentId { get; set; } = "";
@@ -40,15 +39,21 @@
     [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }
     [Parameter] public EventCallback<string> ImagePicked { get; set; }
 
+    protected override void OnInitialized() {
+        _inputId = ComponentIdGenerator.Next("pic-upload-input-file");
+    }
+
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create", _dropZoneRef, InputId);
-        }
+        if (firstRender)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create",
+                _dropZoneRef,
+                _inputId);
     }
 
     private string GenerateColor() {
@@ -57,9 +62,6 @@
         return $"hsl({h}, 30%, 80%)";
     }
 
-    private async Task OnUploaded(string contentId) {
-        await ImagePicked.InvokeAsync(contentId).ConfigureAwait(false);
-    }
-
-    private const string InputId = "pic-upload-input-file";
+    private async Task OnUploaded(string contentId)
+        => await ImagePicked.InvokeAsync(contentId).ConfigureAwait(false);
 }

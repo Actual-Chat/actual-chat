@@ -48,10 +48,10 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private IMarkupParser MarkupParser { get; set; } = null!;
-    [Inject] private UICommander UICommander { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private TextEntryAttachment? FirstAttachment { get; set; }
     private Markup Markup { get; set; } = Markup.Empty;

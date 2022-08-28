@@ -1,5 +1,5 @@
 ﻿using ActualChat.Blobs.Internal;
-using ActualChat.DI;
+using ActualChat.DependencyInjection;
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
@@ -27,14 +27,14 @@ public class CoreModule : HostModule<CoreSettings>
             .Distinct()
             .ToList();
 
+        // Common services
+        services.AddTransient(typeof(Lazy<>), typeof(LazyService<>));
+
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options() {
             ScannedAssemblies = pluginAssemblies,
         });
         services.AddSingleton<IMatchingTypeFinder, MatchingTypeFinder>();
-
-        // Core services
-        services.AddTransient(typeof(Lazy<>), typeof(LazyInstance<>));
 
         // DiffEngine
         services.AddSingleton<DiffEngine>();

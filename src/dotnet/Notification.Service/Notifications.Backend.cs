@@ -155,14 +155,9 @@ public partial class Notifications
             }
 
             if (batchResponse.SuccessCount > 0)
-                _ = Task.Run(
-                    () => PersistMessages(chatId,
-                        entryId,
-                        deviceGroup,
-                        batchResponse.Responses,
-                        cancellationToken),
+                _ = BackgroundTask.Run(
+                    () => PersistMessages(chatId, entryId, deviceGroup, batchResponse.Responses, cancellationToken),
                     cancellationToken);
-
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(

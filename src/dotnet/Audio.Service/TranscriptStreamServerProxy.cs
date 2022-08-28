@@ -1,5 +1,6 @@
 using ActualChat.Kubernetes;
 using ActualChat.Transcription;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Audio;
 
@@ -48,8 +49,8 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         var alternateAddresses = serviceEndpoints.Endpoints
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
-            .Where(a => !string.Equals(a, KubernetesInfo.POD_IP, StringComparison.Ordinal))
-            .OrderBy(a => a.GetHashCode() * (long)streamId.HashCode)
+            .Where(a => !OrdinalEquals(a, KubernetesInfo.POD_IP))
+            .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
             return transcriptStreamOption;
@@ -104,17 +105,12 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
 
         var completeOnAnyOtherTask = await Task.WhenAny(writeTasks).ConfigureAwait(false);
 
-        _ = Task.Run(
+        _ = BackgroundTask.Run(
             async () => {
-                try {
-                    await Task.WhenAll(writeTasks).ConfigureAwait(false);
-                    await completeOnSelfTask.ConfigureAwait(false);
-                }
-                catch (Exception e) when (e is not OperationCanceledException) {
-                    Log.LogError(e, "Sending transcript stream {StreamId} to replicas has failed", streamId);
-                    throw;
-                }
+                await Task.WhenAll(writeTasks).ConfigureAwait(false);
+                await completeOnSelfTask.ConfigureAwait(false);
             },
+            e => Log.LogError(e, "Sending transcript stream #{StreamId} to replicas has failed", streamId),
             cancellationToken);
 
         return Task.WhenAny(completeOnSelfTask, completeOnAnyOtherTask);

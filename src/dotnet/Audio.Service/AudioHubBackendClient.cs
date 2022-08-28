@@ -18,6 +18,12 @@ public class AudioHubBackendClient : HubClientBase,
         _worker.Start();
     }
 
+    protected override async Task DisposeAsyncCore()
+    {
+        await base.DisposeAsyncCore().ConfigureAwait(false);
+        await _worker.DisposeSilentlyAsync().ConfigureAwait(false);
+    }
+
     public async Task<Option<IAsyncEnumerable<byte[]>>> Read(
         Symbol streamId,
         TimeSpan skipTo,
@@ -73,11 +79,15 @@ public class AudioHubBackendClient : HubClientBase,
         var whenReceived = TaskSource.New<Unit>(true).Task;
         var whenCompleted = TaskSource.New<Unit>(true).Task;
         _ackTaskMap[streamId] = (whenReceived, whenCompleted);
-        await connection.SendAsync("WriteAudioStream", streamId.Value, audioStream, cancellationToken).ConfigureAwait(false);
-        await whenReceived.ConfigureAwait(false);
-
-        // ReSharper disable MethodSupportsCancellation
-        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
+        try {
+            await connection.SendAsync("WriteAudioStream", streamId.Value, audioStream, cancellationToken).ConfigureAwait(false);
+            await whenReceived.ConfigureAwait(false);
+        }
+        finally {
+            // ReSharper disable MethodSupportsCancellation
+            _ = Task.Delay(TimeSpan.FromSeconds(10))
+                .ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
+        }
         return whenCompleted;
     }
 
@@ -87,18 +97,16 @@ public class AudioHubBackendClient : HubClientBase,
         var whenReceived = TaskSource.New<Unit>(true).Task;
         var whenCompleted = TaskSource.New<Unit>(true).Task;
         _ackTaskMap[streamId] = (whenReceived, whenCompleted);
-        await connection.SendAsync("WriteTranscriptStream", streamId.Value, transcriptStream, cancellationToken).ConfigureAwait(false);
-        await whenReceived.ConfigureAwait(false);
-
-        // ReSharper disable MethodSupportsCancellation
-        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
+        try {
+            await connection.SendAsync("WriteTranscriptStream", streamId.Value, transcriptStream, cancellationToken).ConfigureAwait(false);
+            await whenReceived.ConfigureAwait(false);
+        }
+        finally {
+            // ReSharper disable MethodSupportsCancellation
+            _ = Task.Delay(TimeSpan.FromSeconds(10))
+                .ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
+        }
         return whenCompleted;
-    }
-
-    protected override async Task DisposeAsyncCore()
-    {
-        await base.DisposeAsyncCore().ConfigureAwait(false);
-        await _worker.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 
     private static Uri BuildUri(string address, int port)
@@ -130,7 +138,6 @@ public class AudioHubBackendClient : HubClientBase,
         {
             for (int retryCount = 0; retryCount < 10; retryCount++)
                 try {
-
                     var ackStream = Owner.ReadAckStream(cancellationToken);
                     await foreach (var ack in ackStream.ConfigureAwait(false))
                         if (ack.Type == AckType.Received) {
