@@ -42,9 +42,7 @@
 </NavbarGroup>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private RecentChats RecentChats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
@@ -57,28 +55,20 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
-
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (!ParsedChatId.TryParse(activeChatId, out _))
-            activeChatId = Symbol.Empty;
-        var activeChat = activeChatId.IsEmpty
-            ? null
-            : await Chats.Get(Session, activeChatId, cancellationToken).ConfigureAwait(false);
-        if (activeChat == null)
-            activeChatId = Symbol.Empty;
-        else if (activeChat is { ChatType: ChatType.Group } && !chats.Any(c => c.Id == activeChat.Id))
-            chats = chats.Insert(0, activeChat);
+        var chats = await RecentChats.List(cancellationToken).ConfigureAwait(false);
+        var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
         if (!searchPhrase.IsEmpty)
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Title)
-                where rank > 0 || c.Id == activeChatId
+                where rank > 0 || c.Id == activeChat?.Id
                 orderby rank descending, c.Title
                 select c
             ).ToImmutableArray();
+        else
+            chats = chats.OrderBy(c => c.Title).ToImmutableArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
@@ -92,7 +82,7 @@
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
 
         return new Model {
-            ActiveChatId = activeChatId,
+            ActiveChatId = activeChat?.Id ?? Symbol.Empty,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
             EnableIncompleteUI = enableIncompleteUI,

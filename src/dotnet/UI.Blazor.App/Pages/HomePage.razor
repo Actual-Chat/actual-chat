@@ -1,5 +1,4 @@
 @page "/"
-@using ActualChat.Chat
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<HomePage.Model>
@@ -20,7 +19,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private RecentChats RecentChats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
@@ -34,15 +33,10 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var defaultChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
-        if (defaultChatId.IsEmpty) {
-            var chats = await Chats.List(Session, CancellationToken.None);
-            var defaultChat = chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
-            defaultChatId = defaultChat?.Id ?? "";
-        }
+        var chat = await RecentChats.GetActiveChatOrDefault(cancellationToken).ConfigureAwait(false);
 
         var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        return new(account, defaultChatId);
+        return new(account, chat?.Id ?? Symbol.Empty);
     }
 
     public record Model(Account? Account, Symbol DefaultChatId);

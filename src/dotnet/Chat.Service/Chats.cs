@@ -39,18 +39,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Chat>> List(
+        Session session,
+        CancellationToken cancellationToken)
     {
         var chatIds = await ChatAuthors.ListChatIds(session, cancellationToken).ConfigureAwait(false);
         var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return chats
-            .Where(c => c is { ChatType: ChatType.Group })
-            .SkipNullItems()
-            .OrderBy(c => c.Title)
-            .ToImmutableArray();
+        return chats.SkipNullItems().OrderBy(x => x.Title).ToImmutableArray();
     }
 
     // [ComputeMethod]
@@ -375,7 +373,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual  async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
+    protected virtual async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
         string chatId, Symbol ownerUserId, CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();

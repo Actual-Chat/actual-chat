@@ -10,6 +10,7 @@ public static partial class Constants
         public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;
         public static TimeSpan MaxEntryDuration { get; } = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
         public const int PictureFileSizeLimit = 1 * 1024 * 1024;
+        public const int MaxRecentPeerChats = 5;
     }
 
     public static class Attachments
@@ -28,5 +29,10 @@ public static partial class Constants
         public static RandomTimeSpan CheckInPeriod { get; } = TimeSpan.FromSeconds(50).ToRandom(TimeSpan.FromSeconds(1));
         public static TimeSpan SkipCheckInPeriod { get; } = TimeSpan.FromSeconds(30);
         public static TimeSpan CheckInTimeout { get; } = TimeSpan.FromSeconds(120);
+    }
+
+    public static class Contact
+    {
+        public const int MaxRecentContacts = 20;
     }
 }

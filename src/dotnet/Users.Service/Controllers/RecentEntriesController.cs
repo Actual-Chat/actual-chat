@@ -17,13 +17,10 @@ public class RecentEntriesController : ControllerBase, IRecentEntries
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableHashSet<string>> ListUserContactIds(
-        Session session,
-        int limit,
-        CancellationToken cancellationToken)
-        => Service.ListUserContactIds(session, limit, cancellationToken);
+    public Task<ImmutableArray<RecentEntry>> List(Session session, RecentScope scope, int limit, CancellationToken cancellationToken)
+        => Service.List(session, scope, limit, cancellationToken);
 
     [HttpPost]
-    public Task<RecentEntry?> Update(IRecentEntries.UpdateUserContactCommand command, CancellationToken cancellationToken)
+    public Task<RecentEntry?> Update(IRecentEntries.UpdateCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 }

@@ -36,11 +36,15 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.RegisterNavbarWidget<ChatListNavbarWidget>();
         services.RegisterNavbarWidget<ContactListNavbarWidget>();
 
+        // Scoped / Blazor Circuit services
+        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
+
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<RecentChats>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>();
         services.AddScoped<FrontendChatMentionResolverFactory>();
 
