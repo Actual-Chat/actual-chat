@@ -1,5 +1,5 @@
-.markup-editor .editor-content {
-    @apply text-xl md:text-md;
+.markup-editor {
+    @apply text-xl md:text-base;
 }
 .markup-editor .editor-content .mention {
     @apply inline-block px-1 bg-mention rounded-md;

@@ -41,14 +41,18 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
         => chat.ChatType switch {
             ChatType.Group => !chat.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+ #pragma warning disable MA0015
             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
+ #pragma warning restore MA0015
         };
 
     private string GetTitle(Chat chat, ChatAuthor chatAuthor)
         => chat.ChatType switch {
             ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
             ChatType.Peer => $"{chatAuthor.Name}",
+ #pragma warning disable MA0015
             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
+ #pragma warning restore MA0015
         };
 
     private string GetContent(string chatEventContent)
