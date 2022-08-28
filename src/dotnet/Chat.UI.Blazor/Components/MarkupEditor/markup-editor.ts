@@ -12,12 +12,15 @@ export class MarkupEditor {
         return new MarkupEditor(editorDiv, blazorRef, autofocus, debug);
     }
 
+    private readonly contentDiv: HTMLDivElement
+
     constructor(
         private readonly editorDiv: HTMLDivElement,
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly autofocus: boolean,
         private readonly debug: boolean)
     {
+        this.contentDiv = editorDiv.querySelector(".editor-content");
         if (debug)
             console.debug(`${LogScope}.ctor`);
         if (autofocus)
@@ -25,15 +28,15 @@ export class MarkupEditor {
     }
 
     public focus() {
-        this.editorDiv.focus();
+        this.contentDiv.focus();
     }
 
     public getText() {
-        return this.editorDiv.innerText;
+        return this.contentDiv.innerText;
     }
 
     public setHtml(html: string) {
-        this.editorDiv.innerHTML = html;
+        this.contentDiv.innerHTML = html;
     }
 
     public insertMention(id: string, name: string) {
@@ -42,7 +45,7 @@ export class MarkupEditor {
 
     public moveCursorToTheEnd() {
         const range = document.createRange();
-        range.selectNodeContents(this.editorDiv);
+        range.selectNodeContents(this.contentDiv);
         range.collapse(false); // false means collapse to end rather than the start
         const selection = window.getSelection();
         selection.removeAllRanges();

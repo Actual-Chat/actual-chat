@@ -1,10 +1,10 @@
-.markup-editor .editor {
+.markup-editor .editor-content {
     @apply text-xl md:text-md;
 }
-.markup-editor .editor .mention {
+.markup-editor .editor-content .mention {
     @apply inline-block px-1 bg-mention rounded-md;
 }
-.markup-editor .editor:empty:not(:focus)::before {
+.markup-editor .editor-content:empty:not(:focus)::before {
     content: attr(data-placeholder);
     @apply text-counter md:text-05 !opacity-100 truncate;
 }
