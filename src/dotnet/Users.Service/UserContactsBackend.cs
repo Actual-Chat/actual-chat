@@ -132,9 +132,9 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         context.Operation().Items.Set(userContact);
 
         if (change.IsCreate(out _))
-            await Commander
-                .Call(new IRecentEntriesBackend.UpdateCommand(userContact!.OwnerUserId,
+            await Commander.Call(new IRecentEntriesBackend.UpdateCommand(
                         RecentScope.UserContact,
+                        userContact!.OwnerUserId,
                         userContact.Id,
                         Clocks.SystemClock.UtcNow),
                     cancellationToken)

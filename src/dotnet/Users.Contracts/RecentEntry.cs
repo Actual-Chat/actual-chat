@@ -2,7 +2,7 @@ namespace ActualChat.Users;
 
 [DataContract]
 public sealed record RecentEntry(
-        [property: DataMember] string ShardKey,
+        [property: DataMember] string GroupKey,
         [property: DataMember] string Key,
         [property: DataMember] RecentScope Scope
     ) : IRequirementTarget

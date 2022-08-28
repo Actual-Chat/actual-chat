@@ -75,16 +75,11 @@
     private EditedMarkupConverter EditedMarkupConverter { get; set; } = null!;
     private SyncedStateLease<long>? LastReadEntryState { get; set; }
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
-    [Inject] private IUserContacts UserContacts { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -186,12 +181,17 @@
     }
 
     private async Task TryUpdatePeerChatRecency() {
-        if (Chat.ChatType != ChatType.Peer)
-            return;
+        await Update(RecentScope.ChatContact, Chat.Id).ConfigureAwait(false);
 
-        var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
-        var command = new IRecentEntries.UpdateUserContactCommand(Session, contact.Id, Clocks.SystemClock.UtcNow);
-        await UICommander.Run(command, CancellationToken.None);
+        if (Chat.ChatType == ChatType.Peer) {
+            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
+            await Update(RecentScope.UserContact, contact.Id).ConfigureAwait(false);
+        }
+
+        Task Update(RecentScope scope, string key) {
+            var command = new IRecentEntries.UpdateCommand(Session, scope, key, Clocks.SystemClock.UtcNow);
+            return UICommander.Run(command, CancellationToken.None);
+        }
     }
 
     private async Task OnSlateRendered()

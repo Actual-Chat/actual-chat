@@ -1,4 +1,5 @@
 @using BlazorContextMenu
+@using ActualChat.Users.UI.Blazor.Services
 @inherits ComputedStateComponent<ContactListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -129,8 +130,7 @@
             case ContactGroup.Favorites:
                 return contacts.Where(x => x.IsFavorite).ToImmutableArray();
             case ContactGroup.Recent:
-                var recent = await RecentEntries.ListUserContactIds(Session, 20, cancellationToken).ConfigureAwait(false);
-                return contacts.Where(x => recent.Contains(x.Id)).ToImmutableArray();
+                return await RecentEntries.OrderByRecency(Session, contacts, RecentScope.UserContact, cancellationToken).ConfigureAwait(false);
             default:
                 throw new ArgumentOutOfRangeException(nameof(group), group, null);
         }

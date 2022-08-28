@@ -14,24 +14,25 @@ public class RecentEntries : IRecentEntries
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableHashSet<string>> ListUserContactIds(
+    public virtual async Task<ImmutableArray<RecentEntry>> List(
         Session session,
+        RecentScope scope,
         int limit,
         CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.List(user.Id, RecentScope.UserContact, limit, cancellationToken).ConfigureAwait(false);
+        return await Backend.List(user.Id, scope, limit, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task<RecentEntry?> Update(IRecentEntries.UpdateUserContactCommand command, CancellationToken cancellationToken)
+    public virtual async Task<RecentEntry?> Update(IRecentEntries.UpdateCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default; // It just spawns other commands, so nothing to do here
 
-        var (session, contactId, moment) = command;
+        var (session, scope, key, moment) = command;
         var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        var cmd = new IRecentEntriesBackend.UpdateCommand(user.Id, RecentScope.UserContact, contactId, moment);
+        var cmd = new IRecentEntriesBackend.UpdateCommand(scope, user.Id, key, moment);
         return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
     }
 }

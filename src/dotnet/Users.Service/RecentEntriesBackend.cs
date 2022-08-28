@@ -9,7 +9,7 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
     public RecentEntriesBackend(IServiceProvider services) : base(services) {}
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableHashSet<string>> List(
+    public virtual async Task<ImmutableArray<RecentEntry>> List(
         string shardKey,
         RecentScope scope,
         int limit,
@@ -21,19 +21,19 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
         await PseudoList(shardKey, scope).ConfigureAwait(false);
 
         var list = await dbContext.RecentEntries
-            .Where(x => string.Equals(x.ShardKey, shardKey) && x.Scope == scope.ToString())
+            .Where(x => string.Equals(x.ShardKey, shardKey) && string.Equals(x.Scope, scope.ToString()))
             .OrderByDescending(x => x.UpdatedAt)
             .Take(limit)
-            .Select(x => x.Key)
+            .Select(x => x.ToModel())
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return list.ToImmutableHashSet();
+        return list.ToImmutableArray();
     }
 
     // [CommandHandler]
     public virtual async Task<RecentEntry?> Update(IRecentEntriesBackend.UpdateCommand command, CancellationToken cancellationToken)
     {
-        var (shardKey, scope, key, moment) = command;
+        var (scope, shardKey, key, moment) = command;
 
         if (Computed.IsInvalidating()) {
             _ = PseudoList(command.ShardKey, command.Scope);

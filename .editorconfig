@@ -388,3 +388,4 @@ dotnet_diagnostic.ma0016.severity = none # MA0016: Prefer return collection abst
 dotnet_diagnostic.RCS1079.severity = none # (duplicate of MA0025) RCS1079: Implement the functionality instead of throwing new NotImplementedException
 dotnet_diagnostic.MA0046.severity = none # Use EventHandler<T> to declare events
 dotnet_diagnostic.MA0069.severity = none # Duplicate of CA2211
+dotnet_diagnostic.MA0015.severity = suggestion # shows annoying warning for new ArgumentOutOfRangeException(nameof(arg.somProp))

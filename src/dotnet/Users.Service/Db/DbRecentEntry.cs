@@ -28,8 +28,8 @@ public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     public void UpdateFrom(RecentEntry model)
     {
-        Id = GetId(model.ShardKey, model.Key);
-        ShardKey = model.ShardKey;
+        Id = GetId(model.GroupKey, model.Key);
+        ShardKey = model.GroupKey;
         Key = model.Key;
         Scope = model.Scope.ToString();
         UpdatedAt = model.UpdatedAt;
