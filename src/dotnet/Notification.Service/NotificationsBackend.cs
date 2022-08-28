@@ -7,8 +7,26 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public partial class Notifications
+public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IMarkupParser MarkupParser { get; }
+    private UriMapper UriMapper { get; }
+    private FirebaseMessaging FirebaseMessaging { get; }
+
+    public NotificationsBackend(
+        IServiceProvider services,
+        IChatAuthorsBackend chatAuthorsBackend,
+        IMarkupParser markupParser,
+        UriMapper uriMapper,
+        FirebaseMessaging firebaseMessaging) : base(services)
+    {
+        ChatAuthorsBackend = chatAuthorsBackend;
+        MarkupParser = markupParser;
+        UriMapper = uriMapper;
+        FirebaseMessaging = firebaseMessaging;
+    }
+
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken)
     {
