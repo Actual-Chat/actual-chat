@@ -9,7 +9,7 @@ public sealed record CodeBlockMarkup(
 {
     public CodeBlockMarkup() : this("") { }
 
-    public override string ToMarkupText()
+    public override string Format()
         => $"```{Language}\r\n{Code}```";
 
     protected override bool PrintMembers(StringBuilder builder)

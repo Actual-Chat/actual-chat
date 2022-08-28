@@ -10,44 +10,27 @@ namespace ActualChat.Notification;
 
 public partial class Notifications : DbServiceBase<NotificationDbContext>, INotifications, INotificationsBackend
 {
-    private readonly IAuth _auth;
-    private readonly MomentClockSet _clocks;
-    private readonly FirebaseMessaging _firebaseMessaging;
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly ICommander _commander;
-    private readonly IAccountsBackend _accountsBackend;
-    private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
-    private readonly UriMapper _uriMapper;
-    private readonly ILogger<Notifications> _log;
+    private IAuth Auth { get; }
+    private FirebaseMessaging FirebaseMessaging { get; }
+    private IAccountsBackend AccountsBackend { get; }
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IMarkupParser MarkupParser { get; }
+    private UriMapper UriMapper { get; }
 
-
-    public Notifications(
-        IServiceProvider services,
-        IAuth auth,
-        MomentClockSet clocks,
-        FirebaseMessaging firebaseMessaging,
-        IChatAuthorsBackend chatAuthorsBackend,
-        ICommander commander,
-        IAccountsBackend accountsBackend,
-        IDbContextFactory<NotificationDbContext> dbContextFactory,
-        UriMapper uriMapper,
-        ILogger<Notifications> log) : base(services)
+    public Notifications(IServiceProvider services) : base(services)
     {
-        _auth = auth;
-        _clocks = clocks;
-        _firebaseMessaging = firebaseMessaging;
-        _chatAuthorsBackend = chatAuthorsBackend;
-        _commander = commander;
-        _accountsBackend = accountsBackend;
-        _dbContextFactory = dbContextFactory;
-        _uriMapper = uriMapper;
-        _log = log;
+        Auth = services.GetRequiredService<IAuth>();
+        FirebaseMessaging = services.GetRequiredService<FirebaseMessaging>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        MarkupParser = services.GetRequiredService<IMarkupParser>();
+        UriMapper = services.GetRequiredService<UriMapper>();
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return ChatNotificationStatus.NotSubscribed;
 
@@ -74,7 +57,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         }
 
         var (session, deviceId, deviceType) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return;
 
@@ -92,12 +75,12 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
                 Type = deviceType,
                 UserId = user.Id,
                 Version = VersionGenerator.NextVersion(),
-                CreatedAt = _clocks.SystemClock.Now,
+                CreatedAt = Clocks.SystemClock.Now,
             };
             dbContext.Add(dbDevice);
         }
         else
-            dbDevice.AccessedAt = _clocks.SystemClock.Now;
+            dbDevice.AccessedAt = Clocks.SystemClock.Now;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(dbDevice);
@@ -118,7 +101,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             return;
         }
 
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return;
 

@@ -460,7 +460,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 
-
     // Private methods
 
     private async Task<ChatEntry> RemoveChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)

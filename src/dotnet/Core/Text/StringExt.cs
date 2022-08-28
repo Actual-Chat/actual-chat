@@ -10,8 +10,8 @@ public static class StringExt
     private static readonly Regex CaseChangeRegex =
         new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 #pragma warning disable MA0023
-    private static readonly Regex CamelCaseRegex =
-        new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
+    private static readonly Regex CamelCaseRegex = new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
+    private static readonly Regex NewLineRegex = new(@"([^\r\n]*)(?:\r?\n)", RegexOptions.Compiled);
 #pragma warning restore MA0023
 
     public static string RequireNonEmpty(this string? source, string name)
@@ -35,6 +35,36 @@ public static class StringExt
 
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
+
+    public static string EnsureEndsWith(this string source, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+        => source.EndsWith(suffix, comparison) ? source : source + suffix;
+
+    public static string Truncate(this string source, int maxLength)
+        => source.Length <= maxLength ? source : source[..maxLength];
+    public static string Truncate(this string source, int maxLength, string ellipsis)
+        => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
+
+    public static IEnumerable<(string Line, bool EndsWithLineFeed)> ParseLines(this string text)
+    {
+        for (var index = 0; index < text.Length;) {
+            var match = NewLineRegex.Match(text, index);
+            if (match.Success)
+                yield return (match.Groups[1].Value, true);
+            else {
+                yield return (text[index..], false);
+                yield break;
+            }
+            index = match.Index + match.Length;
+        }
+    }
+
+    public static string UrlEncode(this string input)
+        => WebUtility.UrlEncode(input);
+
+    public static string UrlDecode(this string input)
+        => WebUtility.UrlDecode(input);
+
+    // ParseXxx
 
     public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)
     {
@@ -78,13 +108,4 @@ public static class StringExt
         port = portValue;
         return true;
     }
-
-    public static string UrlEncode(this string input)
-        => WebUtility.UrlEncode(input);
-
-    public static string UrlDecode(this string input)
-        => WebUtility.UrlDecode(input);
-
-    public static string EnsureSuffix(this string input, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
-        => input.EndsWith(suffix, comparison) ? input : input + suffix;
 }

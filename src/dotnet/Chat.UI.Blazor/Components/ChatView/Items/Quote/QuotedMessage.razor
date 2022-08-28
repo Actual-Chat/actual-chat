@@ -1,15 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<QuotedMessage.Model?>
-
 @{
     var model = State.LatestNonErrorValue;
-}
+    if (model == null)
+        return;
 
-@if (model == null) {
-    return;
-}
-
-@{
     var message = model.Message;
     var entry = message.Entry;
     var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
@@ -35,11 +30,11 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
+    [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -51,19 +46,19 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    protected override async Task OnInitializedAsync() {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-    }
+    protected override void OnParametersSet()
+        => MarkupHub.ChatId = Message.Entry.ChatId;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
-    }
+    protected override async Task OnInitializedAsync()
+        => await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var hasAttachments = Message.Entry.HasAttachments;
-        var text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content, cancellationToken);
+        var chatEntry = Message.Entry;
+        var hasAttachments = chatEntry.HasAttachments;
+        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
+        var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
         return new (Message, _quoteText, principalId);
     }
 

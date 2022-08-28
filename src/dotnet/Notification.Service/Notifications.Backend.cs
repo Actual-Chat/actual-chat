@@ -33,7 +33,7 @@ public partial class Notifications
             .Where(cs => cs.ChatId == chatId)
             .Select(cs => cs.UserId)
             .ToListAsync(cancellationToken);
-        var userIdsTask = _chatAuthorsBackend
+        var userIdsTask = ChatAuthorsBackend
             .ListUserIds(chatId, cancellationToken);
         await Task.WhenAll(mutedSubscribersTask, userIdsTask).ConfigureAwait(false);
 
@@ -57,17 +57,15 @@ public partial class Notifications
             return;
 
         var (chatId, entryId, userId, title, iconUrl, content) = notifyCommand;
-        var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
-        var textContent = await markupToTextConverter.Apply(
-            MarkupParser.ParseRaw(content),
-            cancellationToken
-            ).ConfigureAwait(false);
+        var markup = MarkupParser.Parse(content);
+        markup = new MarkupTrimmer(100).Rewrite(markup);
+        var body = MarkupFormatter.ReadableUnstyled.Format(markup);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = textContent,
+                Body = body,
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
@@ -98,15 +96,15 @@ public partial class Notifications
                 Notification = new WebpushNotification {
                     Renotify = false,
                     Title = title,
-                    Body = textContent,
+                    Body = body,
                     Tag = chatId,
                     RequireInteraction = false,
                     Icon = iconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    Link = OrdinalEquals(_uriMapper.BaseUri.Host, "localhost")
+                    Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")
                         ? null
-                        : _uriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
+                        : UriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
                 },
                 Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
                     ["chatId"] = chatId,
@@ -122,7 +120,7 @@ public partial class Notifications
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
-            var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
+            var batchResponse = await FirebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
                 .ConfigureAwait(false);
 
             if (batchResponse.FailureCount > 0) {
@@ -142,7 +140,7 @@ public partial class Notifications
                         var tokensToRemove = responseGroup
                             .Select(g => g.DeviceId)
                             .ToImmutableArray();
-                        _ = _commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
+                        _ = Commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
                     }
                     else if (responseGroup.Key.HasValue) {
                         var firstErrorItem = responseGroup.First();
@@ -151,7 +149,7 @@ public partial class Notifications
                             : await firstErrorItem.HttpResponse.Content
                                 .ReadAsStringAsync(cancellationToken)
                                 .ConfigureAwait(false);
-                        _log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                        Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
                             responseGroup.Key, responseGroup.Count(), errorContent);
                     }
             }
@@ -165,18 +163,6 @@ public partial class Notifications
                         cancellationToken),
                     cancellationToken);
 
-        }
-
-        async Task<string> AuthorNameResolver(string authorId, CancellationToken cancellationToken1)
-        {
-            var author = await _chatAuthorsBackend.Get(chatId, authorId, true, cancellationToken1).ConfigureAwait(false);
-            return author?.Name ?? "";
-        }
-
-        async Task<string> UserNameResolver(string userId1, CancellationToken cancellationToken1)
-        {
-            var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken1).ConfigureAwait(false);
-            return author?.Name ?? "";
         }
 
         async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
@@ -196,7 +182,7 @@ public partial class Notifications
             CancellationToken cancellationToken1)
         {
             // TODO(AK): sharding by userId - code is running at a sharded service already
-            var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+            var dbContext = CreateDbContext(readWrite: true);
             await using var __ = dbContext.ConfigureAwait(false);
 
             var dbMessages = responses
@@ -207,7 +193,7 @@ public partial class Notifications
                     DeviceId = pair.Second.DeviceId,
                     ChatId = chatId1,
                     ChatEntryId = entryId1,
-                    CreatedAt = _clocks.SystemClock.Now,
+                    CreatedAt = Clocks.SystemClock.Now,
                 });
 
             await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
@@ -227,7 +213,7 @@ public partial class Notifications
             return;
         }
         var affectedUserIds = new HashSet<string>(StringComparer.Ordinal);
-        var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+        var dbContext = CreateDbContext(readWrite: true);
         await using var __ = dbContext.ConfigureAwait(false);
 
         foreach (var deviceId in removeDevicesCommand.DeviceIds) {

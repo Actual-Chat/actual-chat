@@ -37,8 +37,8 @@ public class MarkupParser : IMarkupParser
         Token(c => c is '\r' or '\n' or '\u2028').Labelled("line separator");
     private static readonly Parser<char, char> NotEndOfLineChar =
         Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
-    private static readonly Parser<char, char> StringIdChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-').Labelled("letter, digit, '_', or '-'");
+    private static readonly Parser<char, char> IdChar =
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':').Labelled("letter, digit, '_', '-', or ':'");
     private static readonly Parser<char, char> WordChar =
         Token(c => char.IsLetterOrDigit(c) || c is '_').Labelled("letter, digit, or '_'");
     private static readonly Parser<char, char> NotWordChar =
@@ -54,42 +54,40 @@ public class MarkupParser : IMarkupParser
     private static readonly Parser<char, TextStyle> BoldToken = String("**").WithResult(TextStyle.Bold);
     private static readonly Parser<char, TextStyle> ItalicToken = Char('*').WithResult(TextStyle.Italic);
     private static readonly Parser<char, char> PreToken = Char('`');
+    private static readonly Parser<char, char> NotPreToken = Token(c => c != '`');
+    private static readonly Parser<char, char> DoublePreToken = Try(PreToken.Then(PreToken));
     private static readonly Parser<char, string> CodeBlockToken = String("```");
-    private static readonly Parser<char, char> QuotedPreToken = PreToken.Then(PreToken);
-    private static readonly Parser<char, char> NotPreChar = Token(c => c != '`');
     private static readonly Parser<char, char> AtToken = Char('@');
 
-    public static readonly Parser<char, string> UserId = StringIdChar.AtLeastOnceString();
-    public static readonly Parser<char, string> ChatId = StringIdChar.AtLeastOnceString();
-    public static readonly Parser<char, string> AuthorId =
-        from chatId in ChatId
-        from separator in Char(':')
-        from authorId in Digit.AtLeastOnceString()
-        select chatId + separator + authorId;
-
-    private static readonly Parser<char, char> UserNameChar = StringIdChar;
-    public static readonly Parser<char, string> UserName =
-        from head in Letter
-        from tail in UserNameChar.AtLeastOnceString().Where(s => s.Length >= 3)
-        select head + tail;
+    private static readonly Parser<char, string> Id = IdChar.AtLeastOnceString();
+    private static readonly Parser<char, string> QuotedName =
+        PreToken.Then(NotPreToken.Or(DoublePreToken).ManyString()).Before(PreToken);
 
     // Markup parsers
 
     // Word text & delimiter
     private static readonly Parser<char, Markup> NonWhitespaceText =
-        NotSpecialOrWhitespaceChar.AtLeastOnceString().ToPlainTextMarkup();
+        NotSpecialOrWhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
     internal static readonly Parser<char, Markup> WhitespaceText =
-        WhitespaceChar.AtLeastOnceString().ToPlainTextMarkup();
+        WhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
     private static readonly Parser<char, Markup> WhitespaceOrEndOfLineText =
-        Whitespace.AtLeastOnceString().ToPlainTextMarkup();
+        Whitespace.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, true);
 
-    // Mention
-    public static readonly Parser<char, Markup> Mention =
-        AtToken.Then(TryOneOf(
-            String("a:").Then(AuthorId).Select(s => (Markup)new Mention(s, MentionKind.AuthorId)),
-            String("u:").Then(UserId).Select(s => (Markup)new Mention(s, MentionKind.UserId)),
-            UserName.Select(s => (Markup)new Mention(s))
-        )).Debug("@");
+    // Mentions
+    private static readonly Parser<char, Markup> NamedMention =
+        // @`User Name`userId
+        AtToken.Then(
+            from name in QuotedName
+            from id in Id
+            select (Markup) new Mention(id, name)
+            ).Debug("@`name`");
+    private static readonly Parser<char, Markup> UnnamedMention =
+        // @`User Name`userId
+        AtToken.Then(Id)
+            .Select(id => (Markup) new Mention(id))
+            .Debug("@");
+    private static readonly Parser<char, Markup> Mention =
+        SafeTryOneOf(NamedMention, UnnamedMention);
 
     // Url
     private static readonly string ProtoRe = @"((mailto|tel):)|((http|ftp)s?\:\/\/)";
@@ -112,8 +110,8 @@ public class MarkupParser : IMarkupParser
 
     // Preformatted text
     private static readonly Parser<char, Markup> PreformattedText =
-        Lookahead(Not(CodeBlockToken.Before(NotPreChar.OrEnd())))
-            .Then(NotPreChar.Or(Try(QuotedPreToken)).ManyString().Between(PreToken))
+        Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())))
+            .Then(NotPreToken.Or(DoublePreToken).ManyString().Between(PreToken))
             .Select(s => (Markup)new PreformattedTextMarkup(s))
             .Debug("`");
 
@@ -141,7 +139,7 @@ public class MarkupParser : IMarkupParser
     // Code block
     private static readonly Parser<char, string> CodeBlockStart =
         CodeBlockToken
-            .Then(StringIdChar.ManyString()) // Language
+            .Then(IdChar.ManyString()) // Language
             .Before(WhitespaceChar.SkipUntil(EndOfLine));
     private static readonly Parser<char, char> CodeBlockEnd =
         WhitespaceChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
@@ -168,19 +166,18 @@ public class MarkupParser : IMarkupParser
 
     // Whitespace block
     private static readonly Parser<char, Markup> WhitespaceBlock =
-        Whitespace.AtLeastOnceString().ToPlainTextMarkup()
-            .Debug("<Whitespace>");
+        WhitespaceOrEndOfLineText.Debug("<Whitespace>");
 
     // Unparsed block
     private static readonly Parser<char, Markup> UnparsedTextBlock = (
         from whitespace in WhitespaceString
         from special in SpecialChar.AtLeastOnceString()
-        select (Markup)new UnparsedTextMarkup(whitespace + special)
+        select TextMarkup.New(TextMarkupKind.Unparsed, whitespace + special, true)
         ).Debug("<Unparsed>");
     private static readonly Parser<char, Markup> UnparsedTextAsPlainTextBlock = (
         from whitespace in WhitespaceString
         from special in SpecialChar.AtLeastOnceString()
-        select (Markup)new PlainTextMarkup(whitespace + special) // Plain text instead of UnparsedMarkup
+        select TextMarkup.New(TextMarkupKind.Plain, whitespace + special, true) // Plain text instead of UnparsedMarkup
         ).Debug("<Unparsed>");
 
     // Full markup
@@ -193,8 +190,6 @@ public class MarkupParser : IMarkupParser
     {
         var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
-        if (!result.Success)
-            return Markup.Empty;
-        return NewLineRewriter.Instance.Rewrite(result.Value);
+        return result.Success ? result.Value : Markup.Empty;
     }
 }

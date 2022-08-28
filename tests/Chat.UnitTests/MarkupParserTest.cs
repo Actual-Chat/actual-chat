@@ -7,7 +7,7 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void BasicTest()
     {
-        var m = Parse<PlainTextMarkup>("Мороз и солнце; день\r\n чудесный!", out var text);
+        var m = Parse<PlainTextMarkup>("123 456", out var text);
         m.Text.Should().Be(text);
 
         m = Parse<PlainTextMarkup>(" ", out text);
@@ -15,6 +15,14 @@ public class MarkupParserTest : TestBase
 
         m = Parse<PlainTextMarkup>("", out text);
         m.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void NewLineTest()
+    {
+        var m = Parse<MarkupSeq>("Мороз и солнце; день\r\n чудесный!", out var text);
+        m.Items.Count(m => m is PlainTextMarkup).Should().Be(2);
+        m.Items.Count(m => m is NewLineMarkup).Should().Be(1);
     }
 
     [Fact]
@@ -52,16 +60,30 @@ public class MarkupParserTest : TestBase
     public void MentionTest()
     {
         var m = Parse<Mention>("@alex", out var text);
-        m.Target.Should().Be(text[1..]);
-        m.Kind.Should().Be(MentionKind.Unknown);
+        m.Id.Should().Be(text[1..]);
 
         m = Parse<Mention>("@a:chatId:1", out text);
-        m.Target.Should().Be(text[3..]);
-        m.Kind.Should().Be(MentionKind.AuthorId);
+        m.Id.Should().Be(text[1..]);
 
         m = Parse<Mention>("@u:userId", out text);
-        m.Target.Should().Be(text[3..]);
-        m.Kind.Should().Be(MentionKind.UserId);
+        m.Id.Should().Be(text[1..]);
+
+        Parse<MarkupSeq>("@ something", out text);
+    }
+
+    [Fact]
+    public void NamedMentionTest()
+    {
+        var m = Parse<Mention>("@`a`b", out var text);
+        m.Name.Should().Be("a");
+        m.Id.Should().Be("b");
+
+        m = Parse<Mention>("@`a x`id:1", out text);
+        m.Name.Should().Be("a x");
+        m.Id.Should().Be("id:1");
+
+        // Empty id case
+        Parse<MarkupSeq>("@`Alex Yakunin`", out text);
     }
 
     [Fact]
@@ -180,7 +202,7 @@ code
         var m = Parse<MarkupSeq>("line1 \nline2", out var text);
         m.Items.Length.Should().Be(3);
         m.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1 ");
-        m.Items[1].Should().Be(Markup.NewLine);
+        m.Items[1].Should().Be(NewLineMarkup.Instance);
         m.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
     }
 
@@ -199,9 +221,11 @@ code
         Out.WriteLine($"  {simplified}");
         Out.WriteLine($"  Raw: {parsed}");
         var result = simplified.Should().BeOfType<TResult>().Subject;
-        var markupText = simplified.ToMarkupText().Replace("\r\n", "\n");
         var expectedMarkupText = text.Replace("\r\n", "\n");
-        markupText.Should().Be(expectedMarkupText);
+        var markupText1 = simplified.Format().Replace("\r\n", "\n");
+        var markupText2 = MarkupFormatter.Default.Format(simplified).Replace("\r\n", "\n");
+        markupText1.Should().Be(expectedMarkupText);
+        markupText2.Should().Be(expectedMarkupText);
         return result;
     }
 }

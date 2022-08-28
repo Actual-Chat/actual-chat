@@ -29,21 +29,20 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.TryAddSingleton<IChatMediaResolver, ChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
 
+        // Transient
+        services.AddTransient<MarkupHub>();
+
         // Navbar widgets
         services.RegisterNavbarWidget<ChatListNavbarWidget>();
         services.RegisterNavbarWidget<ContactListNavbarWidget>();
 
-        // Scoped / Blazor Circuit services
-        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-
         // Chat UI
+        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
-        services.AddScoped<EditedMarkupConverter>();
-        services.AddScoped<MentionNameResolver>();
-        services.AddScoped<ChatMarkupToTextConverter>();
         services.AddScoped<PlayableTextPaletteProvider>();
+        services.AddScoped<FrontendChatMentionResolverFactory>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();

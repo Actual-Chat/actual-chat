@@ -149,7 +149,7 @@
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
         var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
-        var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.ChatEntry;
+        var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         if (Message.ShowEntryType)
             markup = EnrichMarkupWithEntryType(markup);
@@ -216,7 +216,7 @@
         if (repliedChatMessage?.Entry.AuthorId == principalId)
             return true;
 
-        return MarkupValidator.ContainsMention.IsValid(markup) && MarkupValidator.ContainsAuthorMention(principalId).IsValid(markup);
+        return MarkupValidator.ContainsAnyMention.IsValid(markup) && MarkupValidator.ContainsMention(principalId).IsValid(markup);
     }
 
     private async Task<ImmutableArray<TextEntryAttachment>> LoadAttachments(CancellationToken cancellationToken) {

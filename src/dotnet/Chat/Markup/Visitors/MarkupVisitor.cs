@@ -10,31 +10,32 @@ public abstract class MarkupVisitor<TResult>
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup),
             TextMarkup textMarkup => VisitText(textMarkup),
-            CustomMarkup customMarkup => VisitCustom(customMarkup),
-            _ => throw new ArgumentOutOfRangeException(nameof(markup)),
+            _ => VisitUnknown(markup),
         };
 
     protected virtual TResult VisitText(TextMarkup markup)
         => markup switch {
             PlainTextMarkup plainTextMarkup => VisitPlainText(plainTextMarkup),
-            NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup),
             PlayableTextMarkup playableTextMarkup => VisitPlayableText(playableTextMarkup),
             PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup),
+            NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup),
             UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup),
-            _ => throw new ArgumentOutOfRangeException(nameof(markup)),
+            _ => VisitUnknown(markup),
         };
 
-
     protected abstract TResult VisitSeq(MarkupSeq markup);
+    protected abstract TResult VisitStylized(StylizedMarkup markup);
+
     protected abstract TResult VisitUrl(UrlMarkup markup);
     protected abstract TResult VisitMention(Mention markup);
     protected abstract TResult VisitCodeBlock(CodeBlockMarkup markup);
-    protected abstract TResult VisitStylized(StylizedMarkup markup);
 
     protected abstract TResult VisitPlainText(PlainTextMarkup markup);
-    protected abstract TResult VisitNewLine(NewLineMarkup markup);
     protected abstract TResult VisitPlayableText(PlayableTextMarkup markup);
     protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup);
+    protected abstract TResult VisitNewLine(NewLineMarkup markup);
     protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup);
-    protected abstract TResult VisitCustom(CustomMarkup markup);
+
+    protected virtual TResult VisitUnknown(Markup markup)
+        => throw new ArgumentOutOfRangeException(nameof(markup));
 }

@@ -1,5 +1,5 @@
+@using Cysharp.Text
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var message = Message;
     var entry = message.Entry;
@@ -39,10 +39,9 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
-    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
-    [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -53,15 +52,14 @@
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
-    private async Task GetPrincipalId()
-        => _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    public override async Task SetParametersAsync(ParameterView parameters) {
-        if (this.HasChangedParameters(parameters)) {
-            await base.SetParametersAsync(parameters);
-            await GetPrincipalId();
-            Text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content);
-        }
+    protected override async Task OnParametersSetAsync() {
+        MarkupHub.ChatId = Message.Entry.ChatId;
+        var markup = await MarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
+        Text = MarkupFormatter.ReadableUnstyled.Format(markup);
+        _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
     }
 
     protected override async Task OnInitializedAsync() {

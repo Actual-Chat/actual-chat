@@ -9,8 +9,8 @@
      data-placeholder="@Placeholder"></div>
 
 @code {
-    private string _lastPlaceholder = "";
     private MentionListManager? _lastMentionListManager;
+    private Action<MentionSearchResult> _onMentionSelected;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -23,21 +23,24 @@
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool Autofocus { get; set; }
-    [Parameter] public EventCallback<string> Posted { get; set; }
-    [Parameter] public EventCallback Canceled { get; set; }
-    [Parameter] public EventCallback LastMessageEditRequested { get; set; }
+    [Parameter] public EventCallback<string> Post { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+    [Parameter] public EventCallback OpenPrevious { get; set; }
+
+    public MarkupEditor()
+        => _onMentionSelected = mention => _ = InsertMention(mention);
 
     protected override void OnParametersSet() {
         if (_lastMentionListManager != null)
-            _lastMentionListManager.MentionSelected -= OnMentionSelected;
+            _lastMentionListManager.MentionSelected -= _onMentionSelected;
         _lastMentionListManager = MentionListManager;
         if (_lastMentionListManager != null)
-            _lastMentionListManager.MentionSelected += OnMentionSelected;
+            _lastMentionListManager.MentionSelected += _onMentionSelected;
     }
 
     public async ValueTask DisposeAsync() {
         if (_lastMentionListManager != null)
-            _lastMentionListManager.MentionSelected -= OnMentionSelected;
+            _lastMentionListManager.MentionSelected -= _onMentionSelected;
         await JSRef.DisposeSilentlyAsync();
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -62,25 +65,38 @@
     public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
         => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
 
-    [JSInvokable]
-    public Task Post(string? text = null)
-        => Posted.InvokeAsync(text);
-
-    [JSInvokable]
-    public Task Cancel()
-        => Canceled.InvokeAsync();
-
-    [JSInvokable]
-    public Task OpenPrevious()
-        => LastMessageEditRequested.InvokeAsync();
-
-    public Task FindMention(string filter)
-        => throw new NotImplementedException();
-
     public async Task Clear()
         => await JSRef.InvokeAsync<string>("setHtml", "").ConfigureAwait(false);
 
-    public async Task ListCommand(string listId, MarkupEditorListCommand command) {
+    public Task Focus(CancellationToken cancellationToken = default)
+        => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
+
+    public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
+        => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
+
+    public async Task InsertMention(MentionSearchResult? mention) {
+        MentionListManager?.Hide();
+        if (mention == null)
+            return;
+        await JSRef.InvokeVoidAsync("insertMention", mention.Id, mention.SearchMatch.Text);
+    }
+
+    // Backend methods
+
+    [JSInvokable]
+    public Task OnPost(string? text = null)
+        => Post.InvokeAsync(text);
+
+    [JSInvokable]
+    public Task OnCancel()
+        => Cancel.InvokeAsync();
+
+    [JSInvokable]
+    public Task OnOpenPrevious()
+        => OpenPrevious.InvokeAsync();
+
+    [JSInvokable]
+    public async Task OnListCommand(string listId, MarkupEditorListCommand command) {
         if (listId != "@")
             throw new ArgumentOutOfRangeException(nameof(listId));
 
@@ -101,35 +117,10 @@
             manager.ListRef?.MoveSelection(-1);
             break;
         case MarkupEditorListCommandKind.InsertItem:
-            await Insert(manager.ListRef?.Selection);
+            await InsertMention(manager.ListRef?.Selection);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(command));
         }
     }
-
-    public Task Focus(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
-
-    public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
-
-    private async Task SetPlaceholder(string placeholder) {
-        _lastPlaceholder = placeholder;
-        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
-    }
-
-    private void OnMentionSelected(MentionSearchResult mention)
-        => _ = Insert(mention);
-
-    private async Task Insert(MentionSearchResult? mention) {
-        MentionListManager?.Hide();
-        if (mention == null)
-            return;
-        await Focus();
-        await InsertMention(mention);
-    }
-
-    private Task InsertMention(MentionSearchResult mention)
-        => JSRef.InvokeVoidAsync("insertMention", mention.Id, mention.SearchMatch.Text).AsTask();
 }

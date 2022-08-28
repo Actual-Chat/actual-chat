@@ -50,19 +50,19 @@ export class MarkupEditor {
     }
 
     private onPost() {
-        this.blazorRef.invokeMethodAsync("Post", this.getText());
+        this.blazorRef.invokeMethodAsync("OnPost", this.getText());
     }
 
     private onCancel() {
-        this.blazorRef.invokeMethodAsync("Cancel");
+        this.blazorRef.invokeMethodAsync("OnCancel");
     }
 
     private onOpenPrevious() {
-        this.blazorRef.invokeMethodAsync("OpenPrevious");
+        this.blazorRef.invokeMethodAsync("OnOpenPrevious");
     }
 
     private onListCommand(listId: string, command: ListCommand) {
-        this.blazorRef.invokeMethodAsync("ListCommand", listId, command);
+        this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
     }
 }
 

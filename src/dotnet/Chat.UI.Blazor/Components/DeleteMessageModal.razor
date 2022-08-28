@@ -2,7 +2,7 @@
 @implements IModalView<DeleteMessageModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
-    var model = ModalModel.MessageModel;
+    var m = ModalModel.MessageModel;
 }
 
 <DialogFrame Title="Delete message" Class="delete-message-modal">
@@ -15,11 +15,11 @@
                 <div class="flex-1">
                     <div class="ml-1 flex-x py-2">
                         <div class="">
-                            <ChatMessageAuthorCircle AuthorId="@model.Entry.AuthorId"/>
+                            <ChatMessageAuthorCircle AuthorId="@m.Entry.AuthorId"/>
                         </div>
                         <div class="flex-y float-left px-2">
-                            <ChatAuthorName AuthorId="@model.Entry.AuthorId" Class="font-bold text-03"/>
-                            <ChatMessageTimestamp Moment="model.Entry.BeginsAt"/>
+                            <ChatAuthorName AuthorId="@m.Entry.AuthorId" Class="font-bold text-03"/>
+                            <ChatMessageTimestamp Moment="m.Entry.BeginsAt"/>
                         </div>
                     </div>
                     <div class="content message-content custom-scrollbar">
@@ -31,7 +31,7 @@
                                 <FileAttachment Attachment="@FirstAttachment"/>
                             }
                         }
-                        <CascadingValue Value="@model.Entry">
+                        <CascadingValue Value="@m.Entry">
                             <MarkupView Markup="Markup"/>
                         </CascadingValue>
                     </div>

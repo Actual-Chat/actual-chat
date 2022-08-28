@@ -14,12 +14,12 @@
 <OnGlobalEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
 <OnGlobalEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
-    <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MentionSearchProvider">
+    <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentListPreview @ref="AttachmentListPreviewRef"
                                RemoveRequested="@(RemoveAttachment)"
                                ClearAllRequested="@(ClearAttachments)"
                                Post="@(_ => OnPosted(clearEditor:true))"/>
-        <LinkedMessagePanel/>
+        <LinkedMessagePanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
@@ -68,9 +68,10 @@
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
-    private ISearchProvider<MentionSearchResult> MentionSearchProvider { get; set; } = null!;
+    private EditedMarkupConverter EditedMarkupConverter { get; set; } = null!;
     private SyncedStateLease<long>? LastReadEntryState { get; set; }
 
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
@@ -80,15 +81,17 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
-    [Inject] private EditedMarkupConverter EditedMarkupConverter { get; init; } = null!;
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private UICommander Commander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+    protected override async Task OnInitializedAsync() {
+        EditedMarkupConverter = new EditedMarkupConverter(MarkupHub);
+        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+    }
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -100,7 +103,7 @@
     }
 
     protected override void OnParametersSet()
-        => MentionSearchProvider = new MentionSearchProvider(Session, Chat.Id, Chats);
+        => MarkupHub.ChatId = Chat.Id;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -126,7 +129,7 @@
             StateHasChanged();
             var linked = ChatUI.LinkedChatEntry.Value;
             ChatUI.LinkedChatEntry.Value = null;
-            var entryId = linked?.Type == ChatEntryLinkType.Edit ? await UpdateMessage(linked.ChatEntry, text) : await PostNewMessage(text, linked?.ChatEntry);
+            var entryId = linked?.Type == ChatEntryLinkType.Edit ? await UpdateMessage(linked.Entry, text) : await PostNewMessage(text, linked?.Entry);
 
             await JSRef.InvokeVoidAsync("onPostSucceeded");
 

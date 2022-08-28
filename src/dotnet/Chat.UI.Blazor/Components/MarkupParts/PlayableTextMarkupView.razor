@@ -217,11 +217,8 @@
         public static readonly Model None = new Model();
 
         public WordPlayback[]? Map { get; init; }
-
         public PlayableTextColor? Color { get; init; }
-
         public IPlayableTextColorLease? ColorLease { get; init; }
-
         public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
     }
 }

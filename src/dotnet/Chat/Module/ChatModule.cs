@@ -17,7 +17,7 @@ public class ChatModule : HostModule
             var sharedCache = new ConcurrentLruCache<string, Markup>(16384, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
-            services.AddScoped<IMarkupParser>(_ => {
+            services.AddSingleton<IMarkupParser>(_ => {
                 var scopedCache = new ThreadSafeLruCache<string, Markup>(256);
                 var scopedParser = new CachingMarkupParser(sharedParser, scopedCache);
                 return scopedParser;

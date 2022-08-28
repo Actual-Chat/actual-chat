@@ -40,6 +40,9 @@ export class SlateEditor {
             console.debug(`${LogScope}.ctor`);
     }
 
+    public dispose() {
+        this.reactDomRoot.unmount();
+    }
     public getText = () =>
         this.editorHandle.getText();
 
@@ -48,20 +51,8 @@ export class SlateEditor {
         this.editorHandle.setMarkup(nodes);
     };
 
-    private onPost = () =>
-        this.blazorRef.invokeMethodAsync("Post", this.getText());
-
-    private onCancel = () =>
-        this.blazorRef.invokeMethodAsync("Cancel");
-
-    private onOpenPrevious = () =>
-        this.blazorRef.invokeMethodAsync("OpenPrevious");
-
     public clearText = () =>
         this.editorHandle.clearText();
-
-    private onMentionCommand = (cmd : string, args : string) : any =>
-        this.blazorRef.invokeMethodAsync("MentionCommand", cmd, args);
 
     public insertMention = (id: string, name: string) =>
         this.editorHandle.insertMention(id, name);
@@ -83,6 +74,8 @@ export class SlateEditor {
         this.editorHandle.moveCursorToEnd();
     }
 
+    // Private methods
+
     private onRendered = () => {
         if (this.debug)
             console.debug(`${LogScope}.onRendered`);
@@ -94,10 +87,17 @@ export class SlateEditor {
             }
         }
     }
+    private onPost = () =>
+        this.blazorRef.invokeMethodAsync("OnPost", this.getText());
 
-    private dispose() {
-        this.reactDomRoot.unmount();
-    }
+    private onCancel = () =>
+        this.blazorRef.invokeMethodAsync("OnCancel");
+
+    private onOpenPrevious = () =>
+        this.blazorRef.invokeMethodAsync("OnOpenPrevious");
+
+    private onMentionCommand = (cmd: string, args: string) : any =>
+        this.blazorRef.invokeMethodAsync("OnMentionCommand", cmd, args);
 }
 
 

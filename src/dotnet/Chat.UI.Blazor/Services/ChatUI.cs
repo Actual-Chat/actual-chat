@@ -36,7 +36,7 @@ public class ChatUI
     public IState<Symbol> RecordingChatId => _recordingChatId;
     public IState<ImmutableList<Symbol>> ListeningChatIds => _listeningChatIds;
     public IState<ImmutableList<(Symbol, Moment)>> ActiveChatIds => _activeChatIds;
-    public IMutableState<ChatEntryLink?> LinkedChatEntry { get; }
+    public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
     public IMutableState<long> HighlightedChatEntryId { get; }
 
     public ChatUI(IServiceProvider services)
@@ -74,7 +74,7 @@ public class ChatUI
             });
         Task.WhenAll(_listeningChatIds.WhenRead, _recordingChatId.WhenRead)
             .ContinueWith(_ => InitializeRecentChatIds(), TaskScheduler.Default);
-        LinkedChatEntry = StateFactory.NewMutable<ChatEntryLink?>();
+        LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
         _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long>>(CreateLastReadEntryState);

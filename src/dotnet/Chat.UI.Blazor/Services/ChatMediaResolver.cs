@@ -8,10 +8,10 @@ public interface IChatMediaResolver
 
 public class ChatMediaResolver : IChatMediaResolver
 {
-    private readonly UriMapper _uriMapper;
+    private UriMapper UriMapper { get; }
 
     public ChatMediaResolver(UriMapper uriMapper)
-        => _uriMapper = uriMapper;
+        => UriMapper = uriMapper;
 
     public Uri GetAudioBlobUri(ChatEntry audioEntry)
     {
@@ -22,7 +22,7 @@ public class ChatMediaResolver : IChatMediaResolver
             throw new ArgumentOutOfRangeException(nameof(audioEntry), Invariant(
                 $"{nameof(audioEntry)} doesn't have Content."));
 
-        return _uriMapper.ToAbsolute("/api/audio/download/" + audioEntry.Content);
+        return UriMapper.ToAbsolute("/api/audio/download/" + audioEntry.Content);
     }
 
     public Uri GetVideoBlobUri(ChatEntry videoEntry)

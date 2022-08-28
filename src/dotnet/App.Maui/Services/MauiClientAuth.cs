@@ -23,7 +23,7 @@ internal sealed class MauiClientAuth : IClientAuth
 #endif
         }
 
-        var uri = $"{ClientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signin/{ClientAppSettings.SessionId}/{scheme}";
+        var uri = $"{ClientAppSettings.BaseUri.EnsureEndsWith("/")}mobileauth/signin/{ClientAppSettings.SessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
@@ -37,7 +37,7 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var uri = $"{ClientAppSettings.BaseUri.EnsureSuffix("/")}mobileauth/signout/{ClientAppSettings.SessionId}";
+        var uri = $"{ClientAppSettings.BaseUri.EnsureEndsWith("/")}mobileauth/signout/{ClientAppSettings.SessionId}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 

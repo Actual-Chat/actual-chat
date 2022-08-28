@@ -66,23 +66,36 @@
     public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
         => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
 
-    [JSInvokable]
-    public Task Post(string? text = null)
-        => Posted.InvokeAsync(text);
-
-    [JSInvokable]
-    public Task Cancel()
-        => Canceled.InvokeAsync();
-
-    [JSInvokable]
-    public Task OpenPrevious()
-        => PreviousOpened.InvokeAsync();
-
     public async Task Clear()
         => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
 
+    public Task Focus(CancellationToken cancellationToken = default)
+        => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
+
+    public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
+        => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
+
+    private async Task SetPlaceholder(string placeholder) {
+        _placeholder = placeholder;
+        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
+    }
+
+    // Backend methods
+
     [JSInvokable]
-    public async Task MentionCommand(string cmd, string args) {
+    public Task OnPost(string? text = null)
+        => Posted.InvokeAsync(text);
+
+    [JSInvokable]
+    public Task OnCancel()
+        => Canceled.InvokeAsync();
+
+    [JSInvokable]
+    public Task OnOpenPrevious()
+        => PreviousOpened.InvokeAsync();
+
+    [JSInvokable]
+    public async Task OnMentionCommand(string cmd, string args) {
         var manager = MentionListManager;
         if (manager == null)
             return;
@@ -110,16 +123,7 @@
         }
     }
 
-    public Task Focus(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
-
-    public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
-
-    private async Task SetPlaceholder(string placeholder) {
-        _placeholder = placeholder;
-        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
-    }
+    // Private methods
 
     private void OnMentionSelected(MentionSearchResult mention)
         => _ = Insert(mention);

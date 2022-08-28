@@ -30,11 +30,14 @@ public abstract class AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
         => ValueTask.FromResult<Markup>(markup);
     protected override ValueTask<Markup> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
+
     protected override ValueTask<Markup> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
     protected override ValueTask<Markup> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
     protected override ValueTask<Markup> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
+        => ValueTask.FromResult<Markup>(markup);
+    protected override ValueTask<Markup> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
     protected override ValueTask<Markup> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);

@@ -13,6 +13,6 @@ public sealed record UrlMarkup(string Url) : Markup
 
     public UrlMarkup() : this("") { }
 
-    public override string ToMarkupText()
+    public override string Format()
         => Url;
 }
