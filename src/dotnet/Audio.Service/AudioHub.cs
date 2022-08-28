@@ -6,11 +6,10 @@ namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
+    private IAudioProcessor AudioProcessor { get; }
+    private SessionMiddleware SessionMiddleware { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
-
-    private readonly IAudioProcessor _audioProcessor;
-    private readonly SessionMiddleware _sessionMiddleware;
 
     public AudioHub(
         IAudioProcessor audioProcessor,
@@ -18,10 +17,10 @@ public class AudioHub : Hub
         ITranscriptStreamServer transcriptStreamServer,
         SessionMiddleware sessionMiddleware)
     {
+        AudioProcessor = audioProcessor;
+        SessionMiddleware = sessionMiddleware;
         AudioStreamServer = audioStreamServer;
         TranscriptStreamServer = transcriptStreamServer;
-        _audioProcessor = audioProcessor;
-        _sessionMiddleware = sessionMiddleware;
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -55,7 +54,7 @@ public class AudioHub : Hub
 
         var httpContext = Context.GetHttpContext()!;
         var cancellationToken = httpContext.RequestAborted;
-        var session = _sessionMiddleware.GetSession(httpContext).Require();
+        var session = SessionMiddleware.GetSession(httpContext).Require();
 
         var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
         var frameStream = opusPacketStream
@@ -63,7 +62,7 @@ public class AudioHub : Hub
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        await _audioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
+        await AudioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
             .ConfigureAwait(false);
     }
 }

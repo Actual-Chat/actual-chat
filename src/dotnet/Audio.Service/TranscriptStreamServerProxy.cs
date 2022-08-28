@@ -45,16 +45,22 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
-        var alternateAddress = serviceEndpoints.Endpoints
+        var alternateAddresses = serviceEndpoints.Endpoints
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
-            .OrderBy(a => a)
-            .FirstOrDefault(a => !string.Equals(a, KubernetesInfo.POD_IP, StringComparison.Ordinal));
-        if (alternateAddress == null || !port.HasValue)
+            .Where(a => !string.Equals(a, KubernetesInfo.POD_IP, StringComparison.Ordinal))
+            .OrderBy(a => a.GetHashCode() * (long)streamId.HashCode)
+            .ToList();
+        if (alternateAddresses.Count == 0 || !port.HasValue)
             return transcriptStreamOption;
 
-        var client = await AudioHubBackendClientFactory.GetTranscriptStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
-        return await client.Read(streamId, cancellationToken).ConfigureAwait(false);
+        foreach (var alternateAddress in alternateAddresses) {
+            var client = await AudioHubBackendClientFactory.GetTranscriptStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
+            var streamOption = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
+            if (streamOption.HasValue)
+                return streamOption;
+        }
+        return transcriptStreamOption;
     }
 
     public async Task<Task> Write(

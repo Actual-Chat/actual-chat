@@ -40,21 +40,27 @@ public class AudioStreamServerProxy : IAudioStreamServer
             .Where(p => string.Equals(p.Name, "http", StringComparison.Ordinal))
             .Select(p => (int?)p.Port)
             .FirstOrDefault();
-        var alternateAddress = serviceEndpoints.Endpoints
+        var alternateAddresses = serviceEndpoints.Endpoints
             .Where(e => e.IsReady)
             .SelectMany(e => e.Addresses)
-            .OrderBy(a => a)
-            .FirstOrDefault(a => !string.Equals(a, KubernetesInfo.POD_IP, StringComparison.Ordinal));
-        if (alternateAddress == null || !port.HasValue)
+            .Where(a => !string.Equals(a, KubernetesInfo.POD_IP, StringComparison.Ordinal))
+            .OrderBy(a => a.GetHashCode() * (long)streamId.HashCode)
+            .ToList();
+        if (alternateAddresses.Count == 0 || !port.HasValue)
             return audioStreamOption;
 
-        var client = await AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
-        return await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        foreach (var alternateAddress in alternateAddresses) {
+            var client = await AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
+            var streamOption = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+            if (streamOption.HasValue)
+                return streamOption;
+        }
+        return audioStreamOption;
     }
 
     public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
     {
-if (KubernetesInfo.POD_IP.IsNullOrEmpty()
+        if (KubernetesInfo.POD_IP.IsNullOrEmpty()
             || await KubernetesConfig.IsInCluster(cancellationToken).ConfigureAwait(false))
             return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
 
