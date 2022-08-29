@@ -32,7 +32,7 @@
     @apply visible;
 }
 .message-counter-badge {
-    @apply absolute right-0 flex-x min-w-8 justify-center items-center rounded-full text-04 text-base;
+    @apply absolute right-2 flex-x min-w-8 justify-center items-center rounded-full text-04 text-base;
 }
 .navbar-item:hover .message-counter-badge {
     @apply hidden;
