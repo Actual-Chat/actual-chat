@@ -92,7 +92,6 @@ public class KubeServices : IKubeInfo
             var failureCount = 0;
             while (true) {
                 try {
-                    Log.LogInformation("UpdateState started for {Service}", KubeService);
                     await UpdateState(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is not OperationCanceledException) {
@@ -105,6 +104,7 @@ public class KubeServices : IKubeInfo
 
         private async Task UpdateState(CancellationToken cancellationToken)
         {
+            Log.LogInformation("UpdateState: started for {Service}", KubeService);
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
             // TODO(AY,AK): It makes sense to add watch loop here - with resilience and retries on failures
@@ -130,7 +130,7 @@ public class KubeServices : IKubeInfo
             while (!streamReader.EndOfStream) {
                 var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
                 if (changeString == null) {
-                    Log.LogWarning("Got null while querying Kubernetes API result (endpoint slice changes)");
+                    Log.LogWarning("UpdateState: got null while querying Kubernetes API result (endpoint slice changes)");
                     continue;
                 }
                 #pragma warning disable IL2026
@@ -138,7 +138,7 @@ public class KubeServices : IKubeInfo
                     changeString,
                     new JsonSerializerOptions(JsonSerializerDefaults.Web));
                 if (change == null) {
-                    Log.LogWarning("Unable to deserialize Kubernetes API result: {Change}", changeString);
+                    Log.LogWarning("UpdateState: unable to deserialize Kubernetes API result: {Change}", changeString);
                     continue;
                 }
                 switch (change.Type) {
@@ -177,7 +177,7 @@ public class KubeServices : IKubeInfo
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
                 State.Value = serviceEndpoints;
-                Log.LogInformation("Kubernetes service endpoints updated: {Endpoints}", serviceEndpoints);
+                Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
             }
         }
     }
