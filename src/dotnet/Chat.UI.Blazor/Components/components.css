@@ -155,8 +155,9 @@
 .tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;
 }
-.tab-panel .chats-tab.tab .navbar-item-content,
-.tab-panel .contacts-tab.tab .navbar-item-content {
+.chats-tab .navbar-item-content,
+.contacts-tab .navbar-item-content,
+.active-chats .navbar-item-content {
     @apply w-full;
 }
 .chats-tab .btn-round,
