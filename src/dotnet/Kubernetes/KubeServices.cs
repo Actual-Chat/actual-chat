@@ -1,6 +1,7 @@
 using System.Net;
 using ActualChat.Kubernetes.Api;
 using ActualChat.Pooling;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Kubernetes;
 
@@ -32,20 +33,23 @@ public class KubeServices : IKubeInfo
         => KubeInfo.RequireKube(cancellationToken);
 
     public async ValueTask<IMutableStateLease<KubeServiceEndpoints>> GetServiceEndpoints(
-        string @namespace,
-        string serviceName,
+        KubeService kubeService,
         CancellationToken cancellationToken)
     {
         await KubeInfo.RequireKube(cancellationToken).ConfigureAwait(false);
-
-        var kubeService = new KubeService(@namespace, serviceName);
         var lease = await _discoveryWorkerPool.Rent(kubeService, cancellationToken).ConfigureAwait(false);
+        var state = lease.Resource.State;
+        // We want to wait for the first update, otherwise we'll get an empty set of endpoints
+        while (state.Snapshot.UpdateCount == 0)
+            await state.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         return new MutableStateLease<
             KubeServiceEndpoints,
             KubeService,
             IMutableState<KubeServiceEndpoints>,
             EndpointDiscoveryWorker>(lease, w => w.State);
     }
+
+    // Private methods
 
     private async Task<EndpointDiscoveryWorker> CreateEndpointDiscoveryWorker(
         KubeService kubeService,
@@ -76,6 +80,7 @@ public class KubeServices : IKubeInfo
 
             var initialValue = new KubeServiceEndpoints(
                 kubeService,
+                ImmutableArray<KubeEndpoint>.Empty,
                 ImmutableArray<KubeEndpoint>.Empty,
                 ImmutableArray<KubePort>.Empty);
             State = services.StateFactory().NewMutable(initialValue);
@@ -148,18 +153,18 @@ public class KubeServices : IKubeInfo
                     throw StandardError.Constraint<Api.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
                 }
 
-                var endpoints = new KubeServiceEndpoints(
-                    KubeService,
-                    endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray(),
-                    endpointsMap.Values
-                        .SelectMany(p => p.Slice.Ports)
-                        .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
-                        .Distinct()
-                        .ToImmutableArray());
+                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray();
+                var readyEndpoints = endpoints.Where(e => e.IsReady).ToImmutableArray();
+                var ports = endpointsMap.Values
+                    .SelectMany(p => p.Slice.Ports)
+                    .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
+                    .Distinct()
+                    .ToImmutableArray();
+                var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
-                if (State.Value != endpoints) {
-                    State.Value = endpoints;
-                    Log.LogInformation("Kubernetes service endpoints updated: {Endpoints}", endpoints);
+                if (State.Value != serviceEndpoints) {
+                    State.Value = serviceEndpoints;
+                    Log.LogInformation("Kubernetes service endpoints updated: {Endpoints}", serviceEndpoints);
                 }
             }
         }

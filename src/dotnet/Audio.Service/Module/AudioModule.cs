@@ -61,10 +61,10 @@ public class AudioModule : HostModule<Audio.AudioSettings>, IWebModule
         services.AddSingleton<TranscriptSplitter>();
         services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<AudioStreamServer>();
-        services.AddSingleton<AudioStreamServerProxy>();
-        services.AddTransient<IAudioStreamServer>(c => c.GetRequiredService<AudioStreamServerProxy>());
+        services.AddSingleton<AudioStreamProxy>();
+        services.AddTransient<IAudioStreamServer>(c => c.GetRequiredService<AudioStreamProxy>());
         services.AddSingleton<TranscriptStreamServer>();
-        services.AddSingleton<TranscriptStreamServerProxy>();
-        services.AddTransient<ITranscriptStreamServer>(c => c.GetRequiredService<TranscriptStreamServerProxy>());
+        services.AddSingleton<TranscriptStreamProxy>();
+        services.AddTransient<ITranscriptStreamServer>(c => c.GetRequiredService<TranscriptStreamProxy>());
     }
 }
