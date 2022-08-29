@@ -58,12 +58,10 @@ public class AudioHubBackend : Hub
             .WriteAsync(new Ack(AckType.Received, StreamType.Audio, streamId), CancellationToken.None)
             .ConfigureAwait(false);
 
-        _ = BackgroundTask.Run(async () => {
-            await completeTask.ConfigureAwait(false);
-            await _ackStream.Writer
-                .WriteAsync(new Ack(AckType.Completed, StreamType.Audio, streamId), CancellationToken.None)
-                .ConfigureAwait(false);
-        }, CancellationToken.None);
+        await completeTask.ConfigureAwait(false);
+        await _ackStream.Writer
+            .WriteAsync(new Ack(AckType.Completed, StreamType.Audio, streamId), CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     public async Task WriteTranscriptStream(
@@ -76,11 +74,9 @@ public class AudioHubBackend : Hub
             .WriteAsync(new Ack(AckType.Received, StreamType.Transcription, streamId), CancellationToken.None)
             .ConfigureAwait(false);
 
-        _ = BackgroundTask.Run(async () => {
-            await completeTask.ConfigureAwait(false);
-            await _ackStream.Writer
-                .WriteAsync(new Ack(AckType.Completed, StreamType.Transcription, streamId), CancellationToken.None)
-                .ConfigureAwait(false);
-        }, CancellationToken.None);
+        await completeTask.ConfigureAwait(false);
+        await _ackStream.Writer
+            .WriteAsync(new Ack(AckType.Completed, StreamType.Transcription, streamId), CancellationToken.None)
+            .ConfigureAwait(false);
     }
 }
