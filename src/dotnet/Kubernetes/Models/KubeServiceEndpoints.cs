@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Kubernetes;
@@ -27,6 +28,24 @@ public record KubeServiceEndpoints(
             _hashRingCache[portName] = result;
             return result;
         }
+    }
+
+    protected virtual bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append($"Service = {Service}, ");
+        builder.Append("Endpoints = [");
+        foreach (var endpoint in Endpoints.Take(1))
+            builder.Append(endpoint);
+        foreach (var endpoint in Endpoints.Skip(1))
+            builder.Append($", {endpoint}");
+        builder.Append("], ");
+        builder.Append("Ports = [");
+        foreach (var port in Ports.Take(1))
+            builder.Append(port);
+        foreach (var port in Ports.Skip(1))
+            builder.Append($", {port}");
+        builder.Append("]");
+        return true;
     }
 
     // Private methods
