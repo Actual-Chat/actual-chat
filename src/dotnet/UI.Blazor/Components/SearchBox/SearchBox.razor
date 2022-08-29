@@ -23,7 +23,7 @@
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
             if (value == _text)
-                return;;
+                return;
 
             _text = value;
             TextChanged.InvokeAsync(value);
@@ -37,13 +37,10 @@
     }
 
     private async Task OnKeyUp(KeyboardEventArgs e) {
-        if (e.Key == "Enter" && HasNoModifier(e))
+        if (e.Key == "Enter" && e.HasNoModifier())
             await Triggered.InvokeAsync(Text).ConfigureAwait(false);
     }
 
     private Task OnSearchButtonClick()
         => Triggered.InvokeAsync(Text);
-
-    private static bool HasNoModifier(KeyboardEventArgs e)
-        => !e.AltKey && !e.CtrlKey && !e.ShiftKey && !e.MetaKey;
 }
