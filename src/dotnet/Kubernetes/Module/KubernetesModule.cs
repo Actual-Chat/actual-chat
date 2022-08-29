@@ -28,6 +28,7 @@ public class KubernetesModule : HostModule<KubernetesSettings>
                 var kubeInfo = sp.GetRequiredService<KubeInfo>();
                 var log = sp.GetRequiredService<ILogger<KubeServices>>();
                 var caCert = X509Certificate2.CreateFromPemFile(kubeInfo.CACertPath);
+                #pragma error disable MA0039
                 handler.ServerCertificateCustomValidationCallback =
                     handler.ServerCertificateCustomValidationCallback =
                         (_, cert, _, policyErrors) =>
@@ -51,6 +52,7 @@ public class KubernetesModule : HostModule<KubernetesSettings>
                             }
                         };
                 return handler;
+                #pragma error restore MA0039
             })
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());
