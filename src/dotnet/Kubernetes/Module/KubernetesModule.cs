@@ -27,7 +27,8 @@ public class KubernetesModule : HostModule<KubernetesSettings>
                 var handler = new HttpClientHandler();
                 var kubeInfo = sp.GetRequiredService<KubeInfo>();
                 var log = sp.GetRequiredService<ILogger<KubeServices>>();
-                var caCert = X509Certificate2.CreateFromPemFile(kubeInfo.CACertPath);
+                var caCertString = File.ReadAllText(kubeInfo.CACertPath);
+                var caCert = X509Certificate2.CreateFromPem(caCertString);
                 #pragma warning disable MA0039
                 handler.ServerCertificateCustomValidationCallback =
                     handler.ServerCertificateCustomValidationCallback =
