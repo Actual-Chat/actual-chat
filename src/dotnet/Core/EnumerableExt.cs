@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat;
 
 public static class EnumerableExt
@@ -10,4 +8,8 @@ public static class EnumerableExt
     public static IEnumerable<T> SkipNullItems<T>(this IEnumerable<T?> source)
         where T : class
         => source.Where(x => x != null)!;
+
+    public static IEnumerable<T> NoNullItems<T>(this IEnumerable<T?> source)
+        where T : class
+        => source!;
 }

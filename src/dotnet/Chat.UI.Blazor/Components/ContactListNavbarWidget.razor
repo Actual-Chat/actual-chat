@@ -142,8 +142,6 @@
                 orderby rank descending, c.Contact.Name
                 select c
                 ).ToList();
-        else
-            contacts = contacts.OrderBy(c => c.Contact.Name).ToList();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts

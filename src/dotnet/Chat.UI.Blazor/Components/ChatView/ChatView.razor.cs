@@ -11,7 +11,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
-    private long _lastNavigateToEntryId;
+    private long? _lastNavigateToEntryId;
     private long _initialLastReadEntryId;
     private HashSet<long> _fullyVisibleEntryIds = new ();
 
@@ -46,8 +46,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override async Task OnParametersSetAsync()
     {
         await WhenInitialized.ConfigureAwait(false);
-
-        TryNavigateToEntryIfExists();
+        TryNavigateToEntry();
     }
 
     public async Task NavigateToUnreadEntry()
@@ -81,6 +80,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         finally {
             await TimeZoneConverter.WhenInitialized;
             _whenInitializedSource.SetResult(Unit.Default);
+            StateHasChanged();
         }
     }
 
@@ -223,21 +223,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public void NavigateToEntry(long navigateToEntryId)
     {
         // reset to ensure navigation will happen
-        _lastNavigateToEntryId = 0;
+        _lastNavigateToEntryId = null;
         NavigateToEntryId.Value = navigateToEntryId;
-        NavigateToEntryId.Invalidate();
     }
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntry navigation, CancellationToken cancellationToken)
-    {
-        NavigateToEntry(navigation.ChatEntryId);
-        return Task.CompletedTask;
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => TryNavigateToEntryIfExists();
-
-    private void TryNavigateToEntryIfExists()
+    private void TryNavigateToEntry()
     {
         // ignore location changed events if already disposed
         if (_disposeToken.IsCancellationRequested)
@@ -247,5 +237,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var entryIdString = uri.Fragment.TrimStart('#');
         if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
             NavigateToEntry(entryId);
+    }
+
+    // Event handlers
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => TryNavigateToEntry();
+
+    private Task OnNavigateToChatEntry(NavigateToChatEntry navigation, CancellationToken cancellationToken)
+    {
+        NavigateToEntry(navigation.ChatEntryId);
+        return Task.CompletedTask;
     }
 }

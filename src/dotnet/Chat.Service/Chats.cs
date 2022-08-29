@@ -46,7 +46,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Select(id => Get(session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return chats.Where(c => c is { ChatType: ChatType.Group }).ToImmutableArray()!;
+        return chats
+            .Where(c => c is { ChatType: ChatType.Group })
+            .SkipNullItems()
+            .OrderBy(c => c.Title)
+            .ToImmutableArray();
     }
 
     // [ComputeMethod]
@@ -206,7 +210,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Select(id => ChatAuthors.GetAuthor(session, chatId, id, true, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return authors.OfType<Author>().ToImmutableArray();
+        return authors
+            .SkipNullItems()
+            .OrderBy(a => a.Name)
+            .ToImmutableArray();
     }
 
     // [CommandHandler]

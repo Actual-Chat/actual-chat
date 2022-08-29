@@ -68,7 +68,7 @@
         if (activeChat == null)
             activeChatId = Symbol.Empty;
         else if (activeChat is { ChatType: ChatType.Group } && !chats.Any(c => c.Id == activeChat.Id))
-            chats = chats.Add(activeChat);
+            chats = chats.Insert(0, activeChat);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
         if (!searchPhrase.IsEmpty)
@@ -79,8 +79,6 @@
                 orderby rank descending, c.Title
                 select c
             ).ToImmutableArray();
-        else
-            chats = chats.OrderBy(c => c.Title).ToImmutableArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats

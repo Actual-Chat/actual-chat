@@ -16,8 +16,8 @@ public class ChatUI
     private readonly ISyncedState<ImmutableDictionary<string, Moment>> _pinnedChatIds;
     private readonly IStoredState<Symbol> _recordingChatId;
     private readonly IStoredState<ImmutableList<Symbol>> _listeningChatIds;
-    private readonly ISyncedState<ImmutableList<(Symbol, Moment)>> _activeChatIds;
-    private readonly AsyncLock _asyncLock = new AsyncLock(ReentryMode.CheckedPass);
+    private readonly ISyncedState<ImmutableList<(Symbol ChatId, Moment Recency)>> _activeChatIds;
+    private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
@@ -35,7 +35,7 @@ public class ChatUI
     public IState<ImmutableDictionary<string, Moment>> PinnedChatIds => _pinnedChatIds;
     public IState<Symbol> RecordingChatId => _recordingChatId;
     public IState<ImmutableList<Symbol>> ListeningChatIds => _listeningChatIds;
-    public IState<ImmutableList<(Symbol, Moment)>> ActiveChatIds => _activeChatIds;
+    public IState<ImmutableList<(Symbol ChatId, Moment Recency)>> ActiveChatIds => _activeChatIds;
     public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
     public IMutableState<long> HighlightedChatEntryId { get; }
 
@@ -153,13 +153,13 @@ public class ChatUI
 
             if (!chatIdToEliminate.IsEmpty) {
                 listeningChatIds = listeningChatIds.Replace(chatIdToEliminate, chatId);
-                var itemToReplace = activeChatIds.Find(c => c.Item1 == chatIdToEliminate);
+                var itemToReplace = activeChatIds.Find(c => c.ChatId == chatIdToEliminate);
                 activeChatIds = activeChatIds.Replace(itemToReplace!, (chatId, Now));
 
             }
             else {
                 listeningChatIds = listeningChatIds.Add(chatId);
-                if (activeChatIds.All(c => c.Item1 != chatId))
+                if (activeChatIds.All(c => c.ChatId != chatId))
                     activeChatIds = activeChatIds.Add((chatId, Now));
             }
         }
@@ -179,13 +179,13 @@ public class ChatUI
                 .ConfigureAwait(false);
             if (!listenChatIdToEliminate.IsEmpty) {
                 await SetListeningState(listenChatIdToEliminate, false).ConfigureAwait(false);
-                var itemToReplace = activeChatIds.Find(c => c.Item1 == listenChatIdToEliminate);
+                var itemToReplace = activeChatIds.Find(c => c.ChatId == listenChatIdToEliminate);
                 activeChatIds = activeChatIds.Replace(itemToReplace!, (chatId, Now));
             }
         }
         _recordingChatId.Value = chatId;
 
-        if (!chatId.IsEmpty && activeChatIds.All(c => c.Item1 != chatId))
+        if (!chatId.IsEmpty && activeChatIds.All(c => c.ChatId != chatId))
             activeChatIds = activeChatIds.Add((chatId, Now));
         if (_activeChatIds.Value != activeChatIds)
             _activeChatIds.Value = activeChatIds;
@@ -200,7 +200,7 @@ public class ChatUI
             await SetRecordingState(Symbol.Empty).ConfigureAwait(false);
         await SetListeningState(chatId, false).ConfigureAwait(false);
 
-        _activeChatIds.Value = _activeChatIds.Value.RemoveAll(c => c.Item1 == chatId);
+        _activeChatIds.Value = _activeChatIds.Value.RemoveAll(c => c.ChatId == chatId);
     }
 
     public void ShowChatAuthorModal(string authorId)
@@ -261,7 +261,7 @@ public class ChatUI
             return listeningChatIds;
 
         await _activeChatIds.WhenFirstTimeRead.ConfigureAwait(false);
-        var activeChatIds = _activeChatIds.Value.Select(c => c.Item1).ToHashSet();
+        var activeChatIds = _activeChatIds.Value.Select(c => c.ChatId).ToHashSet();
         listeningChatIds = listeningChatIds.RemoveAll(c => !activeChatIds.Contains(c));
 
         var rules = await listeningChatIds
@@ -286,7 +286,7 @@ public class ChatUI
 
         await _activeChatIds.WhenFirstTimeRead.ConfigureAwait(false);
         var activeChatIds = _activeChatIds.Value;
-        if (activeChatIds.All(c => c.Item1 != recordingChatId))
+        if (activeChatIds.All(c => c.ChatId != recordingChatId))
             return Symbol.Empty;
 
         var rules = await Chats.GetRules(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
@@ -296,12 +296,12 @@ public class ChatUI
     }
 
     private async ValueTask<ImmutableList<(Symbol, Moment)>> FixActiveChatIds(
-        ImmutableList<(Symbol, Moment)> activeChatIds,
+        ImmutableList<(Symbol ChatId, Moment Recency)> activeChatIds,
         CancellationToken cancellationToken)
     {
-        activeChatIds = activeChatIds.Where(c => !c.Item1.IsEmpty).ToImmutableList();
+        activeChatIds = activeChatIds.Where(c => !c.ChatId.IsEmpty).ToImmutableList();
         var rules = await activeChatIds
-            .Select(kv => Chats.GetRules(Session, kv.Item1, default))
+            .Select(kv => Chats.GetRules(Session, kv.ChatId, default))
             .Collect()
             .ConfigureAwait(false);
 
@@ -309,7 +309,7 @@ public class ChatUI
         foreach (var r in rules) {
             if (r.CanRead())
                 continue;
-            result = result.RemoveAll(c => c.Item1 == r.ChatId);
+            result = result.RemoveAll(c => c.ChatId == r.ChatId);
         }
         return result;
     }
@@ -381,12 +381,12 @@ public class ChatUI
     private async Task InitializeRecentChatIds()
     {
         using var _ = await _asyncLock.Lock().ConfigureAwait(false);
-        var activeChatIds = ImmutableList<(Symbol, Moment)>.Empty;
+        var activeChatIds = ImmutableList<(Symbol ChatId, Moment Recency)>.Empty;
         var now = Now;
         foreach (var chatId in _listeningChatIds.Value)
             activeChatIds = activeChatIds.Add((chatId, now));
         var recordingChatId = _recordingChatId.Value;
-        if (!recordingChatId.IsEmpty && activeChatIds.All(c => c.Item1 != recordingChatId))
+        if (!recordingChatId.IsEmpty && activeChatIds.All(c => c.ChatId != recordingChatId))
             activeChatIds = activeChatIds.Add((recordingChatId, now));
         _activeChatIds.Value = activeChatIds;
     }
@@ -402,8 +402,8 @@ public class ChatUI
             retainIds = retainIds.Add(recordingChatId);
         while (activeChatIds.Count > ActiveChatsLimit) {
             var itemToEliminate = activeChatIds
-                .Where(c => !retainIds.Contains(c.Item1))
-                .MinBy(c => c.Item2);
+                .Where(c => !retainIds.Contains(c.ChatId))
+                .MinBy(c => c.Recency);
             activeChatIds = activeChatIds.Remove(itemToEliminate!);
         }
         if (_activeChatIds.Value != activeChatIds)

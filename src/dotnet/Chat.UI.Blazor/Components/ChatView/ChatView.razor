@@ -1,10 +1,15 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Comparison
+@{
+    if (!WhenInitialized.IsCompleted)
+        return;
+}
 
 <OnGlobalEvent TEvent="@NavigateToChatEntry" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
-    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="1000" SkeletonCount="50"
+    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="1000"
+    SkeletonCount="20" DelaySkeletonRendering="true"
     DataSource="this"
     KeyComparer="LongAsStringKeyComparer.Default"
     VisibleKeysState="VisibleKeys">

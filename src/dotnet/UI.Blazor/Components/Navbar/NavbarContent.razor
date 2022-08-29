@@ -6,7 +6,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-@foreach (var widget in Widgets.OrderBy(c => c.Order)) {
+@foreach (var widget in OrderedWidgets) {
     @widget.Content
 }
 @if (m.Account.IsAdmin) {

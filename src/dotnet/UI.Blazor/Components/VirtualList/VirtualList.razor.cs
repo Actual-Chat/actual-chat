@@ -37,6 +37,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public double LoadZoneSize { get; set; } = 2160;
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxExpandBy { get; set; } = 256;
+    [Parameter] public bool DelaySkeletonRendering { get; set; } = true;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
 

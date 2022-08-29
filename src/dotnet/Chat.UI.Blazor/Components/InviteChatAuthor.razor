@@ -97,7 +97,10 @@
             .Collect()
             .ConfigureAwait(false);
 
-        AllChatContacts = resolvedContacts.SkipNullItems().OrderBy(x => x.Author.Name).ToArray();
+        AllChatContacts = resolvedContacts
+            .SkipNullItems()
+            .OrderBy(x => x.Author.Name)
+            .ToArray();
         FilteredChatContacts = AllChatContacts;
     }
 

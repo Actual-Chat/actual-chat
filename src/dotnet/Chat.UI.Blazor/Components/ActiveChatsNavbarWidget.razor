@@ -28,10 +28,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var activeChatIds = await ChatUI.ActiveChatIds.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChatIds
-            .Select(c => Chats.Get(Session, c.Item1, cancellationToken))
+            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false)
-            ).OfType<Chat>()
+            ).SkipNullItems()
             .Reverse()
             .ToList();
 
