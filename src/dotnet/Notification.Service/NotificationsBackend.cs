@@ -10,19 +10,16 @@ namespace ActualChat.Notification;
 public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private IMarkupParser MarkupParser { get; }
     private UriMapper UriMapper { get; }
     private FirebaseMessaging FirebaseMessaging { get; }
 
     public NotificationsBackend(
         IServiceProvider services,
         IChatAuthorsBackend chatAuthorsBackend,
-        IMarkupParser markupParser,
         UriMapper uriMapper,
         FirebaseMessaging firebaseMessaging) : base(services)
     {
         ChatAuthorsBackend = chatAuthorsBackend;
-        MarkupParser = markupParser;
         UriMapper = uriMapper;
         FirebaseMessaging = firebaseMessaging;
     }
@@ -75,15 +72,12 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             return;
 
         var (chatId, entryId, userId, title, iconUrl, content) = notifyCommand;
-        var markup = MarkupParser.Parse(content);
-        markup = new MarkupTrimmer(100).Rewrite(markup);
-        var body = MarkupFormatter.ReadableUnstyled.Format(markup);
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
-                Body = body,
+                Body = content,
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
@@ -114,7 +108,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 Notification = new WebpushNotification {
                     Renotify = false,
                     Title = title,
-                    Body = body,
+                    Body = content,
                     Tag = chatId,
                     RequireInteraction = false,
                     Icon = iconUrl,
