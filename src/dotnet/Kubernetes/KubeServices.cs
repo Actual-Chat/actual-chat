@@ -176,10 +176,8 @@ public class KubeServices : IKubeInfo
                     .ToImmutableArray();
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
-                if (State.Value != serviceEndpoints) {
-                    State.Value = serviceEndpoints;
-                    Log.LogInformation("Kubernetes service endpoints updated: {Endpoints}", serviceEndpoints);
-                }
+                State.Value = serviceEndpoints;
+                Log.LogInformation("Kubernetes service endpoints updated: {Endpoints}", serviceEndpoints);
             }
         }
     }
