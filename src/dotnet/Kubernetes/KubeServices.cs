@@ -96,7 +96,7 @@ public class KubeServices : IKubeInfo
             var failureCount = 0;
             while (true) {
                 try {
-                    await UpdateState(cancellationToken).ConfigureAwait(false);
+                    await UpdateState(cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is not OperationCanceledException) {
                     Log.LogError(e, "UpdateState failed for service {Service}", KubeService);
@@ -126,7 +126,7 @@ public class KubeServices : IKubeInfo
                     "Kubernetes ClusterRole to read EndpointSlices is required for the service account");
             response.EnsureSuccessStatusCode();
 
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
             var streamReader = new StreamReader(stream);
             while (!streamReader.EndOfStream) {
                 var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -177,6 +177,7 @@ public class KubeServices : IKubeInfo
                     .ToImmutableArray();
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
+                cancellationToken.ThrowIfCancellationRequested();
                 State.Value = serviceEndpoints;
                 Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
             }
