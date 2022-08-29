@@ -21,30 +21,27 @@ public static class ByteStreamExt
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
-        HttpResponseMessage response;
+
         // WASM doesn't support PipeReader API directly from the HttpClient
-        using (var httpClient = httpClientFactory.CreateClient())
-        using (var request = new HttpRequestMessage(HttpMethod.Get, blobUri)) {
-            if (OSInfo.IsWebAssembly) {
-                request.SetBrowserResponseStreamingEnabled(true);
-                request.SetBrowserRequestMode(BrowserRequestMode.Cors);
-                request.SetBrowserRequestCache(BrowserRequestCache.ForceCache);
-            }
-            response = await httpClient
-               .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-               .ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+        // NOTE(AY): Don't dispose anything but HttpClient! They hang on cancellation & block everything.
+        using var httpClient = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
+        if (OSInfo.IsWebAssembly) {
+            request.SetBrowserResponseStreamingEnabled(true);
+            request.SetBrowserRequestMode(BrowserRequestMode.Cors);
+            request.SetBrowserRequestCache(BrowserRequestCache.ForceCache);
         }
-        try {
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
-            var byteStream = stream.ReadByteStream(false, 1024, cancellationToken);
-            await foreach (var blobPart in byteStream.ConfigureAwait(false))
-                yield return blobPart;
-        }
-        finally {
-            response.Dispose();
-        }
+        var response = await httpClient
+           .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+           .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        // NOTE(AY): We intentionally don't dispose stream here, coz it may hang on cancellation
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var byteStream = stream.ReadByteStream(false, 1024, cancellationToken);
+        await foreach (var blobPart in byteStream.ConfigureAwait(false))
+            yield return blobPart;
+
         log.LogInformation("Downloaded: {Uri}", blobUri.ToString());
     }
 

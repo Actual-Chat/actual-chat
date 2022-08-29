@@ -110,23 +110,19 @@ public class KubeServices : IKubeInfo
             Log.LogInformation("UpdateState: started for {Service}", KubeService);
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
-            // TODO(AY,AK): It makes sense to add watch loop here - with resilience and retries on failures
-
+            // NOTE(AY): Don't dispose anything but HttpClient! They hang on cancellation & block everything.
             using var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
-            using var request = new HttpRequestMessage(HttpMethod.Get,
+            var request = new HttpRequestMessage(HttpMethod.Get,
                 $"apis/discovery.k8s.io/v1/namespaces/{KubeService.Namespace}/endpointslices" +
                     $"?watch=true&labelSelector=kubernetes.io/service-name%3D{KubeService.Name}");
-            using var response = await httpClient
+            var response = await httpClient
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
-
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw StandardError.Constraint(
                     "Kubernetes ClusterRole to read EndpointSlices is required for the service account");
-
             response.EnsureSuccessStatusCode();
 
-            // NOTE(AY): Don't dispose the stream & streamReader! They hang on cancellation & block everything.
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var streamReader = new StreamReader(stream);
             while (!streamReader.EndOfStream) {
