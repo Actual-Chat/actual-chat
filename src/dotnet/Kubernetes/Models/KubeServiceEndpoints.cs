@@ -8,7 +8,7 @@ public record KubeServiceEndpoints(
     ImmutableArray<KubeEndpoint> ReadyEndpoints,
     ImmutableArray<KubePort> Ports)
 {
-    private Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
 
     public KubePort? GetPort(string portName = "http")
     {
