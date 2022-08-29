@@ -3,7 +3,7 @@
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <div>
-    <img style="max-width: 800px; max-height: 600px" src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")" />
+    <img style="max-width: 95vw; max-height: 95vh" src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")" />
 </div>
 <div>
     <a class="font-semibold cursor-pointer text-02 hover:underline hover:text-04"
