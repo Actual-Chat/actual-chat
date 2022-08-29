@@ -66,7 +66,7 @@
                         }
                     </div>
                     @if (m.Attachments.Length > 0) {
-                        <div class="message-attachments">
+                        <div class="message-attachments mx-1">
                             @foreach (var attachment in m.Attachments) {
                                 var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                                 @if (isImage) {
