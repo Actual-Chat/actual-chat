@@ -9,8 +9,8 @@
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
             <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true" class="overflow-y-hidden">
-                <Tab Title="@firstTabTitle" Class="flex-y relative overflow-y-hidden h-full chats-tab">
-                    <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+                <Tab Title="@firstTabTitle" Class="flex-y relative overflow-y-auto custom-scrollbar h-full chats-tab">
+                    <div class="h-full flex-y my-2">
                         @if (m.PinnedChats.Count > 0) {
                             <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
 
