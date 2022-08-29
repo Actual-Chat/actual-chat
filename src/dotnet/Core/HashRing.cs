@@ -7,7 +7,7 @@ public readonly struct HashRing<T>
 
     public static HashRing<T> Empty { get; } = new(Array.Empty<(T, int)>());
 
-    private (T Value, int Hash)[] Items { get; }
+    public (T Value, int Hash)[] Items { get; }
     public int Count => Items.Length;
     public bool IsEmpty => Count == 0;
     public T this[int index]
