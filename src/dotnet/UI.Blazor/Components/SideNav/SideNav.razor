@@ -38,7 +38,6 @@
             var identifier = $"{BlazorUICoreModule.ImportName}.SideNav.create";
             var options = new SideNavOptions {
                 Direction = Direction,
-                FirstRender = true,
             };
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,

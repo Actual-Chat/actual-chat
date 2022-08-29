@@ -36,8 +36,7 @@ export class SideNav implements Disposable {
         if (position === 'static') {
             return;
         } else if (element.classList.contains('side-nav-right')) {
-            if (options.firstRender)
-                element.classList.replace('side-nav-open', 'side-nav-closed');
+            element.classList.replace('side-nav-open', 'side-nav-closed');
         }
 
         fromEvent(this.element, 'transitionend')
