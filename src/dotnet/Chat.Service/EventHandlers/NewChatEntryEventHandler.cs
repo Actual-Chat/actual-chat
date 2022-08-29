@@ -9,12 +9,14 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
     private IChatsBackend ChatsBackend { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private ContentUrlMapper ContentUrlMapper { get; }
+    private IMarkupParser MarkupParser { get; }
 
-    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend, ContentUrlMapper contentUrlMapper)
+    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend, ContentUrlMapper contentUrlMapper, IMarkupParser markupParser)
     {
         ChatsBackend = chatsBackend;
         ChatAuthorsBackend = chatAuthorsBackend;
         ContentUrlMapper = contentUrlMapper;
+        MarkupParser = markupParser;
     }
 
     public async Task Handle(NewChatEntryEvent @event, ICommander commander, CancellationToken cancellationToken)
@@ -57,10 +59,8 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 
     private string GetContent(string chatEventContent)
     {
-        if (chatEventContent.Length <= 1024)
-            return chatEventContent;
-
-        var lastSpaceIndex = chatEventContent.IndexOf(' ', 1000);
-        return chatEventContent.Substring(0, lastSpaceIndex < 1024 ? lastSpaceIndex : 1000);
+        var markup = MarkupParser.Parse(chatEventContent);
+        markup = new MarkupTrimmer(100).Rewrite(markup);
+        return MarkupFormatter.ReadableUnstyled.Format(markup);
     }
 }
