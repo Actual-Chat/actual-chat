@@ -18,7 +18,7 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
     private IServiceProvider Services { get; }
 
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
-    private volatile CachedKubeInfo? _cachedInfo;
+    private volatile CachedKube? _cachedInfo;
     private volatile KubeToken? _token;
 
     public KubeInfo(IServiceProvider services)
@@ -45,13 +45,13 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
         var port = KubeEnvironmentVars.KubernetesServicePort;
         var podIP = KubeEnvironmentVars.PodIP;
         if (podIP.IsNullOrEmpty() || host.IsNullOrEmpty() || port == 0) {
-            _cachedInfo = new CachedKubeInfo(null);
+            _cachedInfo = new CachedKube(null);
             return null;
         }
 
         _token = new KubeToken(Services, TokenPath);
         var info = new Kube(host, port, podIP, _token);
-        _cachedInfo = new CachedKubeInfo(info);
+        _cachedInfo = new CachedKube(info);
         return info;
     }
 
@@ -69,5 +69,5 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
 
     // Nested types
 
-    private record CachedKubeInfo(Kube? Value);
+    private record CachedKube(Kube? Value);
 }
