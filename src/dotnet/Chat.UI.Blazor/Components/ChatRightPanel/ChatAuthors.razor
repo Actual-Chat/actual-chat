@@ -5,8 +5,8 @@
     var m = State.LatestNonErrorValue;
 }
 
-<div class="flex flex-col w-full h-full px-5 py-3 overflow-hidden people-tab">
-    <div class="flex-auto flex-y gap-y-1 overflow-y-auto custom-scrollbar">
+<div class="flex flex-col w-full h-full px-5 py-3 people-tab">
+    <div class="flex-auto flex-y gap-y-1">
         <div class="text-02">Active — @m.ActiveAuthorIds.Length</div>
         @foreach (var authorId in m.ActiveAuthorIds) {
             <ChatAuthorBadge
