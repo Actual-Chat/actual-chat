@@ -124,60 +124,65 @@ public class KubeServices : IKubeInfo
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
-            using var streamReader = new StreamReader(stream);
+            try {
+                using var streamReader = new StreamReader(stream);
 
-            while (!streamReader.EndOfStream) {
-                var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
-                if (changeString == null) {
-                    Log.LogWarning("UpdateState: got null while querying Kubernetes API result (endpoint slice changes)");
-                    continue;
-                }
-                #pragma warning disable IL2026
-                var change = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(
-                    changeString,
-                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                if (change == null) {
-                    Log.LogWarning("UpdateState: unable to deserialize Kubernetes API result: {Change}", changeString);
-                    continue;
-                }
-                switch (change.Type) {
-                case ChangeType.Deleted:
-                    endpointsMap.Remove(change.Object.Metadata.Name);
-                    break;
-                case ChangeType.Added:
-                    endpointsMap[change.Object.Metadata.Name] = (
-                        change.Object,
-                        change.Object
-                            .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
-                            .ToImmutableArray()
-                        );
-                    break;
-                case ChangeType.Modified:
-                    endpointsMap[change.Object.Metadata.Name] = (
-                        change.Object,
-                        change.Object
-                            .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
-                            .ToImmutableArray()
-                        );
-                    break;
-                default:
-                    throw StandardError.Constraint<Api.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
-                }
+                while (!streamReader.EndOfStream) {
+                    var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                    if (changeString == null) {
+                        Log.LogWarning("UpdateState: got null while querying Kubernetes API result (endpoint slice changes)");
+                        continue;
+                    }
+                    #pragma warning disable IL2026
+                    var change = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(
+                        changeString,
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    if (change == null) {
+                        Log.LogWarning("UpdateState: unable to deserialize Kubernetes API result: {Change}", changeString);
+                        continue;
+                    }
+                    switch (change.Type) {
+                    case ChangeType.Deleted:
+                        endpointsMap.Remove(change.Object.Metadata.Name);
+                        break;
+                    case ChangeType.Added:
+                        endpointsMap[change.Object.Metadata.Name] = (
+                            change.Object,
+                            change.Object
+                                .Endpoints
+                                .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
+                                .ToImmutableArray()
+                            );
+                        break;
+                    case ChangeType.Modified:
+                        endpointsMap[change.Object.Metadata.Name] = (
+                            change.Object,
+                            change.Object
+                                .Endpoints
+                                .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
+                                .ToImmutableArray()
+                            );
+                        break;
+                    default:
+                        throw StandardError.Constraint<Api.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
+                    }
 
-                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray();
-                var readyEndpoints = endpoints.Where(e => e.IsReady).ToImmutableArray();
-                var ports = endpointsMap.Values
-                    .SelectMany(p => p.Slice.Ports)
-                    .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
-                    .Distinct()
-                    .ToImmutableArray();
-                var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
+                    var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray();
+                    var readyEndpoints = endpoints.Where(e => e.IsReady).ToImmutableArray();
+                    var ports = endpointsMap.Values
+                        .SelectMany(p => p.Slice.Ports)
+                        .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
+                        .Distinct()
+                        .ToImmutableArray();
+                    var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
-                State.Value = serviceEndpoints;
-                Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
+                    State.Value = serviceEndpoints;
+                    Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
+                }
+            }
+            finally {
+                using var disposeCts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+                await stream.DisposeAsync().AsTask().WaitAsync(disposeCts.Token).ConfigureAwait(false);
             }
         }
     }
