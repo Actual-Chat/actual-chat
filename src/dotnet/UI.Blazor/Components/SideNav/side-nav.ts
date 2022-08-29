@@ -8,7 +8,6 @@ enum SideNavDirection {
 
 interface SideNavOptions {
     direction: SideNavDirection;
-    firstRender: boolean;
 }
 
 export class SideNav implements Disposable {
@@ -34,6 +33,7 @@ export class SideNav implements Disposable {
     ) {
         const position = window.getComputedStyle(element, null).position;
         if (position === 'static') {
+            // desktop view
             return;
         } else if (element.classList.contains('side-nav-right')) {
             element.classList.replace('side-nav-open', 'side-nav-closed');
