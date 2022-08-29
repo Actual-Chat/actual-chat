@@ -22,9 +22,9 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool Autofocus { get; set; }
     [Parameter] public EventCallback Rendered { get; set; }
-    [Parameter] public EventCallback<string> Posted { get; set; }
-    [Parameter] public EventCallback Canceled { get; set; }
-    [Parameter] public EventCallback PreviousOpened { get; set; }
+    [Parameter] public EventCallback<string> Post { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+    [Parameter] public EventCallback OpenPrevious { get; set; }
 
     protected override void OnParametersSet() {
         if (_lastMentionListManager != null)
@@ -84,15 +84,15 @@
 
     [JSInvokable]
     public Task OnPost(string? text = null)
-        => Posted.InvokeAsync(text);
+        => Post.InvokeAsync(text);
 
     [JSInvokable]
     public Task OnCancel()
-        => Canceled.InvokeAsync();
+        => Cancel.InvokeAsync();
 
     [JSInvokable]
     public Task OnOpenPrevious()
-        => PreviousOpened.InvokeAsync();
+        => OpenPrevious.InvokeAsync();
 
     [JSInvokable]
     public async Task OnMentionCommand(string cmd, string args) {

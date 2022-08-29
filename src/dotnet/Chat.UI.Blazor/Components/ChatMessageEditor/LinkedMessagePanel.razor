@@ -27,6 +27,7 @@
         if (entry == null) {
             // The entry was removed
             ChatUI.LinkedChatEntry.Value = null;
+            Services.UICommander().CancelUpdateDelays();
             return null;
         }
 

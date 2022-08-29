@@ -4,30 +4,24 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
 @using BlazorContextMenu
-
 @{
-    var model = State.LatestNonErrorValue;
-}
+    var m = State.LatestNonErrorValue;
+    if (m == null)
+        return;
 
-@if (model == null) {
-    return;
-}
-
-@{
-    var message = model.Message;
+    var message = m.Message;
     var entry = message.Entry;
     var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
 
     var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
-    var ownMessageClass = model.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
-    var highlightClass = model.IsHighlighted ? "chat-message-highlighted" : "";
-    var repliedClass = model.IsReplied ? "replied-message" : "";
+    var ownMessageClass = m.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
+    var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
+    var repliedClass = m.IsReplied ? "replied-message" : "";
     var isReply = entry.RepliedChatEntryId != null;
-    var selfQuoted = model.RepliedChatMessage?.Entry.AuthorId == model.Message.Entry.AuthorId;
-    var mentionClass = model.IsMentioned && !selfQuoted ? "mention" : "";
-
+    var selfQuoted = m.RepliedChatMessage?.Entry.AuthorId == m.Message.Entry.AuthorId;
+    var mentionClass = m.IsMentioned && !selfQuoted ? "mention" : "";
 }
 
 @if (message.DateLine.HasValue) {
@@ -59,21 +53,21 @@
                     }
                     <div class="content message-content rounded-sm">
                         @if (isReply) {
-                            <QuotedMessage Message="@model.RepliedChatMessage"/>
+                            <QuotedMessage Message="@m.RepliedChatMessage"/>
                         }
                         @if (entry.IsStreaming) {
                             <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryType="@Message.ShowEntryType" />
                         } else {
                             <p class="chat-message-markup mx-1">
                                 <CascadingValue Value="@entry" IsFixed="true">
-                                    <MarkupView Markup="@model.Markup"/>
+                                    <MarkupView Markup="@m.Markup"/>
                                 </CascadingValue>
                             </p>
                         }
                     </div>
-                    @if (model.Attachments.Length > 0) {
+                    @if (m.Attachments.Length > 0) {
                         <div class="message-attachments">
-                            @foreach (var attachment in model.Attachments) {
+                            @foreach (var attachment in m.Attachments) {
                                 var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                                 @if (isImage) {
                                     <ImageAttachment Attachment="@attachment"/>
@@ -92,7 +86,7 @@
                 @if (entry.AudioEntryId != null) {
                     <MessageMenuPlay Entry="@entry"/>
                 }
-                @if (model.CanReply) {
+                @if (m.CanReply) {
                     <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
                         <i class="icon-reply text-xl text-icon-01"></i>
                     </ButtonRound>
@@ -108,31 +102,25 @@
 </ContextMenuTrigger>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
-    [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
 
-    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
-
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    protected override async Task OnInitializedAsync() {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
-    }
+    protected override async Task OnInitializedAsync()
+        => await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
@@ -199,6 +187,7 @@
 
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        Services.UICommander().CancelUpdateDelays();
         await GlobalEvents.Publish(new FocusChatMessageEditor());
     }
 

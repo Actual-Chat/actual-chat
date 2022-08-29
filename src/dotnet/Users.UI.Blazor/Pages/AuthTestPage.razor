@@ -127,7 +127,7 @@
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander Commander { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnInitializedAsync()
@@ -173,7 +173,7 @@
     private async Task OnStatusSelected(AccountStatus newStatus) {
         var account = await Accounts.Get(Session, default).Require();
         var updatedAccount = account with { Status = newStatus };
-        await Commander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
+        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }
 
     public sealed record SessionModel
