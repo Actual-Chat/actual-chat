@@ -2,7 +2,7 @@
 @using ActualChat.Hosting
 @using BlazorContextMenu
 
-<RenderIntoStack Name="@ContextMenuContainer.RenderStackName">
+<RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
     <ContextMenu Id="@MenuId" CssClass="context-menu dropdown-menu">
         <ChildContent>
             <Item OnClick="UploadFilesRequested" CssClass="context-menu-item">

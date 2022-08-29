@@ -32,12 +32,12 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="-1000_000">
+<RenderIntoStack Name="SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
     <CascadingValue Value="chat">
         <HistoricalPlaybackSubHeader/>
     </CascadingValue>
 </RenderIntoStack>
-<RenderIntoStack Name="SubHeader" Order="1000_000">
+<RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat" @key="chat.Id">
         <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
     </CascadingValue>
@@ -49,7 +49,7 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000">
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="RecordingElsewhereSubHeader">
     <CascadingValue Value="chat" @key="chat.Id">
         <RecordingElsewhereSubHeader/>
     </CascadingValue>
