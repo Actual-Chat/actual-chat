@@ -89,6 +89,23 @@ public class KubeServices : IKubeInfo
 
         protected override async Task RunInternal(CancellationToken cancellationToken)
         {
+            var retries = new RetryDelaySeq(1, 10);
+            var failureCount = 0;
+            while (true) {
+                try {
+                    Log.LogInformation("UpdateState started for {Service}", KubeService);
+                    await UpdateState(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e, "UpdateState failed for service {Service}", KubeService);
+                    failureCount++;
+                    await Task.Delay(retries[failureCount], cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private async Task UpdateState(CancellationToken cancellationToken)
+        {
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
             // TODO(AY,AK): It makes sense to add watch loop here - with resilience and retries on failures
