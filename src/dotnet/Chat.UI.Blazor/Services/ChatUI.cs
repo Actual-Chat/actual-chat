@@ -50,8 +50,8 @@ public class ChatUI
         Clocks = services.Clocks();
         UICommander = services.UICommander();
 
-        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(ChatUI));
-        var accountSettings = services.GetRequiredService<AccountSettings>().WithPrefix(nameof(ChatUI));
+        var localSettings = services.LocalSettings();
+        var accountSettings = services.AccountSettings().WithPrefix(nameof(ChatUI));
         ActiveChatId = StateFactory.NewKvasStored<Symbol>(new(localSettings, nameof(ActiveChatId)));
         _pinnedChatIds = StateFactory.NewKvasSynced<ImmutableDictionary<string, Moment>>(
             new(accountSettings, nameof(PinnedChatIds)) {
