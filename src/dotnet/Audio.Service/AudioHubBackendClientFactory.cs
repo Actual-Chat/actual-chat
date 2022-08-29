@@ -27,7 +27,7 @@ public class AudioHubBackendClientFactory
         CancellationToken cancellationToken)
     {
         var lease = await _clientsPool.Rent(new ClientKey(address, port), cancellationToken).ConfigureAwait(false);
-        return new AudioStreamServerReplica(lease);
+        return new AudioStreamClientLease(lease);
     }
 
     public async Task<ITranscriptStreamClient> GetTranscriptStreamClient(
@@ -36,7 +36,7 @@ public class AudioHubBackendClientFactory
         CancellationToken cancellationToken)
     {
         var lease = await _clientsPool.Rent(new ClientKey(address, port), cancellationToken).ConfigureAwait(false);
-        return new TranscriptStreamServerReplica(lease);
+        return new TranscriptStreamClientLease(lease);
     }
 
     public record ClientKey(string Address, int Port);
