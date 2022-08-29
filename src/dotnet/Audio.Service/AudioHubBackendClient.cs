@@ -11,9 +11,13 @@ public class AudioHubBackendClient : HubClientBase,
     private readonly Worker _worker;
     private readonly ConcurrentDictionary<Symbol, (Task<Unit> WhenReceived, Task<Unit> WhenCompleted)> _ackTaskMap = new ();
 
+    private AudioSettings AudioSettings { get; }
+
     internal AudioHubBackendClient(string address, int port, IServiceProvider services)
         : base(BuildUri(address, port), services)
     {
+        AudioSettings = services.GetRequiredService<AudioSettings>();
+
         _worker = new Worker(this);
         _worker.Start();
     }
@@ -73,7 +77,7 @@ public class AudioHubBackendClient : HubClientBase,
         }
     }
 
-    public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
+    public async Task<Task> StartWrite(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
     {
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
         var whenReceived = TaskSource.New<Unit>(true).Task;
@@ -85,13 +89,13 @@ public class AudioHubBackendClient : HubClientBase,
         }
         finally {
             // ReSharper disable MethodSupportsCancellation
-            _ = Task.Delay(TimeSpan.FromSeconds(10))
+            _ = Task.Delay(AudioSettings.StreamExpirationPeriod)
                 .ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
         }
         return whenCompleted;
     }
 
-    public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<Transcript> transcriptStream, CancellationToken cancellationToken)
+    public async Task<Task> StartWrite(Symbol streamId, IAsyncEnumerable<Transcript> transcriptStream, CancellationToken cancellationToken)
     {
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
         var whenReceived = TaskSource.New<Unit>(true).Task;
@@ -103,7 +107,7 @@ public class AudioHubBackendClient : HubClientBase,
         }
         finally {
             // ReSharper disable MethodSupportsCancellation
-            _ = Task.Delay(TimeSpan.FromSeconds(10))
+            _ = Task.Delay(AudioSettings.StreamExpirationPeriod)
                 .ContinueWith(_ => _ackTaskMap.TryRemove(streamId, out var _), TaskScheduler.Default);
         }
         return whenCompleted;

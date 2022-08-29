@@ -15,6 +15,6 @@ public class AudioStreamClientLease : IAudioStreamClient
     public Task<Option<IAsyncEnumerable<byte[]>>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
         => Lease.Resource.Read(streamId, skipTo, cancellationToken);
 
-    public Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
-        => Lease.Resource.Write(streamId, audioStream, cancellationToken);
+    public Task<Task> StartWrite(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
+        => Lease.Resource.StartWrite(streamId, audioStream, cancellationToken);
 }

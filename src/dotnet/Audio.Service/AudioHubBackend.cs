@@ -53,7 +53,7 @@ public class AudioHubBackend : Hub
         IAsyncEnumerable<byte[]> audioStream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
         var cancellationToken = Context.GetHttpContext()!.RequestAborted;
-        var completeTask = await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
+        var completeTask = await AudioStreamServer.StartWrite(streamId, audioStream, cancellationToken).ConfigureAwait(false);
         await _ackStream.Writer
             .WriteAsync(new Ack(AckType.Received, StreamType.Audio, streamId), CancellationToken.None)
             .ConfigureAwait(false);
@@ -71,7 +71,7 @@ public class AudioHubBackend : Hub
         IAsyncEnumerable<Transcript> transcriptStream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
         var cancellationToken = Context.GetHttpContext()!.RequestAborted;
-        var completeTask = await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+        var completeTask = await TranscriptStreamServer.StartWrite(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
         await _ackStream.Writer
             .WriteAsync(new Ack(AckType.Received, StreamType.Transcription, streamId), CancellationToken.None)
             .ConfigureAwait(false);

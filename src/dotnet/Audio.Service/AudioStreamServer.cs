@@ -40,7 +40,7 @@ public class AudioStreamServer: IAudioStreamServer, IAsyncDisposable
         return Task.FromResult(Option<IAsyncEnumerable<byte[]>>.Some(SkipTo(audioStream, skipTo)));
     }
 
-    public Task<Task> Write(
+    public Task<Task> StartWrite(
         Symbol streamId,
         IAsyncEnumerable<byte[]> audioStream,
         CancellationToken cancellationToken)

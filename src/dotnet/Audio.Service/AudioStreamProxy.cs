@@ -76,12 +76,12 @@ public class AudioStreamProxy : IAudioStreamServer
                 : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
+    public async Task<Task> StartWrite(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
     {
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
             DebugLog?.LogInformation("Write(#{StreamId}): fallback to the local server", streamId);
-            return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
+            return await AudioStreamServer.StartWrite(streamId, audioStream, cancellationToken).ConfigureAwait(false);
         }
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
@@ -91,7 +91,7 @@ public class AudioStreamProxy : IAudioStreamServer
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Write(#{StreamId}): empty address ring, writing locally!", streamId);
-            return await AudioStreamServer.Write(streamId, audioStream, cancellationToken).ConfigureAwait(false);
+            return await AudioStreamServer.StartWrite(streamId, audioStream, cancellationToken).ConfigureAwait(false);
         }
         var port = serviceEndpoints.GetPort()!.Port;
 
@@ -101,7 +101,7 @@ public class AudioStreamProxy : IAudioStreamServer
         var writeTasks = await addresses
             .Select(async address => {
                 var client = await GetAudioStreamClient(address).ConfigureAwait(false);
-                return await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+                return await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
             })
             .Collect()
             .ConfigureAwait(false);

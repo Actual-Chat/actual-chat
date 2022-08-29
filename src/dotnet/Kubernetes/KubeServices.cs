@@ -1,7 +1,6 @@
 using System.Net;
 using ActualChat.Kubernetes.Api;
 using ActualChat.Pooling;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Kubernetes;
 

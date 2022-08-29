@@ -8,7 +8,7 @@ public interface ITranscriptStreamServer
         Symbol streamId,
         CancellationToken cancellationToken);
 
-    Task<Task> Write(
+    Task<Task> StartWrite(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken);

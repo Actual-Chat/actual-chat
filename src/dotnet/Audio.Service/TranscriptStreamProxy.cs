@@ -77,7 +77,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
                 : await AudioHubBackendClientFactory.GetTranscriptStreamClient(address, port, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Task> Write(
+    public async Task<Task> StartWrite(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)
@@ -85,7 +85,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
             DebugLog?.LogInformation("Write(#{StreamId}): fallback to the local server", streamId);
-            return await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+            return await TranscriptStreamServer.StartWrite(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
         }
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
@@ -95,7 +95,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Write(#{StreamId}): empty address ring, writing locally!", streamId);
-            return await TranscriptStreamServer.Write(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+            return await TranscriptStreamServer.StartWrite(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
         }
         var port = serviceEndpoints.GetPort()!.Port;
 
@@ -105,7 +105,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         var writeTasks = await addresses
             .Select(async address => {
                 var client = await GetTranscriptStreamClient(address).ConfigureAwait(false);
-                return await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+                return await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
             })
             .Collect()
             .ConfigureAwait(false);

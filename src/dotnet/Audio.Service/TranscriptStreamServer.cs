@@ -35,7 +35,7 @@ public class TranscriptStreamServer : IAsyncDisposable, ITranscriptStreamServer
             .WithBuffer(StreamBufferSize, cancellationToken)));
     }
 
-    public Task<Task> Write(
+    public Task<Task> StartWrite(
         Symbol streamId,
         IAsyncEnumerable<Transcript> transcriptStream,
         CancellationToken cancellationToken)
