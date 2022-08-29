@@ -31,9 +31,9 @@ public class AudioStreamServerProxy : IAudioStreamServer
         if (kube == null)
             return await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
 
-        var resultOpt = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        if (resultOpt.HasValue)
-            return resultOpt;
+        var result = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        if (result.HasValue)
+            return result;
 
         // TODO(AK): use consistent hashing to get service replicas
         var endpointState = await KubeServices.GetServiceEndpoints(Settings.Namespace, Settings.ServiceName, cancellationToken).ConfigureAwait(false);
@@ -49,15 +49,15 @@ public class AudioStreamServerProxy : IAudioStreamServer
             .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode % 33461)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
-            return resultOpt;
+            return result;
 
         foreach (var alternateAddress in alternateAddresses) {
             var client = await AudioHubBackendClientFactory.GetAudioStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
-            resultOpt = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-            if (resultOpt.HasValue)
-                return resultOpt;
+            result = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+            if (result.HasValue)
+                return result;
         }
-        return resultOpt;
+        return result;
     }
 
     public async Task<Task> Write(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)

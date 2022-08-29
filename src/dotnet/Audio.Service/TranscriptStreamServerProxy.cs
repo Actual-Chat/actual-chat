@@ -32,10 +32,9 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
         if (kube == null)
             return await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
 
-        var resultOpt =
-            await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-        if (resultOpt.HasValue)
-            return resultOpt;
+        var result = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        if (result.HasValue)
+            return result;
 
         // TODO(AK): use consistent hashing to get service replicas
         var endpointState = await KubeServices
@@ -53,15 +52,15 @@ public class TranscriptStreamServerProxy : ITranscriptStreamServer
             .OrderBy(a => a.GetDjb2HashCode() * (long)streamId.HashCode % 33461)
             .ToList();
         if (alternateAddresses.Count == 0 || !port.HasValue)
-            return resultOpt;
+            return result;
 
         foreach (var alternateAddress in alternateAddresses) {
             var client = await AudioHubBackendClientFactory.GetTranscriptStreamClient(alternateAddress, port.Value, cancellationToken).ConfigureAwait(false);
-            resultOpt = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
-            if (resultOpt.HasValue)
-                return resultOpt;
+            result = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
+            if (result.HasValue)
+                return result;
         }
-        return resultOpt;
+        return result;
     }
 
     public async Task<Task> Write(
