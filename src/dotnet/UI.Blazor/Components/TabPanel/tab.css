@@ -24,7 +24,7 @@
 }
 
 .tab-panel .tab {
-    @apply grow overflow-y-auto;
+    @apply grow;
 }
 
 .shape {

@@ -11,28 +11,30 @@
          IsOpen="@m.IsVisible">
     <div class="flex-y w-96 h-full border-l border-bg-04">
         <RightPanelHeader/>
-        <RightPanelChatInfo/>
-        <div class="flex flex-col border-t border-bg-04 w-full h-full overflow-hidden">
-            @if (m.ShowMembers || m.EnableIncompleteUI) {
-                <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
-                    @if (m.ShowMembers) {
-                        <Tab Title="Members" TabIndex="0">
-                            <ChatAuthors/>
-                        </Tab>
-                    }
-                    @if (m.EnableIncompleteUI) {
-                        <Tab Title="Media" TabIndex="1">
-                            <ToBeDone/>
-                        </Tab>
-                        <Tab Title="Files" TabIndex="2">
-                            <ToBeDone/>
-                        </Tab>
-                        <Tab Title="Links" TabIndex="3">
-                            <ToBeDone/>
-                        </Tab>
-                    }
-                </TabPanel>
-            }
+        <div class="flex flex-col overflow-y-auto custom-scrollbar">
+            <RightPanelChatInfo/>
+            <div class="flex flex-col border-t border-bg-04">
+                @if (m.ShowMembers || m.EnableIncompleteUI) {
+                    <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
+                        @if (m.ShowMembers) {
+                            <Tab Title="Members" TabIndex="0">
+                                <ChatAuthors/>
+                            </Tab>
+                        }
+                        @if (m.EnableIncompleteUI) {
+                            <Tab Title="Media" TabIndex="1">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab Title="Files" TabIndex="2">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab Title="Links" TabIndex="3">
+                                <ToBeDone/>
+                            </Tab>
+                        }
+                    </TabPanel>
+                }
+            </div>
         </div>
     </div>
 </SideNav>

@@ -61,7 +61,7 @@
 }
 
 .tab-panel .tab.people-tab {
-    @apply h-full overflow-y-hidden;
+    @apply h-full;
 }
 
 .people-group {
