@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Users;
 
 public static class AccountExt
 {
-    public static bool IsActive(this Account? account)
+    public static bool IsActive([NotNullWhen(true)] this Account? account)
         => account is { Status: AccountStatus.Active };
 
     public static bool IsGuest(this Account? account)
