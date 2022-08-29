@@ -76,8 +76,12 @@
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
     --message-hover: #F8FBFE;
-    --mention: #fed7aa;
-    --mention-hover: #fb923c;
+    --mention-other-bubble: #DDE8FF;
+    --mention-other-text: #2970FF;
+    --mention-me-border: #2FCB5B;
+    --mention-me-bg: #DEF7E5;
+    --mention-me-bubble: #98E5AE;
+    --mention-me-text: #00611B;
     --mention-list-item-selected: #EDF2FA;
     --mention-message: #fff7ed;
     --mention-message-hover: #fff7e5;

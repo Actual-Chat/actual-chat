@@ -10,14 +10,9 @@
 }
 
 .message-wrapper.mention {
-    @apply border-l-2 border-mention-hover bg-mention-message;
+    @apply border-l-2 border-mention-me-border bg-mention-me-bg;
 }
-.message-wrapper.mention:hover {
-    @apply bg-mention-message-hover;
-}
-.message-wrapper.mention:hover .author-badge {
-    @apply bg-mention-message-hover;
-}
+
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;

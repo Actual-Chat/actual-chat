@@ -2,7 +2,7 @@
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content .mention {
-    @apply inline-block px-1 bg-mention rounded-md;
+    @apply inline-block px-1 rounded-md;
 }
 .markup-editor .editor-content:empty:not(:focus)::before {
     content: attr(data-placeholder);
