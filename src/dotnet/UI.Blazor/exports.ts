@@ -19,6 +19,7 @@ import './Components/SearchBox/search-box.css'
 import './Components/Dropdown/dropdown.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 import './Components/Tooltip/tooltip.css'
+import './Components/ImagePreviewModal/image-preview-modal.css'
 
 export * from './Services/Settings/local-settings';
 export * from './Services/UserInteractionUI/user-interaction-ui';
