@@ -10,9 +10,9 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 
-<OnGlobalEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
-<OnGlobalEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
-<OnGlobalEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
+<OnUIEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
+<OnUIEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
+<OnUIEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentListPreview

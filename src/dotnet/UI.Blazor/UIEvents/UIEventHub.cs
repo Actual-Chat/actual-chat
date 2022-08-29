@@ -1,16 +1,16 @@
 namespace ActualChat.UI.Blazor;
 
-internal sealed class GlobalEvents : IGlobalEvents
+public sealed class UIEventHub
 {
     private readonly Dictionary<Type, ImmutableList<object>> _handlers = new ();
 
-    public void Subscribe<TEvent>(GlobalEventHandler<TEvent> handler)
+    public void Subscribe<TEvent>(UIEventHandler<TEvent> handler)
     {
         lock(_handlers)
             _handlers[typeof(TEvent)] = _handlers.GetValueOrDefault(typeof(TEvent))?.Add(handler) ?? ImmutableList.Create<object>(handler);
     }
 
-    public void Unsubscribe<TEvent>(GlobalEventHandler<TEvent> handler)
+    public void Unsubscribe<TEvent>(UIEventHandler<TEvent> handler)
     {
         lock (_handlers) {
             var eventHandlers = _handlers[typeof(TEvent)];
@@ -29,7 +29,7 @@ internal sealed class GlobalEvents : IGlobalEvents
             if (!_handlers.TryGetValue(typeof(TEvent), out eventHandlers))
                 return;
 
-        foreach (GlobalEventHandler<TEvent> eventHandler in eventHandlers) {
+        foreach (UIEventHandler<TEvent> eventHandler in eventHandlers) {
             await eventHandler(@event, cancellationToken).ConfigureAwait(false);
         }
     }

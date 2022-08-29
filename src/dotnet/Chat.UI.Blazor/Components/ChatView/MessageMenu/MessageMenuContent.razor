@@ -82,7 +82,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
-    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ChatMessageModel ChatMessageModel { get; set; } = null!;
@@ -110,7 +110,7 @@
 
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
-        await GlobalEvents.Publish(new FocusChatMessageEditor());
+        await UIEventHub.Publish(new FocusChatMessageEditor());
     }
 
     private async Task CopyLink(ChatEntry chatEntry) {
@@ -119,7 +119,7 @@
     }
 
     private Task Edit(ChatEntry chatEntry) {
-        return GlobalEvents.Publish(new EditMessage(chatEntry));
+        return UIEventHub.Publish(new EditMessage(chatEntry));
     }
 
     public record Model {

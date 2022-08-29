@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
+@typeparam TEvent where TEvent : class
+
+@code {
+    [Inject] UIEventHub UIEventHub { get; init; } = null!;
+
+    [Parameter, EditorRequired]
+    public UIEventHandler<TEvent> Handler { get; init; } = null!;
+
+    protected override void OnInitialized()
+        => UIEventHub.Subscribe(Handler);
+
+    public void Dispose()
+        => UIEventHub.Unsubscribe(Handler);
+}

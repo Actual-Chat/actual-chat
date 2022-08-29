@@ -108,7 +108,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
-    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
@@ -188,7 +188,7 @@
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
         Services.UICommander().CancelUpdateDelays();
-        await GlobalEvents.Publish(new FocusChatMessageEditor());
+        await UIEventHub.Publish(new FocusChatMessageEditor());
     }
 
     private void OnChatAuthorClick()
@@ -196,7 +196,7 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await GlobalEvents.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }

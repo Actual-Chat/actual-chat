@@ -92,7 +92,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
         // UI events
-        services.AddScoped<IGlobalEvents, GlobalEvents>();
+        services.AddScoped<UIEventHub>();
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();
