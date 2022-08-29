@@ -11,7 +11,11 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
     private ContentUrlMapper ContentUrlMapper { get; }
     private IMarkupParser MarkupParser { get; }
 
-    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend, ContentUrlMapper contentUrlMapper, IMarkupParser markupParser)
+    public NewChatEntryEventHandler(
+        IChatsBackend chatsBackend,
+        IChatAuthorsBackend chatAuthorsBackend,
+        ContentUrlMapper contentUrlMapper,
+        IMarkupParser markupParser)
     {
         ChatsBackend = chatsBackend;
         ChatAuthorsBackend = chatAuthorsBackend;
