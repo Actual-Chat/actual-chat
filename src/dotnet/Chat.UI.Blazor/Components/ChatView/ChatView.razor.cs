@@ -30,7 +30,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private Task WhenInitialized => _whenInitializedSource.Task;
-    private IMutableState<long> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
     private SyncedStateLease<long> LastReadEntryState { get; set; } = null!;
 
@@ -70,7 +70,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable(0L);
+            NavigateToEntryId = StateFactory.NewMutable<long?>();
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
@@ -161,10 +161,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
         if (!mustScrollToEntry) {
-            if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
+            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId.Value)) {
                 isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
-                entryId = navigateToEntryId;
+                entryId = navigateToEntryId.Value;
                 mustScrollToEntry = true;
             }
             else if (query.ScrollToKey != null) {
