@@ -24,7 +24,10 @@ public static class ByteStreamExt
 
         // WASM doesn't support PipeReader API directly from the HttpClient
         // NOTE(AY): Don't dispose anything but HttpClient! They hang on cancellation & block everything.
-        using var httpClient = httpClientFactory.CreateClient();
+        var httpClient = httpClientFactory.CreateClient();
+        var httpClientDisposable = new SafeDisposable(httpClient, 10, log) { MustWait = false };
+        await using var _ = httpClientDisposable.ConfigureAwait(false);
+
         var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
         if (OSInfo.IsWebAssembly) {
             request.SetBrowserResponseStreamingEnabled(true);

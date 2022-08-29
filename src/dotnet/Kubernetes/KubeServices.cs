@@ -110,8 +110,10 @@ public class KubeServices : IKubeInfo
             Log.LogInformation("UpdateState: started for {Service}", KubeService);
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
-            // NOTE(AY): Don't dispose anything but HttpClient! They hang on cancellation & block everything.
-            using var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
+            var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
+            var httpClientDisposable = new SafeDisposable(httpClient, 10, Log) { MustWait = false };
+            await using var _ = httpClientDisposable.ConfigureAwait(false);
+
             var request = new HttpRequestMessage(HttpMethod.Get,
                 $"apis/discovery.k8s.io/v1/namespaces/{KubeService.Namespace}/endpointslices" +
                     $"?watch=true&labelSelector=kubernetes.io/service-name%3D{KubeService.Name}");
