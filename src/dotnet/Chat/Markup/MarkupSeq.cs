@@ -63,7 +63,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
     {
         builder.Append("Items = [");
         builder.Append(Items.ToDelimitedString(", "));
-        builder.Append("]");
+        builder.Append(']');
         return true;
     }
 }

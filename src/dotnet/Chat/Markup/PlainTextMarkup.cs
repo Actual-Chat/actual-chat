@@ -15,7 +15,9 @@ public record PlainTextMarkup(string Text) : TextMarkup(Text)
 
     protected override bool PrintMembers(StringBuilder builder)
     {
-        builder.Append(Invariant($"{nameof(Text)} = \"{Text.OrdinalReplace("\"", "\\\"")}\""));
+        builder.Append(nameof(Text)).Append(" = \"");
+        builder.Append(Text.OrdinalReplace("\"", "\\\""));
+        builder.Append('"');
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
 }

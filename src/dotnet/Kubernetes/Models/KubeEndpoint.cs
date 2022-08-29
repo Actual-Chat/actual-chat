@@ -11,9 +11,9 @@ public record KubeEndpoint(ImmutableArray<string> Addresses, bool IsReady)
         foreach (var address in Addresses.Take(1))
             builder.Append(address);
         foreach (var address in Addresses.Skip(1))
-            builder.Append($", {address}");
+            builder.Append(", ").Append(address);
         builder.Append("], ");
-        builder.Append($"IsReady = {IsReady}");
+        builder.Append("IsReady = ").Append(IsReady);
  #pragma warning restore MA0011
         return true;
     }
