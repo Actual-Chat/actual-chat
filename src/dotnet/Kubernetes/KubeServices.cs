@@ -20,9 +20,7 @@ public class KubeServices : IKubeInfo
         KubeInfo = services.KubeInfo();
         _discoveryWorkerPool = new SharedResourcePool<KubeService, EndpointDiscoveryWorker>(
             CreateEndpointDiscoveryWorker) {
-            // TODO(AY): Uncomment this line once we know the dispose fix works
-            // ResourceDisposeDelay = TimeSpan.FromDays(3),
-            ResourceDisposeDelay = TimeSpan.FromSeconds(1),
+            ResourceDisposeDelay = TimeSpan.FromDays(3),
         };
     }
 
