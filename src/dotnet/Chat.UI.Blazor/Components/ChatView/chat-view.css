@@ -25,7 +25,7 @@
 }
 
 .author-name {
-    @apply font-bold text-03;
+    @apply font-bold text-03 cursor-pointer hover:opacity-80;
 }
 .message-wrapper.own-message .author-name {
     @apply text-06;

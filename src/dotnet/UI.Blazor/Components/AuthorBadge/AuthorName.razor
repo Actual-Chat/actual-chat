@@ -10,7 +10,7 @@
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
     </span>
 } else {
-    <span class="@_class">@Author.Name</span>
+    <span class="@_class" onclick="@Click">@Author.Name</span>
 }
 
 @code {
@@ -19,6 +19,7 @@
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
