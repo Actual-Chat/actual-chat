@@ -101,7 +101,12 @@ public class AudioStreamProxy : IAudioStreamServer
         var writeTasks = await addresses
             .Select(async address => {
                 var client = await GetAudioStreamClient(address).ConfigureAwait(false);
-                return await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+                var writeTask = await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+                if (DebugLog != null)
+                    _ = writeTask.ContinueWith(
+                        _ => DebugLog.LogInformation("Write(#{StreamId}): done writing to {Address}", streamId, address),
+                        TaskScheduler.Default);
+                return writeTask;
             })
             .Collect()
             .ConfigureAwait(false);
