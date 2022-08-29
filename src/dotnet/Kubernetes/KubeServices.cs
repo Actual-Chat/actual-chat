@@ -128,9 +128,7 @@ public class KubeServices : IKubeInfo
             using var streamReader = new StreamReader(stream);
 
             while (!streamReader.EndOfStream) {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var changeString = await streamReader.ReadLineAsync().ConfigureAwait(false);
+                var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
                 if (changeString == null) {
                     Log.LogWarning("Got null while querying Kubernetes API result (endpoint slice changes)");
                     continue;
