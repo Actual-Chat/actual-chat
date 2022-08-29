@@ -32,6 +32,7 @@ public record KubeServiceEndpoints(
 
     protected virtual bool PrintMembers(StringBuilder builder)
     {
+ #pragma warning disable MA0011
         builder.Append($"Service = {Service}, ");
         builder.Append("Endpoints = [");
         foreach (var endpoint in Endpoints.Take(1))
@@ -44,7 +45,8 @@ public record KubeServiceEndpoints(
             builder.Append(port);
         foreach (var port in Ports.Skip(1))
             builder.Append($", {port}");
-        builder.Append("]");
+        builder.Append(']');
+ #pragma warning restore MA0011
         return true;
     }
 

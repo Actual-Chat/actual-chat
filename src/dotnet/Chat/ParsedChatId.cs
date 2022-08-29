@@ -113,7 +113,7 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
 
             return targetUserId;
         default:
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
+            throw StandardError.Internal("Invalid ParsedChatId.Kind.");
         }
     }
 
