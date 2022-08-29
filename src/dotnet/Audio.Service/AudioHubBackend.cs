@@ -22,7 +22,6 @@ public class AudioHubBackend : Hub
     public IAsyncEnumerable<Ack> ReadAckStream(CancellationToken cancellationToken)
         => _ackStream.Reader.ReadAllAsync(cancellationToken);
 
-
     public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,

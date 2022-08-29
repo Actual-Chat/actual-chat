@@ -125,9 +125,8 @@ public class AudioHubBackendClient : HubClientBase,
     private async IAsyncEnumerable<Ack> ReadAckStream([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
-        var ackStream = connection
-            .StreamAsync<Ack>("ReadAckStream", cancellationToken);
-        await foreach(var ack in ackStream.ConfigureAwait(false))
+        var ackStream = connection.StreamAsync<Ack>("ReadAckStream", cancellationToken);
+        await foreach (var ack in ackStream.ConfigureAwait(false))
             yield return ack;
     }
 

@@ -58,7 +58,8 @@ public record KubeServiceEndpoints(
 
         var addresses = ReadyEndpoints
             .SelectMany(e => e.Addresses)
-            .OrderBy(a => a);
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(a => a, StringComparer.Ordinal);
         return new HashRing<string>(addresses, static a => a.GetDjb2HashCode());
     }
 }
