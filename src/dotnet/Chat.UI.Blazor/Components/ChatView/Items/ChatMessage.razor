@@ -110,7 +110,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
@@ -137,16 +137,18 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var principalId = await ChatAuthor
+        var principalId = await ChatAuthors
             .GetPrincipalId(Session, chatId, CancellationToken.None)
             .ConfigureAwait(false);
+        var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
 
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var canReply = rules.CanWrite();
         var attachments = await LoadAttachments(cancellationToken).ConfigureAwait(false);
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
         var markup = GetMarkup();
-        var isMentioned = IsMentioned(markup, repliedChatMessage, principalId);
+        var hasAnyMentions = HasAnyMentions(markup);
+        var isMentioned = IsMentioned(markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         if (Message.ShowEntryType)
@@ -157,6 +159,7 @@
             PrincipalId = principalId,
             Attachments = attachments,
             RepliedChatMessage = repliedChatMessage,
+            HasAnyMentions = hasAnyMentions,
             IsMentioned = isMentioned,
             IsHighlighted = isHighlighted,
             IsReplied = isReplied,
@@ -209,12 +212,22 @@
         }
     }
 
-    private bool IsMentioned(Markup markup, ChatMessageModel? repliedChatMessage, Symbol principalId)
+    private bool HasAnyMentions(Markup markup)
+        => MarkupValidator.ContainsAnyMention.IsValid(markup);
+
+    private bool IsMentioned(Markup markup,
+        ChatMessageModel? repliedChatMessage,
+        ParsedChatPrincipalId parsedPrincipalId,
+        bool hasAnyMentions)
     {
-        if (repliedChatMessage?.Entry.AuthorId == principalId)
+        if (!parsedPrincipalId.IsValid || parsedPrincipalId.Kind == ChatPrincipalKind.User)
+            return false;
+
+        var authorId = parsedPrincipalId.AuthorId;
+        if (repliedChatMessage?.Entry.AuthorId == authorId)
             return true;
 
-        return MarkupValidator.ContainsAnyMention.IsValid(markup) && MarkupValidator.ContainsMention(principalId).IsValid(markup);
+        return hasAnyMentions && MarkupValidator.ContainsMention($"a:{authorId}").IsValid(markup);
     }
 
     private async Task<ImmutableArray<TextEntryAttachment>> LoadAttachments(CancellationToken cancellationToken) {
@@ -231,6 +244,7 @@
         public Symbol PrincipalId { get; init; }
         public ImmutableArray<TextEntryAttachment> Attachments { get; init; }
         public ChatMessageModel? RepliedChatMessage { get; init; }
+        public bool HasAnyMentions { get; init; }
         public bool IsMentioned { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplied { get; init; }
