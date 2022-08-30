@@ -1,5 +1,9 @@
 .image-preview-modal {
-    @apply bg-transparent border-none gap-y-0 p-0 rounded-none shadow-none w-fit max-w-[90vw] max-h-[90vh];
+    @apply bg-transparent border-none gap-y-0 p-0 rounded-none shadow-none w-fit;
+}
+
+.image-preview-modal img {
+    @apply max-w-[90vw] max-h-[90vh];
 }
 
 .image-preview-modal .dialog-buttons {
