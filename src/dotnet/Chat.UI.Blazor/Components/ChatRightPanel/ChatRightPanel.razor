@@ -7,8 +7,8 @@
 
 <SideNav
     Direction="SideNavDirection.RightToLeft"
-    Opened="@(() => RightPanelUI.IsVisible.Value = true)"
-    Closed="@(() => RightPanelUI.IsVisible.Value = false)"
+    Opened="() => RightPanelUI.IsVisible.Value = true"
+    Closed="() => RightPanelUI.IsVisible.Value = false"
     IsOpen="@m.IsVisible">
     <div class="flex-y w-96 h-full border-l border-bg-04">
         <RightPanelHeader/>
