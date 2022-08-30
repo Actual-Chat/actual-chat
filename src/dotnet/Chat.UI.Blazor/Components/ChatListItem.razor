@@ -5,8 +5,6 @@
     var m = State.LatestNonErrorValue;
     var isVisibleMenu = m.IsListening || m.IsRecording;
     var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
-    if (m.IsRecording)
-        cls += " show-headphones";
     var title = m.TitleSearchMatch.Text;
 }
 
