@@ -10,7 +10,7 @@
 }
 
 .mention-bubble {
-    @apply inline-block px-2 rounded-xl select-none cursor-pointer;
+    @apply relative inline-block top-0.5 px-1.5 pb-0.5 mb-0.5 rounded-xl select-none cursor-pointer;
     @apply bg-mention-other-bubble text-mention-other-text font-medium;
 }
 .mention-bubble.me {
