@@ -40,8 +40,8 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             options.StreamBufferCapacity = 20;
             options.EnableDetailedErrors = true;
         });
-        if (!Constants.DebugMode.SignalR)
-            signalR.AddMessagePackProtocol();
+        signalR.AddJsonProtocol();
+        signalR.AddMessagePackProtocol();
 
         // Module's own services
         services.AddScoped<AudioHub>();

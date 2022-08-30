@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
 using Cysharp.Text;
-using Stl.Internal;
 
 namespace ActualChat.Transcription;
 

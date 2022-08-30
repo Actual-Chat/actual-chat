@@ -7,9 +7,9 @@ namespace ActualChat.Audio;
 public class AudioHub : Hub
 {
     private IAudioProcessor AudioProcessor { get; }
-    private SessionMiddleware SessionMiddleware { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
+    private SessionMiddleware SessionMiddleware { get; }
 
     public AudioHub(
         IAudioProcessor audioProcessor,
@@ -18,12 +18,12 @@ public class AudioHub : Hub
         SessionMiddleware sessionMiddleware)
     {
         AudioProcessor = audioProcessor;
-        SessionMiddleware = sessionMiddleware;
         AudioStreamServer = audioStreamServer;
         TranscriptStreamServer = transcriptStreamServer;
+        SessionMiddleware = sessionMiddleware;
     }
 
-    public async IAsyncEnumerable<byte[]>? GetAudioStream(
+    public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public class AudioHub : Hub
             yield return chunk;
     }
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
@@ -51,7 +51,7 @@ public class AudioHub : Hub
         var session = SessionMiddleware.GetSession(httpContext).Require();
 
         var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
-        var frameStream = opusPacketStream
+        var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets

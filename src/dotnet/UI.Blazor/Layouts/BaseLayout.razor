@@ -12,7 +12,7 @@
 <div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
     <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <SideNav Direction="SideNavDirection.LeftToRight"
-             Open="() => NavbarUI.IsVisible = true"
+             Opened="() => NavbarUI.IsVisible = true"
              Closed="() => NavbarUI.IsVisible = false"
              IsOpen="@NavbarUI.IsVisible">
         <div class="h-full w-full overflow-hidden bg-04">

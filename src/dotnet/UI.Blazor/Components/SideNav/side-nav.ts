@@ -39,11 +39,11 @@ export class SideNav implements Disposable {
             element.classList.replace('side-nav-open', 'side-nav-closed');
         }
 
-        fromEvent(this.element, 'transitionend')
+        fromEvent(this.element, 'transitionstart')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 if (element.classList.contains('side-nav-open')){
-                    blazorRef.invokeMethodAsync('OnOpen');
+                    blazorRef.invokeMethodAsync('OnOpened');
                 } else if (element.classList.contains('side-nav-closed')){
                     blazorRef.invokeMethodAsync('OnClosed');
                 }

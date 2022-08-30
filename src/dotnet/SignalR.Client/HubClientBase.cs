@@ -34,8 +34,9 @@ public abstract class HubClientBase : WorkerBase
 
         // Workaround for missing SSL CA cert for local.actual.chat
         var hostInfo = Services.GetRequiredService<HostInfo>();
-        if (hostInfo.IsDevelopmentInstance && hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat", out var suffix))
-            hubUrl = new Uri("http://local.actual.chat:7080" + suffix);
+        if (hostInfo.IsDevelopmentInstance
+            && hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat/backend/hub/", out var suffix))
+            hubUrl = new Uri("http://local.actual.chat:7080/backend/hub/" + suffix);
 
         HubUrl = hubUrl;
         ConnectionBuilderFactory = () => {
@@ -44,8 +45,10 @@ public abstract class HubClientBase : WorkerBase
                     options.SkipNegotiation = true;
                     options.Transports = HttpTransportType.WebSockets;
                 });
-            if (!Constants.DebugMode.SignalR)
-                builder = builder.AddMessagePackProtocol();
+            if (Constants.DebugMode.SignalR)
+                builder.AddJsonProtocol();
+            else
+                builder.AddMessagePackProtocol();
             return builder;
         };
     }

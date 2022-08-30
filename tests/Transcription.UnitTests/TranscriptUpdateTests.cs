@@ -138,6 +138,9 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void SerializationTest()
     {
+        var symbol = (Symbol)"Test";
+        symbol.AssertPassesThroughAllSerializers();
+
         var o = new Transcript(" поешь", new LinearMap(15, 0, 21, 1));
         var s = o.PassThroughAllSerializers(Out);
         s.Text.Should().Be(o.Text);

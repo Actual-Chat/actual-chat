@@ -13,7 +13,7 @@
     [Parameter] public SideNavDirection Direction { get; set; } = SideNavDirection.LeftToRight;
     [Parameter] public bool IsOpen { get; set; } = true;
     [Parameter] public EventCallback Closed { get; set; }
-    [Parameter] public EventCallback Open { get; set; }
+    [Parameter] public EventCallback Opened { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     private string Class { get; set; } = "";
@@ -58,5 +58,5 @@
     public Task OnClosed() => Closed.InvokeAsync();
 
     [JSInvokable]
-    public Task OnOpen() => Open.InvokeAsync();
+    public Task OnOpened() => Opened.InvokeAsync();
 }
