@@ -92,7 +92,7 @@
                 from contact in contacts
                 let rank = searchPhrase.GetMatchRank(contact.Name)
                 where rank > 0 || contact.TargetUserId == activeContactId
-                orderby rank descending, contact.Name
+                orderby rank descending
                 select contact
                 ).ToImmutableArray();
 

@@ -64,11 +64,9 @@
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Title)
                 where rank > 0 || c.Id == activeChat?.Id
-                orderby rank descending, c.Title
+                orderby rank descending
                 select c
             ).ToImmutableArray();
-        else
-            chats = chats.OrderBy(c => c.Title).ToImmutableArray();
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
