@@ -21,27 +21,34 @@ public class HashRingTest : TestBase
             x.Should().NotBe(z);
             y.Should().NotBe(z);
 
+            hr.Get(hash, -6).Should().Be(x);
+            hr.Get(hash, -3).Should().Be(x);
             hr.Get(hash, 3).Should().Be(x);
             hr.Get(hash, 6).Should().Be(x);
 
             hr.Get(hash - 1).Should().Be(x);
             hr.Get(hash + 1).Should().Be(y);
 
-            hr.GetMany(hash, 3).Should().Equal(new[] {x, y, z});
+            hr.Span(hash, 0).ToArray().Should().BeEmpty();
+            hr.Span(hash, 1).ToArray().Should().Equal(new[] {x});
+            hr.Span(hash, 2).ToArray().Should().Equal(new[] {x, y});
+            hr.Span(hash, 3).ToArray().Should().Equal(new[] {x, y, z});
+            hr.Span(hash, 4).ToArray().Should().Equal(new[] {x, y, z});
+
+            hr.Segment(hash, 0).ToArray().Should().BeEmpty();
+            hr.Segment(hash, 1).Should().Equal(new[] {x});
+            hr.Segment(hash, 2).Should().Equal(new[] {x, y});
+            hr.Segment(hash, 3).Should().Equal(new[] {x, y, z});
+            hr.Segment(hash, 4).Should().Equal(new[] {x, y, z});
         }
 
-        for (var i = 0; i < 10; i++) {
-            foreach (var (_, hash) in hr.Items) {
-                var x = hr.Get(hash);
-                var y = hr.Get(hash, 1);
-                var z = hr.Get(hash, 2);
+        hr = HashRing<string>.Empty;
+        hr.Span(1, 0).ToArray().Should().BeEmpty();
+        hr.Span(1, 1).ToArray().Should().BeEmpty();
+        hr.Span(1, 2).ToArray().Should().BeEmpty();
 
-                hr.GetManyRandom(hash, 0, 0).Should().BeEmpty();
-                hr.GetManyRandom(hash, 1, 1).Should().Equal(new[] {x});
-                hr.GetManyRandom(hash, 2, 2).Should().BeEquivalentTo(new[] {x, y});
-                hr.GetManyRandom(hash, 3, 3).Should().BeEquivalentTo(new[] {x, y, z});
-                hr.GetManyRandom(hash, 4, 4).Should().BeEquivalentTo(new[] {x, y, z, x});
-            }
-        }
+        hr.Segment(1, 0).ToArray().Should().BeEmpty();
+        hr.Segment(1, 1).ToArray().Should().BeEmpty();
+        hr.Segment(1, 2).ToArray().Should().BeEmpty();
     }
 }

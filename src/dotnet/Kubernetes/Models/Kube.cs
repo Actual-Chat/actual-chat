@@ -15,6 +15,7 @@ public sealed record Kube : IRequirementTarget
     public Uri Uri { get; }
     public string PodIP { get; }
     public KubeToken Token { get; }
+    public bool IsEmulated { get; }
 
     public Kube(string host, int port, string podIP, KubeToken token)
     {
@@ -23,10 +24,14 @@ public sealed record Kube : IRequirementTarget
         Uri = new Uri($"https://{Host}:{Port}/");
         PodIP = podIP;
         Token = token;
+        IsEmulated = token.IsEmulated;
     }
 
     public HttpClient CreateHttpClient(IHttpClientFactory httpClientFactory, string? name = null)
     {
+        if (IsEmulated)
+            throw StandardError.NotSupported("This method can't be used in Kubernetes emulation mode.");
+
         var client = httpClientFactory.CreateClient(name ?? HttpClientName);
         client.BaseAddress = Uri;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token.Value);

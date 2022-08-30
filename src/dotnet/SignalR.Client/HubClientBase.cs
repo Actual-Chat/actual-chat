@@ -25,13 +25,15 @@ public abstract class HubClientBase : WorkerBase
         : this(services.UriMapper().ToAbsolute(hubRelativeUrl), services)
     { }
 
-    protected HubClientBase(Uri hubAbsoluteUrl, IServiceProvider services)
+    protected HubClientBase(Uri hubUrl, IServiceProvider services)
     {
         Services = services;
         Clocks = Services.Clocks();
         Log = Services.LogFor(GetType());
 
-        HubUrl = hubAbsoluteUrl;
+        if (hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat", out var suffix))
+            hubUrl = new Uri("http://local.actual.chat:7080" + suffix);
+        HubUrl = hubUrl;
         ConnectionBuilderFactory = () => {
             var builder = new HubConnectionBuilder()
                 .WithUrl(HubUrl, options => {

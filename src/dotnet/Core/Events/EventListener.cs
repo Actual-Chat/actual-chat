@@ -49,7 +49,7 @@ public class EventListener<T>: WorkerBase where T: IEvent
                 }
                 await Task.WhenAll(ackTasks).ConfigureAwait(false);
             }
-            catch (Exception e) {
+            catch (Exception e) when (e is not OperationCanceledException) {
                 _log.LogWarning(e, "Error processing event");
             }
     }

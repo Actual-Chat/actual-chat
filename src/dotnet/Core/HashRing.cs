@@ -1,56 +1,66 @@
+using Microsoft.Toolkit.HighPerformance;
+
 namespace ActualChat;
 
 public readonly struct HashRing<T>
     where T : notnull
 {
-    private static IComparer<(T Value, int Hash)> Comparer { get; } = new ItemComparer();
+    private static readonly IComparer<(T Value, int Hash)> Comparer = new ItemComparer();
 
-    public static HashRing<T> Empty { get; } = new(Array.Empty<(T, int)>());
+    public static readonly Func<T, int> DefaultHasher = static v => v.GetHashCode();
+    public static readonly Func<T, int> DefaultStringHasher = static v => v is string s ? s.GetDjb2HashCode() : v.GetHashCode();
+    public static HashRing<T> Empty { get; } = new(Array.Empty<T>());
 
+    private readonly T[] _doubleItems;
     public (T Value, int Hash)[] Items { get; }
     public int Count => Items.Length;
     public bool IsEmpty => Count == 0;
-    public T this[int index]
-        => index < 0
-            ? throw new ArgumentOutOfRangeException(nameof(index))
-            : Items[index % Count].Value;
+    public T this[int index] => Items[Mod(index)].Value;
 
-    public HashRing((T Value, int Hash)[] items)
-        => Items = items;
     public HashRing(IEnumerable<T> values, Func<T, int>? hasher = null)
     {
-        var realHasher = hasher ?? (static v => v.GetHashCode());
+        hasher ??= typeof(T) == typeof(string) ? DefaultStringHasher : DefaultHasher;
         Items = values
-            .Select(v => (Value: v, Hash: realHasher.Invoke(v)))
+            .Select(v => (Value: v, Hash: hasher.Invoke(v)))
             .OrderBy(i => i.Hash)
             .ToArray();
+        _doubleItems = new T[Items.Length * 2];
+        for (var i = 0; i < _doubleItems.Length; i++)
+            _doubleItems[i] = this[i];
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int Mod(int index)
+    {
+        var m = index % Count;
+        return m >= 0 ? m : m + Count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int ClampCount(int count)
+        => Math.Min(Math.Max(count, 0), Count);
 
     public T Get(int hash, int offset = 0)
         => this[offset + ~Array.BinarySearch(Items, (default!, hash), Comparer)];
 
-    public T GetRandom(int hash, int replicaCount)
-        => Get(hash, Random.Shared.Next(replicaCount));
-
-    public IEnumerable<T> GetMany(int hash, int count, int offset = 0)
+    public ReadOnlySpan<T> Span(int hash, int count, int offset = 0)
     {
-        offset += ~Array.BinarySearch(Items, (default!, hash), Comparer);
-        for (var i = 0; i < count; i++)
-            yield return this[offset + i];
+        count = ClampCount(count);
+        if (count == 0)
+            return Span<T>.Empty;
+
+        offset = Mod(offset + ~Array.BinarySearch(Items, (default!, hash), Comparer));
+        return _doubleItems.AsSpan(offset, count);
     }
 
-    public IEnumerable<T> GetManyRandom(int hash, int count, int replicaCount, int offset = 0)
+    public ArraySegment<T> Segment(int hash, int count, int offset = 0)
     {
-        if (count > replicaCount)
-            throw new ArgumentOutOfRangeException(nameof(count));
-        offset += ~Array.BinarySearch(Items, (default!, hash), Comparer);
-        var indexes = Enumerable.Range(0, replicaCount).ToList();
-        for (var i = 0; i < count; i++) {
-            var j = Random.Shared.Next(indexes.Count);
-            var index = indexes[j];
-            indexes.RemoveAt(j);
-            yield return this[offset + index];
-        }
+        count = ClampCount(count);
+        if (count == 0)
+            return ArraySegment<T>.Empty;
+
+        offset = Mod(offset + ~Array.BinarySearch(Items, (default!, hash), Comparer));
+        return new ArraySegment<T>(_doubleItems, offset, count);
     }
 
     // Nested types

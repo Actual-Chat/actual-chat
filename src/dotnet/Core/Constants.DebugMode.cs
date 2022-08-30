@@ -30,5 +30,7 @@ public static partial class Constants
 
         public static bool MarkupEditor { get; } = true;
         public static bool SlateEditor { get; } = false;
+
+        public static bool KubeEmulation { get; } = false;
     }
 }

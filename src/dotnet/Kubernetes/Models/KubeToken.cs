@@ -8,6 +8,7 @@ public sealed class KubeToken : WorkerBase
     private FilePath Path { get; }
     private ILogger Log { get; }
 
+    public bool IsEmulated => Path.IsEmpty;
     public IMutableState<string> State { get; }
     public string Value => State.Value;
 
@@ -17,13 +18,16 @@ public sealed class KubeToken : WorkerBase
         Path = path;
         Log = services.LogFor(GetType());
 
-        var value = File.ReadAllText(Path);
+        var value = IsEmulated ? "" : File.ReadAllText(Path);
         State = services.StateFactory().NewMutable(value.Trim());
         Start();
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
+        if (IsEmulated)
+            return;
+
         using var watcher = new FileSystemWatcher();
         watcher.Path = Path.DirectoryPath;
         watcher.Filter = Path.FileName;

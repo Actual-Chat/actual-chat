@@ -107,6 +107,11 @@ public class KubeServices : IKubeInfo
         private async Task UpdateState(CancellationToken cancellationToken)
         {
             Log.LogInformation("UpdateState: started for {Service}", KubeService);
+            if (Kube.IsEmulated) {
+                await UpdateEmulatedState(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
             var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
@@ -179,6 +184,24 @@ public class KubeServices : IKubeInfo
                 State.Value = serviceEndpoints;
                 Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
             }
+        }
+
+        private async Task UpdateEmulatedState(CancellationToken cancellationToken)
+        {
+            var uriMapper = Services.GetRequiredService<UriMapper>();
+            var port = uriMapper.BaseUri.Port;
+            if (port == 0)
+                port = 80;
+            var ports = ImmutableArray.Create(new KubePort("http", KubeServiceProtocol.Tcp, port));
+            var addresses = ImmutableArray.Create(Kube.PodIP);
+            var endpoints = ImmutableArray.Create(new KubeEndpoint(addresses, true));
+            var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, endpoints, ports);
+
+            State.Value = serviceEndpoints;
+            Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
+
+            using var dTask = cancellationToken.ToTask();
+            await dTask.Resource.ConfigureAwait(false);
         }
     }
 }

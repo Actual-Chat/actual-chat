@@ -44,13 +44,20 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
         var host = KubeEnvironmentVars.KubernetesServiceHost;
         var port = KubeEnvironmentVars.KubernetesServicePort;
         var podIP = KubeEnvironmentVars.PodIP;
-        if (podIP.IsNullOrEmpty() || host.IsNullOrEmpty() || port == 0) {
-            _cachedInfo = new CachedKube(null);
-            return null;
+        var isKubeAvailable = !podIP.IsNullOrEmpty() && !host.IsNullOrEmpty() && port != 0;
+
+        if (isKubeAvailable) {
+            _token = new KubeToken(Services, TokenPath);
+        }
+        else if (Constants.DebugMode.KubeEmulation) {
+            host = "this.host.does.not.exist";
+            port = 53; // DNS port, definitely can't run Kubernetes service
+            var uriMapper = Services.GetRequiredService<UriMapper>();
+            podIP = uriMapper.BaseUri.Host;
+            _token = new KubeToken(Services, "");
         }
 
-        _token = new KubeToken(Services, TokenPath);
-        var info = new Kube(host, port, podIP, _token);
+        var info = _token != null ? new Kube(host, port, podIP, _token) : null;
         _cachedInfo = new CachedKube(info);
         return info;
     }

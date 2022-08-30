@@ -38,16 +38,18 @@ public class AudioStreamProxy : IAudioStreamServer
             return await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         }
 
-        var result = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        if (result.HasValue) {
-            DebugLog?.LogInformation("Read(#{StreamId}): found the stream on the local server", streamId);
-            return result;
+        var result = Option.None<IAsyncEnumerable<byte[]>>();
+        if (!kube.IsEmulated) {
+            result = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+            if (result.HasValue) {
+                DebugLog?.LogInformation("Read(#{StreamId}): found the stream on the local server", streamId);
+                return result;
+            }
         }
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
-
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Read(#{StreamId}): empty address ring!", streamId);
@@ -55,12 +57,14 @@ public class AudioStreamProxy : IAudioStreamServer
         }
         var port = serviceEndpoints.GetPort()!.Port;
 
-        var addresses = addressRing
-            .GetManyRandom(streamId.Value.GetDjb2HashCode(), ReadReplicaCount, WriteReplicaCount)
-            .ToList();
-        DebugLog?.LogInformation("Read(#{StreamId}): hitting {Addresses}", streamId, addresses.ToDelimitedString());
-        foreach (var address in addresses) {
-            var client = await GetAudioStreamClient(address).ConfigureAwait(false);
+        var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
+        var readReplicaCount = addresses.Count.Clamp(0, ReadReplicaCount);
+        DebugLog?.LogInformation("Read(#{StreamId}): hitting [{Addresses}]", streamId, addresses.ToDelimitedString());
+        for (var i = 0; i < readReplicaCount; i++) {
+            var address = addresses.GetRandom();
+            DebugLog?.LogInformation("Read(#{StreamId}): trying {Address}", streamId, address);
+
+            var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
             result = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
             if (result.HasValue) {
                 DebugLog?.LogInformation("Read(#{StreamId}): found the stream on {Address}", streamId, address);
@@ -69,11 +73,6 @@ public class AudioStreamProxy : IAudioStreamServer
         }
         DebugLog?.LogInformation("Read(#{StreamId}): no stream found", streamId);
         return result;
-
-        async Task<IAudioStreamServer> GetAudioStreamClient(string address)
-            => OrdinalEquals(address, kube.PodIP)
-                ? AudioStreamServer
-                : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Task> StartWrite(Symbol streamId, IAsyncEnumerable<byte[]> audioStream, CancellationToken cancellationToken)
@@ -87,7 +86,6 @@ public class AudioStreamProxy : IAudioStreamServer
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
-
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Write(#{StreamId}): empty address ring, writing locally!", streamId);
@@ -96,33 +94,38 @@ public class AudioStreamProxy : IAudioStreamServer
         var port = serviceEndpoints.GetPort()!.Port;
 
         var memoized = audioStream.Memoize(cancellationToken);
-        var addresses = addressRing.GetMany(streamId.Value.GetDjb2HashCode(), WriteReplicaCount).ToList();
-        DebugLog?.LogInformation("Write(#{StreamId}): hitting {Addresses}", streamId, addresses.ToDelimitedString());
-        var writeTasks = await addresses
+        var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
+        DebugLog?.LogInformation("Write(#{StreamId}): hitting [{Addresses}]", streamId, addresses.ToDelimitedString());
+        var writeTasks = addresses
             .Select(async address => {
-                var client = await GetAudioStreamClient(address).ConfigureAwait(false);
-                var writeTask = await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
-                if (DebugLog != null)
-                    _ = writeTask.ContinueWith(
+                var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
+                var doneTask = await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+
+                if (DebugLog != null) {
+                    DebugLog.LogInformation("Write(#{StreamId}): writing to {Address} started", streamId, address);
+                    _ = doneTask.ContinueWith(
                         _ => DebugLog.LogInformation("Write(#{StreamId}): done writing to {Address}", streamId, address),
                         TaskScheduler.Default);
-                return writeTask;
+                }
+                return doneTask;
             })
-            .Collect()
-            .ConfigureAwait(false);
+            .ToList();
 
-        _ = BackgroundTask.Run(
-            () => Task.WhenAll(writeTasks),
+        var doneTask = BackgroundTask.Run(
+            async () => {
+                var doneTasks = await writeTasks.Collect().ConfigureAwait(false);
+                await Task.WhenAll(doneTasks).ConfigureAwait(false);
+            },
             e => Log.LogError(e, "Write(#{StreamId}): write to one of replicas failed", streamId),
             cancellationToken);
 
-        // Let's wait for completion of at least one write
-        var completedTask = await Task.WhenAny(writeTasks).ConfigureAwait(false);
-        return completedTask;
-
-        async Task<IAudioStreamServer> GetAudioStreamClient(string address)
-            => OrdinalEquals(address, kube.PodIP)
-                ? AudioStreamServer
-                : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(writeTasks).ConfigureAwait(false);
+        return doneTask;
     }
+
+    private async Task<IAudioStreamServer> GetAudioStreamClient(
+        Kube kube, string address, int port, CancellationToken cancellationToken)
+        => OrdinalEquals(address, kube.PodIP) && !kube.IsEmulated
+            ? AudioStreamServer
+            : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
 }
