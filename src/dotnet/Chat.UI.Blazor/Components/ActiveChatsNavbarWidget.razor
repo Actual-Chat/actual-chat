@@ -6,7 +6,7 @@
 @if (m.Chats.Count > 0) {
     <div class="active-chats">
         <div class="flex-x h-5 px-2 text-sm font-medium my-1 items-center gap-x-4">
-            <div>Active chats</div>
+            <div>Active and recent chats</div>
         </div>
 
         <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats" ActiveChatId="@m.ActiveChatId"/>
