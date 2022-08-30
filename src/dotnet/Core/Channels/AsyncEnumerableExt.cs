@@ -45,6 +45,53 @@ public static class AsyncEnumerableExt
         return Option<T>.None;
     }
 
+    public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
+        this IAsyncEnumerable<T> source,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        // ReSharper disable once PossibleMultipleEnumeration
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        try {
+            var hasCurrent = await enumerator
+                .MoveNextAsync().AsTask()
+                .WaitAsync(timeout, cancellationToken)
+                .ConfigureAwait(false);
+            // ReSharper disable once PossibleMultipleEnumeration
+            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+        }
+        catch (TimeoutException) {
+            return Option<IAsyncEnumerable<T>>.None;
+        }
+    }
+
+    public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
+        this IAsyncEnumerable<T> source,
+        IMomentClock clock,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        // ReSharper disable once PossibleMultipleEnumeration
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        try {
+            var hasCurrent = await enumerator
+                .MoveNextAsync().AsTask()
+                .WaitAsync(clock, timeout, cancellationToken)
+                .ConfigureAwait(false);
+            // ReSharper disable once PossibleMultipleEnumeration
+            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+        }
+        catch (TimeoutException) {
+            return Option<IAsyncEnumerable<T>>.None;
+        }
+    }
+
+    public static IAsyncEnumerable<T> WithUsedEnumerator<T>(
+        this IAsyncEnumerable<T> source,
+        IAsyncEnumerator<T> usedEnumerator,
+        bool hasCurrent)
+        => new AsyncEnumerableWithUsedEnumerator<T>(source, usedEnumerator, hasCurrent);
+
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this IAsyncEnumerator<T> source,
         CancellationToken cancellationToken = default)

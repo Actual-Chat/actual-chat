@@ -23,16 +23,13 @@ public class AudioHub : Hub
         TranscriptStreamServer = transcriptStreamServer;
     }
 
-    public async IAsyncEnumerable<byte[]> GetAudioStream(
+    public async IAsyncEnumerable<byte[]>? GetAudioStream(
         string streamId,
         TimeSpan skipTo,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (hasValue, audioStream) = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        if (!hasValue)
-            yield break;
-
-        await foreach (var chunk in audioStream!.ConfigureAwait(false))
+        var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
             yield return chunk;
     }
 
@@ -40,11 +37,8 @@ public class AudioHub : Hub
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (hasValue, transcriptStream) = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-        if (!hasValue)
-            yield break;
-
-        await foreach (var chunk in transcriptStream!.ConfigureAwait(false))
+        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
             yield return chunk;
     }
 

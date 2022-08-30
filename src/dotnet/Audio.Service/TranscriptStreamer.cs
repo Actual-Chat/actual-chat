@@ -19,12 +19,7 @@ public class TranscriptStreamer : ITranscriptStreamer
         Symbol streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var transcriptStreamOption = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-        if (!transcriptStreamOption.HasValue)
-            Log.LogWarning("{TranscriptStreamServer} doesn't have transcript stream", TranscriptStreamServer.GetType().Name);
-        var transcriptStream = transcriptStreamOption.HasValue
-            ? transcriptStreamOption.Value
-            : AsyncEnumerable.Empty<Transcript>();
+        var transcriptStream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
         await foreach(var transcript in transcriptStream.ConfigureAwait(false))
             yield return transcript;
     }

@@ -19,16 +19,10 @@ public class AudioStreamer : IAudioStreamer
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var audioStreamOption = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        if (!audioStreamOption.HasValue)
-            Log.LogWarning("{AudioStreamServer} doesn't have audio stream", AudioStreamServer.GetType().Name);
-        var audioStream = audioStreamOption.HasValue
-            ? audioStreamOption.Value
-            : AsyncEnumerable.Empty<byte[]>();
-
+        var audioStream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var frameStream = audioStream
-            .Select((packet, i) => new AudioFrame {
-                Data = packet,
+            .Select((data, i) => new AudioFrame {
+                Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
         return new AudioSource(

@@ -13,12 +13,9 @@ public class TranscriptStreamClientLease : ITranscriptStreamClient
     public void Dispose()
         => Lease.Dispose();
 
-    public Task<Option<IAsyncEnumerable<Transcript>>> Read(Symbol streamId, CancellationToken cancellationToken)
+    public Task<IAsyncEnumerable<Transcript>> Read(Symbol streamId, CancellationToken cancellationToken)
         => Lease.Resource.Read(streamId, cancellationToken);
 
-    public Task<Task> StartWrite(
-        Symbol streamId,
-        IAsyncEnumerable<Transcript> transcriptStream,
-        CancellationToken cancellationToken)
-        => Lease.Resource.StartWrite(streamId, transcriptStream, cancellationToken);
+    public Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
+        => Lease.Resource.Write(streamId, stream, cancellationToken);
 }

@@ -8,124 +8,109 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
 {
     private const int WriteReplicaCount = 2;
     private const int ReadReplicaCount = 1;
+    private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(1);
 
+    private AudioSettings Settings { get; }
     private TranscriptStreamServer TranscriptStreamServer { get; }
     private AudioHubBackendClientFactory AudioHubBackendClientFactory { get; }
     private KubeServices KubeServices { get; }
-    private AudioSettings Settings { get; }
+    private MomentClockSet Clocks { get; }
     private ILogger<TranscriptStreamProxy> Log { get; }
     private ILogger? DebugLog { get; }
 
     public TranscriptStreamProxy(
+        AudioSettings settings,
         TranscriptStreamServer transcriptStreamServer,
         AudioHubBackendClientFactory audioHubBackendClientFactory,
         KubeServices kubeServices,
-        AudioSettings settings,
+        MomentClockSet clocks,
         ILogger<TranscriptStreamProxy> log)
     {
+        Settings = settings;
         TranscriptStreamServer = transcriptStreamServer;
         AudioHubBackendClientFactory = audioHubBackendClientFactory;
         KubeServices = kubeServices;
-        Settings = settings;
+        Clocks = clocks;
         Log = log;
         DebugLog = Constants.DebugMode.TranscriptStreamProxy ? Log : null;
     }
 
-    public async Task<Option<IAsyncEnumerable<Transcript>>> Read(Symbol streamId, CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<Transcript>> Read(Symbol streamId, CancellationToken cancellationToken)
     {
+        var streamName = $"transcript #{streamId.Value}";
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
-            DebugLog?.LogInformation("Read(#{StreamId}): fallback to the local server", streamId);
+            DebugLog?.LogInformation("Read({Stream}): fallback to the local server", streamName);
             return await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
         }
 
-        var result = Option.None<IAsyncEnumerable<Transcript>>();
-        if (!kube.IsEmulated) {
-            result = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-            if (result.HasValue) {
-                DebugLog?.LogInformation("Read(#{StreamId}): found the stream on the local server", streamId);
-                return result;
-            }
-        }
-
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
-            Log.LogError("Read(#{StreamId}): empty address ring!", streamId);
-            return result;
+            Log.LogError("Read({Stream}): empty address ring!", streamName);
+            return AsyncEnumerable.Empty<Transcript>();
         }
         var port = serviceEndpoints.GetPort()!.Port;
-
         var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
         var readReplicaCount = addresses.Count.Clamp(0, ReadReplicaCount);
-        DebugLog?.LogInformation("Read(#{StreamId}): hitting [{Addresses}]", streamId, addresses.ToDelimitedString());
+
+        DebugLog?.LogInformation("Read({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
         for (var i = 0; i < readReplicaCount; i++) {
             var address = addresses.GetRandom();
-            DebugLog?.LogInformation("Read(#{StreamId}): trying {Address}", streamId, address);
+            DebugLog?.LogInformation("Read({Stream}): trying {Address}", streamName, address);
 
             var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
-            result = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
-            if (result.HasValue) {
-                DebugLog?.LogInformation("Read(#{StreamId}): found the stream on {Address}", streamId, address);
-                return result;
+            var stream = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
+            var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken).ConfigureAwait(false);
+            if (result.IsSome(out var s)) {
+                DebugLog?.LogInformation("Read({Stream}): found the stream on {Address}", streamName, address);
+                return s;
             }
         }
-        DebugLog?.LogInformation("Read(#{StreamId}): no stream found", streamId);
-        return result;
+        DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
+        return AsyncEnumerable.Empty<Transcript>();
     }
 
-    public async Task<Task> StartWrite(
-        Symbol streamId,
-        IAsyncEnumerable<Transcript> transcriptStream,
-        CancellationToken cancellationToken)
+    public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
     {
+        var streamName = $"transcript #{streamId.Value}";
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
-            DebugLog?.LogInformation("Write(#{StreamId}): fallback to the local server", streamId);
-            return await TranscriptStreamServer.StartWrite(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+            DebugLog?.LogInformation("Write({Stream}): fallback to the local server", streamName);
+            await TranscriptStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);
+            return;
         }
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
         var serviceEndpoints = endpointState.LatestNonErrorValue;
-
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
-            Log.LogError("Write(#{StreamId}): empty address ring, writing locally!", streamId);
-            return await TranscriptStreamServer.StartWrite(streamId, transcriptStream, cancellationToken).ConfigureAwait(false);
+            Log.LogError("Write({Stream}): empty address ring, writing locally!", streamName);
+            await TranscriptStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);
+            return;
         }
         var port = serviceEndpoints.GetPort()!.Port;
-
-        var memoized = transcriptStream.Memoize(cancellationToken);
         var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
-        DebugLog?.LogInformation("Write(#{StreamId}): hitting [{Addresses}]", streamId, addresses.ToDelimitedString());
+
+        DebugLog?.LogInformation("Write({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
+        var memoized = stream.Memoize(cancellationToken);
         var writeTasks = addresses
             .Select(async address => {
+                DebugLog?.LogInformation("Write({Stream}): writing to {Address} started", streamName, address);
                 var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
-                var doneTask = await client.StartWrite(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
-
-                if (DebugLog != null) {
-                    DebugLog.LogInformation("Write(#{StreamId}): writing to {Address} started", streamId, address);
-                    _ = doneTask.ContinueWith(
-                        _ => DebugLog.LogInformation("Write(#{StreamId}): done writing to {Address}", streamId, address),
-                        TaskScheduler.Default);
+                try {
+                    await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+                    DebugLog?.LogInformation("Write({Stream}): done writing to {Address}", streamName, address);
                 }
-                return doneTask;
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e, "Write({Stream}): failed writing to {Address}", streamName, address);
+                }
             })
             .ToList();
-
-        var doneTask = BackgroundTask.Run(
-            async () => {
-                var doneTasks = await writeTasks.Collect().ConfigureAwait(false);
-                await Task.WhenAll(doneTasks).ConfigureAwait(false);
-            },
-            e => Log.LogError(e, "Write(#{StreamId}): write to one of replicas failed", streamId),
-            cancellationToken);
-
         await Task.WhenAll(writeTasks).ConfigureAwait(false);
-        return doneTask;
     }
 
     private async Task<ITranscriptStreamServer> GetTranscriptStreamClient(

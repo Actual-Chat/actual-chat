@@ -2,13 +2,13 @@ namespace ActualChat.Audio;
 
 public interface IAudioStreamServer
 {
-    Task<Option<IAsyncEnumerable<byte[]>>> Read(
+    Task<IAsyncEnumerable<byte[]>> Read(
         Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 
-    Task<Task> StartWrite(
+    Task Write(
         Symbol streamId,
-        IAsyncEnumerable<byte[]> audioStream,
+        IAsyncEnumerable<byte[]> stream,
         CancellationToken cancellationToken);
 }

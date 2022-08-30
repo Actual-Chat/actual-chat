@@ -93,12 +93,9 @@ public sealed class AudioProcessor : IAudioProcessor
                 .GetFrames(cancellationToken)
                 .Select(f => f.Data);
 
-            // wait for audio stream registration at any streaming server
-            var completeStreamTask = await AudioStreamServer.StartWrite(openSegment.StreamId, audioStream, cancellationToken).ConfigureAwait(false);
-
             var publishAudioTask = BackgroundTask.Run(
-                () => completeStreamTask,
-                Log, $"{nameof(AudioStreamServer.StartWrite)} failed",
+                () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
+                Log, $"{nameof(AudioStreamServer.Write)} failed",
                 cancellationToken);
 
             var audioEntryTask = BackgroundTask.Run(
@@ -188,7 +185,7 @@ public sealed class AudioProcessor : IAudioProcessor
         cancellationToken = CancellationToken.None;
         // TODO(AY): review cancellation stuff
         var diffs = transcripts.GetDiffs(cancellationToken).Memoize(cancellationToken);
-        var publishTask = await TranscriptStreamServer.StartWrite(streamId, diffs.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+        var publishTask = TranscriptStreamServer.Write(streamId, diffs.Replay(cancellationToken), cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(audioEntryTask, streamId, diffs.Replay(cancellationToken), cancellationToken);
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
