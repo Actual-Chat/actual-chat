@@ -37,12 +37,12 @@ internal static class Program
             var envMinIo = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO");
             if (string.IsNullOrWhiteSpace(envMinIo)
                 || !int.TryParse(envMinIo, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIOThreads)) {
-                minIOThreads = 8;
+                minIOThreads = 128;
             }
             var envMinWorker = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER");
             if (string.IsNullOrWhiteSpace(envMinWorker)
                 || !int.TryParse(envMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorkerThreads)) {
-                minWorkerThreads = 8;
+                minWorkerThreads = 128;
             }
             ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
             if (currentMinIO < minIOThreads) {
@@ -54,7 +54,7 @@ internal static class Program
             if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIO))
                 throw StandardError.Internal("Can't set min. worker thread count.");
 
-            ThreadPool.SetMaxThreads(4096, 4096);
+            ThreadPool.SetMaxThreads(16384, 16384);
         }
 
         static void AdjustGrpcCoreThreadPool()
@@ -62,7 +62,7 @@ internal static class Program
             var grpcThreadsEnv = Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE");
             if (string.IsNullOrWhiteSpace(grpcThreadsEnv)
                 || !int.TryParse(grpcThreadsEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int grpcThreads)) {
-                grpcThreads = 8;
+                grpcThreads = 64;
             }
             GrpcEnvironment.SetThreadPoolSize(grpcThreads);
             GrpcEnvironment.SetCompletionQueueCount(grpcThreads);
