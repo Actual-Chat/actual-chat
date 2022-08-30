@@ -107,8 +107,8 @@ public class DbModule : HostModule<DbSettings>
                 operations.ConfigureOperationLogReader(_ => new() {
                     UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
                 });
-                operations.AddNpgsqlOperationLogChangeTracking();
-                // operations.AddRedisOperationLogChangeTracking();
+                // operations.AddNpgsqlOperationLogChangeTracking();
+                operations.AddRedisOperationLogChangeTracking();
             });
 
             configure?.Invoke(db);
