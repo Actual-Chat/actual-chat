@@ -8,7 +8,10 @@
             var cls = ChatAuthor != null && context.Author.Id == ChatAuthor.Id ? "me" : "";
             <div class="mention-bubble @cls"
                  @onclick="OnChatAuthorClick">
-                @@@context.Author.Name
+                <div class="flex-x items-center">
+                    <i class="icon-at text-md"></i>
+                    @context.Author.Name
+                </div>
             </div>
         } else {
             <div class="inline-block px-1 rounded-md bg-mention">@Markup.Format(MentionFormat.PreferNameOnly)</div>
