@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<LiveTimeDeltaText Class="chat-message-timestamp text-03 text-xs" Moment="@Moment"/>
+<LiveTimeDeltaText Class="chat-message-timestamp text-03 text-xs" Moment="@Moment" EvalInitialValue="true" />
 
 @code {
     [Parameter] public Moment Moment { get; set; }

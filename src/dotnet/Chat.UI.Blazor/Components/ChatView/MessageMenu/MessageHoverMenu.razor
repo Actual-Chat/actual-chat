@@ -1,0 +1,56 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<MessageHoverMenu.Model>
+
+@{
+    var entry = Message.Entry;
+    var m = State.LatestNonErrorValue;
+}
+
+<div class="message-hover-menu">
+    @if (entry.AudioEntryId != null) {
+        <MessageMenuPlay Entry="@entry"/>
+    }
+    @if (m.CanReply) {
+        <ButtonRound Title="Reply" Class="reply-btn" Click="@(() => Reply(Message.Entry))">
+            <i class="icon-reply text-xl text-icon-01"></i>
+        </ButtonRound>
+    }
+    <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
+        <ButtonRound Title="More options" Class="more-btn">
+            <i class="icon-more-vertical text-xl text-icon-01"></i>
+        </ButtonRound>
+    </ContextMenuToggleTrigger>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
+
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public ChatMessageModel Message { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var entry = Message.Entry;
+        var rules = await Chats.GetRules(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var canReply = rules.CanWrite();
+        return new Model(canReply);
+    }
+
+    private async Task Reply(ChatEntry chatEntry) {
+        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        Services.UICommander().CancelUpdateDelays();
+        await GlobalEvents.Publish(new FocusChatMessageEditor());
+    }
+
+    public record Model(bool CanReply) {
+        public static readonly Model None = new(false);
+    }
+}
