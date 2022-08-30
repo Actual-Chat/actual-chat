@@ -34,40 +34,35 @@ internal static class Program
         // we preserve default thread pool settings only if they are bigger of our minimals
         static void AdjustThreadPool()
         {
-            var envMinIo = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO");
-            if (string.IsNullOrWhiteSpace(envMinIo)
-                || !int.TryParse(envMinIo, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIOThreads)) {
-                minIOThreads = 128;
-            }
-            var envMinWorker = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER");
-            if (string.IsNullOrWhiteSpace(envMinWorker)
-                || !int.TryParse(envMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorkerThreads)) {
-                minWorkerThreads = 128;
-            }
-            ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
-            if (currentMinIO < minIOThreads) {
-                if (!ThreadPool.SetMinThreads(currentMinWorker, minIOThreads))
-                    throw StandardError.Internal("Can't set min. IO thread count.");
-
-                currentMinIO = minIOThreads;
-            }
-            if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIO))
-                throw StandardError.Internal("Can't set min. worker thread count.");
-
             ThreadPool.SetMaxThreads(16384, 16384);
+
+            var sMinIO = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO") ?? "").Trim();
+            var sMinWorker = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER") ?? "").Trim();
+            if (!int.TryParse(sMinIO, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIO))
+                minIO = 128;
+            if (!int.TryParse(sMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorker))
+                minWorker = 128;
+            ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
+            minIO = Math.Max(minIO, currentMinIO);
+            minWorker = Math.Max(minWorker, currentMinIO);
+
+            if ((minIO, minWorker) == (currentMinWorker, currentMinWorker))
+                return;
+
+            if (!ThreadPool.SetMinThreads(currentMinWorker, minIO))
+                throw StandardError.Internal("Can't set min. thread count.");
         }
 
         static void AdjustGrpcCoreThreadPool()
         {
-            var grpcThreadsEnv = Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE");
-            if (string.IsNullOrWhiteSpace(grpcThreadsEnv)
-                || !int.TryParse(grpcThreadsEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int grpcThreads)) {
+            var grpcThreadsEnv = (Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE") ?? "").Trim();
+            if (!int.TryParse(grpcThreadsEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int grpcThreads))
                 grpcThreads = 64;
-            }
+
             GrpcEnvironment.SetThreadPoolSize(grpcThreads);
             GrpcEnvironment.SetCompletionQueueCount(grpcThreads);
-            // requires user to never block in async code, can easily lead to deadlocks
-            GrpcEnvironment.SetHandlerInlining(true);
+            // true is dangerous: if user block in async code, this can easily lead to deadlocks
+            GrpcEnvironment.SetHandlerInlining(false);
         }
     }
 }
