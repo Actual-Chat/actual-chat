@@ -9,8 +9,12 @@
     @apply bg-message-hover;
 }
 
-.message-wrapper.mention {
-    @apply border-l-2 border-mention-me-border bg-mention-me-bg;
+.mention-bubble {
+    @apply inline-block px-2 rounded-xl select-none cursor-pointer;
+    @apply bg-mention-other-bubble text-mention-other-text font-medium;
+}
+.mention-bubble.me {
+    @apply bg-mention-me-bubble text-mention-me-text;
 }
 
 .chat-message {
