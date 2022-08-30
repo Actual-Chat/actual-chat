@@ -26,7 +26,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IGlobalEvents GlobalEvents { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -47,7 +47,7 @@
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
         Services.UICommander().CancelUpdateDelays();
-        await GlobalEvents.Publish(new FocusChatMessageEditor());
+        await UIEventHub.Publish(new FocusChatMessageEditor());
     }
 
     public record Model(bool CanReply) {

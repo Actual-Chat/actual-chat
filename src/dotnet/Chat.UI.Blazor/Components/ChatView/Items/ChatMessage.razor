@@ -6,7 +6,6 @@
 @using BlazorContextMenu
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
-
     var message = Message;
     var entry = message.Entry;
     var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
