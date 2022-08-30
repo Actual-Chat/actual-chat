@@ -6,9 +6,9 @@ namespace ActualChat.Audio;
 
 public class TranscriptStreamProxy : ITranscriptStreamServer
 {
-    private const int WriteReplicaCount = 2;
+    private const int WriteReplicaCount = 1;
     private const int ReadReplicaCount = 1;
-    private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(1);
+    private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(2);
 
     private AudioSettings Settings { get; }
     private TranscriptStreamServer TranscriptStreamServer { get; }
