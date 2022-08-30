@@ -165,6 +165,9 @@
 .active-chats .btn-round {
     @apply w-6 h-6;
 }
+.recording-in-chat.btn.btn-round {
+    @apply hidden;
+}
 .active-chats .recording-in-chat.btn.btn-round.on {
     @apply flex visible;
 }

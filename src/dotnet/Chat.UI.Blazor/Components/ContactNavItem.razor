@@ -1,9 +1,10 @@
 @inherits ComputedStateComponent<ContactNavItem.Model>
 @{
     var m = State.ValueOrDefault;
-}
-@if (m is null) {
-    return;
+    if (m is null)
+        return;
+    var isVisibleMenu = m.IsListening || m.IsRecording;
+    var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
 }
 
 <NavbarItem
@@ -17,21 +18,21 @@
         </div>
     </ChildContent>
     <Ending>
-        <ChatListListenToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
-        <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
-        <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@Contact">
-            <div class="flex">
-                <Button Class="btn-round chat-menu-btn blackout">
-                    <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 7C13.104 7 14 6.104 14 5C14 3.896 13.104 3 12 3C10.896 3 10 3.896 10 5C10 6.104 10.896 7 12 7ZM12 10C10.896 10 10 10.896 10 12C10 13.104 10.896 14 12 14C13.104 14 14 13.104 14 12C14 10.896 13.104 10 12 10ZM10 19C10 17.896 10.896 17 12 17C13.104 17 14 17.896 14 19C14 20.104 13.104 21 12 21C10.896 21 10 20.104 10 19Z"/>
-                    </svg>
-                </Button>
-                <div class="absolute -right-6">
-                    <div class="placement -mt-2">
+        <div class="@cls">
+            <ChatListListenToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
+            <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
+            <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@Contact">
+                <div class="flex">
+                    <Button Class="btn-round chat-menu-btn blackout">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </Button>
+                    <div class="absolute -right-6">
+                        <div class="placement -mt-2">
+                        </div>
                     </div>
                 </div>
-            </div>
-        </ContextMenuToggleTrigger>
+            </ContextMenuToggleTrigger>
+        </div>
     </Ending>
 </NavbarItem>
 
@@ -41,15 +42,24 @@
 
     [Parameter, EditorRequired] public UserContact Contact { get; set; } = null!;
 
-    public record Model(bool IsOnline, string ActiveChatId, string FullChatId, string ShortChatId);
+    public record Model(bool IsOnline, string ActiveChatId, string FullChatId, string ShortChatId, bool IsListening, bool IsRecording);
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var presence = await UserPresences.Get(Contact.TargetUserId, cancellationToken).ConfigureAwait(false);
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
+        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var isListening = listeningChatIds.Contains(shortChatId);
+        var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false) == shortChatId;
 
-        return new(presence is Presence.Online or Presence.Recording, activeChatId, fullChatId, shortChatId);
+        return new(
+            presence is Presence.Online or Presence.Recording,
+            activeChatId,
+            fullChatId,
+            shortChatId,
+            isListening,
+            isRecording);
     }
 
 }

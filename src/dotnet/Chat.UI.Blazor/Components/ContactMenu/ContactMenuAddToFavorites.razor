@@ -2,10 +2,10 @@
 @using BlazorContextMenu
 
 @if (!Contact.IsFavorite) {
-    <Item OnClick="OnClick" CssClass="context-menu-item warning-item">
+    <Item OnClick="OnClick" CssClass="context-menu-item">
         <div class="context-menu-content">
             <div class="context-menu-icon">
-                @* TODO: *@
+                <i class="icon-heart-fill text-2xl"></i>
             </div>
             <div class="context-menu-text">
                 Add to Favorites
