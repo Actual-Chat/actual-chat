@@ -5,7 +5,8 @@
 @if (_parsedChatAuthorId.IsValid) {
     <ChatAuthorBadgeTemplate AuthorId="@_parsedChatAuthorId.Id.Value">
         @if (!context.Author.Id.IsEmpty) {
-            <div class="inline-block px-1 rounded-md bg-mention-me-bg select-none cursor-pointer"
+            var cls = ChatAuthor != null && context.Author.Id == ChatAuthor.Id ? "me" : "";
+            <div class="mention-bubble @cls"
                  @onclick="OnChatAuthorClick">
                 @@@context.Author.Name
             </div>
@@ -20,16 +21,20 @@ else {
 
 @code {
     private ParsedChatAuthorId _parsedChatAuthorId;
+    private ChatAuthor? ChatAuthor { get; set; }
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
-    protected override void OnParametersSet() {
+    protected override async Task OnParametersSetAsync() {
         MarkupHub.ChatId = Entry.ChatId;
         var id = Markup.Id;
         if (!id.OrdinalHasPrefix("a:", out var authorId))
             authorId = id;
         _parsedChatAuthorId = new ParsedChatAuthorId(authorId);
+        ChatAuthor = await ChatAuthors.Get(Session, Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
     }
 
     private void OnChatAuthorClick()
