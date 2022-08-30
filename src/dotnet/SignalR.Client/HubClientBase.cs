@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -31,8 +32,11 @@ public abstract class HubClientBase : WorkerBase
         Clocks = Services.Clocks();
         Log = Services.LogFor(GetType());
 
-        if (hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat", out var suffix))
+        // Workaround for missing SSL CA cert for local.actual.chat
+        var hostInfo = Services.GetRequiredService<HostInfo>();
+        if (hostInfo.IsDevelopmentInstance && hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat", out var suffix))
             hubUrl = new Uri("http://local.actual.chat:7080" + suffix);
+
         HubUrl = hubUrl;
         ConnectionBuilderFactory = () => {
             var builder = new HubConnectionBuilder()
