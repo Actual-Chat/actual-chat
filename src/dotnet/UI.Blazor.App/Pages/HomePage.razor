@@ -33,9 +33,8 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chat = await RecentChats.GetActiveChatOrDefault(cancellationToken).ConfigureAwait(false);
-
         var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
+        var chat = await RecentChats.GetActiveChatOrDefault(cancellationToken).ConfigureAwait(false);
         return new(account, chat?.Id ?? Symbol.Empty);
     }
 

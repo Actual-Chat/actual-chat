@@ -3,12 +3,14 @@ namespace ActualChat.Users;
 public class RecentEntries : IRecentEntries
 {
     private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
     private IRecentEntriesBackend Backend { get; }
     private ICommander Commander { get; }
 
-    public RecentEntries(IAuth auth, IRecentEntriesBackend backend, ICommander commander)
+    public RecentEntries(IAuth auth, IAccounts accounts, IRecentEntriesBackend backend, ICommander commander)
     {
         Auth = auth;
+        Accounts = accounts;
         Backend = backend;
         Commander = commander;
     }
@@ -20,8 +22,11 @@ public class RecentEntries : IRecentEntries
         int limit,
         CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.List(user.Id, scope, limit, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest())
+            return ImmutableArray<RecentEntry>.Empty;
+
+        return await Backend.List(account.User.Id, scope, limit, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
