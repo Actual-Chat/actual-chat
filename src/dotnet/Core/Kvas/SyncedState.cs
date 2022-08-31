@@ -107,17 +107,15 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     protected async Task Sync(CancellationToken cancellationToken)
     {
-        var readResult = default(Result<T>);
         var readComputed = await Stl.Fusion.Computed.Capture(
             (Func<CancellationToken, Task<T>>) (async ct => {
                 try {
-                    readResult = await Settings.Read(ct).ConfigureAwait(false);
+                    return await Settings.Read(ct).ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    readResult = Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
+                catch (Exception e) when (e is not OperationCanceledException) {
                     Log.LogWarning(e, "Failed to read the initial value");
+                    return Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
                 }
-                return readResult;
             }),
             cancellationToken
         ).ConfigureAwait(false);
@@ -131,7 +129,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 if (snapshot != null!) {
                     if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
                         // Read sync
-                        Set(readResult);
+                        Set(readComputed.Output);
                         if (!WhenFirstTimeRead.IsCompleted)
                             WhenFirstTimeReadSource.TrySetResult(default);
                         _lastReadComputed = readComputed;
