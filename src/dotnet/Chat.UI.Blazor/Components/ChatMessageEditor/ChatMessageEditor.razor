@@ -73,7 +73,7 @@
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private EditedMarkupConverter EditedMarkupConverter { get; set; } = null!;
-    private SyncedStateLease<long>? LastReadEntryState { get; set; }
+    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
@@ -98,7 +98,7 @@
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
         LastReadEntryState?.Dispose();
-        LastReadEntryState = null;
+        LastReadEntryState = null!;
     }
 
     protected override void OnParametersSet()

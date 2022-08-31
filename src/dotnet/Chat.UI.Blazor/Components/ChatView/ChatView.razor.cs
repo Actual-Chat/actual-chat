@@ -12,7 +12,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     private long? _lastNavigateToEntryId;
-    private long _initialLastReadEntryId;
+    private long? _initialLastReadEntryId;
     private HashSet<long> _fullyVisibleEntryIds = new ();
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
@@ -32,38 +32,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
-    private SyncedStateLease<long> LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    public void Dispose()
-    {
-        Nav.LocationChanged -= OnLocationChanged;
-        _disposeToken.Cancel();
-        LastReadEntryState.Dispose();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await WhenInitialized.ConfigureAwait(false);
-        TryNavigateToEntry();
-    }
-
-    public async Task NavigateToUnreadEntry()
-    {
-        long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryState?.Value ?? 0;
-        if (lastReadEntryId > 0)
-            navigateToEntryId = lastReadEntryId;
-        else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
-            navigateToEntryId = chatIdRange.ToInclusive().End;
-        }
-
-        // reset to ensure navigation will happen
-        _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntry(navigateToEntryId);
-    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,45 +55,59 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
     }
 
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        _disposeToken.Cancel();
+        LastReadEntryState?.Dispose();
+        LastReadEntryState = null;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        TryNavigateToEntry();
+    }
+
     protected override bool ShouldRender()
         => WhenInitialized.IsCompleted;
 
-    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
+    public async Task NavigateToUnreadEntry()
     {
-        while (!cancellationToken.IsCancellationRequested)
-            try {
-                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
-                var visibleKeys = await VisibleKeys.Use(cancellationToken);
-                if (visibleKeys.Count == 0)
-                    continue;
+        long navigateToEntryId;
+        var lastReadEntryId = LastReadEntryState?.Value;
+        if (lastReadEntryId is { } entryId)
+            navigateToEntryId = entryId;
+        else {
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
+            navigateToEntryId = chatIdRange.ToInclusive().End;
+        }
 
-                var visibleEntryIds = visibleKeys
-                    .Select(key =>
-                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
-                            ? (long?)entryId
-                            : null)
-                    .Where(entryId => entryId.HasValue)
-                    .Select(entryId => entryId!.Value)
-                    .ToHashSet();
-
-                var maxVisibleEntryId = visibleEntryIds.Max();
-                var minVisibleEntryId = visibleEntryIds.Min();
-                visibleEntryIds.Remove(maxVisibleEntryId);
-                visibleEntryIds.Remove(minVisibleEntryId);
-                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
-
-                if (LastReadEntryState?.Value >= maxVisibleEntryId)
-                    continue;
-
-                if (LastReadEntryState != null)
-                    LastReadEntryState.Value = maxVisibleEntryId;
-            }
-            catch (Exception e) when(e is not OperationCanceledException) {
-                Log.LogWarning(e,
-                    "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
-                    LastReadEntryState!.Value);
-            }
+        // Reset to ensure the navigation will happen
+        _initialLastReadEntryId = navigateToEntryId;
+        NavigateToEntry(navigateToEntryId);
     }
+
+    public void NavigateToEntry(long navigateToEntryId)
+    {
+        // reset to ensure navigation will happen
+        _lastNavigateToEntryId = null;
+        NavigateToEntryId.Value = navigateToEntryId;
+    }
+
+    public void TryNavigateToEntry()
+    {
+        // ignore location changed events if already disposed
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
+        var uri = new Uri(Nav.Uri);
+        var entryIdString = uri.Fragment.TrimStart('#');
+        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
+            NavigateToEntry(entryId);
+    }
+
+    // Private methods
 
     async Task<VirtualListData<ChatMessageModel>> IVirtualListDataSource<ChatMessageModel>.GetData(
         VirtualListDataQuery query,
@@ -220,23 +205,41 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return result;
     }
 
-    public void NavigateToEntry(long navigateToEntryId)
+    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
-        // reset to ensure navigation will happen
-        _lastNavigateToEntryId = null;
-        NavigateToEntryId.Value = navigateToEntryId;
-    }
+        while (!cancellationToken.IsCancellationRequested)
+            try {
+                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
+                var visibleKeys = await VisibleKeys.Use(cancellationToken);
+                if (visibleKeys.Count == 0)
+                    continue;
 
-    private void TryNavigateToEntry()
-    {
-        // ignore location changed events if already disposed
-        if (_disposeToken.IsCancellationRequested)
-            return;
+                var visibleEntryIds = visibleKeys
+                    .Select(key =>
+                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
+                            ? (long?)entryId
+                            : null)
+                    .Where(entryId => entryId.HasValue)
+                    .Select(entryId => entryId!.Value)
+                    .ToHashSet();
 
-        var uri = new Uri(Nav.Uri);
-        var entryIdString = uri.Fragment.TrimStart('#');
-        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
-            NavigateToEntry(entryId);
+                var maxVisibleEntryId = visibleEntryIds.Max();
+                var minVisibleEntryId = visibleEntryIds.Min();
+                visibleEntryIds.Remove(maxVisibleEntryId);
+                visibleEntryIds.Remove(minVisibleEntryId);
+                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
+
+                if (LastReadEntryState?.Value >= maxVisibleEntryId)
+                    continue;
+
+                if (LastReadEntryState != null)
+                    LastReadEntryState.Value = maxVisibleEntryId;
+            }
+            catch (Exception e) when(e is not OperationCanceledException) {
+                Log.LogWarning(e,
+                    "Error monitoring visible key changes, LastReadEntryId = {LastReadEntryId}",
+                    LastReadEntryState?.Value);
+            }
     }
 
     // Event handlers

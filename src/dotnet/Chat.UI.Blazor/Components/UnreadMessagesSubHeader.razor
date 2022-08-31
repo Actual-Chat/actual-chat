@@ -1,13 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<UnreadMessagesSubHeader.Model>
 @{
-    var m = State.ValueOrDefault ?? Model.None;
+    var m = State.LatestNonErrorValue ?? Model.None;
     if (m.Count == 0)
         return;
+
+    var messagesWord = m.Count == 1 ? "message" : "messages";
+    var countText = m.Count.ToString(CultureInfo.InvariantCulture);
+    var text = $"{countText}{(m.Count >= 10 ? "+": "")} unread {messagesWord}";
 }
 
 <div class="unread-messages-sub-header" @onclick="Click">
-    @GetUnreadCountMessage()
+    @text
 </div>
 
 @code {
@@ -39,28 +43,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await UnreadMessages.GetCount(cancellationToken);
-        if (!count.HasValue)
-            return Model.None;
-
-        return new() {
-            Count = count.Value,
-        };
-    }
-
-    private string PluralizeMessage(int count) {
-        return count switch {
-            1 => "message",
-            _ => "messages",
-        };
-    }
-
-    private string GetUnreadCountMessage() {
-        var model = State.ValueOrDefault;
-        return model?.Count switch {
-            > 0 and < 10 => $"{ model.Count } unread { PluralizeMessage(model.Count) }",
-            > 0 => $"{ model.Count }+ unread messages",
-            _ => string.Empty
-        };
+        return count == 0 ? Model.None : new() { Count = count };
     }
 
     public sealed record Model {

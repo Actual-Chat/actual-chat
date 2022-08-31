@@ -12,7 +12,7 @@ public class ChatUI
     public const int ActiveChatsLimit = 4;
 
     private ChatPlayers? _chatPlayers;
-    private readonly SharedResourcePool<Symbol, ISyncedState<long>> _lastReadEntryStates;
+    private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _lastReadEntryStates;
     private readonly ISyncedState<ImmutableDictionary<string, Moment>> _pinnedChatIds;
     private readonly IStoredState<Symbol> _recordingChatId;
     private readonly IStoredState<ImmutableList<Symbol>> _listeningChatIds;
@@ -77,7 +77,7 @@ public class ChatUI
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
-        _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long>>(CreateLastReadEntryState);
+        _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateLastReadEntryState);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
     }
@@ -209,22 +209,27 @@ public class ChatUI
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
-    public async Task<SyncedStateLease<long>> LeaseLastReadEntryState(
+    public async ValueTask<SyncedStateLease<long?>> LeaseLastReadEntryState(
         Symbol chatId,
         CancellationToken cancellationToken)
     {
         var lease = await _lastReadEntryStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        return new SyncedStateLease<long>(lease);
+        var result = new SyncedStateLease<long?>(lease);
+        await result.WhenFirstTimeRead;
+        return result;
     }
 
-    private Task<ISyncedState<long>> CreateLastReadEntryState(Symbol chatId, CancellationToken cancellationToken)
-        => Task.FromResult(StateFactory.NewCustomSynced<long>(
+    private Task<ISyncedState<long?>> CreateLastReadEntryState(Symbol chatId, CancellationToken cancellationToken)
+        => Task.FromResult(StateFactory.NewCustomSynced<long?>(
             new(
                 // Reader
-                async ct => await ChatReadPositions.Get(Session, chatId, ct).ConfigureAwait(false) ?? 0,
+                async ct => await ChatReadPositions.Get(Session, chatId, ct).ConfigureAwait(false),
                 // Writer
                 async (lastReadEntryId, ct) => {
-                    var command = new IChatReadPositions.SetReadPositionCommand(Session, chatId, lastReadEntryId);
+                    if (lastReadEntryId is not { } entryId)
+                        return;
+
+                    var command = new IChatReadPositions.SetReadPositionCommand(Session, chatId, entryId);
                     await UICommander.Run(command, ct);
                 })
             ));
