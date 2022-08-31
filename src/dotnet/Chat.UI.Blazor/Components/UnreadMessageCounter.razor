@@ -12,8 +12,8 @@
 
     var countText = m.Count switch {
         0 => "",
-        < 10 => m.Count.ToString(CultureInfo.InvariantCulture),
-        _ => m.Count.ToString(CultureInfo.InvariantCulture) + "+",
+        < 100 => m.Count.ToString(CultureInfo.InvariantCulture),
+        >=100 => "99+",
     };
 }
 
