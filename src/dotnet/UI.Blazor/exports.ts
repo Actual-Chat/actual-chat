@@ -5,6 +5,7 @@ import './Components/Button/button.css';
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
 import './Components/ContextMenu/context-menu.css';
+import './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.css';
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
