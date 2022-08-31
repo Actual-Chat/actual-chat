@@ -51,7 +51,7 @@ public class UnreadMessages : IDisposable
         var idRange = await _chats
             .GetIdRange(_session, _chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
-        var exactCount = (int)(idRange.End - lastReadEntryId).Clamp(0, MaxCount);
+        var exactCount = (int)(idRange.End - lastReadEntryId - 1).Clamp(0, MaxCount);
         return exactCount;
     }
 
