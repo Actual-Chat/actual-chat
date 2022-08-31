@@ -9,22 +9,20 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
     private IChatsBackend ChatsBackend { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private ContentUrlMapper ContentUrlMapper { get; }
-    private IMarkupParser MarkupParser { get; }
+    private ILogger<NewChatEntryEventHandler> Log { get; }
 
-    public NewChatEntryEventHandler(
-        IChatsBackend chatsBackend,
-        IChatAuthorsBackend chatAuthorsBackend,
-        ContentUrlMapper contentUrlMapper,
-        IMarkupParser markupParser)
+    public NewChatEntryEventHandler(IChatsBackend chatsBackend, IChatAuthorsBackend chatAuthorsBackend, ContentUrlMapper contentUrlMapper, ILogger<NewChatEntryEventHandler> log)
     {
         ChatsBackend = chatsBackend;
         ChatAuthorsBackend = chatAuthorsBackend;
         ContentUrlMapper = contentUrlMapper;
-        MarkupParser = markupParser;
+        Log = log;
     }
 
     public async Task Handle(NewChatEntryEvent @event, ICommander commander, CancellationToken cancellationToken)
     {
+        Log.LogInformation("Preparing notification about entryId='{ChatEntryId} in chat id='{ChatId}'", @event.Id, chat.Id);
+
         var chatAuthor = await ChatAuthorsBackend.Get(@event.ChatId, @event.AuthorId, true, cancellationToken)
             .Require()
             .ConfigureAwait(false);
@@ -54,13 +52,15 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
         => chat.ChatType switch {
             ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
             ChatType.Peer => $"{chatAuthor.Name}",
-            _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
+            _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
         };
 
     private string GetContent(string chatEventContent)
     {
-        var markup = MarkupParser.Parse(chatEventContent);
-        markup = new MarkupTrimmer(100).Rewrite(markup);
-        return MarkupFormatter.ReadableUnstyled.Format(markup);
+        if (chatEventContent.Length <= 1024)
+            return chatEventContent;
+
+        var lastSpaceIndex = chatEventContent.IndexOf(' ', 1000);
+        return chatEventContent.Substring(0, lastSpaceIndex < 1024 ? lastSpaceIndex : 1000);
     }
 }

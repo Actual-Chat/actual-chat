@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
+const LogScope = 'messaging-service-worker.ts';
 // @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 
@@ -23,8 +24,9 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 
 const app = initializeApp(config);
 const messaging = getMessaging(app);
+console.log(`${LogScope}: Subscribing on fcm background message`);
 onBackgroundMessage(messaging, async payload => {
-    console.log('[messaging-service-worker.ts] Received background message ', payload);
+    console.log(`${LogScope}: Received background message `, payload);
     const chatId = payload.data.chatId;
     const options: NotificationOptions = {
         tag: chatId.toString(),

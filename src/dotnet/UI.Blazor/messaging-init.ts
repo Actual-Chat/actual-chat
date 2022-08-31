@@ -13,7 +13,7 @@ export async function getDeviceToken(): Promise<string | null> {
             const app = initializeApp(config);
             const messaging = getMessaging(app);
             onMessage(messaging, (payload) => {
-                console.log('Message received. ', payload);
+                console.log(`${LogScope}: Message received. `, payload);
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
@@ -21,6 +21,7 @@ export async function getDeviceToken(): Promise<string | null> {
             const workerUrl = `${workerPath}?config=${configBase64}`;
             let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
             if (!workerRegistration) {
+                console.log(`${LogScope}: registering service worker '${workerUrl}'`)
                 workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/' });
             }
 
@@ -72,6 +73,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
     baseLayoutRef = blazorRef;
     if (!isAlreadyRegistered) {
         navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
+            console.log(`${LogScope}: message event from service worker`, evt);
             if (evt.origin !== window.location.origin)
                 return;
             if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
@@ -87,6 +89,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
 function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
+        console.log(`${LogScope}: storing notification permission`, permission);
         // @ts-ignore readonly property
         Notification['permission'] = permission;
     }
