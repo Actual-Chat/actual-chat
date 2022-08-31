@@ -1,5 +1,3 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id=" Fill / Stop">
-<path id="Verctor" fill-rule="evenodd" clip-rule="evenodd" d="M17.3333 4H6.66667C5.19644 4 4 5.19644 4 6.66667V17.3333C4 18.8036 5.19644 20 6.66667 20H17.3333C18.8036 20 20 18.8036 20 17.3333V6.66667C20 5.19644 18.8036 4 17.3333 4V4Z" fill="#757D8A"/>
-</g>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M17.3333 4H6.66667C5.19644 4 4 5.19644 4 6.66667V17.3333C4 18.8036 5.19644 20 6.66667 20H17.3333C18.8036 20 20 18.8036 20 17.3333V6.66667C20 5.19644 18.8036 4 17.3333 4V4Z" fill="#757D8A"/>
 </svg>
