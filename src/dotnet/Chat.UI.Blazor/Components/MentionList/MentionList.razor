@@ -19,13 +19,13 @@
              @onmouseover="_ => Selection = mention"
              @onclick="@(_ => Manager.SelectMention(mention))">
             @if (searchMatch.Parts.Length == 0) {
-                <div class="flex-x gap-x-2 px-4 items-center h-8">
-                    <img class="w-7 h-7 rounded-full" src="@picture" alt="avatar"/>
+                <div class="flex-x gap-x-2 px-4 items-center h-6 md:h-8">
+                    <img class="w-5 md:w-7 h-5 md:h-7 rounded-full" src="@picture" alt="avatar"/>
                     <span class="font-medium">@title</span>
                 </div>
             } else {
-                <div class="flex-x gap-x-2 px-4 items-center h-8">
-                    <img class="w-7 h-7 rounded-full" src="@picture" alt="avatar"/>
+                <div class="flex-x gap-x-2 px-4 items-center h-6 md:h-8">
+                    <img class="w-5 md:w-7 h-5 md:h-7 rounded-full" src="@picture" alt="avatar"/>
                     <div class="flex-x gap-x-0">
                         @foreach (var part in searchMatch.PartsWithGaps) {
                             var textClass = part.Rank > 0 ? "font-semibold" : "";

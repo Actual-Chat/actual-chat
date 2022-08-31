@@ -7,7 +7,7 @@
 }
 
 .message-input {
-    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 mx-2 md:ml-1 md:mr-4;
+    @apply flex-1 overflow-y-auto max-h-48 md:max-h-88 mx-2 md:ml-1 md:mr-4;
     @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-07 md:bg-03;
 }
 .post-panel {

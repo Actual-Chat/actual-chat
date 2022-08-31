@@ -227,7 +227,7 @@
 }
 
 .mention-list {
-    @apply mb-1 overflow-y-auto max-h-48 w-full;
+    @apply mb-1 overflow-y-auto max-h-48 md:max-h-64 w-full;
     @apply border-y border-bg-04 bg-02;
 }
 .mention-list-item {

@@ -1,5 +1,5 @@
 .slate-editor-root {
-    @apply text-xl md:text-base;
+    @apply text-lg md:text-base;
 }
 .slate-editor-root .mention {
     @apply inline-block px-1 rounded-md;
