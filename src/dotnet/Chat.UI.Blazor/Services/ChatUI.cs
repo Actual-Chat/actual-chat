@@ -73,7 +73,7 @@ public class ChatUI
                 Corrector = FixListeningChatIds,
             });
         Task.WhenAll(_listeningChatIds.WhenRead, _recordingChatId.WhenRead)
-            .ContinueWith(_ => InitializeRecentChatIds(), TaskScheduler.Default);
+            .ContinueWith(_ => InitActiveChatIds(), TaskScheduler.Default);
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
@@ -167,7 +167,7 @@ public class ChatUI
         if (activeChatIds != _activeChatIds.Value)
             _activeChatIds.Value = activeChatIds;
 
-        CleanupActiveChatIds();
+        PruneActiveChatIds();
     }
 
     public async Task SetRecordingState(Symbol chatId)
@@ -190,7 +190,7 @@ public class ChatUI
         if (_activeChatIds.Value != activeChatIds)
             _activeChatIds.Value = activeChatIds;
 
-        CleanupActiveChatIds();
+        PruneActiveChatIds();
     }
 
     public async Task RemoveActiveChat(Symbol chatId)
@@ -378,7 +378,7 @@ public class ChatUI
         return lastEditableEntry.BeginsAt;
     }
 
-    private async Task InitializeRecentChatIds()
+    private async Task InitActiveChatIds()
     {
         using var _ = await _asyncLock.Lock().ConfigureAwait(false);
         var activeChatIds = ImmutableList<(Symbol ChatId, Moment Recency)>.Empty;
@@ -391,7 +391,7 @@ public class ChatUI
         _activeChatIds.Value = activeChatIds;
     }
 
-    private void CleanupActiveChatIds()
+    private void PruneActiveChatIds()
     {
         var activeChatIds = _activeChatIds.Value;
         if (activeChatIds.Count <= ActiveChatsLimit)
