@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -13,6 +14,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace BlazorContextMenu
 {
+    [SuppressMessage("Usage", "MA0011:IFormatProvider is missing")]
+    [SuppressMessage("Usage", "MA0074:Avoid implicit culture-sensitive methods")]
     public class ContextMenuTrigger : ComponentBase, IDisposable
     {
         protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -29,60 +32,51 @@ namespace BlazorContextMenu
 
             builder.OpenElement(0, WrapperTag);
 
-            builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes));
+            builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes!));
 
             if (MouseButtonTrigger == MouseButtonTrigger.Left || MouseButtonTrigger == MouseButtonTrigger.Both)
-            {
                 builder.AddAttribute(2, "onclick", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
-            }
 
             if (MouseButtonTrigger == MouseButtonTrigger.Right || MouseButtonTrigger == MouseButtonTrigger.Both)
-            {
                 builder.AddAttribute(3, "oncontextmenu", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
-            }
 
             if (MouseButtonTrigger == MouseButtonTrigger.DoubleClick)
-            {
                 builder.AddAttribute(4, "ondblclick", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
-            }
 
             if (!string.IsNullOrWhiteSpace(CssClass))
-            {
                 builder.AddAttribute(5, "class", CssClass);
-            }
             builder.AddAttribute(6, "id", Id);
             builder.AddContent(7, ChildContent);
             builder.AddElementReferenceCapture(8, (__value) =>
             {
-                contextMenuTriggerElementRef = __value;
+                ContextMenuTriggerElementRef = __value;
             });
             builder.CloseElement();
-
         }
 
-        [Inject] private IJSRuntime jsRuntime { get; set; }
-        [Inject] private IInternalContextMenuHandler internalContextMenuHandler { get; set; }
+        [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+        [Inject] private IInternalContextMenuHandler InternalContextMenuHandler { get; set; } = null!;
 
         [Parameter(CaptureUnmatchedValues = true)]
-        public Dictionary<string, object> Attributes { get; set; }
+        public Dictionary<string, object>? Attributes { get; set; }
 
         /// <summary>
         /// The id of the <see cref="ContextMenuTrigger" /> wrapper element.
         /// </summary>
         [Parameter]
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         /// <summary>
         /// The Id of the <see cref="ContextMenu" /> to open. This parameter is required.
         /// </summary>
-        [Parameter]
-        public string MenuId { get; set; }
+        [Parameter, EditorRequired]
+        public string MenuId { get; set; } = "";
 
         /// <summary>
         /// Additional css class for the trigger's wrapper element.
         /// </summary>
         [Parameter]
-        public string CssClass { get; set; }
+        public string? CssClass { get; set; }
 
         /// <summary>
         /// The mouse button that triggers the menu.
@@ -101,7 +95,7 @@ namespace BlazorContextMenu
         /// Extra data that will be passed to menu events.
         /// </summary>
         [Parameter]
-        public object Data { get; set; }
+        public object? Data { get; set; }
 
         /// <summary>
         /// Set to false if you do not want the click event to stop propagating. Default: true
@@ -110,43 +104,35 @@ namespace BlazorContextMenu
         public bool StopPropagation { get; set; } = true;
 
         [Parameter]
-        public RenderFragment ChildContent { get; set; }
+        public RenderFragment ChildContent { get; set; } = null!;
 
-        private ElementReference? contextMenuTriggerElementRef;
-        private DotNetObjectReference<ContextMenuTrigger> dotNetObjectRef;
+        protected ElementReference? ContextMenuTriggerElementRef;
+        private DotNetObjectReference<ContextMenuTrigger>? _dotNetObjectRef;
         protected override void OnInitialized()
         {
             if (string.IsNullOrEmpty(MenuId))
-            {
                 throw new ArgumentNullException(nameof(MenuId));
-            }
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (!internalContextMenuHandler.ReferencePassedToJs)
-            {
-                await jsRuntime.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(internalContextMenuHandler));
-                internalContextMenuHandler.ReferencePassedToJs = true;
+            if (!InternalContextMenuHandler.ReferencePassedToJs) {
+                await JSRuntime.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(InternalContextMenuHandler));
+                InternalContextMenuHandler.ReferencePassedToJs = true;
             }
 
-            if (dotNetObjectRef == null)
-            {
-                dotNetObjectRef = DotNetObjectReference.Create(this);
-            }
+            if (_dotNetObjectRef == null)
+                _dotNetObjectRef = DotNetObjectReference.Create(this);
 
-            if (contextMenuTriggerElementRef != null)
-            {
-                await jsRuntime.InvokeAsync<object>("blazorContextMenu.RegisterTriggerReference", contextMenuTriggerElementRef.Value, dotNetObjectRef);
-            }
+            if (ContextMenuTriggerElementRef != null)
+                await JSRuntime.InvokeAsync<object>("blazorContextMenu.RegisterTriggerReference", ContextMenuTriggerElementRef.Value, _dotNetObjectRef);
         }
 
         public void Dispose()
         {
-            if (dotNetObjectRef != null)
-            {
-                dotNetObjectRef.Dispose();
-                dotNetObjectRef = null;
+            if (_dotNetObjectRef != null) {
+                _dotNetObjectRef.Dispose();
+                _dotNetObjectRef = null;
             }
         }
     }

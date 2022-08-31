@@ -1,28 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace BlazorContextMenu
+namespace BlazorContextMenu;
+
+internal static class Helpers
 {
-    internal static class Helpers
+    public static string AppendCssClasses(params string[] cssClasses)
     {
-        public static string AppendCssClasses(params string[] cssClasses)
-        {
-            var builder = new StringBuilder();
-            foreach(var cl in cssClasses)
-            {
-                if (string.IsNullOrEmpty(cl))
-                {
-                    continue;
-                }
-
-                builder.Append($"{cl} ");
-            }
-
-            return builder.ToString();
+        var builder = new StringBuilder();
+        foreach(var cl in cssClasses) {
+            if (string.IsNullOrEmpty(cl))
+                continue;
+            builder.Append(cl);
+            builder.Append(" ");
         }
-        
+        return builder.ToString();
     }
 }

@@ -11,58 +11,54 @@
 @code{
 
     [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> Attributes { get; set; }
+    public Dictionary<string, object>? Attributes { get; set; }
 
     /// <summary>
     /// Allows you to override the default css class of the <see cref="Seperator"/>'s li element, for full customization.
     /// </summary>
     [Parameter]
-    public string OverrideDefaultCssClass { get; set; }
+    public string? OverrideDefaultCssClass { get; set; }
 
     /// <summary>
     /// Allows you to override the default css class of the <see cref="Seperator"/>'s hr element, for full customization.
     /// </summary>
     [Parameter]
-    public string OverrideDefaultHrCssClass { get; set; }
+    public string? OverrideDefaultHrCssClass { get; set; }
 
     /// <summary>
     /// The id of the <see cref="Seperator"/>'s li element. This is optional
     /// </summary>
     [Parameter]
-    public string Id { get; set; }
+    public string? Id { get; set; }
 
     /// <summary>
     /// Additional css class for the <see cref="Seperator"/>'s li element. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string CssClass { get; set; }
+    public string? CssClass { get; set; }
 
     /// <summary>
     /// Additional css class for the <see cref="Seperator"/>'s hr element. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string HrCssClass { get; set; }
+    public string? HrCssClass { get; set; }
 
-    protected string Template { get; set; }
+    protected string Template { get; set; } = "";
 
-    protected string ClassCalc
-    {
-        get
-        {
+    protected string ClassCalc {
+        get {
             var template = settings.GetTemplate(Template);
             return Helpers.AppendCssClasses(
-                (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeperatorCssClass),
+                (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeparatorCssClass),
                 (CssClass ?? settings.GetTemplate(Template).SeperatorCssClass));
         }
     }
 
-    protected string HrClassCalc
-    {
-        get
-        {
+    protected string HrClassCalc {
+        get {
             var template = settings.GetTemplate(Template);
             return Helpers.AppendCssClasses(
-               (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeperatorHrCssClass),
+               (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeparatorHrCssClass),
                (HrCssClass ?? settings.GetTemplate(Template).SeperatorHrCssClass));
         }
     }
@@ -73,10 +69,8 @@
 
         var rootMenu = menuTreeTraverser.GetRootContextMenu(this);
         if (rootMenu == null)
-        {
             throw new Exception("Seperator component must be a child of a ContextMenu component");
-        }
-        var parentMenu = menuTreeTraverser.GetClosestContextMenu(this);
+        var parentMenu = menuTreeTraverser.GetClosestContextMenu(this)!;
         Template = parentMenu.GetActiveTemplate();
     }
 }

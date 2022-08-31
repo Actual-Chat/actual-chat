@@ -33,7 +33,7 @@ namespace BlazorContextMenu
         /// <param name="y"></param>
         /// <param name="data">Extra data that will be passed to menu events.</param>
         /// <returns></returns>
-        Task ShowMenu(string id, int x, int y, object data);
+        Task ShowMenu(string id, int x, int y, object? data);
     }
 
     public class BlazorContextMenuService : IBlazorContextMenuService
@@ -51,26 +51,20 @@ namespace BlazorContextMenu
         {
             var menu = _contextMenuStorage.GetMenu(id);
             if (menu == null)
-            {
                 throw new Exception($"No context menu with id '{id}' was found");
-            }
             await _jSRuntime.InvokeVoidAsync("blazorContextMenu.Hide", id);
         }
-        
-        public async Task ShowMenu(string id, int x, int y, object data)
+
+        public async Task ShowMenu(string id, int x, int y, object? data)
         {
             var menu = _contextMenuStorage.GetMenu(id);
             if(menu == null)
-            {
                 throw new Exception($"No context menu with id '{id}' was found");
-            }
             menu.Data = data;
             await _jSRuntime.InvokeVoidAsync("blazorContextMenu.ManualShow", id, x, y);
         }
 
         public Task ShowMenu(string id, int x, int y)
-        {
-            return ShowMenu(id, x, y, null);
-        }
+            => ShowMenu(id, x, y, null);
     }
 }
