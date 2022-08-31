@@ -2,7 +2,7 @@
 @using ActualChat.Search
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.LatestNonErrorValue;
     var isVisibleMenu = m.IsListening || m.IsRecording;
     var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
     var title = m.TitleSearchMatch.Text;
@@ -59,14 +59,26 @@
 </ContextMenuTrigger>
 
 @code {
+    private Model? _lastRenderedModel;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; init; } = null!;
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; }
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public Chat Chat { get; init; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public ChatListKind ListKind { get; init; }
     [Parameter] public bool IsActive { get; init; }
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override bool ShouldRender()
+        => ReferenceEquals(_lastRenderedModel, null)
+           || State.HasError
+           || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new ComputedState<Model>.Options {

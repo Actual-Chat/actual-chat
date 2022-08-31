@@ -5,8 +5,12 @@
     var tooltip = Tooltip;
     if (tooltip == null) {
         var timeZoneConverter = LiveTime.TimeZoneConverter;
-        var localTime = timeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
-        tooltip = Moment.HasValue ? $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}" : NullText;
+        if (Moment.HasValue) {
+            var localTime = timeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
+            tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
+        } else {
+            tooltip = NullText;
+        }
     }
 }
 
@@ -19,9 +23,20 @@
     [Parameter] public Moment? Moment { get; set; }
     [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string NullText { get; set; } = "n/a";
+    [Parameter] public bool EvalInitialValue { get; set; }
 
     protected override async Task OnInitializedAsync()
         => await LiveTime.WhenInitialized.ConfigureAwait(false);
+
+    protected override ComputedState<string>.Options GetStateOptions() {
+        var initialValue = "";
+        if (EvalInitialValue) {
+            initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
+        }
+        return new ComputedState<string>.Options {
+            InitialValue = initialValue
+        };
+    }
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
         => Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value, cancellationToken) : Task.FromResult(NullText);
