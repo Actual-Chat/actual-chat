@@ -121,11 +121,11 @@ namespace BlazorContextMenu
                 InternalContextMenuHandler.ReferencePassedToJs = true;
             }
 
-            if (_dotNetObjectRef == null)
+            if (firstRender) {
                 _dotNetObjectRef = DotNetObjectReference.Create(this);
-
-            if (ContextMenuTriggerElementRef != null)
-                await JSRuntime.InvokeAsync<object>("blazorContextMenu.RegisterTriggerReference", ContextMenuTriggerElementRef.Value, _dotNetObjectRef);
+                await JSRuntime.InvokeAsync<object>("blazorContextMenu.RegisterTriggerReference",
+                    ContextMenuTriggerElementRef, _dotNetObjectRef);
+            }
         }
 
         public void Dispose()
