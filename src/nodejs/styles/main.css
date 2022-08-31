@@ -101,7 +101,7 @@ input.input-underlined {
 }
 
 .error-toast {
-    @apply flex flex-col w-full justify-center my-1 shadow-md rounded-md text-error-toast-text z-50;
+    @apply flex flex-col w-full justify-center shadow-md rounded-md text-error-toast-text z-50;
 }
 
 .error-toast .toast-header {
@@ -214,4 +214,11 @@ input.input-underlined {
 }
 .welcome-btn.btn .btn-content {
     @apply flex-x gap-x-4 items-center text-primary;
+}
+
+/* Error container */
+
+.error-container {
+    @apply fixed z-90 w-auto md:w-1/5 inset-x-2 md:inset-x-auto md:right-2 py-4;
+    @apply h-full overflow-y-auto;
 }
