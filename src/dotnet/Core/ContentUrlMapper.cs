@@ -30,10 +30,10 @@ public class ContentUrlMapper
         return "/api/content/" + contentId;
     }
 
-    public string ImagePreviewUrl(string imageUrl)
+    public string ImagePreviewUrl(string imageUrl, int maxWidth = 800, int maxHeight = 600)
     {
         if (_transformUri)
-            return _mediaBaseUri + "400x300,fit/" + imageUrl;
+            return _mediaBaseUri + $"{maxWidth}x{maxHeight},fit/" + imageUrl;
         return imageUrl;
     }
 
