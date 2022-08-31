@@ -38,14 +38,14 @@ public class UnreadMessages : IDisposable
             .GetLastIdTile1(_session, _chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
         var estimatedCount = RoundTo(tile1.Start - lastReadEntryId, 100);
-        if (estimatedCount > 0)
+        if (estimatedCount >= 200)
             return estimatedCount;
 
         var tile0 = await _chats
             .GetLastIdTile0(_session, _chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
         estimatedCount = RoundTo(tile0.Start - lastReadEntryId, 10);
-        if (estimatedCount > 0)
+        if (estimatedCount >= 20)
             return estimatedCount;
 
         var idRange = await _chats
