@@ -14,7 +14,9 @@
         var searchMatch = mention.SearchMatch;
         var title = searchMatch.Text;
         var cls = mention == selection ? "selected" : "";
-        var picture = string.IsNullOrWhiteSpace(mention.Picture) ? $"https://avatars.dicebear.com/api/avataaars/{searchMatch.Text}.svg" : mention.Picture;
+        var picture = string.IsNullOrWhiteSpace(mention.Picture)
+            ? $"https://avatars.dicebear.com/api/avataaars/{searchMatch.Text}.svg"
+            : ContentUrlMapper.ContentUrl(mention.Picture);
         <div class="@cls mention-list-item"
              @onmouseover="_ => Selection = mention"
              @onclick="@(_ => Manager.SelectMention(mention))">
@@ -46,6 +48,7 @@
     private ElementReference Ref { get; set; }
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
 
     [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
