@@ -1,5 +1,5 @@
 .mobile-control-panel {
-    @apply h-auto py-4;
+    @apply h-auto py-2;
     @apply md:hidden justify-center;
     @apply bg-01;
     @apply self-stretch md:self-end;
