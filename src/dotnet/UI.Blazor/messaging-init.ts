@@ -13,7 +13,7 @@ export async function getDeviceToken(): Promise<string | null> {
             const app = initializeApp(config);
             const messaging = getMessaging(app);
             onMessage(messaging, (payload) => {
-                console.log(`${LogScope}: Message received. `, payload);
+                console.info(`${LogScope}: Message received. `, payload);
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
@@ -21,7 +21,7 @@ export async function getDeviceToken(): Promise<string | null> {
             const workerUrl = `${workerPath}?config=${configBase64}`;
             let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
             if (!workerRegistration) {
-                console.log(`${LogScope}: registering service worker '${workerUrl}'`)
+                console.info(`${LogScope}: registering service worker '${workerUrl}'`)
                 workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/' });
             }
 
@@ -31,19 +31,19 @@ export async function getDeviceToken(): Promise<string | null> {
             };
             return await getToken(messaging, tokenOptions);
         } else {
-            console.warn(`Unable to initialize messaging subscription. Status: ${response.status}`)
+            console.warn(`${LogScope}: Unable to initialize messaging subscription. Status: ${response.status}`)
         }
         return null;
     }
     catch(e) {
-        console.error(e);
+        console.error(`${LogScope}: failed to obtain device token for notifications`, e);
     }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
     // Let's check if the browser supports notifications
     if (!('Notification' in window)) {
-        console.log('This browser does not support notifications.');
+        console.info(`${LogScope}: This browser does not support notifications.`);
     } else {
         if (hasPromiseBasedNotificationApi()) {
             const permission = await Notification.requestPermission();
@@ -73,7 +73,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
     baseLayoutRef = blazorRef;
     if (!isAlreadyRegistered) {
         navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
-            console.log(`${LogScope}: message event from service worker`, evt);
+            console.info(`${LogScope}: message event from service worker`, evt);
             if (evt.origin !== window.location.origin)
                 return;
             if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
@@ -89,7 +89,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
 function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
-        console.log(`${LogScope}: storing notification permission`, permission);
+        console.info(`${LogScope}: storing notification permission`, permission);
         // @ts-ignore readonly property
         Notification['permission'] = permission;
     }

@@ -24,9 +24,9 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 
 const app = initializeApp(config);
 const messaging = getMessaging(app);
-console.log(`${LogScope}: Subscribing on fcm background message`);
+console.info(`${LogScope}: Subscribing on fcm background message`);
 onBackgroundMessage(messaging, async payload => {
-    console.log(`${LogScope}: Received background message `, payload);
+    console.info(`${LogScope}: Received background message `, payload);
     const chatId = payload.data.chatId;
     const options: NotificationOptions = {
         tag: chatId.toString(),
