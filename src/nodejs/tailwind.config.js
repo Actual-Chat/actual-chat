@@ -311,9 +311,9 @@ module.exports = {
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
       'width-half-to-full': 'width-half-to-full 150ms ease-in-out',
-      'width-60-to-full': 'width-60-to-full 150ms ease-in-out',
+      'width-5-to-7': 'width-5-to-7 150ms ease-in-out',
       'width-full-to-half': 'width-full-to-half 150ms ease-in-out',
-      'width-full-to-60': 'width-full-to-60 150ms ease-in-out',
+      'width-7-to-5': 'width-7-to-5 150ms ease-in-out',
       'loud-show': 'loud-show 150ms ease-in-out',
       'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
       'loud-hide': 'loud-hide 150ms ease-in-out',
@@ -908,12 +908,12 @@ module.exports = {
           width: '50%',
         },
       },
-      'width-full-to-60': {
+      'width-7-to-5': {
         from: {
-          width: '100%',
+          width: '7rem',
         },
         to: {
-          width: '60%',
+          width: '5rem',
         },
       },
       'width-half-to-full': {
@@ -924,12 +924,12 @@ module.exports = {
           width: '100%',
         },
       },
-      'width-60-to-full': {
+      'width-5-to-7': {
         from: {
-          width: '60%',
+          width: '5rem',
         },
         to: {
-          width: '100%',
+          width: '7rem',
         },
       },
       'loud-show': {
@@ -937,7 +937,7 @@ module.exports = {
           transform: 'translateX(1.5rem) scale(.05)',
         },
         to: {
-          transform: 'translateX(3.5rem) scale(1)',
+          transform: 'translateX(3rem) scale(1)',
         },
       },
       'loud-show-text-mode': {
@@ -945,12 +945,12 @@ module.exports = {
           transform: 'translateX(1.5rem) scale(.05)',
         },
         to: {
-          transform: 'translateX(3rem) scale(1)',
+          transform: 'translateX(2.5rem) scale(1)',
         },
       },
       'loud-hide': {
         from: {
-          transform: 'translateX(3.5rem) scale(1)',
+          transform: 'translateX(3rem) scale(1)',
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',
@@ -958,7 +958,7 @@ module.exports = {
       },
       'loud-hide-text-mode': {
         from: {
-          transform: 'translateX(3rem) scale(1)',
+          transform: 'translateX(2.5rem) scale(1)',
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',
