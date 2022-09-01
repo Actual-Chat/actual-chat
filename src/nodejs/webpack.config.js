@@ -301,7 +301,7 @@ module.exports = (env, args) => {
       },
       sw: {
         import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
-        chunkLoading: false,
+        chunkLoading: 'import',
         asyncChunks: false,
         runtime: false,
         library: {

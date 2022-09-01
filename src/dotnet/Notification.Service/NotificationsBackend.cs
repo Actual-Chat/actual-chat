@@ -242,6 +242,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Removed {Count} devices", affectedUserIds.Count);
         context.Operation().Items.Set(affectedUserIds);
     }
 }

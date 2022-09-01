@@ -17,9 +17,9 @@
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder.ts",
     "./../dotnet/UI.Blazor/Layouts/base-layout.ts",
+    "./../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts",
   ],
   "exclude": [
-    "./../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts",
   ],
   "compilerOptions": {
     "alwaysStrict": true,

@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig",
-  "compilerOptions": {
-    "lib": ["WebWorker", "ES2018"]
-  },
-  "files": ["service-worker.ts"]
-}
