@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Components.Tooltip
 @namespace ActualChat.UI.Blazor.Components
 
-<button @ref="_ref"
+<button @ref="_forwardRef.Current"
         class="@Class btn btn-round"
         title="@Title"
         name="@Name"
@@ -19,11 +19,11 @@
     </div>
 </button>
 @if (!Tooltip.IsNullOrEmpty()) {
-    <Tooltip TriggerRef="_ref" Options="TooltipOptions">@Tooltip</Tooltip>
+    <Tooltip TriggerForwardRef="_forwardRef" Options="TooltipOptions">@Tooltip</Tooltip>
 }
 
 @code {
-    private ElementReference _ref;
+    private ForwardRef _forwardRef = new();
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
