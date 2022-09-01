@@ -135,7 +135,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             var batchResponse = await FirebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
                 .ConfigureAwait(false);
             Log.LogInformation(
-                "Sent notification for entryId={ChatEntryId} of chatId={ChatId} to {RecipientsCount} recipients. {FailureCount} failed. {SuccessCount}",
+                "Sent notification for entryId={ChatEntryId} of chatId={ChatId} to {RecipientsCount} recipients: {FailureCount} failed, {SuccessCount} succeeded",
                 entryId,
                 chatId,
                 deviceGroup.Count,
