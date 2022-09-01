@@ -9,7 +9,8 @@ import './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.css';
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
-import './Components/Modal/modal.css'
+import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
+import './Components/Modal/modal.css' // based on BlazoredModal
 import './Components/Navbar/navbar.css'
 import './Components/Pic/pic.css'
 import './Components/PicUpload/pic-upload.css'

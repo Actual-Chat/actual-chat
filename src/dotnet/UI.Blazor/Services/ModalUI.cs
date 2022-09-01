@@ -26,6 +26,7 @@ public sealed class ModalUI
         var modalOptions = new ModalOptions {
             Class = $"blazored-modal modal {cls}",
             HideHeader = true,
+            Position = ModalPosition.Middle
         };
         var modalParameters = new ModalParameters();
         modalParameters.Add(nameof(IModalView<TModel>.ModalModel), model);
