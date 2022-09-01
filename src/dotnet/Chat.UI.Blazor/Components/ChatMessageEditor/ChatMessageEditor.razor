@@ -55,9 +55,13 @@
                         <NotifyCallPanel @ref="NotifyCallPanelRef" />
                     </div>
                 </div>
-                <MobileControlPanel/>
+                @if (LayoutType == LayoutType.Mobile) {
+                    <MobileControlPanel/>
+                }
             </div>
-            <RecorderPanel/>
+            @if (LayoutType == LayoutType.Mobile) {
+                <RecorderPanel/>
+            }
         </div>
     </MentionListManager>
     <AttachMenu UploadFilesRequested="OnUploadFilesRequested"/>
@@ -86,6 +90,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public LayoutType LayoutType { get; set; }
 
     protected override async Task OnInitializedAsync() {
         MarkupHub.ChatId = Chat.Id;

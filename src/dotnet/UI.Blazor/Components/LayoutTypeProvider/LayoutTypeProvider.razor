@@ -1,0 +1,42 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@implements ILayoutTypeProviderBackend
+
+@if (_layoutType.HasValue) {
+    <CascadingValue Value="@_layoutType.Value">
+        @ChildContent
+    </CascadingValue>
+}
+
+@code {
+    private LayoutType? _layoutType;
+
+    private DotNetObjectReference<ILayoutTypeProviderBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+
+    [Inject] IJSRuntime JS { get; set; } = null!;
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+        BlazorRef = DotNetObjectReference.Create<ILayoutTypeProviderBackend>(this);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.LayoutTypeProvider.create",
+            BlazorRef
+            );
+    }
+
+    [JSInvokable("OnLayoutChanged")]
+    public void OnLayoutChanged(bool isDesktopLayout) {
+        _layoutType = isDesktopLayout ? LayoutType.Desktop : LayoutType.Mobile;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+}

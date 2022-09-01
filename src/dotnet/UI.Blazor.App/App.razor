@@ -7,23 +7,25 @@
 @using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
 
-<CascadingBlazoredModal>
-    <CascadingAuthState>
-        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-            <Found>
-                <ErrorWrapper>
-                    <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
-                </ErrorWrapper>
-            </Found>
-            <NotFound>
-                <LayoutView Layout="@typeof(NoChatLayout)">
-                    <p>Sorry, there's nothing here.</p>
-                </LayoutView>
-            </NotFound>
-        </Router>
-    </CascadingAuthState>
-</CascadingBlazoredModal>
-<ContextMenuContainer />
+<LayoutTypeProvider>
+    <CascadingBlazoredModal>
+        <CascadingAuthState>
+            <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+                <Found>
+                    <ErrorWrapper>
+                        <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
+                    </ErrorWrapper>
+                </Found>
+                <NotFound>
+                    <LayoutView Layout="@typeof(NoChatLayout)">
+                        <p>Sorry, there's nothing here.</p>
+                    </LayoutView>
+                </NotFound>
+            </Router>
+        </CascadingAuthState>
+    </CascadingBlazoredModal>
+    <ContextMenuContainer />
+</LayoutTypeProvider>
 
 @code {
     private static Assembly? UIAssembly { get; set; }
