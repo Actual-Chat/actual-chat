@@ -14,7 +14,7 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ElementReference TriggerRef { get; set; }
+    [Parameter, EditorRequired] public ForwardRef TriggerForwardRef { get; set; } = null!;
     [Parameter] public TooltipOptions Options { get; set; } = TooltipOptions.Default;
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
@@ -24,7 +24,7 @@
             var identifier = $"{BlazorUICoreModule.ImportName}.Tooltip.create";
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
-                TriggerRef,
+                TriggerForwardRef.Current,
                 TooltipRef,
                 ArrowRef,
                 BlazorRef,
