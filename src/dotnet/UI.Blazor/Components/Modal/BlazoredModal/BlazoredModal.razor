@@ -113,6 +113,9 @@
 
     private async void CancelModals(object? sender, LocationChangedEventArgs e)
     {
+        if (_modals.Count == 0 && !_haveActiveModals)
+            return;
+
         foreach (var modalReference in _modals.ToList())
         {
             modalReference.Dismiss(ModalResult.Cancel());
