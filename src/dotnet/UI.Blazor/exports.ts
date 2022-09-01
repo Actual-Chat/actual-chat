@@ -31,6 +31,7 @@ export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';
 export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
+export * from './Components/LayoutTypeProvider/LayoutTypeProvider';
 export * from './Components/TextBox/text-box';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/SideNav/side-nav';
