@@ -1,9 +1,11 @@
+/// <reference lib="WebWorker" />
+declare const self: ServiceWorkerGlobalScope & typeof globalThis;
+
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-const LogScope = 'messaging-service-worker.ts';
-// @ts-ignore
-const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
+const LogScope = 'MessagingServiceWorker';
+const sw = self;
 
 const configBase64 = new URL(location.href).searchParams.get('config');
 const configString = atob(configBase64);
@@ -32,6 +34,9 @@ onBackgroundMessage(messaging, async payload => {
         tag: chatId.toString(),
         icon: payload.data.icon,
         body: payload.notification.body,
+        data: {
+            url: payload.fcmOptions.link,
+        },
     };
     // silly hack because notifications get lost or suppressed
     const notificationsToClose = await sw.registration.getNotifications({tag: chatId});
@@ -41,13 +46,11 @@ onBackgroundMessage(messaging, async payload => {
     await sw.registration.showNotification(payload.notification.title, options);
 });
 
-
-// @ts-ignore
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
     event.stopImmediatePropagation();
     event.notification.close();
 
-    const notificationUrl = event.notification?.data?.FCM_MSG?.notification?.click_action;
+    const notificationUrl = event.notification?.data?.url;
     if (!notificationUrl)
         return;
 
