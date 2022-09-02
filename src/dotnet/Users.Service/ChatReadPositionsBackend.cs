@@ -19,11 +19,7 @@ public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadP
     // [ComputeMethod]
     public virtual async Task<long?> Get(string userId, string chatId, CancellationToken cancellationToken)
     {
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return null;
-
-        var compositeId = DbChatReadPosition.ComposeId(account.Id, chatId);
+        var compositeId = DbChatReadPosition.ComposeId(userId, chatId);
         var position = await DbChatReadPositionResolver.Get(compositeId, cancellationToken).ConfigureAwait(false);
         return position?.ReadEntryId;
     }
@@ -37,19 +33,16 @@ public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadP
             return;
         }
 
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return;
-
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var compositeId = DbChatReadPosition.ComposeId(userId, chatId);
         var dbPosition = await dbContext.ChatReadPositions
-            .FindAsync(DbKey.Compose(DbChatReadPosition.ComposeId(account.Id, chatId)), cancellationToken)
+            .FindAsync(compositeId, cancellationToken)
             .ConfigureAwait(false);
         if (dbPosition == null) {
             dbPosition = new DbChatReadPosition {
-                Id = DbChatReadPosition.ComposeId(account.Id, chatId),
+                Id = compositeId,
                 ReadEntryId = readEntryId,
             };
             dbContext.Add(dbPosition);
