@@ -86,9 +86,6 @@
 
     [CascadingParameter] public Chat ChatViewChat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => await LiveTime.WhenInitialized.ConfigureAwait(false);
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             UpdateDelayer = UpdateDelayer.ZeroDelay,

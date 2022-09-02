@@ -3,7 +3,6 @@ namespace ActualChat.UI.Blazor.Services;
 public interface ILiveTime
 {
     TimeZoneConverter TimeZoneConverter { get; }
-    Task WhenInitialized { get; }
 
     [ComputeMethod]
     Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
@@ -18,7 +17,6 @@ public class LiveTime : ILiveTime
 
     private MomentClockSet Clocks { get; }
 
-    public Task WhenInitialized => TimeZoneConverter.WhenInitialized;
     public TimeZoneConverter TimeZoneConverter { get; }
 
     public LiveTime(MomentClockSet clocks, TimeZoneConverter timeZoneConverter)
@@ -30,7 +28,6 @@ public class LiveTime : ILiveTime
     // [ComputeMethod]
     public virtual async Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
         var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);
         if (delay < TimeSpan.MaxValue) {
             // Invalidate the result when it's supposed to change

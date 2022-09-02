@@ -49,9 +49,6 @@
     protected override void OnParametersSet()
         => MarkupHub.ChatId = Message.Entry.ChatId;
 
-    protected override async Task OnInitializedAsync()
-        => await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
         var hasAttachments = chatEntry.HasAttachments;

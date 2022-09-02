@@ -25,9 +25,6 @@
     [Parameter] public string NullText { get; set; } = "n/a";
     [Parameter] public bool EvalInitialValue { get; set; }
 
-    protected override async Task OnInitializedAsync()
-        => await LiveTime.WhenInitialized.ConfigureAwait(false);
-
     protected override ComputedState<string>.Options GetStateOptions() {
         var initialValue = "";
         if (EvalInitialValue) {

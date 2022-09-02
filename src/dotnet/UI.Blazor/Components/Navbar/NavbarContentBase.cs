@@ -9,6 +9,7 @@ public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBa
     [Inject] protected IAccounts Accounts { get; init; } = null!;
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected IEnumerable<NavbarWidget> Widgets { get; init; } = null!;
+
     protected ImmutableArray<NavbarWidget> OrderedWidgets { get; private set; }
 
     protected override void OnInitialized()

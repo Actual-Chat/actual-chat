@@ -7,11 +7,11 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (m.Account.IsActive()) {
-    <NavbarGroupToggle Title="Chats" Id="chats">
-        <i class="icon-message-square text-2xl font-medium"></i>
-    </NavbarGroupToggle>
+<NavbarGroupToggle Title="Chats" Id="chats">
+    <i class="icon-message-square text-2xl font-medium"></i>
+</NavbarGroupToggle>
 
+@if (m.Account.IsActive()) {
     <NavbarGroupToggle Title="Contacts" Id="contacts">
         <i class="icon-people text-2xl font-medium"></i>
     </NavbarGroupToggle>

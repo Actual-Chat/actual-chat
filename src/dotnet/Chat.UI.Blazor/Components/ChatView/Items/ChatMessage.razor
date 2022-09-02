@@ -109,9 +109,6 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    protected override async Task OnInitializedAsync()
-        => await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-
     protected override void OnParametersSet()
         => _cachedMarkup = null;
 
@@ -140,8 +137,8 @@
             .ConfigureAwait(false);
         var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
 
-        var attachments = await LoadAttachments(cancellationToken).ConfigureAwait(false);
-        var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
+        var attachments = await LoadAttachments(cancellationToken);
+        var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
         var isMentioned = IsMentioned(Markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
@@ -176,8 +173,7 @@
         if (Message.Entry.RepliedChatEntryId == null)
             return null;
 
-        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None)
-            .ConfigureAwait(false);
+        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None);
 
         // TODO: show 'message was deleted' if replied message was removed
         if (repliedChatEntry == null)
@@ -194,7 +190,7 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await UIEventHub.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntry(Message.Entry.Id));
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }
@@ -218,9 +214,8 @@
     }
 
     private async Task<ImmutableArray<TextEntryAttachment>> LoadAttachments(CancellationToken cancellationToken) {
-        if (!Message.Entry.HasAttachments) {
+        if (!Message.Entry.HasAttachments)
             return ImmutableArray<TextEntryAttachment>.Empty;
-        }
 
         return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
     }

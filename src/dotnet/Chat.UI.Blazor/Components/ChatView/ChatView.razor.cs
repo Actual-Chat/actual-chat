@@ -49,7 +49,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _initialLastReadEntryId = LastReadEntryState.Value;
         }
         finally {
-            await TimeZoneConverter.WhenInitialized;
             _whenInitializedSource.SetResult(Unit.Default);
             StateHasChanged();
         }

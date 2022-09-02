@@ -3,7 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 @foreach (var widget in OrderedWidgets) {

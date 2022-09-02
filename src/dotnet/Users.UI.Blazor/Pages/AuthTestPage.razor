@@ -130,9 +130,6 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
-    protected override async Task OnInitializedAsync()
-        => await LiveTime.WhenInitialized.ConfigureAwait(false);
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {

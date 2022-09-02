@@ -1,11 +1,14 @@
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Hosting
 @using Blazored.Modal
 @using Stl.OS
 @using Stl.Plugins
 @using System.Reflection
 @using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
+@{
+    if (!_isInitialized)
+        return;
+}
 
 <LayoutTypeProvider>
     <CascadingBlazoredModal>
@@ -31,7 +34,7 @@
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
-    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+    private bool _isInitialized;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -42,8 +45,15 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<App> Log { get; init; } = null!;
 
-    protected override Task OnInitializedAsync()
-    {
+    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+
+    protected override void OnInitialized() {
+        UIAssembly ??= typeof(App).Assembly;
+        UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
+            .Select(p => p.GetType().Assembly)
+            .Where(a => a != UIAssembly)
+            .ToArray();
+
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
             if (SessionProvider.HasSession) {
@@ -54,39 +64,36 @@
             else
                 SessionProvider.Session = session;
         }
-        if (!CircuitContext.IsPrerendering) {
-            CircuitContext.RootComponent = this;
-            _ = InitializeTimeZoneConverter();
-        }
 
-        var signOutReloader = Services.GetService<SignOutReloader>();
-        signOutReloader?.Start();
-
-        UIAssembly ??= typeof(App).Assembly;
-        UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
-            .Select(p => p.GetType().Assembly)
-            .Where(a => a != UIAssembly)
-            .ToArray();
-
-        return Task.CompletedTask;
-    }
-
-    private async Task InitializeTimeZoneConverter() {
-        if (TimeZoneConverter is not ServerSideTimeZoneConverter serverSideTimeZoneConverter)
-            return;
-
-        // Useful JS functions:
-        // Intl.DateTimeFormat().resolvedOptions().timeZone
-        // new Date().getTimezoneOffset()
-        try {
-            var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()").ConfigureAwait(false);
-            serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
-        }
+        CircuitContext.RootComponent = this;
+        InitializeTimeZoneConverter();
+        Services.GetService<SignOutReloader>()?.Start();
     }
 
     public void Dispose()
         => CircuitContext.Dispose();
+
+    private void InitializeTimeZoneConverter() {
+        if (TimeZoneConverter is not ServerSideTimeZoneConverter serverSideTimeZoneConverter) {
+            _isInitialized = true;
+            return;
+        }
+
+        _ = Initialize();
+
+        async Task Initialize() {
+            // Useful JS functions:
+            // Intl.DateTimeFormat().resolvedOptions().timeZone
+            // new Date().getTimezoneOffset()
+            try {
+                var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+                serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
+                _isInitialized = true;
+                StateHasChanged();
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
+            }
+        }
+    }
 }

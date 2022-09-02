@@ -62,10 +62,6 @@
         _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
     }
 
-    protected override async Task OnInitializedAsync() {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
     }
