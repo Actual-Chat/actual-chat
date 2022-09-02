@@ -5,7 +5,7 @@ public interface IRecentEntries : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<RecentEntry>> List(
         Session session,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken);
 
@@ -15,7 +15,7 @@ public interface IRecentEntries : IComputeService
     [DataContract]
     public sealed record UpdateCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] RecentScope Scope,
+        [property: DataMember] RecencyScope Scope,
         [property: DataMember] string Key,
         [property: DataMember] Moment Date
     ) : ISessionCommand<RecentEntry?>;

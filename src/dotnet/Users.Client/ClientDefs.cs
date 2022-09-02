@@ -47,7 +47,7 @@ public interface IRecentEntriesClientDef
     [Get(nameof(List))]
     Task<ImmutableArray<RecentEntry>> List(
         Session session,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken);
     [Post(nameof(Update))]

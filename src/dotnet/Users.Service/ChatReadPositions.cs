@@ -33,7 +33,9 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, readEntryId) = command;
-        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return;
 
         await Commander.Call(
             new IChatReadPositionsBackend.SetReadPositionCommand(account.Id, chatId, readEntryId),

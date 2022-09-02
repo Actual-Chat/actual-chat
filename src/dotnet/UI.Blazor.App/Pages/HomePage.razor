@@ -8,7 +8,7 @@
     var account = m.Account;
     if (account == null)
         return; // Not yet computed
-    if (account.IsGuest()) {
+    if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
         <Welcome/>
     }
     else if (!m.DefaultChatId.IsEmpty) {

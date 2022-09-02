@@ -17,7 +17,7 @@ public class RecentEntriesController : ControllerBase, IRecentEntries
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<RecentEntry>> List(Session session, RecentScope scope, int limit, CancellationToken cancellationToken)
+    public Task<ImmutableArray<RecentEntry>> List(Session session, RecencyScope scope, int limit, CancellationToken cancellationToken)
         => Service.List(session, scope, limit, cancellationToken);
 
     [HttpPost]

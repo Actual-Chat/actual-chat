@@ -133,7 +133,7 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
 
         if (change.IsCreate(out _))
             await Commander.Call(new IRecentEntriesBackend.UpdateCommand(
-                        RecentScope.UserContact,
+                        RecencyScope.UserContact,
                         userContact!.OwnerUserId,
                         userContact.Id,
                         Clocks.SystemClock.UtcNow),

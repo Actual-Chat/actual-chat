@@ -184,14 +184,14 @@
     }
 
     private async Task TryUpdatePeerChatRecency() {
-        await Update(RecentScope.ChatContact, Chat.Id).ConfigureAwait(false);
+        await Update(RecencyScope.ChatContact, Chat.Id).ConfigureAwait(false);
 
         if (Chat.ChatType == ChatType.Peer) {
             var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
-            await Update(RecentScope.UserContact, contact.Id).ConfigureAwait(false);
+            await Update(RecencyScope.UserContact, contact.Id).ConfigureAwait(false);
         }
 
-        Task Update(RecentScope scope, string key) {
+        Task Update(RecencyScope scope, string key) {
             var command = new IRecentEntries.UpdateCommand(Session, scope, key, Clocks.SystemClock.UtcNow);
             return UICommander.Run(command, CancellationToken.None);
         }

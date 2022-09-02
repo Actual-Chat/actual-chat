@@ -22,7 +22,7 @@ public class RecentChats
     public virtual async Task<ImmutableArray<Chat>> List(CancellationToken cancellationToken = default)
     {
         var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
-        chats = await RecentEntries.OrderByRecency(Session, chats, RecentScope.ChatContact, cancellationToken).ConfigureAwait(false);
+        chats = await RecentEntries.OrderByRecency(Session, chats, RecencyScope.ChatContact, cancellationToken).ConfigureAwait(false);
         var activeChat = await GetActiveChat(cancellationToken);
         if (activeChat != null && !chats.Contains(activeChat))
             chats = chats.Insert(0, activeChat);

@@ -21,7 +21,7 @@ public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarg
     }
 
     public RecentEntry ToModel()
-        => new(ShardKey, Key, Enum.Parse<RecentScope>(Scope)) {
+        => new(ShardKey, Key, Enum.Parse<RecencyScope>(Scope)) {
             Version = Version,
             UpdatedAt = UpdatedAt,
         };

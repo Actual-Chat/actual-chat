@@ -11,7 +11,7 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<RecentEntry>> List(
         string shardKey,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -43,19 +43,18 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbRecent = await dbContext.RecentEntries.Get(DbRecentEntry.GetId(shardKey, key), cancellationToken).ConfigureAwait(false);
-        if (dbRecent != null) {
-            dbRecent.UpdatedAt = moment;
-            dbContext.Update(dbRecent);
-        }
-        else {
-            dbRecent ??= new DbRecentEntry(new RecentEntry(shardKey, key, scope));
+        if (dbRecent == null) {
+            dbRecent = new DbRecentEntry(new RecentEntry(shardKey, key, scope));
             dbContext.Add(dbRecent);
         }
+        else
+            dbRecent.UpdatedAt = moment;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbRecent.ToModel();
     }
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoList(string shardKey, RecentScope scope) => Stl.Async.TaskExt.UnitTask;
+    protected virtual Task<Unit> PseudoList(string shardKey, RecencyScope scope)
+        => Stl.Async.TaskExt.UnitTask;
 }

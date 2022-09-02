@@ -16,12 +16,12 @@ public class RecentEntries : IRecentEntries
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<RecentEntry>> List(
         Session session,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken)
     {
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        if (account.IsGuest())
+        if (account == null)
             return ImmutableArray<RecentEntry>.Empty;
 
         return await Backend.List(account.User.Id, scope, limit, cancellationToken).ConfigureAwait(false);
@@ -35,7 +35,7 @@ public class RecentEntries : IRecentEntries
 
         var (session, scope, key, moment) = command;
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        if (account.IsGuest())
+        if (account == null)
             return null;
 
         var cmd = new IRecentEntriesBackend.UpdateCommand(scope, account.Id, key, moment);
