@@ -49,7 +49,7 @@ export class FileUpload implements Disposable {
     }
 
     public dispose() {
-        if (this.disposed$.closed)
+        if (this.disposed$.isStopped)
             return;
 
         this.disposed$.next();
