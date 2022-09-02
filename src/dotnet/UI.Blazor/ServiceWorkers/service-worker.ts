@@ -1,11 +1,9 @@
-/// <reference lib="WebWorker" />
-declare const self: ServiceWorkerGlobalScope & typeof globalThis;
-
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
 const LogScope = 'MessagingServiceWorker';
-const sw = self;
+// @ts-ignore
+const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 
 const configBase64 = new URL(location.href).searchParams.get('config');
 const configString = atob(configBase64);
