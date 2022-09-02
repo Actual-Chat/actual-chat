@@ -31,9 +31,9 @@ export class ChatMessageEditor {
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
-        this.editorDiv.addEventListener('click', this.editorFocusHandler);
+        this.editorDiv.addEventListener('click', this.editorFocusListener);
         this.input.addEventListener('paste', this.inputPasteListener);
-        this.input.addEventListener('focusin', this.inputFocusInListener);
+        this.input.addEventListener('focusin', () => this.mobilePanelHandler(true));
         this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
@@ -55,9 +55,9 @@ export class ChatMessageEditor {
 
     private getSlateInput = () : HTMLDivElement => {
         this.slateInput = this.input.querySelector('[role="textbox"]');
-        if (this.slateInput)
-            return this.slateInput;
-        throw new Error("Slate editor not found.");
+        if (!this.slateInput)
+            console.log('Slate editor not found.');
+        return this.slateInput;
     }
 
     private isMobilePanelOpen = () : boolean => {
@@ -77,7 +77,7 @@ export class ChatMessageEditor {
         }
     }
 
-    private editorFocusHandler = ((event: Event & { target: Element; }) => {
+    private editorFocusListener = ((event: Event & { target: Element; }) => {
         const btn = event.target.closest('button');
         if (!this.isNarrowMode)
             return;
@@ -118,10 +118,6 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
-    });
-
-    private inputFocusInListener = ((event: Event & { target: Element; }) => {
-        this.mobilePanelHandler(true);
     });
 
     private inputFocusOutListener = ((event: Event & { target: Element; }) => {
@@ -312,7 +308,7 @@ export class ChatMessageEditor {
     };
 
     public dispose() {
-        this.editorDiv.removeEventListener('click', this.editorFocusHandler);
+        this.editorDiv.removeEventListener('click', this.editorFocusListener);
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.input.removeEventListener('focusin', this.inputFocusInListener);
         this.input.removeEventListener('focusout', this.inputFocusOutListener);
