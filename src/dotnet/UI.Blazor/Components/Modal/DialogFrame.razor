@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 
 <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-    <div class="dialog-body custom-scrollbar overflow-y-auto">
+    <div class="dialog-body custom-scrollbar overflow-y-auto md:overflow-y-hidden">
         @Body
     </div>
     <div class="dialog-buttons">

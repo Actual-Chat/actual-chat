@@ -10,6 +10,7 @@ export class ChatMessageEditor {
     private slateInput: HTMLDivElement;
     private readonly filesPicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
+    private readonly attachButton: HTMLButtonElement;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
@@ -28,15 +29,18 @@ export class ChatMessageEditor {
         this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
         this.filesPicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
         this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
         this.editorDiv.addEventListener('click', this.onEditorFocus);
+        this.editorDiv.addEventListener('input', this.onDeleteContentBackward);
         this.input.addEventListener('paste', this.onInputPaste);
         this.input.addEventListener('focusin', this.onInputFocusIn);
         this.input.addEventListener('focusout', this.onInputFocusOut);
         this.filesPicker.addEventListener('change', this.onFilesPickerChange);
         this.postButton.addEventListener('click', this.onPostClick);
+        this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanel);
 
         const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
@@ -52,6 +56,16 @@ export class ChatMessageEditor {
         });
         this.changeMode();
     }
+
+    private onDeleteContentBackward = ((event: InputEvent & { target: Element; }) => {
+        if (event.inputType === 'deleteContentBackward' && this.getText().length == 0) {
+            this.getSlateInput().focus();
+        }
+    });
+
+    private onAttachButtonClick = ((event: Event & { target: Element; }) => {
+        this.getSlateInput().focus();
+    });
 
     private getSlateInput = () : HTMLDivElement => {
         this.slateInput = this.input.querySelector('[role="textbox"]');
@@ -87,8 +101,9 @@ export class ChatMessageEditor {
                 this.mobilePanelHandler(false);
             } else
                 this.getSlateInput().focus();
-        } else
+        } else {
             this.getSlateInput().focus();
+        }
     });
 
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
@@ -154,14 +169,17 @@ export class ChatMessageEditor {
         this.isPanelOpened = isPanelOpened;
         const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
         const label = this.editorDiv.querySelector(':scope label');
+        const slate = this.getSlateInput();
         if (isPanelOpened) {
             setTimeout(() => {
                 attach.classList.add('hidden');
                 label.classList.add('w-0');
+                slate.setAttribute('contenteditable', 'false');
             }, 150);
         } else {
             attach.classList.remove('hidden');
             label.classList.remove('w-0');
+            slate.setAttribute('contenteditable', 'true');
         }
 
         if (this.notifyPanel.classList.contains('panel-closing')) {
@@ -315,11 +333,13 @@ export class ChatMessageEditor {
 
     public dispose() {
         this.editorDiv.removeEventListener('click', this.onEditorFocus);
+        this.editorDiv.removeEventListener('input', this.onDeleteContentBackward);
         this.input.removeEventListener('paste', this.onInputPaste);
         this.input.removeEventListener('focusin', this.onInputFocusIn);
         this.input.removeEventListener('focusout', this.onInputFocusOut);
         this.filesPicker.removeEventListener('change', this.onFilesPickerChange);
         this.postButton.removeEventListener('click', this.onPostClick);
+        this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanel);
         this.notifyPanelObserver.disconnect();
         const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');

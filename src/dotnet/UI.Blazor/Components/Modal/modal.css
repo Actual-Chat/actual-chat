@@ -33,6 +33,9 @@
     @apply flex-y gap-y-4 h-full md:h-auto w-full md:w-modal p-8 pb-4;
     @apply md:rounded-2xl rounded-none font-medium;
 }
+.modal-frame > div {
+    @apply px-1;
+}
 .modal-frame * {
     @apply cursor-default;
 }
