@@ -122,7 +122,7 @@
         return UIEventHub.Publish(new EditMessage(chatEntry));
     }
 
-    public record Model {
+    public sealed record Model {
         public static readonly Model None = new Model();
 
         public bool IsJoined { get; init; }

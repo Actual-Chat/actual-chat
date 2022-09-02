@@ -2,7 +2,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Comparison;
 
-public class VersionBasedEqualityComparer<T, TKey> : IEqualityComparer<T>
+public sealed class VersionBasedEqualityComparer<T, TKey> : IEqualityComparer<T>
     where T : IHasId<TKey>, IHasVersion<long>
 {
     public static IEqualityComparer<T> Instance { get; } = new VersionBasedEqualityComparer<T, TKey>();

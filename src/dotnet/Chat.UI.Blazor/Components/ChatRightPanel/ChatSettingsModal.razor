@@ -172,7 +172,7 @@
 
     public sealed record ModalInput(Chat Chat);
 
-    public record Model {
+    public sealed record Model {
         public static Model None { get; } = new();
 
         public ChatAuthorRules? Rules { get; init; }

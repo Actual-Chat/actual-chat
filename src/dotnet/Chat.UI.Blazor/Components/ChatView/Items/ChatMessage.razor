@@ -6,7 +6,7 @@
 @using BlazorContextMenu
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
-    var message = Message;
+    var message = _lastRenderedMessage = Message;
     var entry = message.Entry;
     var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
 
@@ -59,7 +59,7 @@
                         } else {
                             <p class="chat-message-markup mx-1">
                                 <CascadingValue Value="@entry" IsFixed="true">
-                                    <MarkupView Markup="_markup"/>
+                                    <MarkupView Markup="@Markup"/>
                                 </CascadingValue>
                             </p>
                         }
@@ -88,7 +88,8 @@
 
 @code {
     private Model? _lastRenderedModel;
-    private Markup? _markup;
+    private ChatMessageModel? _lastRenderedMessage;
+    private Markup? _cachedMarkup;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
@@ -99,6 +100,7 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
+    private Markup Markup => _cachedMarkup ?? GetMarkup();
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
@@ -107,34 +109,26 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    protected override void OnInitialized() {
-        var markup = GetMarkup();
-        if (Message.ShowEntryType)
-            markup = EnrichMarkupWithEntryType(markup);
-        _markup = markup;
-
-        base.OnInitialized();
-    }
-
     protected override async Task OnInitializedAsync()
         => await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
 
+    protected override void OnParametersSet()
+        => _cachedMarkup = null;
+
     protected override bool ShouldRender()
-        => _markup != null &&
-           (ReferenceEquals(_lastRenderedModel, null)
-            || State.HasError
-            || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue));
+        => !(
+            ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue)
+            && ReferenceEquals(_lastRenderedMessage, Message));
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
         var entry = Message.Entry;
         var chatId = entry.ChatId;
         var principalIdTask = ChatAuthors.GetPrincipalId(Session, chatId, default);
-        if (principalIdTask.IsCompletedSuccessfully) {
+        if (principalIdTask.IsCompletedSuccessfully)
             initialValue = new Model { PrincipalId = principalIdTask.Result };
-        }
         return new ComputedState<Model>.Options {
-            InitialValue = initialValue
+            InitialValue = initialValue,
         };
     }
 
@@ -148,8 +142,8 @@
 
         var attachments = await LoadAttachments(cancellationToken).ConfigureAwait(false);
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken).ConfigureAwait(false);
-        var hasAnyMentions = HasAnyMentions(_markup!);
-        var isMentioned = IsMentioned(_markup!, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
+        var hasAnyMentions = HasAnyMentions(Markup);
+        var isMentioned = IsMentioned(Markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
@@ -159,22 +153,23 @@
             HasAnyMentions = hasAnyMentions,
             IsMentioned = isMentioned,
             IsHighlighted = isHighlighted,
-            IsReplied = isReplied
+            IsReplied = isReplied,
         };
         return result.Equals(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
-    private Markup EnrichMarkupWithEntryType(Markup markup) {
-        var isAudio = markup is PlayableTextMarkup;
-        var contentKind = new ChatEntryTypeMarkup(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
-        return new MarkupSeq(contentKind, markup);
-    }
-
-    private Markup GetMarkup()
-    {
-        return Message.Entry.AudioEntryId == null || Message.IsQuote
-            ? MarkupParser.Parse(Message.Entry.Content)
-            : new PlayableTextMarkup(Message.Entry.Content, Message.Entry.TextToTimeMap);
+    private Markup GetMarkup() {
+        var message = Message;
+        var markup = message.Entry.AudioEntryId == null || message.IsQuote
+            ? MarkupParser.Parse(message.Entry.Content)
+            : new PlayableTextMarkup(message.Entry.Content, message.Entry.TextToTimeMap);
+        if (message.ShowEntryType) {
+            // Adds "T" or "Audio" symbol to the beginning of markup
+            var isAudio = markup is PlayableTextMarkup;
+            var entryTypeMarkup = new ChatEntryTypeMarkup(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
+            markup = new MarkupSeq(entryTypeMarkup, markup);
+        }
+        return markup;
     }
 
     private async Task<ChatMessageModel?> GetRepliedChatMessage(CancellationToken cancellationToken) {
@@ -184,7 +179,7 @@
         var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None)
             .ConfigureAwait(false);
 
-    // TODO: show 'message was deleted' if replied message was removed
+        // TODO: show 'message was deleted' if replied message was removed
         if (repliedChatEntry == null)
             return null;
 
@@ -230,7 +225,9 @@
         return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    public record Model {
+    // Nested types
+
+    public sealed record Model {
         public static readonly Model None = new();
 
         public Symbol PrincipalId { get; init; }

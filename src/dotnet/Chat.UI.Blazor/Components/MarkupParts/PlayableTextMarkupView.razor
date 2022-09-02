@@ -213,7 +213,7 @@
         PlayedStart =  Played | 0x01,
     }
 
-    public record Model {
+    public sealed record Model {
         public static readonly Model None = new Model();
 
         public WordPlayback[]? Map { get; init; }

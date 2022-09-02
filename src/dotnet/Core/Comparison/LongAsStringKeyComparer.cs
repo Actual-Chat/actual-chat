@@ -1,6 +1,6 @@
 namespace ActualChat.Comparison;
 
-public class LongAsStringKeyComparer : IComparer<string>
+public sealed class LongAsStringKeyComparer : IComparer<string>
 {
     public static IComparer<string> Default { get; } = new LongAsStringKeyComparer();
 

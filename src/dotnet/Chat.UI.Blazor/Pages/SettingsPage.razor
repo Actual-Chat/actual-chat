@@ -39,7 +39,7 @@
 
     // Nested types
 
-    public record Model {
+    public sealed record Model {
         public static Model None { get; } = new();
 
         public bool EnableIncompleteUI { get; init; }

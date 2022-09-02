@@ -38,7 +38,7 @@
         };
     }
 
-    public record Model {
+    public sealed record Model {
         public static readonly Model None = new Model();
 
         public bool CanLeave { get; init; }
