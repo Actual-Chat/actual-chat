@@ -7,11 +7,13 @@ export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
+    private slateInput: HTMLDivElement;
     private readonly filesPicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
+    private isNarrowMode: boolean = false;
     private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
@@ -29,18 +31,73 @@ export class ChatMessageEditor {
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
+        this.editorDiv.addEventListener('click', this.editorFocusHandler);
+
         this.input.addEventListener('paste', this.inputPasteListener);
         this.input.addEventListener('focusin', this.inputFocusInListener);
         this.input.addEventListener('focusout', this.inputFocusOutListener);
         this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
         this.notifyPanel.addEventListener('click', this.notifyPanelListener);
+
+        const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
+        const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
+        if (mobileLanguageBtn)
+            mobileLanguageBtn.addEventListener('click', this.returnFocusOnInput);
+        if (mobilePlaybackBtn)
+            mobilePlaybackBtn.addEventListener('click', this.returnFocusOnInput);
+
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
         this.changeMode();
     }
+
+    private getSlateInput = () : HTMLDivElement => {
+        this.slateInput = this.input.querySelector('[role="textbox"]');
+        if (this.slateInput)
+            return this.slateInput;
+        throw new Error("Slate editor not found.");
+    }
+
+    private isMobilePanelOpen = () : boolean => {
+        let panel = this.editorDiv.querySelector('.mobile-control-panel');
+        return panel && panel.getBoundingClientRect().height != 0;
+    }
+
+    private mobilePanelHandler = (enable: boolean) => {
+        if (enable) {
+            if (!this.editorDiv.classList.contains('narrow-panel')) {
+                this.editorDiv.classList.add('narrow-panel');
+                this.isNarrowMode = true;
+            }
+        } else {
+            this.editorDiv.classList.remove('narrow-panel');
+            this.isNarrowMode = false;
+        }
+    }
+
+    private editorFocusHandler = ((event: Event & { target: Element; }) => {
+        const btn = event.target.closest('button');
+        if (!this.isNarrowMode)
+            return;
+        if (btn && (btn.classList.contains('record-off-btn') || btn.classList.contains('record-on-btn'))) {
+            if (this.getText() == '' && this.attachments.size == 0) {
+                this.changeMode();
+                this.mobilePanelHandler(false);
+            } else
+                this.getSlateInput().focus();
+        } else
+            this.getSlateInput().focus();
+    });
+
+    private returnFocusOnInput = ((event: Event & { target: Element; }) => {
+        if (this.isMobilePanelOpen && this.isNarrowMode) {
+            this.getSlateInput().focus();
+            this.changeMode();
+        }
+    });
 
     private notifyPanelListener = (async (event: Event & { target: Element; }) => {
         if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
@@ -65,13 +122,14 @@ export class ChatMessageEditor {
     });
 
     private inputFocusInListener = ((event: Event & { target: Element; }) => {
-        if (!this.editorDiv.classList.contains('narrow-panel'))
-            this.editorDiv.classList.add('narrow-panel');
+        this.mobilePanelHandler(true);
     });
 
     private inputFocusOutListener = ((event: Event & { target: Element; }) => {
+        if ((this.isNarrowMode && this.getText() == '') || this.isTextMode || !this.isMobilePanelOpen)
+            return;
         setTimeout(() => {
-            this.editorDiv.classList.remove('narrow-panel');
+            this.mobilePanelHandler(false);
         }, 200)
     });
 
