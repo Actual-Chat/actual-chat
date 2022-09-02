@@ -12,5 +12,5 @@ public interface IServerKvasBackend
     public record SetManyCommand(
         [property: DataMember(Order = 0)] string Prefix,
         [property: DataMember(Order = 1)] (string Key, string? Value)[] Items
-        ) : ICommand<Unit>;
+        ) : ICommand<Unit>, IBackendCommand;
 }

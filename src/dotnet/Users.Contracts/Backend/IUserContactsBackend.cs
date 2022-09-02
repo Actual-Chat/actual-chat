@@ -20,5 +20,5 @@ public interface IUserContactsBackend : IComputeService
         [property: DataMember] Symbol Id,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<UserContactDiff> Change
-    ) : ICommand<UserContact?>;
+    ) : ICommand<UserContact?>, IBackendCommand;
 }

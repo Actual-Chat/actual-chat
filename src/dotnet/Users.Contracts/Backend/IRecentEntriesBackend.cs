@@ -18,5 +18,5 @@ public interface IRecentEntriesBackend
         [property: DataMember] string ShardKey,
         [property: DataMember] string Key,
         [property: DataMember] Moment Date
-    ) : ICommand<RecentEntry?>;
+    ) : ICommand<RecentEntry?>, IBackendCommand;
 }

@@ -111,7 +111,8 @@ public interface IChats : IComputeService
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] long? Id,
-        [property: DataMember] string Text) : ISessionCommand<ChatEntry>
+        [property: DataMember] string Text
+        ) : ISessionCommand<ChatEntry>
     {
         [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
             ImmutableArray<TextEntryAttachmentUpload>.Empty;
