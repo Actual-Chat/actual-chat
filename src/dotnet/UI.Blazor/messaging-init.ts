@@ -19,11 +19,11 @@ export async function getDeviceToken(): Promise<string | null> {
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
             const workerPath = new URL('/sw.js', origin).toString();
             const workerUrl = `${workerPath}?config=${configBase64}`;
-            let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
-            if (!workerRegistration) {
-                console.info(`${LogScope}: registering service worker '${workerUrl}'`)
-                workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/' });
-            }
+
+            const workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/', updateViaCache: 'all' });
+            workerRegistration.addEventListener('updatefound', ev => {
+                console.info(`${LogScope}: fresher service-worker detected`);
+            });
 
             const tokenOptions: GetTokenOptions = {
                 vapidKey: publicKey,

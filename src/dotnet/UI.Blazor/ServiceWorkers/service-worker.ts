@@ -18,9 +18,51 @@ interface NotificationEvent extends ExtendableEvent {
     readonly notification: Notification;
 }
 
+sw.addEventListener('install', (event: ExtendableEvent) => {
+    console.info(`${LogScope}: making fresh installed service worker active`);
+    void sw.skipWaiting();
+});
+
+sw.addEventListener('activate', (event: ExtendableEvent) => {
+    console.info(`${LogScope}: forcing fresh activated service worker to start controlling pages`);
+    event.waitUntil(sw.clients.claim());
+});
+
 sw.addEventListener('notificationclick', (event: NotificationEvent) => {
     event.waitUntil(onNotificationClick(event));
 }, true);
+
+const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
+    event.stopImmediatePropagation();
+    event.notification.close();
+
+    const notificationUrl = event.notification?.data?.url;
+    if (!notificationUrl)
+        return;
+
+    const url = new URL(notificationUrl);
+    const href = url.href;
+    const origin = url.origin;
+    const hrefNotHashed = url.hash ? href.replace(url.hash, '') : href;
+
+    const windowsClients = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const samePathWindow = windowsClients.find(wc => wc.url.startsWith(hrefNotHashed));
+    const sameOriginWindow = windowsClients.find(wc => wc.url.startsWith(origin));
+
+    const existingClientWindow = samePathWindow ?? sameOriginWindow;
+    if (existingClientWindow) {
+        const focusedWindow = await existingClientWindow.focus();
+        focusedWindow.postMessage({
+                                      type: 'NOTIFICATION_CLICK',
+                                      url: url.href,
+                                  });
+        return;
+    }
+
+    const newClientWindow = await sw.clients.openWindow(url);
+    if (newClientWindow)
+        await newClientWindow.focus();
+}
 
 const app = initializeApp(config);
 const messaging = getMessaging(app);
@@ -43,38 +85,3 @@ onBackgroundMessage(messaging, async payload => {
     }
     await sw.registration.showNotification(payload.notification.title, options);
 });
-
-const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
-    event.stopImmediatePropagation();
-    event.notification.close();
-
-    const notificationUrl = event.notification?.data?.url;
-    if (!notificationUrl)
-        return;
-
-    const url = new URL(notificationUrl);
-    const href = url.href;
-    const origin = url.origin;
-    const hrefNotHashed = url.hash ? href.replace(url.hash, '') : href;
-    // @ts-ignore
-    const clients: Clients = sw.clients;
-
-    const windowsClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const samePathWindow = windowsClients.find(wc => wc.url.startsWith(hrefNotHashed));
-    const sameOriginWindow = windowsClients.find(wc => wc.url.startsWith(origin));
-
-    const existingClientWindow = samePathWindow ?? sameOriginWindow;
-    if (existingClientWindow) {
-        await clients.claim();
-        const focusedWindow = await existingClientWindow.focus();
-        focusedWindow.postMessage({
-            type: 'NOTIFICATION_CLICK',
-            url: url.href,
-        });
-        return;
-    }
-
-    const newClientWindow = await clients.openWindow(url);
-    if (newClientWindow)
-        await newClientWindow.focus();
-}
