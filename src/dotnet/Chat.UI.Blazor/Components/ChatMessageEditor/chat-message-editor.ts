@@ -32,7 +32,6 @@ export class ChatMessageEditor {
 
         // Wiring up event listeners
         this.editorDiv.addEventListener('click', this.editorFocusHandler);
-
         this.input.addEventListener('paste', this.inputPasteListener);
         this.input.addEventListener('focusin', this.inputFocusInListener);
         this.input.addEventListener('focusout', this.inputFocusOutListener);
@@ -313,6 +312,7 @@ export class ChatMessageEditor {
     };
 
     public dispose() {
+        this.editorDiv.removeEventListener('click', this.editorFocusHandler);
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.input.removeEventListener('focusin', this.inputFocusInListener);
         this.input.removeEventListener('focusout', this.inputFocusOutListener);
@@ -320,6 +320,12 @@ export class ChatMessageEditor {
         this.postButton.removeEventListener('click', this.postClickListener);
         this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
         this.notifyPanelObserver.disconnect();
+        const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
+        const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
+        if (mobileLanguageBtn)
+            mobileLanguageBtn.removeEventListener('click', this.returnFocusOnInput);
+        if (mobilePlaybackBtn)
+            mobilePlaybackBtn.removeEventListener('click', this.returnFocusOnInput);
     }
 }
 
