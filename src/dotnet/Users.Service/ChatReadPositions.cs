@@ -58,6 +58,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             if (readEntryId > dbPosition.ReadEntryId)
                 dbPosition.ReadEntryId = readEntryId;
         }
+        // Log.LogInformation("Read position update: chat #{ChatId} -> {ReadEntryId}", chatId, readEntryId);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

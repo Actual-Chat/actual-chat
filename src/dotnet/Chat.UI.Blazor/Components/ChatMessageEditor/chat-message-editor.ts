@@ -135,6 +135,8 @@ export class ChatMessageEditor {
 
     private playbackAnimationOff() : void {
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
+        if (playbackWrapper == null)
+            return;
         let classes = playbackWrapper.classList;
         if (classes.contains('listen-on-to-off')) {
             classes.replace('listen-on-to-off', 'listen-off');
