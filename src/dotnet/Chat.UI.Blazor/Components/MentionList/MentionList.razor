@@ -31,7 +31,7 @@
                     <div class="flex-x gap-x-0">
                         @foreach (var part in searchMatch.PartsWithGaps) {
                             var textClass = part.Rank > 0 ? "font-semibold" : "";
-                                <span class="@textClass">@(title[part.Range.Start..part.Range.End])</span>
+                            <span class="@textClass">@(title[part.Range.Start..part.Range.End].Replace(' ', '\u00a0'))</span>
                         }
                     </div>
                 </div>

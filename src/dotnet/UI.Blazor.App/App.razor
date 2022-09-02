@@ -5,19 +5,21 @@
 @using System.Reflection
 @using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
-@{
-    if (!_isInitialized)
-        return;
-}
 
 <LayoutTypeProvider>
     <CascadingBlazoredModal>
         <CascadingAuthState>
             <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
                 <Found>
-                    <ErrorWrapper>
-                        <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
-                    </ErrorWrapper>
+                    @if (_isInitialized) {
+                        <ErrorWrapper>
+                            <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
+                        </ErrorWrapper>
+                    } else {
+                        <LayoutView Layout="@typeof(NoChatLayout)">
+                            <p>Loading...</p>
+                        </LayoutView>
+                    }
                 </Found>
                 <NotFound>
                     <LayoutView Layout="@typeof(NoChatLayout)">
