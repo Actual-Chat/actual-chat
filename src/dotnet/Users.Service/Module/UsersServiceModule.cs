@@ -142,6 +142,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
+        fusion.AddComputeService<IChatReadPositionsBackend, ChatReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddComputeService<IRecentEntries, RecentEntries>();
