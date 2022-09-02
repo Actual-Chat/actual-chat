@@ -11,11 +11,11 @@
 
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
+        var title = mention.Text;
         var searchMatch = mention.SearchMatch;
-        var title = searchMatch.Text;
         var cls = mention == selection ? "selected" : "";
         var picture = string.IsNullOrWhiteSpace(mention.Picture)
-            ? $"https://avatars.dicebear.com/api/avataaars/{searchMatch.Text}.svg"
+            ? $"https://avatars.dicebear.com/api/avataaars/{title}.svg"
             : ContentUrlMapper.ContentUrl(mention.Picture);
         <div class="@cls mention-list-item"
              @onmouseover="_ => Selection = mention"
