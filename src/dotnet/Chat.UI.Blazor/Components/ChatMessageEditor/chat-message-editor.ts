@@ -31,20 +31,20 @@ export class ChatMessageEditor {
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
-        this.editorDiv.addEventListener('click', this.editorFocusListener);
-        this.input.addEventListener('paste', this.inputPasteListener);
-        this.input.addEventListener('focusin', () => this.mobilePanelHandler(true));
-        this.input.addEventListener('focusout', this.inputFocusOutListener);
-        this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
-        this.postButton.addEventListener('click', this.postClickListener);
-        this.notifyPanel.addEventListener('click', this.notifyPanelListener);
+        this.editorDiv.addEventListener('click', this.onEditorFocus);
+        this.input.addEventListener('paste', this.onInputPaste);
+        this.input.addEventListener('focusin', this.onInputFocusIn);
+        this.input.addEventListener('focusout', this.onInputFocusOut);
+        this.filesPicker.addEventListener('change', this.onFilesPickerChange);
+        this.postButton.addEventListener('click', this.onPostClick);
+        this.notifyPanel.addEventListener('click', this.onNotifyPanel);
 
         const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
         const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
         if (mobileLanguageBtn)
-            mobileLanguageBtn.addEventListener('click', this.returnFocusOnInput);
+            mobileLanguageBtn.addEventListener('click', this.onReturnFocusOnInput);
         if (mobilePlaybackBtn)
-            mobilePlaybackBtn.addEventListener('click', this.returnFocusOnInput);
+            mobilePlaybackBtn.addEventListener('click', this.onReturnFocusOnInput);
 
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
         this.notifyPanelObserver.observe(this.notifyPanel, {
@@ -77,7 +77,7 @@ export class ChatMessageEditor {
         }
     }
 
-    private editorFocusListener = ((event: Event & { target: Element; }) => {
+    private onEditorFocus = ((event: Event & { target: Element; }) => {
         const btn = event.target.closest('button');
         if (!this.isNarrowMode)
             return;
@@ -91,14 +91,14 @@ export class ChatMessageEditor {
             this.getSlateInput().focus();
     });
 
-    private returnFocusOnInput = ((event: Event & { target: Element; }) => {
+    private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
         if (this.isMobilePanelOpen && this.isNarrowMode) {
             this.getSlateInput().focus();
             this.changeMode();
         }
     });
 
-    private notifyPanelListener = (async (event: Event & { target: Element; }) => {
+    private onNotifyPanel = (async (event: Event & { target: Element; }) => {
         if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
             if (this.notifyPanel.classList.contains('panel-opening')) {
                 await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
@@ -106,7 +106,7 @@ export class ChatMessageEditor {
         }
     });
 
-    private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
+    private onInputPaste = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
         // We need to handle only files pasting.
         // Text pasting is controlled by slate editor.
@@ -120,7 +120,11 @@ export class ChatMessageEditor {
         }
     });
 
-    private inputFocusOutListener = ((event: Event & { target: Element; }) => {
+    private onInputFocusIn = ((event: Event & { target: Element; }) => {
+        this.mobilePanelHandler(true);
+    });
+
+    private onInputFocusOut = ((event: Event & { target: Element; }) => {
         if ((this.isNarrowMode && this.getText() == '') || this.isTextMode || !this.isMobilePanelOpen)
             return;
         setTimeout(() => {
@@ -128,7 +132,7 @@ export class ChatMessageEditor {
         }, 200)
     });
 
-    private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
+    private onFilesPickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filesPicker.files) {
             const added : boolean = await this.addAttachment(file);
             if (!added)
@@ -137,7 +141,7 @@ export class ChatMessageEditor {
         this.filesPicker.value = '';
     });
 
-    private postClickListener = ((event: MouseEvent & { target: Element; }) => {
+    private onPostClick = ((event: MouseEvent & { target: Element; }) => {
         const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
         input.focus();
         this.changeMode();
@@ -308,20 +312,20 @@ export class ChatMessageEditor {
     };
 
     public dispose() {
-        this.editorDiv.removeEventListener('click', this.editorFocusListener);
-        this.input.removeEventListener('paste', this.inputPasteListener);
-        this.input.removeEventListener('focusin', this.inputFocusInListener);
-        this.input.removeEventListener('focusout', this.inputFocusOutListener);
-        this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
-        this.postButton.removeEventListener('click', this.postClickListener);
-        this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
+        this.editorDiv.removeEventListener('click', this.onEditorFocus);
+        this.input.removeEventListener('paste', this.onInputPaste);
+        this.input.removeEventListener('focusin', this.onInputFocusIn);
+        this.input.removeEventListener('focusout', this.onInputFocusOut);
+        this.filesPicker.removeEventListener('change', this.onFilesPickerChange);
+        this.postButton.removeEventListener('click', this.onPostClick);
+        this.notifyPanel.removeEventListener('click', this.onNotifyPanel);
         this.notifyPanelObserver.disconnect();
         const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
         const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
         if (mobileLanguageBtn)
-            mobileLanguageBtn.removeEventListener('click', this.returnFocusOnInput);
+            mobileLanguageBtn.removeEventListener('click', this.onReturnFocusOnInput);
         if (mobilePlaybackBtn)
-            mobilePlaybackBtn.removeEventListener('click', this.returnFocusOnInput);
+            mobilePlaybackBtn.removeEventListener('click', this.onReturnFocusOnInput);
     }
 }
 
