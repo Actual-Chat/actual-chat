@@ -38,7 +38,7 @@ public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadP
 
         var compositeId = DbChatReadPosition.ComposeId(userId, chatId);
         var dbPosition = await dbContext.ChatReadPositions
-            .FindAsync(compositeId, cancellationToken)
+            .FindAsync(DbKey.Compose(compositeId), cancellationToken)
             .ConfigureAwait(false);
         if (dbPosition == null) {
             dbPosition = new DbChatReadPosition {
