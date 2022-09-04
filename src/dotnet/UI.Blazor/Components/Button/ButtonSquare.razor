@@ -1,8 +1,9 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="@Class btn btn-square" title="@Title"
-        name="@Name" type="@GetButtonType()"
+<button class="@Class btn btn-square"
+        name="@Name"
+        type="@GetButtonType()"
         disabled="@IsDisabled"
         autofocus="@IsAutofocused"
         oncontextmenu="return false;"
