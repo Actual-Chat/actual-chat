@@ -30,22 +30,23 @@
             <div class="@cls">
                 @if (ListKind == ChatListKind.Listening) {
                     @if (m.CanRecord) {
-                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="!mr-1"/>
+                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     }
-                    <ChatListListenToggle ChatId="@Chat.Id" Class="!mr-1"/>
-                    <ActiveChatRemoveButton ChatId="@Chat.Id"/>
+                    <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
+                    <ActiveChatRemoveButton ChatId="@Chat.Id" Class="chat-menu-btn"/>
                 } else {
                     @if (m.CanRecord) {
-                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="!mr-1"/>
+                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     }
-                    <ChatListListenToggle ChatId="@Chat.Id" Class="!mr-1"/>
+                    <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat">
                         <div class="flex">
                             <Tooltip
                                 Text="More"
                                 Position="TooltipPosition.Top">
-                                <ButtonRound Class="blackout"
-                                        BackRef="@context">
+                                <ButtonRound
+                                    Class="chat-menu-btn blackout"
+                                    BackRef="@context">
                                     <i class="icon-more-vertical text-2xl"></i>
                                 </ButtonRound>
                             </Tooltip>
