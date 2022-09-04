@@ -1,30 +1,57 @@
 ﻿@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
+@using ActualChat.UI.Blazor.Components.Tooltip
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
     var m = State.LatestNonErrorValue;
 }
 
-<NavbarGroupToggle Title="Chats" Id="chats">
-    <i class="icon-message-square text-2xl font-medium"></i>
-</NavbarGroupToggle>
+<Tooltip
+    Text="Chats"
+    Position="TooltipPosition.Right">
+    <NavbarGroupToggle
+        Title="Chats"
+        Id="chats"
+        BackRef="@context">
+        <i class="icon-message-square text-2xl font-medium"></i>
+    </NavbarGroupToggle>
+</Tooltip>
 
 @if (m.Account.IsActive()) {
-    <NavbarGroupToggle Title="Contacts" Id="contacts">
-        <i class="icon-people text-2xl font-medium"></i>
-    </NavbarGroupToggle>
-
+    <Tooltip
+        Text="Contacts"
+        Position="TooltipPosition.Right">
+        <NavbarGroupToggle
+            Title="Contacts"
+            Id="contacts"
+            BackRef="@context">
+            <i class="icon-people text-2xl font-medium"></i>
+        </NavbarGroupToggle>
+    </Tooltip>
 }
 @if (m.Account.IsAdmin) {
-    <NavbarGroupToggle Title="Administration" Id="admin">
-        <i class="icon-adminx text-2xl font-medium"></i>
-    </NavbarGroupToggle>
-
+    <Tooltip
+        Text="Administration"
+        Position="TooltipPosition.Right">
+        <NavbarGroupToggle
+            Title="Administration"
+            Id="admin"
+            BackRef="@context">
+            <i class="icon-adminx text-2xl font-medium"></i>
+        </NavbarGroupToggle>
+    </Tooltip>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarGroupToggle Title="Test Pages" Id="testPages">
-        <i class="icon-alert-triangle text-2xl font-medium"></i>
-    </NavbarGroupToggle>
+    <Tooltip
+        Text="Test Pages"
+        Position="TooltipPosition.Right">
+        <NavbarGroupToggle
+            Title="Test Pages"
+            Id="testPages"
+            BackRef="@context">
+            <i class="icon-alert-triangle text-2xl font-medium"></i>
+        </NavbarGroupToggle>
+    </Tooltip>
 }

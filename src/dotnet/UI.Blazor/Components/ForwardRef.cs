@@ -2,5 +2,14 @@ namespace ActualChat.UI.Blazor.Components;
 
 public class ForwardRef
 {
-    public ElementReference Current { get; set; }
+    private ElementReference _ref;
+
+    public ElementReference Current
+    {
+        get => _ref;
+        set => SetValue(value);
+    }
+
+    public void SetValue(ElementReference value)
+        => _ref = value;
 }

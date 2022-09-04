@@ -1,41 +1,46 @@
 @using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
 
-<div @ref="TooltipRef" class="ac-tooltip">
-    @ChildContent
-    <div @ref="ArrowRef" class="ac-tooltip-arrow"></div>
+@ChildContent(_triggerForwardRef)
+
+<div @ref="_tooltipRef" class="ac-tooltip">
+    @Text
+    <div @ref="_arrowRef" class="ac-tooltip-arrow"></div>
 </div>
 
 @code {
-    private ElementReference TooltipRef { get; set; }
-    private ElementReference ArrowRef { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<Tooltip> BlazorRef { get; set; } = null!;
+    private ForwardRef _triggerForwardRef = new();
+    private ElementReference _tooltipRef;
+    private ElementReference _arrowRef;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<Tooltip> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ForwardRef TriggerForwardRef { get; set; } = null!;
-    [Parameter] public TooltipOptions Options { get; set; } = TooltipOptions.Default;
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public TooltipPosition Position { get; set; } = TooltipPosition.Top;
+    [Parameter] public RenderFragment<ForwardRef> ChildContent { get; set; } = null!;
+    [Parameter] public string Text { get; set; } = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
+            _blazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.Tooltip.create";
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
-                TriggerForwardRef.Current,
-                TooltipRef,
-                ArrowRef,
-                BlazorRef,
-                Options);
+                _triggerForwardRef.Current,
+                _tooltipRef,
+                _arrowRef,
+                _blazorRef,
+                new {
+                    Position,
+                });
         }
     }
 
     public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
     }
 }

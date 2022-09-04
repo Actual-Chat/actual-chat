@@ -9,7 +9,7 @@
     var lineClass = isActive ? "bg-primary" : "bg-transparent";
 }
 
-<div class="flex-x">
+<div class="flex-x" @ref="Ref">
     <div class="@lineClass left-line hidden md:block">
     </div>
     <ButtonSquare Click="@OnClick" Title="@Title" Class="@btnClass">
@@ -21,15 +21,28 @@
 </div>
 
 @code {
+    private ElementReference _ref;
+    private EventHandler? _onActiveGroupChanged;
+
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    private EventHandler? _onActiveGroupChanged;
 
     [Parameter] public string? Class { get; set; } = "";
     [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public ForwardRef? BackRef {get;set;}
+
+    private ElementReference Ref
+    {
+        get => _ref;
+        set
+        {
+            _ref = value;
+            BackRef?.SetValue(value);
+        }
+    }
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
@@ -41,5 +54,4 @@
 
     private void OnClick()
         => NavbarUI.ActivateGroup(Id, Title);
-
 }
