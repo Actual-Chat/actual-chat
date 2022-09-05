@@ -34,6 +34,8 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public ForwardRef? BackRef {get;set;}
 
+    private bool _isThinPanelOpen;
+
     private ElementReference Ref
     {
         get => _ref;
@@ -52,6 +54,10 @@
     public void Dispose()
         => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 
-    private void OnClick()
-        => NavbarUI.ActivateGroup(Id, Title);
+    private void OnClick() {
+        NavbarUI.ActivateGroup(Id, Title);
+        _isThinPanelOpen = !NavbarUI.IsThinPanelOpen.Value;
+        NavbarUI.IsThinPanelOpen.Value = _isThinPanelOpen;
+    }
+
 }
