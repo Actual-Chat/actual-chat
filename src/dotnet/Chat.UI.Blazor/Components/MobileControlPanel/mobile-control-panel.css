@@ -10,10 +10,10 @@
 
 .mobile-control-panel .mobile-button {
     @apply rounded-full transition-all ease-linear duration-100;
-    @apply shadow-scrollbar shadow-lg;
+    @apply shadow-scrollbar shadow-md;
 }
 .mobile-control-panel .mobile-button:active {
-    @apply shadow-lg shadow-scrollbar translate-y-0.5;
+    @apply shadow-md shadow-scrollbar translate-y-0.5;
 }
 
 .mobile-control-panel .btn.btn-round .btn-content {
@@ -128,6 +128,9 @@
 /*Text mode*/
 .narrow-panel .mobile-control-panel {
     @apply gap-x-2 py-1;
+}
+.narrow-panel .mobile-control-panel .mobile-button {
+    @apply shadow-sm shadow-scrollbar;
 }
 .narrow-panel .mobile-control-panel .btn.btn-round .btn-content {
     @apply bg-03 rounded-full;
