@@ -9,7 +9,11 @@
 }
 
 .mobile-control-panel .mobile-button {
-    @apply rounded-full;
+    @apply rounded-full transition-all ease-linear duration-100;
+    @apply shadow-scrollbar shadow-lg;
+}
+.mobile-control-panel .mobile-button:active {
+    @apply shadow-lg shadow-scrollbar translate-y-0.5;
 }
 
 .mobile-control-panel .btn.btn-round .btn-content {
@@ -25,7 +29,10 @@
 }
 
 .mobile-control-panel .recorder-wrapper {
-    @apply border justify-center flex h-20 w-20;
+    @apply border justify-center flex h-20 w-20 transition-none
+}
+.mobile-control-panel .recorder-wrapper:active {
+    @apply transition-none translate-y-0;
 }
 .mobile-control-panel .recorder-wrapper .btn {
     @apply self-center;
