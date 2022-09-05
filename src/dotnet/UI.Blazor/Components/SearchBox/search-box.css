@@ -17,3 +17,6 @@
 .search-box label {
     @apply relative flex-x;
 }
+.search-box-spinner {
+    @apply absolute right-0 mr-2 self-center w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5 border-2 border-icons-01 border-dashed rounded-full animate-spin;
+}

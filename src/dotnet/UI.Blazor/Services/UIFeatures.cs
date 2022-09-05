@@ -24,4 +24,15 @@ public static class UIFeatures
             return account?.IsAdmin == true;
         }
     }
+
+    public class EnableChatMessageSearchUI : FeatureDef<bool>, IClientFeatureDef
+    {
+        public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
+        {
+            var session = services.GetRequiredService<Session>();
+            var accounts = services.GetRequiredService<IAccounts>();
+            var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            return account?.IsAdmin == true;
+        }
+    }
 }

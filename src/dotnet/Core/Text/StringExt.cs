@@ -19,6 +19,8 @@ public static class StringExt
     [return: NotNullIfNotNull("source")]
     public static string? RequireEmpty(this string? source, string name)
         => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
+    public static string? RequireMaxLength(this string source, int length, string name)
+        => source.Length <= length ? source : throw StandardError.Constraint($"{name} Must be no more than {length} characters.");
 
     public static SearchPhrase ToSearchPhrase(this string text, bool matchPrefixes, bool matchSuffixes)
         => new(text, matchPrefixes, matchSuffixes);

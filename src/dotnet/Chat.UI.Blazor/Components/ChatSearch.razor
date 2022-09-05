@@ -1,0 +1,36 @@
+@if (!_isSearchEnabled) {
+    return;
+}
+
+<SearchBox IsCompact="true" IsProgressEnabled="true" MaxLength="@Constants.Chat.MaxSearchFilterLength"
+           Triggered="OnSearchTriggered" Cancelled="OnSearchCancelled"/>
+
+@code{
+    private ChatEntry? _lastFoundEntry;
+    private bool _isSearchEnabled;
+
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _isSearchEnabled = await Features.Get<UIFeatures.EnableChatMessageSearchUI, bool>(CancellationToken.None);
+    }
+
+    private async Task OnSearchTriggered(string text) {
+        var chatId = Chat.Id;
+        var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.Id, text, CancellationToken.None);
+        if (nextEntry == null)
+            return;
+
+        await UIEventHub.Publish(new NavigateToChatEntry(nextEntry.Id));
+        ChatUI.HighlightedChatEntryId.Value = nextEntry.Id;
+        _lastFoundEntry = nextEntry;
+    }
+
+    private void OnSearchCancelled() => _lastFoundEntry = null;
+}

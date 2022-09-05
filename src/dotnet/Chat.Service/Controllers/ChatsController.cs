@@ -103,6 +103,18 @@ public class ChatsController : ControllerBase, IChats
     public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
         => _service.ListMentionableAuthors(session, chatId, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken)
+        => _service.FindNext(session, chatId,
+            startEntryId,
+            text,
+            cancellationToken);
+
     // Commands
 
     [HttpPost]

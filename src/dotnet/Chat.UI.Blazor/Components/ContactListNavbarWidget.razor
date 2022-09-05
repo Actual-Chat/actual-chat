@@ -130,7 +130,7 @@
             case ContactGroup.Favorites:
                 return contacts.Where(x => x.IsFavorite).ToImmutableArray();
             case ContactGroup.Recent:
-                return await RecentEntries.OrderByRecency(Session, contacts, RecencyScope.UserContact, cancellationToken).ConfigureAwait(false);
+                return await RecentEntries.OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken).ConfigureAwait(false);
             default:
                 throw new ArgumentOutOfRangeException(nameof(group), group, null);
         }

@@ -18,19 +18,17 @@
     public Chat Chat { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        _peerChatTargetUserId = await GetPeerChatTargetUserId().ConfigureAwait(false);
+        _peerChatTargetUserId = await GetPeerChatTargetUserId();
     }
 
     private async Task<Symbol> GetPeerChatTargetUserId() {
         if (Chat.ChatType != ChatType.Peer)
             return Symbol.Empty;
 
-        var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, CancellationToken.None);
         if (account is null)
             return Symbol.Empty;
 
-        var peerChatTargetUserId = new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.User.Id);
-        return peerChatTargetUserId;
+        return new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.User.Id);
     }
-
 }
