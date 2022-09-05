@@ -15,25 +15,25 @@
 }
 
 .pic-size-6 {
-    @apply w-6 h-6;
+    @apply w-6 h-6 min-w-6 min-h-6 max-w-6 max-h-6;
 }
 
 .pic-size-8 {
-    @apply w-8 h-8;
+    @apply w-8 h-8 min-w-8 min-h-8 max-w-8 max-h-8;
 }
 
 .pic-size-9 {
-    @apply w-9 h-9;
+    @apply w-9 h-9 min-w-9 min-h-9 max-w-9 max-h-9;
 }
 
 .pic-size-10 {
-    @apply w-10 h-10;
+    @apply w-10 h-10 min-w-10 min-h-10 max-w-10 max-h-10;
 }
 
 .pic-size-16 {
-    @apply w-16 h-16;
+    @apply w-16 h-16 min-w-16 min-h-16 max-w-16 max-h-16;
 }
 
 .pic-size-20 {
-    @apply w-20 h-20 text-2xl;
+    @apply w-20 h-20 min-w-20 min-h-20 max-w-20 max-h-20 text-2xl;
 }
