@@ -26,7 +26,7 @@ public class LiveTime : ILiveTime
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
+    public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
         var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);
         if (delay < TimeSpan.MaxValue) {
@@ -34,7 +34,7 @@ public class LiveTime : ILiveTime
             delay = TrimInvalidationDelay(delay + TimeSpan.FromMilliseconds(100));
             Computed.GetCurrent()!.Invalidate(delay, false);
         }
-        return text;
+        return Task.FromResult(text);
     }
 
     public string GetDeltaText(Moment time)
