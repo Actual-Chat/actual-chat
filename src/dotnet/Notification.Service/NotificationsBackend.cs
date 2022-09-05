@@ -177,6 +177,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             if (batchResponse.SuccessCount > 0)
                 _ = BackgroundTask.Run(
                     () => PersistMessages(chatId, entryId, deviceGroup, batchResponse.Responses, cancellationToken),
+                    Log, "PersistMessages failed",
                     cancellationToken);
         }
     }
