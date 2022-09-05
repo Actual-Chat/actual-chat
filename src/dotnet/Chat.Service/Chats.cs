@@ -1,5 +1,7 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Module;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -212,6 +214,29 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .SkipNullItems()
             .OrderBy(a => a.Name)
             .ToImmutableArray();
+    }
+
+    // Not a [ComputeMethod]!
+    public virtual async Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account is null)
+            return null;
+
+        text.RequireMaxLength(Constants.Chat.MaxSearchFilterLength, "text.length");
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbEntry = await dbContext.ChatEntries.OrderByDescending(x => x.Id)
+            .FirstOrDefaultAsync(x => (startEntryId == null || x.Id < startEntryId) && x.Content.Contains(text), cancellationToken)
+            .ConfigureAwait(false);
+        return dbEntry?.ToModel();
     }
 
     // [CommandHandler]

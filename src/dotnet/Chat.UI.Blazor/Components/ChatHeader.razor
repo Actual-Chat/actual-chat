@@ -17,9 +17,7 @@
     </div>
     <div class="chat-header-control-panel mx-2">
         <div class="hidden md:flex-x gap-x-1">
-            <ButtonRound Click="OnChatSearchClick" Class="transparent">
-                <i class="icon-search text-2xl"></i>
-            </ButtonRound>
+            <ChatSearch/>
             <ButtonRound Click="OnInviteClick" Class="transparent">
                 <i class="icon-person-add text-2xl ml-1"></i>
             </ButtonRound>
@@ -33,14 +31,10 @@
 @code {
     private string _subTitle = " ";
 
-    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    private void OnChatSearchClick()
-        => _ = FeedbackUI.AskFeatureRequestFeedback("chat-search", "Chat search");
 
     private void OnInviteClick()
         => ModalUI.Show(new InviteChatAuthor.Model(Chat));

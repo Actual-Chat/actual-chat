@@ -78,6 +78,15 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
 
+    // Non-compute methods
+
+    Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
