@@ -51,30 +51,36 @@
     [Parameter, EditorRequired] public UserContact Contact { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var presence = await UserPresences.Get(Contact.TargetUserId, cancellationToken).ConfigureAwait(false);
-        var isOnline = presence is Presence.Online or Presence.Recording;
+        var presenceTask = UserPresences.Get(Contact.TargetUserId, cancellationToken);
+        var activeChatIdTask = ChatUI.ActiveChatId.Use(cancellationToken);
+        var listeningChatIdsTask = ChatUI.ListeningChatIds.Use(cancellationToken);
+        var recordingChatIdsTask = ChatUI.RecordingChatId.Use(cancellationToken);
+
+        var presence = await presenceTask.ConfigureAwait(false);
+        var activeChatId = await activeChatIdTask.ConfigureAwait(false);
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isActive = activeChatId == shortChatId || activeChatId == fullChatId;
-        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var isListening = listeningChatIds.Contains(shortChatId);
-        var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false) == shortChatId;
+
+        var isOnline = presence is Presence.Online or Presence.Recording;
+        var isActive = activeChatId == fullChatId;
+        var listeningChatIds = await listeningChatIdsTask.ConfigureAwait(false);
+        var isListening = listeningChatIds.Contains(fullChatId);
+        var isRecording = await recordingChatIdsTask.ConfigureAwait(false) == fullChatId;
 
         return new(
-            isOnline,
-            isActive,
             fullChatId,
             shortChatId,
+            isActive,
+            isOnline,
             isListening,
             isRecording);
     }
 
     public record Model(
-        bool IsOnline,
-        bool IsActive,
         string FullChatId,
         string ShortChatId,
+        bool IsActive,
+        bool IsOnline,
         bool IsListening,
         bool IsRecording);
 }

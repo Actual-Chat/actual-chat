@@ -94,7 +94,8 @@
     public record Model(
         bool CanRecord,
         bool IsListening,
-        bool IsRecording) {
+        bool IsRecording)
+    {
         public static readonly Model None = new(false, false, false);
     }
 }

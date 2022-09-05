@@ -1,7 +1,6 @@
 @using ActualChat.Search
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<SearchMatch>
-
 @{
     var m = State.ValueOrDefault;
 }
@@ -21,14 +20,19 @@
     [Parameter, EditorRequired] public string Text { get; set; } = null!;
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions() {
-        return new() { InitialValue = "" };
+        return new() {
+            InitialValue = "",
+            // Just to de-bounce re-renders
+            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, TimeSpan.FromMilliseconds(350)),
+        };
     }
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
         if (Text.IsNullOrEmpty())
             return "";
 
+        var text = Text;
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        return searchPhrase.GetMatch(Text);
+        return searchPhrase.GetMatch(text);
     }
 }
