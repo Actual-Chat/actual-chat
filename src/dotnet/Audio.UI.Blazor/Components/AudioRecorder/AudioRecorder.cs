@@ -52,9 +52,10 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         await _messageProcessor.Complete().SuppressExceptions().ConfigureAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
         await StopRecordingInternal().ConfigureAwait(true);
-        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
-        // ReSharper disable once ConstantConditionalAccessQualifier
-        BlazorRef?.Dispose();
+        await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     public async Task<bool> CanRecord()
