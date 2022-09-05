@@ -67,6 +67,11 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 cancellationToken)
             .ConfigureAwait(false);
         // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+
+        // TODO(AY): Remove this once logic above is upgraded to create chats properly
+        await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
+        await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
+        await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task AddChatAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)

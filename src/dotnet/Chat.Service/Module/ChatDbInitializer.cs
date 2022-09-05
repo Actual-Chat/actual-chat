@@ -46,7 +46,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         if (isNewDb)
             await Generate(dbContext, cancellationToken).ConfigureAwait(false);
-        if (isNewDb || DbInfo.ShouldMigrateDb)
+        if (DbInfo.ShouldMigrateDb)
             await Upgrade(dbContext, cancellationToken).ConfigureAwait(false);
         if (DbInfo.ShouldVerifyDb)
             await Verify(dbContext, cancellationToken).ConfigureAwait(false);
