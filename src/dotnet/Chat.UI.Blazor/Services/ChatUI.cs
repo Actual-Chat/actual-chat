@@ -65,7 +65,7 @@ public class ChatUI
                 Serializer = KvasSerializers<ImmutableList<(Symbol, Moment)>>.ValueTupleSerializer
             });
         _recordingChatId = StateFactory.NewKvasStored<Symbol>(new(localSettings, nameof(RecordingChatId)) {
-            Corrector = FixRecordingChatId
+            Corrector = FixRecordingChatId,
         });
         _listeningChatIds = StateFactory.NewKvasStored<ImmutableList<Symbol>>(
             new(localSettings, nameof(ListeningChatIds)) {
