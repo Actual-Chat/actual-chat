@@ -133,8 +133,7 @@
         var entry = Message.Entry;
         var chatId = entry.ChatId;
         var principalId = await ChatAuthors
-            .GetPrincipalId(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
+            .GetPrincipalId(Session, chatId, cancellationToken);
         var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
 
         var attachments = await LoadAttachments(cancellationToken);
@@ -217,7 +216,7 @@
         if (!Message.Entry.HasAttachments)
             return ImmutableArray<TextEntryAttachment>.Empty;
 
-        return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
+        return await Reader.GetAttachments(Message.Entry.Id, cancellationToken);
     }
 
     // Nested types

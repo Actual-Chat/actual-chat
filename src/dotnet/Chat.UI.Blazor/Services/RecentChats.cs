@@ -9,13 +9,23 @@ public class RecentChats
     private IRecentEntries RecentEntries { get; }
     private ChatUI ChatUI { get; }
     private Session Session { get; }
+    private MomentClockSet Clocks { get; }
+    private UICommander UICommander { get; }
 
-    public RecentChats(IChats chats, IRecentEntries recentEntries, ChatUI chatUI, Session session)
+    public RecentChats(
+        IChats chats,
+        IRecentEntries recentEntries,
+        ChatUI chatUI,
+        Session session,
+        MomentClockSet clocks,
+        UICommander uiCommander)
     {
         Chats = chats;
         RecentEntries = recentEntries;
         ChatUI = chatUI;
         Session = session;
+        Clocks = clocks;
+        UICommander = uiCommander;
     }
 
     [ComputeMethod]
@@ -50,5 +60,20 @@ public class RecentChats
 
         var chats = await List(cancellationToken).ConfigureAwait(false);
         return chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
+    }
+
+    public async Task TryUpdatePeerChatRecency(Chat chat)
+    {
+        await Update(RecencyScope.ChatContact, chat.Id).ConfigureAwait(false);
+
+        if (chat.ChatType == ChatType.Peer) {
+            var contact = await Chats.GetPeerChatContact(Session, chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
+            await Update(RecencyScope.UserContact, contact.Id).ConfigureAwait(false);
+        }
+
+        Task Update(RecencyScope scope, string key) {
+            var command = new IRecentEntries.UpdateCommand(Session, scope, key, Clocks.SystemClock.UtcNow);
+            return UICommander.Run(command, CancellationToken.None);
+        }
     }
 }

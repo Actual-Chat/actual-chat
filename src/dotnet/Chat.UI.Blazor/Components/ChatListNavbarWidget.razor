@@ -55,10 +55,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await RecentChats.List(cancellationToken).ConfigureAwait(false);
-        var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
+        var chats = await RecentChats.List(cancellationToken);
+        var activeChat = await RecentChats.GetActiveChat(cancellationToken);
 
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty)
             chats = (
                 from c in chats
@@ -68,7 +68,7 @@
                 select c
             ).ToImmutableArray();
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
         var pinnedChats = chats
             .Where(c => pinnedChatIds.ContainsKey(c.Id))
             .ToList();
@@ -77,7 +77,7 @@
             .ToList();
 
 
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
 
         return new Model {
             ActiveChatId = activeChat?.Id ?? Symbol.Empty,

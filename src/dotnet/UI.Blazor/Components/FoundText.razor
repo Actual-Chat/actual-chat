@@ -34,7 +34,7 @@
             return "";
 
         var text = Text;
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         return searchPhrase.GetMatch(text);
     }
 }

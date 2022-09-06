@@ -44,7 +44,7 @@
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
         var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
-        var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
+        var audioEntry = await chatEntryReader.Get(audioEntryId, default);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
@@ -130,11 +130,11 @@
             return Model.None;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not
+        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken) is not
             ChatAudioTrackInfo trackInfo)
             return Model.None;
 
-        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
         if (playbackState == null || playbackState.IsCompleted)
             return Model.None;
 

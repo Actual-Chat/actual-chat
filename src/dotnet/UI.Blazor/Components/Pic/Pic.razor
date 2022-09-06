@@ -56,8 +56,8 @@
         return $"hsl({h}, 30%, 80%)";
     }
 
-    private async Task OnPictureClick(MouseEventArgs arg) {
-        await Click.InvokeAsync(arg).ConfigureAwait(false);
+    private async Task OnPictureClick(MouseEventArgs e) {
+        await Click.InvokeAsync(e);
 
         if (EnableImagePreview) {
             var url = ContentUrlMapper.ContentUrl(ContentId);

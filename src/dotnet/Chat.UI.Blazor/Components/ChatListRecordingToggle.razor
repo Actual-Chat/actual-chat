@@ -44,6 +44,6 @@
     protected override ComputedState<Symbol>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<Symbol> ComputeState(CancellationToken cancellationToken)
-        => await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+    protected override Task<Symbol> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.RecordingChatId.Use(cancellationToken).AsTask();
 }

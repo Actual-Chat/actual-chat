@@ -61,9 +61,9 @@
         }
     }
 
-    private async Task OnInput(ChangeEventArgs e) {
+    private Task OnInput(ChangeEventArgs e) {
         _text = e.Value?.ToString() ?? "";
-        await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
+        return TextChanged.InvokeAsync(_text);
     }
 
     private async Task OnKeyUp(KeyboardEventArgs e) {
@@ -73,7 +73,7 @@
 
             try {
                 _isInProgress = true;
-                await Triggered.InvokeAsync(Text).ConfigureAwait(false);
+                await Triggered.InvokeAsync(Text);
             }
             finally {
                 _isInProgress = false;
@@ -81,14 +81,13 @@
 
         }
         if (e.Key == "Escape" && e.HasNoModifier()) {
-            await Cancelled.InvokeAsync().ConfigureAwait(false);
+            await Cancelled.InvokeAsync();
             if (IsCompact)
                 _isCollapsed = true;
         }
     }
 
-    private Task OnSearchButtonClick()
-        => Triggered.InvokeAsync(Text);
+    private Task OnSearchButtonClick() => Triggered.InvokeAsync(Text);
 
     private void OnExpandClick() {
         _isCollapsed = false;

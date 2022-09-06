@@ -56,16 +56,16 @@
         var listeningChatIdsTask = ChatUI.ListeningChatIds.Use(cancellationToken);
         var recordingChatIdsTask = ChatUI.RecordingChatId.Use(cancellationToken);
 
-        var presence = await presenceTask.ConfigureAwait(false);
-        var activeChatId = await activeChatIdTask.ConfigureAwait(false);
+        var presence = await presenceTask;
+        var activeChatId = await activeChatIdTask;
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
         var isActive = activeChatId == fullChatId;
-        var listeningChatIds = await listeningChatIdsTask.ConfigureAwait(false);
+        var listeningChatIds = await listeningChatIdsTask;
         var isListening = listeningChatIds.Contains(fullChatId);
-        var isRecording = await recordingChatIdsTask.ConfigureAwait(false) == fullChatId;
+        var isRecording = await recordingChatIdsTask == fullChatId;
 
         return new(
             fullChatId,

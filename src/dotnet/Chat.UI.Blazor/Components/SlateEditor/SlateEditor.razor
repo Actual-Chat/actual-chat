@@ -56,18 +56,18 @@
                 );
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
-            await Rendered.InvokeAsync().ConfigureAwait(false);
+            await Rendered.InvokeAsync();
         }
     }
 
-    public async Task<string> GetText()
-        => await JSRef.InvokeAsync<string>("getText").ConfigureAwait(false);
+    public Task<string> GetText()
+        => JSRef.InvokeAsync<string>("getText").AsTask();
 
     public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
         => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
 
-    public async Task Clear()
-        => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
+    public Task Clear()
+        => JSRef.InvokeAsync<string>("clearText").AsTask();
 
     public Task Focus(CancellationToken cancellationToken = default)
         => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
@@ -75,9 +75,9 @@
     public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
         => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
 
-    private async Task SetPlaceholder(string placeholder) {
+    private Task SetPlaceholder(string placeholder) {
         _placeholder = placeholder;
-        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
+        return JSRef.InvokeAsync<string>("setPlaceholder", placeholder).AsTask();
     }
 
     // Backend methods

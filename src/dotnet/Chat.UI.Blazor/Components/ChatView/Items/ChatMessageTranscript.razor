@@ -56,11 +56,11 @@
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
             var circuitDispatcher = CircuitContext.Dispatcher;
             var transcripts = diffs.ApplyDiffs(cancellationToken);
-            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+            await foreach (var transcript in transcripts.WithCancellation(cancellationToken)) {
                 await circuitDispatcher.InvokeAsync(() => {
                     Transcript = transcript;
                     StateHasChanged();
-                }).ConfigureAwait(false);
+                });
             }
         }
         catch (Exception e) {

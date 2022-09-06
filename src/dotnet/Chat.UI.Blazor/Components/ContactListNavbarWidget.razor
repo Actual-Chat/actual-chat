@@ -77,16 +77,16 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken);
         if (!account.IsActive())
             return Model.None;
 
-        var group = await Group.Use(cancellationToken).ConfigureAwait(false);
-        var contacts = await ListContacts(group, cancellationToken).ConfigureAwait(false);
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var group = await Group.Use(cancellationToken);
+        var contacts = await ListContacts(group, cancellationToken);
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
         var activeContactId = GetActiveContactId(account.User.Id);
 
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty)
             contacts = (
                 from contact in contacts
@@ -96,7 +96,7 @@
                 select contact
                 ).ToImmutableArray();
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
         var pinnedContacts = contacts
             .Where(c => pinnedChatIds.ContainsKey(c.GetFullPeerChatId()))
             .ToArray();
@@ -130,7 +130,7 @@
             case ContactGroup.Favorites:
                 return contacts.Where(x => x.IsFavorite).ToImmutableArray();
             case ContactGroup.Recent:
-                return await RecentEntries.OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken).ConfigureAwait(false);
+                return await RecentEntries.OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken);
             default:
                 throw new ArgumentOutOfRangeException(nameof(group), group, null);
         }

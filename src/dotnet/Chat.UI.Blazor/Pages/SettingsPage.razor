@@ -34,7 +34,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
-            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
         };
 
     // Nested types

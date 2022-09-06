@@ -26,17 +26,12 @@
     [Parameter] public RenderFragment? Buttons { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            EscapeSubscription = await Escapist.SubscribeAsync(
-                () => ModalInstance.CancelAsync(),
-                TokenSource.Token).ConfigureAwait(false);
-        }
+        if (firstRender)
+            EscapeSubscription = await Escapist.SubscribeAsync(() => ModalInstance.CancelAsync(), TokenSource.Token);
     }
 
-    public async ValueTask DisposeAsync() {
+    public ValueTask DisposeAsync() {
         TokenSource.Cancel();
-        if (EscapeSubscription != null) {
-            await EscapeSubscription.DisposeAsync().AsTask().ConfigureAwait(false);
-        }
+        return EscapeSubscription.DisposeSilentlyAsync();
     }
 }

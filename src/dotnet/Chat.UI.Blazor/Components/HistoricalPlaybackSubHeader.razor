@@ -93,12 +93,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
         if (chatId.IsEmpty)
             return Model.NotPlaying;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
         var chatTitle = chat?.Title ?? "";
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         if (playback == null) {
@@ -106,8 +106,8 @@
             // Keep previous state.
             return State.ValueOrDefault ?? Model.NotPlaying;
         }
-        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await playback.IsPaused.Use(cancellationToken);
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken);
         var authorIds = ImmutableArray<Symbol>.Empty;
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
@@ -188,7 +188,7 @@
 
     private async Task PlayAt(HistoricalChatPlayer chatPlayer, DateTime from, TimeSpan shift, CancellationToken cancellationToken = default)
     {
-        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken).ConfigureAwait(false);
+        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken);
         if (!newMoment.HasValue)
             return;
         ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);

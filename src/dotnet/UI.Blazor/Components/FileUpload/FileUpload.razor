@@ -37,9 +37,7 @@
     }
 
     [JSInvokable]
-    public async Task OnUploaded(string contentId) {
-        await Uploaded.InvokeAsync(contentId).ConfigureAwait(false);
-    }
+    public Task OnUploaded(string contentId) => Uploaded.InvokeAsync(contentId);
 
     [JSInvokable]
     public void OnInvalidSize() {

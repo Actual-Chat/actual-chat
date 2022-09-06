@@ -65,8 +65,8 @@
 
         return new Model {
             UserAuthor = userAuthor,
-            CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
-            CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
+            CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default),
+            CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default),
         };
     }
 

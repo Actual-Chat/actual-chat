@@ -41,7 +41,7 @@
         var activeAuthorIds = new List<Symbol>();
         var inactiveAuthorIds = new List<Symbol>();
         foreach (var authorId in allAuthorIds) {
-            var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+            var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken);
             if (presence is Presence.Online or Presence.Recording) {
                 activeAuthorIds.Add(authorId);
             } else {

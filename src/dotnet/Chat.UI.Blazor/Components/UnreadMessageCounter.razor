@@ -53,7 +53,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var countTask = UnreadMessages.GetCount(cancellationToken);
         var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
-        await Task.WhenAll(countTask, notificationStatusTask).ConfigureAwait(false);
+        await Task.WhenAll(countTask, notificationStatusTask);
 
         var count = await countTask;
         if (count == 0)

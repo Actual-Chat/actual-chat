@@ -84,10 +84,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
+        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken);
         var isListening = listeningChatIds.Contains(Chat.Id);
-        var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false) == Chat.Id;
+        var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken) == Chat.Id;
         return new(rules.CanWrite(), isListening, isRecording);
     }
 

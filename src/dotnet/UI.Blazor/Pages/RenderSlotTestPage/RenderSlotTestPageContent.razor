@@ -28,5 +28,5 @@ Content: @DateTime.Now.ToString("F")
     [Inject] private IFusionTime FusionTime { get; init; } = null!;
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
-        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1));
 }

@@ -34,7 +34,7 @@
 
     private async Task AutoDismiss(TimeSpan delay) {
         await Task.Delay(delay);
-        await Dismiss().ConfigureAwait(false);
+        await Dismiss();
     }
 
     protected override void OnInitialized() {

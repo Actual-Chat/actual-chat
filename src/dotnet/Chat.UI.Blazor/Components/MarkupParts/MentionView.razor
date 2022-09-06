@@ -37,7 +37,7 @@ else {
         if (!id.OrdinalHasPrefix("a:", out var authorId))
             authorId = id;
         _parsedChatAuthorId = new ParsedChatAuthorId(authorId);
-        ChatAuthor = await ChatAuthors.Get(Session, Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
+        ChatAuthor = await ChatAuthors.Get(Session, Entry.ChatId, CancellationToken.None);
     }
 
     private void OnChatAuthorClick()

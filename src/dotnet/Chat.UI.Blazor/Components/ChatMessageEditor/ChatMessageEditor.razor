@@ -82,9 +82,9 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private RecentChats RecentChats { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -93,7 +93,7 @@
     protected override async Task OnInitializedAsync() {
         MarkupHub.ChatId = Chat.Id;
         EditedMarkupConverter = new EditedMarkupConverter(MarkupHub);
-        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
     }
 
     public async ValueTask DisposeAsync() {
@@ -141,7 +141,7 @@
             ErrorUI.ShowError(e);
         }
 
-        _ = TryUpdatePeerChatRecency();
+        _ = RecentChats.TryUpdatePeerChatRecency(Chat);
     }
 
     private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
@@ -179,20 +179,6 @@
         await SlateEditorRef.SetMarkup(editableMarkup, cancellationToken);
         await SlateEditorRef.Focus(cancellationToken);
         await SlateEditorRef.MoveCursorToEnd(cancellationToken);
-    }
-
-    private async Task TryUpdatePeerChatRecency() {
-        await Update(RecencyScope.ChatContact, Chat.Id).ConfigureAwait(false);
-
-        if (Chat.ChatType == ChatType.Peer) {
-            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
-            await Update(RecencyScope.UserContact, contact.Id).ConfigureAwait(false);
-        }
-
-        Task Update(RecencyScope scope, string key) {
-            var command = new IRecentEntries.UpdateCommand(Session, scope, key, Clocks.SystemClock.UtcNow);
-            return UICommander.Run(command, CancellationToken.None);
-        }
     }
 
     private async Task OnSlateRendered()

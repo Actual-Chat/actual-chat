@@ -96,8 +96,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
-            Account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false),
-            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+            Account = await Accounts.Get(Session, cancellationToken),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
         };
 
     private void SignIn(string name)

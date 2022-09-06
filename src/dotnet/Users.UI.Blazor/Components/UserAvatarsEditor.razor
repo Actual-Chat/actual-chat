@@ -30,12 +30,7 @@
     protected override Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
         => UserAvatars.ListAvatarIds(Session, cancellationToken);
 
-    private async Task OnAddNewAvatar() {
-        var command = new IUserAvatars.CreateCommand(Session);
-        await UICommander.Run(command).ConfigureAwait(false);
-    }
+    private Task OnAddNewAvatar() => UICommander.Run(new IUserAvatars.CreateCommand(Session));
 
-    private void EditAvatar(string avatarId) {
-        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
-    }
+    private void EditAvatar(string avatarId) => ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
 }

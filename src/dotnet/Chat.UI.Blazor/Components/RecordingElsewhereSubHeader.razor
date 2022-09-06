@@ -37,11 +37,11 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken);
         if (recordingChatId.IsEmpty || recordingChatId == Chat.Id)
             return Model.None;
 
-        var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+        var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken);
         if (recordingChat == null)
             return Model.None;
 
@@ -51,7 +51,7 @@
                 RecordingChatUrl = Links.ChatPage(recordingChat.Id),
             };
 
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken);
         if (account == null)
             return Model.None;
 

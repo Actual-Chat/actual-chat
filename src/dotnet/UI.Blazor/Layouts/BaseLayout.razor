@@ -56,10 +56,10 @@
         UIActionFailureTracker.Changed += OnCommandFailureListChanged;
     }
 
-    protected override async Task OnInitializedAsync() {
-        if (BlazorModeHelper.IsServerSideBlazor)
-            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
-        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
+    protected override Task OnInitializedAsync() {
+        return BlazorModeHelper.IsServerSideBlazor
+            ? JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").AsTask()
+            : JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).AsTask();
     }
 
     public void Dispose() {

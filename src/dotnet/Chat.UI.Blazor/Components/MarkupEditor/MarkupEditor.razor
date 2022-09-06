@@ -60,14 +60,14 @@
         }
     }
 
-    public async Task<string> GetText()
-        => await JSRef.InvokeAsync<string>("getText").ConfigureAwait(false);
+    public Task<string> GetText()
+        => JSRef.InvokeAsync<string>("getText").AsTask();
 
     public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
         => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
 
-    public async Task Clear()
-        => await JSRef.InvokeAsync<string>("setHtml", "").ConfigureAwait(false);
+    public Task Clear()
+        => JSRef.InvokeAsync<string>("setHtml", "").AsTask();
 
     public Task Focus(CancellationToken cancellationToken = default)
         => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
