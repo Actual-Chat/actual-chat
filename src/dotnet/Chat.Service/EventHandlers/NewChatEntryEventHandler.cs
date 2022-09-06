@@ -21,7 +21,7 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 
     public async Task Handle(NewChatEntryEvent @event, ICommander commander, CancellationToken cancellationToken)
     {
-        Log.LogInformation("Preparing notification about entryId='{ChatEntryId} in chat id='{ChatId}'", @event.Id, @event.ChatId);
+        Log.LogInformation("Notifying about entry #{ChatEntryId} in chat #{ChatId}", @event.Id, @event.ChatId);
 
         var chatAuthor = await ChatAuthorsBackend.Get(@event.ChatId, @event.AuthorId, true, cancellationToken)
             .Require()
