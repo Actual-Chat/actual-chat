@@ -18,8 +18,6 @@
 </button>
 
 @code {
-    private ElementReference _ref;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
@@ -29,19 +27,14 @@
     [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public ForwardRef? BackRef {get;set;}
+    [CascadingParameter] public TargetRefReceiver? TargetRefReceiver { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private ElementReference Ref
-    {
-        get => _ref;
-        set
-        {
-            _ref = value;
-            BackRef?.SetValue(value);
-        }
+    private ElementReference Ref {
+        get => TargetRefReceiver?.ValueOrDefault ?? default;
+        set => TargetRefReceiver?.TrySet(value);
     }
 
     private string GetButtonType()

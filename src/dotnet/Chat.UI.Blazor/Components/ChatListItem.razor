@@ -1,6 +1,5 @@
 @using BlazorContextMenu
 @using ActualChat.Search
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
@@ -33,12 +32,9 @@
                     <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat">
                         <div class="flex">
-                            <Tooltip
-                                Text="More"
-                                Position="TooltipPosition.Top">
+                            <Tooltip Text="More actions" Position="TooltipPosition.Top">
                                 <ButtonRound
-                                    Class="chat-menu-btn blackout"
-                                    BackRef="@context">
+                                    Class="chat-menu-btn blackout">
                                     <i class="icon-more-vertical text-2xl"></i>
                                 </ButtonRound>
                             </Tooltip>

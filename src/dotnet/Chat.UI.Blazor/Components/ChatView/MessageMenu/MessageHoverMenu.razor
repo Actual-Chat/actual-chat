@@ -1,7 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<MessageHoverMenu.Model>
-
 @{
     var entry = Message.Entry;
     var m = State.LatestNonErrorValue;
@@ -12,11 +10,8 @@
         <MessageMenuPlay Entry="@entry"/>
     }
     @if (m.CanReply) {
-        <Tooltip
-            Text="Reply"
-            Position="TooltipPosition.Top">
+        <Tooltip Text="Reply" Position="TooltipPosition.Top">
             <ButtonRound
-                BackRef="@context"
                 Title="Reply"
                 Class="reply-btn"
                 Click="@(() => Reply(Message.Entry))">
@@ -25,12 +20,8 @@
         </Tooltip>
     }
     <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
-        <Tooltip
-            Text="More"
-            Position="TooltipPosition.Top">
-            <ButtonRound
-                BackRef="@context"
-                Class="more-btn">
+        <Tooltip Text="More actions" Position="TooltipPosition.Top">
+            <ButtonRound Class="more-btn">
                 <i class="icon-more-vertical text-xl text-icon-01"></i>
             </ButtonRound>
         </Tooltip>

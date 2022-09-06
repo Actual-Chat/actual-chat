@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<SingleChatPlaybackState>
 @{
     var m = State.LatestNonErrorValue;
@@ -7,13 +6,10 @@
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
 }
 
-<Tooltip
-    Text="@(m.IsListening ? "Unlisten" : "Listen")"
-    Position="TooltipPosition.Top">
+<Tooltip Text="@(m.IsListening ? "Unlisten" : "Listen")" Position="TooltipPosition.Top">
     <ButtonRound
         Class="@cls"
-        Click="@OnListenClick"
-        BackRef="@context">
+        Click="@OnListenClick">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
 </Tooltip>

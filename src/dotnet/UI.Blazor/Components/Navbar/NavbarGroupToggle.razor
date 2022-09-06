@@ -21,8 +21,8 @@
 </div>
 
 @code {
-    private ElementReference _ref;
     private EventHandler? _onActiveGroupChanged;
+    private bool _isThinPanelOpen;
 
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
@@ -32,18 +32,11 @@
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter] public ForwardRef? BackRef {get;set;}
+    [CascadingParameter] public TargetRefReceiver? TargetRefReceiver { get; set; }
 
-    private bool _isThinPanelOpen;
-
-    private ElementReference Ref
-    {
-        get => _ref;
-        set
-        {
-            _ref = value;
-            BackRef?.SetValue(value);
-        }
+    private ElementReference Ref {
+        get => TargetRefReceiver?.ValueOrDefault ?? default;
+        set => TargetRefReceiver?.TrySet(value);
     }
 
     protected override void OnInitialized() {
@@ -59,5 +52,4 @@
         _isThinPanelOpen = !NavbarUI.IsThinPanelOpen.Value;
         NavbarUI.IsThinPanelOpen.Value = _isThinPanelOpen;
     }
-
 }

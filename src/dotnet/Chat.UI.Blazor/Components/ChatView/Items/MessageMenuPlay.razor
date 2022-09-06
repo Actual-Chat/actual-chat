@@ -1,33 +1,25 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.MediaPlayback
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<MessageMenuPlay.Model>
-
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     var canPlay = m.CanPlay;
 }
 
 @if (canPlay) {
-    <Tooltip
-        Text="Play"
-        Position="TooltipPosition.Top">
+    <Tooltip Text="Play" Position="TooltipPosition.Top">
         <ButtonRound
             Class="play-btn"
-            Click="OnPlay"
-            BackRef="@context">
+            Click="OnPlay">
             <i class="icon-play-fill text-xl text-primary"></i>
         </ButtonRound>
     </Tooltip>
 } else {
-    <Tooltip
-        Text="Stop"
-        Position="TooltipPosition.Top">
+    <Tooltip Text="Stop" Position="TooltipPosition.Top">
         <ButtonRound
             Title="Stop"
             Class="play-btn"
-            Click="OnStop"
-            BackRef="@context">
+            Click="OnStop">
             <i class="icon-Stop-fill text-xl text-error"></i>
         </ButtonRound>
     </Tooltip>

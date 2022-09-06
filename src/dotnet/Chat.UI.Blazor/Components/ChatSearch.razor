@@ -2,8 +2,13 @@
     return;
 }
 
-<SearchBox IsCompact="true" IsProgressEnabled="true" MaxLength="@Constants.Chat.MaxSearchFilterLength"
-           Triggered="OnSearchTriggered" Cancelled="OnSearchCancelled"/>
+<SearchBox
+    Placeholder="Search in this chat..."
+    IsCompact="true"
+    IsProgressEnabled="true"
+    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+    Triggered="OnSearchTriggered"
+    Cancelled="OnSearchCancelled"/>
 
 @code{
     private ChatEntry? _lastFoundEntry;

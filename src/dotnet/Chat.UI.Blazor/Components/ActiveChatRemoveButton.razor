@@ -1,16 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Components.Tooltip
 @{
     var cls = $"pin-toggle blackout {Class}";
 }
 
-<Tooltip
-    Text="Remove"
-    Position="TooltipPosition.Top">
+<Tooltip Text="Remove" Position="TooltipPosition.Top">
     <ButtonRound
         Class="@cls"
-        Click="@OnClick"
-        BackRef="@context">
+        Click="@OnClick">
         <i class="icon-close text-2xl"></i>
     </ButtonRound>
 </Tooltip>

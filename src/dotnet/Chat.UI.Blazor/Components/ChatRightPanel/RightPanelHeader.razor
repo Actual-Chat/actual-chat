@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<ChatAuthorRules>
 @{
     var m = State.LatestNonErrorValue;
@@ -11,11 +10,8 @@
     </ButtonRound>
     <div class="flex grow text-03 font-medium self-center">Chat Settings</div>
     @if (m.CanEditProperties()) {
-        <Tooltip
-            Text="Edit"
-            Position="TooltipPosition.Bottom">
+        <Tooltip Text="Edit" Position="TooltipPosition.Bottom">
             <ButtonRound
-                BackRef="@context"
                 Class="transparent"
                 Click="@OnEditChatSettingsClick">
                 <i class="icon-edit text-2xl"></i>

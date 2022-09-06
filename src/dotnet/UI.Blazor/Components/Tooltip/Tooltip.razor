@@ -1,7 +1,10 @@
 @using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-@ChildContent(_triggerForwardRef)
+<CascadingValue Value="_targetRefReceiver">
+    @ChildContent
+</CascadingValue>
 
 <div @ref="_tooltipRef" class="ac-tooltip">
     @Text
@@ -9,7 +12,7 @@
 </div>
 
 @code {
-    private ForwardRef _triggerForwardRef = new();
+    private TargetRefReceiver _targetRefReceiver = new();
     private ElementReference _tooltipRef;
     private ElementReference _arrowRef;
     private IJSObjectReference _jsRef = null!;
@@ -18,16 +21,17 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public TooltipPosition Position { get; set; } = TooltipPosition.Top;
-    [Parameter] public RenderFragment<ForwardRef> ChildContent { get; set; } = null!;
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public string Text { get; set; } = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
+            var targetRef = await _targetRefReceiver.Get();
             _blazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.Tooltip.create";
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
-                _triggerForwardRef.Current,
+                targetRef,
                 _tooltipRef,
                 _arrowRef,
                 _blazorRef,
@@ -38,6 +42,7 @@
     }
 
     public async ValueTask DisposeAsync() {
+        _targetRefReceiver.Dispose();
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();

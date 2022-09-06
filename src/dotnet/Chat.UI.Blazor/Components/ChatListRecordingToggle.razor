@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Components.Tooltip
 @inherits ComputedStateComponent<Symbol>
 @{
     var isRecording = RecordingChatId == ChatId;
@@ -7,24 +6,18 @@
 }
 
 @if (isRecording) {
-    <Tooltip
-        Text="Stop"
-        Position="TooltipPosition.Top">
+    <Tooltip Text="Stop" Position="TooltipPosition.Top">
         <ButtonRound
             Class="@cls"
-            Click="_ => RecordingChatId = Symbol.Empty"
-            BackRef="@context">
+            Click="_ => RecordingChatId = Symbol.Empty">
             <i class="icon-mic text-2xl"></i>
         </ButtonRound>
     </Tooltip>
 } else {
-    <Tooltip
-        Text="Start"
-        Position="TooltipPosition.Top">
+    <Tooltip Text="Start" Position="TooltipPosition.Top">
         <ButtonRound
             Class="@cls"
-            Click="_ => RecordingChatId = ChatId"
-            BackRef="@context">
+            Click="_ => RecordingChatId = ChatId">
             <i class="icon-mic text-2xl"></i>
         </ButtonRound>
     </Tooltip>

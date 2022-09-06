@@ -1,16 +1,12 @@
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Components.Tooltip
 @namespace ActualChat.UI.Blazor.Components
 @inject FeedbackUI FeedbackUI
 
 <div class="flex-x items-center">
-    <Tooltip
-        Text="Imaginary Place"
-        Position="TooltipPosition.Right">
+    <Tooltip Text="Imaginary Place" Position="TooltipPosition.Right">
         <ButtonSquare
             Click="@OnClick"
-            Class="first-pinned"
-            BackRef="@context">
+            Class="first-pinned">
             IP
         </ButtonSquare>
     </Tooltip>
@@ -18,13 +14,10 @@
 </div>
 
 <div class="flex-x items-center">
-    <Tooltip
-        Text="Create Place"
-        Position="TooltipPosition.Right">
+    <Tooltip Text="Create Place" Position="TooltipPosition.Right">
         <ButtonSquare
-            Click="@OnClick"
             Class="plus-chat"
-            BackRef="@context">
+            Click="@OnClick">
             <i class="icon-plus text-2xl font-medium"></i>
         </ButtonSquare>
     </Tooltip>

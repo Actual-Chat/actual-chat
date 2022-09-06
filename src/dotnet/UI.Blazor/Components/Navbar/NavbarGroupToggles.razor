@@ -1,56 +1,43 @@
 ﻿@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@using ActualChat.UI.Blazor.Components.Tooltip
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
     var m = State.LatestNonErrorValue;
 }
 
-<Tooltip
-    Text="Chats"
-    Position="TooltipPosition.Right">
+<Tooltip Text="Chats" Position="TooltipPosition.Right">
     <NavbarGroupToggle
         Title="Chats"
-        Id="chats"
-        BackRef="@context">
+        Id="chats">
         <i class="icon-message-square text-2xl font-medium"></i>
     </NavbarGroupToggle>
 </Tooltip>
 
 @if (m.Account.IsActive()) {
-    <Tooltip
-        Text="Contacts"
-        Position="TooltipPosition.Right">
+    <Tooltip Text="Contacts" Position="TooltipPosition.Right">
         <NavbarGroupToggle
             Title="Contacts"
-            Id="contacts"
-            BackRef="@context">
+            Id="contacts">
             <i class="icon-people text-2xl font-medium"></i>
         </NavbarGroupToggle>
     </Tooltip>
 }
 @if (m.Account.IsAdmin) {
-    <Tooltip
-        Text="Administration"
-        Position="TooltipPosition.Right">
+    <Tooltip Text="Administration" Position="TooltipPosition.Right">
         <NavbarGroupToggle
             Title="Administration"
-            Id="admin"
-            BackRef="@context">
+            Id="admin">
             <i class="icon-adminx text-2xl font-medium"></i>
         </NavbarGroupToggle>
     </Tooltip>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <Tooltip
-        Text="Test Pages"
-        Position="TooltipPosition.Right">
+    <Tooltip Text="Test Pages" Position="TooltipPosition.Right">
         <NavbarGroupToggle
             Title="Test Pages"
-            Id="testPages"
-            BackRef="@context">
+            Id="testPages">
             <i class="icon-alert-triangle text-2xl font-medium"></i>
         </NavbarGroupToggle>
     </Tooltip>

@@ -1,16 +1,26 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @if (_isCollapsed == true) {
-    <ButtonRound Click="OnExpandClick" Class="transparent">
-        <i class="icon-search text-2xl"></i>
-    </ButtonRound>
+    <Tooltip Text="@Placeholder" Position="TooltipPosition.Bottom">
+        <ButtonRound Click="OnExpandClick" Class="transparent">
+            <i class="icon-search text-2xl"></i>
+        </ButtonRound>
+    </Tooltip>
 } else {
     <div class="@Class search-box">
         <label>
-            <ButtonRound Click="OnSearchButtonClick" IsDisabled="IsSearchDisabled">
-                <i class="icon-search text-2xl font-medium"></i>
-            </ButtonRound>
-            <input @ref="_inputRef" type="text" class="w-full" placeholder="Search" value="@Text" @oninput="OnInput" @onkeyup="OnKeyUp" maxlength="@MaxLength"/>
+            <Tooltip Text="@Placeholder" Position="TooltipPosition.Bottom">
+                <ButtonRound Click="OnSearchButtonClick" IsDisabled="IsSearchDisabled">
+                    <i class="icon-search text-2xl font-medium"></i>
+                </ButtonRound>
+            </Tooltip>
+            <input
+                @ref="_inputRef" type="text" class="w-full"
+                placeholder="@Placeholder"
+                value="@Text"
+                maxlength="@MaxLength"
+                @oninput="OnInput"
+                @onkeyup="OnKeyUp"/>
             @if (IsProgressEnabled && _isInProgress) {
                 <div style="border-top-color:transparent"
                      class="search-box-spinner">
@@ -35,6 +45,7 @@
     [Parameter] public bool IsCompact { get; set; }
     [Parameter] public bool IsProgressEnabled { get; set; }
     [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
 
     public string Text {
         get => _text;

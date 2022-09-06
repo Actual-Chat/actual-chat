@@ -8,11 +8,15 @@
                 <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@IsOpen"/>
                 <NavbarToggle/>
             </div>
-            <SearchBox TextChanged="OnSearchBoxTextChanged"/>
+            <SearchBox
+                Placeholder="Find chat..."
+                TextChanged="OnSearchBoxTextChanged"/>
             <div class="w-12 ml-2">
-                <ButtonRound Click="@OnClick" Class="add-to-chat transparent">
-                    <i class="icon-message-add text-2xl"></i>
-                </ButtonRound>
+                <Tooltip Text="New chat..." Position="TooltipPosition.Bottom">
+                    <ButtonRound Click="@OnClick" Class="add-to-chat transparent">
+                        <i class="icon-message-add text-2xl"></i>
+                    </ButtonRound>
+                </Tooltip>
             </div>
         </div>
         <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full panel-content">
