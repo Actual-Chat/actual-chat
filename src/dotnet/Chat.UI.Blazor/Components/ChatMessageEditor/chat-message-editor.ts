@@ -1,5 +1,6 @@
 import './chat-message-editor.css';
 import { SlateEditorHandle } from '../SlateEditor/slate-editor-handle';
+import { debounce } from 'lodash';
 
 const LogScope: string = 'MessageEditor';
 
@@ -14,6 +15,12 @@ export class ChatMessageEditor {
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
+    private isHorizontal: boolean = false;
+    private initialHeight: number;
+    private initialWidth: number;
+    private isMobile: boolean;
+    private windowHeight: number;
+    private windowWidth: number;
     private isNarrowMode: boolean = false;
     private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
@@ -33,22 +40,13 @@ export class ChatMessageEditor {
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
         // Wiring up event listeners
-        this.editorDiv.addEventListener('click', this.onEditorFocus);
-        this.editorDiv.addEventListener('input', this.onDeleteContentBackward);
+        this.getInitialArgs();
+        window.addEventListener('resize', debounce(this.onChangeViewSize, 100));
         this.input.addEventListener('paste', this.onInputPaste);
-        this.input.addEventListener('focusin', this.onInputFocusIn);
-        this.input.addEventListener('focusout', this.onInputFocusOut);
         this.filesPicker.addEventListener('change', this.onFilesPickerChange);
         this.postButton.addEventListener('click', this.onPostClick);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanel);
-
-        const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
-        const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
-        if (mobileLanguageBtn)
-            mobileLanguageBtn.addEventListener('click', this.onReturnFocusOnInput);
-        if (mobilePlaybackBtn)
-            mobilePlaybackBtn.addEventListener('click', this.onReturnFocusOnInput);
 
         this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
         this.notifyPanelObserver.observe(this.notifyPanel, {
@@ -57,14 +55,85 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private onDeleteContentBackward = ((event: InputEvent & { target: Element; }) => {
-        if (event.inputType === 'deleteContentBackward' && this.getText().length == 0) {
-            this.getSlateInput().focus();
+    private mobileListenersHandler = (add: boolean) => {
+        const panel = this.editorDiv.querySelector(':scope div.mobile-control-panel');
+        if (panel) {
+            const buttons = panel.querySelectorAll('.btn');
+            if (buttons.length > 0) {
+                if (add) {
+                    buttons.forEach(b => {
+                        b.addEventListener('click', this.onReturnFocusOnInput);
+                    })
+                    this.isMobile = true;
+                } else {
+                    buttons.forEach(b => {
+                        b.removeEventListener('click', this.onReturnFocusOnInput);
+                    })
+                    this.isMobile = false;
+                }
+            }
         }
-    });
+    }
+
+    private getInitialArgs = () => {
+        if (window.innerWidth < 1024) {
+            this.initialHeight = window.innerHeight;
+            this.initialWidth = window.innerWidth;
+            this.mobileListenersHandler(true);
+        }
+        this.isHorizontal = window.innerWidth > window.innerHeight;
+    }
+
+    private onChangeViewSize = () => {
+        const size = this.getWindowSize();
+        const height = this.windowHeight = size[0];
+        const width = this.windowWidth = size[1];
+        const isMobile = width < 1024;
+        const isHorizontal = width > height;
+        if (isHorizontal != this.isHorizontal)
+            this.isHorizontal = isHorizontal;
+        if (isMobile != this.isMobile) {
+            if (isMobile) {
+                // switch desktop to mobile
+                this.initialHeight = height;
+                this.initialWidth = width;
+                this.mobileListenersHandler(true);
+            } else {
+                // switch mobile to desktop
+                this.mobileListenersHandler(false);
+            }
+        }
+        if (this.isMobile) {
+            // mobile view
+            this.onChangeMobileView(width, height);
+        } else {
+            // desktop view
+            return;
+        }
+    }
+
+    private onChangeMobileView = (width: number, height: number) => {
+        if (height < this.initialHeight && width == this.initialWidth) {
+            console.log('Height is less than initial.');
+            if (!this.editorDiv.classList.contains('narrow-panel')) {
+                this.editorDiv.classList.add('narrow-panel');
+                this.isNarrowMode = true;
+            }
+        } else if (height == this.initialHeight) {
+            this.editorDiv.classList.remove('narrow-panel');
+            this.isNarrowMode = false;
+        }
+    }
+
+    private getWindowSize = () : [number, number] => {
+        const height = window.innerHeight;
+        const width = window.innerWidth;
+        return [height, width];
+    }
 
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
-        this.getSlateInput().focus();
+        if (this.isNarrowMode)
+            this.getSlateInput().focus();
     });
 
     private getSlateInput = () : HTMLDivElement => {
@@ -74,40 +143,8 @@ export class ChatMessageEditor {
         return this.slateInput;
     }
 
-    private isMobilePanelOpen = () : boolean => {
-        let panel = this.editorDiv.querySelector('.mobile-control-panel');
-        return panel && panel.getBoundingClientRect().height != 0;
-    }
-
-    private mobilePanelHandler = (enable: boolean) => {
-        if (enable) {
-            if (!this.editorDiv.classList.contains('narrow-panel')) {
-                this.editorDiv.classList.add('narrow-panel');
-                this.isNarrowMode = true;
-            }
-        } else {
-            this.editorDiv.classList.remove('narrow-panel');
-            this.isNarrowMode = false;
-        }
-    }
-
-    private onEditorFocus = ((event: Event & { target: Element; }) => {
-        const btn = event.target.closest('button');
-        if (!this.isNarrowMode)
-            return;
-        if (btn && (btn.classList.contains('record-off-btn') || btn.classList.contains('record-on-btn'))) {
-            if (this.getText() == '' && this.attachments.size == 0) {
-                this.changeMode();
-                this.mobilePanelHandler(false);
-            } else
-                this.getSlateInput().focus();
-        } else {
-            this.getSlateInput().focus();
-        }
-    });
-
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
-        if (this.isMobilePanelOpen && this.isNarrowMode) {
+        if (this.isNarrowMode && this.isTextMode) {
             this.getSlateInput().focus();
             this.changeMode();
         }
@@ -133,18 +170,6 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
-    });
-
-    private onInputFocusIn = ((event: Event & { target: Element; }) => {
-        this.mobilePanelHandler(true);
-    });
-
-    private onInputFocusOut = ((event: Event & { target: Element; }) => {
-        if ((this.isNarrowMode && this.getText() == '') || this.isTextMode || !this.isMobilePanelOpen)
-            return;
-        setTimeout(() => {
-            this.mobilePanelHandler(false);
-        }, 200)
     });
 
     private onFilesPickerChange = (async (event: Event & { target: Element; }) => {
@@ -332,22 +357,13 @@ export class ChatMessageEditor {
     };
 
     public dispose() {
-        this.editorDiv.removeEventListener('click', this.onEditorFocus);
-        this.editorDiv.removeEventListener('input', this.onDeleteContentBackward);
+        window.removeEventListener('resize', this.onChangeViewSize);
         this.input.removeEventListener('paste', this.onInputPaste);
-        this.input.removeEventListener('focusin', this.onInputFocusIn);
-        this.input.removeEventListener('focusout', this.onInputFocusOut);
         this.filesPicker.removeEventListener('change', this.onFilesPickerChange);
         this.postButton.removeEventListener('click', this.onPostClick);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanel);
         this.notifyPanelObserver.disconnect();
-        const mobileLanguageBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-language-button');
-        const mobilePlaybackBtn = this.editorDiv.querySelector(':scope div.mobile-control-panel .mobile-playback-toggle');
-        if (mobileLanguageBtn)
-            mobileLanguageBtn.removeEventListener('click', this.onReturnFocusOnInput);
-        if (mobilePlaybackBtn)
-            mobilePlaybackBtn.removeEventListener('click', this.onReturnFocusOnInput);
     }
 }
 
