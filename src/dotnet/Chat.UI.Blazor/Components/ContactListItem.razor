@@ -1,4 +1,5 @@
-@inherits ComputedStateComponent<ContactNavItem.Model>
+@using BlazorContextMenu
+@inherits ComputedStateComponent<ContactListItem.Model>
 @{
     var m = State.ValueOrDefault;
     if (m is null)
@@ -7,38 +8,40 @@
     var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
 }
 
-<NavbarItem
-     Url="@($"/chat/{m.ShortChatId.UrlEncode()}")"
-     IsOnline="@m.IsOnline"
-     IsActive="@m.IsActive">
-    <ChildContent>
-        <div class="flex-x items-center gap-x-2">
-            <UserAuthorCircle UserId="@Contact.TargetUserId" ShowsPresence="true"/>
-            <div>
-                <FoundText Text="@Contact.Name"/>
+<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ContactMenu.MenuId" Data="@Contact">
+    <NavbarItem
+        Url="@($"/chat/{m.ShortChatId.UrlEncode()}")"
+        IsOnline="@m.IsOnline"
+        IsActive="@m.IsActive">
+        <ChildContent>
+            <div class="flex-x items-center gap-x-2">
+                <UserAuthorCircle UserId="@Contact.TargetUserId" ShowsPresence="true"/>
+                <span class="text-ellipsis whitespace-nowrap overflow-hidden">
+                    <FoundText Text="@Contact.Name"/>
+                </span>
             </div>
-        </div>
-    </ChildContent>
-    <Ending>
-        <div class="@cls">
-            <ChatListListenToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
-            <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
-            <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@Contact">
-                <div class="flex">
-                    <Tooltip Text="More actions" Position="TooltipPosition.Top">
-                        <ButtonRound Class="chat-menu-btn blackout">
-                            <i class="icon-more-vertical text-2xl"></i>
-                        </ButtonRound>
-                    </Tooltip>
-                    <div class="absolute -right-6">
-                        <div class="placement -mt-2">
+        </ChildContent>
+        <Ending>
+            <div class="@cls">
+                <ChatListListenToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
+                <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
+                <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@Contact">
+                    <div class="flex">
+                        <Tooltip Text="More actions" Position="TooltipPosition.Top">
+                            <ButtonRound Class="chat-menu-btn blackout">
+                                <i class="icon-more-vertical text-2xl"></i>
+                            </ButtonRound>
+                        </Tooltip>
+                        <div class="absolute -right-6">
+                            <div class="placement -mt-2">
+                            </div>
                         </div>
                     </div>
-                </div>
-            </ContextMenuToggleTrigger>
-        </div>
-    </Ending>
-</NavbarItem>
+                </ContextMenuToggleTrigger>
+            </div>
+        </Ending>
+    </NavbarItem>
+</ContextMenuTrigger>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;

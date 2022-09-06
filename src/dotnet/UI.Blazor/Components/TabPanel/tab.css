@@ -1,5 +1,5 @@
 .tab-panel {
-    @apply flex-y h-full;
+    @apply flex-y h-full w-full;
 }
 .tab-panel-tabs {
     @apply mb-2.5 pb-1.5 items-center;
@@ -24,7 +24,7 @@
 }
 
 .tab-panel .tab {
-    @apply grow;
+    @apply grow w-full max-w-full;
 }
 
 .shape {

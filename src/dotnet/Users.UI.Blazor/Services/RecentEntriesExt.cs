@@ -2,7 +2,7 @@ namespace ActualChat.Users.UI.Blazor.Services;
 
 public static class RecentEntriesExt
 {
-    public static async Task<ImmutableArray<T>> OrderByRecency<T>(
+    public static async Task<List<T>> OrderByRecency<T>(
         this IRecentEntries recentEntries,
         Session session,
         IReadOnlyCollection<T> items,
@@ -13,6 +13,8 @@ public static class RecentEntriesExt
     {
         var recent = await recentEntries.List(session, scope, limit, cancellationToken).ConfigureAwait(false);
         var recentMap = recent.ToDictionary(x => (Symbol)x.Key, x => x.UpdatedAt);
-        return items.OrderByDescending(x => recentMap.GetValueOrDefault(x.Id, Moment.MinValue)).ToImmutableArray();
+        return items
+            .OrderByDescending(x => recentMap.GetValueOrDefault(x.Id, Moment.MinValue))
+            .ToList();
     }
 }

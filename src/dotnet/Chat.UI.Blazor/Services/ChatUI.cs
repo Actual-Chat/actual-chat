@@ -155,7 +155,6 @@ public class ChatUI
                 listeningChatIds = listeningChatIds.Replace(chatIdToEliminate, chatId);
                 var itemToReplace = activeChatIds.Find(c => c.ChatId == chatIdToEliminate);
                 activeChatIds = activeChatIds.Replace(itemToReplace!, (chatId, Now));
-
             }
             else {
                 listeningChatIds = listeningChatIds.Add(chatId);
@@ -164,10 +163,7 @@ public class ChatUI
             }
         }
         _listeningChatIds.Value = listeningChatIds;
-        if (activeChatIds != _activeChatIds.Value)
-            _activeChatIds.Value = activeChatIds;
-
-        PruneActiveChatIds();
+        PruneAndSetActiveChatIds(activeChatIds);
     }
 
     public async Task SetRecordingState(Symbol chatId)
@@ -187,10 +183,20 @@ public class ChatUI
 
         if (!chatId.IsEmpty && activeChatIds.All(c => c.ChatId != chatId))
             activeChatIds = activeChatIds.Add((chatId, Now));
-        if (_activeChatIds.Value != activeChatIds)
-            _activeChatIds.Value = activeChatIds;
+        PruneAndSetActiveChatIds(activeChatIds);
+    }
 
-        PruneActiveChatIds();
+    public async Task AddActiveChat(Symbol chatId)
+    {
+        if (chatId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
+        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
+
+        var activeChatIds = _activeChatIds.Value;
+        if (activeChatIds.All(c => c.ChatId != chatId))
+            activeChatIds = activeChatIds.Add((chatId, Now));
+        PruneAndSetActiveChatIds(activeChatIds);
     }
 
     public async Task RemoveActiveChat(Symbol chatId)
@@ -396,20 +402,19 @@ public class ChatUI
         _activeChatIds.Value = activeChatIds;
     }
 
-    private void PruneActiveChatIds()
+    private void PruneAndSetActiveChatIds(ImmutableList<(Symbol ChatId, Moment Recency)> activeChatIds)
     {
-        var activeChatIds = _activeChatIds.Value;
-        if (activeChatIds.Count <= ActiveChatsLimit)
-            return;
-        var retainIds = _listeningChatIds.Value;
-        var recordingChatId = _recordingChatId.Value;
-        if (!recordingChatId.IsEmpty && !retainIds.Contains(recordingChatId))
-            retainIds = retainIds.Add(recordingChatId);
-        while (activeChatIds.Count > ActiveChatsLimit) {
-            var itemToEliminate = activeChatIds
-                .Where(c => !retainIds.Contains(c.ChatId))
-                .MinBy(c => c.Recency);
-            activeChatIds = activeChatIds.Remove(itemToEliminate!);
+        if (activeChatIds.Count > ActiveChatsLimit) {
+            var retainIds = _listeningChatIds.Value;
+            var recordingChatId = _recordingChatId.Value;
+            if (!recordingChatId.IsEmpty && !retainIds.Contains(recordingChatId))
+                retainIds = retainIds.Add(recordingChatId);
+            while (activeChatIds.Count > ActiveChatsLimit) {
+                var itemToEliminate = activeChatIds
+                    .Where(c => !retainIds.Contains(c.ChatId))
+                    .MinBy(c => c.Recency);
+                activeChatIds = activeChatIds.Remove(itemToEliminate!);
+            }
         }
         if (_activeChatIds.Value != activeChatIds)
             _activeChatIds.Value = activeChatIds;

@@ -10,6 +10,9 @@
         <ChatListItem @key="chat" Chat="@chat" ListKind="@Kind" IsActive="@(ActiveChatId == chat.Id)"/>
     }
 </div>
+@if (Kind == ChatListKind.Pinned) {
+    <div class="mx-4 mb-2 border-b border-bg-04"></div>
+}
 
 @code {
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; } = ChatListKind.Listening;
@@ -24,4 +27,3 @@
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 }
-

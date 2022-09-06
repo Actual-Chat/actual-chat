@@ -134,6 +134,7 @@
 
             if (LastReadEntryState != null)
                 LastReadEntryState.Value = entryId;
+            _ = ChatUI.AddActiveChat(Chat.Id);
 
             await JSRef.InvokeVoidAsync("onPostSucceeded");
         }

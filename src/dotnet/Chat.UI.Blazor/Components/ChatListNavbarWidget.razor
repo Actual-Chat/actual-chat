@@ -5,17 +5,8 @@
     RenderFragment RenderTab(string tabId, string tabTitle) =>
         @<Tab Title="@tabTitle" Id="@tabId" Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <div class="h-full flex-y my-2">
-                @if (m.PinnedChats.Count > 0) {
-                    <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
-
-                    <div class="mx-4 mb-2 border-b border-bg-04"></div>
-
-                    if (m.UnpinnedChats.Count > 0) {
-                        <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
-                    }
-                } else {
-                    <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
-                }
+                <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
+                <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
             </div>
         </Tab>;
 }
