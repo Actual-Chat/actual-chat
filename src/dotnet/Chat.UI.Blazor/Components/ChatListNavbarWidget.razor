@@ -1,40 +1,32 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var firstTabTitle = m.EnableIncompleteUI ? "All" : "Chats";
+
+    RenderFragment RenderTab(string tabId, string tabTitle) =>
+        @<Tab Title="@tabTitle" Id="@tabId" Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
+            <div class="h-full flex-y my-2">
+                @if (m.PinnedChats.Count > 0) {
+                    <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
+
+                    <div class="mx-4 mb-2 border-b border-bg-04"></div>
+
+                    if (m.UnpinnedChats.Count > 0) {
+                        <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
+                    }
+                } else {
+                    <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
+                }
+            </div>
+        </Tab>;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
-            <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true" Class="overflow-y-hidden">
-                <Tab Title="@firstTabTitle" Class="flex-y relative overflow-y-auto custom-scrollbar h-full chats-tab">
-                    <div class="h-full flex-y my-2">
-                        @if (m.PinnedChats.Count > 0) {
-                            <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
-
-                            <div class="mx-4 mb-2 border-b border-bg-04"></div>
-
-                            if (m.UnpinnedChats.Count > 0) {
-                                <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
-                            }
-                        } else {
-                            <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
-                        }
-                    </div>
-                </Tab>
-                @if (m.EnableIncompleteUI) {
-                    <Tab Title="Family">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab Title="Friends">
-                        <ToBeDone/>
-                    </Tab>
-                    <Tab Title="Work">
-                        <ToBeDone/>
-                    </Tab>
-                }
+            <TabPanel TabsClass="left-panel-tabs" BottomHill="true" Class="overflow-y-hidden" @bind-ActiveTab="ActiveTab.Value">
+                @RenderTab(RecentTabId, "Recent")
+                @RenderTab(AllTabId, "A-Z")
             </TabPanel>
         </div>
         <ChatMenu />
@@ -42,11 +34,22 @@
 </NavbarGroup>
 
 @code {
+    private const string RecentTabId = "Recent";
+    private const string AllTabId = "A-Z";
+
     [Inject] private RecentChats RecentChats { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
+
+    private IMutableState<Tab> ActiveTab { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        ActiveTab = StateFactory.NewMutable<Tab>();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -55,7 +58,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await RecentChats.List(cancellationToken).ConfigureAwait(false);
+        var activeTabId = (await ActiveTab.Use(cancellationToken)).Id;
+        var chats = await ListChats(activeTabId, cancellationToken);
         var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
@@ -76,16 +80,19 @@
             .Where(c => !pinnedChatIds.ContainsKey(c.Id))
             .ToList();
 
-
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-
         return new Model {
             ActiveChatId = activeChat?.Id ?? Symbol.Empty,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
-            EnableIncompleteUI = enableIncompleteUI,
         };
     }
+
+    private Task<ImmutableArray<Chat>> ListChats(string activeTabId, CancellationToken cancellationToken)
+        => activeTabId switch{
+            AllTabId => Chats.List(Session, cancellationToken),
+            RecentTabId => RecentChats.List(cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(activeTabId), activeTabId, null)
+            };
 
     private void OnCreateNewChatClick()
         => ModalUI.Show(new NewChatModal.Model());
@@ -96,6 +103,5 @@
         public Symbol ActiveChatId { get; init; }
         public List<Chat> PinnedChats { get; init; } = new ();
         public List<Chat> UnpinnedChats { get; init; } = new ();
-        public bool EnableIncompleteUI { get; init; }
     }
 }

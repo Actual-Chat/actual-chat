@@ -35,11 +35,14 @@
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
+    [Parameter]
     public Tab? ActiveTab {
         get => _activeTab;
-        private set {
+        set {
             if (_activeTab == value)
                 return;
+            if (value != null && !_tabs.Contains(value))
+                throw StandardError.Constraint("This tab does not belong to the panel.");
             _activeTab = value;
             ActiveTabChanged.InvokeAsync(value);
         }
