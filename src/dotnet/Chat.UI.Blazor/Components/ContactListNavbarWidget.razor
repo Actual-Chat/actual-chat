@@ -47,8 +47,8 @@
             <ActiveChatsNavbarWidget/>
 
             <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="left-panel-tabs">
-                @RenderTab(ContactTab.All, "All")
                 @RenderTab(ContactTab.Recent, "Recent")
+                @RenderTab(ContactTab.All, "A-Z")
                 @* @RenderTab(ContactTab.Favorites, "Favorites") *@
             </TabPanel>
         </div>

@@ -6,11 +6,11 @@
     @apply flex-x;
 }
 .tab-panel-tabs .btn-group {
-    @apply justify-evenly w-full;
+    @apply justify-evenly w-full gap-x-1;
 }
 
 .tab-panel-tabs .btn.tab-btn {
-    @apply border-0 rounded-none;
+    @apply border-0 rounded-none min-w-2 px-2;
     @apply text-03 text-base font-medium leading-tight tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
