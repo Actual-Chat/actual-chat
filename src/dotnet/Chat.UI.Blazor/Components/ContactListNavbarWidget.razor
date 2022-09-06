@@ -49,7 +49,7 @@
             <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="left-panel-tabs">
                 @RenderTab(ContactTab.All, "All")
                 @RenderTab(ContactTab.Recent, "Recent")
-                @RenderTab(ContactTab.Favorites, "Favorites")
+                @* @RenderTab(ContactTab.Favorites, "Favorites") *@
             </TabPanel>
         </div>
         <ContactMenu/>
@@ -109,8 +109,7 @@
             UnpinnedContacts = unpinnedContacts,
         };
 
-        Symbol GetActiveContactId(string userId)
-        {
+        Symbol GetActiveContactId(string userId) {
             var targetUserId = ParsedChatId.TryParse(activeChatId, out var parsedChatId)
                 ? parsedChatId.GetPeerChatTargetUserId(userId)
                 : Symbol.Empty;

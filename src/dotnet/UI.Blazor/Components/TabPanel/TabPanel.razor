@@ -3,7 +3,7 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
-            <div class="relative btn-group min-w-full">
+            <div class="relative btn-group">
             @foreach (var tab in Tabs) {
                 var isActive = tab == ActiveTab;
                 var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
