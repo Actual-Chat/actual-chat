@@ -15,7 +15,6 @@ export class ChatMessageEditor {
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
     private isTextMode: boolean = false;
-    private isHorizontal: boolean = false;
     private initialHeight: number;
     private initialWidth: number;
     private isMobile: boolean;
@@ -73,6 +72,7 @@ export class ChatMessageEditor {
                 }
             }
         }
+        // if the mobile-control-panel is null its listeners are removed
     }
 
     private getInitialArgs = () => {
@@ -81,7 +81,6 @@ export class ChatMessageEditor {
             this.initialWidth = window.innerWidth;
             this.mobileListenersHandler(true);
         }
-        this.isHorizontal = window.innerWidth > window.innerHeight;
     }
 
     private onChangeViewSize = () => {
@@ -89,9 +88,6 @@ export class ChatMessageEditor {
         const height = this.windowHeight = size[0];
         const width = this.windowWidth = size[1];
         const isMobile = width < 1024;
-        const isHorizontal = width > height;
-        if (isHorizontal != this.isHorizontal)
-            this.isHorizontal = isHorizontal;
         if (isMobile != this.isMobile) {
             if (isMobile) {
                 // switch desktop to mobile
@@ -112,17 +108,35 @@ export class ChatMessageEditor {
         }
     }
 
-    private onChangeMobileView = (width: number, height: number) => {
-        if (height < this.initialHeight && width == this.initialWidth) {
-            console.log('Height is less than initial.');
+    private changeNarrowMode = (on: boolean) => {
+        if (on) {
             if (!this.editorDiv.classList.contains('narrow-panel')) {
                 this.editorDiv.classList.add('narrow-panel');
                 this.isNarrowMode = true;
             }
-        } else if (height == this.initialHeight) {
+        } else {
             this.editorDiv.classList.remove('narrow-panel');
             this.isNarrowMode = false;
         }
+    }
+
+    private onChangeMobileHeight = (height: number) => {
+        if (height != this.initialHeight) {
+            if (this.isNarrowMode)
+                this.changeNarrowMode(false);
+            else
+                this.changeNarrowMode(true);
+        }
+        this.initialHeight = height;
+    }
+
+    private onChangeMobileView = (width: number, height: number) => {
+        if (width != this.initialWidth) {
+            // orientation changed
+            this.initialWidth = width;
+            this.initialHeight = height;
+        }
+        this.onChangeMobileHeight(height);
     }
 
     private getWindowSize = () : [number, number] => {
@@ -144,7 +158,7 @@ export class ChatMessageEditor {
     }
 
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
-        if (this.isNarrowMode && this.isTextMode) {
+        if (this.isNarrowMode) {
             this.getSlateInput().focus();
             this.changeMode();
         }
