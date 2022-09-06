@@ -5,8 +5,8 @@
     var m = State.LatestNonErrorValue;
 
     RenderFragment RenderTab(ContactGroup group, string title) =>
-        @<Tab Title="@title" Id="@group.ToString()" Class="-flex-y relative overflow-y-hidden h-full contacts-tab">
-            <div class="overflow-x-hidden overflow-y-auto custom-scrollbar h-full flex-y my-2">
+        @<Tab Title="@title" Id="@group.ToString()" Class="-flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+            <div class="h-full flex-y my-2">
                 @if (group == Group.Value) {
                     @if (m.PinnedContacts.Length > 0) {
                         <div class="pinned-contacts">
@@ -46,7 +46,7 @@
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
 
-            <TabPanel BottomHill="true" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
+            <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
                 @RenderTab(ContactGroup.All, "All")
                 @RenderTab(ContactGroup.Recent, "Recent")
                 @RenderTab(ContactGroup.Favorites, "Favorites")
