@@ -20,7 +20,7 @@
 
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string Text { get; set; } = null!;
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions()
         => new() {
