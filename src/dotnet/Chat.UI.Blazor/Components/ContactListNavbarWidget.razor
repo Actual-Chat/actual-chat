@@ -4,10 +4,10 @@
 @{
     var m = State.LatestNonErrorValue;
 
-    RenderFragment RenderTab(ContactGroup group, string title) =>
-        @<Tab Title="@title" Id="@group.ToString()" Class="-flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+    RenderFragment RenderTab(ContactTab tab, string title) =>
+        @<Tab Title="@title" Id="@tab.ToString()" Class="-flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y my-2">
-                @if (group == Group.Value) {
+                @if (tab == Group.Value) {
                     @if (m.PinnedContacts.Length > 0) {
                         <div class="pinned-contacts">
                             @foreach (var c in m.PinnedContacts) {
@@ -46,10 +46,10 @@
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
 
-            <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="wide-left-panel-tabs">
-                @RenderTab(ContactGroup.All, "All")
-                @RenderTab(ContactGroup.Recent, "Recent")
-                @RenderTab(ContactGroup.Favorites, "Favorites")
+            <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="left-panel-tabs">
+                @RenderTab(ContactTab.All, "All")
+                @RenderTab(ContactTab.Recent, "Recent")
+                @RenderTab(ContactTab.Favorites, "Favorites")
             </TabPanel>
         </div>
         <ContactMenu/>
@@ -63,11 +63,11 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
-    private IMutableState<ContactGroup> Group { get; set; } = null!;
+    private IMutableState<ContactTab> Group { get; set; } = null!;
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        Group = StateFactory.NewMutable<ContactGroup>();
+        Group = StateFactory.NewMutable<ContactTab>();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -121,25 +121,32 @@
         }
     }
 
-    private async Task<ImmutableArray<UserContact>> ListContacts(ContactGroup group, CancellationToken cancellationToken)
+    private async Task<ImmutableArray<UserContact>> ListContacts(ContactTab tab, CancellationToken cancellationToken)
     {
         var contacts = await Contacts.List(Session, cancellationToken);
-        switch (group) {
-            case ContactGroup.All:
+        switch (tab) {
+            case ContactTab.All:
                 return contacts;
-            case ContactGroup.Favorites:
+            case ContactTab.Favorites:
                 return contacts.Where(x => x.IsFavorite).ToImmutableArray();
-            case ContactGroup.Recent:
+            case ContactTab.Recent:
                 return await RecentEntries.OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken).ConfigureAwait(false);
             default:
-                throw new ArgumentOutOfRangeException(nameof(group), group, null);
+                throw new ArgumentOutOfRangeException(nameof(tab), tab, null);
         }
     }
 
-
     private void OnActiveTabChanged(Tab? tab) {
-        Group.Value = tab == null ? ContactGroup.All : Enum.Parse<ContactGroup>(tab.Id);
+        Group.Value = tab == null ? ContactTab.All : Enum.Parse<ContactTab>(tab.Id);
     }
+
+    public enum ContactTab
+    {
+        All = 0,
+        Favorites,
+        Recent,
+    }
+
     public sealed record Model {
         public static Model None { get; } = new();
 

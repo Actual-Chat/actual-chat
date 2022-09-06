@@ -122,29 +122,33 @@
     @apply bg-round-hover;
 }
 
-.wide-left-panel-tabs {
+.left-panel-tabs {
     @apply relative top-0 pb-0 mb-0 border-b border-bg-04;
 }
-.wide-left-panel-tabs .btn-group {
-    @apply min-h-14 justify-between px-4;
+.left-panel-tabs .btn-group {
+    @apply min-h-14 justify-start px-4;
 }
-.wide-left-panel-tabs .btn-group .btn-group-container {
+.left-panel-tabs .btn-group .btn-group-container {
     @apply min-h-14 self-center;
 }
-.wide-left-panel-tabs .btn {
+.left-panel-tabs .btn {
     @apply min-w-0 min-h-0 p-0 rounded-lg;
 }
-.wide-left-panel-tabs .btn.tab-btn.on .btn-content {
+.left-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-03;
 }
-.wide-left-panel-tabs .tab-btn:hover .btn-content {
+.left-panel-tabs .tab-btn:hover .btn-content {
     @apply bg-round-hover text-primary;
 }
-.wide-left-panel-tabs .tab-btn.on:hover .btn-content {
+.left-panel-tabs .tab-btn.on:hover .btn-content {
     @apply bg-transparent cursor-default;
 }
-.wide-left-panel-tabs .tab-btn .btn-content {
+.left-panel-tabs .tab-btn .btn-content {
     @apply p-1.5 rounded-xl;
+}
+
+.wide-left-panel-tabs .btn-group {
+    @apply min-h-14 justify-between px-4;
 }
 
 .navbar-chats,
