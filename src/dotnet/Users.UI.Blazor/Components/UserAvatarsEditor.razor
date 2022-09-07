@@ -22,7 +22,7 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter] public string ChatId { get; set; } = "";
 
     protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
         => new () { InitialValue = ImmutableArray<Symbol>.Empty };
