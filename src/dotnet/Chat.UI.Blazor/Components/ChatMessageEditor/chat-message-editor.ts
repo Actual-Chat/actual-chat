@@ -18,8 +18,6 @@ export class ChatMessageEditor {
     private initialHeight: number;
     private initialWidth: number;
     private isMobile: boolean;
-    private windowHeight: number;
-    private windowWidth: number;
     private isNarrowMode: boolean = false;
     private isPanelOpened: boolean = false;
     private attachmentsIdSeed: number = 0;
@@ -85,8 +83,8 @@ export class ChatMessageEditor {
 
     private onChangeViewSize = () => {
         const size = this.getWindowSize();
-        const height = this.windowHeight = size[0];
-        const width = this.windowWidth = size[1];
+        const height = size[0];
+        const width = size[1];
         const isMobile = width < 1024;
         if (isMobile != this.isMobile) {
             if (isMobile) {
