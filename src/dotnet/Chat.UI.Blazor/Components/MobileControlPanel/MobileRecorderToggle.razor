@@ -54,7 +54,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     private bool IsLongPress { get; set; } = false;
     private bool CanRecord { get; set; } = true;

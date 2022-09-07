@@ -30,7 +30,7 @@
 
     private UnreadMessages UnreadMessages { get; set; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override Task OnParametersSetAsync() {
         UnreadMessages.DisposeSilently();

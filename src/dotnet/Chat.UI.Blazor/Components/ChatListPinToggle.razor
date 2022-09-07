@@ -24,7 +24,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };

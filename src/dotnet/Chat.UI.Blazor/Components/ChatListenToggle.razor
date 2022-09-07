@@ -14,7 +14,7 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     private void OnListenClick()
         => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);

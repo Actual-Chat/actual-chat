@@ -24,8 +24,8 @@
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
 
-    [Parameter] public string AvatarId { get; set; } = "";
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
