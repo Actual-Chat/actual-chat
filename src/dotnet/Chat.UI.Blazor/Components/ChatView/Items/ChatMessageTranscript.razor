@@ -1,22 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Transcription
 @implements IAsyncDisposable
-@{
-    var diff = CalculateDiff(_lastTranscriptText, Transcript.Text);
-    _lastTranscriptText = Transcript.Text;
-}
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryType) {
         <span class="chat-entry-type-marker icon-volume-up"></span>
     }@*
-    *@<span class="retained">@diff.RetainedPart</span>@*
-    *@<span class="changes">@diff.ChangedPart</span>
+    *@<span class="retained">@RetainedPart</span>@*
+    *@<span class="changes">@ChangedPart</span>
 </p>
 
 @code {
-    private string _lastTranscriptText = "";
-
     [Inject] private ILogger<ChatMessageTranscript> Log { get; init; } = null!;
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
@@ -28,6 +22,8 @@
 
     private CancellationTokenSource? RestartCts { get; set; }
     private Transcript Transcript { get; set; } = new();
+    private string RetainedPart { get; set; } = "";
+    private string ChangedPart { get; set; } = "";
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
@@ -56,11 +52,17 @@
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
             var circuitDispatcher = CircuitContext.Dispatcher;
             var transcripts = diffs.ApplyDiffs(cancellationToken);
+            var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+                var text = transcript.Text;
+                var commonPrefixLength = lastText.GetCommonPrefixLength(text);
                 await circuitDispatcher.InvokeAsync(() => {
                     Transcript = transcript;
+                    RetainedPart = text[..commonPrefixLength];
+                    ChangedPart = text[commonPrefixLength..];
                     StateHasChanged();
                 }).ConfigureAwait(false);
+                lastText = text;
             }
         }
         catch (Exception e) {
@@ -72,24 +74,4 @@
             // wraps OperationCanceledException into HubException, so here we suppress it.
         }
     }
-
-    private Diff CalculateDiff(string prevTranscript, string newTranscript) {
-        if (prevTranscript == "")
-            return new Diff("", newTranscript);
-        var diffStartIndex = 0;
-        for (int i = 0; i < Math.Min(prevTranscript.Length, newTranscript.Length); i++) {
-            if (!StringComparer.OrdinalIgnoreCase.Equals(prevTranscript[i], newTranscript[i]))
-                break;
-            diffStartIndex++;
-        }
-        if (diffStartIndex == 0)
-            return new Diff("", newTranscript);
-        if (diffStartIndex >= newTranscript.Length)
-            return new Diff(newTranscript, "");
-        var retainedPart = newTranscript.Substring(0, diffStartIndex);
-        var changedPart = newTranscript.Substring(diffStartIndex);
-        return new Diff(retainedPart, changedPart);
-    }
-
-    private record Diff(string RetainedPart, string ChangedPart);
 }

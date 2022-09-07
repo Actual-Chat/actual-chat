@@ -46,6 +46,17 @@ public static class StringExt
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
 
+    public static int GetCommonPrefixLength(this string a, string b)
+    {
+        for (var i = 0; i < a.Length; i++) {
+            if (i >= b.Length)
+                return i;
+            if (a[i] != b[i])
+                return i;
+        }
+        return a.Length;
+    }
+
     public static IEnumerable<(string Line, bool EndsWithLineFeed)> ParseLines(this string text)
     {
         for (var index = 0; index < text.Length;) {
