@@ -3,8 +3,10 @@
 @{
     var m = State.LatestNonErrorValue;
 
-    RenderFragment RenderTab(ContactTab tab, string title) =>
-        @<Tab Title="@title" Id="@tab.ToString()" Class="flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+    RenderFragment RenderTab(TabId tabId, string title) =>
+        @<Tab
+             Title="@title" Id="@tabId.ToString()"
+             Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y my-2">
                 <ContactList Contacts="m.PinnedContacts" Kind="ContactListKind.Pinned"/>
                 <ContactList Contacts="m.UnpinnedContacts" Kind="ContactListKind.Unpinned"/>
@@ -17,9 +19,14 @@
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
 
-            <TabPanel BottomHill="true" Class="overflow-y-hidden" ActiveTabChanged="OnActiveTabChanged" TabsClass="left-panel-tabs">
-                @RenderTab(ContactTab.Recent, "Recent")
-                @RenderTab(ContactTab.All, "A-Z")
+            <TabPanel
+                BottomHill="true"
+                Class="overflow-y-hidden"
+                TabsClass="left-panel-tabs"
+                ActiveTabChanged="OnActiveTabChanged">
+
+                @RenderTab(TabId.Recent, "Recent")
+                @RenderTab(TabId.All, "A-Z")
                 @* @RenderTab(ContactTab.Favorites, "Favorites") *@
             </TabPanel>
         </div>
@@ -28,18 +35,14 @@
 </NavbarGroup>
 
 @code {
+    private TabId _activeTabId;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IUserContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
-    private IMutableState<ContactTab> Group { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        Group = StateFactory.NewMutable<ContactTab>();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -52,8 +55,7 @@
         if (!account.IsActive())
             return Model.None;
 
-        var group = await Group.Use(cancellationToken).ConfigureAwait(false);
-        var contacts = await ListContacts(group, cancellationToken).ConfigureAwait(false);
+        var contacts = await ListContacts(_activeTabId, cancellationToken).ConfigureAwait(false);
         var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var activeContactId = GetActiveContactId(account.User.Id);
 
@@ -91,31 +93,28 @@
         }
     }
 
-    private async Task<List<UserContact>> ListContacts(ContactTab tab, CancellationToken cancellationToken)
-    {
+    private async Task<List<UserContact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
         var contacts = await Contacts.List(Session, cancellationToken);
-        switch (tab) {
-            case ContactTab.All:
-                return contacts.ToList();
-            case ContactTab.Favorites:
-                return contacts.Where(x => x.IsFavorite).ToList();
-            case ContactTab.Recent:
-                return await RecentEntries
-                    .OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken)
-                    .ConfigureAwait(false);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(tab), tab, null);
-        }
+        return tabId switch {
+            TabId.All => contacts.ToList(),
+            TabId.Favorites => contacts.Where(x => x.IsFavorite).ToList(),
+            TabId.Recent => await RecentEntries
+                .OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken)
+                .ConfigureAwait(false),
+            _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
+        };
     }
 
-    private void OnActiveTabChanged(Tab? tab)
-        => Group.Value = tab == null ? ContactTab.All : Enum.Parse<ContactTab>(tab.Id);
+    private void OnActiveTabChanged(Tab? tab) {
+        if (!Enum.TryParse(tab?.Id ?? "", out _activeTabId))
+            _activeTabId = default;
+        _ = State.Recompute();
+    }
 
-    public enum ContactTab
-    {
-        All = 0,
-        Favorites,
+    public enum TabId {
         Recent,
+        All,
+        Favorites,
     }
 
     public sealed record Model {

@@ -2,8 +2,10 @@
 @{
     var m = State.LatestNonErrorValue;
 
-    RenderFragment RenderTab(string tabId, string tabTitle) =>
-        @<Tab Title="@tabTitle" Id="@tabId" Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
+    RenderFragment RenderTab(TabId tabId, string tabTitle) =>
+        @<Tab
+             Title="@tabTitle" Id="@tabId.ToString()"
+             Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <div class="h-full flex-y my-2">
                 <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
                 <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
@@ -15,9 +17,15 @@
     <ChildContent>
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
-            <TabPanel TabsClass="left-panel-tabs" BottomHill="true" Class="overflow-y-hidden" @bind-ActiveTab="ActiveTab.Value">
-                @RenderTab(RecentTabId, "Recent")
-                @RenderTab(AllTabId, "A-Z")
+
+            <TabPanel
+                BottomHill="true"
+                Class="overflow-y-hidden"
+                TabsClass="left-panel-tabs"
+                ActiveTabChanged="@OnActiveTabChanged">
+
+                @RenderTab(TabId.Recent, "Recent")
+                @RenderTab(TabId.All, "A-Z")
             </TabPanel>
         </div>
         <ChatMenu />
@@ -25,8 +33,7 @@
 </NavbarGroup>
 
 @code {
-    private const string RecentTabId = "Recent";
-    private const string AllTabId = "A-Z";
+    private TabId _activeTabId;
 
     [Inject] private RecentChats RecentChats { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -35,13 +42,6 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
-    private IMutableState<Tab> ActiveTab { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        ActiveTab = StateFactory.NewMutable<Tab>();
-    }
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
@@ -49,8 +49,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeTabId = (await ActiveTab.Use(cancellationToken)).Id;
-        var chats = await ListChats(activeTabId, cancellationToken);
+        var chats = await ListChats(_activeTabId, cancellationToken);
         var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
@@ -78,15 +77,26 @@
         };
     }
 
-    private Task<ImmutableArray<Chat>> ListChats(string activeTabId, CancellationToken cancellationToken)
-        => activeTabId switch{
-            AllTabId => Chats.List(Session, cancellationToken),
-            RecentTabId => RecentChats.List(cancellationToken),
-            _ => throw new ArgumentOutOfRangeException(nameof(activeTabId), activeTabId, null)
-            };
+    private Task<ImmutableArray<Chat>> ListChats(TabId tabId, CancellationToken cancellationToken)
+        => tabId switch {
+            TabId.All => Chats.List(Session, cancellationToken),
+            TabId.Recent => RecentChats.List(cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
+        };
 
     private void OnCreateNewChatClick()
         => ModalUI.Show(new NewChatModal.Model());
+
+    private void OnActiveTabChanged(Tab? tab) {
+        if (!Enum.TryParse(tab?.Id ?? "", out _activeTabId))
+            _activeTabId = default;
+        _ = State.Recompute();
+    }
+
+    public enum TabId {
+        Recent,
+        All,
+    }
 
     public sealed record Model {
         public static Model None { get; } = new();
