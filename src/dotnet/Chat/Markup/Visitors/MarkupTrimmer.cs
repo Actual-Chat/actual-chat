@@ -59,8 +59,10 @@ public class MarkupTrimmer : MarkupRewriter
 
     protected override Markup VisitCodeBlock(CodeBlockMarkup markup)
     {
-        if (CanAppend(markup.Code.Length))
+        if (CanAppend(markup.Code.Length)) {
+            Append(markup.Code.Length);
             return base.VisitCodeBlock(markup);
+        }
 
         // Trim some lines
         using var sb = ZString.CreateStringBuilder();
@@ -74,16 +76,18 @@ public class MarkupTrimmer : MarkupRewriter
         if (sb.Length == 0)
             return AppendEnd();
         Append(sb.Length);
-        return new MarkupSeq(markup with { Code = sb.ToString() });
+        return new MarkupSeq(markup with { Code = sb.ToString() }, AppendEnd());
     }
 
     protected override Markup VisitText(TextMarkup markup)
     {
-        if (!CanAppend(markup.Text.Length))
-            return AppendEnd();
+        if (CanAppend(markup.Text.Length)) {
+            Append(markup.Text.Length);
+            return markup;
+        }
         markup = markup with { Text = markup.Text.Truncate(MaxLength - Length) };
         Append(markup.Text.Length);
-        return new MarkupSeq(markup with { Text = markup.Text.Truncate(MaxLength - Length) });
+        return new MarkupSeq(markup, AppendEnd());
     }
 
     // Helpers
