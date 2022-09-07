@@ -148,7 +148,7 @@
 }
 
 .wide-left-panel-tabs .btn-group {
-    @apply min-h-14 justify-between px-4;
+    @apply min-h-14 justify-evenly px-4 overflow-x-hidden;
 }
 
 .navbar-chats,

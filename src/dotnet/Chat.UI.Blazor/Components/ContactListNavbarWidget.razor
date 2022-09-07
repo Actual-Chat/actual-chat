@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue;
 
     RenderFragment RenderTab(ContactTab tab, string title) =>
-        @<Tab Title="@title" Id="@tab.ToString()" Class="-flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+        @<Tab Title="@title" Id="@tab.ToString()" Class="flex-y relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y my-2">
                 <ContactList Contacts="m.PinnedContacts" Kind="ContactListKind.Pinned"/>
                 <ContactList Contacts="m.UnpinnedContacts" Kind="ContactListKind.Unpinned"/>
