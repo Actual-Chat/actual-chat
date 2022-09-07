@@ -57,10 +57,8 @@ public class NewChatEntryEventHandler: IEventHandler<NewChatEntryEvent>
 
     private string GetContent(string chatEventContent)
     {
-        if (chatEventContent.Length <= 1024)
-            return chatEventContent;
-
-        var lastSpaceIndex = chatEventContent.IndexOf(' ', 1000);
-        return chatEventContent.Substring(0, lastSpaceIndex < 1024 ? lastSpaceIndex : 1000);
+        var markup = MarkupParser.ParseRaw(chatEventContent);
+        markup = new MarkupTrimmer(100).Rewrite(markup);
+        return MarkupFormatter.ReadableUnstyled.Format(markup);
     }
 }
