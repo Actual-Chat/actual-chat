@@ -74,7 +74,7 @@ public class MarkupTrimmer : MarkupRewriter
         if (sb.Length == 0)
             return AppendEnd();
         Append(sb.Length);
-        return new MarkupSeq(markup with { Code = sb.ToString() }, AppendEnd());
+        return new MarkupSeq(markup with { Code = sb.ToString() });
     }
 
     protected override Markup VisitText(TextMarkup markup)
@@ -83,9 +83,7 @@ public class MarkupTrimmer : MarkupRewriter
             return AppendEnd();
         markup = markup with { Text = markup.Text.Truncate(MaxLength - Length) };
         Append(markup.Text.Length);
-        return new MarkupSeq(
-            markup with { Text = markup.Text.Truncate(MaxLength - Length) },
-            AppendEnd());
+        return new MarkupSeq(markup with { Text = markup.Text.Truncate(MaxLength - Length) });
     }
 
     // Helpers
