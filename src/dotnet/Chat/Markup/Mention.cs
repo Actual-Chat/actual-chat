@@ -14,6 +14,7 @@ public sealed record Mention(
 
     public string Format(MentionFormat format)
         => format switch {
+            MentionFormat.NameOnly => $"@{Name.NullIfEmpty() ?? Id}",
             MentionFormat.Full => Format(),
             MentionFormat.PreferNameOnly when Name.IsNullOrEmpty() => Format(),
             _ => $"@`{Name.OrdinalReplace("`", "``")}`",
