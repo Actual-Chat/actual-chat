@@ -121,7 +121,8 @@ export class ChatMessageEditor {
     }
 
     private onChangeMobileHeight = (height: number) => {
-        if (height != this.initialHeight) {
+        if (height != this.initialHeight
+            && (Math.max(height, this.initialHeight) - Math.min(height, this.initialHeight)) / Math.min(height, this.initialHeight) > 0.2) {
             if (this.isNarrowMode)
                 this.changeNarrowMode(false);
             else
