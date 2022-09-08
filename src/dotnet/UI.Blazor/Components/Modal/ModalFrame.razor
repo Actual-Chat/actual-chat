@@ -7,6 +7,13 @@
     @if (HasHeader) {
         <div class="modal-header">
             <h3 class="modal-title flex flex-1 text-lg font-bold">@Title</h3>
+            @if (HasCloseButton) {
+                <div class="flex my-1">
+                    <ButtonRound Class="modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
+                        <i class="icon-close text-2xl font-medium"></i>
+                    </ButtonRound>
+                </div>
+            }
         </div>
     }
     @ChildContent

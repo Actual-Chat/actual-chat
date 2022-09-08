@@ -5,11 +5,11 @@
 
 <DialogFrame HasCloseButton="true" Class="image-preview-modal">
     <Body>
-        <img src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+        <div class="flex flex-y w-full h-full justify-center">
+            <img src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+            <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
+        </div>
     </Body>
-    <Buttons>
-        <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
-    </Buttons>
 </DialogFrame>
 
 @code {
