@@ -10,6 +10,18 @@
     @apply bg-transparent;
 }
 
+.image-preview-modal .modal-close  {
+    @apply text-04;
+}
+
+.image-preview-modal .modal-close .btn-content {
+    @apply bg-06;
+}
+
+.image-preview-modal .modal-close .btn-content:hover {
+    @apply bg-05;
+}
+
 .show-original-button {
-    @apply font-semibold cursor-pointer text-02 hover:underline hover:text-04;
+    @apply cursor-pointer text-05 hover:underline hover:text-04;
 }
