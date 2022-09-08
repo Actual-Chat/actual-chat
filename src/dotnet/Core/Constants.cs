@@ -9,7 +9,7 @@ public static partial class Constants
         public static TileStack<long> IdTileStack { get; } = TileStacks.Long16To1K;
         public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;
         public static TimeSpan MaxEntryDuration { get; } = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
-        public const int PictureFileSizeLimit = 10 * 1024 * 1024; // 10MB
+        public const int PictureFileSizeLimit = 25 * 1024 * 1024; // 25MB
         public const int MaxSearchFilterLength = 100;
         public const int RecentChatsLimit = 30;
     }
