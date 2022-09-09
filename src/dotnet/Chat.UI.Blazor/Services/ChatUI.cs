@@ -343,7 +343,7 @@ public class ChatUI
         var unpinnedChats = candidatesToEliminate.Where(c => !IsPinnedChat(c)).ToArray();
         var chatIdToEliminate = await GetChatToEliminate(unpinnedChats).ConfigureAwait(false);
         if (chatIdToEliminate.IsEmpty) {
-            var pinnedChats = candidatesToEliminate.Where(c => IsPinnedChat(c)).ToArray();
+            var pinnedChats = candidatesToEliminate.Where(IsPinnedChat).ToArray();
             chatIdToEliminate = await GetChatToEliminate(pinnedChats).ConfigureAwait(false);
         }
 
@@ -366,7 +366,7 @@ public class ChatUI
     private async Task<Dictionary<Symbol, int>> GetListeningChatPriorities(ICollection<Symbol> chatIds)
     {
         var timestamps = await chatIds
-                .Select(chatId => GetLastEntryTimestamp(chatId))
+                .Select(GetLastEntryTimestamp)
                 .Collect()
                 .ConfigureAwait(false);
 

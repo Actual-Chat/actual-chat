@@ -9,7 +9,7 @@
             <div>Active chats</div>
         </div>
 
-        <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats" ActiveChatId="@m.ActiveChatId"/>
+        <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats"/>
     </div>
 }
 
@@ -35,10 +35,8 @@
             .Reverse()
             .ToList();
 
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             Chats = chats,
-            ActiveChatId = activeChatId,
         };
     }
 
@@ -46,6 +44,5 @@
         public static Model None { get; } = new();
 
         public List<Chat> Chats { get; init; } = new ();
-        public Symbol ActiveChatId { get; init; }
     }
 }

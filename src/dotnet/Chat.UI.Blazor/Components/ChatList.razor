@@ -7,7 +7,7 @@
 }
 <div class="@GetCss(Kind)">
     @foreach (var chat in Chats) {
-        <ChatListItem @key="chat" Chat="@chat" ListKind="@Kind" IsActive="@(ActiveChatId == chat.Id)"/>
+        <ChatListItem @key="chat" Chat="@chat" ListKind="@Kind" />
     }
 </div>
 @if (Kind == ChatListKind.Pinned) {
@@ -17,7 +17,6 @@
 @code {
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; } = ChatListKind.Listening;
     [Parameter, EditorRequired] public List<Chat>? Chats { get; set; }
-    [Parameter] public string ActiveChatId { get; set; } = "";
 
     private string GetCss(ChatListKind kind)
         => kind switch {
