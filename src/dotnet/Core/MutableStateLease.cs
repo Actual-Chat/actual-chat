@@ -44,7 +44,7 @@ public class MutableStateLease<T, TKey, TState, TResource> : IMutableStateLease<
     public StateSnapshot<T> Snapshot => State.Snapshot;
 
     IComputed IState.Computed => ((IState)State).Computed;
-    public IComputed<T> Computed => State.Computed;
+    public Computed<T> Computed => State.Computed;
 
     public MutableStateLease(SharedResourcePool<TKey, TResource>.Lease lease, Func<TResource, TState> stateGetter)
     {

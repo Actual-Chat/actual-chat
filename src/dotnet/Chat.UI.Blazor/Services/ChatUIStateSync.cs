@@ -55,7 +55,7 @@ public class ChatUIStateSync : WorkerBase
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
         var cExpectedPlaybackState = await Computed
-            .Capture(ct => ChatUI.GetRealtimeChatPlaybackState(ct), cancellationToken)
+            .Capture(() => ChatUI.GetRealtimeChatPlaybackState(cancellationToken))
             .ConfigureAwait(false);
         var playbackState = ChatPlayers.ChatPlaybackState;
 
@@ -87,7 +87,9 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task SyncRecordingState(CancellationToken cancellationToken)
     {
-        var cRecordingChatId = await Computed.Capture(SyncRecordingStateImpl, cancellationToken).ConfigureAwait(false);
+        var cRecordingChatId = await Computed
+            .Capture(() => SyncRecordingStateImpl(cancellationToken))
+            .ConfigureAwait(false);
         // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
         await cRecordingChatId.When(_ => false, cancellationToken).ConfigureAwait(false);
     }
@@ -164,7 +166,9 @@ public class ChatUIStateSync : WorkerBase
     private async Task SyncKeepAwakeState(CancellationToken cancellationToken)
     {
         var lastMustKeepAwake = false;
-        var cMustKeepAwake = await Computed.Capture(ChatUI.MustKeepAwake, cancellationToken).ConfigureAwait(false);
+        var cMustKeepAwake = await Computed
+            .Capture(() => ChatUI.MustKeepAwake(cancellationToken))
+            .ConfigureAwait(false);
         // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
         await foreach (var cUpdate in cMustKeepAwake.Changes(cancellationToken).ConfigureAwait(false)) {
             var mustKeepAwake = cUpdate.Value;
@@ -182,7 +186,9 @@ public class ChatUIStateSync : WorkerBase
     /// </summary>
     private async Task StopRecordingWhenInactive(CancellationToken cancellationToken)
     {
-        var cLastChatEntry = await Computed.Capture(GetLastRecordingChatEntryInfo, cancellationToken).ConfigureAwait(false);
+        var cLastChatEntry = await Computed
+            .Capture(() => GetLastRecordingChatEntryInfo(cancellationToken))
+            .ConfigureAwait(false);
         var lastChatEntry = (Symbol.Empty, 0L);
 
         while (!cancellationToken.IsCancellationRequested) {

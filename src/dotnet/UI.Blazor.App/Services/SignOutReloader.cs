@@ -11,8 +11,9 @@ public class SignOutReloader : WorkerBase
     {
         var session = Services.GetRequiredService<Session>();
         var auth = Services.GetRequiredService<IAuth>();
-        var cAuthInfo = await Computed.Capture(
-            ct => auth.GetAuthInfo(session, ct), cancellationToken).ConfigureAwait(false);
+        var cAuthInfo = await Computed
+            .Capture(() => auth.GetAuthInfo(session, cancellationToken))
+            .ConfigureAwait(false);
 
         var wasAuthenticated = false;
         await foreach (var c in cAuthInfo.Changes(cancellationToken).ConfigureAwait(false)) {

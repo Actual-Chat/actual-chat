@@ -34,8 +34,8 @@ public class ChatActivityTest : AppHostTestBase
         try {
             var chatActivity = clientServices.GetRequiredService<ChatActivity>();
             using var recordingActivity = await chatActivity.GetRecordingActivity(ChatId, ct);
-            var cActiveChatEntries = await Computed.Capture(ct1 => recordingActivity.GetActiveChatEntries(ct1), ct);
-            var cActiveAuthorIds = await Computed.Capture(ct1 => recordingActivity.GetActiveAuthorIds(ct1), ct);
+            var cActiveChatEntries = await Computed.Capture(() => recordingActivity.GetActiveChatEntries(ct));
+            var cActiveAuthorIds = await Computed.Capture(() => recordingActivity.GetActiveAuthorIds(ct));
             cActiveChatEntries.Value.Count.Should().Be(0);
 
             // 2s pause, create entry, 2s pause, complete it
@@ -47,7 +47,7 @@ public class ChatActivityTest : AppHostTestBase
             await cActiveChatEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
             cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             var authorId = cActiveAuthorIds.Value.Single();
-            var cIsAuthorActive = await Computed.Capture(ct1 => recordingActivity.IsAuthorActive(authorId, ct1), ct);
+            var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorActive(authorId, ct));
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
