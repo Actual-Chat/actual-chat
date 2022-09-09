@@ -62,7 +62,7 @@ jobs:
 
       - name: Generate version variables
         id: nbgv
-        uses: dotnet/nbgv@master
+        uses: dotnet/nbgv@main
         with:
           setAllVars: true
 
