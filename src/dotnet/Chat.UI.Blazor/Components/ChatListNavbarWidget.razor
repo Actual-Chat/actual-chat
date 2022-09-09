@@ -7,8 +7,8 @@
              Title="@tabTitle" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <div class="h-full flex-y my-2">
-                <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats" ActiveChatId="@m.ActiveChatId"/>
-                <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats" ActiveChatId="@m.ActiveChatId"/>
+                <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
+                <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
             </div>
         </Tab>;
 }
@@ -51,17 +51,18 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await ListChats(_activeTabId, cancellationToken);
-        var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        if (!searchPhrase.IsEmpty)
+        if (!searchPhrase.IsEmpty) {
+            var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Title)
                 where rank > 0 || c.Id == activeChat?.Id
                 orderby rank descending
                 select c
-            ).ToImmutableArray();
+                ).ToImmutableArray();
+        }
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChats = chats
@@ -72,7 +73,6 @@
             .ToList();
 
         return new Model {
-            ActiveChatId = activeChat?.Id ?? Symbol.Empty,
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
         };
@@ -102,7 +102,6 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public Symbol ActiveChatId { get; init; }
         public List<Chat> PinnedChats { get; init; } = new ();
         public List<Chat> UnpinnedChats { get; init; } = new ();
     }

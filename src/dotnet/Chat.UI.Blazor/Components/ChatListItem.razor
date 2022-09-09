@@ -8,7 +8,7 @@
 }
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@Chat" CssClass="flex-x items-center gap-x-2">
-    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@IsActive">
+    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@m.IsActive">
         <ChildContent>
             <div class="flex-x items-center gap-x-2">
                 <ChatListItemIcon Chat="Chat"/>
@@ -60,7 +60,6 @@
     public Chat Chat { get; init; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatListKind ListKind { get; init; }
-    [Parameter] public bool IsActive { get; init; }
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
@@ -82,14 +81,15 @@
         var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
         var isListening = listeningChatIds.Contains(Chat.Id);
         var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false) == Chat.Id;
-        return new(rules.CanWrite(), isListening, isRecording);
+        var isActive = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false) == Chat.Id;
+        return new(rules.CanWrite(), isListening, isRecording, isActive);
     }
 
     public record Model(
         bool CanRecord,
         bool IsListening,
-        bool IsRecording)
-    {
-        public static readonly Model None = new(false, false, false);
+        bool IsRecording,
+        bool IsActive) {
+        public static readonly Model None = new(false, false, false, false);
     }
 }

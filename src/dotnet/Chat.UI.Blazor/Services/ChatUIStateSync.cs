@@ -17,7 +17,6 @@ public class ChatUIStateSync : WorkerBase
     private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
     private UserInteractionUI? _userInteractionUI;
-    private IJSRuntime? _js;
 
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
@@ -34,7 +33,6 @@ public class ChatUIStateSync : WorkerBase
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {

@@ -57,11 +57,11 @@
             return Model.None;
 
         var contacts = await ListContacts(_activeTabId, cancellationToken).ConfigureAwait(false);
-        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var activeContactId = GetActiveContactId(account.User.Id);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        if (!searchPhrase.IsEmpty)
+        if (!searchPhrase.IsEmpty) {
+            var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
+            var activeContactId = GetActiveContactId(activeChatId);
             contacts = (
                 from contact in contacts
                 let rank = searchPhrase.GetMatchRank(contact.Name)
@@ -69,6 +69,7 @@
                 orderby rank descending
                 select contact
                 ).ToList();
+        }
 
         var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedContacts = contacts
@@ -83,9 +84,9 @@
             UnpinnedContacts = unpinnedContacts,
         };
 
-        Symbol GetActiveContactId(string userId) {
+        Symbol GetActiveContactId(string activeChatId) {
             var targetUserId = ParsedChatId.TryParse(activeChatId, out var parsedChatId)
-                ? parsedChatId.GetPeerChatTargetUserId(userId)
+                ? parsedChatId.GetPeerChatTargetUserId(account.User.Id)
                 : Symbol.Empty;
             return contacts.All(c => c.TargetUserId != targetUserId)
                 ? Symbol.Empty
