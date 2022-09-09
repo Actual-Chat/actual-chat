@@ -1,17 +1,17 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
-@implements ILayoutTypeProviderBackend
+@implements IScreenSizeProviderBackend
 
-@if (_layoutType.HasValue) {
-    <CascadingValue Value="@_layoutType.Value">
+@if (_screenSize.HasValue) {
+    <CascadingValue Value="@_screenSize.Value">
         @ChildContent
     </CascadingValue>
 }
 
 @code {
-    private LayoutType? _layoutType;
+    private ScreenSize? _screenSize;
 
-    private DotNetObjectReference<ILayoutTypeProviderBackend> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<IScreenSizeProviderBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
 
     [Inject] IJSRuntime JS { get; set; } = null!;
@@ -20,16 +20,16 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
-        BlazorRef = DotNetObjectReference.Create<ILayoutTypeProviderBackend>(this);
+        BlazorRef = DotNetObjectReference.Create<IScreenSizeProviderBackend>(this);
         JSRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.LayoutTypeProvider.create",
+            $"{BlazorUICoreModule.ImportName}.ScreenSizeProvider.create",
             BlazorRef
             );
     }
 
-    [JSInvokable("OnLayoutChanged")]
-    public void OnLayoutChanged(bool isDesktopLayout) {
-        _layoutType = isDesktopLayout ? LayoutType.Desktop : LayoutType.Mobile;
+    [JSInvokable("OnSizeChanged")]
+    public void OnSizeChanged(bool isDesktopScreenSize) {
+        _screenSize = isDesktopScreenSize ? ScreenSize.Desktop : ScreenSize.Mobile;
         StateHasChanged();
     }
 

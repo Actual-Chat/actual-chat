@@ -1,3 +1,3 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public enum LayoutType { Desktop, Mobile  }
+public enum ScreenSize { Desktop, Mobile  }

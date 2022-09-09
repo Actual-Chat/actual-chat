@@ -6,7 +6,7 @@
 @using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
 
-<LayoutTypeProvider>
+<ScreenSizeProvider>
     <CascadingBlazoredModal>
         <CascadingAuthState>
             <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
@@ -30,7 +30,7 @@
         </CascadingAuthState>
     </CascadingBlazoredModal>
     <ContextMenuContainer />
-</LayoutTypeProvider>
+</ScreenSizeProvider>
 
 @code {
     private static Assembly? UIAssembly { get; set; }

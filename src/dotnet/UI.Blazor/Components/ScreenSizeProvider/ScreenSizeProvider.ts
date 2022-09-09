@@ -1,21 +1,21 @@
-export class LayoutTypeProvider {
+export class ScreenSizeProvider {
     private blazorRef: DotNet.DotNetObject;
     private readonly window: Window;
-    private layoutLastValue : boolean;
+    private screenSizeLastValue : boolean;
 
-    static create(blazorRef: DotNet.DotNetObject): LayoutTypeProvider {
-        return new LayoutTypeProvider(blazorRef);
+    static create(blazorRef: DotNet.DotNetObject): ScreenSizeProvider {
+        return new ScreenSizeProvider(blazorRef);
     }
 
     constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.window = document.defaultView;
         this.window.addEventListener('resize', this.windowResizeListener);
-        this.layoutLastValue = this.isDesktopLayout();
-        this.notifyLayoutChanged(this.layoutLastValue);
+        this.screenSizeLastValue = this.isDesktopScreenSize();
+        this.notifySizeChanged(this.screenSizeLastValue);
     }
 
-    public isDesktopLayout = () : boolean => {
+    public isDesktopScreenSize = () : boolean => {
         const DesktopWidthThreshold : number = 1024;
         const width = this.window.innerWidth;
         return width >= DesktopWidthThreshold;
@@ -27,15 +27,15 @@ export class LayoutTypeProvider {
 
     private windowResizeListener = ((event: Event) => {
         // console.log("window size changed");
-        const newLayout = this.isDesktopLayout();
-        if (newLayout === this.layoutLastValue)
+        const newScreenSize = this.isDesktopScreenSize();
+        if (newScreenSize === this.screenSizeLastValue)
             return;
-        this.layoutLastValue = newLayout;
-        this.notifyLayoutChanged(newLayout);
+        this.screenSizeLastValue = newScreenSize;
+        this.notifySizeChanged(newScreenSize);
     });
 
-    private notifyLayoutChanged(isDesktop : boolean)
+    private notifySizeChanged(isDesktop : boolean)
     {
-        this.blazorRef.invokeMethodAsync('OnLayoutChanged', isDesktop);
+        this.blazorRef.invokeMethodAsync('OnSizeChanged', isDesktop);
     }
 }
