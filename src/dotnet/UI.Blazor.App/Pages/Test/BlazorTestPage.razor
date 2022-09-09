@@ -1,0 +1,29 @@
+@page "/test/blazor"
+
+<h2>Blazor Test Page</h2>
+
+<p>Output:</p>
+<pre>
+    @_output.ToDelimitedString("\r\n")
+</pre>
+
+@code {
+    private ImmutableList<string> _output = ImmutableList<string>.Empty;
+
+    protected override Task OnInitializedAsync() {
+        BackgroundTask.Run(() => {
+            for (var i = 0; i < 10; i++) {
+                var iCopy = i;
+                InvokeAsync(async () => {
+                    _output = _output.Add($"{iCopy} started.");
+                    StateHasChanged();
+                    await Task.Delay(500);
+                    _output = _output.Add($"{iCopy} completed.");
+                    StateHasChanged();
+                });
+            }
+            return Task.CompletedTask;
+        });
+        return Task.CompletedTask;
+    }
+}
