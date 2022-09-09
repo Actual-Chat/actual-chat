@@ -14,7 +14,7 @@
         </Tab>;
 }
 
-<NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
+<NavbarGroup Title="Contacts" Class="navbar-contacts" Id="@NavbarGroupId">
     <ChildContent>
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
@@ -35,6 +35,7 @@
 </NavbarGroup>
 
 @code {
+    public const string NavbarGroupId = "contacts";
     private TabId _activeTabId;
 
     [Inject] private Session Session { get; init; } = null!;

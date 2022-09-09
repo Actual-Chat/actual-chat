@@ -1,4 +1,5 @@
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
@@ -6,9 +7,10 @@
     var m = State.Value;
 }
 
-@foreach (var widget in OrderedWidgets) {
+@foreach (var widget in OrderedWidgets.Where(x => x.NavbarGroupId == null || x.NavbarGroupId == NavbarUI.ActiveGroupId)) {
     @widget.Content
 }
+
 @if (m.Account.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/user/invite">Invite Users</NavbarItem>
@@ -33,3 +35,20 @@
     </NavbarGroup>
 }
 
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        NavbarUI.ActiveGroupChanged -= NavbarUIOnActiveGroupChanged;
+        return base.DisposeAsync();
+    }
+
+    private void NavbarUIOnActiveGroupChanged(object? sender, EventArgs e) {
+        StateHasChanged();
+    }
+}

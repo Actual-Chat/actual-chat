@@ -33,8 +33,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddTransient<MarkupHub>();
 
         // Navbar widgets
-        services.RegisterNavbarWidget<ChatListNavbarWidget>();
-        services.RegisterNavbarWidget<ContactListNavbarWidget>();
+        services.RegisterNavbarWidget<ChatListNavbarWidget>(navbarGroupId: ChatListNavbarWidget.NavbarGroupId);
+        services.RegisterNavbarWidget<ContactListNavbarWidget>(navbarGroupId: ContactListNavbarWidget.NavbarGroupId);
 
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);

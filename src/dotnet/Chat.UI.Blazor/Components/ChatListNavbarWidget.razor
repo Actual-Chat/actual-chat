@@ -13,7 +13,7 @@
         </Tab>;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats" AddClick="OnCreateNewChatClick">
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupId" AddClick="OnCreateNewChatClick">
     <ChildContent>
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
@@ -33,6 +33,7 @@
 </NavbarGroup>
 
 @code {
+    public const string NavbarGroupId = "chats";
     private TabId _activeTabId;
 
     [Inject] private RecentChats RecentChats { get; init; } = null!;

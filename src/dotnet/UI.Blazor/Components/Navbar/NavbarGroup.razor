@@ -3,10 +3,12 @@
 @using ActualChat.UI.Blazor.Services
 @{
     var isVisible = NavbarUI.ActiveGroupId == Id;
-    var cls = isVisible ? "flex-y" : "hidden";
 }
 
-<div class="@Class @cls navbar-group flex space-y-1">
+@if (!isVisible) {
+    return;
+}
+<div class="@Class flex-y navbar-group flex space-y-1">
     @ChildContent
 </div>
 
