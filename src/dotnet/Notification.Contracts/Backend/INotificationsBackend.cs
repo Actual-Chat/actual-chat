@@ -15,24 +15,10 @@ public interface INotificationsBackend : IComputeService
     Task<NotificationEntry> GetNotification(string userId, string notificationId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task NotifyNewChatEntry(NotifyNewChatEntryCommand newChatEntryCommand, CancellationToken cancellationToken);
-
-    [CommandHandler]
     Task NotifySubscribers(NotifySubscribersCommand notifySubscribersCommand, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record NotifyNewChatEntryCommand(
-        [property: DataMember] string ChatId,
-        [property: DataMember] long EntryId,
-        [property: DataMember] string AuthorId,
-        [property: DataMember] string AuthorUserId,
-        [property: DataMember] string Title,
-        [property: DataMember] string IconUrl,
-        [property: DataMember] string Content
-    ) : ICommand<Unit>, IBackendCommand;
 
     [DataContract]
     public sealed record NotifySubscribersCommand(

@@ -1,11 +1,9 @@
 using ActualChat.Db;
 using ActualChat.Db.Module;
-using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
-using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
@@ -157,10 +155,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
         services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
 
-        // Events
-        services.AddEvent<NewUserEvent>();
-
-        // API controllers
+       // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);
     }
 }

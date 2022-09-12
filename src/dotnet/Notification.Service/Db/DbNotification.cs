@@ -27,6 +27,8 @@ public class DbNotification : IHasId<string>
 
     public string? ChatAuthorId { get; set; }
 
+    public string IconUrl { get; set; } = null!;
+
     [NotMapped] public bool IsActive => _handledAt != null;
 
     public DateTime CreatedAt {
