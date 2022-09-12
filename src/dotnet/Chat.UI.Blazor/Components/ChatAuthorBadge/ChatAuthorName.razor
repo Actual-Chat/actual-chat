@@ -10,7 +10,10 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool EnableDetailsPopup { get; set; } = true;
 
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(State.LatestNonErrorValue.Author.Id);
+    private void OnChatAuthorClick() {
+        if (EnableDetailsPopup)
+            ChatUI.ShowChatAuthorModal(State.LatestNonErrorValue.Author.Id);
+    }
 }
