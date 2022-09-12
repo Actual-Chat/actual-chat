@@ -48,7 +48,11 @@ public class ChatUIStateSync : WorkerBase
             SyncRecordingState(cancellationToken),
             SyncKeepAwakeState(cancellationToken),
             StopRecordingWhenInactive(cancellationToken),
-            ResetHighlightedChatEntry(cancellationToken));
+            ResetHighlightedChatEntry(cancellationToken),
+            SyncIsActive(cancellationToken),
+            SyncIsRecording(cancellationToken),
+            SyncIsListening(cancellationToken),
+            SyncIsPinned(cancellationToken));
 
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
@@ -233,6 +237,60 @@ public class ChatUIStateSync : WorkerBase
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
                 ChatUI.HighlightedChatEntryId.Value = 0;
             }
+        }
+    }
+
+    private async Task SyncIsActive(CancellationToken cancellationToken)
+    {
+        var old = ChatUI.ActiveChatId.Value;
+        await foreach (var change in ChatUI.ActiveChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+            using (Computed.Invalidate()) {
+                _ = ChatUI.IsActive(old);
+                _ = ChatUI.IsActive(change.Value);
+            }
+
+            old = change.Value;
+        }
+    }
+
+    private async Task SyncIsRecording(CancellationToken cancellationToken)
+    {
+        var old = ChatUI.RecordingChatId.Value;
+        await foreach (var change in ChatUI.RecordingChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+            using (Computed.Invalidate()) {
+                _ = ChatUI.IsRecording(old);
+                _ = ChatUI.IsRecording(change.Value);
+            }
+
+            old = change.Value;
+        }
+    }
+
+    private async Task SyncIsListening(CancellationToken cancellationToken)
+    {
+        var old = ImmutableList<Symbol>.Empty;
+        await foreach (var change in ChatUI.ListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            using (Computed.Invalidate())
+                foreach (var id in change.Value.Except(old).Union(old.Except(change.Value)))
+                    _ = ChatUI.IsListening(id);
+
+            old = change.Value;
+        }
+    }
+
+    private async Task SyncIsPinned(CancellationToken cancellationToken)
+    {
+        var old = ImmutableDictionary<string, Moment>.Empty;
+        await foreach (var change in ChatUI.PinnedChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            var comparer = change.Value.KeyComparer;
+            var changedKeys = change.Value.Keys.Except(old.Keys, comparer)
+                .Union(old.Keys.Except(change.Value.Keys, comparer), comparer);
+
+            using (Computed.Invalidate())
+                foreach (var id in changedKeys)
+                    _ = ChatUI.IsPinned(id);
+
+            old = change.Value;
         }
     }
 }

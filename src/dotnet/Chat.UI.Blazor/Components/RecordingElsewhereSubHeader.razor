@@ -37,10 +37,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (recordingChatId.IsEmpty || recordingChatId == Chat.Id)
+        if (!await ChatUI.IsRecording(Chat.Id).ConfigureAwait(false))
             return Model.None;
 
+        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
         var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
         if (recordingChat == null)
             return Model.None;
