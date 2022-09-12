@@ -3,3 +3,37 @@
         @apply hidden;
     }
 }
+
+.settings-modal-panel.tab-panel {
+    @apply flex-x;
+}
+.settings-modal-panel .tab-panel-tabs {
+    @apply flex-y w-1/4 bg-03 items-end p-4 gap-y-4;
+}
+.settings-modal-panel .tab-panel-tabs .btn-group {
+    @apply flex-y h-full justify-start min-w-2/3;
+}
+.settings-modal-panel .tab-panel-tabs .btn-group-container {
+    @apply rounded-lg hover:bg-selected cursor-pointer;
+}
+.settings-modal-panel .tab-panel-tabs .btn-group-container * {
+    @apply cursor-pointer;
+}
+.settings-modal-panel .tab-panel-tabs .tab-btn.btn {
+    @apply min-w-full justify-start;
+}
+.settings-modal-panel .tab-panel-tabs .tab-panel-title {
+    @apply flex-y justify-start min-w-2/3 px-2 text-lg;
+}
+.settings-modal-panel .tab {
+    @apply px-20 py-4;
+}
+.settings-modal-panel .tab .tab-content {
+    @apply w-1/2;
+}
+.settings-modal-panel .tab .tab-content .tab-title {
+    @apply text-lg mb-6;
+}
+.settings-modal-panel .tab .tab-content .tab-title i {
+    @apply hidden;
+}

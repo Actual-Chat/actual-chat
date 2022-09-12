@@ -15,7 +15,7 @@ public sealed class ModalUI
         MatchingTypeFinder = matchingTypeFinder;
     }
 
-    public IModalReference Show<TModel>(TModel model)
+    public IModalReference Show<TModel>(TModel model, string cls = "")
         where TModel : class
     {
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
@@ -24,7 +24,7 @@ public sealed class ModalUI
                 $"No modal view component for '{model.GetType()}' model.");
 
         var modalOptions = new ModalOptions {
-            Class = "blazored-modal modal",
+            Class = $"blazored-modal modal {cls}",
             HideHeader = true,
         };
         var modalParameters = new ModalParameters();
