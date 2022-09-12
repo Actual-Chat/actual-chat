@@ -44,7 +44,9 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
         await using var __ = dbContext.ConfigureAwait(false);
         var dbRecent = await dbContext.RecentEntries.Get(DbRecentEntry.GetId(shardKey, key), cancellationToken).ConfigureAwait(false);
         if (dbRecent == null) {
-            dbRecent = new DbRecentEntry(new RecentEntry(shardKey, key, scope));
+            dbRecent = new DbRecentEntry(new RecentEntry(shardKey, key, scope) {
+                UpdatedAt = moment,
+            });
             dbContext.Add(dbRecent);
         }
         else
