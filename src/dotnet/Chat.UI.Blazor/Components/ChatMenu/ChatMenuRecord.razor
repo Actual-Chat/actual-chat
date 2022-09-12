@@ -39,5 +39,5 @@
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsActive(Chat.Id);
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsRecording(Chat.Id);
 }
