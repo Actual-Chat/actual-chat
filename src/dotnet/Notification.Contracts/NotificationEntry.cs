@@ -1,6 +1,6 @@
 namespace ActualChat.Notification;
 
-public record NotificationEntry(string NotificationId, NotificationType Type, string Title, string Content, Moment NotificationTime)
+public record NotificationEntry(string NotificationId, NotificationType Type, string Title, string Content, string IconUrl, Moment NotificationTime)
 {
     public ChatNotificationEntry? Chat { get; init; }
     public MessageNotificationEntry? Message { get; init; }

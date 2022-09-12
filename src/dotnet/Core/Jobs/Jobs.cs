@@ -8,8 +8,8 @@ public class Jobs
     public Jobs(LocalJobQueue jobQueue)
         => JobQueue = jobQueue;
 
-    public async Task Schedule<T>(
-        JobConfiguration<T> jobConfiguration,
+    public async Task Schedule(
+        JobConfiguration jobConfiguration,
         CancellationToken cancellationToken)
         => await JobQueue.Enqueue(jobConfiguration, cancellationToken).ConfigureAwait(false);
 }

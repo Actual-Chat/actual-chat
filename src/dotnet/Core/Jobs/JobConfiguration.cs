@@ -9,8 +9,8 @@ public interface IJobConfiguration
 }
 
 [DataContract]
-public record JobConfiguration<T>(
-    [property: DataMember] IJob<T> Job,
+public record JobConfiguration(
+    [property: DataMember] IJob Job,
     [property: DataMember] ShardKind ShardKind = ShardKind.None,
     [property: DataMember] string ShardKey = "",
     [property: DataMember] JobPriority Priority = JobPriority.Normal) : IJobConfiguration

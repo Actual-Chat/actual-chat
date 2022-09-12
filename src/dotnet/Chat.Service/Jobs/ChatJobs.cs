@@ -1,54 +1,56 @@
-using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Users;
-using ActualChat.Users.Events;
+using ActualChat.Users.Jobs;
 
-namespace ActualChat.Chat.EventHandlers;
+namespace ActualChat.Chat.Jobs;
 
-public class NewUserEventHandler : IEventHandler<NewUserEvent>
+public class ChatJobs
 {
-    private readonly IAccountsBackend _accountsBackend;
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly IChatRolesBackend _chatRolesBackend;
-    private readonly ICommander _commander;
-    private readonly HostInfo _hostInfo;
+    private HostInfo HostInfo { get; }
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
+    private IChatRolesBackend ChatRolesBackend { get; }
+    private ICommander Commander { get; }
 
-    public NewUserEventHandler(
-        IAccountsBackend accountsBackend,
+    public ChatJobs(
+        HostInfo hostInfo,
         IChatAuthorsBackend chatAuthorsBackend,
+        IAccountsBackend accountsBackend,
         IChatRolesBackend chatRolesBackend,
-        ICommander commander,
-        HostInfo hostInfo)
+        ICommander commander)
     {
-        _hostInfo = hostInfo;
-        _accountsBackend = accountsBackend;
-        _chatAuthorsBackend = chatAuthorsBackend;
-        _chatRolesBackend = chatRolesBackend;
-        _commander = commander;
+        HostInfo = hostInfo;
+        ChatAuthorsBackend = chatAuthorsBackend;
+        AccountsBackend = accountsBackend;
+        ChatRolesBackend = chatRolesBackend;
+        Commander = commander;
     }
 
-    public async Task Handle(NewUserEvent @event, ICommander commander, CancellationToken cancellationToken)
+    [CommandHandler]
+    public virtual async Task OnNewUserJob(OnNewUserJob job, CancellationToken cancellationToken)
     {
-        await JoinToAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+        await JoinToAnnouncementsChat(job.UserId, cancellationToken).ConfigureAwait(false);
 
-        if (_hostInfo.IsDevelopmentInstance)
-            await JoinAdminToDefaultChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+        if (HostInfo.IsDevelopmentInstance)
+            await JoinAdminToDefaultChat(job.UserId, cancellationToken).ConfigureAwait(false);
     }
+
+
 
     private async Task JoinToAnnouncementsChat(string userId, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
-        var chatAuthor = await _chatAuthorsBackend.GetOrCreate(
+        var chatAuthor = await ChatAuthorsBackend.GetOrCreate(
                 chatId,
                 userId,
                 false,
                 cancellationToken)
             .ConfigureAwait(false);
 
-        if (!_hostInfo.IsDevelopmentInstance)
+        if (!HostInfo.IsDevelopmentInstance)
             return;
 
-        var account = await _accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account == null || !account.IsAdmin)
             return;
 
@@ -57,12 +59,12 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
 
     private async Task JoinAdminToDefaultChat(string userId, CancellationToken cancellationToken)
     {
-        var account = await _accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account == null || !account.IsAdmin)
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
-        var chatAuthor = await _chatAuthorsBackend.GetOrCreate(
+        var chatAuthor = await ChatAuthorsBackend.GetOrCreate(
                 chatId,
                 userId,
                 false,
@@ -74,7 +76,7 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
 
     private async Task AddOwner(string chatId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
     {
-        var ownerRole = await _chatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
+        var ownerRole = await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
             .ConfigureAwait(false);
         if (ownerRole == null)
             return;
@@ -89,6 +91,6 @@ public class NewUserEventHandler : IEventHandler<NewUserEvent>
                     },
                 },
             });
-        await _commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,6 +1,4 @@
 namespace ActualChat.Jobs;
 
-public interface IJob<out T> : ICommand<Unit>, IBackendCommand
-{
-    T Data { get; }
-}
+public interface IJob : ICommand<Unit>, IBackendCommand
+{ }

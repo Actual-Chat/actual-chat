@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Module;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;

@@ -1,6 +1,6 @@
-using ActualChat.Events;
+using ActualChat.Jobs;
 using ActualChat.Users.Db;
-using ActualChat.Users.Events;
+using ActualChat.Users.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
@@ -17,7 +17,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     protected UserNamer UserNamer { get; }
     protected IUserPresences UserPresences { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
-    protected IEventPublisher EventPublisher { get; }
 
     public AuthCommandFilters(IServiceProvider services)
         : base(services)
@@ -28,7 +27,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         UserNamer = services.GetRequiredService<UserNamer>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-        EventPublisher = services.GetRequiredService<IEventPublisher>();
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
@@ -118,8 +116,9 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        var newUserEvent = new NewUserEvent(userId);
-        await EventPublisher.Publish(newUserEvent, cancellationToken).ConfigureAwait(false);
+        new OnNewUserJob(userId)
+            .Configure()
+            .ScheduleOnCompletion(command);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]

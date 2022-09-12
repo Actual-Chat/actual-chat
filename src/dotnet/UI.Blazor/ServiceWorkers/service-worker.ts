@@ -69,9 +69,9 @@ const messaging = getMessaging(app);
 console.info(`${LogScope}: Subscribing on fcm background message`);
 onBackgroundMessage(messaging, async payload => {
     console.info(`${LogScope}: Received background message `, payload);
-    const chatId = payload.data.chatId;
+    const tag = payload.data.tag;
     const options: NotificationOptions = {
-        tag: chatId.toString(),
+        tag: tag.toString(),
         icon: payload.data.icon,
         body: payload.notification.body,
         data: {
@@ -79,7 +79,7 @@ onBackgroundMessage(messaging, async payload => {
         },
     };
     // silly hack because notifications get lost or suppressed
-    const notificationsToClose = await sw.registration.getNotifications({tag: chatId});
+    const notificationsToClose = await sw.registration.getNotifications({tag: tag});
     for (let toClose of notificationsToClose) {
         toClose.close();
     }

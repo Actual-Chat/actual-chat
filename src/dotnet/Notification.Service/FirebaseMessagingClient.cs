@@ -24,7 +24,7 @@ public class FirebaseMessagingClient
 
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
-        var (notificationId, notificationType, title, content, _) = entry;
+        var (notificationId, notificationType, title, content, iconUrl, _) = entry;
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
@@ -62,11 +62,13 @@ public class FirebaseMessagingClient
             Tokens = deviceIds,
             Data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) {
                 { "notificationId", notificationId },
+                { "tag", tag },
+                { "icon", iconUrl },
             },
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
                 Body = content,
-                // ImageUrl = ??? TODO(AK): set image url
+                ImageUrl = iconUrl,
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
@@ -79,7 +81,7 @@ public class FirebaseMessagingClient
                     DefaultSound = true,
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
-                    // Icon = ??? TODO(AK): Set icon
+                    Icon = iconUrl,
                 },
                 Priority = Priority.Normal,
                 CollapseKey = "topics",
@@ -96,15 +98,17 @@ public class FirebaseMessagingClient
             Webpush = new WebpushConfig {
                 Notification = new WebpushNotification {
                     Renotify = false,
+                    Title = title,
+                    Body = content,
                     Tag = tag,
                     RequireInteraction = false,
-                    // Icon = ??? TODO(AK): Set icon
+                    Icon = iconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
                     Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")
                         ? null
                         : link,
-                }
+                },
             },
         };
         var batchResponse = await FirebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)

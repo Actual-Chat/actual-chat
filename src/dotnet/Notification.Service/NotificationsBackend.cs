@@ -246,6 +246,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             dbNotification.NotificationType,
             dbNotification.Title,
             dbNotification.Content,
+            dbNotification.IconUrl,
             dbNotification.ModifiedAt ?? dbNotification.CreatedAt) {
             Message = dbNotification.NotificationType switch {
                 NotificationType.Invitation => null,
@@ -260,52 +261,6 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 _ => throw new ArgumentOutOfRangeException(),
             }
         };
-    }
-
-    // [CommandHandler]
-    public virtual async Task NotifyNewChatEntry(
-        INotificationsBackend.NotifyNewChatEntryCommand notifyCommand,
-        CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return;
-
-        var (chatId, entryId, authorId, userId, title, iconUrl, content) = notifyCommand;
-        // var markupToTextConverter = new MarkupToTextConverter(AuthorNameResolver, UserNameResolver, 100);
-        // var textContent = await markupToTextConverter.Apply(
-        //     MarkupParser.ParseRaw(content),
-        //     cancellationToken
-        //     ).ConfigureAwait(false);
-        var textContent = content;
-        var notificationTime = DateTime.UtcNow;
-        var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
-        foreach (var userIdGroup in userIds.Where(uid => !OrdinalEquals(uid, userId)).Chunk(200))
-            await Task.WhenAll(userIdGroup.Select(uid
-                    => Commander.Call(
-                        new NotifyUserCommand(
-                            uid,
-                            new NotificationEntry(
-                                Ulid.NewUlid().ToString(),
-                                NotificationType.Message,
-                                title,
-                                textContent,
-                                notificationTime) {
-                                Message = new MessageNotificationEntry(chatId, entryId, authorId),
-                            }),
-                        cancellationToken)))
-                .ConfigureAwait(false);
-
-        // async Task<string> AuthorNameResolver(string authorId1, CancellationToken cancellationToken1)
-        // {
-        //     var author = await _chatAuthorsBackend.Get(chatId, authorId1, true, cancellationToken1).ConfigureAwait(false);
-        //     return author?.Name ?? "";
-        // }
-        //
-        // async Task<string> UserNameResolver(string userId1, CancellationToken cancellationToken1)
-        // {
-        //     var author = await _accountsBackend.GetUserAuthor(userId1, cancellationToken1).ConfigureAwait(false);
-        //     return author?.Name ?? "";
-        // }
     }
 
     // Private methods
@@ -407,6 +362,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             if (existingEntry != null) {
                 existingEntry.Title = entry1.Title;
                 existingEntry.Content = entry1.Content;
+                existingEntry.IconUrl = entry1.IconUrl;
                 existingEntry.ChatEntryId = entry1.Message?.EntryId;
                 existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
                 existingEntry.ModifiedAt = entry1.NotificationTime;
@@ -421,6 +377,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                     NotificationType = entry1.Type,
                     Title = entry1.Title,
                     Content = entry1.Content,
+                    IconUrl = entry1.IconUrl,
                     ChatId = entry1.Message?.ChatId ?? entry1.Chat?.ChatId,
                     ChatEntryId = entry1.Message?.EntryId,
                     ChatAuthorId = entry1.Message?.AuthorId,

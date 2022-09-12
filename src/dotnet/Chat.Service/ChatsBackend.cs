@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Events;
+using ActualChat.Chat.Jobs;
 using ActualChat.Db;
-using ActualChat.Events;
+using ActualChat.Jobs;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -26,7 +26,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IUserContactsBackend UserContactsBackend { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
-    private IEventPublisher EventPublisher { get; }
     private DiffEngine DiffEngine { get; }
 
     public ChatsBackend(IServiceProvider services) : base(services)
@@ -40,7 +39,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
         DbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        EventPublisher = Services.GetRequiredService<IEventPublisher>();
         DiffEngine = Services.GetRequiredService<DiffEngine>();
     }
 
@@ -428,8 +426,11 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(isNew);
 
         if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
-            var chatEvent = new NewChatEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content);
-            await EventPublisher.Publish(chatEvent, cancellationToken).ConfigureAwait(false);
+            new OnNewTextEntryJob(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
+                .Configure()
+                .ShardByChatId(entry.ChatId)
+                .WithPriority(JobPriority.Low)
+                .ScheduleOnCompletion(command);
 
             await Commander.Call(new IMentionsBackend.UpdateCommand(entry), cancellationToken).ConfigureAwait(false);
         }
