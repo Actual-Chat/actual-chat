@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<Symbol>
+@inherits ComputedStateComponent<bool>
 @{
-    var isRecording = RecordingChatId == ChatId;
+    var isRecording = State.Value;
     var cls = $"recording-in-chat {(isRecording ? "on" : "off")} {Class}";
 }
 
@@ -9,7 +9,7 @@
     <Tooltip Text="Stop" Position="TooltipPosition.Top">
         <ButtonRound
             Class="@cls"
-            Click="_ => RecordingChatId = Symbol.Empty">
+            Click="_ => ChatUI.SetRecordingState(Symbol.Empty)">
             <i class="icon-mic text-2xl"></i>
         </ButtonRound>
     </Tooltip>
@@ -17,7 +17,7 @@
     <Tooltip Text="Start" Position="TooltipPosition.Top">
         <ButtonRound
             Class="@cls"
-            Click="_ => RecordingChatId = ChatId">
+            Click="_ => ChatUI.SetRecordingState(ChatId)">
             <i class="icon-mic text-2xl"></i>
         </ButtonRound>
     </Tooltip>
@@ -29,14 +29,9 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
-    private Symbol RecordingChatId {
-        get => State.ValueOrDefault;
-        set => _ = ChatUI.SetRecordingState(value);
-    }
-
-    protected override ComputedState<Symbol>.Options GetStateOptions()
+    protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
-    protected override async Task<Symbol> ComputeState(CancellationToken cancellationToken)
-        => await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsRecording(ChatId);
+
 }

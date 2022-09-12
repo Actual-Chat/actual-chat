@@ -78,10 +78,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-        var listeningChatIds = await ChatUI.ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var isListening = listeningChatIds.Contains(Chat.Id);
-        var isRecording = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false) == Chat.Id;
-        var isActive = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false) == Chat.Id;
+        var isListening = await ChatUI.IsListening(Chat.Id).ConfigureAwait(false);
+        var isRecording = await ChatUI.IsRecording(Chat.Id).ConfigureAwait(false);
+        var isActive = await ChatUI.IsActive(Chat.Id).ConfigureAwait(false);
         return new(rules.CanWrite(), isListening, isRecording, isActive);
     }
 

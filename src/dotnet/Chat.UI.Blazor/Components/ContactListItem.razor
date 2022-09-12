@@ -49,18 +49,15 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var presenceTask = UserPresences.Get(Contact.TargetUserId, cancellationToken);
-        var listeningChatIdsTask = ChatUI.ListeningChatIds.Use(cancellationToken);
-        var recordingChatIdsTask = ChatUI.RecordingChatId.Use(cancellationToken);
 
         var presence = await presenceTask.ConfigureAwait(false);
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
-        var isActive = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false) == fullChatId;
-        var listeningChatIds = await listeningChatIdsTask.ConfigureAwait(false);
-        var isListening = listeningChatIds.Contains(fullChatId);
-        var isRecording = await recordingChatIdsTask.ConfigureAwait(false) == fullChatId;
+        var isActive = await ChatUI.IsActive(fullChatId).ConfigureAwait(false);
+        var isListening = await ChatUI.IsListening(fullChatId).ConfigureAwait(false);
+        var isRecording = await ChatUI.IsRecording(fullChatId).ConfigureAwait(false);
 
         return new(
             fullChatId,

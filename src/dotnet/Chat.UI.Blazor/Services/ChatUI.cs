@@ -32,6 +32,7 @@ public class ChatUI
     private Moment Now => Clocks.SystemClock.Now;
 
     public IStoredState<Symbol> ActiveChatId { get; }
+
     public IState<ImmutableDictionary<string, Moment>> PinnedChatIds => _pinnedChatIds;
     public IState<Symbol> RecordingChatId => _recordingChatId;
     public IState<ImmutableList<Symbol>> ListeningChatIds => _listeningChatIds;
@@ -83,18 +84,16 @@ public class ChatUI
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsPinned(Symbol chatId, CancellationToken cancellationToken)
-    {
-        var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return pinnedChatIds.ContainsKey(chatId);
-    }
+    public virtual Task<bool> IsPinned(Symbol chatId) => Task.FromResult(PinnedChatIds.Value.ContainsKey(chatId));
 
     [ComputeMethod]
-    public virtual async Task<bool> IsListening(Symbol chatId, CancellationToken cancellationToken)
-    {
-        var listeningChatIds = await ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return listeningChatIds.Contains(chatId);
-    }
+    public virtual Task<bool> IsListening(Symbol chatId) => Task.FromResult(ListeningChatIds.Value.Contains(chatId));
+
+    [ComputeMethod]
+    public virtual Task<bool> IsRecording(Symbol chatId) => Task.FromResult(RecordingChatId.Value == chatId);
+
+    [ComputeMethod]
+    public virtual Task<bool> IsActive(Symbol chatId) => Task.FromResult(ActiveChatId.Value == chatId);
 
     [ComputeMethod]
     public virtual async Task<SingleChatPlaybackState> GetSingleChatPlaybackState(Symbol chatId, CancellationToken cancellationToken)

@@ -63,8 +63,7 @@
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
-        var isRecording = recordingChatId == ChatId;
+        var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
         if (State.LatestNonErrorValue == null)
             return new Model(isRecording ? RecordingState.On : RecordingState.Off);
         return new Model(isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);

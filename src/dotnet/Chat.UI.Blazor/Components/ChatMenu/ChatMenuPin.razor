@@ -39,7 +39,7 @@
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(Chat.Id, cancellationToken);
+        => ChatUI.IsPinned(Chat.Id);
 
     private void Toggle()
         => _ = ChatUI.SetPinState(Chat.Id, !State.ValueOrDefault);

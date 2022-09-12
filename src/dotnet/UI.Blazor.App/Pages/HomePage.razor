@@ -23,10 +23,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        var activeChatIdState = ChatUI.ActiveChatId;
-        await activeChatIdState.WhenRead.ConfigureAwait(true);
-    }
+    protected override Task OnInitializedAsync() => ChatUI.ActiveChatId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = new Model(null, Symbol.Empty) };
