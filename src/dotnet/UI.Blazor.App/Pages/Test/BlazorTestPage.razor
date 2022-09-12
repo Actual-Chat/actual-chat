@@ -2,12 +2,20 @@
 
 <h2>Blazor Test Page</h2>
 
-<p>Output:</p>
+<p>Counter: @_counter</p>
+<p>
+    <Button Click="@(() => _counter++)">Counter++</Button>
+    <Button Click="@NoStateHasChanged.EventCallback(() => _counter++)">Counter++ w/o StateHasChanged</Button>
+    <Button Click="@StateHasChanged">StateHasChanged</Button>
+</p>
+
+<p class="pt-4">Output:</p>
 <pre>
     @_output.ToDelimitedString("\r\n")
 </pre>
 
 @code {
+    private int _counter;
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
 
     protected override Task OnInitializedAsync() {
