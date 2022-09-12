@@ -6,7 +6,12 @@
 }
 
 <div class="@Class tab">
-    @ChildContent
+    <div class="tab-content">
+        @if (TitleContent != null) {
+            @TitleContent
+        }
+        @ChildContent
+    </div>
 </div>
 
 @code {
@@ -17,6 +22,7 @@
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? TitleContent { get; set; }
 
     protected override void OnInitialized() {
         if (Panel == null)

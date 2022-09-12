@@ -1,0 +1,76 @@
+@using Stl.Extensibility
+@implements IModalView<SettingsModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+@{
+    RenderFragment RenderTitle(string iconTitle, string title) =>
+        @<div class="tab-title">
+            <i class="icon-@iconTitle text-2xl"></i>
+            <span>@title</span>
+        </div>;
+}
+
+<DialogFrame Title="Settings">
+    <Body>
+        <div class="flex-x justify-center w-full h-full">
+            <TabPanel Class="settings-modal-panel" Title="Settings">
+                <Tab Title="My Account" Class="px-2">
+                    <TitleContent>
+                        @RenderTitle("person", "My account")
+                    </TitleContent>
+                    <ChildContent>
+                        <UserSettings/>
+                    </ChildContent>
+                </Tab>
+                <Tab Title="Chat folder" Class="px-2">
+                    <TitleContent>
+                        @RenderTitle("folder", "Chat folder")
+                    </TitleContent>
+                    <ChildContent>
+                    </ChildContent>
+                </Tab>
+                <Tab Title="Notification" Class="px-2">
+                    <TitleContent>
+                        @RenderTitle("bell", "Notification")
+                    </TitleContent>
+                    <ChildContent>
+                    </ChildContent>
+                </Tab>
+                <Tab Title="Language" Class="px-2">
+                    <TitleContent>
+                        @RenderTitle("language", "Language")
+                    </TitleContent>
+                    <ChildContent>
+                    </ChildContent>
+                </Tab>
+                <Tab Title="Appearance" Class="px-2">
+                    <TitleContent>
+                        @RenderTitle("night-mode", "Appearance")
+                    </TitleContent>
+                    <ChildContent>
+                        <AppearanceSettings/>
+                    </ChildContent>
+                </Tab>
+            </TabPanel>
+        </div>
+        </Body>
+    <Buttons>
+
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public bool EnableIncompleteUI { get; init; }
+    }
+}
