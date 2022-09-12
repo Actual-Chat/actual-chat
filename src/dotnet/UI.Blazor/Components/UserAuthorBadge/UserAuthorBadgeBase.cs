@@ -8,7 +8,7 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
-    [Parameter] public bool ShowsPresence { get; set; }
+    [Parameter] public bool ShowPresence { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -29,7 +29,7 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
         }
 
         var presence = Presence.Unknown;
-        if (ShowsPresence)
+        if (ShowPresence)
             presence = await UserPresences.Get(UserId, cancellationToken).ConfigureAwait(true);
 
         return new(author, presence);

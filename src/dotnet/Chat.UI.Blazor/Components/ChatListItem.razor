@@ -11,7 +11,7 @@
     <NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@m.IsActive">
         <ChildContent>
             <div class="flex-x items-center gap-x-2">
-                <ChatListItemIcon Chat="Chat"/>
+                <ChatIcon Chat="Chat"/>
                 <span class="text-ellipsis whitespace-nowrap overflow-hidden">
                     <FoundText Text="@Chat.Title"/>
                 </span>
