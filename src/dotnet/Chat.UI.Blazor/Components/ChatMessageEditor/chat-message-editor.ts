@@ -1,6 +1,6 @@
 import './chat-message-editor.css';
 import { SlateEditorHandle } from '../SlateEditor/slate-editor-handle';
-import { debounce } from 'lodash';
+import { debounce } from 'debounce';
 
 const LogScope: string = 'MessageEditor';
 
@@ -38,7 +38,7 @@ export class ChatMessageEditor {
 
         // Wiring up event listeners
         this.getInitialArgs();
-        window.addEventListener('resize', debounce(this.onChangeViewSize, 100));
+        window.visualViewport.addEventListener('resize', debounce(this.onChangeViewSize, 100));
         this.input.addEventListener('paste', this.onInputPaste);
         this.filesPicker.addEventListener('change', this.onFilesPickerChange);
         this.postButton.addEventListener('click', this.onPostClick);
@@ -74,17 +74,16 @@ export class ChatMessageEditor {
     }
 
     private getInitialArgs = () => {
+        this.initialHeight = window.visualViewport.height;
+        this.initialWidth = window.visualViewport.width;
         if (window.innerWidth < 1024) {
-            this.initialHeight = window.innerHeight;
-            this.initialWidth = window.innerWidth;
             this.mobileListenersHandler(true);
         }
     }
 
     private onChangeViewSize = () => {
-        const size = this.getWindowSize();
-        const height = size[0];
-        const width = size[1];
+        const height = window.visualViewport.height;
+        const width = window.visualViewport.width;
         const isMobile = width < 1024;
         if (isMobile != this.isMobile) {
             if (isMobile) {
@@ -136,12 +135,6 @@ export class ChatMessageEditor {
             this.initialHeight = height;
         }
         this.onChangeMobileHeight(height);
-    }
-
-    private getWindowSize = () : [number, number] => {
-        const height = window.innerHeight;
-        const width = window.innerWidth;
-        return [height, width];
     }
 
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
