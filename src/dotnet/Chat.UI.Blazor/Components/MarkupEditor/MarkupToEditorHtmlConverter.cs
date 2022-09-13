@@ -1,6 +1,9 @@
+using System.Text;
 using System.Text.Encodings.Web;
+using System.Web;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Users;
+using NetBox.Extensions;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
@@ -13,116 +16,123 @@ public class MarkupToEditorHtmlConverter
     public MarkupToEditorHtmlConverter(MarkupHub markupHub)
         => MarkupHub = markupHub;
 
-    public async Task<string> Convert(
-        Symbol chatId,
-        string markupText,
-        CancellationToken cancellationToken)
+    public async Task<string> Convert(string markupText, CancellationToken cancellationToken)
     {
-        MarkupHub.ChatId = chatId;
-        var visitor = new Visitor(MarkupHub);
+        var visitor = new Visitor();
         var markup = MarkupHub.MarkupParser.Parse(markupText);
-        return await visitor.Apply(markup, cancellationToken).ConfigureAwait(false);
+        markup = await MarkupHub.MentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
+        var result = visitor.Apply(markup);
+        return result;
     }
 
-    private class Visitor : AsyncMarkupVisitor<Unit>
+    private class Visitor : MarkupVisitor<Unit>
     {
-        private readonly List<string> _result = new();
+        private readonly StringBuilder _result = new();
 
-        private MarkupHub MarkupHub { get; }
-
-        public Visitor(MarkupHub markupHub)
-            => MarkupHub = markupHub;
-
-        public async ValueTask<string> Apply(Markup markup, CancellationToken cancellationToken)
+        public string Apply(Markup markup)
         {
-            if (_result.Count != 0)
+            if (_result.Length > 0)
                 throw StandardError.StateTransition("This method can be called just once per visitor instance.");
-            await Visit(markup, cancellationToken).ConfigureAwait(false);
-            return _result.ToDelimitedString("");
+            Visit(markup);
+            return _result.ToString();
         }
 
-        protected override async ValueTask<Unit> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken)
+        protected override Unit VisitSeq(MarkupSeq markup)
         {
             foreach (var markupItem in markup.Items)
-                await Visit(markupItem, cancellationToken).ConfigureAwait(false);
+                Visit(markupItem);
             return default;
         }
 
-        protected override async ValueTask<Unit> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitStylized(StylizedMarkup markup)
         {
+            var startTag = markup.Style switch {
+                TextStyle.Italic => "<em>",
+                TextStyle.Bold => "<strong>",
+                _ => "",
+            };
+            var endTag = markup.Style switch {
+                TextStyle.Italic => "</em>",
+                TextStyle.Bold => "</strong>",
+                _ => "",
+            };
+
+            AddHtml(startTag);
             AddPlainText(markup.StyleToken);
-            await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+            Visit(markup.Content);
             AddPlainText(markup.StyleToken);
+            AddHtml(endTag);
             return default;
         }
 
-        protected override ValueTask<Unit> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitUrl(UrlMarkup markup)
+        {
+            AddHtml("<a target=\"_blank\" href=\"");
+            AddPlainText(markup.Url);
+            AddHtml("\">");
+            AddMarkupText(markup);
+            AddHtml("</a>");
+            return default;
+        }
 
-        protected override async ValueTask<Unit> VisitMention(Mention markup, CancellationToken cancellationToken)
+        protected override Unit VisitMention(Mention markup)
         {
             var id = markup.Id;
-            var name = await MarkupHub.ChatMentionResolver.ResolveName(markup, cancellationToken).ConfigureAwait(false);
-            name ??= Author.Removed.Name;
-            AddHtml("<span class=\"mention\" contenteditable=\"false\" data-id=\"");
+            AddHtml("<span class=\"mention-markup\" contenteditable=\"false\" data-id=\"");
             AddPlainText(id);
             AddHtml("\">");
-            AddPlainText(name);
+            AddPlainText(markup.Name);
             AddHtml("</span>");
             return default;
         }
 
-        protected override ValueTask<Unit> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitCodeBlock(CodeBlockMarkup markup)
+        {
+            AddHtml("<pre class=\"code-block-markup\"><code>");
+            AddMarkupText(markup);
+            AddHtml("</code></pre>");
+            return default;
+        }
 
-        protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitPlainText(PlainTextMarkup markup)
+            => AddMarkupText(markup);
 
-        protected override ValueTask<Unit> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken)
-            => AddHtml("</br>", cancellationToken);
+        protected override Unit VisitNewLine(NewLineMarkup markup)
+            => AddHtml("</br>");
 
-        protected override ValueTask<Unit> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitPlayableText(PlayableTextMarkup markup)
+            => AddMarkupText(markup);
 
-        protected override ValueTask<Unit> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitPreformattedText(PreformattedTextMarkup markup)
+        {
+            AddHtml("<code class=\"preformatted-text-markup\">");
+            AddMarkupText(markup);
+            AddHtml("</code>");
+            return default;
+        }
 
-        protected override ValueTask<Unit> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitUnparsed(UnparsedTextMarkup markup)
+            => AddMarkupText(markup);
 
-        protected override ValueTask<Unit> VisitText(TextMarkup markup, CancellationToken cancellationToken)
-            => AddMarkupText(markup, cancellationToken);
+        protected override Unit VisitText(TextMarkup markup)
+            => AddMarkupText(markup);
 
         // Private methods
 
-        private ValueTask<Unit> AddMarkupText(Markup markup, CancellationToken cancellationToken)
-        {
-            AddMarkupText(markup);
-            return UnitValueTask;
-        }
-
-        private ValueTask<Unit> AddPlainText(string text, CancellationToken cancellationToken)
-        {
-            AddPlainText(text);
-            return UnitValueTask;
-        }
-
-        private ValueTask<Unit> AddHtml(string html, CancellationToken cancellationToken)
-        {
-            AddHtml(html);
-            return UnitValueTask;
-        }
-
-        private void AddMarkupText(Markup markup)
+        private Unit AddMarkupText(Markup markup)
             => AddPlainText(markup.Format());
 
-        private void AddPlainText(string text)
+        private Unit AddPlainText(string text)
         {
             var html = HtmlEncoder.Default.Encode(text);
             AddHtml(html);
+            return default;
         }
 
-        private void AddHtml(string html)
-            => _result.Add(html);
+        private Unit AddHtml(string html)
+        {
+            _result.Append(html);
+            return default;
+        }
     }
 }
