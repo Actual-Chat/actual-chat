@@ -10,6 +10,9 @@ public class EventTestService
     [CommandHandler]
     public virtual Task ProcessTestEvent(TestEvent @event, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask;
+
         ProcessedEvents.Enqueue(@event);
         return Task.CompletedTask;
     }

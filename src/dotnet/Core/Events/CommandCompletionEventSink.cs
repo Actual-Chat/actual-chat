@@ -17,11 +17,14 @@ public class CommandCompletionEventSink : IOperationCompletionListener
         if (operation is not TransientOperation)
             return;
 
-        var jobConfigurations = operation.Items.Items.Values
+        if (operation.Items.Items.Count == 0)
+            return;
+
+        var eventConfigurations = operation.Items.Items.Values
             .OfType<IEventConfiguration>();
 
-        foreach (var jobConfiguration in jobConfigurations)
+        foreach (var eventConfiguration in eventConfigurations)
             // TODO(AK): it's suspicious the we don't have CancellationToken there
-            await EventQueue.Enqueue(jobConfiguration, CancellationToken.None).ConfigureAwait(false);
+            await EventQueue.Enqueue(eventConfiguration, CancellationToken.None).ConfigureAwait(false);
     }
 }
