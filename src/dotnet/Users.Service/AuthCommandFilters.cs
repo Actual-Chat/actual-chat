@@ -1,4 +1,4 @@
-using ActualChat.Jobs;
+using ActualChat.Events;
 using ActualChat.Users.Db;
 using ActualChat.Users.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -116,9 +116,10 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        new OnNewUserJob(userId)
+        await new NewUserEvent(userId)
             .Configure()
-            .ScheduleOnCompletion(command);
+            .ScheduleOnCompletion(command)
+            .ConfigureAwait(false);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]

@@ -1,4 +1,4 @@
-namespace ActualChat.Jobs;
+namespace ActualChat.Events;
 
 public enum ShardKind
 {

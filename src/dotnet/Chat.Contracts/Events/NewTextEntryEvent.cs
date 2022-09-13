@@ -1,9 +1,9 @@
-using ActualChat.Jobs;
+using ActualChat.Events;
 
-namespace ActualChat.Chat.Jobs;
+namespace ActualChat.Chat.Events;
 
 [DataContract]
-public record OnNewTextEntryJob(
+public record NewTextEntryEvent(
     [property: DataMember(Order = 0)]
     string ChatId,
     [property: DataMember(Order = 1)]
@@ -11,4 +11,4 @@ public record OnNewTextEntryJob(
     [property: DataMember(Order = 2)]
     string AuthorId,
     [property: DataMember(Order = 3)]
-    string Content) : IJob;
+    string Content) : IEvent;
