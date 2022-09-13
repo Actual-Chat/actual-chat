@@ -6,15 +6,8 @@
     @ChildContent
 </CascadingValue>
 
-<div @ref="_tooltipRef" class="ac-tooltip">
-    @Text
-    <div @ref="_arrowRef" class="ac-tooltip-arrow"></div>
-</div>
-
 @code {
     private TargetRefReceiver _targetRefReceiver = new();
-    private ElementReference _tooltipRef;
-    private ElementReference _arrowRef;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<Tooltip> _blazorRef = null!;
 
@@ -32,10 +25,9 @@
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
                 targetRef,
-                _tooltipRef,
-                _arrowRef,
                 _blazorRef,
                 new {
+                    Text,
                     Position,
                 });
         }
