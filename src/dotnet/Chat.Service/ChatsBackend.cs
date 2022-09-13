@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Events;
 using ActualChat.Chat.Jobs;
 using ActualChat.Db;
-using ActualChat.Jobs;
+using ActualChat.Events;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -426,12 +427,12 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(isNew);
 
         if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
-            new OnNewTextEntryJob(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
+            await new NewTextEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
                 .Configure()
                 .ShardByChatId(entry.ChatId)
-                .WithPriority(JobPriority.Low)
-                .ScheduleOnCompletion(command);
-
+                .WithPriority(EventPriority.Low)
+                .ScheduleOnCompletion(command)
+                .ConfigureAwait(false);
             await Commander.Call(new IMentionsBackend.UpdateCommand(entry), cancellationToken).ConfigureAwait(false);
         }
 

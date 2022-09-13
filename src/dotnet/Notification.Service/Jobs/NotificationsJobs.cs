@@ -1,5 +1,5 @@
 using ActualChat.Chat;
-using ActualChat.Chat.Jobs;
+using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 
 namespace ActualChat.Notification.Jobs;
@@ -28,10 +28,10 @@ public class NotificationsJobs
 
     [CommandHandler]
     public virtual async Task OnNewTextEntryJob(
-        OnNewTextEntryJob job,
+        NewTextEntryEvent @event,
         CancellationToken cancellationToken)
     {
-        var (chatId, entryId, authorId, content) = job;
+        var (chatId, entryId, authorId, content) = @event;
         if (Computed.IsInvalidating())
             return;
 

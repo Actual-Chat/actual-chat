@@ -27,12 +27,12 @@ public class ChatJobs
     }
 
     [CommandHandler]
-    public virtual async Task OnNewUserJob(OnNewUserJob job, CancellationToken cancellationToken)
+    public virtual async Task OnNewUserJob(NewUserEvent @event, CancellationToken cancellationToken)
     {
-        await JoinToAnnouncementsChat(job.UserId, cancellationToken).ConfigureAwait(false);
+        await JoinToAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance)
-            await JoinAdminToDefaultChat(job.UserId, cancellationToken).ConfigureAwait(false);
+            await JoinAdminToDefaultChat(@event.UserId, cancellationToken).ConfigureAwait(false);
     }
 
 

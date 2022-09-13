@@ -2,8 +2,8 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Jobs;
 using ActualChat.Db;
 using ActualChat.Db.Module;
+using ActualChat.Events;
 using ActualChat.Hosting;
-using ActualChat.Jobs;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
@@ -103,7 +103,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Jobs
-        fusion.AddJobScheduler();
+        fusion.AddLocalEventScheduler();
         fusion.AddComputeService<ChatJobs>();
 
         // // Events

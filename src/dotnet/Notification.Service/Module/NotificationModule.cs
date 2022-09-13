@@ -1,7 +1,7 @@
 ﻿using ActualChat.Db.Module;
+using ActualChat.Events;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
-using ActualChat.Jobs;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Jobs;
 using ActualChat.Redis.Module;
@@ -68,7 +68,7 @@ public class NotificationModule : HostModule<NotificationSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
 
         // Jobs
-        fusion.AddJobScheduler();
+        fusion.AddLocalEventScheduler();
         fusion.AddComputeService<NotificationsJobs>();
     }
 }

@@ -1,6 +1,6 @@
-namespace ActualChat.Jobs;
+namespace ActualChat.Events;
 
-public enum JobPriority
+public enum EventPriority
 {
     Low = -1,
     Normal = 0,

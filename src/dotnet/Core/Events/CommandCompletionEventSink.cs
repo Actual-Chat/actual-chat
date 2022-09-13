@@ -1,13 +1,13 @@
 using Stl.Fusion.Operations.Internal;
 
-namespace ActualChat.Jobs;
+namespace ActualChat.Events;
 
-public class JobScheduler : IOperationCompletionListener
+public class CommandCompletionEventSink : IOperationCompletionListener
 {
-    private LocalJobQueue JobQueue { get; }
+    private LocalEventQueue EventQueue { get; }
 
-    public JobScheduler(LocalJobQueue jobQueue)
-        => JobQueue = jobQueue;
+    public CommandCompletionEventSink(LocalEventQueue eventQueue)
+        => EventQueue = eventQueue;
 
     public bool IsReady()
         => true;
@@ -18,10 +18,10 @@ public class JobScheduler : IOperationCompletionListener
             return;
 
         var jobConfigurations = operation.Items.Items.Values
-            .OfType<IJobConfiguration>();
+            .OfType<IEventConfiguration>();
 
         foreach (var jobConfiguration in jobConfigurations)
             // TODO(AK): it's suspicious the we don't have CancellationToken there
-            await JobQueue.Enqueue(jobConfiguration, CancellationToken.None).ConfigureAwait(false);
+            await EventQueue.Enqueue(jobConfiguration, CancellationToken.None).ConfigureAwait(false);
     }
 }
