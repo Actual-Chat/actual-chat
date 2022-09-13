@@ -12,6 +12,7 @@ import {
 const LogScope = 'Tooltip';
 
 interface TooltipOptions {
+    text: string;
     position: TooltipPosition;
 }
 
@@ -36,17 +37,13 @@ export class Tooltip implements Disposable {
 
     public static create(
         triggerRef: HTMLElement,
-        tooltipRef: HTMLElement,
-        arrowRef: HTMLElement,
         blazorRef: DotNet.DotNetObject,
         options?: TooltipOptions): Tooltip {
-        return new Tooltip(triggerRef, tooltipRef, arrowRef, blazorRef, options);
+        return new Tooltip(triggerRef, blazorRef, options);
     }
 
     constructor(
         private readonly triggerRef: HTMLElement,
-        private readonly tooltipRef: HTMLElement,
-        private readonly arrowRef: HTMLElement,
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options?: TooltipOptions,
     ) {
@@ -62,9 +59,8 @@ export class Tooltip implements Disposable {
             merge(mouseLeaveEvents$, blurEvents$)
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.hideTooltip());
-        }
-        catch (error) {
-            console.error(`${LogScope}.ctor: error:`, error)
+        } catch (error) {
+            console.error(`${LogScope}.ctor: error:`, error);
             this.dispose();
         }
     }
@@ -78,12 +74,16 @@ export class Tooltip implements Disposable {
     }
 
     private showTooltip() {
-        this.tooltipRef.style.display = 'block';
+        const tooltipRef = this.getTooltipElement();
+        tooltipRef.style.display = 'block';
+        const tooltipTextRef = this.getTooltipTextElement();
+        tooltipTextRef.textContent = this.options.text;
         this.update();
     }
 
     private hideTooltip() {
-        this.tooltipRef.style.display = '';
+        const tooltipRef = this.getTooltipElement();
+        tooltipRef.style.display = '';
     }
 
     private getPlacement(): Placement {
@@ -94,22 +94,24 @@ export class Tooltip implements Disposable {
     }
 
     private update() {
+        const tooltipRef = this.getTooltipElement();
+        const arrowRef = this.getArrowElement();
         const placement = this.getPlacement();
-        computePosition(this.triggerRef, this.tooltipRef, {
+        computePosition(this.triggerRef, tooltipRef, {
             placement: placement,
             middleware: [
                 offset(6),
                 flip(),
-                shift({padding: 5}),
-                arrow({element: this.arrowRef}),
+                shift({ padding: 5 }),
+                arrow({ element: arrowRef }),
             ],
-        }).then(({x, y, placement, middlewareData}) => {
-            Object.assign(this.tooltipRef.style, {
+        }).then(({ x, y, placement, middlewareData }) => {
+            Object.assign(tooltipRef.style, {
                 left: `${x}px`,
                 top: `${y}px`,
             });
 
-            const {x: arrowX, y: arrowY} = middlewareData.arrow;
+            const { x: arrowX, y: arrowY } = middlewareData.arrow;
 
             const staticSide = {
                 top: 'bottom',
@@ -118,7 +120,7 @@ export class Tooltip implements Disposable {
                 left: 'right',
             }[placement.split('-')[0]];
 
-            Object.assign(this.arrowRef.style, {
+            Object.assign(arrowRef.style, {
                 left: arrowX != null ? `${arrowX}px` : '',
                 top: arrowY != null ? `${arrowY}px` : '',
                 right: '',
@@ -129,7 +131,7 @@ export class Tooltip implements Disposable {
     }
 
     private mapPositionToPlacement(position: TooltipPosition): Placement {
-        switch (position){
+        switch (position) {
             case TooltipPosition.Top:
                 return 'top';
             case TooltipPosition.TopStart:
@@ -155,7 +157,19 @@ export class Tooltip implements Disposable {
             case TooltipPosition.LeftEnd:
                 return 'left-end';
             default:
-                throw Error("Argument out of range.")
+                throw Error('Argument out of range.');
         }
+    }
+
+    private getArrowElement(): HTMLElement {
+        return document.getElementsByClassName('ac-tooltip-arrow')[0] as HTMLElement;
+    }
+
+    private getTooltipElement(): HTMLElement {
+        return document.getElementsByClassName('ac-tooltip')[0] as HTMLElement;
+    }
+
+    private getTooltipTextElement() {
+        return document.getElementsByClassName('ac-tooltip-text')[0] as HTMLElement;
     }
 }
