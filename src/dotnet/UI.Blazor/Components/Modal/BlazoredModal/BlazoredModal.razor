@@ -15,8 +15,7 @@
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-
-    [CascadingParameter] private IModalService CascadedModalService { get; set; } = default!;
+    [Inject] private IModalService ModalService { get; set; } = default!;
 
     [Parameter] public bool? HideHeader { get; set; }
     [Parameter] public bool? HideCloseButton { get; set; }
@@ -40,11 +39,11 @@
 
     protected override void OnInitialized()
     {
-        if (CascadedModalService == null)
+        if (ModalService == null)
             throw new InvalidOperationException($"{GetType()} requires a cascading parameter of type {nameof(IModalService)}.");
 
-        ((ModalService) CascadedModalService).OnModalInstanceAdded += Update;
-        ((ModalService) CascadedModalService).OnModalCloseRequested += CloseInstance;
+        ((ModalService) ModalService).OnModalInstanceAdded += Update;
+        ((ModalService) ModalService).OnModalCloseRequested += CloseInstance;
         Nav.LocationChanged += CancelModals;
 
         _globalModalOptions.Class = Class;
