@@ -2,8 +2,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface ILiveTime
 {
-    TimeZoneConverter TimeZoneConverter { get; }
-
     [ComputeMethod]
     Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
 
@@ -15,14 +13,13 @@ public class LiveTime : ILiveTime
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
+    private TimeZoneConverter TimeZoneConverter { get; }
     private MomentClockSet Clocks { get; }
 
-    public TimeZoneConverter TimeZoneConverter { get; }
-
-    public LiveTime(MomentClockSet clocks, TimeZoneConverter timeZoneConverter)
+    public LiveTime(TimeZoneConverter timeZoneConverter, MomentClockSet clocks)
     {
-        Clocks = clocks;
         TimeZoneConverter = timeZoneConverter;
+        Clocks = clocks;
     }
 
     // [ComputeMethod]
@@ -96,4 +93,3 @@ public class LiveTime : ILiveTime
     private TimeSpan TrimInvalidationDelay(TimeSpan delay)
         => TimeSpanExt.Min(delay, MaxInvalidationDelay);
 }
-

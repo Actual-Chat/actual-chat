@@ -8,7 +8,6 @@
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var message = _lastRenderedMessage = Message;
     var entry = message.Entry;
-    var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
 
     var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
@@ -34,18 +33,19 @@
             <div class="chat-message group px-1.5 py-1 relative">
                 @if (showPicture || isReply) {
                     <div class="m-1.5">
-                        <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" EvalInitialValue="true" Click="@OnChatAuthorClick"/>
+                        <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
                     </div>
                 } else {
+                    var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                     <div class="w-10 mr-2 mt-1">
-                        <span class="chat-message-timestamp-secondary text-03 text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
+                        <span class="chat-message-timestamp-on-hover">@timestamp</span>
                     </div>
                 }
                 <div class="flex-1 overflow-hidden">
                     @if (showHeader || isReply) {
                         <div class="header chat-message-header ml-1">
-                            <ChatAuthorName AuthorId="@entry.AuthorId" EvalInitialValue="true" Class="author-name"/>
-                            <ChatMessageTimestamp Moment="entry.BeginsAt"/>
+                            <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
+                            <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
                             @* &nbsp; *@
                             @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
                         </div>
@@ -163,7 +163,7 @@
         if (message.ShowEntryType) {
             // Adds "T" or "Audio" symbol to the beginning of markup
             var isAudio = markup is PlayableTextMarkup;
-            var entryTypeMarkup = new ChatEntryTypeMarkup(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
+            var entryTypeMarkup = new ChatEntryTypeMarker(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
             markup = new MarkupSeq(entryTypeMarkup, markup);
         }
         return markup;

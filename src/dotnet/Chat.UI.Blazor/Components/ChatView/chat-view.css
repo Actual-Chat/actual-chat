@@ -9,14 +9,6 @@
     @apply bg-message-hover;
 }
 
-.mention-bubble {
-    @apply relative inline-block top-0.5 px-1.5 pb-0.5 mb-0.5 rounded-xl select-none cursor-pointer;
-    @apply bg-mention-other-bubble text-mention-other-text font-medium;
-}
-.mention-bubble.me {
-    @apply bg-mention-me-bubble text-mention-me-text;
-}
-
 .chat-message {
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
@@ -88,37 +80,22 @@
     @apply bg-replied-message-hover border-l-2 border-replied-message-border;
 }
 
-.author-image {
-    @apply rounded-lg border-2 inline-block;
+.chat-message-timestamp {
+    @apply text-03 text-xs;
 }
-
-.author-recording {
-    @apply border-primary;
+.chat-message-timestamp-on-hover {
+    @apply invisible float-right mr-1 mt-0.5;
+    @apply text-03 text-xs;
 }
-
-.author-not-recording {
-    @apply border-bg-01;
-}
-
-.chat-message:hover .author-recording {
-    @apply border-primary;
-}
-
-.chat-message:hover .author-not-recording {
-    @apply border-message-hover;
-}
-
-.chat-message:hover .chat-message-timestamp-secondary {
+.chat-message:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
-
-.chat-message.mention:hover .chat-message-timestamp-secondary {
+.chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
 
 .chat-message-markup {
     @apply text-02;
-    word-break: break-all;
 }
 
 .chat-message.mention .chat-message-markup {
@@ -126,10 +103,6 @@
 }
 .chat-message-menu .menu-item {
     @apply h-8 text-left w-full;
-}
-
-.message-content .chat-entry-type-marker {
-    @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
 }
 
 .chat-message-transcript {
@@ -141,72 +114,6 @@
 
 .chat-message-transcript .changes {
     @apply underline;
-}
-
-.playable-text-markup {
-}
-
-.playable-text-markup > span {
-    @apply inline-block cursor-pointer;
-}
-
-.playable-text-markup > span:hover {
-}
-
-.playable-text-markup .playing-start {
-    border-radius: 6px 0 0 6px;
-}
-
-.playable-text-markup .playing-end {
-    border-radius: 0 6px 6px 0;
-}
-
-.playable-text-markup .playing-start-end {
-    border-radius: 6px;
-}
-
-.playable-text-markup .played-start {
-    border-radius: 6px 0 0 0;
-}
-
-.playable-text-color-blue .playing {
-    background: #2970FF;
-    color: white;
-}
-
-.playable-text-color-blue .played {
-    background: #E1EFFA;
-}
-
-.playable-text-color-green .playing {
-    background: #13BA6A;
-    color: white;
-}
-
-.playable-text-color-green .played {
-    background: #B8FFDD;
-}
-
-.playable-text-color-purple .playing {
-    background: #5429FF;
-    color: white;
-}
-
-.playable-text-color-purple .played {
-    background: #E6E0FF;
-}
-
-.playable-text-color-cyan .playing {
-    background: #00B1D8;
-    color: white;
-}
-
-.playable-text-color-cyan .played {
-    background: #D3F7FF;
-}
-
-.plain-text-markup {
-    word-break: break-word;
 }
 
 .chat-header-title:hover {

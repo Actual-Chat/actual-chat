@@ -13,7 +13,7 @@
         _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
         };
 }
-<span class="playable-text-markup @colorCls whitespace-break-spaces">
+<span class="playable-text-markup @colorCls">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;

@@ -2,15 +2,10 @@
 @inherits ComputedStateComponent<string>
 @{
     var m = State.ValueOrDefault;
-    var tooltip = Tooltip;
-    if (tooltip == null) {
-        var timeZoneConverter = LiveTime.TimeZoneConverter;
-        if (Moment.HasValue) {
-            var localTime = timeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
-            tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
-        } else {
-            tooltip = NullText;
-        }
+    var tooltip = "";
+    if (Moment.HasValue) {
+        var localTime = TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
+        tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
     }
 }
 
@@ -18,23 +13,19 @@
 
 @code {
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public Moment? Moment { get; set; }
-    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string NullText { get; set; } = "n/a";
-    [Parameter] public bool EvalInitialValue { get; set; }
 
     protected override ComputedState<string>.Options GetStateOptions() {
-        var initialValue = "";
-        if (EvalInitialValue) {
-            initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
-        }
-        return new ComputedState<string>.Options {
-            InitialValue = initialValue
-        };
+        var initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
+        return new () { InitialValue = initialValue };
     }
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
-        => Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value, cancellationToken) : Task.FromResult(NullText);
+        => Moment.HasValue
+            ? LiveTime.GetDeltaText(Moment.Value, cancellationToken)
+            : Task.FromResult(NullText);
 }

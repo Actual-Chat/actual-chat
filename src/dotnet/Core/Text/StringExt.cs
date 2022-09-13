@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
 
@@ -76,6 +77,9 @@ public static class StringExt
 
     public static string UrlDecode(this string input)
         => WebUtility.UrlDecode(input);
+
+    public static string HtmlEncode(this string input)
+        => HtmlEncoder.Default.Encode(input);
 
     // ParseXxx
 

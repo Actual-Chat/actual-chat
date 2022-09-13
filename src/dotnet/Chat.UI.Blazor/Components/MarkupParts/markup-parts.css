@@ -1,0 +1,98 @@
+.chat-entry-type-marker {
+    @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
+}
+
+.mention-markup {
+    @apply relative inline-block top-0.5 px-1.5 pb-0.5 mb-0.5 rounded-xl select-none cursor-pointer;
+    @apply bg-mention-other text-mention-other-text font-medium;
+}
+.mention-markup.mention-markup-invalid {
+    @apply bg-mention-invalid text-mention-invalid-text;
+}
+.mention-markup.mention-markup-own {
+    @apply border-mention-own-border bg-mention-own text-mention-own-text;
+}
+
+.url-markup:not(.url-markup-image) {
+    @apply cursor-pointer no-underline hover:underline text-cyan-600;
+}
+.url-markup.url-markup-image {
+    @apply cursor-pointer;
+}
+.url-markup.url-markup-image img {
+    max-width: 400px;
+    max-height: 300px;
+}
+
+.plain-text-markup {
+    word-break: break-word;
+}
+
+.playable-text-markup {
+    @apply whitespace-break-spaces;
+}
+.playable-text-markup > span {
+    @apply inline-block cursor-pointer;
+}
+.playable-text-markup > span:hover {
+}
+
+.playable-text-markup .playing-start {
+    border-radius: 6px 0 0 6px;
+}
+.playable-text-markup .playing-end {
+    border-radius: 0 6px 6px 0;
+}
+.playable-text-markup .playing-start-end {
+    border-radius: 6px;
+}
+.playable-text-markup .played-start {
+    border-radius: 6px 0 0 0;
+}
+.playable-text-color-blue .playing {
+    background: #2970FF;
+    color: white;
+}
+
+.playable-text-color-blue .played {
+    background: #E1EFFA;
+}
+.playable-text-color-green .playing {
+    background: #13BA6A;
+    color: white;
+}
+.playable-text-color-green .played {
+    background: #B8FFDD;
+}
+.playable-text-color-purple .playing {
+    background: #5429FF;
+    color: white;
+}
+.playable-text-color-purple .played {
+    background: #E6E0FF;
+}
+.playable-text-color-cyan .playing {
+    background: #00B1D8;
+    color: white;
+}
+.playable-text-color-cyan .played {
+    background: #D3F7FF;
+}
+
+.preformatted-text-markup {
+    @apply bg-02;
+    @apply whitespace-pre-wrap;
+}
+
+.code-block-markup {
+    @apply my-1 max-w-[95%];
+}
+.code-block-markup code {
+    @apply block border-0 border-l-4 rounded-l bg-02;
+    @apply p-1 px-1.5;
+    @apply whitespace-pre-wrap;
+}
+
+.unknown-markup {
+    @apply text-red-500;
+}

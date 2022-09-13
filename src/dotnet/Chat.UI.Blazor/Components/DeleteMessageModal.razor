@@ -19,7 +19,7 @@
                         </div>
                         <div class="flex-y float-left px-2">
                             <ChatAuthorName AuthorId="@m.Entry.AuthorId" Class="font-bold text-03"/>
-                            <ChatMessageTimestamp Moment="m.Entry.BeginsAt"/>
+                            <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                         </div>
                     </div>
                     <div class="content message-content custom-scrollbar">

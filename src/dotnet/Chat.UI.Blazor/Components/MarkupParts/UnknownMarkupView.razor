@@ -2,6 +2,6 @@
 @inherits MarkupViewBase<Markup>
 @attribute [MatchFor(typeof(Markup), typeof(IMarkupView))]
 
-<span class="unknown-markup text-red-500">
+<span class="unknown-markup">
     [<span class="fa fa-exclamation-triangle"></span> No view for '@(Markup.GetType().Name)']
 </span>

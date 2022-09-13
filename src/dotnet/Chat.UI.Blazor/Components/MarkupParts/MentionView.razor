@@ -2,44 +2,36 @@
 @inherits MarkupViewBase<Mention>
 @attribute [MatchFor(typeof(Mention), typeof(IMarkupView))]
 
-@if (_parsedChatAuthorId.IsValid) {
-    <ChatAuthorBadgeTemplate AuthorId="@_parsedChatAuthorId.Id.Value">
-        @if (!context.Author.Id.IsEmpty) {
-            var cls = ChatAuthor != null && context.Author.Id == ChatAuthor.Id ? "me" : "";
-            <div class="mention-bubble @cls"
-                 @onclick="OnChatAuthorClick">
-                <div class="flex-x items-center">
-                    <i class="icon-at text-md"></i>
-                    @context.Author.Name
-                </div>
-            </div>
-        } else {
-            <div class="inline-block px-1 rounded-md bg-mention">@Markup.Format(MentionFormat.PreferNameOnly)</div>
-        }
-    </ChatAuthorBadgeTemplate>
-}
-else {
-    <div class="inline-block px-1 rounded-md bg-mention-me-bg">@Markup.Format(MentionFormat.PreferNameOnly)</div>
-}
+<ChatAuthorBadgeTemplate AuthorId="@_authorId">
+    @if (context.Author.Id.IsEmpty) {
+        <div class="mention-markup mention-markup-invalid">@Markup.Format(MentionFormat.PreferNameOnly)</div>
+        return;
+    }
+
+    <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
+         @onclick="OnChatAuthorClick">
+        <div class="flex-x items-center">
+            <i class="icon-at text-md"></i>
+            @context.Author.Name
+        </div>
+    </div>
+</ChatAuthorBadgeTemplate>
 
 @code {
-    private ParsedChatAuthorId _parsedChatAuthorId;
-    private ChatAuthor? ChatAuthor { get; set; }
+    private string _authorId = "";
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    protected override async Task OnParametersSetAsync() {
+    protected override void OnParametersSet() {
         MarkupHub.ChatId = Entry.ChatId;
         var id = Markup.Id;
-        if (!id.OrdinalHasPrefix("a:", out var authorId))
-            authorId = id;
-        _parsedChatAuthorId = new ParsedChatAuthorId(authorId);
-        ChatAuthor = await ChatAuthors.Get(Session, Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
+        if (!id.OrdinalHasPrefix("a:", out _authorId))
+            _authorId = id;
     }
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(_parsedChatAuthorId.Id);
+        => ChatUI.ShowChatAuthorModal(_authorId);
 }

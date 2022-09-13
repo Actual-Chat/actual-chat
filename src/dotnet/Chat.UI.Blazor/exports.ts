@@ -6,5 +6,6 @@ export * from './Components/MentionList/mention-list';
 import './Components/components.css';
 import './Components/ChatView/chat-view.css';
 import './Components/ChatMenu/chat-menu.css';
+import './Components/MarkupParts/markup-parts.css';
 import './Components/MobileControlPanel/mobile-control-panel.css';
 import './Pages/user-page.css'

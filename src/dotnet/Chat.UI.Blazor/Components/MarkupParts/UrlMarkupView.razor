@@ -2,35 +2,49 @@
 @inherits MarkupViewBase<UrlMarkup>
 @attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
 @{
-    var isChatUrl = Markup.Url.StartsWith(Nav.BaseUri);
+    var cls = "url-markup url-markup-" + _kind.ToString().ToLower();
 }
 
-@if (!Markup.IsImage) {
-    if (isChatUrl) {
-        <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
-           href="@Markup.Url"
-           @onclick="_ => Nav.NavigateTo(Markup.Url)"
-           @onclick:preventDefault="true">
-            @Markup.Url
-        </a>
-    } else {
-        <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
-           href="@Markup.Url"
-           target="_blank">
-            @Markup.Url
-        </a>
-    }
-} else {
-    <a class="image-markup cursor-pointer" href="@Markup.Url" role="button"
-       @onclick="OnClick" @onclick:preventDefault="true">
-        <img style="max-width: 400px; max-height: 300px" src="@Markup.Url" alt="@Markup.Url"/>
+@switch (_kind) {
+case MarkupUrlKind.Chat:
+    <a class="@cls" href="@Markup.Url" @onclick="OnClick" @onclick:preventDefault="true">
+        @Markup.Url
     </a>
+    break;
+case MarkupUrlKind.Image:
+    <a class="@cls" href="@Markup.Url" role="button" @onclick="OnClick" @onclick:preventDefault="true">
+        <img src="@Markup.Url" alt="@Markup.Url"/>
+    </a>
+    break;
+default:
+    <a class="@cls" href="@Markup.Url" target="_blank">
+        @Markup.Url
+    </a>
+    break;
 }
 
 @code {
+    private MarkupUrlKind _kind;
+
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    private Task OnClick()
-        => ImagePreviewUI.Show(Markup.Url);
+    protected override void OnParametersSet() {
+        _kind = Markup.IsImage
+            ? MarkupUrlKind.Image
+            : Markup.Url.StartsWith(Nav.BaseUri) ? MarkupUrlKind.Chat : MarkupUrlKind.Other;
+    }
+
+    private void OnClick() {
+        if (_kind == MarkupUrlKind.Image)
+            ImagePreviewUI.Show(Markup.Url);
+        else
+            Nav.NavigateTo(Markup.Url);
+    }
+
+    private enum MarkupUrlKind {
+        Other,
+        Chat,
+        Image,
+    }
 }

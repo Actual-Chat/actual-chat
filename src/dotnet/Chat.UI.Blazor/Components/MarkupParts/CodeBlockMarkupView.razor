@@ -2,9 +2,10 @@
 @inherits MarkupViewBase<CodeBlockMarkup>
 @attribute [MatchFor(typeof(CodeBlockMarkup), typeof(IMarkupView))]
 @{
-    var cls = "code-block-markup-view";
+    var cls = $"code-block-markup code-block-language-{Markup.Language}";
+    var title = Markup.Language.IsNullOrEmpty() ? "" : $"Language: {Markup.Language}";
     if (!Markup.Language.IsNullOrEmpty())
         cls += " language-" + Markup.Language;
 }
 
-<pre class="@cls my-1 max-w-[90%]"><code class="block border-0 border-l-4 rounded-l p-1 px-1.5 bg-02">@Markup.Code</code></pre>
+<pre class="@cls" title="@title"><code>@Markup.Code</code></pre>

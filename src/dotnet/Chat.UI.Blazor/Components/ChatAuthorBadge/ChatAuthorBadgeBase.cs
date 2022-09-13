@@ -5,18 +5,19 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBadgeBase.Model>
 {
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private ChatActivity ChatActivity { get; init; } = null!;
-    [Inject] private IUserPresences UserPresences { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] protected IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
+    [Inject] protected IUserPresences UserPresences { get; init; } = null!;
+    [Inject] protected Session Session { get; init; } = null!;
 
-    private string ChatId { get; set; } = "";
-    private IChatRecordingActivity? ChatRecordingActivity { get; set; }
+    protected ParsedChatAuthorId ParsedChatAuthorId { get; private set; }
+    protected Symbol ChatId => ParsedChatAuthorId.ChatId;
+    protected bool IsValid => ParsedChatAuthorId.IsValid;
+    protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
     [Parameter] public bool ShowsPresence { get; set; }
     [Parameter] public bool ShowsRecording { get; set; }
-    [Parameter] public bool EvalInitialValue { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync().ConfigureAwait(true);
@@ -24,8 +25,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     }
 
     protected override async Task OnParametersSetAsync() {
-        var parsedChatAuthorId = new ParsedChatAuthorId(AuthorId).AssertValid();
-        ChatId = parsedChatAuthorId.ChatId.Id;
+        ParsedChatAuthorId = new ParsedChatAuthorId(AuthorId);
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
@@ -34,59 +34,72 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        var initialValue = Model.None;
-        if (EvalInitialValue) {
-            var parsedChatAuthorId = new ParsedChatAuthorId(AuthorId).AssertValid();
-            var chatId = parsedChatAuthorId.ChatId.Id;
-            if (!chatId.IsEmpty) {
-                // Try to initialize with cached value
-                var authorTask = GetChatAuthor(Session, parsedChatAuthorId.ChatId, AuthorId, default);
-                if (authorTask.IsCompletedSuccessfully) {
- #pragma warning disable VSTHRD002
-                    var author = authorTask.Result;
- #pragma warning restore VSTHRD002
-                    if (author != null)
-                        initialValue = new Model(author);
-                }
-            }
+        ParsedChatAuthorId = new ParsedChatAuthorId(AuthorId);
+        if (!IsValid)
+            return new () { InitialValue = Model.None };
+
+        // Try to provide pre-filled initialValue for the first render when everything is cached
+        var authorTask = GetChatAuthor(Session, ChatId, AuthorId, default);
+#pragma warning disable VSTHRD002
+        var author = authorTask.IsCompletedSuccessfully ? authorTask.Result : null;
+#pragma warning restore VSTHRD002
+        var model = author == null ? Model.None : new Model(author);
+
+        if (author != null) {
+            var ownAuthorTask = ChatAuthors.Get(Session, ChatId, default);
+#pragma warning disable VSTHRD002
+            var ownAuthor = ownAuthorTask.IsCompletedSuccessfully ? ownAuthorTask.Result : null;
+#pragma warning restore VSTHRD002
+            var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
+            if (isOwn)
+                model = model with { IsOwn = true };
         }
-        return new () { InitialValue = initialValue };
+
+        return new () { InitialValue = model };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatId.IsNullOrEmpty())
+        if (!IsValid)
             return Model.None;
-        var author = await GetChatAuthor(Session, ChatId, AuthorId, cancellationToken).ConfigureAwait(true);
+
+        var author = await GetChatAuthor(Session, ChatId, AuthorId, cancellationToken);
         if (author == null)
             return Model.None;
-        var presence = await GetPresence(Session, ChatId, AuthorId, cancellationToken).ConfigureAwait(true);
-        return new(author, presence);
+
+        var presence = await GetPresence(Session, ChatId, AuthorId, cancellationToken);
+        var ownAuthor = await ChatAuthors.Get(Session, ChatId, cancellationToken);
+        var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
+        return new(author, presence, isOwn);
     }
 
-    private async Task<Author?> GetChatAuthor(
+    private async ValueTask<Author?> GetChatAuthor(
         Session session,
         string chatId,
         string authorId,
         CancellationToken cancellationToken)
     {
+        if (!IsValid)
+            return null;
+
         var author = await ChatAuthors.GetAuthor(session, chatId, authorId, true, cancellationToken).ConfigureAwait(true);
         if (author == null)
             return null;
         if (string.IsNullOrWhiteSpace(author.Picture)) {
             var picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg";
-            author = author with {
-                Picture = picture,
-            };
+            author = author with { Picture = picture };
         }
         return author;
     }
 
-    private async Task<Presence> GetPresence(
+    private async ValueTask<Presence> GetPresence(
         Session session,
         string chatId,
         string authorId,
         CancellationToken cancellationToken)
     {
+        if (!IsValid)
+            return Presence.Offline;
+
         var presence = Presence.Unknown;
         if (ShowsPresence)
             presence = await ChatAuthors.GetAuthorPresence(session, chatId, authorId, cancellationToken).ConfigureAwait(true);
@@ -98,7 +111,11 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         return presence;
     }
 
-    public sealed record Model(Author Author, Presence Presence = Presence.Unknown) {
+    public sealed record Model(
+        Author Author,
+        Presence Presence = Presence.Unknown,
+        bool IsOwn = false)
+    {
         public static Model None { get; } = new(Author.None);
     }
 }

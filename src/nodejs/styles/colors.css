@@ -76,12 +76,13 @@
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
     --message-hover: #F8FBFE;
-    --mention-other-bubble: #DDE8FF;
+    --mention-other: #DDE8FF;
     --mention-other-text: #2970FF;
-    --mention-me-border: #2FCB5B;
-    --mention-me-bg: #DEF7E5;
-    --mention-me-bubble: #98E5AE;
-    --mention-me-text: #00611B;
+    --mention-own: #98E5AE;
+    --mention-own-border: #2FCB5B;
+    --mention-own-text: #00611B;
+    --mention-invalid: #DDE8FF;
+    --mention-invalid-text: #D83E52;
     --mention-list-item-selected: #EDF2FA;
     --mention-message: #fff7ed;
     --mention-message-hover: #fff7e5;
