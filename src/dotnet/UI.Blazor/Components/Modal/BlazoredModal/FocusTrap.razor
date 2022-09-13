@@ -22,9 +22,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
             await _startFirst.FocusAsync();
-        }
     }
 
     internal async Task SetFocus()
@@ -33,24 +31,18 @@
     private async Task FocusStartAsync(FocusEventArgs args)
     {
         if (!_shiftPressed)
-        {
             await _startFirst.FocusAsync();
-        }
     }
 
     private async Task FocusEndAsync(FocusEventArgs args)
     {
         if (_shiftPressed)
-        {
             await _endFirst.FocusAsync();
-        }
     }
 
     private void HandleKeyPresses(KeyboardEventArgs args)
     {
         if (args.Key == "Tab")
-        {
             _shiftPressed = args.ShiftKey;
-        }
     }
 }

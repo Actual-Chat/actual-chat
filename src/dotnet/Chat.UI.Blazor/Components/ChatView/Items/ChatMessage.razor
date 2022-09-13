@@ -24,7 +24,7 @@
     <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
 }
 @if (message.IsFirstUnread) {
-    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+    <ActualChat.UI.Blazor.Components.Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@MessageMenu.MenuId" Data="@Message">

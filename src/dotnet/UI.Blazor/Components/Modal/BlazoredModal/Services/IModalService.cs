@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
-namespace Blazored.Modal.Services;
+﻿namespace Blazored.Modal.Services;
 
 public interface IModalService
 {

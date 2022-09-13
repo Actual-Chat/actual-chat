@@ -5,9 +5,7 @@ public class ModalParameters : IEnumerable<KeyValuePair<string, object>>
     internal readonly Dictionary<string, object> Parameters;
 
     public ModalParameters()
-    {
-        Parameters = new Dictionary<string, object>();
-    }
+        => Parameters = new Dictionary<string, object>(StringComparer.Ordinal);
 
     public ModalParameters Add(string parameterName, object value)
     {

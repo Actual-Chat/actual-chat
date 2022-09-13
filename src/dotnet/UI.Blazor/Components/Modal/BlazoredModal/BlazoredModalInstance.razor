@@ -1,25 +1,21 @@
 ﻿@namespace Blazored.Modal
 
-@if (UseCustomLayout)
-{
+@if (UseCustomLayout) {
     <CascadingValue Value="this">
         @Content
     </CascadingValue>
 }
-else
-{
+else {
     <div class="bm-container @Position @OverlayCustomClass @OverlayAnimationClass"
          @ref="_modalReference"
          @onclick="HandleBackgroundClick">
 
         <FocusTrap @ref="FocusTrap" IsActive="ActivateFocusTrap">
             <div class="@ModalClass" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
-                @if (!HideHeader)
-                {
+                @if (!HideHeader) {
                     <div class="bm-header">
                         <h3 class="bm-title">@Title</h3>
-                        @if (!HideCloseButton)
-                        {
+                        @if (!HideCloseButton) {
                             <button type="button" class="bm-close" aria-label="close" @onclick="() => CancelAsync()" @attributes="@_closeBtnAttributes">
                                 <span>&times;</span>
                             </button>

@@ -1,5 +1,4 @@
 ﻿using Blazored.Modal.Services;
-using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Blazored.Modal;
@@ -32,28 +31,24 @@ public partial class BlazoredModalInstance : IDisposable
     private bool _setFocus;
 
     // Temporarily add a tabindex of -1 to the close button so it doesn't get selected as the first element by activateFocusTrap
-    private readonly Dictionary<string, object> _closeBtnAttributes = new() { { "tabindex", "-1" } };
+    private readonly Dictionary<string, object> _closeBtnAttributes = new(StringComparer.Ordinal) { { "tabindex", "-1" } };
 
     protected override void OnInitialized()
         => ConfigureInstance();
 
     protected override void OnAfterRender(bool firstRender)
     {
-        if (firstRender)
-        {
-            _closeBtnAttributes.Clear();
-            StateHasChanged();
-        }
+        if (!firstRender)
+            return;
+        _closeBtnAttributes.Clear();
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_setFocus)
-        {
+        if (_setFocus) {
             if (FocusTrap is not null)
-            {
                 await FocusTrap.SetFocus();
-            }
             _setFocus = false;
         }
     }
@@ -81,8 +76,7 @@ public partial class BlazoredModalInstance : IDisposable
     public async Task CloseAsync(ModalResult modalResult)
     {
         // Fade out the modal, and after that actually remove it
-        if (AnimationType is ModalAnimationType.FadeInOut)
-        {
+        if (AnimationType is ModalAnimationType.FadeInOut) {
             OverlayAnimationClass += " fade-out";
             StateHasChanged();
 
@@ -125,15 +119,9 @@ public partial class BlazoredModalInstance : IDisposable
     private bool SetUseCustomLayout()
     {
         if (Options.UseCustomLayout.HasValue)
-        {
             return Options.UseCustomLayout.Value;
-        }
-
         if (GlobalModalOptions.UseCustomLayout.HasValue)
-        {
             return GlobalModalOptions.UseCustomLayout.Value;
-        }
-
         return false;
     }
 
@@ -142,46 +130,31 @@ public partial class BlazoredModalInstance : IDisposable
         ModalPosition position;
 
         if (Options.Position.HasValue)
-        {
             position = Options.Position.Value;
-        }
         else if (GlobalModalOptions.Position.HasValue)
-        {
             position = GlobalModalOptions.Position.Value;
-        }
         else
-        {
             position = ModalPosition.TopCenter;
-        }
 
-        switch (position)
-        {
+        switch (position) {
             case ModalPosition.TopCenter:
                 return "";
-
             case ModalPosition.TopLeft:
                 return "position-topleft";
-
             case ModalPosition.TopRight:
                 return "position-topright";
-
             case ModalPosition.Middle:
                 return "position-middle";
-
             case ModalPosition.BottomLeft:
                 return "position-bottomleft";
-
             case ModalPosition.BottomRight:
                 return "position-bottomright";
-
             case ModalPosition.Custom:
                 if (!string.IsNullOrWhiteSpace(Options.PositionCustomClass))
                     return Options.PositionCustomClass;
                 if (!string.IsNullOrWhiteSpace(GlobalModalOptions.PositionCustomClass))
                     return GlobalModalOptions.PositionCustomClass;
-
                 throw new InvalidOperationException("Position set to Custom without a PositionCustomClass set");
-
             default:
                 return "";
         }
@@ -192,40 +165,27 @@ public partial class BlazoredModalInstance : IDisposable
         ModalSize size;
 
         if (Options.Size.HasValue)
-        {
             size = Options.Size.Value;
-        }
         else if (GlobalModalOptions.Size.HasValue)
-        {
             size = GlobalModalOptions.Size.Value;
-        }
         else
-        {
             size = ModalSize.Medium;
-        }
 
-        switch (size)
-        {
+        switch (size) {
             case ModalSize.Small:
                 return "size-small";
-
             case ModalSize.Medium:
                 return "size-medium";
-
             case ModalSize.Large:
                 return "size-large";
-
             case ModalSize.ExtraLarge:
                 return "size-extra-large";
-
             case ModalSize.Custom:
                 if (!string.IsNullOrWhiteSpace(Options.SizeCustomClass))
                     return Options.SizeCustomClass;
                 if (!string.IsNullOrWhiteSpace(GlobalModalOptions.SizeCustomClass))
                     return GlobalModalOptions.SizeCustomClass;
-
                 throw new InvalidOperationException("Size set to Custom without a SizeCustomClass set");
-
             default:
                 return "size-medium";
         }
@@ -234,19 +194,14 @@ public partial class BlazoredModalInstance : IDisposable
     private string SetModalClass()
     {
         var modalClass = string.Empty;
-
         if (!string.IsNullOrWhiteSpace(Options.Class))
             modalClass = Options.Class;
-
         if (string.IsNullOrWhiteSpace(modalClass) && !string.IsNullOrWhiteSpace(GlobalModalOptions.Class))
             modalClass = GlobalModalOptions.Class;
-
-        if (string.IsNullOrWhiteSpace(modalClass))
-        {
+        if (string.IsNullOrWhiteSpace(modalClass)) {
             modalClass = "blazored-modal";
             modalClass += $" {SetSize()}";
         }
-
         return modalClass;
     }
 
@@ -260,10 +215,8 @@ public partial class BlazoredModalInstance : IDisposable
     {
         if (Options.HideHeader.HasValue)
             return Options.HideHeader.Value;
-
         if (GlobalModalOptions.HideHeader.HasValue)
             return GlobalModalOptions.HideHeader.Value;
-
         return false;
     }
 
@@ -271,10 +224,8 @@ public partial class BlazoredModalInstance : IDisposable
     {
         if (Options.HideCloseButton.HasValue)
             return Options.HideCloseButton.Value;
-
         if (GlobalModalOptions.HideCloseButton.HasValue)
             return GlobalModalOptions.HideCloseButton.Value;
-
         return false;
     }
 
@@ -282,10 +233,8 @@ public partial class BlazoredModalInstance : IDisposable
     {
         if (Options.DisableBackgroundCancel.HasValue)
             return Options.DisableBackgroundCancel.Value;
-
         if (GlobalModalOptions.DisableBackgroundCancel.HasValue)
             return GlobalModalOptions.DisableBackgroundCancel.Value;
-
         return false;
     }
 
@@ -293,10 +242,8 @@ public partial class BlazoredModalInstance : IDisposable
     {
         if (!string.IsNullOrWhiteSpace(Options.OverlayCustomClass))
             return Options.OverlayCustomClass;
-
         if (!string.IsNullOrWhiteSpace(GlobalModalOptions.OverlayCustomClass))
             return GlobalModalOptions.OverlayCustomClass;
-
         return string.Empty;
     }
 
@@ -304,17 +251,15 @@ public partial class BlazoredModalInstance : IDisposable
     {
         if (Options.ActivateFocusTrap.HasValue)
             return Options.ActivateFocusTrap.Value;
-
         if (GlobalModalOptions.ActivateFocusTrap.HasValue)
             return GlobalModalOptions.ActivateFocusTrap.Value;
-
         return true;
     }
 
     private async Task HandleBackgroundClick()
     {
-        if (DisableBackgroundCancel) return;
-
+        if (DisableBackgroundCancel)
+            return;
         await CancelAsync();
     }
 

@@ -4,11 +4,11 @@ namespace BlazorContextMenu;
 
 public abstract class ContextMenuBase : MenuTreeComponent
 {
-    [Inject] private BlazorContextMenuSettings Settings { get; set; } = null!;
-    [Inject] private IContextMenuStorage ContextMenuStorage { get; set; } = null!;
-    [Inject] private IInternalContextMenuHandler ContextMenuHandler { get; set; } = null!;
-    [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
-    [Inject] private IMenuTreeTraverser MenuTreeTraverser { get; set; } = null!;
+    [Inject] private BlazorContextMenuSettings Settings { get; init; } = null!;
+    [Inject] private IContextMenuStorage ContextMenuStorage { get; init; } = null!;
+    [Inject] private IInternalContextMenuHandler ContextMenuHandler { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private IMenuTreeTraverser MenuTreeTraverser { get; init; } = null!;
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = null!;
@@ -117,7 +117,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
     [CascadingParameter(Name = "CascadingAnimation")]
     protected Animation? CascadingAnimation { get; set; }
 
-    protected bool IsShowing;
+    protected bool IsShown;
     protected string X { get; set; } = "";
     protected string Y { get; set; } = "";
     protected string? TargetId { get; set; }
@@ -156,7 +156,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
         get {
             var template = Settings.GetTemplate(GetActiveTemplate());
             var (showingAnimationClass, hiddenAnimationClass) = GetAnimationClasses(GetActiveAnimation());
-            return IsShowing ?
+            return IsShown ?
                 Helpers.AppendCssClasses(OverrideDefaultShownCssClass ?? template.DefaultCssOverrides.MenuShownCssClass,
                     showingAnimationClass,
                     ShownCssClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuShownCssClass) :
@@ -174,23 +174,18 @@ public abstract class ContextMenuBase : MenuTreeComponent
     }
 
     protected (string showingClass, string hiddenClass) GetAnimationClasses(Animation animation)
-    {
-        switch (animation)
-        {
-        case BlazorContextMenu.Animation.None:
-            return ("", "");
-        case BlazorContextMenu.Animation.FadeIn:
-            return ("blazor-context-menu__animations--fadeIn-shown", "blazor-context-menu__animations--fadeIn");
-        case BlazorContextMenu.Animation.Grow:
-            return ("blazor-context-menu__animations--grow-shown", "blazor-context-menu__animations--grow");
-        case BlazorContextMenu.Animation.Slide:
-            return ("blazor-context-menu__animations--slide-shown", "blazor-context-menu__animations--slide");
-        case BlazorContextMenu.Animation.Zoom:
-            return ("blazor-context-menu__animations--zoom-shown", "blazor-context-menu__animations--zoom");
-        default:
-            throw new Exception("Animation not supported");
-        }
-    }
+        => animation switch {
+            BlazorContextMenu.Animation.None => ("", ""),
+            BlazorContextMenu.Animation.FadeIn => ("blazor-context-menu__animations--fadeIn-shown",
+                "blazor-context-menu__animations--fadeIn"),
+            BlazorContextMenu.Animation.Grow => ("blazor-context-menu__animations--grow-shown",
+                "blazor-context-menu__animations--grow"),
+            BlazorContextMenu.Animation.Slide => ("blazor-context-menu__animations--slide-shown",
+                "blazor-context-menu__animations--slide"),
+            BlazorContextMenu.Animation.Zoom => ("blazor-context-menu__animations--zoom-shown",
+                "blazor-context-menu__animations--zoom"),
+            _ => throw new Exception("Animation not supported")
+        };
 
     protected override void OnInitialized()
     {
@@ -203,7 +198,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!ContextMenuHandler.ReferencePassedToJs) {
-            await JSRuntime.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(ContextMenuHandler));
+            await JS.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(ContextMenuHandler));
             ContextMenuHandler.ReferencePassedToJs = true;
         }
     }
@@ -233,7 +228,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
                 return;
         }
 
-        IsShowing = true;
+        IsShown = true;
         X = x;
         Y = y;
         TargetId = targetId;
@@ -250,7 +245,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
                 return false;
         }
 
-        IsShowing = false;
+        IsShown = false;
         await InvokeAsync(() => StateHasChanged());
         return true;
     }

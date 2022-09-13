@@ -2,9 +2,10 @@ namespace BlazorContextMenu;
 
 public abstract class MenuTreeComponent : ComponentBase, IDisposable
 {
+    private readonly List<MenuTreeComponent> _childComponents = new ();
+
     [CascadingParameter(Name = "ParentComponent")]
     public MenuTreeComponent? ParentComponent { get; protected set; }
-    protected List<MenuTreeComponent> _childComponents = new List<MenuTreeComponent>();
 
     public IReadOnlyList<MenuTreeComponent> GetChildComponents()
         => _childComponents.AsReadOnly();
@@ -17,16 +18,12 @@ public abstract class MenuTreeComponent : ComponentBase, IDisposable
 
     protected override void OnInitialized()
     {
-        base.OnInitialized();
-        if(ParentComponent != null) {
-            ParentComponent.RegisterChild(this);
-            ParentComponent.StateHasChanged();
-        }
+        if (ParentComponent == null)
+            return;
+        ParentComponent.RegisterChild(this);
+        ParentComponent.StateHasChanged();
     }
 
     public virtual void Dispose()
-    {
-        if (ParentComponent != null)
-            ParentComponent.RemoveChild(this);
-    }
+        => ParentComponent?.RemoveChild(this);
 }

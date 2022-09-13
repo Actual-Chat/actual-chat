@@ -33,7 +33,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
                 defaultTemplate.MenuCssClass = "context-menu";
                 defaultTemplate.MenuItemCssClass = "context-menu-item";
                 defaultTemplate.MenuListCssClass = "context-menu-list";
-                defaultTemplate.SeperatorCssClass = "context-menu-separator";
+                defaultTemplate.SeparatorCssClass = "context-menu-separator";
             });
         });
 

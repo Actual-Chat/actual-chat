@@ -1,5 +1,4 @@
 ﻿@namespace Blazored.Modal
-@inject IModalService ModalService
 
 <CascadingValue Value="@ModalService" IsFixed="true">
     <BlazoredModal HideHeader="@HideHeader"
@@ -18,6 +17,7 @@
 </CascadingValue>
 
 @code {
+    [Inject] private IModalService ModalService { get; init; } = null!;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool? HideHeader { get; set; }
     [Parameter] public bool? HideCloseButton { get; set; }

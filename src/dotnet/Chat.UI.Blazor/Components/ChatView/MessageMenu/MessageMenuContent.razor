@@ -62,7 +62,7 @@
     </Item>
 }
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
-    <Seperator/>
+    <BlazorContextMenu.Separator/>
 
     <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" CssClass="context-menu-item warning-item">
         <div class="context-menu-content">

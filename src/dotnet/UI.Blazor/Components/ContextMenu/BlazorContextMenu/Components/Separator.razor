@@ -1,7 +1,6 @@
 @using BlazorContextMenu.Services
 @inherits MenuTreeComponent
-@inject BlazorContextMenuSettings settings
-@inject IMenuTreeTraverser menuTreeTraverser
+
 @namespace BlazorContextMenu
 
 <li @attributes="@Attributes" id="@Id" class="@ClassCalc">
@@ -9,36 +8,39 @@
 </li>
 
 @code{
+    [Inject] private BlazorContextMenuSettings Settings { get; init; } = null!;
+
+    [Inject] private IMenuTreeTraverser MenuTreeTraverser { get; init; } = null!;
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? Attributes { get; set; }
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="Seperator"/>'s li element, for full customization.
+    /// Allows you to override the default css class of the <see cref="Separator"/>'s li element, for full customization.
     /// </summary>
     [Parameter]
     public string? OverrideDefaultCssClass { get; set; }
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="Seperator"/>'s hr element, for full customization.
+    /// Allows you to override the default css class of the <see cref="Separator"/>'s hr element, for full customization.
     /// </summary>
     [Parameter]
     public string? OverrideDefaultHrCssClass { get; set; }
 
     /// <summary>
-    /// The id of the <see cref="Seperator"/>'s li element. This is optional
+    /// The id of the <see cref="Separator"/>'s li element. This is optional
     /// </summary>
     [Parameter]
     public string? Id { get; set; }
 
     /// <summary>
-    /// Additional css class for the <see cref="Seperator"/>'s li element. Use this to extend the default css.
+    /// Additional css class for the <see cref="Separator"/>'s li element. Use this to extend the default css.
     /// </summary>
     [Parameter]
     public string? CssClass { get; set; }
 
     /// <summary>
-    /// Additional css class for the <see cref="Seperator"/>'s hr element. Use this to extend the default css.
+    /// Additional css class for the <see cref="Separator"/>'s hr element. Use this to extend the default css.
     /// </summary>
     [Parameter]
     public string? HrCssClass { get; set; }
@@ -47,19 +49,19 @@
 
     protected string ClassCalc {
         get {
-            var template = settings.GetTemplate(Template);
+            var template = Settings.GetTemplate(Template);
             return Helpers.AppendCssClasses(
                 (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeparatorCssClass),
-                (CssClass ?? settings.GetTemplate(Template).SeperatorCssClass));
+                (CssClass ?? Settings.GetTemplate(Template).SeparatorCssClass));
         }
     }
 
     protected string HrClassCalc {
         get {
-            var template = settings.GetTemplate(Template);
+            var template = Settings.GetTemplate(Template);
             return Helpers.AppendCssClasses(
                (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeparatorHrCssClass),
-               (HrCssClass ?? settings.GetTemplate(Template).SeperatorHrCssClass));
+               (HrCssClass ?? Settings.GetTemplate(Template).SeparatorHrCssClass));
         }
     }
 
@@ -67,10 +69,10 @@
     {
         base.OnInitialized();
 
-        var rootMenu = menuTreeTraverser.GetRootContextMenu(this);
+        var rootMenu = MenuTreeTraverser.GetRootContextMenu(this);
         if (rootMenu == null)
-            throw new Exception("Seperator component must be a child of a ContextMenu component");
-        var parentMenu = menuTreeTraverser.GetClosestContextMenu(this)!;
+            throw new Exception("Separator component must be a child of a ContextMenu component");
+        var parentMenu = MenuTreeTraverser.GetClosestContextMenu(this)!;
         Template = parentMenu.GetActiveTemplate();
     }
 }

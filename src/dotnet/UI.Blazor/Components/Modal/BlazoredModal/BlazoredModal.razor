@@ -2,20 +2,20 @@
 @using Microsoft.AspNetCore.Components.Routing
 @namespace Blazored.Modal
 
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JsRuntime
 @implements IAsyncDisposable
 
 <CascadingValue Value="this">
     <CascadingValue Value="_globalModalOptions">
-        @foreach (var modal in _modals)
-        {
+        @foreach (var modal in _modals) {
             @modal.ModalInstance
         }
     </CascadingValue>
 </CascadingValue>
 
 @code {
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
     [CascadingParameter] private IModalService CascadedModalService { get; set; } = default!;
 
     [Parameter] public bool? HideHeader { get; set; }
@@ -41,13 +41,11 @@
     protected override void OnInitialized()
     {
         if (CascadedModalService == null)
-        {
             throw new InvalidOperationException($"{GetType()} requires a cascading parameter of type {nameof(IModalService)}.");
-        }
 
         ((ModalService) CascadedModalService).OnModalInstanceAdded += Update;
         ((ModalService) CascadedModalService).OnModalCloseRequested += CloseInstance;
-        NavigationManager.LocationChanged += CancelModals;
+        Nav.LocationChanged += CancelModals;
 
         _globalModalOptions.Class = Class;
         _globalModalOptions.DisableBackgroundCancel = DisableBackgroundCancel;
@@ -67,25 +65,19 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
-        {
-            _styleFunctions = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./BlazoredModal.js");
-        }
+            _styleFunctions = await JS.InvokeAsync<IJSObjectReference>("import", "./BlazoredModal.js");
     }
 
-    internal async Task CloseInstance(ModalReference? modal, ModalResult result)
+    private async Task CloseInstance(ModalReference? modal, ModalResult result)
     {
-        if (modal?.ModalInstanceRef != null)
-        {
+        if (modal?.ModalInstanceRef != null) {
             // Gracefully close the modal
             await modal.ModalInstanceRef.CloseAsync(result);
             if (!_modals.Any())
-            {
                 await ClearBodyStyles();
-            }
             OnModalClosed?.Invoke();
         }
-        else
-        {
+        else {
             await DismissInstance(modal, result);
         }
     }
@@ -96,16 +88,13 @@
         return DismissInstance(reference, result);
     }
 
-    internal async Task DismissInstance(ModalReference? modal, ModalResult result)
+    private async Task DismissInstance(ModalReference? modal, ModalResult result)
     {
-        if (modal != null)
-        {
+        if (modal != null) {
             modal.Dismiss(result);
             _modals.Remove(modal);
             if (!_modals.Any())
-            {
                 await ClearBodyStyles();
-            }
             await InvokeAsync(StateHasChanged);
             OnModalClosed?.Invoke();
         }
@@ -117,9 +106,7 @@
             return;
 
         foreach (var modalReference in _modals.ToList())
-        {
             modalReference.Dismiss(ModalResult.Cancel());
-        }
 
         _modals.Clear();
         await ClearBodyStyles();
@@ -130,13 +117,10 @@
     {
         _modals.Add(modalReference);
 
-        if (!_haveActiveModals)
-        {
+        if (!_haveActiveModals) {
             _haveActiveModals = true;
             if (_styleFunctions is not null)
-            {
                 await _styleFunctions.InvokeVoidAsync("setBodyStyle");
-            }
         }
 
         await InvokeAsync(StateHasChanged);
@@ -149,17 +133,12 @@
     {
         _haveActiveModals = false;
         if (_styleFunctions is not null)
-        {
             await _styleFunctions.InvokeVoidAsync("removeBodyStyle");
-        }
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
         if (_styleFunctions is not null)
-        {
             await _styleFunctions.DisposeAsync();
-        }
     }
-
 }

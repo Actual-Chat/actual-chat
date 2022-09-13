@@ -2,12 +2,11 @@
 @namespace BlazorContextMenu
 
 <div @attributes="@Attributes" class="@($"{BaseClass} {ClassCalc} {DisplayClassCalc}")" id="@Id" style="@($"left:{X}px;top:{Y}px;z-index:{ZIndex};")" data-autohide="@AutoHide.ToString().ToLower()" data-autohideevent="@AutoHideEvent.ToString().ToLower()">
-    @if (IsShowing)
-    {
+    @if (IsShown) {
         <ul class="@ListClassCalc">
             <CascadingValue Value="(MenuTreeComponent)this" Name="ParentComponent">
-                <CascadingValue Value="@(Template != null ? Template : CascadingTemplate)" Name="CascadingTemplate">
-                    <CascadingValue Value="@(Animation.HasValue ? Animation.Value : CascadingAnimation)" Name="CascadingAnimation">
+                <CascadingValue Value="@(Template ?? CascadingTemplate)" Name="CascadingTemplate">
+                    <CascadingValue Value="@(Animation ?? CascadingAnimation)" Name="CascadingAnimation">
                         @{
                             var context = new MenuRenderingContext(Id, TargetId, X, Y, Trigger, Data);
                             @ChildContent(context)

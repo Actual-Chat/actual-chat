@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
-namespace Blazored.Modal.Services;
+﻿namespace Blazored.Modal.Services;
 
 public class ModalService : IModalService
 {
@@ -10,14 +8,14 @@ public class ModalService : IModalService
     /// <summary>
     /// Shows the modal with the component type.
     /// </summary>
-    public IModalReference Show<T>() where T : IComponent 
+    public IModalReference Show<T>() where T : IComponent
         => Show<T>(string.Empty, new ModalParameters(), new ModalOptions());
 
     /// <summary>
     /// Shows the modal with the component type using the specified title.
     /// </summary>
     /// <param name="title">Modal title.</param>
-    public IModalReference Show<T>(string title) where T : IComponent 
+    public IModalReference Show<T>(string title) where T : IComponent
         => Show<T>(title, new ModalParameters(), new ModalOptions());
 
     /// <summary>
@@ -25,7 +23,7 @@ public class ModalService : IModalService
     /// </summary>
     /// <param name="title">Modal title.</param>
     /// <param name="options">Options to configure the modal.</param>
-    public IModalReference Show<T>(string title, ModalOptions options) where T : IComponent 
+    public IModalReference Show<T>(string title, ModalOptions options) where T : IComponent
         => Show<T>(title, new ModalParameters(), options);
 
     /// <summary>
@@ -34,7 +32,7 @@ public class ModalService : IModalService
     /// </summary>
     /// <param name="title">Modal title.</param>
     /// <param name="parameters">Key/Value collection of parameters to pass to component being displayed.</param>
-    public IModalReference Show<T>(string title, ModalParameters parameters) where T : IComponent 
+    public IModalReference Show<T>(string title, ModalParameters parameters) where T : IComponent
         => Show<T>(title, parameters, new ModalOptions());
 
     /// <summary>
@@ -44,14 +42,14 @@ public class ModalService : IModalService
     /// <param name="title">Modal title.</param>
     /// <param name="parameters">Key/Value collection of parameters to pass to component being displayed.</param>
     /// <param name="options">Options to configure the modal.</param>
-    public IModalReference Show<T>(string title, ModalParameters parameters, ModalOptions options) where T : IComponent 
+    public IModalReference Show<T>(string title, ModalParameters parameters, ModalOptions options) where T : IComponent
         => Show(typeof(T), title, parameters, options);
 
     /// <summary>
     /// Shows the modal with the specific component type.
     /// </summary>
     /// <param name="contentComponent">Type of component to display.</param>
-    public IModalReference Show(Type contentComponent) 
+    public IModalReference Show(Type contentComponent)
         => Show(contentComponent, string.Empty, new ModalParameters(), new ModalOptions());
 
     /// <summary>
@@ -59,7 +57,7 @@ public class ModalService : IModalService
     /// </summary>
     /// <param name="contentComponent">Type of component to display.</param>
     /// <param name="title">Modal title.</param>
-    public IModalReference Show(Type contentComponent, string title) 
+    public IModalReference Show(Type contentComponent, string title)
         => Show(contentComponent, title, new ModalParameters(), new ModalOptions());
 
     /// <summary>
@@ -68,7 +66,7 @@ public class ModalService : IModalService
     /// <param name="title">Modal title.</param>
     /// <param name="contentComponent">Type of component to display.</param>
     /// <param name="options">Options to configure the modal.</param>
-    public IModalReference Show(Type contentComponent, string title, ModalOptions options) 
+    public IModalReference Show(Type contentComponent, string title, ModalOptions options)
         => Show(contentComponent, title, new ModalParameters(), options);
 
     /// <summary>
@@ -78,7 +76,7 @@ public class ModalService : IModalService
     /// <param name="title">Modal title.</param>
     /// <param name="contentComponent">Type of component to display.</param>
     /// <param name="parameters">Key/Value collection of parameters to pass to component being displayed.</param>
-    public IModalReference Show(Type contentComponent, string title, ModalParameters parameters) 
+    public IModalReference Show(Type contentComponent, string title, ModalParameters parameters)
         => Show(contentComponent, title, parameters, new ModalOptions());
 
     /// <summary>
@@ -92,24 +90,18 @@ public class ModalService : IModalService
     public IModalReference Show(Type contentComponent, string title, ModalParameters parameters, ModalOptions options)
     {
         if (!typeof(IComponent).IsAssignableFrom(contentComponent))
-        {
             throw new ArgumentException($"{contentComponent.FullName} must be a Blazor Component");
-        }
 
         ModalReference? modalReference = null;
         var modalInstanceId = Guid.NewGuid();
-        var modalContent = new RenderFragment(builder =>
-        {
+        var modalContent = new RenderFragment(builder => {
             var i = 0;
             builder.OpenComponent(i++, contentComponent);
             foreach (var (name, value) in parameters.Parameters)
-            {
                 builder.AddAttribute(i++, name, value);
-            }
             builder.CloseComponent();
         });
-        var modalInstance = new RenderFragment(builder =>
-        {
+        var modalInstance = new RenderFragment(builder => {
             builder.OpenComponent<BlazoredModalInstance>(0);
             builder.SetKey("blazoredModalInstance_" + modalInstanceId);
             builder.AddAttribute(1, "Options", options);
@@ -126,9 +118,9 @@ public class ModalService : IModalService
         return modalReference;
     }
 
-    internal void Close(ModalReference modal) 
+    internal void Close(ModalReference modal)
         => Close(modal, ModalResult.Ok());
 
-    internal void Close(ModalReference modal, ModalResult result) 
+    internal void Close(ModalReference modal, ModalResult result)
         => OnModalCloseRequested?.Invoke(modal, result);
 }
