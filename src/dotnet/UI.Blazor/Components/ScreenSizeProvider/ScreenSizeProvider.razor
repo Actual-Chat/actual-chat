@@ -2,17 +2,22 @@
 @using ActualChat.UI.Blazor.Module
 @implements IScreenSizeProviderBackend
 
-@if (_screenSize.HasValue) {
-    <CascadingValue Value="@_screenSize.Value">
-        @ChildContent
-    </CascadingValue>
-}
+<CascadingValue Value="@_screenSize">
+    @ChildContent
+</CascadingValue>
+<div id="screen_size_container h-0" @ref="_ref">
+    <div class="hidden sm:block" data-size="sm"></div>
+    <div class="hidden md:block" data-size="md"></div>
+    <div class="hidden lg:block" data-size="lg"></div>
+    <div class="hidden xl:block" data-size="xl"></div>
+    <div class="hidden 2xl:block" data-size="2xl"></div>
+</div>
 
 @code {
-    private ScreenSize? _screenSize;
-
-    private DotNetObjectReference<IScreenSizeProviderBackend> BlazorRef { get; set; } = null!;
-    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference _ref;
+    private DotNetObjectReference<IScreenSizeProviderBackend>? _blazorRef;
+    private IJSObjectReference? _jSRef;
+    private ScreenSize _screenSize = ScreenSize.Unknown;
 
     [Inject] IJSRuntime JS { get; set; } = null!;
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
@@ -20,23 +25,32 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
-        BlazorRef = DotNetObjectReference.Create<IScreenSizeProviderBackend>(this);
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(
+        _blazorRef = DotNetObjectReference.Create<IScreenSizeProviderBackend>(this);
+        _jSRef = await JS.InvokeAsync<IJSObjectReference>(
             $"{BlazorUICoreModule.ImportName}.ScreenSizeProvider.create",
-            BlazorRef
+            _ref, _blazorRef
             );
     }
 
     [JSInvokable("OnSizeChanged")]
-    public void OnSizeChanged(bool isDesktopScreenSize) {
-        _screenSize = isDesktopScreenSize ? ScreenSize.Desktop : ScreenSize.Mobile;
+    public void OnSizeChanged(string width) {
+        _screenSize = ParseSize(width);
         StateHasChanged();
+
+        ScreenSize ParseSize(string c) => c switch {
+            "sm" => ScreenSize.Small,
+            "md" => ScreenSize.Medium,
+            "lg" => ScreenSize.Large,
+            "xl" => ScreenSize.ExtraLarge,
+            "2xl" => ScreenSize.ExtraLarge2,
+            _ => ScreenSize.Unknown,
+        };
     }
 
     public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
+        await _jSRef.DisposeSilentlyAsync("dispose");
+        _jSRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
     }
 }

@@ -1,24 +1,36 @@
 export class ScreenSizeProvider {
+    private containerDiv: HTMLDivElement;
     private blazorRef: DotNet.DotNetObject;
     private readonly window: Window;
-    private screenSizeLastValue : boolean;
+    private screenSizeLastValue : string;
 
-    static create(blazorRef: DotNet.DotNetObject): ScreenSizeProvider {
-        return new ScreenSizeProvider(blazorRef);
+    static create(containerDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ScreenSizeProvider {
+        return new ScreenSizeProvider(containerDiv, blazorRef);
     }
 
-    constructor(blazorRef: DotNet.DotNetObject) {
+    constructor(containerDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this.containerDiv = containerDiv;
         this.blazorRef = blazorRef;
         this.window = document.defaultView;
         this.window.addEventListener('resize', this.windowResizeListener);
-        this.screenSizeLastValue = this.isDesktopScreenSize();
+        this.screenSizeLastValue = this.getScreenSize();
         this.notifySizeChanged(this.screenSizeLastValue);
     }
 
-    public isDesktopScreenSize = () : boolean => {
-        const DesktopWidthThreshold : number = 1024;
-        const width = this.window.innerWidth;
-        return width >= DesktopWidthThreshold;
+    public getScreenSize = () : string => {
+        const children = this.containerDiv.children;
+        for (let i = children.length - 1; i >= 0; i--) {
+            const element = children[i];
+            const divElement = element as HTMLDivElement;
+            if (divElement) {
+                const style = window.getComputedStyle(divElement);
+                const isHidden = style.display === 'none';
+                const size = divElement.dataset['size'];
+                if (!isHidden)
+                    return size;
+            }
+        }
+        return "";
     };
 
     public dispose() {
@@ -26,16 +38,15 @@ export class ScreenSizeProvider {
     }
 
     private windowResizeListener = ((event: Event) => {
-        // console.log("window size changed");
-        const newScreenSize = this.isDesktopScreenSize();
+        const newScreenSize = this.getScreenSize();
         if (newScreenSize === this.screenSizeLastValue)
             return;
         this.screenSizeLastValue = newScreenSize;
         this.notifySizeChanged(newScreenSize);
     });
 
-    private notifySizeChanged(isDesktop : boolean)
-    {
-        this.blazorRef.invokeMethodAsync('OnSizeChanged', isDesktop);
-    }
+    private notifySizeChanged = ((size : string) => {
+        //console.log('size: ' + size);
+        this.blazorRef.invokeMethodAsync('OnSizeChanged', size)
+    });
 }

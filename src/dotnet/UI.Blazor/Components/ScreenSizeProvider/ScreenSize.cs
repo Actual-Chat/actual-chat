@@ -1,3 +1,11 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public enum ScreenSize { Desktop, Mobile  }
+public enum ScreenSize
+{
+    Unknown,
+    Small,
+    Medium,
+    Large,
+    ExtraLarge,
+    ExtraLarge2
+}

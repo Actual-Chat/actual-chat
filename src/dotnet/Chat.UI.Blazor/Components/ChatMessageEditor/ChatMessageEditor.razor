@@ -53,11 +53,11 @@
                         <NotifyCallPanel @ref="NotifyCallPanelRef" />
                     </div>
                 </div>
-                @if (LayoutType == ScreenSize.Mobile) {
+                @if (ScreenSizeKind.IsMobileOrUnknown()) {
                     <MobileControlPanel/>
                 }
             </div>
-            @if (LayoutType == ScreenSize.Desktop) {
+            @if (ScreenSizeKind.IsDesktop()) {
                 <RecorderPanel/>
             }
         </div>
@@ -88,7 +88,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-    [CascadingParameter] public ScreenSize LayoutType { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSizeKind { get; set; }
 
     protected override async Task OnInitializedAsync() {
         MarkupHub.ChatId = Chat.Id;
