@@ -6,8 +6,8 @@ public static class FusionBuilderExt
 {
     public static FusionBuilder AddLocalEventScheduler(this FusionBuilder builder)
     {
+        builder.Services.AddSingleton<IOperationCompletionListener, CommandCompletionEventSink>();
         builder.Services.TryAddSingleton<LocalEventQueue>();
-        builder.Services.TryAddSingleton<CommandCompletionEventSink>();
         builder.Services.TryAddSingleton<EventGateway>();
         builder.Services.AddHostedService<LocalEventScheduler>();
         return builder;

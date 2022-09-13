@@ -1,4 +1,5 @@
 using ActualChat.Events;
+using Microsoft.Extensions.Hosting;
 using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Events;
@@ -18,11 +19,15 @@ public class EventsTest: TestBase
             .Services
             .BuildServiceProvider();
 
+        var hostedServices = services.GetServices<IHostedService>().ToList();
+        foreach (var hostedService in hostedServices)
+            await hostedService.StartAsync(CancellationToken.None).ConfigureAwait(false);
+
         var testService = services.GetRequiredService<EventTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        var commandTask = commander.Run(new EventTestService.TestCommand());
+        var commandTask = commander.Call(new EventTestService.TestCommand());
         testService.ProcessedEvents.Count.Should().Be(0);
 
         await commandTask.ConfigureAwait(false);

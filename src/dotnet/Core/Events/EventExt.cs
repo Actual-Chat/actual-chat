@@ -33,6 +33,9 @@ public static class EventExt
     public static Task ScheduleOnCompletion(this EventConfiguration eventConfiguration, ICommand command)
     {
         var commandContext = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask;
+
         commandContext.Operation().Items.Set(eventConfiguration);
         return Task.CompletedTask;
     }
