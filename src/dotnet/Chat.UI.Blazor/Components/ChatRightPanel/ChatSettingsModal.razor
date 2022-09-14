@@ -120,7 +120,7 @@
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync();
+        => _ = ModalInstance.CloseAsync();
 
     private async Task OnSave() {
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();

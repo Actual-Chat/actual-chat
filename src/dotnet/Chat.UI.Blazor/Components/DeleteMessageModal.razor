@@ -73,10 +73,10 @@
     }
 
     private void OnCancel()
-        => ModalInstance.CloseAsync(ModalResult.Cancel());
+        => _ = ModalInstance.CloseAsync();
 
     private async Task OnDelete() {
-        await ModalInstance.CloseAsync(ModalResult.Cancel());
+        await ModalInstance.CloseAsync();
         var command = new IChats.RemoveTextEntryCommand(Session, ChatEntry.ChatId, ModalModel.MessageModel.Entry.Id);
         await UICommander.Run(command);
     }

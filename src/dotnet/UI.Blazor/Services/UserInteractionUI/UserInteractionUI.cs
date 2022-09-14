@@ -62,7 +62,7 @@ public class UserInteractionUI : IUserInteractionUIBackend, IDisposable
         await BlazorCircuitContext.Dispatcher.InvokeAsync(async () => {
             var model = new UserInteractionRequestModal.Model(operation.NullIfEmpty() ?? "audio playback or capture");
             var modal = ModalUI.Show(model);
-            await modal.Result.ConfigureAwait(false);
+            await modal.WhenClosed.ConfigureAwait(false);
         }).ConfigureAwait(false);
         _ = MarkInteractionHappened();
     }

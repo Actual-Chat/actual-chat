@@ -24,9 +24,10 @@ public class FeedbackUI
 
         var model = new FeatureRequestModal.Model { FeatureTitle = featureTitle };
         _modal = _modalUI.Show(model);
-        var result = await _modal.Result.ConfigureAwait(false);
+        await _modal.WhenClosed.ConfigureAwait(false);
+        var hasSubmitted = model.HasSubmitted;
         _modal = null;
-        if (result.Cancelled)
+        if (!hasSubmitted)
             return;
 
         var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {

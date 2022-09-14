@@ -1,11 +1,8 @@
-﻿using Blazored.Modal.Services;
-
-namespace Blazored.Modal;
+﻿namespace Blazored.Modal;
 
 public interface IModalReference
 {
-    Task<ModalResult> Result { get; }
+    Task WhenClosed { get; }
 
     void Close();
-    void Close(ModalResult result);
 }

@@ -120,7 +120,7 @@
         => CloseModal();
 
     private void CloseModal()
-        => ModalInstance.CancelAsync();
+        => _ = ModalInstance.CloseAsync();
 
     public sealed class FormModel : FormModel<FormModel> {
         [Required, MinLength(1)] public string Name { get; set; } = "";

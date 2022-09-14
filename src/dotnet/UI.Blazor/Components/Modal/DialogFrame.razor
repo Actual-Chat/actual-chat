@@ -28,7 +28,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             EscapeSubscription = await Escapist.SubscribeAsync(
-                () => ModalInstance.CancelAsync(),
+                () => _ = ModalInstance.CloseAsync(),
                 TokenSource.Token).ConfigureAwait(false);
         }
     }

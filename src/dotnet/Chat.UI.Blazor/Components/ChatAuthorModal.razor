@@ -70,7 +70,7 @@
         await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
 
         IsAddingContact = false;
-        await ModalInstance.CancelAsync();
+        await ModalInstance.CloseAsync();
         StateHasChanged();
     }
 

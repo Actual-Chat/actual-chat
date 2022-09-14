@@ -6,10 +6,10 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ModalUI
 {
-    private IModalService ModalService { get; }
+    private ModalService ModalService { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
-    public ModalUI(IModalService modalService, IMatchingTypeFinder matchingTypeFinder)
+    public ModalUI(ModalService modalService, IMatchingTypeFinder matchingTypeFinder)
     {
         ModalService = modalService;
         MatchingTypeFinder = matchingTypeFinder;
@@ -24,12 +24,13 @@ public sealed class ModalUI
                 $"No modal view component for '{model.GetType()}' model.");
 
         var modalOptions = new ModalOptions {
-            Class = $"blazored-modal modal {cls}",
-            HideHeader = true,
-            Position = ModalPosition.Middle
+            Class = $"blazored-modal modal {cls}"
         };
-        var modalParameters = new ModalParameters();
-        modalParameters.Add(nameof(IModalView<TModel>.ModalModel), model);
-        return ModalService.Show(componentType, "", modalParameters, modalOptions);
+        var modalContent = new RenderFragment(builder => {
+            builder.OpenComponent(0, componentType);
+            builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
+            builder.CloseComponent();
+        });
+        return ModalService.Show(modalContent, modalOptions);
     }
 }

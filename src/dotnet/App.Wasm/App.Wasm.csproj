@@ -19,8 +19,4 @@
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <_JsFileModuleStaticWebAsset Include="wwwroot\BlazoredModal.js" />
-  </ItemGroup>
-
 </Project>
