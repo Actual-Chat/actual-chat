@@ -12,9 +12,9 @@
 
     [Parameter] public SideNavDirection Direction { get; set; } = SideNavDirection.LeftToRight;
     [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public EventCallback Opened { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     private string Class { get; set; } = "";
 
