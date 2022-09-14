@@ -13,7 +13,7 @@ public class RightPanelUI
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanelUI));
         IsVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
-                InitialValue = true,
+                InitialValue = false,
             });
     }
 }
