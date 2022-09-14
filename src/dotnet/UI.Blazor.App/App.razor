@@ -4,6 +4,7 @@
 @using Stl.Plugins
 @using System.Reflection
 @using ActualChat.UI.Blazor.App.Services
+@using Microsoft.Extensions.Options
 @implements IDisposable
 
 <CascadingAuthState>
@@ -76,7 +77,8 @@
 
         CircuitContext.RootComponent = this;
         InitializeTimeZoneConverter();
-        Services.GetService<SignOutReloader>()?.Start();
+        var lifetimeEvents = Services.GetRequiredService<IOptions<LifetimeEvents>>().Value;
+        lifetimeEvents.RaiseOnAppInitialized(Services);
     }
 
     public void Dispose()
