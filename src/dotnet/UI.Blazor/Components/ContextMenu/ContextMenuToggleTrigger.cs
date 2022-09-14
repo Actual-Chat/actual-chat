@@ -24,8 +24,8 @@ public class ContextMenuToggleTrigger : ContextMenuTrigger
         builder.AddMultipleAttributes(1,
             Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<IEnumerable<KeyValuePair<string, object>>>(Attributes!));
 
-        builder.AddAttribute(2, "onclick",
-            $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenuToggle(event, '{MenuId.OrdinalReplace("'", "\\'")}', {StopPropagation.ToString().ToLowerInvariant()});");
+        var triggerHandler = $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenuToggle(event, '{MenuId.OrdinalReplace("'", "\\'")}', {StopPropagation.ToString().ToLowerInvariant()});";
+        builder.AddAttribute(2, "onclick", triggerHandler);
 
         if (!string.IsNullOrWhiteSpace(CssClass))
             builder.AddAttribute(5, "class", CssClass);

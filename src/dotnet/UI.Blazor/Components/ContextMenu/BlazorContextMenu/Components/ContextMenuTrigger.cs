@@ -38,14 +38,15 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
 
         builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes!));
 
+        var triggerHandler = $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});";
         if (MouseButtonTrigger == MouseButtonTrigger.Left || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(2, "onclick", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(2, "onclick", triggerHandler);
 
         if (MouseButtonTrigger == MouseButtonTrigger.Right || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(3, "oncontextmenu", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(3, "oncontextmenu", triggerHandler);
 
         if (MouseButtonTrigger == MouseButtonTrigger.DoubleClick)
-            builder.AddAttribute(4, "ondblclick", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(4, "ondblclick", triggerHandler);
 
         if (!string.IsNullOrWhiteSpace(CssClass))
             builder.AddAttribute(5, "class", CssClass);
