@@ -47,6 +47,7 @@
     [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -60,7 +61,7 @@
         var showMembers = rules.CanSeeMembers();
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new () {
-            IsVisible = isRightPanelVisible,
+            IsVisible = ScreenSize.IsDesktop() && isRightPanelVisible,
             ShowMembers = showMembers,
             EnableIncompleteUI = enableIncompleteUI,
         };
