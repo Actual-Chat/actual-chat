@@ -15,100 +15,52 @@ public class BlazorContextMenuSettings
     }
 }
 
-public class BlazorContextMenuDefaultCssSettings
+public class BlazorContextMenuTemplate
 {
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element, for full customization.
+    /// Base css class that is applied to the <see cref="ContextMenu"/>'s div element.
     /// </summary>
     public string MenuClass { get; set; } = "blazor-context-menu--default";
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element while it's shown, for full customization.
-    /// </summary>
-    public string MenuShownClass { get; set; } = "";
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element while it's hidden, for full customization.
-    /// </summary>
-    public string MenuHiddenClass { get; set; } = "blazor-context-menu--hidden";
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s ul element, for full customization.
+    /// Base css class that is applied to the <see cref="ContextMenu"/>'s ul element.
     /// </summary>
     public string MenuListClass { get; set; } = "blazor-context-menu__list";
 
     /// <summary>
-    /// Allows you to override the default css class of the menu <see cref="Item"/>'s li element, for full customization.
+    /// Base css class for the menu <see cref="Item"/>'s li element.
     /// </summary>
     public string MenuItemClass { get; set; } = "blazor-context-menu__item--default";
 
     /// <summary>
-    /// Allows you to override the default css class of the menu <see cref="Item"/>'s li element when it contains a <see cref="SubMenu"/>, for full customization.
-    /// </summary>
-    public string MenuItemWithSubMenuClass { get; set; } = "blazor-context-menu__item--with-submenu";
-
-    /// <summary>
-    /// Allows you to override the default css class of the menu <see cref="Item"/>'s li element when disabled, for full customization.
-    /// </summary>
-    public string MenuItemDisabledClass { get; set; } = "blazor-context-menu__item--default-disabled";
-
-    /// <summary>
-    /// Allows you to override the default css class of the menu <see cref="Separator"/>'s li element, for full customization.
-    /// </summary>
-    public string SeparatorClass { get; set; } = "blazor-context-menu__Separator";
-
-    /// <summary>
-    /// Allows you to override the default css class of the menu <see cref="Separator"/>'s hr element, for full customization.
-    /// </summary>
-    public string SeparatorHrClass { get; set; } = "blazor-context-menu__Separator__hr";
-}
-
-public class BlazorContextMenuTemplate
-{
-    /// <summary>
-    /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element. Use this to extend the default css.
-    /// </summary>
-    public string MenuClass { get; set; } = "";
-
-    /// <summary>
-    /// Additional css class that is applied to the <see cref="ContextMenu"/>'s ul element. Use this to extend the default css.
-    /// </summary>
-    public string MenuListClass { get; set; } = "";
-
-    /// <summary>
-    /// Additional css class for the menu <see cref="Item"/>'s li element. Use this to extend the default css.
-    /// </summary>
-    public string MenuItemClass { get; set; } = "";
-
-    /// <summary>
-    /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element while it's shown. Use this to extend the default css.
+    /// Base css class that is applied to the <see cref="ContextMenu"/>'s div element while it's shown.
     /// </summary>
     public string MenuShownClass { get; set; } = "";
 
     /// <summary>
-    /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element while it's hidden. Use this to extend the default css.
+    /// Base css class that is applied to the <see cref="ContextMenu"/>'s div element while it's hidden.
     /// </summary>
-    public string MenuHiddenClass { get; set; } = "";
+    public string MenuHiddenClass { get; set; } = "blazor-context-menu--hidden";
 
     /// <summary>
-    /// Additional css class for the menu <see cref="Item"/>'s li element when it contains a <see cref="SubMenu"/>. Use this to extend the default css.
+    /// Base css class for the menu <see cref="Item"/>'s li element when it contains a <see cref="SubMenu"/>.
     /// </summary>
-    public string MenuItemWithSubMenuClass { get; set; } = "";
+    public string MenuItemWithSubMenuClass { get; set; } = "blazor-context-menu__item--with-submenu";
 
     /// <summary>
-    /// Additional css class for the menu <see cref="Item"/>'s li element when disabled. Use this to extend the default css.
+    /// Base css class for the menu <see cref="Item"/>'s li element when disabled.
     /// </summary>
-    public string MenuItemDisabledClass { get; set; } = "";
+    public string MenuItemDisabledClass { get; set; } = "blazor-context-menu__item--default-disabled";
 
     /// <summary>
-    /// Additional css class for the menu <see cref="Separator"/>'s li element. Use this to extend the default css.
+    /// Base css class for the menu <see cref="Separator"/>'s li element.
     /// </summary>
-    public string SeparatorClass { get; set; } = "";
+    public string SeparatorClass { get; set; } = "blazor-context-menu__Separator";
 
     /// <summary>
-    /// Additional css class for the menu <see cref="Separator"/>'s hr element. Use this to extend the default css.
+    /// Base css class for the menu <see cref="Separator"/>'s hr element.
     /// </summary>
-    public string SeparatorHrClass { get; set; } = "";
+    public string SeparatorHrClass { get; set; } = "blazor-context-menu__Separator__hr";
 
     /// <summary>
     /// Allows you to override the default x position offset of the submenu (i.e. the distance of the submenu from it's parent menu).
@@ -119,12 +71,6 @@ public class BlazorContextMenuTemplate
     /// Allows you to set the <see cref="BlazorContextMenu.Animation" /> used by the <see cref="ContextMenu" />.
     /// </summary>
     public Animation Animation {get; set; }
-
-    /// <summary>
-    /// Exposes overrides to the default css classes for complete customization. Only recommended if you cannot
-    /// achieve customization otherwise and you must replace the default classes.
-    /// </summary>
-    public BlazorContextMenuDefaultCssSettings DefaultCssOverrides { get; set; } = new BlazorContextMenuDefaultCssSettings();
 }
 
 public enum Animation

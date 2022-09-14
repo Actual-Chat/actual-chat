@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor;
 
 public static class CssClasses
 {
-    public static string Combine(params string[] cssClasses)
+    public static string Concat(params string?[] cssClasses)
     {
         var builder = new StringBuilder();
         foreach(var cl in cssClasses) {

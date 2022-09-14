@@ -31,10 +31,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         {
             options.ConfigureTemplate(defaultTemplate =>
             {
-                defaultTemplate.MenuClass = "context-menu";
-                defaultTemplate.MenuItemClass = "context-menu-item";
-                defaultTemplate.MenuListClass = "context-menu-list";
-                defaultTemplate.SeparatorClass = "context-menu-separator";
+                defaultTemplate.MenuClass += " context-menu";
+                defaultTemplate.MenuItemClass += " context-menu-item";
+                defaultTemplate.MenuListClass += " context-menu-list";
+                defaultTemplate.SeparatorClass += " context-menu-separator";
             });
         });
 

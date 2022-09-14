@@ -16,18 +16,6 @@
     public Dictionary<string, object>? Attributes { get; set; }
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="Separator"/>'s li element, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="Separator"/>'s hr element, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultHrCssClass { get; set; }
-
-    /// <summary>
     /// The id of the <see cref="Separator"/>'s li element. This is optional
     /// </summary>
     [Parameter]
@@ -50,18 +38,14 @@
     protected string ClassCalc {
         get {
             var template = Settings.GetTemplate(Template);
-            return CssClasses.Combine(
-                (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeparatorClass),
-                (CssClass ?? Settings.GetTemplate(Template).SeparatorClass));
+            return CssClasses.Concat(template.SeparatorClass, CssClass);
         }
     }
 
     protected string HrClassCalc {
         get {
             var template = Settings.GetTemplate(Template);
-            return CssClasses.Combine(
-               (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeparatorHrClass),
-               (HrCssClass ?? Settings.GetTemplate(Template).SeparatorHrClass));
+            return CssClasses.Concat(template.SeparatorHrClass, HrCssClass);
         }
     }
 

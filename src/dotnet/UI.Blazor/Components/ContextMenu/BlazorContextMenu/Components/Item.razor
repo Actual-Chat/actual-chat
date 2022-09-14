@@ -27,40 +27,22 @@
     public Dictionary<string, object>? Attributes { get; set; }
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="Item"/>'s li element, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="Item"/>'s li element when disabled, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultDisabledCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="Item"/>'s li element when it contains a <see cref="SubMenu"/>, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultCssClassWithSubMenu { get; set; }
-
-    /// <summary>
     /// Additional css class for the <see cref="Item"/>'s li element. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? CssClass { get; set; }
+    public string? Class { get; set; }
 
     /// <summary>
     /// Additional css class for the <see cref="Item"/>'s li element when disabled. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? DisabledCssClass { get; set; }
+    public string? DisabledClass { get; set; }
 
     /// <summary>
     /// Additional css class for the <see cref="Item"/>'s li element when it contains a <see cref="SubMenu"/>. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? CssClassWithSubMenu { get; set; }
+    public string? ClassWithSubMenu { get; set; }
 
     /// <summary>
     /// The menu item's onclick handler. A <see cref="ItemClickEventArgs"/> is passed to the action.
@@ -108,19 +90,16 @@
             var template = Settings.GetTemplate(Template);
             string classes;
             if (IsEnabled) {
-                classes = CssClasses.Combine(OverrideDefaultCssClass ?? template.DefaultCssOverrides.MenuItemClass,
-                                            CssClass ?? Settings.GetTemplate(Template).MenuItemClass);
+                classes = CssClasses.Concat(template.MenuItemClass, Class);
             }
             else {
-                classes = CssClasses.Combine(OverrideDefaultDisabledCssClass ?? template.DefaultCssOverrides.MenuItemDisabledClass,
-                                            DisabledCssClass ?? Settings.GetTemplate(Template).MenuItemDisabledClass);
+                classes = CssClasses.Concat(template.MenuItemDisabledClass, DisabledClass);
             }
 
             var hasSubMenu = MenuTreeTraverser.HasSubMenu(this);
             if (hasSubMenu) {
-                classes = CssClasses.Combine(classes,
-                        OverrideDefaultCssClassWithSubMenu ?? template.DefaultCssOverrides.MenuItemWithSubMenuClass,
-                        CssClassWithSubMenu ?? Settings.GetTemplate(Template).MenuItemWithSubMenuClass);
+                classes = CssClasses.Concat(classes,
+                    template.MenuItemWithSubMenuClass, ClassWithSubMenu);
             }
 
             return classes;

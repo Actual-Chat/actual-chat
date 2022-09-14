@@ -104,8 +104,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected string ClassCalc {
         get {
             var template = Settings.GetTemplate(GetActiveTemplate());
-            return CssClasses.Combine(template.DefaultCssOverrides.MenuClass,
-                (Class ?? template.MenuClass));
+            return CssClasses.Concat(template.MenuClass, Class);
         }
     }
 
@@ -134,19 +133,18 @@ public abstract class ContextMenuBase : MenuTreeComponent
             var template = Settings.GetTemplate(GetActiveTemplate());
             var (showingAnimationClass, hiddenAnimationClass) = GetAnimationClasses(GetActiveAnimation());
             return IsShown ?
-                CssClasses.Combine(template.DefaultCssOverrides.MenuShownClass,
+                CssClasses.Concat(
                     showingAnimationClass,
-                    ShownClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuShownClass) :
-                CssClasses.Combine(template.DefaultCssOverrides.MenuHiddenClass,
+                    template.MenuShownClass, ShownClass) :
+                CssClasses.Concat(
                     hiddenAnimationClass,
-                    HiddenClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuHiddenClass);
+                    template.MenuHiddenClass, HiddenClass);
         }
     }
     protected string ListClassCalc {
         get {
             var template = Settings.GetTemplate(GetActiveTemplate());
-            return CssClasses.Combine(template.DefaultCssOverrides.MenuListClass,
-                (ListClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuListClass));
+            return CssClasses.Concat(template.MenuListClass, ListClass);
         }
     }
 
