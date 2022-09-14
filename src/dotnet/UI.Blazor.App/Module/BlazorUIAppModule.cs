@@ -15,7 +15,14 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
-        if (!isServerSideBlazor)
+        if (!isServerSideBlazor) {
             services.AddScoped<SignOutReloader>();
+            services.ConfigureLifetimeEvents(events => {
+                events.OnAppInitialized += svp => {
+                    var signOutReloader = svp.GetRequiredService<SignOutReloader>();
+                    signOutReloader.Start();
+                };
+            });
+        }
     }
 }

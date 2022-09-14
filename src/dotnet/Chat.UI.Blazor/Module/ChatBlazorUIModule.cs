@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
@@ -53,5 +54,19 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<ChatActivity>();
         services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+
+        services.ConfigureLifetimeEvents(events =>
+            events.OnCircuitContextCreated += svp => RegisterShowSettingsHandler(svp)
+        );
+    }
+
+    private void RegisterShowSettingsHandler(IServiceProvider services)
+    {
+        var eventHub = services.GetRequiredService<UIEventHub>();
+        var modalUI = services.GetRequiredService<ModalUI>();
+        eventHub.Subscribe<ShowSettingsModal>((@event, ct) => {
+            modalUI.Show(new SettingsModal.Model(), "modal-full");
+            return Task.CompletedTask;
+        });
     }
 }

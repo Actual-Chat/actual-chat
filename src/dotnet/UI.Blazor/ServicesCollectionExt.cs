@@ -8,4 +8,7 @@ public static class ServicesCollectionExt
 
     public static IServiceCollection RegisterNavbarWidget(this IServiceCollection services, Type componentType, double order = 0, string? navbarGroupId = null)
         => services.AddScoped(_ => new NavbarWidget(componentType) { Order = order, NavbarGroupId = navbarGroupId });
+
+    public static IServiceCollection ConfigureLifetimeEvents(this IServiceCollection services, Action<LifetimeEvents> configureEvents)
+        => services.Configure(configureEvents);
 }
