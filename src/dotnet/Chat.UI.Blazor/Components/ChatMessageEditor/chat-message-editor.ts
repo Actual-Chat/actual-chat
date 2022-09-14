@@ -363,7 +363,7 @@ export class ChatMessageEditor {
     };
 
     public dispose() {
-        window.removeEventListener('resize', this.onChangeViewSize);
+        window.visualViewport.removeEventListener('resize', this.onChangeViewSize);
         this.input.removeEventListener('paste', this.onInputPaste);
         this.filesPicker.removeEventListener('change', this.onFilesPickerChange);
         this.postButton.removeEventListener('click', this.onPostClick);
