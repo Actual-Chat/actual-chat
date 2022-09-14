@@ -9,15 +9,6 @@
     @apply p-0 bg-transparent;
     box-shadow: none;
 }
-.modal.modal-full {
-    @apply md:w-full md:h-full;
-}
-.modal-full .modal-frame.modal-chrome {
-    @apply w-full h-full p-0 gap-y-0;
-}
-.modal-full .modal-header {
-    @apply hidden;
-}
 
 .modal .blazored-modal-content {
     @apply h-full w-full;
@@ -85,3 +76,58 @@
 div.blazored-modal-content > form {
     @apply h-full;
 }
+
+/* Fullscreen Modal */
+.modal.modal-full {
+    @apply md:w-full md:h-full;
+}
+.modal-full .modal-frame.modal-chrome {
+    @apply w-full h-full p-0 gap-y-0;
+}
+.modal-full .dialog-body {
+    @apply p-0;
+}
+.modal-full .modal-close-btn {
+    @apply hidden md:flex absolute right-4 top-4;
+}
+.modal-full .modal-header {
+    @apply hidden;
+}
+.modal-full input {
+    @apply cursor-text;
+}
+.modal-full .user-avatar-editor-item,
+.modal-full .user-avatar-editor-item *,
+.modal-full button,
+.modal-full button * {
+    @apply cursor-pointer;
+}
+
+@media not (min-width: 1024px) {
+    .modal-full .tab-panel .tab-panel-tabs {
+        @apply min-w-full p-0;
+    }
+    .modal-full .tab-panel .tab-panel-tabs .btn-group {
+        @apply px-2;
+    }
+    .modal-full .tab-panel .tab-panel-tabs .btn.tab-btn {
+        @apply px-4;
+    }
+    .modal-full .tab-panel .tab {
+        @apply min-w-full p-0;
+    }
+    .modal-full .tab-panel .tab-content {
+        @apply w-full;
+    }
+    .modal-full .tab-panel .tab-content .tab-title {
+        @apply min-h-14 text-xl;
+    }
+    .modal-full .tab-panel .tab-content > div,
+    .modal-full .tab-panel .tab-content > section {
+        @apply px-4;
+    }
+    .modal-full .tab-panel .tab-panel-title {
+        @apply min-h-14 min-w-full text-xl px-4 border-b border-bg-04;
+    }
+}
+

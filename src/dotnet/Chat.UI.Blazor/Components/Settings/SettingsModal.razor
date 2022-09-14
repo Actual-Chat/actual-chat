@@ -5,16 +5,31 @@
 @{
     RenderFragment RenderTitle(string iconTitle, string title) =>
         @<div class="tab-title">
-            <i class="icon-@iconTitle text-2xl"></i>
+            @RenderBtn()
+            <i class="icon-@iconTitle text-2xl icon-title"></i>
             <span>@title</span>
         </div>;
+
+    RenderFragment RenderBtn() =>
+        @<button class="modal-toggle">
+            <i class="icon-arrow-left text-2xl"></i>
+        </button>;
+
+    RenderFragment RenderSignOutBtn(string iconTitle, string title) =>
+        @<button class="tab-title" onclick="@OnSignOutClick">
+            <i class="icon-@iconTitle text-2xl icon-title"></i>
+            <span>@title</span>
+        </button>;
 }
 
 <DialogFrame Title="Settings">
     <Body>
+    <ButtonRound Click="OnCloseClick" Class="modal-close-btn">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
         <div class="flex-x justify-center w-full h-full">
-            <TabPanel Class="settings-modal-panel" Title="Settings">
-                <Tab Title="My Account" Class="px-2">
+            <TabPanel Class="settings-modal-panel" Title="Settings" OnCloseModalClick="OnCloseClick">
+                <Tab Title="My Account">
                     <TitleContent>
                         @RenderTitle("person", "My account")
                     </TitleContent>
@@ -22,28 +37,28 @@
                         <UserSettings/>
                     </ChildContent>
                 </Tab>
-                <Tab Title="Chat folder" Class="px-2">
+                <Tab Title="Chat folder">
                     <TitleContent>
                         @RenderTitle("folder", "Chat folder")
                     </TitleContent>
                     <ChildContent>
                     </ChildContent>
                 </Tab>
-                <Tab Title="Notification" Class="px-2">
+                <Tab Title="Notification">
                     <TitleContent>
                         @RenderTitle("bell", "Notification")
                     </TitleContent>
                     <ChildContent>
                     </ChildContent>
                 </Tab>
-                <Tab Title="Language" Class="px-2">
+                <Tab Title="Language">
                     <TitleContent>
                         @RenderTitle("language", "Language")
                     </TitleContent>
                     <ChildContent>
                     </ChildContent>
                 </Tab>
-                <Tab Title="Appearance" Class="px-2">
+                <Tab Title="Appearance" Separator="true">
                     <TitleContent>
                         @RenderTitle("night-mode", "Appearance")
                     </TitleContent>
@@ -51,9 +66,16 @@
                         <AppearanceSettings/>
                     </ChildContent>
                 </Tab>
+                <Tab Title="Log out">
+                    <TitleContent>
+                        @RenderSignOutBtn("log-out", "Log out")
+                    </TitleContent>
+                    <ChildContent>
+                    </ChildContent>
+                </Tab>
             </TabPanel>
         </div>
-        </Body>
+    </Body>
     <Buttons>
 
     </Buttons>
@@ -62,11 +84,22 @@
 @code {
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnCloseClick()
+        => await ModalInstance.CloseAsync().ConfigureAwait(false);
+
+    private async Task OnSignOutClick() {
+        await ModalInstance.CloseAsync().ConfigureAwait(false);
+        await ClientAuth.SignOut();
+        Nav.NavigateTo("/");
+    }
 
     public sealed record Model {
         public static Model None { get; } = new();
