@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Module
 @inherits MenuTreeComponent
 
 @namespace BlazorContextMenu
@@ -8,8 +9,8 @@
     class="@("blazor-context-menu__item " + ClassCalc)"
     style="@(IsVisible ? "display:block;" : "display:none;")"
     itemEnabled="@IsEnabled.ToString().ToLower()"
-    onmouseover="@(IsEnabled ? $"blazorContextMenu.OnMenuItemMouseOver(event, {SubmenuXOffset ?? Settings.GetTemplate(Template).SubMenuXPositionPixelsOffset}, this);" : "")"
-    onmouseout="@(IsEnabled ? "blazorContextMenu.OnMenuItemMouseOut(event);" : "")"
+    onmouseover="@(IsEnabled ? $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnMenuItemMouseOver(event, {SubmenuXOffset ?? Settings.GetTemplate(Template).SubMenuXPositionPixelsOffset}, this);" : "")"
+    onmouseout="@(IsEnabled ? $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnMenuItemMouseOut(event);" : "")"
     @ref="MenuItemElement">
     <CascadingValue Value="(MenuTreeComponent)this" Name="ParentComponent">
         @ChildContent

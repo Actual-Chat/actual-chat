@@ -30,6 +30,7 @@ export * from './Services/KeepAwakeUI/keep-awake-ui'
 
 export * from './Components/components';
 export * from './Components/Clipboard/clipboard';
+export * from './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.js';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';

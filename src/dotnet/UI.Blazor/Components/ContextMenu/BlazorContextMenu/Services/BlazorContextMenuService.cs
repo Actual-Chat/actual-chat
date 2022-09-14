@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Module;
 using BlazorContextMenu.Services;
 
 namespace BlazorContextMenu;
@@ -47,7 +48,7 @@ public class BlazorContextMenuService : IBlazorContextMenuService
         var menu = ContextMenuStorage.GetMenu(id);
         if (menu == null)
             throw new Exception($"No context menu with id '{id}' was found");
-        await JS.InvokeVoidAsync("blazorContextMenu.Hide", id);
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.blazorContextMenu.Hide", id);
     }
 
     public async Task ShowMenu(string id, int x, int y, object? data)
@@ -56,7 +57,7 @@ public class BlazorContextMenuService : IBlazorContextMenuService
         if(menu == null)
             throw new Exception($"No context menu with id '{id}' was found");
         menu.Data = data;
-        await JS.InvokeVoidAsync("blazorContextMenu.ManualShow", id, x, y);
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.blazorContextMenu.ManualShow", id, x, y);
     }
 
     public Task ShowMenu(string id, int x, int y)

@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using ActualChat.UI.Blazor.Module;
 using BlazorContextMenu;
 using Microsoft.AspNetCore.Components.Rendering;
 
@@ -24,7 +25,7 @@ public class ContextMenuToggleTrigger : ContextMenuTrigger
             Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<IEnumerable<KeyValuePair<string, object>>>(Attributes!));
 
         builder.AddAttribute(2, "onclick",
-            $"blazorContextMenu.OnContextMenuToggle(event, '{MenuId.OrdinalReplace("'", "\\'")}', {StopPropagation.ToString().ToLowerInvariant()});");
+            $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenuToggle(event, '{MenuId.OrdinalReplace("'", "\\'")}', {StopPropagation.ToString().ToLowerInvariant()});");
 
         if (!string.IsNullOrWhiteSpace(CssClass))
             builder.AddAttribute(5, "class", CssClass);

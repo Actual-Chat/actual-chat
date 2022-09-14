@@ -10,6 +10,7 @@ using BlazorContextMenu.Services;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.RenderTree;
 using System.Runtime.CompilerServices;
+using ActualChat.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.Rendering;
 
 namespace BlazorContextMenu;
@@ -38,13 +39,13 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
         builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes!));
 
         if (MouseButtonTrigger == MouseButtonTrigger.Left || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(2, "onclick", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(2, "onclick", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
 
         if (MouseButtonTrigger == MouseButtonTrigger.Right || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(3, "oncontextmenu", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(3, "oncontextmenu", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
 
         if (MouseButtonTrigger == MouseButtonTrigger.DoubleClick)
-            builder.AddAttribute(4, "ondblclick", $"blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
+            builder.AddAttribute(4, "ondblclick", $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});");
 
         if (!string.IsNullOrWhiteSpace(CssClass))
             builder.AddAttribute(5, "class", CssClass);
@@ -118,13 +119,13 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!InternalContextMenuHandler.ReferencePassedToJs) {
-            await JS.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(InternalContextMenuHandler));
+            await JS.InvokeAsync<object>($"{BlazorUICoreModule.ImportName}.blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(InternalContextMenuHandler));
             InternalContextMenuHandler.ReferencePassedToJs = true;
         }
 
         if (firstRender) {
             _dotNetObjectRef = DotNetObjectReference.Create(this);
-            await JS.InvokeAsync<object>("blazorContextMenu.RegisterTriggerReference",
+            await JS.InvokeAsync<object>($"{BlazorUICoreModule.ImportName}.blazorContextMenu.RegisterTriggerReference",
                 ContextMenuTriggerElementRef, _dotNetObjectRef);
         }
     }

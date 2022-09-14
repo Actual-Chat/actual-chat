@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Module;
 using BlazorContextMenu.Services;
 
 namespace BlazorContextMenu;
@@ -198,7 +199,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!ContextMenuHandler.ReferencePassedToJs) {
-            await JS.InvokeAsync<object>("blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(ContextMenuHandler));
+            await JS.InvokeAsync<object>($"{BlazorUICoreModule.ImportName}.blazorContextMenu.SetMenuHandlerReference", DotNetObjectReference.Create(ContextMenuHandler));
             ContextMenuHandler.ReferencePassedToJs = true;
         }
     }

@@ -369,3 +369,5 @@ var blazorContextMenu = function (blazorContextMenu) {
 }({});
 
 blazorContextMenu.Init();
+
+export { blazorContextMenu }
