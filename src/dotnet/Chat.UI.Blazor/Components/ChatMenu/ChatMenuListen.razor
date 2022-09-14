@@ -5,7 +5,7 @@
     var m = State.LatestNonErrorValue;
     var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
     var listeningClass = m.IsListening ? "on" : "off";
-    var cls = $"context-menu-item play {listeningClass} {playingHistoricalClass}";
+    var cls = $"play {listeningClass} {playingHistoricalClass}";
 }
 
 @if (!m.IsListening) {

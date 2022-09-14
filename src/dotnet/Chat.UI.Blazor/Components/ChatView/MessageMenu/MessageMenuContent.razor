@@ -7,7 +7,7 @@
     var entry = ChatMessageModel.Entry;
 }
 
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })" Class="context-menu-item">
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <i class="icon-heart-fill text-xl"></i>
@@ -18,7 +18,7 @@
     </div>
 </Item>
 @if (m.CanReply) {
-    <Item OnClick="@(() => Reply(entry))" Class="context-menu-item">
+    <Item OnClick="@(() => Reply(entry))">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-reply text-xl"></i>
@@ -29,7 +29,7 @@
         </div>
     </Item>
 }
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })" Class="context-menu-item">
+<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <i class="icon-hash-fill text-xl"></i>
@@ -39,7 +39,7 @@
         </div>
     </div>
 </Item>
-<Item OnClick="@(() => CopyLink(entry))" Class="context-menu-item">
+<Item OnClick="@(() => CopyLink(entry))">
     <div class="context-menu-content">
         <div class="context-menu-icon">
             <i class="icon-link-2 text-xl"></i>
@@ -50,7 +50,7 @@
     </div>
 </Item>
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
-    <Item OnClick="@(() => Edit(entry))" Class="context-menu-item">
+    <Item OnClick="@(() => Edit(entry))">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-edit text-xl"></i>
@@ -64,7 +64,7 @@
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
     <BlazorContextMenu.Separator/>
 
-    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" Class="context-menu-item warning-item">
+    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" Class="warning-item">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-trash text-xl"></i>
