@@ -1,12 +1,20 @@
 @namespace ActualChat.UI.Blazor.Components
 
+@{
+    RenderFragment RenderTitle(string title) =>
+        @<div class="tab-panel-title">
+            <button onclick="@OnCloseModalClick" class="md:hidden">
+                <i class="icon-arrow-left text-2xl text-icons-01"></i>
+            </button>
+            <span>@title</span>
+        </div>;
+}
+
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
             @if (!string.IsNullOrWhiteSpace(Title)) {
-                <div class="tab-panel-title">
-                    @Title
-                </div>
+                @RenderTitle(Title)
             }
             <div class="relative btn-group">
                 @foreach (var tab in Tabs) {
@@ -25,6 +33,10 @@
                             <div class="@lineCls shape"></div>
                         }
                     </div>
+                    @if (!tab.Separator) {
+                        continue;
+                    }
+                    <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
         </div>
@@ -43,6 +55,7 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
+    [Parameter] public EventCallback OnCloseModalClick { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
     [Parameter]
