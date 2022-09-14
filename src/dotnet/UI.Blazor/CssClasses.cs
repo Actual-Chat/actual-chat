@@ -1,10 +1,10 @@
 using System.Text;
 
-namespace BlazorContextMenu;
+namespace ActualChat.UI.Blazor;
 
-internal static class Helpers
+public static class CssClasses
 {
-    public static string AppendCssClasses(params string[] cssClasses)
+    public static string Combine(params string[] cssClasses)
     {
         var builder = new StringBuilder();
         foreach(var cl in cssClasses) {

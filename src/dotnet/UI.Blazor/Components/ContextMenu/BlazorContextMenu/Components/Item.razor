@@ -108,19 +108,19 @@
             var template = Settings.GetTemplate(Template);
             string classes;
             if (IsEnabled) {
-                classes = Helpers.AppendCssClasses(OverrideDefaultCssClass ?? template.DefaultCssOverrides.MenuItemCssClass,
-                                            CssClass ?? Settings.GetTemplate(Template).MenuItemCssClass);
+                classes = CssClasses.Combine(OverrideDefaultCssClass ?? template.DefaultCssOverrides.MenuItemClass,
+                                            CssClass ?? Settings.GetTemplate(Template).MenuItemClass);
             }
             else {
-                classes = Helpers.AppendCssClasses(OverrideDefaultDisabledCssClass ?? template.DefaultCssOverrides.MenuItemDisabledCssClass,
-                                            DisabledCssClass ?? Settings.GetTemplate(Template).MenuItemDisabledCssClass);
+                classes = CssClasses.Combine(OverrideDefaultDisabledCssClass ?? template.DefaultCssOverrides.MenuItemDisabledClass,
+                                            DisabledCssClass ?? Settings.GetTemplate(Template).MenuItemDisabledClass);
             }
 
             var hasSubMenu = MenuTreeTraverser.HasSubMenu(this);
             if (hasSubMenu) {
-                classes = Helpers.AppendCssClasses(classes,
-                        OverrideDefaultCssClassWithSubMenu ?? template.DefaultCssOverrides.MenuItemWithSubMenuCssClass,
-                        CssClassWithSubMenu ?? Settings.GetTemplate(Template).MenuItemWithSubMenuCssClass);
+                classes = CssClasses.Combine(classes,
+                        OverrideDefaultCssClassWithSubMenu ?? template.DefaultCssOverrides.MenuItemWithSubMenuClass,
+                        CssClassWithSubMenu ?? Settings.GetTemplate(Template).MenuItemWithSubMenuClass);
             }
 
             return classes;

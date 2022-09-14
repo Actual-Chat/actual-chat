@@ -50,18 +50,18 @@
     protected string ClassCalc {
         get {
             var template = Settings.GetTemplate(Template);
-            return Helpers.AppendCssClasses(
-                (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeparatorCssClass),
-                (CssClass ?? Settings.GetTemplate(Template).SeparatorCssClass));
+            return CssClasses.Combine(
+                (OverrideDefaultCssClass ?? template.DefaultCssOverrides.SeparatorClass),
+                (CssClass ?? Settings.GetTemplate(Template).SeparatorClass));
         }
     }
 
     protected string HrClassCalc {
         get {
             var template = Settings.GetTemplate(Template);
-            return Helpers.AppendCssClasses(
-               (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeparatorHrCssClass),
-               (HrCssClass ?? Settings.GetTemplate(Template).SeparatorHrCssClass));
+            return CssClasses.Combine(
+               (OverrideDefaultHrCssClass ?? template.DefaultCssOverrides.SeparatorHrClass),
+               (HrCssClass ?? Settings.GetTemplate(Template).SeparatorHrClass));
         }
     }
 

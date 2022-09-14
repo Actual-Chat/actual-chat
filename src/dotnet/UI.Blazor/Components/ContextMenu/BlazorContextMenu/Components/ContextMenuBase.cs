@@ -32,52 +32,28 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected string? CascadingTemplate { get; set; }
 
     /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element while it's shown, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultShownCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s div element while it's hidden, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultHiddenCssClass { get; set; }
-
-    /// <summary>
-    /// Allows you to override the default css class of the <see cref="ContextMenu"/>'s ul element, for full customization.
-    /// </summary>
-    [Parameter]
-    public string? OverrideDefaultListCssClass { get; set; }
-
-    /// <summary>
     /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? CssClass { get; set; }
+    public string? Class { get; set; }
 
     /// <summary>
     /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element while is shown. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? ShownCssClass { get; set; }
+    public string? ShownClass { get; set; }
 
     /// <summary>
     /// Additional css class that is applied to the <see cref="ContextMenu"/>'s div element while is hidden. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? HiddenCssClass { get; set; }
+    public string? HiddenClass { get; set; }
 
     /// <summary>
     /// Additional css class that is applied to the <see cref="ContextMenu"/>'s ul element. Use this to extend the default css.
     /// </summary>
     [Parameter]
-    public string? ListCssClass { get; set; }
+    public string? ListClass { get; set; }
 
     /// <summary>
     /// Allows you to set the <see cref="BlazorContextMenu.Animation" /> used by this <see cref="ContextMenu" /> and all its <see cref="SubMenu" />
@@ -128,8 +104,8 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected string ClassCalc {
         get {
             var template = Settings.GetTemplate(GetActiveTemplate());
-            return Helpers.AppendCssClasses((OverrideDefaultCssClass ?? template.DefaultCssOverrides.MenuCssClass),
-                (CssClass ?? template.MenuCssClass));
+            return CssClasses.Combine(template.DefaultCssOverrides.MenuClass,
+                (Class ?? template.MenuClass));
         }
     }
 
@@ -158,19 +134,19 @@ public abstract class ContextMenuBase : MenuTreeComponent
             var template = Settings.GetTemplate(GetActiveTemplate());
             var (showingAnimationClass, hiddenAnimationClass) = GetAnimationClasses(GetActiveAnimation());
             return IsShown ?
-                Helpers.AppendCssClasses(OverrideDefaultShownCssClass ?? template.DefaultCssOverrides.MenuShownCssClass,
+                CssClasses.Combine(template.DefaultCssOverrides.MenuShownClass,
                     showingAnimationClass,
-                    ShownCssClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuShownCssClass) :
-                Helpers.AppendCssClasses(OverrideDefaultHiddenCssClass ?? template.DefaultCssOverrides.MenuHiddenCssClass,
+                    ShownClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuShownClass) :
+                CssClasses.Combine(template.DefaultCssOverrides.MenuHiddenClass,
                     hiddenAnimationClass,
-                    HiddenCssClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuHiddenCssClass);
+                    HiddenClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuHiddenClass);
         }
     }
     protected string ListClassCalc {
         get {
             var template = Settings.GetTemplate(GetActiveTemplate());
-            return Helpers.AppendCssClasses((OverrideDefaultListCssClass ?? template.DefaultCssOverrides.MenuListCssClass),
-                (ListCssClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuListCssClass));
+            return CssClasses.Combine(template.DefaultCssOverrides.MenuListClass,
+                (ListClass ?? Settings.GetTemplate(GetActiveTemplate()).MenuListClass));
         }
     }
 
@@ -234,7 +210,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
         Y = y;
         TargetId = targetId;
         Trigger = trigger;
-        await InvokeAsync(() => StateHasChanged());
+        StateHasChanged();
     }
 
     internal async Task<bool> Hide()
@@ -247,7 +223,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
         }
 
         IsShown = false;
-        await InvokeAsync(() => StateHasChanged());
+        StateHasChanged();
         return true;
     }
 
