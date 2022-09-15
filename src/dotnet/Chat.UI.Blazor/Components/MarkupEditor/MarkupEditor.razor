@@ -3,13 +3,14 @@
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
 
-<div @ref="Ref" id="@Id" class="@Class editor">
+<div @ref="Ref" id="@Id" class="@Class markup-editor">
     <div class="editor-content"
          contenteditable="true"
          data-placeholder="@Placeholder"></div>
 </div>
 
 @code {
+    private TaskSource<Unit> _whenReadySource;
     private MentionListManager? _lastMentionListManager;
     private Action<MentionSearchResult> _onMentionSelected;
 
@@ -28,8 +29,12 @@
     [Parameter] public EventCallback Cancel { get; set; }
     [Parameter] public EventCallback OpenPrevious { get; set; }
 
-    public MarkupEditor()
-        => _onMentionSelected = mention => _ = InsertMention(mention);
+    public Task WhenReady => _whenReadySource.Task;
+
+    public MarkupEditor() {
+        _whenReadySource = TaskSource.New<Unit>(false);
+        _onMentionSelected = mention => _ = InsertMention(mention);
+    }
 
     protected override void OnParametersSet() {
         if (_lastMentionListManager != null)
@@ -40,6 +45,7 @@
     }
 
     public async ValueTask DisposeAsync() {
+        _whenReadySource.TrySetCanceled();
         if (_lastMentionListManager != null)
             _lastMentionListManager.MentionSelected -= _onMentionSelected;
         await JSRef.DisposeSilentlyAsync();
@@ -49,36 +55,48 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IMarkupEditorBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{ChatBlazorUIModule.ImportName}.MarkupEditor.create",
-                Ref,
-                BlazorRef,
-                Autofocus,
-                Constants.DebugMode.MarkupEditor);
-        }
+        if (!firstRender)
+            return;
+
+        BlazorRef = DotNetObjectReference.Create<IMarkupEditorBackend>(this);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{ChatBlazorUIModule.ImportName}.MarkupEditor.create",
+            Ref,
+            BlazorRef,
+            Autofocus,
+            Constants.DebugMode.MarkupEditor);
+        _whenReadySource.TrySetResult(default);
     }
 
-    public async Task<string> GetText()
-        => await JSRef.InvokeAsync<string>("getText").ConfigureAwait(false);
+    public async ValueTask<string> GetText() {
+        await WhenReady;
+        return await JSRef.InvokeAsync<string>("getText");
+    }
 
-    public Task SetMarkup(ImmutableArray<EditedMarkupConverter.EditorNode> markup, CancellationToken cancellationToken)
-        => JSRef.InvokeVoidAsync("setMarkup", cancellationToken, markup).AsTask();
+    public async ValueTask SetHtml(string html) {
+        await WhenReady;
+        await JSRef.InvokeVoidAsync("setHtml", html);
+    }
 
-    public async Task Clear()
-        => await JSRef.InvokeAsync<string>("setHtml", "").ConfigureAwait(false);
+    public ValueTask Clear()
+        => SetHtml("");
 
-    public Task Focus(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("focus", cancellationToken).AsTask();
+    public async ValueTask Focus() {
+        await WhenReady;
+        await JSRef.InvokeVoidAsync("focus");
+    }
 
-    public Task MoveCursorToEnd(CancellationToken cancellationToken = default)
-        => JSRef.InvokeVoidAsync("moveCursorToEnd", cancellationToken).AsTask();
+    public async ValueTask MoveCursorToEnd() {
+        await WhenReady;
+        await JSRef.InvokeVoidAsync("moveCursorToEnd");
+    }
 
-    public async Task InsertMention(MentionSearchResult? mention) {
+    public async ValueTask InsertMention(MentionSearchResult? mention) {
+        await WhenReady;
         MentionListManager?.Hide();
         if (mention == null)
             return;
+
         await JSRef.InvokeVoidAsync("insertMention", mention.Id, mention.SearchMatch.Text);
     }
 

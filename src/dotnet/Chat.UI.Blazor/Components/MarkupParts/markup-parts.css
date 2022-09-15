@@ -3,7 +3,7 @@
 }
 
 .mention-markup {
-    @apply relative inline-block top-0.5 px-1.5 pb-0.5 mb-0.5 rounded-xl select-none cursor-pointer;
+    @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full select-none cursor-pointer;
     @apply bg-mention-other text-mention-other-text font-medium;
 }
 .mention-markup.mention-markup-invalid {

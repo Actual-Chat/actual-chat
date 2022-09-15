@@ -5,37 +5,67 @@
 
 <PageWithHeaderAndFooter>
     <Body>
-        <div class="mt-2">
-            <Button Click="OnGetTextClick">Get text</Button>
+
+    <EditForm Model="@this" class='my-2 flex-y'>
+        <div>
+            <Button Click="OnGetMarkupClick">Get markup</Button>
+            <Button Click="OnSetMarkupClick">Set markup</Button>
         </div>
 
-        <div class="my-2 bg-purple-200 min-h-[50px]">@_text</div>
+        <InputTextArea @bind-Value="_markup" class="my-2 border-2 border-bg-03 rounded min-h-[8rem]">
+        </InputTextArea>
 
-        <div class="flex-y h-40">
-            <MentionListManager Limit="5">
-                <MarkupEditor
-                    @ref="_editorRef"
-                    Id="message-input"
-                    Class="bg-gray-200 min-h-[50px]"
-                    Placeholder="Enter some text..."
-                    Post="OnPostClick"/>
-            </MentionListManager>
-        </div>
+        <p class="my-2">Parsed: <code>@_parsedMarkup</code></p>
+
+        <MentionListManager Limit="5">
+            <MarkupEditor
+                @ref="_editorRef"
+                Id="message-input"
+                Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
+                Placeholder="Enter some text..."
+                Post="OnPost"/>
+        </MentionListManager>
+    </EditForm>
+
     </Body>
 </PageWithHeaderAndFooter>
 
 @code{
-    private MarkupEditor? _editorRef;
-    private string _text = "";
+    private MarkupEditor _editorRef = null!;
+    private string _markup = "@`Mention`the-actual-one:361 normal *italic* **bold** `code`\n\n```cs\nCode\n```";
+    private Markup _parsedMarkup = null!;
+    private MarkupToEditorHtmlConverter _converter = null!;
 
-    private async Task OnGetTextClick() {
-        if (_editorRef == null)
-            return;
-        _text = await _editorRef.GetText();
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+
+    protected override Task OnInitializedAsync() {
+        MarkupHub.ChatId = Constants.Chat.DefaultChatId;
+        _converter = new MarkupToEditorHtmlConverter(MarkupHub);
+        return Task.CompletedTask;
     }
 
-    private async Task OnPostClick(string text) {
-        _text = text;
-        await _editorRef!.Clear();
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            await OnSetMarkupClick();
+    }
+
+    private async Task OnGetMarkupClick() {
+        _markup = await _editorRef.GetText();
+        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
+        StateHasChanged();
+    }
+
+    private async Task OnSetMarkupClick() {
+        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
+        var html = await _converter.Convert(_markup, CancellationToken.None);
+        await _editorRef.SetHtml(html);
+        StateHasChanged();
+    }
+
+    private async Task OnPost(string text) {
+        _markup = text;
+        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
+        await _editorRef.Clear();
+        StateHasChanged();
     }
 }

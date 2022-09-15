@@ -1,17 +1,15 @@
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Web;
+using System.Text.RegularExpressions;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Users;
-using NetBox.Extensions;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 public class MarkupToEditorHtmlConverter
 {
-    private static ValueTask<Unit> UnitValueTask { get; } = Stl.Async.TaskExt.UnitTask.ToValueTask();
+    private static readonly Regex NewLineRegex = new(@"\r?\n", RegexOptions.Compiled);
 
-    private MarkupHub MarkupHub { get; }
+    public MarkupHub MarkupHub { get; }
 
     public MarkupToEditorHtmlConverter(MarkupHub markupHub)
         => MarkupHub = markupHub;
@@ -78,43 +76,35 @@ public class MarkupToEditorHtmlConverter
         protected override Unit VisitMention(Mention markup)
         {
             var id = markup.Id;
-            AddHtml("<span class=\"mention-markup\" contenteditable=\"false\" data-id=\"");
+            AddHtml("<span class=\"editor-mention\" contenteditable=\"false\" data-id=\"");
             AddPlainText(id);
             AddHtml("\">");
+            AddHiddenHtml("@`");
             AddPlainText(markup.Name);
+            AddHiddenHtml("`" + id.HtmlEncode());
             AddHtml("</span>");
             return default;
         }
 
         protected override Unit VisitCodeBlock(CodeBlockMarkup markup)
-        {
-            AddHtml("<pre class=\"code-block-markup\"><code>");
-            AddMarkupText(markup);
-            AddHtml("</code></pre>");
-            return default;
-        }
+            => AddPreformattedMarkupText(markup);
 
         protected override Unit VisitPlainText(PlainTextMarkup markup)
             => AddMarkupText(markup);
 
         protected override Unit VisitNewLine(NewLineMarkup markup)
-            => AddHtml("</br>");
+            => AddHtml("\n");
 
         protected override Unit VisitPlayableText(PlayableTextMarkup markup)
             => AddMarkupText(markup);
 
         protected override Unit VisitPreformattedText(PreformattedTextMarkup markup)
-        {
-            AddHtml("<code class=\"preformatted-text-markup\">");
-            AddMarkupText(markup);
-            AddHtml("</code>");
-            return default;
-        }
+            => AddPreformattedMarkupText(markup);
 
         protected override Unit VisitUnparsed(UnparsedTextMarkup markup)
             => AddMarkupText(markup);
 
-        protected override Unit VisitText(TextMarkup markup)
+        protected override Unit VisitUnknown(Markup markup)
             => AddMarkupText(markup);
 
         // Private methods
@@ -122,10 +112,28 @@ public class MarkupToEditorHtmlConverter
         private Unit AddMarkupText(Markup markup)
             => AddPlainText(markup.Format());
 
+        private Unit AddPreformattedMarkupText(Markup markup)
+        {
+            AddHtml("<span class=\"editor-preformatted\">");
+            AddMarkupText(markup);
+            AddHtml("</span>");
+            return default;
+        }
+
         private Unit AddPlainText(string text)
         {
             var html = HtmlEncoder.Default.Encode(text);
+            // html = html.Replace('\n', '\u2028');
+            // html = NewLineRegex.Replace(html, "<br/>");
             AddHtml(html);
+            return default;
+        }
+
+        private Unit AddHiddenHtml(string html)
+        {
+            _result.Append("<span class=\"editor-hidden\">");
+            _result.Append(html);
+            _result.Append("</span>");
             return default;
         }
 

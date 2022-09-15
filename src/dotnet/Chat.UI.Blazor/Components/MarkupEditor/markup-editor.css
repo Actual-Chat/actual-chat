@@ -1,10 +1,25 @@
 .markup-editor {
     @apply text-xl md:text-base;
 }
-.markup-editor .editor-content .mention {
-    @apply inline-block px-1 rounded-md;
+.markup-editor .editor-content {
+    @apply relative inline-block overflow-auto whitespace-pre-wrap;
+    @apply min-w-full max-w-full w-full m-2;
+    @apply text-xl md:text-base;
 }
+.markup-editor .editor-content .editor-mention {
+    @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full;
+    @apply bg-mention-other text-mention-other-text font-medium;
+    @apply mx-[1px]; /* Cursor visibility fix */
+}
+.markup-editor .editor-hidden {
+    @apply inline-block overflow-hidden w-0 h-0;
+}
+.markup-editor .editor-preformatted {
+    @apply font-mono font-medium;
+}
+/*
 .markup-editor .editor-content:empty:not(:focus)::before {
     content: attr(data-placeholder);
     @apply text-counter md:text-05 !opacity-100 truncate;
 }
+*/

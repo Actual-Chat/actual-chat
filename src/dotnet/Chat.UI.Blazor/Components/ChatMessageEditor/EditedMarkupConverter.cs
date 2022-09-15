@@ -4,7 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public class EditedMarkupConverter
 {
-    private MarkupHub MarkupHub { get; }
+    public MarkupHub MarkupHub { get; }
 
     public EditedMarkupConverter(MarkupHub markupHub)
         => MarkupHub = markupHub;

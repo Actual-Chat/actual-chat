@@ -1,4 +1,7 @@
 import './markup-editor.css';
+import { KeepAwakeUI } from '../../../UI.Blazor/Services/KeepAwakeUI/keep-awake-ui';
+import { delayAsync } from '../../../../nodejs/src/delay';
+import { nextTickAsync } from '../../../../nodejs/src/next-tick';
 
 const LogScope = 'MarkupEditor';
 const MentionListId = '@';
@@ -20,9 +23,10 @@ export class MarkupEditor {
         private readonly autofocus: boolean,
         private readonly debug: boolean)
     {
-        this.contentDiv = editorDiv.querySelector(".editor-content");
+        this.contentDiv = editorDiv.querySelector(":scope > .editor-content");
         if (debug)
             console.debug(`${LogScope}.ctor`);
+        this.contentDiv.addEventListener("keypress", this.onKeyPress);
         if (autofocus)
             this.focus();
     }
@@ -66,6 +70,25 @@ export class MarkupEditor {
 
     private onListCommand(listId: string, command: ListCommand) {
         this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
+    }
+
+    private onKeyPress = async (e: KeyboardEvent) => {
+        if (e.code == 'Enter') {
+            e.preventDefault();
+
+            if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey)
+                this.onPost()
+            else {
+                const text1 = this.getText();
+                document.execCommand('insertHTML', false, '\n');
+                const text2 = this.getText();
+                const isFailed = !text2.endsWith('\n') || (text2.startsWith(text1) && !text1.endsWith('\n'));
+                if (isFailed) {
+                    // Workaround against "Enter does nothing if cursor is in the end of the document" bug
+                    document.execCommand('insertHTML', false, '\n');
+                }
+            }
+        }
     }
 }
 
