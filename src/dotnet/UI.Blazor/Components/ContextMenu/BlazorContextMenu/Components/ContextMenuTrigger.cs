@@ -20,7 +20,7 @@ namespace BlazorContextMenu;
 public class ContextMenuTrigger : ComponentBase, IDisposable
 {
     protected ElementReference? ContextMenuTriggerElementRef;
-    private DotNetObjectReference<ContextMenuTrigger>? _dotNetObjectRef;
+    //private DotNetObjectReference<ContextMenuTrigger>? _dotNetObjectRef;
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -61,6 +61,7 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private IInternalContextMenuHandler InternalContextMenuHandler { get; init; } = null!;
+    [Inject] private ContextMenuTriggerStorage TriggerStorage { get; init; } = null!;
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? Attributes { get; set; }
@@ -124,18 +125,10 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
             InternalContextMenuHandler.ReferencePassedToJs = true;
         }
 
-        if (firstRender) {
-            _dotNetObjectRef = DotNetObjectReference.Create(this);
-            await JS.InvokeAsync<object>($"{BlazorUICoreModule.ImportName}.blazorContextMenu.RegisterTriggerReference",
-                ContextMenuTriggerElementRef, _dotNetObjectRef);
-        }
+        if (firstRender)
+            TriggerStorage.Register(ContextMenuTriggerElementRef!.Value.Id, this);
     }
 
     public void Dispose()
-    {
-        if (_dotNetObjectRef != null) {
-            _dotNetObjectRef.Dispose();
-            _dotNetObjectRef = null;
-        }
-    }
+        => TriggerStorage.Unregister(ContextMenuTriggerElementRef!.Value.Id);
 }

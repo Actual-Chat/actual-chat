@@ -111,7 +111,7 @@ var blazorContextMenu = function (blazorContextMenu) {
         var menu = document.getElementById(menuId);
         if (!menu) throw new Error("No context menu with id '" + menuId + "' was found");
         addToOpenMenus(menu, menuId, e.target);
-        var triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
+        const triggerDotnetRef = getTriggerDotnetRef(e.currentTarget);
         showMenuCommon(menu, menuId, e.x, e.y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
@@ -119,6 +119,17 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
         return false;
     };
+
+    var getTriggerDotnetRef = function (trigger) {
+        const attrs = trigger.attributes;
+        for(const attr of attrs) {
+            const name = attr.name;
+            const prefix = '_bl_';
+            if (name.startsWith(prefix))
+                return name.substring(prefix.length);
+        }
+        return "";
+    }
 
     var getOpenedMenuForToggle = function (toggle) {
         if (openMenus.length > 0) {
@@ -151,7 +162,7 @@ var blazorContextMenu = function (blazorContextMenu) {
             y = rect.top;
         }
         addToOpenMenus(menu, menuId, e.target, target);
-        const triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
+        const triggerDotnetRef = getTriggerDotnetRef(e.currentTarget);
         showMenuCommon(menu, menuId, x, y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
@@ -355,13 +366,6 @@ var blazorContextMenu = function (blazorContextMenu) {
     blazorContextMenu.OnMenuItemMouseOut = function (e) {
         if (subMenuTimeout) {
             clearTimeout(subMenuTimeout);
-        }
-    }
-
-
-    blazorContextMenu.RegisterTriggerReference = function (triggerElement, triggerDotNetRef) {
-        if (triggerElement) {
-            triggerElement.dataset["dotnetref"] = JSON.stringify(triggerDotNetRef.serializeAsArg());
         }
     }
 

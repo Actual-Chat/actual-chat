@@ -30,5 +30,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInternalContextMenuHandler, InternalContextMenuHandler>();
         services.AddScoped<IContextMenuStorage, ContextMenuStorage>();
         services.AddScoped<IBlazorContextMenuService, BlazorContextMenuService>();
+        services.AddScoped<ContextMenuTriggerStorage>();
     }
 }
