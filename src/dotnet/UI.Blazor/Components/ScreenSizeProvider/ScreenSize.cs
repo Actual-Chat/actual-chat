@@ -7,5 +7,5 @@ public enum ScreenSize
     Medium,
     Large,
     ExtraLarge,
-    ExtraLarge2
+    ExtraLarge2,
 }
