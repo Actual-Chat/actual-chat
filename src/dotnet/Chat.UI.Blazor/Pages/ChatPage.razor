@@ -85,6 +85,7 @@
             fullChatId = chat.Id;
         if (ChatUI.ActiveChatId.Value != fullChatId) {
             ChatUI.ActiveChatId.Value = fullChatId;
+            ChatUI.LinkedChatEntry.Value = null;
             UICommander.CancelUpdateDelays();
         }
         await base.OnParametersSetAsync();
