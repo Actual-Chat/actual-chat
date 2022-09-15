@@ -22,7 +22,6 @@ const IronPantsHandleTimeout: number = 1600;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
-const StickyEdgeTolerance: number = 50;
 const RenderTimeout: number = 640;
 const UpdateTimeout: number = 1200;
 
@@ -309,6 +308,26 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
         if (hasChanged) {
+            const rs = this.renderState;
+            let hasStickyEdge = false;
+            if (rs.hasVeryLastItem) {
+                const edgeKey = this.getLastItemKey();
+                if (this._visibleItems.has(edgeKey)) {
+                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+                    hasStickyEdge = true;
+                }
+            }
+            if (!hasStickyEdge && rs.hasVeryFirstItem) {
+                const edgeKey = this.getFirstItemKey();
+                if (this._visibleItems.has(edgeKey)) {
+                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.Start });
+                    hasStickyEdge = true;
+                }
+            }
+            if (!hasStickyEdge && this._stickyEdge !== null) {
+                this.setStickyEdge(null);
+            }
+
             if (lastKey) {
                 this._lastVisibleKey = lastKey;
             }
@@ -454,7 +473,6 @@ export class VirtualList implements VirtualListAccessor {
                     resolve();
                 });
             });
-            this.renewStickyEdge();
         } finally {
             this._isRendering = false;
             this._whenRenderCompleted?.complete();
@@ -617,10 +635,6 @@ export class VirtualList implements VirtualListAccessor {
         return getItemKey(this.getLastItemRef());
     }
 
-    private getItemY0(): number {
-        return this._spacerRef.getBoundingClientRect().bottom;
-    }
-
     private isItemVisible(itemRef: HTMLElement): boolean {
         const itemRect = itemRef.getBoundingClientRect();
         const viewRect = this._ref.getBoundingClientRect();
@@ -668,28 +682,6 @@ export class VirtualList implements VirtualListAccessor {
             return true;
         }
         return false;
-    }
-
-    private renewStickyEdge(): boolean {
-        const viewRect = this._ref.getBoundingClientRect();
-        if (this._debugMode)
-            console.info(`${LogScope}.renewStickyEdge`);
-        for (const stickyEdge of this.getStickyEdgeCandidates()) {
-            if (stickyEdge.itemKey == null)
-                return;
-            const itemRef = this.getItemRef(stickyEdge.itemKey);
-            if (itemRef && isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect, StickyEdgeTolerance))
-                return this.setStickyEdge(stickyEdge);
-        }
-        return this.setStickyEdge(null);
-    }
-
-    private* getStickyEdgeCandidates(): IterableIterator<VirtualListStickyEdgeState> {
-        const rs = this.renderState;
-        if (rs.hasVeryFirstItem)
-            yield { itemKey: this.getFirstItemKey(), edge: VirtualListEdge.Start };
-        if (rs.hasVeryLastItem)
-            yield { itemKey: this.getLastItemKey(), edge: VirtualListEdge.End };
     }
 
     private async requestData(): Promise<void> {
@@ -795,8 +787,4 @@ function getItemCountAs(itemRef?: HTMLElement): number | null {
         return null;
 
     return parseInt(countString);
-}
-
-function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect, tolerance: number = 0): boolean {
-    return rect.bottom > viewRect.top - tolerance && rect.top < viewRect.bottom + tolerance;
 }
