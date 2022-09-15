@@ -24,7 +24,8 @@
                 value="@Text"
                 maxlength="@MaxLength"
                 @oninput="OnInput"
-                @onkeyup="OnKeyUp"/>
+                @onkeyup="OnKeyUp"
+                @onblur="OnInputFocusLost"/>
             @if (IsProgressEnabled && _isInProgress) {
                 <div style="border-top-color:transparent"
                      class="search-box-spinner">
@@ -96,14 +97,25 @@
 
         }
         if (e.Key == "Escape" && e.HasNoModifier()) {
-            await Cancelled.InvokeAsync().ConfigureAwait(false);
-            if (IsCompact)
-                _isCollapsed = true;
+            await Cancel();
         }
     }
 
-    private Task OnSearchButtonClick()
-        => Triggered.InvokeAsync(Text);
+    private async Task Cancel()
+    {
+        Text = "";
+        await Cancelled.InvokeAsync();
+
+        if (IsCompact)
+            _isCollapsed = true;
+    }
+
+    private Task OnSearchButtonClick() => Triggered.InvokeAsync(Text);
+
+    private void OnInputFocusLost() {
+        if (IsCompact)
+            _isCollapsed = true;
+    }
 
     private void OnExpandClick() {
         _isCollapsed = false;
