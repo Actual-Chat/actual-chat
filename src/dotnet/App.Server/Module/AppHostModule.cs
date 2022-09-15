@@ -165,7 +165,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
             o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
-            o.MaxBufferedUnacknowledgedRenderBatches = 10; // Default is 10
+            o.MaxBufferedUnacknowledgedRenderBatches = 1000; // Default is 10
             o.DetailedErrors = true;
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;

@@ -50,7 +50,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
-            StateHasChanged();
         }
     }
 
@@ -67,9 +66,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized.ConfigureAwait(false);
         TryNavigateToEntry();
     }
-
-    protected override bool ShouldRender()
-        => WhenInitialized.IsCompleted;
 
     public async Task NavigateToUnreadEntry()
     {
