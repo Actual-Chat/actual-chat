@@ -52,7 +52,7 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private mobileListenersHandler = (add: boolean) => {
+    private updateMobileListeners = (add: boolean) => {
         const panel = this.editorDiv.querySelector(':scope div.mobile-control-panel');
         if (panel) {
             const buttons = panel.querySelectorAll('.btn');
@@ -76,9 +76,8 @@ export class ChatMessageEditor {
     private getInitialArgs = () => {
         this.initialHeight = window.visualViewport.height;
         this.initialWidth = window.visualViewport.width;
-        if (window.innerWidth < 1024) {
-            this.mobileListenersHandler(true);
-        }
+        if (window.innerWidth < 1024)
+            this.updateMobileListeners(true);
     }
 
     private onChangeViewSize = () => {
@@ -90,23 +89,23 @@ export class ChatMessageEditor {
                 // switch desktop to mobile
                 this.initialHeight = height;
                 this.initialWidth = width;
-                this.mobileListenersHandler(true);
+                this.updateMobileListeners(true);
             } else {
                 // switch mobile to desktop
-                this.mobileListenersHandler(false);
+                this.updateMobileListeners(false);
             }
         }
         if (this.isMobile) {
             // mobile view
-            this.onChangeMobileView(width, height);
+            this.onChangeMobileViewSize(width, height);
         } else {
             // desktop view
             return;
         }
     }
 
-    private changeNarrowMode = (on: boolean) => {
-        if (on) {
+    private setNarrowMode = (isOn: boolean) => {
+        if (isOn) {
             if (!this.editorDiv.classList.contains('narrow-panel')) {
                 this.editorDiv.classList.add('narrow-panel');
                 this.isNarrowMode = true;
@@ -121,16 +120,16 @@ export class ChatMessageEditor {
         if (height != this.initialHeight
             && (Math.max(height, this.initialHeight) - Math.min(height, this.initialHeight)) / Math.min(height, this.initialHeight) > 0.2) {
             if (this.isNarrowMode)
-                this.changeNarrowMode(false);
+                this.setNarrowMode(false);
             else
-                this.changeNarrowMode(true);
+                this.setNarrowMode(true);
         }
         this.initialHeight = height;
     }
 
-    private onChangeMobileView = (width: number, height: number) => {
+    private onChangeMobileViewSize = (width: number, height: number) => {
         if (width != this.initialWidth) {
-            // orientation changed
+            // Orientation changed
             this.initialWidth = width;
             this.initialHeight = height;
         }

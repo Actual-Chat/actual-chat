@@ -6,37 +6,44 @@
 @using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
 
-<ScreenSizeProvider>
-    <CascadingBlazoredModal>
-        <CascadingAuthState>
-            <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-                <Found>
-                    @if (_isInitialized) {
-                        <ErrorWrapper>
-                            <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
-                        </ErrorWrapper>
-                    } else {
-                        <LayoutView Layout="@typeof(NoChatLayout)">
-                            <p>Loading...</p>
-                        </LayoutView>
-                    }
-                </Found>
-                <NotFound>
-                    <LayoutView Layout="@typeof(NoChatLayout)">
-                        <p>Sorry, there's nothing here.</p>
-                    </LayoutView>
-                </NotFound>
-            </Router>
-        </CascadingAuthState>
-    </CascadingBlazoredModal>
+<CascadingAuthState>
+<CascadingBlazoredModal>
+<ScreenSizeProvider @ref="_screenSizeProviderRef">
+
+    @if (!(_isInitialized && _screenSizeProviderRef.ScreenSize is not ScreenSize.Unknown)) {
+        @*
+        <div class="flex justify-center items-center h-screen">
+            Initializing...
+        </div>
+        *@
+        return;
+    }
+
+    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+        <Found>
+            <ErrorWrapper>
+                <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
+            </ErrorWrapper>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(NoChatLayout)">
+                <p>Sorry, there's nothing here.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+
     <ContextMenuContainer />
+
 </ScreenSizeProvider>
+</CascadingBlazoredModal>
+</CascadingAuthState>
 
 @code {
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
     private bool _isInitialized;
+    private ScreenSizeProvider _screenSizeProviderRef = null!;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
