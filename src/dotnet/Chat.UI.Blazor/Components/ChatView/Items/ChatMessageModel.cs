@@ -57,6 +57,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         List<ChatEntry> chatEntries,
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
+        bool hasVeryFirstItem,
+        bool hasVeryLastItem,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -74,7 +76,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-            var hasDateLine = date != lastDate;
+            var hasDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             var isUnread = entry.Id > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;

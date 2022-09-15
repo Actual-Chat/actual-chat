@@ -175,10 +175,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 
+        var hasVeryFirstItem = adjustedRange.Start <= chatIdRange.Start;
+        var hasVeryLastItem = adjustedRange.End + 1 >= chatIdRange.End;
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
             _initialLastReadEntryId,
+            hasVeryFirstItem,
+            hasVeryLastItem,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
@@ -189,8 +193,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ? query
                 : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
             chatMessages,
-            adjustedRange.Start <= chatIdRange.Start,
-            adjustedRange.End + 1 >= chatIdRange.End,
+            hasVeryFirstItem,
+            hasVeryLastItem,
             scrollToKey);
 
         if (isHighlighted)
