@@ -5,7 +5,6 @@ public class VirtualListDataQuery
     public static VirtualListDataQuery None { get; } = new (default);
 
     public Range<string> InclusiveRange { get; }
-    public string? ScrollToKey { get; init; }
     public double ExpandStartBy { get; init; }
     public double ExpandEndBy { get; init; }
 
@@ -16,5 +15,5 @@ public class VirtualListDataQuery
         => InclusiveRange = inclusiveRange;
 
     public override string ToString()
-        => $"⁇(-{ExpandStartBy} | {InclusiveRange} | +{ExpandEndBy}) => {ScrollToKey ?? "No scroll"}";
+        => $"⁇(-{ExpandStartBy} | {InclusiveRange} | +{ExpandEndBy})";
 }

@@ -147,10 +147,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 entryId = navigateToEntryId.Value;
                 mustScrollToEntry = true;
             }
-            else if (query.ScrollToKey != null) {
-                entryId = long.Parse(query.ScrollToKey, NumberStyles.Number, CultureInfo.InvariantCulture);
-                mustScrollToEntry = true;
-            }
         }
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
@@ -187,11 +183,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;
-        // if scroll position has been changed - return actual query to the client
         var result = VirtualListData.New(
-            OrdinalEquals(query.ScrollToKey, scrollToKey)
-                ? query
-                : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
+            new VirtualListDataQuery(adjustedRange.AsStringRange()),
             chatMessages,
             hasVeryFirstItem,
             hasVeryLastItem,

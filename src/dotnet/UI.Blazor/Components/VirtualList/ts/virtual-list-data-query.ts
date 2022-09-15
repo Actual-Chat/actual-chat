@@ -5,7 +5,6 @@ export class VirtualListDataQuery
     public static None: VirtualListDataQuery = new VirtualListDataQuery();
 
     public inclusiveRange?: Range<string> = null;
-    public scrollToKey?: string = null;
     public expandStartBy: number = 0;
     public expandEndBy: number = 0;
 
