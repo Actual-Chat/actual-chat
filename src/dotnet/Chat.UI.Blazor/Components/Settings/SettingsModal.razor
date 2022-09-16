@@ -2,78 +2,36 @@
 @implements IModalView<SettingsModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-@{
-    RenderFragment RenderTitle(string iconTitle, string title) =>
-        @<div class="tab-title">
-            @RenderBtn()
-            <i class="icon-@iconTitle text-2xl icon-title"></i>
-            <span>@title</span>
-        </div>;
-
-    RenderFragment RenderBtn() =>
-        @<button class="modal-toggle">
-            <i class="icon-arrow-left text-2xl"></i>
-        </button>;
-
-    RenderFragment RenderSignOutBtn(string iconTitle, string title) =>
-        @<button class="tab-title" onclick="@OnSignOutClick">
-            <i class="icon-@iconTitle text-2xl icon-title"></i>
-            <span>@title</span>
-        </button>;
-}
-
 <DialogFrame Title="Settings">
     <Body>
-    <ButtonRound Click="OnCloseClick" Class="modal-close-btn">
-        <i class="icon-close text-2xl"></i>
-    </ButtonRound>
+        <ButtonRound Click="OnCloseClick" Class="modal-close-btn">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
         <div class="flex-x justify-center w-full h-full">
-            <TabPanel Class="settings-modal-panel" Title="Settings" OnCloseModalClick="OnCloseClick">
-                <Tab Title="My Account">
-                    <TitleContent>
-                        @RenderTitle("person", "My account")
-                    </TitleContent>
-                    <ChildContent>
-                        <UserSettings/>
-                    </ChildContent>
-                </Tab>
-                <Tab Title="Chat folder">
-                    <TitleContent>
-                        @RenderTitle("folder", "Chat folder")
-                    </TitleContent>
+            <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
+                <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
+                    <UserSettings/>
+                </SettingsTab>
+                <SettingsTab Title="Chat folder" Id="chatFolder" IconTitle="folder">
                     <ChildContent>
                     </ChildContent>
-                </Tab>
-                <Tab Title="Notification">
-                    <TitleContent>
-                        @RenderTitle("bell", "Notification")
-                    </TitleContent>
+                </SettingsTab>
+                <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
                     <ChildContent>
                     </ChildContent>
-                </Tab>
-                <Tab Title="Language">
-                    <TitleContent>
-                        @RenderTitle("language", "Language")
-                    </TitleContent>
+                </SettingsTab>
+                <SettingsTab Title="Language" Id="language" IconTitle="language">
                     <ChildContent>
                     </ChildContent>
-                </Tab>
-                <Tab Title="Appearance" Separator="true">
-                    <TitleContent>
-                        @RenderTitle("night-mode", "Appearance")
-                    </TitleContent>
-                    <ChildContent>
-                        <AppearanceSettings/>
-                    </ChildContent>
-                </Tab>
-                <Tab Title="Log out">
-                    <TitleContent>
-                        @RenderSignOutBtn("log-out", "Log out")
-                    </TitleContent>
+                </SettingsTab>
+                <SettingsTab Title="Appearance" Separator="true" Id="appearance" IconTitle="night-mode">
+                    <AppearanceSettings/>
+                </SettingsTab>
+                <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">
                     <ChildContent>
                     </ChildContent>
-                </Tab>
-            </TabPanel>
+                </SettingsTab>
+            </SettingsPanel>
         </div>
     </Body>
     <Buttons>
@@ -82,24 +40,11 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private async Task OnCloseClick()
         => await ModalInstance.CloseAsync().ConfigureAwait(false);
-
-    private async Task OnSignOutClick() {
-        await ModalInstance.CloseAsync().ConfigureAwait(false);
-        await ClientAuth.SignOut();
-        Nav.NavigateTo("/");
-    }
 
     public sealed record Model {
         public static Model None { get; } = new();
