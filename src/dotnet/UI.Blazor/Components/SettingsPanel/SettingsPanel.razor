@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    var cls = SettingsModalUI.IsTabsVisible ? "hide-panel" : "hide-tabs";
+    var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
@@ -55,12 +55,12 @@
 </CascadingValue>
 
 @code {
+    private bool _isRightSideVisible;
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
 
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private SettingsModalUI SettingsModalUI { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
 
@@ -127,12 +127,12 @@
 
     private void OnTabTitleClick(SettingsTab tab) {
         ActiveTab = tab;
-        SettingsModalUI.IsTabsVisible = true;
+        _isRightSideVisible = true;
         StateHasChanged();
     }
 
     public void OnTabArrowClick() {
-        SettingsModalUI.IsTabsVisible = false;
+        _isRightSideVisible = false;
         StateHasChanged();
     }
 

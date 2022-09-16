@@ -77,7 +77,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
         services.AddScoped<NavbarUI>();
-        services.AddScoped<SettingsModalUI>();
         services.AddScoped<ImagePreviewUI>();
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
