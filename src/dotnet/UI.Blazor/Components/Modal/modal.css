@@ -102,32 +102,3 @@ div.blazored-modal-content > form {
 .modal-full button * {
     @apply cursor-pointer;
 }
-
-@media not (min-width: 1024px) {
-    .modal-full .tab-panel .tab-panel-tabs {
-        @apply min-w-full p-0;
-    }
-    .modal-full .tab-panel .tab-panel-tabs .btn-group {
-        @apply px-2;
-    }
-    .modal-full .tab-panel .tab-panel-tabs .btn.tab-btn {
-        @apply px-4;
-    }
-    .modal-full .tab-panel .tab {
-        @apply min-w-full p-0;
-    }
-    .modal-full .tab-panel .tab-content {
-        @apply w-full;
-    }
-    .modal-full .tab-panel .tab-content .tab-title {
-        @apply min-h-14 text-xl;
-    }
-    .modal-full .tab-panel .tab-content > div,
-    .modal-full .tab-panel .tab-content > section {
-        @apply px-4;
-    }
-    .modal-full .tab-panel .tab-panel-title {
-        @apply min-h-14 min-w-full text-xl px-4 border-b border-bg-04;
-    }
-}
-
