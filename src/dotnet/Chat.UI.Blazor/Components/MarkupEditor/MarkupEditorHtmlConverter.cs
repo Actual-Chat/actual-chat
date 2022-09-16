@@ -25,7 +25,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         return Format(markup);
     }
 
-    protected override void VisitMention(Mention markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
     {
         AddHtml("<span", ref state);
         AddAttribute("class", MentionClass, false, ref state);

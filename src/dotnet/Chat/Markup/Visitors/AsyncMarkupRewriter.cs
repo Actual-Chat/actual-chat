@@ -26,7 +26,7 @@ public abstract class AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
 
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
-    protected override ValueTask<Markup> VisitMention(Mention markup, CancellationToken cancellationToken)
+    protected override ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);
     protected override ValueTask<Markup> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
         => ValueTask.FromResult<Markup>(markup);

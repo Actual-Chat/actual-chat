@@ -11,7 +11,7 @@ public abstract class MarkupVisitor
         case CodeBlockMarkup codeBlockMarkup:
             VisitCodeBlock(codeBlockMarkup);
             return;
-        case Mention mention:
+        case MentionMarkup mention:
             VisitMention(mention);
             return;
         case UrlMarkup urlMarkup:
@@ -57,7 +57,7 @@ public abstract class MarkupVisitor
     protected abstract void VisitStylized(StylizedMarkup markup);
 
     protected abstract void VisitUrl(UrlMarkup markup);
-    protected abstract void VisitMention(Mention markup);
+    protected abstract void VisitMention(MentionMarkup markup);
     protected abstract void VisitCodeBlock(CodeBlockMarkup markup);
 
     protected abstract void VisitPlainText(PlainTextMarkup markup);
@@ -76,7 +76,7 @@ public abstract class MarkupVisitor<TResult>
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup),
-            Mention mention => VisitMention(mention),
+            MentionMarkup mention => VisitMention(mention),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup),
             TextMarkup textMarkup => VisitText(textMarkup),
@@ -97,7 +97,7 @@ public abstract class MarkupVisitor<TResult>
     protected abstract TResult VisitStylized(StylizedMarkup markup);
 
     protected abstract TResult VisitUrl(UrlMarkup markup);
-    protected abstract TResult VisitMention(Mention markup);
+    protected abstract TResult VisitMention(MentionMarkup markup);
     protected abstract TResult VisitCodeBlock(CodeBlockMarkup markup);
 
     protected abstract TResult VisitPlainText(PlainTextMarkup markup);

@@ -4,14 +4,14 @@ namespace ActualChat.Chat;
 
 public sealed class MarkupTrimmer : MarkupRewriter
 {
-    public Func<Mention, string> MentionFormatter { get; }
+    public Func<MentionMarkup, string> MentionFormatter { get; }
     public int MaxLength { get; }
 
     public int Length { get; set; }
     public bool IsTrimmed { get; set; }
 
-    public MarkupTrimmer(int maxLength) : this(Mention.NameOrNotAvailableFormatter, maxLength) { }
-    public MarkupTrimmer(Func<Mention, string> mentionFormatter, int maxLength)
+    public MarkupTrimmer(int maxLength) : this(MentionMarkup.NameOrNotAvailableFormatter, maxLength) { }
+    public MarkupTrimmer(Func<MentionMarkup, string> mentionFormatter, int maxLength)
     {
         MentionFormatter = mentionFormatter;
         MaxLength = maxLength;
@@ -43,7 +43,7 @@ public sealed class MarkupTrimmer : MarkupRewriter
     }
 
     // We assume any mention is of length 8
-    protected override Markup VisitMention(Mention markup)
+    protected override Markup VisitMention(MentionMarkup markup)
     {
         var length = MentionFormatter.Invoke(markup).Length;
 

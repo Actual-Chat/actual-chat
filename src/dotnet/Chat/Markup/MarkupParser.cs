@@ -79,12 +79,12 @@ public class MarkupParser : IMarkupParser
         AtToken.Then(
             from name in QuotedName
             from id in Id
-            select (Markup) new Mention(id, name)
+            select (Markup) new MentionMarkup(id, name)
             ).Debug("@`name`");
     private static readonly Parser<char, Markup> UnnamedMention =
         // @`User Name`userId
         AtToken.Then(Id)
-            .Select(id => (Markup) new Mention(id))
+            .Select(id => (Markup) new MentionMarkup(id))
             .Debug("@");
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);

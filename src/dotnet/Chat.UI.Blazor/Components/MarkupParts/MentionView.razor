@@ -1,6 +1,6 @@
 @using Stl.Extensibility
-@inherits MarkupViewBase<Mention>
-@attribute [MatchFor(typeof(Mention), typeof(IMarkupView))]
+@inherits MarkupViewBase<MentionMarkup>
+@attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
 <ChatAuthorBadgeTemplate AuthorId="@_authorId">
     @if (context.Author.Id.IsEmpty) {

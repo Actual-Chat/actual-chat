@@ -6,7 +6,7 @@ public abstract class AsyncMarkupVisitor<TResult>
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq, cancellationToken),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, cancellationToken),
-            Mention mention => VisitMention(mention, cancellationToken),
+            MentionMarkup mention => VisitMention(mention, cancellationToken),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, cancellationToken),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup, cancellationToken),
             TextMarkup textMarkup => VisitText(textMarkup, cancellationToken),
@@ -27,7 +27,7 @@ public abstract class AsyncMarkupVisitor<TResult>
     protected abstract ValueTask<TResult> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken);
 
     protected abstract ValueTask<TResult> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken);
-    protected abstract ValueTask<TResult> VisitMention(Mention markup, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResult> VisitMention(MentionMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken);
 
     protected abstract ValueTask<TResult> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken);

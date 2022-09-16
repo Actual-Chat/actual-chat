@@ -7,7 +7,7 @@ public abstract record AsyncStatelessMarkupVisitor<TState>
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq, state, cancellationToken),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, state, cancellationToken),
-            Mention mention => VisitMention(mention, state, cancellationToken),
+            MentionMarkup mention => VisitMention(mention, state, cancellationToken),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, state, cancellationToken),
             StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup, state, cancellationToken),
             TextMarkup textMarkup => VisitText(textMarkup, state, cancellationToken),
@@ -28,7 +28,7 @@ public abstract record AsyncStatelessMarkupVisitor<TState>
     protected abstract ValueTask VisitStylized(StylizedMarkup markup, TState state, CancellationToken cancellationToken);
 
     protected abstract ValueTask VisitUrl(UrlMarkup markup, TState state, CancellationToken cancellationToken);
-    protected abstract ValueTask VisitMention(Mention markup, TState state, CancellationToken cancellationToken);
+    protected abstract ValueTask VisitMention(MentionMarkup markup, TState state, CancellationToken cancellationToken);
     protected abstract ValueTask VisitCodeBlock(CodeBlockMarkup markup, TState state, CancellationToken cancellationToken);
 
     protected abstract ValueTask VisitPlainText(PlainTextMarkup markup, TState state, CancellationToken cancellationToken);

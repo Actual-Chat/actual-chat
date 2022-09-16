@@ -51,7 +51,7 @@ public class EditedMarkupConverter
         protected override Unit VisitUrl(UrlMarkup markup)
             => AddParagraph(markup);
 
-        protected override Unit VisitMention(Mention markup)
+        protected override Unit VisitMention(MentionMarkup markup)
         {
             _nodes.Add(new ("mention", markup.Id, markup.Name));
             return default;

@@ -26,7 +26,7 @@ public abstract record MarkupFormatterBase : RefStatelessMarkupVisitor<Utf16Valu
     protected override void VisitUrl(UrlMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(markup.Format());
 
-    protected override void VisitMention(Mention markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(markup.Format());
 
     protected override void VisitCodeBlock(CodeBlockMarkup markup, ref Utf16ValueStringBuilder state)
@@ -49,20 +49,20 @@ public abstract record MarkupFormatterBase : RefStatelessMarkupVisitor<Utf16Valu
 }
 
 public sealed record MarkupFormatter(
-    Func<Mention, string> MentionFormatter,
+    Func<MentionMarkup, string> MentionFormatter,
     bool ShowStyleTokens = true
     ) : MarkupFormatterBase
 {
     public static MarkupFormatter Default { get; } = new();
-    public static MarkupFormatter Readable { get; } = new(Mention.NameOrNotAvailableFormatter);
+    public static MarkupFormatter Readable { get; } = new(MentionMarkup.NameOrNotAvailableFormatter);
     public static MarkupFormatter ReadableUnstyled { get; } = Readable with { ShowStyleTokens = false };
 
-    public MarkupFormatter() : this(Mention.DefaultFormatter, true) { }
-    public MarkupFormatter(bool showStyleTokens) : this(Mention.DefaultFormatter, showStyleTokens) { }
+    public MarkupFormatter() : this(MentionMarkup.DefaultFormatter, true) { }
+    public MarkupFormatter(bool showStyleTokens) : this(MentionMarkup.DefaultFormatter, showStyleTokens) { }
 
     // Protected methods
 
-    protected override void VisitMention(Mention markup, ref Utf16ValueStringBuilder state)
+    protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(MentionFormatter.Invoke(markup));
 
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)

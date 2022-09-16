@@ -15,9 +15,9 @@ public class BackendChatMentionResolver : IChatMentionResolver
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
     }
 
-    ValueTask<Author?> IMentionResolver<Author>.Resolve(Mention mention, CancellationToken cancellationToken)
+    ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);
-    public async ValueTask<Author?> ResolveAuthor(Mention mention, CancellationToken cancellationToken)
+    public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
         var targetId = mention.Id;
         if (targetId.OrdinalHasPrefix("u:", out var userId))
@@ -27,9 +27,9 @@ public class BackendChatMentionResolver : IChatMentionResolver
         return await ChatAuthorsBackend.Get(ChatId, authorId, true, cancellationToken).ConfigureAwait(false);
     }
 
-    ValueTask<string?> IMentionResolver<string>.Resolve(Mention mention, CancellationToken cancellationToken)
+    ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveName(mention, cancellationToken);
-    public async ValueTask<string?> ResolveName(Mention mention, CancellationToken cancellationToken)
+    public async ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken)
     {
         var author = await ResolveAuthor(mention, cancellationToken).ConfigureAwait(false);
         return author?.Name;
