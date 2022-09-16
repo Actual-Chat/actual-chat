@@ -433,7 +433,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-
         var chatEntry = new ChatEntry {
             ChatId = chatId,
             AuthorId = author.Id,

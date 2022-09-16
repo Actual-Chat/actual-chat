@@ -410,7 +410,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         // TODO: Use entity resolver or remove this check (?)
         var isNew = entry.Id == 0;
         var dbEntry = await DbUpsertEntry(dbContext, entry, cancellationToken).ConfigureAwait(false);
-
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
         context.Operation().Items.Set(isNew);
@@ -418,6 +417,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
             var chatEvent = new NewChatEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content);
             await EventPublisher.Publish(chatEvent, cancellationToken).ConfigureAwait(false);
+
+            await Commander.Call(new IMentionsBackend.UpdateCommand(entry), cancellationToken).ConfigureAwait(false);
         }
 
         return entry;

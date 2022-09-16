@@ -17,8 +17,8 @@
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentListPreview
             @ref="AttachmentListPreviewRef"
-            RemoveRequested="@(RemoveAttachment)"
-            ClearAllRequested="@(ClearAttachments)"
+            RemoveRequested="RemoveAttachment"
+            ClearAllRequested="ClearAttachments"
             Post="@(_ => Post(clearEditor: true))"/>
         <LinkedMessagePanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
