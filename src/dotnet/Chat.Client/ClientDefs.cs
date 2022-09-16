@@ -144,3 +144,13 @@ public interface IChatUserSettingsClientDef
     [Post(nameof(Set))]
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }
+
+[BasePath("mentions")]
+public interface IMentionsClientDef
+{
+    [Get(nameof(GetLast))]
+    Task<Mention?> GetLast(
+        Session session,
+        Symbol chatId,
+        CancellationToken cancellationToken);
+}

@@ -19,7 +19,11 @@
 
 <div class="@bgColor message-counter-badge">
     <div class="h-6 p-0.5 rounded-full">
-        @countText
+        @if (m.HasMentions) {
+            <span class="mr-0.5">@@</span>
+        } else {
+            <span>@countText</span>
+        }
     </div>
 </div>
 
@@ -53,24 +57,25 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hasMentionsTask = UnreadMessages.HasMentions(cancellationToken);
         var countTask = UnreadMessages.GetCount(cancellationToken);
         var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
-        await Task.WhenAll(countTask, notificationStatusTask).ConfigureAwait(false);
+        var (hasMentions, messagesCount, notificationStatus) = await (hasMentionsTask, countTask, notificationStatusTask).Collect().ConfigureAwait(false);
 
-        var count = await countTask;
-        if (count == 0)
+        if (!hasMentions && messagesCount == 0)
             return Model.None;
 
-        var notificationStatus = await notificationStatusTask;
         return new() {
-            Count = count,
+            Count = messagesCount,
             IsSubscribed = notificationStatus.IsSubscribed,
+            HasMentions = hasMentions,
         };
     }
 
     public sealed record Model {
         public static readonly Model None = new();
 
+        public bool HasMentions { get; init; }
         public int Count { get; init; }
         public bool IsSubscribed { get; init; }
     }

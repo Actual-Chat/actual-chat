@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.7")
+                .HasAnnotation("ProductVersion", "6.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -45,7 +45,7 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("Id")
                         .HasName("pk_accounts");
 
-                    b.ToTable("accounts");
+                    b.ToTable("accounts", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatReadPosition", b =>
@@ -61,7 +61,7 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("Id")
                         .HasName("pk_chat_read_positions");
 
-                    b.ToTable("chat_read_positions");
+                    b.ToTable("chat_read_positions", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatUserSettings", b =>
@@ -101,65 +101,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex("ChatId", "UserId")
                         .HasDatabaseName("ix_chat_user_settings_chat_id_user_id");
 
-                    b.ToTable("chat_user_settings");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasColumnType("text")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Key")
-                        .HasName("pk_kvas_entries");
-
-                    b.ToTable("kvas_entries");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbRecentEntry", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Scope")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("scope");
-
-                    b.Property<string>("ShardKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("shard_key");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_recent_entries");
-
-                    b.ToTable("recent_entries");
+                    b.ToTable("chat_user_settings", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
@@ -226,7 +168,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex("UserId", "IsSignOutForced")
                         .HasDatabaseName("ix_sessions_user_id_is_sign_out_forced");
 
-                    b.ToTable("_sessions");
+                    b.ToTable("_sessions", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>
@@ -260,7 +202,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex("Name")
                         .HasDatabaseName("ix_users_name");
 
-                    b.ToTable("users");
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserAvatar", b =>
@@ -301,7 +243,7 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("Id")
                         .HasName("pk_user_avatars");
 
-                    b.ToTable("user_avatars");
+                    b.ToTable("user_avatars", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserContact", b =>
@@ -309,10 +251,6 @@ namespace ActualChat.Users.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
-
-                    b.Property<bool>("IsFavorite")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_favorite");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -340,7 +278,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex("OwnerUserId")
                         .HasDatabaseName("ix_user_contacts_owner_user_id");
 
-                    b.ToTable("user_contacts");
+                    b.ToTable("user_contacts", (string)null);
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>
@@ -356,7 +294,7 @@ namespace ActualChat.Users.Migrations
                     b.HasKey("UserId")
                         .HasName("pk_user_presences");
 
-                    b.ToTable("user_presences");
+                    b.ToTable("user_presences", (string)null);
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
@@ -384,7 +322,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex("Id")
                         .HasDatabaseName("ix_user_identities_id");
 
-                    b.ToTable("user_identities");
+                    b.ToTable("user_identities", (string)null);
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
@@ -425,7 +363,7 @@ namespace ActualChat.Users.Migrations
                     b.HasIndex(new[] { "StartTime" }, "IX_StartTime")
                         .HasDatabaseName("ix_start_time");
 
-                    b.ToTable("_operations");
+                    b.ToTable("_operations", (string)null);
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
