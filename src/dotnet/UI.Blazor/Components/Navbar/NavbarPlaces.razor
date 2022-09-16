@@ -3,24 +3,24 @@
 @inject FeedbackUI FeedbackUI
 
 <div class="flex-x items-center">
-    <Tooltip Text="Imaginary Place" Position="TooltipPosition.Right">
-        <ButtonSquare
-            Click="@OnClick"
-            Class="first-pinned">
-            IP
-        </ButtonSquare>
-    </Tooltip>
+    <ButtonSquare
+        Click="@OnClick"
+        Class="first-pinned"
+        Tooltip="Imaginary Place"
+        TooltipPosition="TooltipPosition.Right">
+        IP
+    </ButtonSquare>
     <div class="ml-4 md:hidden">Imaginary Place</div>
 </div>
 
 <div class="flex-x items-center">
-    <Tooltip Text="Create Place" Position="TooltipPosition.Right">
-        <ButtonSquare
-            Class="plus-chat"
-            Click="@OnClick">
-            <i class="icon-plus text-2xl font-medium"></i>
-        </ButtonSquare>
-    </Tooltip>
+    <ButtonSquare
+        Class="plus-chat"
+        Click="@OnClick"
+        Tooltip="Create Place"
+        TooltipPosition="TooltipPosition.Right">
+        <i class="icon-plus text-2xl font-medium"></i>
+    </ButtonSquare>
     <div class="ml-4 md:hidden">Create Place</div>
 </div>
 

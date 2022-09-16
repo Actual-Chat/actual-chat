@@ -6,21 +6,21 @@
 }
 
 @if (isRecording) {
-    <Tooltip Text="Stop" Position="TooltipPosition.Top">
-        <ButtonRound
-            Class="@cls"
-            Click="_ => ChatUI.SetRecordingState(Symbol.Empty)">
-            <i class="icon-mic text-2xl"></i>
-        </ButtonRound>
-    </Tooltip>
+    <ButtonRound
+        Class="@cls"
+        Click="_ => ChatUI.SetRecordingState(Symbol.Empty)"
+        Tooltip="Stop"
+        TooltipPosition="TooltipPosition.Top">
+        <i class="icon-mic text-2xl"></i>
+    </ButtonRound>
 } else {
-    <Tooltip Text="Start" Position="TooltipPosition.Top">
-        <ButtonRound
-            Class="@cls"
-            Click="_ => ChatUI.SetRecordingState(ChatId)">
-            <i class="icon-mic text-2xl"></i>
-        </ButtonRound>
-    </Tooltip>
+    <ButtonRound
+        Class="@cls"
+        Click="_ => ChatUI.SetRecordingState(ChatId)"
+        Tooltip="Start"
+        TooltipPosition="TooltipPosition.Top">
+        <i class="icon-mic text-2xl"></i>
+    </ButtonRound>
 }
 
 @code {

@@ -41,10 +41,9 @@
     </div>
 </div>
 
-<div class="ac-tooltip">
-    <div class="ac-tooltip-text"></div>
-    <div class="ac-tooltip-arrow"></div>
-</div>
+@if (ScreenSize.IsDesktop()) {
+    <Tooltip />
+}
 
 @code {
     private static readonly object BodyKey = new();
@@ -54,6 +53,8 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override void OnInitialized() {
         BlazorRef = DotNetObjectReference.Create<IBaseLayoutBackend>(this);
