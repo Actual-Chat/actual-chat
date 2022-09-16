@@ -62,6 +62,7 @@ export class VirtualList implements VirtualListAccessor {
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
+    private _scrollTime: number | null = null;
 
     private _lastPlan?: VirtualListRenderPlan = null;
     private _plan: VirtualListRenderPlan;
@@ -357,6 +358,17 @@ export class VirtualList implements VirtualListAccessor {
                     this._pivotOffset = null;
                     this._top = null;
                     this._viewport = null;
+                }
+
+                const location = window.location;
+                const now = Date.now();
+                const timeSinceLastScroll = now - this._scrollTime ?? 0;
+                // longest scroll animation at Chrome is 3s
+                if (location.hash !== '' && timeSinceLastScroll > 3000) {
+                    const scrollToKey = location.hash.substring(1);
+                    if (!this._visibleItems.has(scrollToKey)) {
+                        history.pushState("", document.title, location.pathname + location.search);
+                    }
                 }
             }
 
@@ -665,6 +677,7 @@ export class VirtualList implements VirtualListAccessor {
         blockPosition: ScrollLogicalPosition = 'nearest') {
         if (this._debugMode)
             console.warn(`${LogScope}.scrollTo, item key =`, getItemKey(itemRef));
+        this._scrollTime = Date.now();
         itemRef?.scrollIntoView(
             {
                 behavior: useSmoothScroll ? 'smooth' : 'auto',

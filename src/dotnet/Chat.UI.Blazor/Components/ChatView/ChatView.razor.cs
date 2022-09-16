@@ -87,6 +87,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
+        NavigateToEntryId.Value = null;
         NavigateToEntryId.Value = navigateToEntryId;
     }
 
