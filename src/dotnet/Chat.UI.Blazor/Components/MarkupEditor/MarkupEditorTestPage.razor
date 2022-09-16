@@ -23,7 +23,8 @@
                 Id="message-input"
                 Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
                 Placeholder="Enter some text..."
-                Post="OnPost"/>
+                Post="OnPost"
+                Cancel="OnCancel"/>
         </MentionListManager>
     </EditForm>
 
@@ -68,4 +69,7 @@
         await _editorRef.Clear();
         StateHasChanged();
     }
+
+    private async Task OnCancel()
+        => await OnSetMarkupClick();
 }
