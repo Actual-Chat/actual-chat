@@ -1,22 +1,31 @@
+using Cysharp.Text;
+
 namespace ActualChat.Chat;
 
+[DataContract]
 public sealed record Mention(
-    string Id,
-    string Name = ""
+    [property: DataMember] string Id,
+    [property: DataMember] string Name = ""
     ) : Markup
 {
+    public static readonly Func<Mention, string> DefaultFormatter = m => m.Format();
+    public static readonly Func<Mention, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
+    public static readonly Func<Mention, string> NameOrIdFormatter = m => "@" + m.NameOrId;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string QuotedName => Quote(Name);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string NameOrNotAvailable => Name.NullIfEmpty() ?? "(n/a)";
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string NameOrId => Name.NullIfEmpty() ?? Id;
+
     public Mention() : this("") { }
 
     public override string Format()
         => Name.IsNullOrEmpty()
-            ? $"@{Id}"
-            : $"@`{Name.OrdinalReplace("`", "``")}`{Id}";
+            ? "@" + Id
+            : ZString.Concat('@', QuotedName, Id);
 
-    public string Format(MentionFormat format)
-        => format switch {
-            MentionFormat.NameOnly => $"@{Name.NullIfEmpty() ?? Id}",
-            MentionFormat.Full => Format(),
-            MentionFormat.PreferNameOnly when Name.IsNullOrEmpty() => Format(),
-            _ => Name,
-        };
+    public static string Quote(string name)
+        => ZString.Concat('`', name.OrdinalReplace("`", "``"), '`');
 }

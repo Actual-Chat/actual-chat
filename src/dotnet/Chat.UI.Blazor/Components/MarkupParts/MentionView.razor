@@ -4,7 +4,7 @@
 
 <ChatAuthorBadgeTemplate AuthorId="@_authorId">
     @if (context.Author.Id.IsEmpty) {
-        <div class="mention-markup mention-markup-invalid">@Markup.Format(MentionFormat.PreferNameOnly)</div>
+        <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
 

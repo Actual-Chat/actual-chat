@@ -4,7 +4,7 @@ public class MentionNamer : AsyncMarkupRewriter
 {
     public IMentionResolver<string> MentionResolver { get; }
     public Func<Mention, Mention> UnresolvedMentionRewriter { get; init; } =
-        m => m with { Name = m.Name.NullIfEmpty() ?? "(n/a)" };
+        m => m with { Name = m.NameOrNotAvailable };
 
     public MentionNamer(IMentionResolver<string> mentionResolver)
         => MentionResolver = mentionResolver;

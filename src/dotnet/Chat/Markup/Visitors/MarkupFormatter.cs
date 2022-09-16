@@ -2,15 +2,8 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public record MarkupFormatter : RefStatelessMarkupVisitor<Utf16ValueStringBuilder>
+public abstract record MarkupFormatterBase : RefStatelessMarkupVisitor<Utf16ValueStringBuilder>
 {
-    public static MarkupFormatter Default { get; } = new();
-    public static MarkupFormatter Readable { get; } = new() { MentionFormat = MentionFormat.NameOnly };
-    public static MarkupFormatter ReadableUnstyled { get; } = Readable with { ShowStyleTokens = false };
-
-    public MentionFormat MentionFormat { get; init; } = MentionFormat.Full;
-    public bool ShowStyleTokens { get; init; } = true;
-
     public string Format(Markup markup)
     {
         var sb = ZString.CreateStringBuilder();
@@ -25,18 +18,16 @@ public record MarkupFormatter : RefStatelessMarkupVisitor<Utf16ValueStringBuilde
 
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
     {
-        if (ShowStyleTokens)
-            state.Append(markup.StyleToken);
+        state.Append(markup.StyleToken);
         Visit(markup.Content, ref state);
-        if (ShowStyleTokens)
-            state.Append(markup.StyleToken);
+        state.Append(markup.StyleToken);
     }
 
     protected override void VisitUrl(UrlMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(markup.Format());
 
     protected override void VisitMention(Mention markup, ref Utf16ValueStringBuilder state)
-        => state.Append(markup.Format(MentionFormat));
+        => state.Append(markup.Format());
 
     protected override void VisitCodeBlock(CodeBlockMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(markup.Format());
@@ -55,4 +46,31 @@ public record MarkupFormatter : RefStatelessMarkupVisitor<Utf16ValueStringBuilde
 
     protected override void VisitUnparsed(UnparsedTextMarkup markup, ref Utf16ValueStringBuilder state)
         => state.Append(markup.Format());
+}
+
+public sealed record MarkupFormatter(
+    Func<Mention, string> MentionFormatter,
+    bool ShowStyleTokens = true
+    ) : MarkupFormatterBase
+{
+    public static MarkupFormatter Default { get; } = new();
+    public static MarkupFormatter Readable { get; } = new(Mention.NameOrNotAvailableFormatter);
+    public static MarkupFormatter ReadableUnstyled { get; } = Readable with { ShowStyleTokens = false };
+
+    public MarkupFormatter() : this(Mention.DefaultFormatter, true) { }
+    public MarkupFormatter(bool showStyleTokens) : this(Mention.DefaultFormatter, showStyleTokens) { }
+
+    // Protected methods
+
+    protected override void VisitMention(Mention markup, ref Utf16ValueStringBuilder state)
+        => state.Append(MentionFormatter.Invoke(markup));
+
+    protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
+    {
+        if (ShowStyleTokens)
+            state.Append(markup.StyleToken);
+        Visit(markup.Content, ref state);
+        if (ShowStyleTokens)
+            state.Append(markup.StyleToken);
+    }
 }

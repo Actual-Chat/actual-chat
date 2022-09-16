@@ -2,16 +2,20 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public class MarkupTrimmer : MarkupRewriter
+public sealed class MarkupTrimmer : MarkupRewriter
 {
+    public Func<Mention, string> MentionFormatter { get; }
     public int MaxLength { get; }
-    public MentionFormat MentionFormat { get; init; } = MentionFormat.NameOnly;
 
     public int Length { get; set; }
     public bool IsTrimmed { get; set; }
 
-    public MarkupTrimmer(int maxLength)
-        => MaxLength = maxLength;
+    public MarkupTrimmer(int maxLength) : this(Mention.NameOrNotAvailableFormatter, maxLength) { }
+    public MarkupTrimmer(Func<Mention, string> mentionFormatter, int maxLength)
+    {
+        MentionFormatter = mentionFormatter;
+        MaxLength = maxLength;
+    }
 
     public override Markup Rewrite(Markup markup)
     {
@@ -41,7 +45,7 @@ public class MarkupTrimmer : MarkupRewriter
     // We assume any mention is of length 8
     protected override Markup VisitMention(Mention markup)
     {
-        var length = markup.Format(MentionFormat).Length;
+        var length = MentionFormatter.Invoke(markup).Length;
 
         if (!CanAppend(length))
             return AppendEnd();
@@ -92,7 +96,7 @@ public class MarkupTrimmer : MarkupRewriter
 
     // Helpers
 
-    protected virtual Markup AppendEnd()
+    private Markup AppendEnd()
     {
         if (IsTrimmed)
             return PlainTextMarkup.Empty;
@@ -102,7 +106,7 @@ public class MarkupTrimmer : MarkupRewriter
         return new PlainTextMarkup("…");
     }
 
-    protected void Append(int count)
+    private void Append(int count)
         => Length += count;
 
     private bool CanAppend() // = CanAppend(0)

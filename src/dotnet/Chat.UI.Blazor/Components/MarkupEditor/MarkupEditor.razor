@@ -48,7 +48,7 @@
         _whenReadySource.TrySetCanceled();
         if (_lastMentionListManager != null)
             _lastMentionListManager.MentionSelected -= _onMentionSelected;
-        await JSRef.DisposeSilentlyAsync();
+        await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;

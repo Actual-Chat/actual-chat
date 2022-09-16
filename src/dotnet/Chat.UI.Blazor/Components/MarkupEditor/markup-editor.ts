@@ -27,8 +27,14 @@ export class MarkupEditor {
         if (debug)
             console.debug(`${LogScope}.ctor`);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
+        this.contentDiv.addEventListener("paste", this.onPaste);
         if (autofocus)
             this.focus();
+    }
+
+    public dispose() {
+        this.contentDiv.removeEventListener("keypress", this.onKeyPress);
+        this.contentDiv.removeEventListener("paste", this.onPaste);
     }
 
     public focus() {
@@ -73,9 +79,18 @@ export class MarkupEditor {
     }
 
     private onKeyPress = async (e: KeyboardEvent) => {
+        let lowerCaseCode = e.code.toLowerCase();
+        if ((e.ctrlKey || e.metaKey)) {
+            // Suppress bold, italic, underline keyboard shortcuts
+            if (lowerCaseCode === 'b' || lowerCaseCode === "i" || lowerCaseCode == "u") {
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
+        }
         if (e.code == 'Enter') {
+            e.stopPropagation();
             e.preventDefault();
-
             if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey)
                 this.onPost()
             else {
@@ -89,6 +104,16 @@ export class MarkupEditor {
                 }
             }
         }
+    }
+
+    private onPaste = async (e: ClipboardEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        // @ts-ignore
+        const data = e.clipboardData || window.clipboardData;
+        const text = data.getData('Text');
+        document.execCommand('insertText', false, text);
     }
 }
 
