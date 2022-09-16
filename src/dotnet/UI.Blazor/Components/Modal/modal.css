@@ -82,7 +82,7 @@ div.blazored-modal-content > form {
     @apply md:w-full md:h-full;
 }
 .modal-full .modal-frame.modal-chrome {
-    @apply w-full h-full p-0 gap-y-0;
+    @apply w-full h-full p-0 gap-y-0 rounded-none;
 }
 .modal-full .dialog-body {
     @apply p-0;
