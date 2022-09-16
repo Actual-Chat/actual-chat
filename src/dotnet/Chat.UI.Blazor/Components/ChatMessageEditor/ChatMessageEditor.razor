@@ -110,8 +110,7 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                Ref, BlazorRef
-                );
+                Ref, BlazorRef);
         }
     }
 
@@ -135,14 +134,13 @@
             if (LastReadEntryState != null)
                 LastReadEntryState.Value = entryId;
             _ = ChatUI.AddActiveChat(Chat.Id);
+            _ = TryUpdatePeerChatRecency();
 
             await JSRef.InvokeVoidAsync("onPostSucceeded");
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);
         }
-
-        _ = TryUpdatePeerChatRecency();
     }
 
     private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
