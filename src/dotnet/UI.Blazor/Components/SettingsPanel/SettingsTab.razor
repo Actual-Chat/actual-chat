@@ -16,8 +16,6 @@
 </div>
 
 @code {
-    [Inject] private SettingsModalUI SettingsModalUI { get; set; } = null!;
-
     [CascadingParameter] public SettingsPanel Panel { get; set; } = null!;
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
