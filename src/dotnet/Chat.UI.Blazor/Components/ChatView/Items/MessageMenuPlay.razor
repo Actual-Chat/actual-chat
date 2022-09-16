@@ -7,22 +7,21 @@
 }
 
 @if (canPlay) {
-    <Tooltip Text="Play" Position="TooltipPosition.Top">
-        <ButtonRound
-            Class="play-btn"
-            Click="OnPlay">
-            <i class="icon-play-fill text-xl text-primary"></i>
-        </ButtonRound>
-    </Tooltip>
+    <ButtonRound
+        Class="play-btn"
+        Click="OnPlay"
+        Tooltip="Play"
+        TooltipPosition="TooltipPosition.Top">
+        <i class="icon-play-fill text-xl text-primary"></i>
+    </ButtonRound>
 } else {
-    <Tooltip Text="Stop" Position="TooltipPosition.Top">
-        <ButtonRound
-            Title="Stop"
-            Class="play-btn"
-            Click="OnStop">
-            <i class="icon-Stop-fill text-xl text-error"></i>
-        </ButtonRound>
-    </Tooltip>
+    <ButtonRound
+        Class="play-btn"
+        Click="OnStop"
+        Tooltip="Stop"
+        TooltipPosition="TooltipPosition.Top">
+        <i class="icon-Stop-fill text-xl text-error"></i>
+    </ButtonRound>
 }
 
 @code {

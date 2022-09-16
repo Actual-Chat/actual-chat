@@ -3,13 +3,13 @@
     var cls = $"pin-toggle blackout {Class}";
 }
 
-<Tooltip Text="Remove" Position="TooltipPosition.Top">
-    <ButtonRound
-        Class="@cls"
-        Click="@OnClick">
-        <i class="icon-close text-2xl"></i>
-    </ButtonRound>
-</Tooltip>
+<ButtonRound
+    Class="@cls"
+    Click="@OnClick"
+    Tooltip="Remove"
+    TooltipPosition="TooltipPosition.Top">
+    <i class="icon-close text-2xl"></i>
+</ButtonRound>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;

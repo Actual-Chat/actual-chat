@@ -18,17 +18,20 @@
     <div class="chat-header-control-panel mx-2">
         <div class="hidden md:flex-x gap-x-1">
             <ChatSearch/>
-            <Tooltip Text="Add participants..." Position="TooltipPosition.Bottom">
-                <ButtonRound Click="OnInviteClick" Class="transparent">
-                    <i class="icon-person-add text-2xl ml-1"></i>
-                </ButtonRound>
-            </Tooltip>
-        </div>
-        <Tooltip Text="Chat properties" Position="TooltipPosition.Bottom">
-            <ButtonRound Click="OnSwitchRightPanelClick" Class="transparent">
-                <i class="icon-more-vertical text-2xl"></i>
+            <ButtonRound Click="OnInviteClick"
+                         Class="transparent"
+                         Tooltip="Add participants..."
+                         TooltipPosition="TooltipPosition.Bottom">
+                <i class="icon-person-add text-2xl ml-1"></i>
             </ButtonRound>
-        </Tooltip>
+        </div>
+        <ButtonRound
+            Click="OnSwitchRightPanelClick"
+            Class="transparent"
+            Tooltip="Chat properties"
+            TooltipPosition="TooltipPosition.Bottom">
+            <i class="icon-more-vertical text-2xl"></i>
+        </ButtonRound>
     </div>
 </div>
 

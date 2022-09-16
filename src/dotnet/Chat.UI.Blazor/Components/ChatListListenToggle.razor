@@ -6,13 +6,13 @@
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
 }
 
-<Tooltip Text="@(m.IsListening ? "Unlisten" : "Listen")" Position="TooltipPosition.Top">
-    <ButtonRound
-        Class="@cls"
-        Click="@OnListenClick">
-        <i class="icon-listen text-2xl"></i>
-    </ButtonRound>
-</Tooltip>
+<ButtonRound
+    Class="@cls"
+    Click="@OnListenClick"
+    Tooltip="@(m.IsListening ? "Unlisten" : "Listen")"
+    TooltipPosition="TooltipPosition.Top">
+    <i class="icon-listen text-2xl"></i>
+</ButtonRound>
 
 @code {
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
