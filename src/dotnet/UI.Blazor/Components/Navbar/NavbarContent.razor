@@ -37,4 +37,18 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        NavbarUI.ActiveGroupChanged -= NavbarUIOnActiveGroupChanged;
+        return base.DisposeAsync();
+    }
+
+    private void NavbarUIOnActiveGroupChanged(object? sender, EventArgs e) {
+        StateHasChanged();
+    }
 }
