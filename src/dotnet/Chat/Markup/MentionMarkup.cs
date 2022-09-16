@@ -3,14 +3,14 @@ using Cysharp.Text;
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record Mention(
+public sealed record MentionMarkup(
     [property: DataMember] string Id,
     [property: DataMember] string Name = ""
     ) : Markup
 {
-    public static readonly Func<Mention, string> DefaultFormatter = m => m.Format();
-    public static readonly Func<Mention, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
-    public static readonly Func<Mention, string> NameOrIdFormatter = m => "@" + m.NameOrId;
+    public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
+    public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
+    public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string QuotedName => Quote(Name);
@@ -19,7 +19,7 @@ public sealed record Mention(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id;
 
-    public Mention() : this("") { }
+    public MentionMarkup() : this("") { }
 
     public override string Format()
         => Name.IsNullOrEmpty()

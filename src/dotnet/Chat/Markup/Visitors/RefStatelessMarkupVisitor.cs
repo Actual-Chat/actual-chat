@@ -11,7 +11,7 @@ public abstract record RefStatelessMarkupVisitor<TState>
         case CodeBlockMarkup codeBlockMarkup:
             VisitCodeBlock(codeBlockMarkup, ref state);
             break;
-        case Mention mention:
+        case MentionMarkup mention:
             VisitMention(mention, ref state);
             break;
         case UrlMarkup urlMarkup:
@@ -62,7 +62,7 @@ public abstract record RefStatelessMarkupVisitor<TState>
     protected abstract void VisitStylized(StylizedMarkup markup, ref TState state);
 
     protected abstract void VisitUrl(UrlMarkup markup, ref TState state);
-    protected abstract void VisitMention(Mention markup, ref TState state);
+    protected abstract void VisitMention(MentionMarkup markup, ref TState state);
     protected abstract void VisitCodeBlock(CodeBlockMarkup markup, ref TState state);
 
     protected abstract void VisitPlainText(PlainTextMarkup markup, ref TState state);

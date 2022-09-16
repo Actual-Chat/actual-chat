@@ -7,6 +7,6 @@ public interface IChatMentionResolver : IMentionResolver<Author>, IMentionResolv
 {
     Symbol ChatId { get; set; }
 
-    ValueTask<Author?> ResolveAuthor(Mention mention, CancellationToken cancellationToken);
-    ValueTask<string?> ResolveName(Mention mention, CancellationToken cancellationToken);
+    ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken);
+    ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken);
 }

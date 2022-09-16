@@ -59,13 +59,13 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void MentionTest()
     {
-        var m = Parse<Mention>("@alex", out var text);
+        var m = Parse<MentionMarkup>("@alex", out var text);
         m.Id.Should().Be(text[1..]);
 
-        m = Parse<Mention>("@a:chatId:1", out text);
+        m = Parse<MentionMarkup>("@a:chatId:1", out text);
         m.Id.Should().Be(text[1..]);
 
-        m = Parse<Mention>("@u:userId", out text);
+        m = Parse<MentionMarkup>("@u:userId", out text);
         m.Id.Should().Be(text[1..]);
 
         Parse<MarkupSeq>("@ something", out text);
@@ -74,11 +74,11 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void NamedMentionTest()
     {
-        var m = Parse<Mention>("@`a`b", out var text);
+        var m = Parse<MentionMarkup>("@`a`b", out var text);
         m.Name.Should().Be("a");
         m.Id.Should().Be("b");
 
-        m = Parse<Mention>("@`a x`id:1", out text);
+        m = Parse<MentionMarkup>("@`a x`id:1", out text);
         m.Name.Should().Be("a x");
         m.Id.Should().Be("id:1");
 

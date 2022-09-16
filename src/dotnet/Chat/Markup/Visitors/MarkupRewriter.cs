@@ -25,7 +25,7 @@ public abstract class MarkupRewriter : MarkupVisitor<Markup>
     }
 
     protected override Markup VisitUrl(UrlMarkup markup) => markup;
-    protected override Markup VisitMention(Mention markup) => markup;
+    protected override Markup VisitMention(MentionMarkup markup) => markup;
     protected override Markup VisitCodeBlock(CodeBlockMarkup markup) => markup;
 
     protected override Markup VisitPlainText(PlainTextMarkup markup) => markup;
