@@ -7,12 +7,13 @@
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content .editor-mention {
-    @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full;
-    @apply bg-mention-other text-mention-other-text font-medium;
-    @apply mx-[1px]; /* Cursor visibility fix */
+    @apply inline relative z-[-1];
+    @apply px-1.5 py-0.25 mx-[1px];
+    @apply rounded-full bg-mention-other;
+    @apply text-mention-other-text font-medium;
 }
 .markup-editor .editor-hidden {
-    @apply inline-block overflow-hidden w-0 h-0;
+    @apply inline-block relative overflow-hidden w-[1px] h-[1px];
 }
 .markup-editor .editor-preformatted {
     @apply font-mono font-medium;

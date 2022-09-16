@@ -63,7 +63,7 @@ export class MarkupEditor {
     }
 
     public setHtml(html: string) {
-        this.contentDiv.innerHTML = `<div>${html}</div>`;
+        this.contentDiv.innerHTML = html;
     }
 
     public insertHtml(html: string, listId?: string) {
@@ -195,13 +195,24 @@ export class MarkupEditor {
     }
 
     private onPaste = (e: ClipboardEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
+        const ok = () => e.preventDefault();
 
-        // @ts-ignore
-        const data = e.clipboardData || window.clipboardData;
-        const text = data.getData('Text');
+        const data = e.clipboardData;
+        const html = data.getData("text/html");
+        let text = '';
+        if (html) {
+            // console.debug(`${LogScope}.onPaste: html:`, html)
+            const div = document.createElement("div");
+            div.innerHTML = html;
+            text = div.innerText;
+        }
+        else {
+            text = data.getData('text');
+            // console.debug(`${LogScope}.onPaste: text:`, text)
+        }
+        text = trimText(text);
         document.execCommand('insertText', false, text);
+        return ok();
     }
 
     private onSelectionChange = () => {
@@ -399,7 +410,7 @@ abstract class ListHandler {
 }
 
 class MentionListHandler extends ListHandler {
-    static wrongPrefixRe = /[\p{L}\p{N}_@`]/gu;
+    static wrongPrefixRe = /[\p{L}\p{Nd}_@`]/u;
 
     constructor(editor: MarkupEditor) {
         super(MentionListId, editor);
@@ -439,4 +450,13 @@ enum ListCommandKind {
     GoToNextItem,
     GoToPreviousItem,
     InsertItem,
+}
+
+// Helpers
+
+const emptyLinesRe = /\n*/g
+
+function trimText(text: string) {
+    // NOTE(AY): Write a real implementation of this later
+    return text.trim();
 }
