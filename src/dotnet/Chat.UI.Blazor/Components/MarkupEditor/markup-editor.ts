@@ -26,7 +26,7 @@ export class MarkupEditor {
         this.contentDiv = editorDiv.querySelector(":scope > .editor-content");
         if (debug)
             console.debug(`${LogScope}.ctor`);
-        this.contentDiv.addEventListener("keydown", this.onKeyDown);
+        this.contentDiv.addEventListener("keyup", this.onKeyUp);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
         if (autofocus)
@@ -34,7 +34,7 @@ export class MarkupEditor {
     }
 
     public dispose() {
-        this.contentDiv.removeEventListener("keydown", this.onKeyDown);
+        this.contentDiv.removeEventListener("keyup", this.onKeyUp);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
     }
@@ -80,14 +80,20 @@ export class MarkupEditor {
         this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
     }
 
-    private onKeyDown = async (e: KeyboardEvent) => {
-        // console.debug(`${LogScope}.onKeyDown: code = "${e.code}"`)
+    private onKeyUp = async (e: KeyboardEvent) => {
+        console.debug(`${LogScope}.onKeyUp: code = "${e.code}"`)
 
         // Cancel on escape
         if (e.code === 'Escape') {
-            e.stopPropagation();
             e.preventDefault();
             this.onCancel();
+            return;
+        }
+
+        // Up key & empty content = open previous
+        if (e.code == 'Up' || e.code === 'ArrowUp' && this.contentDiv.childNodes.length == 0) {
+            e.preventDefault();
+            this.onOpenPrevious();
             return;
         }
     }
@@ -95,12 +101,10 @@ export class MarkupEditor {
     private onKeyPress = async (e: KeyboardEvent) => {
         // console.debug(`${LogScope}.onKeyPress: code = "${e.code}"`)
 
-        let lowerCaseCode = e.code.toLowerCase();
-
         // Suppress bold, italic, and underline shortcuts
         if ((e.ctrlKey || e.metaKey)) {
+            let lowerCaseCode = e.code.toLowerCase();
             if (lowerCaseCode === 'b' || lowerCaseCode === "i" || lowerCaseCode == "u") {
-                e.stopPropagation();
                 e.preventDefault();
                 return;
             }
@@ -108,7 +112,6 @@ export class MarkupEditor {
 
         // Fix new line insertion when cursor is in the end of the document
         if (e.code === 'Enter') {
-            e.stopPropagation();
             e.preventDefault();
             if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey)
                 this.onPost()
