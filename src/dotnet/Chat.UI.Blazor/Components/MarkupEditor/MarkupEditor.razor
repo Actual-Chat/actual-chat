@@ -18,7 +18,9 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IMarkupEditorBackend> BlazorRef { get; set; } = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] public IJSRuntime JS { get; init; } = null!;
+    [Inject] public MarkupEditorHtmlConverter HtmlConverter { get; init; } = null!;
+    public MarkupHub MarkupHub => HtmlConverter.MarkupHub;
 
     [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
     [Parameter] public string Id { get; set; } = "";
@@ -97,7 +99,8 @@
         if (mention == null)
             return;
 
-        await JSRef.InvokeVoidAsync("insertMention", mention.Id, mention.SearchMatch.Text);
+        var html = HtmlConverter.Format(new Mention(mention.Id, mention.Text));
+        await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }
 
     // Backend methods
