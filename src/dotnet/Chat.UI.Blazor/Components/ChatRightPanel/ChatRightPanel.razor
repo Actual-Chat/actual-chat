@@ -61,7 +61,7 @@
         var showMembers = rules.CanSeeMembers();
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
         return new () {
-            IsVisible = ScreenSize.IsDesktop() && isRightPanelVisible,
+            IsVisible = isRightPanelVisible,
             ShowMembers = showMembers,
             EnableIncompleteUI = enableIncompleteUI,
         };
