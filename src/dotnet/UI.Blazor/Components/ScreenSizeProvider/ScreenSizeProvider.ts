@@ -23,8 +23,9 @@ export class ScreenSizeProvider {
     }
 
     public getScreenSize(): string {
+        let itemDiv : HTMLDivElement = null;
         for (const item of this.containerDiv.children) {
-            const itemDiv = item as HTMLDivElement;
+            itemDiv = item as HTMLDivElement;
             if (!item)
                 continue;
 
@@ -33,7 +34,8 @@ export class ScreenSizeProvider {
             if (isVisible)
                 return itemDiv.dataset['size'];
         }
-        return "";
+        // Returning the last "available" size
+        return itemDiv.dataset['size'];
     };
 
     private onWindowResize = (event: Event) => {
