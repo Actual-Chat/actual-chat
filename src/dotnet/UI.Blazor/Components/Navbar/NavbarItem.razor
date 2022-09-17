@@ -10,7 +10,7 @@
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
         } else {
-            <a class="unfocusable" href="@Url">@ChildContent</a>
+            <a class="unfocusable" href="@Url" @onmousedown="@Click">@ChildContent</a>
         }
     </div>
     <div class="navbar-item-ending">
@@ -19,10 +19,14 @@
 </div>
 
 @code {
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool? IsOnline { get; set; }
     [Parameter] public bool IsActive { get; set; }
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
+
+    private void Click() => Nav.NavigateTo(Url);
 }
