@@ -24,6 +24,8 @@
 </div>
 
 @code {
+    private static IUpdateDelayer UpdateDelayer { get; } = new UpdateDelayer.Fixed(1);
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
     [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
@@ -46,7 +48,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 2),
+            UpdateDelayer = UpdateDelayer,
         };
     }
 

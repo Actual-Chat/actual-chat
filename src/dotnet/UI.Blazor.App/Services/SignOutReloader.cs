@@ -11,13 +11,13 @@ public class SignOutReloader : WorkerBase
     {
         var session = Services.GetRequiredService<Session>();
         var auth = Services.GetRequiredService<IAuth>();
-        var cAuthInfo = await Computed
+        var cAuthInfo0 = await Computed
             .Capture(() => auth.GetAuthInfo(session, cancellationToken))
             .ConfigureAwait(false);
 
         var wasAuthenticated = false;
-        await foreach (var c in cAuthInfo.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (!c.IsValue(out var authInfo))
+        await foreach (var cAuthInfo in cAuthInfo0.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (!cAuthInfo.IsValue(out var authInfo))
                 continue;
             var isAuthenticated = authInfo?.IsAuthenticated() ?? false;
             if (!wasAuthenticated) {

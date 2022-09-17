@@ -23,9 +23,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             return; // Blazor UI only module
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
 
-        // Global settings
-        UpdateDelayer.Defaults.UICommandRecencyDelta = TimeSpan.FromMilliseconds(50);
-
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
         services.AddBlazoredModal();

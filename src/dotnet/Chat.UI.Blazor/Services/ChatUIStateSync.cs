@@ -168,12 +168,14 @@ public class ChatUIStateSync : WorkerBase
     private async Task SyncKeepAwakeState(CancellationToken cancellationToken)
     {
         var lastMustKeepAwake = false;
-        var cMustKeepAwake = await Computed
+        var cMustKeepAwake0 = await Computed
             .Capture(() => ChatUI.MustKeepAwake(cancellationToken))
             .ConfigureAwait(false);
-        // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
-        await foreach (var cUpdate in cMustKeepAwake.Changes(cancellationToken).ConfigureAwait(false)) {
-            var mustKeepAwake = cUpdate.Value;
+
+        var updateDelayer = new UpdateDelayer.Fixed(1);
+        var changes = cMustKeepAwake0.Changes(updateDelayer, cancellationToken);
+        await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
+            var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 // TODO(AY): Send this update to JS
                 await KeepAwakeUI.SetKeepAwake(mustKeepAwake, cancellationToken);
@@ -227,15 +229,18 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
     {
-        await foreach (var change in ChatUI.HighlightedChatEntryId.Changes(cancellationToken).Where(x => x.Value != 0).ConfigureAwait(false)) {
-            using var timeoutCts = new CancellationTokenSource(2000);
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
+        var changes = ChatUI.HighlightedChatEntryId.Changes(cancellationToken).Where(x => x.Value != 0);
+        await foreach (var cEntryId in changes.ConfigureAwait(false)) {
+            var cts = cancellationToken.CreateLinkedTokenSource();
+            cts.CancelAfter(2000);
             try {
-                await ChatUI.HighlightedChatEntryId.When(x => x != change.Value, cts.Token).ConfigureAwait(false);
+                await ChatUI.HighlightedChatEntryId.When(x => x != cEntryId.Value, cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
                 ChatUI.HighlightedChatEntryId.Value = 0;
+            }
+            finally {
+                cts.CancelAndDisposeSilently();
             }
         }
     }
@@ -243,42 +248,45 @@ public class ChatUIStateSync : WorkerBase
     private async Task SyncIsActive(CancellationToken cancellationToken)
     {
         var old = ChatUI.ActiveChatId.Value;
-        await foreach (var computed in ChatUI.ActiveChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+        var changes = ChatUI.ActiveChatId.Changes(cancellationToken);
+        await foreach (var cActiveChatId in changes.ConfigureAwait(false)) {
             using (Computed.Invalidate()) {
                 _ = ChatUI.IsActive(old);
-                _ = ChatUI.IsActive(computed.Value);
+                _ = ChatUI.IsActive(cActiveChatId.Value);
             }
 
-            old = computed.Value;
+            old = cActiveChatId.Value;
         }
     }
 
     private async Task SyncIsRecording(CancellationToken cancellationToken)
     {
         var old = ChatUI.RecordingChatId.Value;
-        await foreach (var computed in ChatUI.RecordingChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+        var changes = ChatUI.RecordingChatId.Changes(cancellationToken);
+        await foreach (var cRecordingChatId in changes.ConfigureAwait(false)) {
             using (Computed.Invalidate()) {
                 _ = ChatUI.IsRecording(old);
-                _ = ChatUI.IsRecording(computed.Value);
+                _ = ChatUI.IsRecording(cRecordingChatId.Value);
             }
 
-            old = computed.Value;
+            old = cRecordingChatId.Value;
         }
     }
 
     private async Task SyncIsListening(CancellationToken cancellationToken)
     {
         var old = ImmutableList<Symbol>.Empty;
-        await foreach (var computed in ChatUI.ListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
-            var removedIds = old.Except(computed.Value).ToList();
-            var addedIds = computed.Value.Except(old).ToList();
+        var changes = ChatUI.ListeningChatIds.Changes(cancellationToken);
+        await foreach (var cListeningChatId in changes.ConfigureAwait(false)) {
+            var removedIds = old.Except(cListeningChatId.Value).ToList();
+            var addedIds = cListeningChatId.Value.Except(old).ToList();
             var changedIds = addedIds.Concat(removedIds);
 
             using (Computed.Invalidate())
                 foreach (var id in changedIds)
                     _ = ChatUI.IsListening(id);
 
-            old = computed.Value;
+            old = cListeningChatId.Value;
         }
     }
 
@@ -286,8 +294,9 @@ public class ChatUIStateSync : WorkerBase
     {
         var comparer = StringComparer.Ordinal;
         var old = ImmutableDictionary<string, Moment>.Empty;
-        await foreach (var computed in ChatUI.PinnedChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
-            var newKeys = computed.Value.Keys.ToList();
+        var changes = ChatUI.PinnedChatIds.Changes(cancellationToken);
+        await foreach (var cPinnedChatIds in changes.ConfigureAwait(false)) {
+            var newKeys = cPinnedChatIds.Value.Keys.ToList();
             var oldKeys = old.Keys.ToList();
 
             var addedKeys = newKeys.Except(old.Keys, comparer);
@@ -298,7 +307,7 @@ public class ChatUIStateSync : WorkerBase
                 foreach (var id in changedKeys)
                     _ = ChatUI.IsPinned(id);
 
-            old = computed.Value;
+            old = cPinnedChatIds.Value;
         }
     }
 }

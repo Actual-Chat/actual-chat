@@ -90,7 +90,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                     break;
 
                 if (readResultChangedTask.IsCompleted && !valueChangedTask.IsCompleted)
-                    await UpdateDelayer.Delay(snapshot, cancellationToken).ConfigureAwait(false);
+                    await UpdateDelayer.Delay(snapshot.RetryCount, cancellationToken).ConfigureAwait(false);
                 await Sync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) {

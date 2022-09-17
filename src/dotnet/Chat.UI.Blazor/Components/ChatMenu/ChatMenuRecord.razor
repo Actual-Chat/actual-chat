@@ -37,7 +37,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsRecording(Chat.Id);
 }

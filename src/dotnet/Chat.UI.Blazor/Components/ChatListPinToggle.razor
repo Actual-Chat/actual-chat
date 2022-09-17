@@ -27,7 +27,7 @@
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => ChatUI.IsPinned(ChatId);

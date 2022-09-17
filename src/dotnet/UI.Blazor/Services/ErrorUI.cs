@@ -21,7 +21,7 @@ public class ErrorUI
     public void ShowError(Exception error) {
         // use command error reporting approach
         var command = new ErrorCommand();
-        var clock = _uiActionTracker.Clocks.UIClock;
+        var clock = _uiActionTracker.Clock;
         var errorTask = Task.FromException<Unit>(error);
         _uiActionTracker.Register(new UIAction<Unit>(command, clock, errorTask, CancellationToken.None));
     }

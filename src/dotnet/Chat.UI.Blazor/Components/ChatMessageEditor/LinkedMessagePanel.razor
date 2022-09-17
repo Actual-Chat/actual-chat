@@ -15,7 +15,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
 
     protected override ComputedState<Model?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var linkedChatEntry = await ChatUI.LinkedChatEntry.Use(cancellationToken).ConfigureAwait(false);

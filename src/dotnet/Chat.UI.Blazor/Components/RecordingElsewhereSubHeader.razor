@@ -33,11 +33,11 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = UpdateDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!await ChatUI.IsRecording(Chat.Id).ConfigureAwait(false))
+        if (await ChatUI.IsRecording(Chat.Id))
             return Model.None;
 
         var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);

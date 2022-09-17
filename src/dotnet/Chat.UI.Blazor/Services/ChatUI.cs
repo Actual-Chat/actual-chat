@@ -84,16 +84,13 @@ public class ChatUI
     }
 
     [ComputeMethod]
-    public virtual Task<bool> IsPinned(Symbol chatId) => Task.FromResult(PinnedChatIds.Value.ContainsKey(chatId));
-
+    public virtual Task<bool> IsPinned(string chatId) => Task.FromResult(PinnedChatIds.Value.ContainsKey(chatId));
     [ComputeMethod]
-    public virtual Task<bool> IsListening(Symbol chatId) => Task.FromResult(ListeningChatIds.Value.Contains(chatId));
-
+    public virtual Task<bool> IsListening(string chatId) => Task.FromResult(ListeningChatIds.Value.Contains(chatId));
     [ComputeMethod]
-    public virtual Task<bool> IsRecording(Symbol chatId) => Task.FromResult(RecordingChatId.Value == chatId);
-
+    public virtual Task<bool> IsRecording(string chatId) => Task.FromResult(RecordingChatId.Value == chatId);
     [ComputeMethod]
-    public virtual Task<bool> IsActive(Symbol chatId) => Task.FromResult(ActiveChatId.Value == chatId);
+    public virtual Task<bool> IsActive(string chatId) => Task.FromResult(ActiveChatId.Value == chatId);
 
     [ComputeMethod]
     public virtual async Task<SingleChatPlaybackState> GetSingleChatPlaybackState(Symbol chatId, CancellationToken cancellationToken)

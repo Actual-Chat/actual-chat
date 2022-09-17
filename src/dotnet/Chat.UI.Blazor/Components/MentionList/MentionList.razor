@@ -84,7 +84,7 @@
     protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
         => new() {
             InitialValue = Array.Empty<MentionSearchResult>(),
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = UpdateDelayer.Instant,
         };
 
     protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {
