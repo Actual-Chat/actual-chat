@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
 import {
     Placement,
     computePosition,
@@ -47,20 +47,28 @@ export class Tooltip implements Disposable {
     private listenForMouseOverEvent(): void {
         let currentElement: HTMLElement | undefined = undefined;
         fromEvent(document, 'mouseover')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => {
-                if (!(event.target instanceof HTMLElement))
-                    return;
-                const closestElement = event.target.closest('[data-tooltip]');
-                if (closestElement == currentElement)
-                    return;
-                if (!closestElement && currentElement) {
-                    currentElement = undefined;
-                    this.hideTooltip();
-                    return;
-                }
-                if (!(closestElement instanceof HTMLElement))
-                    return;
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event: Event) => {
+                    if (!(event.target instanceof HTMLElement))
+                        return undefined;
+                    const closestElement = event.target.closest('[data-tooltip]');
+                    if (closestElement == currentElement)
+                        return undefined;
+                    if (!closestElement && currentElement) {
+                        currentElement = undefined;
+                        this.hideTooltip();
+                        return undefined;
+                    }
+                    if (!(closestElement instanceof HTMLElement))
+                        return undefined;
+                    return closestElement;
+                }),
+                switchMap((htmlElement: HTMLElement | undefined) => {
+                    return htmlElement ? of(htmlElement).pipe(delay(300)) : empty();
+                }),
+            )
+            .subscribe((closestElement: HTMLElement) => {
                 currentElement = closestElement;
                 this.showTooltip(currentElement);
             });
