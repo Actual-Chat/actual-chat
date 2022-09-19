@@ -20,9 +20,6 @@
 .settings-panel-tabs .btn-group-container.container-toggle * {
     @apply cursor-auto;
 }
-.settings-panel-tabs .btn-group-container.container-toggle:hover {
-    @apply bg-03;
-}
 .settings-panel-tabs .btn-group-container.container-toggle:hover i {
     @apply text-icons-01;
 }
@@ -55,7 +52,7 @@
     @apply font-normal;
 }
 .settings-tab {
-    @apply p-0 md:px-20 w-full;
+    @apply p-0 md:px-20 w-full bg-02;
 }
 .hide-tabs .settings-tab {
     @apply hidden md:flex-y;
