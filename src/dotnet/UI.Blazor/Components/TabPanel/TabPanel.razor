@@ -1,42 +1,21 @@
 @namespace ActualChat.UI.Blazor.Components
 
-@{
-    RenderFragment RenderTitle(string title) =>
-        @<div class="tab-panel-title">
-            <button onclick="@OnCloseModalClick" class="md:hidden">
-                <i class="icon-arrow-left text-2xl text-icons-01"></i>
-            </button>
-            <span>@title</span>
-        </div>;
-}
-
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
-            @if (!string.IsNullOrWhiteSpace(Title)) {
-                @RenderTitle(Title)
-            }
             <div class="relative btn-group">
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
                     <div class="flex-y btn-group-container">
                         <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                            @if (tab.TitleContent != null) {
-                                @tab.TitleContent
-                            } else {
-                                @tab.Title
-                            }
+                            @tab.Title
                         </Button>
                         @if (BottomHill) {
                             var lineCls = isActive ? "bg-primary" : "bg-transparent";
                             <div class="@lineCls shape"></div>
                         }
                     </div>
-                    @if (!tab.Separator) {
-                        continue;
-                    }
-                    <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
         </div>
@@ -52,10 +31,8 @@
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
-    [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
-    [Parameter] public EventCallback OnCloseModalClick { get; set; }
 
     public IReadOnlyList<Tab> Tabs => _tabs;
     [Parameter]
