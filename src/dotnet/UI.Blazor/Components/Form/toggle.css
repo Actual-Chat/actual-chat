@@ -63,6 +63,9 @@
 .checkbox {
     @apply inline-block relative align-middle select-none text-sm mr-2.5 mt-0.5 leading-7 h-7;
 }
+.toggle-sm .checkbox {
+    @apply mr-0;
+}
 form label.checkbox-label {
     @apply font-normal;
 }
@@ -70,11 +73,17 @@ form label.checkbox-label {
     @apply inline-block relative h-3.5 w-8 rounded-3xl top-1.5 align-top bg-icons-02;
     transition: .2s;
 }
+.toggle-sm .checkbox-switch {
+    @apply h-2.5 w-6 top-2;
+}
 .checkbox .checkbox-switch:before {
     @apply inline-block absolute w-5 h-5 -left-px bg-01 border border-icons-02 rounded-full;
     content: '';
     top: -3px;
     transition: .15s;
+}
+.toggle-sm .checkbox-switch:before {
+    @apply h-4 w-4;
 }
 .checkbox input[type=checkbox] {
     @apply block w-0 h-0 absolute opacity-0 z-minus;

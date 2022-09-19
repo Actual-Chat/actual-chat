@@ -8,7 +8,7 @@
     @apply select-none;
 }
 .btn .btn-content {
-    @apply flex flex-row place-self-center;
+    @apply flex flex-row self-center;
 }
 
 .btn:disabled,
