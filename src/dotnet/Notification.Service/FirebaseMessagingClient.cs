@@ -25,6 +25,7 @@ public class FirebaseMessagingClient
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
         var (notificationId, notificationType, title, content, iconUrl, _) = entry;
+        var absoluteIconUrl = UriMapper.ToAbsolute(iconUrl).ToString();
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
@@ -63,12 +64,12 @@ public class FirebaseMessagingClient
             Data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) {
                 { "notificationId", notificationId },
                 { "tag", tag },
-                { "icon", iconUrl },
+                { "icon", absoluteIconUrl },
             },
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
                 Body = content,
-                ImageUrl = iconUrl,
+                ImageUrl = absoluteIconUrl,
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
@@ -81,7 +82,7 @@ public class FirebaseMessagingClient
                     DefaultSound = true,
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
-                    Icon = iconUrl,
+                    Icon = absoluteIconUrl,
                 },
                 Priority = Priority.Normal,
                 CollapseKey = "topics",
@@ -102,7 +103,7 @@ public class FirebaseMessagingClient
                     Body = content,
                     Tag = tag,
                     RequireInteraction = false,
-                    Icon = iconUrl,
+                    Icon = absoluteIconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
                     Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")

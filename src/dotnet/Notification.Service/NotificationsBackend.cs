@@ -66,122 +66,106 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     // [CommandHandler]
-    public virtual async Task NotifySubscribers(
-        INotificationsBackend.NotifySubscribersCommand notifyCommand,
-        CancellationToken cancellationToken)
+    public virtual async Task NotifyUser(INotificationsBackend.NotifyUserCommand command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
+        var context = CommandContext.GetCurrent();
+        var (userId, entry) = command;
+        var notificationType = entry.Type;
+        if (Computed.IsInvalidating()) {
+            var invNotificationId = context.Operation().Items.Get<string>();
+            if (invNotificationId.IsNullOrEmpty())
+                _ = ListRecentNotificationIds(userId, default);
+            else
+                _ = GetNotification(userId, invNotificationId, default);
             return;
+        }
 
-        var (chatId, entryId, userId, title, iconUrl, content) = notifyCommand;
-        var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
-        var multicastMessage = new MulticastMessage {
-            Tokens = null,
-            Notification = new FirebaseAdmin.Messaging.Notification {
-                Title = title,
-                Body = content,
-            },
-            Android = new AndroidConfig {
-                Notification = new AndroidNotification {
-                    // Color = ??? TODO(AK): set color
-                    Priority = NotificationPriority.DEFAULT,
-                    // Sound = ??? TODO(AK): set sound
-                    Tag = chatId,
-                    Visibility = NotificationVisibility.PRIVATE,
-                    // ClickAction = ?? TODO(AK): Set click action for Android
-                    DefaultSound = true,
-                    LocalOnly = false,
-                    // NotificationCount = TODO(AK): Set unread message count!
-                    Icon = iconUrl,
-                },
-                Priority = Priority.Normal,
-                CollapseKey = "topics",
-                // RestrictedPackageName = TODO(AK): Set android package name
-                TimeToLive = TimeSpan.FromMinutes(180),
-            },
-            Apns = new ApnsConfig {
-                Aps = new Aps {
-                    Sound = "default",
-                    MutableContent = true,
-                    ThreadId = "topics",
-                },
-            },
-            Webpush = new WebpushConfig {
-                Notification = new WebpushNotification {
-                    Renotify = false,
-                    Title = title,
-                    Body = content,
-                    Tag = chatId,
-                    RequireInteraction = false,
-                    Icon = iconUrl,
-                },
-                FcmOptions = new WebpushFcmOptions {
-                    Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")
-                        ? null
-                        : UriMapper.ToAbsolute($"/chat/{chatId}#{entryId}").ToString(),
-                },
-                Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
-                    ["chatId"] = chatId,
-                    ["icon"] = iconUrl,
-                },
-            },
-        };
-        var deviceIdGroups = ListUserDevicePairs(userIds, userId, cancellationToken)
-            .Chunk(200, cancellationToken)
-            .Buffer(2, cancellationToken);
+        var notificationIds = await ListRecentNotificationIds(userId, cancellationToken).ConfigureAwait(false);
+        foreach (var existingId in notificationIds) {
+            var existingEntry = await GetNotification(userId, existingId, cancellationToken).ConfigureAwait(false);
+            if (existingEntry.Type != notificationType)
+                continue;
 
-        await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
-            multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
-            var batchResponse = await FirebaseMessaging
-                .SendMulticastAsync(multicastMessage, cancellationToken)
+            if (notificationType == NotificationType.Message) {
+                var messageDetails = entry.Message;
+                var existingMessageDetails = existingEntry.Message;
+                if (messageDetails == null || existingMessageDetails == null)
+                    continue;
+
+                var chatId = messageDetails.ChatId;
+                var existingChatId = existingMessageDetails.ChatId;
+                if (!OrdinalEquals(chatId,existingChatId))
+                    continue;
+
+                entry = entry with { NotificationId = existingEntry.NotificationId };
+                break;
+            }
+            if (notificationType is NotificationType.Reply or NotificationType.Invitation)
+                continue;
+
+            throw new ArgumentOutOfRangeException();
+        }
+
+        await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
+        await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
+
+        async Task UpsertEntry(NotificationEntry entry1, CancellationToken cancellationToken1)
+        {
+            var dbContext = CreateDbContext().ReadWrite();
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            var existingEntry = await dbContext.Notifications.Get(entry1.NotificationId, cancellationToken1)
                 .ConfigureAwait(false);
 
-            Log.LogInformation(
-                "NotifySubscribers: notification batch is sent for "
-                + "chat #{ChatId}, entry #{ChatEntryId} to {RecipientsCount} device(s) "
-                + "({SuccessCount} ok, {FailureCount} failures)",
-                chatId,
-                entryId,
-                deviceGroup.Count,
-                batchResponse.SuccessCount,
-                batchResponse.FailureCount);
-
-            if (batchResponse.FailureCount > 0) {
-                var responses = batchResponse.Responses
-                    .Zip(deviceGroup)
-                    .Select(p => new {
-                        p.Second.DeviceId,
-                        p.First.IsSuccess,
-                        p.First.Exception?.MessagingErrorCode,
-                        p.First.Exception?.HttpResponse,
-                    })
-                    .ToList();
-                var responseGroups = responses.GroupBy(x => x.MessagingErrorCode);
-                foreach (var responseGroup in responseGroups)
-                    if (responseGroup.Key == MessagingErrorCode.Unregistered) {
-                        var removedDeviceIds = responseGroup
-                            .Select(g => g.DeviceId)
-                            .ToImmutableArray();
-                        _ = Commander.Start(new INotificationsBackend.RemoveDevicesCommand(removedDeviceIds), CancellationToken.None);
-                    }
-                    else if (responseGroup.Key.HasValue) {
-                        var firstErrorItem = responseGroup.First();
-                        var errorContent = firstErrorItem.HttpResponse == null
-                            ? ""
-                            : await firstErrorItem.HttpResponse.Content
-                                .ReadAsStringAsync(cancellationToken)
-                                .ConfigureAwait(false);
-                        Log.LogWarning("NotifySubscribers: notifications failed, "
-                            + "ErrorCode = {ErrorCode} (x {ErrorCount}), Details: {Details}",
-                            responseGroup.Key, responseGroup.Count(), errorContent);
-                    }
+            if (existingEntry != null) {
+                existingEntry.Title = entry1.Title;
+                existingEntry.Content = entry1.Content;
+                existingEntry.IconUrl = entry1.IconUrl;
+                existingEntry.ChatEntryId = entry1.Message?.EntryId;
+                existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
+                existingEntry.ModifiedAt = entry1.NotificationTime;
+                existingEntry.HandledAt = null;
+                existingEntry.ModifiedAt = null;
+                context.Operation().Items.Set(entry1.NotificationId);
+            }
+            else {
+                existingEntry = new DbNotification {
+                    Id = entry1.NotificationId,
+                    UserId = userId,
+                    NotificationType = entry1.Type,
+                    Title = entry1.Title,
+                    Content = entry1.Content,
+                    IconUrl = entry1.IconUrl,
+                    ChatId = entry1.Message?.ChatId ?? entry1.Chat?.ChatId,
+                    ChatEntryId = entry1.Message?.EntryId,
+                    ChatAuthorId = entry1.Message?.AuthorId,
+                    CreatedAt = Clocks.CoarseSystemClock.Now,
+                    HandledAt = null,
+                    ModifiedAt = null,
+                };
+                dbContext.Notifications.Add(existingEntry);
             }
 
-            if (batchResponse.SuccessCount > 0)
-                _ = BackgroundTask.Run(
-                    () => PersistMessages(chatId, entryId, deviceGroup, batchResponse.Responses, cancellationToken),
-                    Log, "PersistMessages failed",
-                    cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task SendSystemNotification(string userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
+        {
+            var deviceIds = await GetDevicesInternal(userId1, cancellationToken1).ConfigureAwait(false);
+            if (deviceIds.Count <= 0)
+                return;
+
+            await FirebaseMessagingClient.SendMessage(entry1, deviceIds, cancellationToken1).ConfigureAwait(false);
+        }
+
+        async Task<List<string>> GetDevicesInternal(
+            string userId1,
+            CancellationToken cancellationToken1)
+        {
+            var devices = await ListDevices(userId1, cancellationToken1).ConfigureAwait(false);
+            return devices
+                .Select(d => d.DeviceId)
+                .ToList();
         }
     }
 
@@ -306,114 +290,4 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         await dbContext.AddRangeAsync(dbMessages, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
-
-    [CommandHandler]
-    protected virtual async Task NotifyUser(NotifyUserCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        var (userId, entry) = command;
-        var notificationType = entry.Type;
-        if (Computed.IsInvalidating()) {
-            var invNotificationId = context.Operation().Items.Get<string>();
-            if (invNotificationId.IsNullOrEmpty())
-                _ = ListRecentNotificationIds(userId, default);
-            else
-                _ = GetNotification(userId, invNotificationId, default);
-            return;
-        }
-
-        var notificationIds = await ListRecentNotificationIds(userId, cancellationToken).ConfigureAwait(false);
-        foreach (var existingId in notificationIds) {
-            var existingEntry = await GetNotification(userId, existingId, cancellationToken).ConfigureAwait(false);
-            if (existingEntry.Type != notificationType)
-                continue;
-
-            if (notificationType == NotificationType.Message) {
-                var messageDetails = entry.Message;
-                var existingMessageDetails = existingEntry.Message;
-                if (messageDetails == null || existingMessageDetails == null)
-                    continue;
-
-                var chatId = messageDetails.ChatId;
-                var existingChatId = existingMessageDetails.ChatId;
-                if (!OrdinalEquals(chatId,existingChatId))
-                    continue;
-
-                entry = entry with { NotificationId = existingEntry.NotificationId };
-                break;
-            }
-            if (notificationType is NotificationType.Reply or NotificationType.Invitation)
-                continue;
-
-            throw new ArgumentOutOfRangeException();
-        }
-
-        await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
-        await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
-
-        async Task UpsertEntry(NotificationEntry entry1, CancellationToken cancellationToken1)
-        {
-            var dbContext = CreateDbContext().ReadWrite();
-            await using var __ = dbContext.ConfigureAwait(false);
-
-            var existingEntry = await dbContext.Notifications.Get(entry1.NotificationId, cancellationToken1)
-                .ConfigureAwait(false);
-
-            if (existingEntry != null) {
-                existingEntry.Title = entry1.Title;
-                existingEntry.Content = entry1.Content;
-                existingEntry.IconUrl = entry1.IconUrl;
-                existingEntry.ChatEntryId = entry1.Message?.EntryId;
-                existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
-                existingEntry.ModifiedAt = entry1.NotificationTime;
-                existingEntry.HandledAt = null;
-                existingEntry.ModifiedAt = null;
-                context.Operation().Items.Set(entry1.NotificationId);
-            }
-            else {
-                existingEntry = new DbNotification {
-                    Id = entry1.NotificationId,
-                    UserId = userId,
-                    NotificationType = entry1.Type,
-                    Title = entry1.Title,
-                    Content = entry1.Content,
-                    IconUrl = entry1.IconUrl,
-                    ChatId = entry1.Message?.ChatId ?? entry1.Chat?.ChatId,
-                    ChatEntryId = entry1.Message?.EntryId,
-                    ChatAuthorId = entry1.Message?.AuthorId,
-                    CreatedAt = Clocks.CoarseSystemClock.Now,
-                    HandledAt = null,
-                    ModifiedAt = null,
-                };
-                dbContext.Notifications.Add(existingEntry);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        async Task SendSystemNotification(string userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
-        {
-            var deviceIds = await GetDevicesInternal(userId1, cancellationToken1).ConfigureAwait(false);
-            if (deviceIds.Count <= 0)
-                return;
-
-            await FirebaseMessagingClient.SendMessage(entry1, deviceIds, cancellationToken1).ConfigureAwait(false);
-        }
-
-        async Task<List<string>> GetDevicesInternal(
-            string userId1,
-            CancellationToken cancellationToken1)
-        {
-            var devices = await ListDevices(userId1, cancellationToken1).ConfigureAwait(false);
-            return devices
-                .Select(d => d.DeviceId)
-                .ToList();
-        }
-    }
-
-    [DataContract]
-    public sealed record NotifyUserCommand(
-        [property: DataMember] string UserId,
-        [property: DataMember] NotificationEntry Entry
-    ) : ICommand<Unit>, IBackendCommand;
 }

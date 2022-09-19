@@ -2,9 +2,9 @@ using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 
-namespace ActualChat.Notification.Jobs;
+namespace ActualChat.Notification.EventHandlers;
 
-public class NotificationsJobs
+public class NotificationEventHandlers
 {
     private INotificationsBackend NotificationsBackend { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
@@ -12,7 +12,7 @@ public class NotificationsJobs
     private ICommander Commander { get; }
     private ContentUrlMapper ContentUrlMapper { get; }
 
-    public NotificationsJobs(
+    public NotificationEventHandlers(
         INotificationsBackend notificationsBackend,
         IChatAuthorsBackend chatAuthorsBackend,
         IChatsBackend chatsBackend,
@@ -27,14 +27,13 @@ public class NotificationsJobs
     }
 
     [CommandHandler]
-    public virtual async Task OnNewTextEntryJob(
+    public virtual async Task OnNewTextEntryEvent(
         NewTextEntryEvent @event,
         CancellationToken cancellationToken)
     {
         var (chatId, entryId, authorId, content) = @event;
         if (Computed.IsInvalidating())
             return;
-
 
         var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
         var userId = chatAuthor!.UserId;
@@ -47,7 +46,7 @@ public class NotificationsJobs
         foreach (var userIdGroup in userIds.Where(uid => !OrdinalEquals(uid, userId)).Chunk(200))
             await Task.WhenAll(userIdGroup.Select(uid
                     => Commander.Call(
-                        new NotificationsBackend.NotifyUserCommand(
+                        new INotificationsBackend.NotifyUserCommand(
                             uid,
                             new NotificationEntry(
                                 Ulid.NewUlid().ToString(),
