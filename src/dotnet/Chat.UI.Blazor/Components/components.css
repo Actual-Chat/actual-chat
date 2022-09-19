@@ -41,13 +41,13 @@
 }
 
 .recording-elsewhere-sub-header {
-    @apply relative z-20 p-0.5 mx-4 rounded-t-lg;
+    @apply relative z-20 p-0.5 md:mx-4 rounded-t-lg;
     @apply flex flex-row items-center justify-center;
     @apply bg-error text-04 shadow-lg opacity-75;
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
-    @apply flex flex-1 flex-row items-center justify-center gap-x-2;
+    @apply flex-x flex-1 items-center justify-center gap-x-2 px-4 w-full;
 }
 .recording-elsewhere-sub-header-content .c-text {
     @apply font-light;
