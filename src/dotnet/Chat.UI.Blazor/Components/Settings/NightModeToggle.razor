@@ -11,7 +11,7 @@
         => ThemeUI.CurrentTheme.Value = ThemeUI.CurrentTheme.ValueOrDefault == Theme.Dark ? Theme.Light : Theme.Dark;
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var theme = await ThemeUI.CurrentTheme.Use(cancellationToken).ConfigureAwait(false);
