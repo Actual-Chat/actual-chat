@@ -3,7 +3,7 @@ using ActualChat.Events;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
-using ActualChat.Notification.Jobs;
+using ActualChat.Notification.EventHandlers;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
@@ -69,6 +69,6 @@ public class NotificationModule : HostModule<NotificationSettings>
 
         // Jobs
         fusion.AddLocalEventScheduler();
-        fusion.AddComputeService<NotificationsJobs>();
+        fusion.AddComputeService<NotificationEventHandlers>();
     }
 }

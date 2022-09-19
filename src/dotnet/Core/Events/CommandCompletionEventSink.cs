@@ -1,20 +1,22 @@
-using Stl.Fusion.Operations.Internal;
-
 namespace ActualChat.Events;
 
 public class CommandCompletionEventSink : IOperationCompletionListener
 {
     private LocalEventQueue EventQueue { get; }
+    private AgentInfo AgentInfo { get; }
 
-    public CommandCompletionEventSink(LocalEventQueue eventQueue)
-        => EventQueue = eventQueue;
+    public CommandCompletionEventSink(LocalEventQueue eventQueue, AgentInfo agentInfo)
+    {
+        EventQueue = eventQueue;
+        AgentInfo = agentInfo;
+    }
 
     public bool IsReady()
         => true;
 
     public async Task OnOperationCompleted(IOperation operation, CommandContext? commandContext)
     {
-        if (operation is not TransientOperation)
+        if (operation.AgentId != AgentInfo.Id)
             return;
 
         if (operation.Items.Items.Count == 0)
