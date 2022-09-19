@@ -1,0 +1,20 @@
+@inherits ComputedStateComponent<bool>
+
+<Toggle Value="@_isDarkTheme" ValueChanged="OnThemeChanged" Class="toggle-sm"/>
+
+@code {
+    private bool _isDarkTheme;
+
+    [Inject] ThemeUI ThemeUI { get; init; } = null!;
+
+    private void OnThemeChanged()
+        => ThemeUI.CurrentTheme.Value = ThemeUI.CurrentTheme.ValueOrDefault == Theme.Dark ? Theme.Light : Theme.Dark;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var theme = await ThemeUI.CurrentTheme.Use(cancellationToken).ConfigureAwait(false);
+        return _isDarkTheme = theme == Theme.Dark;
+    }
+}
