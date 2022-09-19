@@ -27,7 +27,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() => new () {
-        UpdateDelayer = UpdateDelayer.ZeroDelay,
+        UpdateDelayer = UpdateDelayer.Instant,
         InitialValue = Model.None,
     };
 
