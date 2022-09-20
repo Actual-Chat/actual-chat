@@ -15,6 +15,6 @@ public class LocalCommandScheduler : WorkerBase
     {
         var jobs = LocalCommandQueue.ReadEvents(cancellationToken);
         await foreach (var job in jobs.ConfigureAwait(false))
-            _ = Commander.Start(job, cancellationToken);
+            _ = Commander.Start(job, true, cancellationToken);
     }
 }

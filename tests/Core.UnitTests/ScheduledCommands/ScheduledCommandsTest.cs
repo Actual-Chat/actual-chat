@@ -2,11 +2,11 @@ using ActualChat.ScheduledCommands;
 using Microsoft.Extensions.Hosting;
 using Stl.Time.Testing;
 
-namespace ActualChat.Core.UnitTests.Events;
+namespace ActualChat.Core.UnitTests.ScheduledCommands;
 
-public class EventsTest: TestBase
+public class ScheduledCommandsTest: TestBase
 {
-    public EventsTest(ITestOutputHelper @out) : base(@out)
+    public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
     { }
 
     [Fact]
@@ -15,7 +15,7 @@ public class EventsTest: TestBase
         await using var services = new ServiceCollection()
             .AddFusion()
             .AddLocalEventScheduler()
-            .AddComputeService<EventTestService>()
+            .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
 
@@ -23,11 +23,11 @@ public class EventsTest: TestBase
         foreach (var hostedService in hostedServices)
             await hostedService.StartAsync(CancellationToken.None).ConfigureAwait(false);
 
-        var testService = services.GetRequiredService<EventTestService>();
+        var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        var commandTask = commander.Call(new EventTestService.TestCommand());
+        var commandTask = commander.Call(new ScheduledCommandTestService.TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
         await commandTask.ConfigureAwait(false);

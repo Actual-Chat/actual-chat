@@ -439,7 +439,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .Configure()
                 .ShardByChatId(entry.ChatId)
                 .WithPriority(CommandPriority.Low)
-                .ScheduleOnCompletion(command)
+                .ScheduleOnCompletion(command, cancellationToken)
                 .ConfigureAwait(false);
 
         return entry;
