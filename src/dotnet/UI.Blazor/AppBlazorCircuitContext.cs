@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Options;
-
 namespace ActualChat.UI.Blazor;
 
 public sealed class AppBlazorCircuitContext : BlazorCircuitContext
@@ -19,8 +17,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         Services = services;
         Clocks = Services.Clocks();
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
-        var lifetimeEvents = Services.GetRequiredService<IOptions<LifetimeEvents>>().Value;
-        lifetimeEvents.RaiseOnCircuitContextCreated(Services);
+        Services.GetRequiredService<UILifetimeEvents>().RaiseOnCircuitContextCreated(Services);
     }
 
     protected override void Dispose(bool disposing)

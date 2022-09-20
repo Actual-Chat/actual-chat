@@ -55,9 +55,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
-        services.ConfigureLifetimeEvents(events =>
-            events.OnCircuitContextCreated += svp => RegisterShowSettingsHandler(svp)
-        );
+        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
     private void RegisterShowSettingsHandler(IServiceProvider services)
