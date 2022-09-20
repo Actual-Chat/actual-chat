@@ -427,15 +427,20 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(entry);
         context.Operation().Items.Set(isNew);
 
-        if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
-            await new TextEntryChangedEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
+        var state = isNew
+            ? EntryState.New
+            : isUpdate
+                ? EntryState.Updated
+                : entry.IsRemoved
+                    ? EntryState.Removed
+                    : EntryState.Updated;
+        if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text)
+            await new TextEntryChangedEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content, state)
                 .Configure()
                 .ShardByChatId(entry.ChatId)
                 .WithPriority(CommandPriority.Low)
                 .ScheduleOnCompletion(command)
                 .ConfigureAwait(false);
-            await Commander.Call(new IMentionsBackend.UpdateCommand(entry), cancellationToken).ConfigureAwait(false);
-        }
 
         return entry;
     }
