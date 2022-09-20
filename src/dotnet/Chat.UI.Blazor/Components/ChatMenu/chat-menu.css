@@ -31,9 +31,6 @@
 .message-counter-badge {
     @apply relative mx-1 flex-x min-w-8 justify-center items-center rounded-full text-04 text-sm;
 }
-.active-chats .message-counter-badge {
-    @apply hidden;
-}
 .navbar-item:hover .message-counter-badge {
     @apply hidden;
 }
