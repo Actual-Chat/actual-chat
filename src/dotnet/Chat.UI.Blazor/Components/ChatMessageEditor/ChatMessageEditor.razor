@@ -91,10 +91,12 @@
     [CascadingParameter] public ScreenSize ScreenSizeKind { get; set; }
 
     protected override async Task OnInitializedAsync() {
-        MarkupHub.ChatId = Chat.Id;
         EditedMarkupConverter = new EditedMarkupConverter(MarkupHub);
         LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
     }
+
+    protected override void OnParametersSet()
+        => MarkupHub.ChatId = Chat.Id;
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
