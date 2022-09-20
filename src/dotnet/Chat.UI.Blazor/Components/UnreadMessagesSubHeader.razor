@@ -6,8 +6,7 @@
         return;
 
     var messagesWord = m.Count == 1 ? "message" : "messages";
-    var countText = m.Count.ToString(CultureInfo.InvariantCulture);
-    var text = $"{countText}{(m.Count >= 10 ? "+": "")} unread {messagesWord}";
+    var text = $"{m.Count.Format()} unread {messagesWord}";
 }
 
 <div class="unread-messages-sub-header" @onclick="Click">
@@ -15,7 +14,7 @@
 </div>
 
 @code {
-    private static IUpdateDelayer UpdateDelayer { get; } = new UpdateDelayer.Fixed(1);
+    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
@@ -51,6 +50,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public int Count { get; init; }
+        public MaybeEstimate<int> Count { get; init; }
     }
 }

@@ -90,25 +90,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile0(
+    public virtual async Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile0(chatId, entryType, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        CancellationToken cancellationToken)
-    {
-        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile1(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLastIdTile(chatId, entryType, layerIndex, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

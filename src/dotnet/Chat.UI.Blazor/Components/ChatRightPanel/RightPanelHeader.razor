@@ -38,7 +38,7 @@
     protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
         => new() {
             InitialValue = ChatAuthorRules.None(Chat.Id),
-            UpdateDelayer = UpdateDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override Task<ChatAuthorRules> ComputeState(CancellationToken cancellationToken)

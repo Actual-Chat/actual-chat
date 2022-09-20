@@ -36,7 +36,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => ChatUI.IsPinned(Chat.Id);

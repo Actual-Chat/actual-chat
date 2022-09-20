@@ -27,17 +27,11 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<Range<long>> GetLastIdTile0(
+    Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod(MinCacheDuration = 10)]
-    Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken);
 
     // Client-side method always skips entries with IsRemoved flag

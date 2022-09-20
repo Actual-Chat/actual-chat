@@ -9,7 +9,7 @@
     [Parameter, EditorRequired] public string Name { get; set; } = "";
 
     protected override ComputedState<RenderIntoSlot?>.Options GetStateOptions()
-        => new () { UpdateDelayer = UpdateDelayer.Instant };
+        => new () { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken)
         => await RenderVars.RenderSlot(Name).Use(cancellationToken);

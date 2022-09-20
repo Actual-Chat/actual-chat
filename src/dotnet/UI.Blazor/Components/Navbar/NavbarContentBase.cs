@@ -21,7 +21,7 @@ public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBa
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Guest,
-            UpdateDelayer = UpdateDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
