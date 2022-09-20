@@ -6,8 +6,10 @@ public sealed class UIEventHub
 
     public void Subscribe<TEvent>(UIEventHandler<TEvent> handler)
     {
-        lock(_handlers)
-            _handlers[typeof(TEvent)] = _handlers.GetValueOrDefault(typeof(TEvent))?.Add(handler) ?? ImmutableList.Create<object>(handler);
+        lock (_handlers) {
+            var eventHandlers = _handlers.GetValueOrDefault(typeof(TEvent));
+            _handlers[typeof(TEvent)] = eventHandlers?.Add(handler) ?? ImmutableList.Create<object>(handler);
+        }
     }
 
     public void Unsubscribe<TEvent>(UIEventHandler<TEvent> handler)
@@ -22,18 +24,19 @@ public sealed class UIEventHub
         }
     }
 
-    public async Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default) where TEvent : class
+    public async Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+        where TEvent : class
     {
         ImmutableList<object>? eventHandlers;
         lock (_handlers)
             if (!_handlers.TryGetValue(typeof(TEvent), out eventHandlers))
                 return;
 
-        foreach (UIEventHandler<TEvent> eventHandler in eventHandlers) {
-            await eventHandler(@event, cancellationToken).ConfigureAwait(false);
-        }
+        foreach (UIEventHandler<TEvent> eventHandler in eventHandlers)
+            await eventHandler.Invoke(@event, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task Publish<TEvent>(CancellationToken cancellationToken = default) where TEvent : class, new()
+    public Task Publish<TEvent>(CancellationToken cancellationToken = default)
+        where TEvent : class, new()
         => Publish(new TEvent(), cancellationToken);
 }
