@@ -19,18 +19,12 @@ public interface IChatsClientDef
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetLastIdTile0))]
-    Task<Range<long>> GetLastIdTile0(
+    [Get(nameof(GetLastIdTile))]
+    Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [Get(nameof(GetLastIdTile1))]
-    Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetEntryCount))]

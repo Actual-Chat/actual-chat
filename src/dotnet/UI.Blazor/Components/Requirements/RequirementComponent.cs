@@ -9,7 +9,7 @@ public abstract class RequirementComponent : ComputedStateComponent<Unit>
     public abstract Task<Unit> Require(CancellationToken cancellationToken);
 
     protected override ComputedState<Unit>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
         => Require(cancellationToken);

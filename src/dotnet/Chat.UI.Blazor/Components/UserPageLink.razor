@@ -20,7 +20,7 @@
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
     protected override ComputedState<User?>.Options GetStateOptions()
-    => new() { UpdateDelayer = UpdateDelayer.Instant };
+    => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<User?> ComputeState(CancellationToken cancellationToken)
         => Auth.GetUser(Session, default);

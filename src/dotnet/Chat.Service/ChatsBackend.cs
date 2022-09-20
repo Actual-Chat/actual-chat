@@ -173,19 +173,12 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile0(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
+    public virtual async Task<Range<long>> GetLastIdTile(
+        string chatId, ChatEntryType entryType, int layerIndex, CancellationToken cancellationToken)
     {
         using var _ = Computed.SuspendDependencyCapture();
         var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
-        return IdTileStack.Layers[0].GetTile(maxId).Range;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile1(string chatId, ChatEntryType entryType, CancellationToken cancellationToken)
-    {
-        using var _ = Computed.SuspendDependencyCapture();
-        var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
-        return IdTileStack.Layers[1].GetTile(maxId).Range;
+        return IdTileStack.Layers[layerIndex].GetTile(maxId).Range;
     }
 
     // [ComputeMethod]
@@ -455,12 +448,12 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (!isUpdate) {
             _ = GetEntryCount(chatId, entryType, null, false, default);
             _ = GetEntryCount(chatId, entryType, null, true, default);
-            var tile0 = IdTileStack.Layers[0].GetTile(entryId);
-            var tile1 = IdTileStack.Layers[1].GetTile(entryId);
-            if (tile0.Start == entryId)
-                _ = GetLastIdTile0(chatId, entryType, default);
-            if (tile1.Start == entryId)
-                _ = GetLastIdTile1(chatId, entryType, default);
+            foreach (var layer in IdTileStack.Layers) {
+                var tile = layer.GetTile(entryId);
+                if (tile.Start != entryId)
+                    break; // Larger tiles always placed on smaller tile boundaries, so they won't fit too
+                _ = GetLastIdTile(chatId, entryType, layer.Index, default);
+            }
         }
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
             if (idTile.Layer.Smaller == null) {

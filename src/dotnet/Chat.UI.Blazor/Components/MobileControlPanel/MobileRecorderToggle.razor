@@ -60,7 +60,7 @@
     private bool CanRecord { get; set; } = true;
 
     protected override ComputedState<Model?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);

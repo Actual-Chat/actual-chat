@@ -10,11 +10,7 @@
         ? "bg-primary"
         : "bg-counter";
 
-    var countText = m.Count switch {
-        0 => "",
-        < 100 => m.Count.ToString(CultureInfo.InvariantCulture),
-        >=100 => "99+",
-    };
+    var countText = m.Count == 0 ? "" : m.Count.Format();
 }
 
 <div class="@bgColor message-counter-badge">
@@ -28,7 +24,7 @@
 </div>
 
 @code {
-    private static IUpdateDelayer UpdateDelayer { get; } = new UpdateDelayer.Fixed(1);
+    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
@@ -58,15 +54,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasMentionsTask = UnreadMessages.HasMentions(cancellationToken);
-        var countTask = UnreadMessages.GetCount(cancellationToken);
+        var countTask = UnreadMessages.GetCount(cancellationToken).AsTask();
         var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
-        var (hasMentions, messagesCount, notificationStatus) = await (hasMentionsTask, countTask, notificationStatusTask).Collect().ConfigureAwait(false);
+        var (hasMentions, count, notificationStatus) =
+            await hasMentionsTask.Join(countTask, notificationStatusTask).ConfigureAwait(false);
 
-        if (!hasMentions && messagesCount == 0)
+        if (!hasMentions && count == 0)
             return Model.None;
 
         return new() {
-            Count = messagesCount,
+            Count = count,
             IsSubscribed = notificationStatus.IsSubscribed,
             HasMentions = hasMentions,
         };
@@ -76,7 +73,7 @@
         public static readonly Model None = new();
 
         public bool HasMentions { get; init; }
-        public int Count { get; init; }
+        public MaybeEstimate<int> Count { get; init; }
         public bool IsSubscribed { get; init; }
     }
 }

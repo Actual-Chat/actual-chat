@@ -47,7 +47,7 @@
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
             InitialValue = SingleChatPlaybackState.None,
-            UpdateDelayer = UpdateDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)

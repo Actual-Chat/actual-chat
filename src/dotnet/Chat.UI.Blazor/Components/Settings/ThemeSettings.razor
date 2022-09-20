@@ -28,7 +28,7 @@
         => ThemeUI.CurrentTheme.Value = theme;
 
     protected override ComputedState<Theme>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Theme> ComputeState(CancellationToken cancellationToken)
         => await ThemeUI.CurrentTheme.Use(cancellationToken).ConfigureAwait(false);

@@ -40,7 +40,7 @@
     private string ChatId => ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => ChatUI.IsPinned(ChatId);
