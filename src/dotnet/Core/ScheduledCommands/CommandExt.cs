@@ -33,7 +33,10 @@ public static class CommandExt
         => commandGateway.Schedule(commandConfiguration, cancellationToken);
 
     // ReSharper disable once UnusedParameter.Global
-    public static Task ScheduleOnCompletion(this CommandConfiguration commandConfiguration, ICommand command)
+    public static Task ScheduleOnCompletion(
+        this CommandConfiguration commandConfiguration,
+        ICommand command,
+        CancellationToken cancellationToken)
     {
         var commandContext = CommandContext.GetCurrent();
         if (Computed.IsInvalidating())
@@ -44,7 +47,10 @@ public static class CommandExt
     }
 
     // ReSharper disable once UnusedParameter.Global
-    public static Task ScheduleOnCompletion(this IBackendCommand command, ICommand after)
+    public static Task ScheduleOnCompletion(
+        this IBackendCommand command,
+        ICommand after,
+        CancellationToken cancellationToken)
     {
         var commandContext = CommandContext.GetCurrent();
         var eventConfiguration = command.Configure();

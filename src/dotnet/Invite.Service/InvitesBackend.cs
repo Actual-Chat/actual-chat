@@ -2,6 +2,7 @@ using System.Security;
 using ActualChat.Chat;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
+using ActualChat.ScheduledCommands;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -14,19 +15,13 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     private const string InviteIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static RandomStringGenerator InviteIdGenerator { get; } = new(10, InviteIdAlphabet);
 
-    private readonly ILogger _log;
-    private readonly ICommander _commander;
-    private readonly IAccounts _accounts;
-    private readonly IAccountsBackend _accountsBackend;
-    private readonly IChatsBackend _chatsBackend;
+    private IAccounts Accounts { get; }
+    private IChatsBackend ChatsBackend { get; }
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
-        _log = services.LogFor(GetType());
-        _commander = services.Commander();
-        _accounts = services.GetRequiredService<IAccounts>();
-        _accountsBackend = services.GetRequiredService<IAccountsBackend>();
-        _chatsBackend = services.GetRequiredService<IChatsBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
     }
 
     // [ComputeMethod]
@@ -107,7 +102,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var account = await _accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.Get(command.Session, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -130,7 +125,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null)
-            _ = await _chatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
+            _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
 
         dbInvite.UpdateFrom(invite);
 
@@ -138,34 +133,24 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         context.Operation().Items.Set(invite);
 
         // This piece starts a task that performs the actual invite action once the command completes
-        _ = BackgroundTask.Run(async () => {
-            // First, let's wait for completion of this pipeline
-            await context.OutermostContext.UntypedResultTask.ConfigureAwait(false);
-            // If we're here, the command has completed w/o an error
-
-            if (userInviteDetails != null) {
-                 var updateCommand = new IAccountsBackend.UpdateCommand(account with {
-                     Status = AccountStatus.Active,
-                 });
-                 await _commander.Call(updateCommand, true, cancellationToken)
-                    .ConfigureAwait(false);
-                return;
-            }
-
-            if (chatInviteDetails != null) {
-                var updateOptionCommand1 = new ISessionOptionsBackend.UpsertCommand(
+        if (userInviteDetails != null)
+            await new IAccountsBackend.UpdateCommand(account with {
+                    Status = AccountStatus.Active,
+                })
+                .ScheduleOnCompletion(command, cancellationToken)
+                .ConfigureAwait(false);
+        else if (chatInviteDetails != null) {
+            await new ISessionOptionsBackend.UpsertCommand(
+                session,
+                new ("Invite::Id", invite.Id.Value))
+                .ScheduleOnCompletion(command, cancellationToken)
+                .ConfigureAwait(false);
+            await new ISessionOptionsBackend.UpsertCommand(
                     session,
-                    new ("Invite::Id", invite.Id.Value));
-                await _commander.Call(updateOptionCommand1, true, cancellationToken).ConfigureAwait(false);
-                var updateOptionCommand2 = new ISessionOptionsBackend.UpsertCommand(
-                    session,
-                    new ("Invite::ChatId", chatInviteDetails.ChatId.Value));
-                await _commander.Call(updateOptionCommand2, true, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            throw StandardError.Constraint("Invite has no details.");
-        }, _log, "Invite-specific action failed", cancellationToken);
+                    new ("Invite::ChatId", chatInviteDetails.ChatId.Value))
+                .ScheduleOnCompletion(command, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         return invite;
     }
