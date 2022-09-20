@@ -1,4 +1,4 @@
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 using Microsoft.Extensions.Hosting;
 using Stl.Time.Testing;
 

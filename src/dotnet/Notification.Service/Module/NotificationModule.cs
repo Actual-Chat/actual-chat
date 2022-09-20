@@ -1,10 +1,9 @@
 ﻿using ActualChat.Db.Module;
-using ActualChat.Events;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
-using ActualChat.Notification.EventHandlers;
 using ActualChat.Redis.Module;
+using ActualChat.ScheduledCommands;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Stl.Fusion.EntityFramework.Operations;
@@ -67,8 +66,7 @@ public class NotificationModule : HostModule<NotificationSettings>
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);
 
-        // Jobs
+        // Events
         fusion.AddLocalEventScheduler();
-        fusion.AddComputeService<NotificationEventHandlers>();
     }
 }

@@ -1,4 +1,4 @@
-namespace ActualChat.Events;
+namespace ActualChat.ScheduledCommands;
 
 public enum ShardKind
 {

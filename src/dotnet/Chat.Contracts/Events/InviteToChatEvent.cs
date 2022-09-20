@@ -1,4 +1,4 @@
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 
 namespace ActualChat.Chat.Events;
 

@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
-using ActualChat.Chat.Jobs;
 using ActualChat.Db;
-using ActualChat.Events;
+using ActualChat.Hosting;
+using ActualChat.ScheduledCommands;
 using ActualChat.Users;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
@@ -18,7 +19,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private static readonly string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
     private static readonly RandomStringGenerator ChatIdGenerator = new(10, ChatIdAlphabet);
 
-    private IAuthBackend AuthBackend { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IChatRolesBackend ChatRolesBackend { get; }
@@ -28,10 +28,10 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
+    private HostInfo HostInfo { get; }
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
-        AuthBackend = Services.GetRequiredService<IAuthBackend>();
         AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         ChatRolesBackend = Services.GetRequiredService<IChatRolesBackend>();
@@ -41,6 +41,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         DbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = Services.GetRequiredService<DiffEngine>();
+        HostInfo = Services.GetRequiredService<HostInfo>();
     }
 
     // [ComputeMethod]
@@ -427,16 +428,27 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(isNew);
 
         if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
-            await new NewTextEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
+            await new TextEntryChangedEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content)
                 .Configure()
                 .ShardByChatId(entry.ChatId)
-                .WithPriority(EventPriority.Low)
+                .WithPriority(CommandPriority.Low)
                 .ScheduleOnCompletion(command)
                 .ConfigureAwait(false);
             await Commander.Call(new IMentionsBackend.UpdateCommand(entry), cancellationToken).ConfigureAwait(false);
         }
 
         return entry;
+    }
+
+    // Events
+
+    [CommandHandler]
+    public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
+    {
+        await JoinToAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+
+        if (HostInfo.IsDevelopmentInstance)
+            await JoinAdminToDefaultChat(@event.UserId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<TextEntryAttachment> CreateTextEntryAttachment(IChatsBackend.CreateTextEntryAttachmentCommand command,
@@ -533,6 +545,63 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // Private / internal methods
+
+    private async Task JoinToAnnouncementsChat(string userId, CancellationToken cancellationToken)
+    {
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        var chatAuthor = await ChatAuthorsBackend.GetOrCreate(
+                chatId,
+                userId,
+                false,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!HostInfo.IsDevelopmentInstance)
+            return;
+
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null || !account.IsAdmin)
+            return;
+
+        await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task JoinAdminToDefaultChat(string userId, CancellationToken cancellationToken)
+    {
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null || !account.IsAdmin)
+            return;
+
+        var chatId = Constants.Chat.DefaultChatId;
+        var chatAuthor = await ChatAuthorsBackend.GetOrCreate(
+                chatId,
+                userId,
+                false,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task AddOwner(string chatId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
+    {
+        var ownerRole = await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
+        if (ownerRole == null)
+            return;
+
+        var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId,
+            ownerRole.Id,
+            null,
+            new Change<ChatRoleDiff> {
+                Update = new ChatRoleDiff {
+                    AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol> {
+                        AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
+                    },
+                },
+            });
+        await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+    }
 
     internal Task<long> DbNextEntryId(
         ChatDbContext dbContext,

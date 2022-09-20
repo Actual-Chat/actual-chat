@@ -1,6 +1,6 @@
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 using ActualChat.Users.Db;
-using ActualChat.Users.Jobs;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;

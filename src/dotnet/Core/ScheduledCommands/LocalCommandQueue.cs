@@ -1,16 +1,16 @@
-namespace ActualChat.Events;
+namespace ActualChat.ScheduledCommands;
 
-public class LocalEventQueue
+public class LocalCommandQueue
 {
     private Channel<ICommand> ScheduledCommands { get; }
 
-    public LocalEventQueue()
+    public LocalCommandQueue()
         => ScheduledCommands = Channel.CreateBounded<ICommand>(new BoundedChannelOptions(1000) {
             FullMode = BoundedChannelFullMode.DropOldest,
         });
 
-    public async Task Enqueue(IEventConfiguration eventConfiguration, CancellationToken cancellationToken)
-        => await ScheduledCommands.Writer.WriteAsync(eventConfiguration.JobCommand, cancellationToken).ConfigureAwait(false);
+    public async Task Enqueue(ICommandConfiguration commandConfiguration, CancellationToken cancellationToken)
+        => await ScheduledCommands.Writer.WriteAsync(commandConfiguration.Command, cancellationToken).ConfigureAwait(false);
 
     public IAsyncEnumerable<ICommand> ReadEvents(CancellationToken cancellationToken)
         => ScheduledCommands.Reader.ReadAllAsync(cancellationToken);
