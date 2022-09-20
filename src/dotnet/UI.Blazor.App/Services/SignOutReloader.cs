@@ -19,10 +19,11 @@ public class SignOutReloader : WorkerBase
             .Capture(() => auth.GetAuthInfo(session, cancellationToken))
             .ConfigureAwait(false);
 
+        var updateDelayer = FixedDelayer.Get(0.5);
         while (true) {
             try {
-                await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, cancellationToken).ConfigureAwait(false);
-                await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), cancellationToken).ConfigureAwait(false);
+                await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, updateDelayer, cancellationToken).ConfigureAwait(false);
+                await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
                 break;
             }
             catch (OperationCanceledException) {
