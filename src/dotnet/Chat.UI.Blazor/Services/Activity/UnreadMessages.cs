@@ -38,39 +38,30 @@ public class UnreadMessages : IDisposable
         return lastMention?.EntryId > lastReadEntryId;
     }
 
-    public async ValueTask<MaybeEstimate<int>> GetCount(CancellationToken cancellationToken)
+    public async Task<int> GetCount(CancellationToken cancellationToken)
     {
         var lastReadEntryId = await GetLastReadEntryId(cancellationToken);
         if (lastReadEntryId == 0)
             return 0; // Never opened this chat, so no unread messages
 
-        var tile80 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 2, cancellationToken)
+        var tile1 = await Chats
+            .GetLastIdTile1(Session, ChatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
-        var estimatedCount = RoundTo(tile80.Start - lastReadEntryId, 100);
-        if (estimatedCount >= 1000)
-            return (1000, true);
-
-        var tile20 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 1, cancellationToken)
-            .ConfigureAwait(false);
-        estimatedCount = RoundTo(tile20.Start - lastReadEntryId, 100);
+        var estimatedCount = RoundTo(tile1.Start - lastReadEntryId, 100);
         if (estimatedCount >= 200)
-            return (estimatedCount, true);
+            return estimatedCount;
 
-        var tile5 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 0, cancellationToken)
+        var tile0 = await Chats
+            .GetLastIdTile0(Session, ChatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
-        estimatedCount = RoundTo(tile5.Start - lastReadEntryId, 10);
+        estimatedCount = RoundTo(tile0.Start - lastReadEntryId, 10);
         if (estimatedCount >= 20)
-            return (estimatedCount, true);
+            return estimatedCount;
 
         var idRange = await Chats
             .GetIdRange(Session, ChatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);
         var exactCount = (int)(idRange.End - lastReadEntryId - 1).Clamp(0, MaxCount);
-        if (exactCount >= 15)
-            return (exactCount, true);
         return exactCount;
     }
 

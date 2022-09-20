@@ -30,7 +30,7 @@
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsRecording(ChatId);
 

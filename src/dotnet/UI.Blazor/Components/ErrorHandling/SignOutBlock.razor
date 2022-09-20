@@ -27,7 +27,7 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override ComputedState<Account?>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
         => Accounts.Get(Session, cancellationToken);

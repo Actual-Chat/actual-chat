@@ -17,7 +17,7 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() { UpdateDelayer = UpdateDelayer.Instant };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
         => await NavbarUI.IsThinPanelOpen.Use(cancellationToken).ConfigureAwait(false);

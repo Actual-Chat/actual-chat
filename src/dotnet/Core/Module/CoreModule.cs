@@ -5,7 +5,6 @@ using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
-using Stl.Fusion.Internal;
 using Stl.Plugins;
 
 namespace ActualChat.Module;
@@ -49,11 +48,6 @@ public class CoreModule : HostModule<CoreSettings>
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
-
-        // ComputedGraphPruner - added here solely to pass correct ILogger to it
-        services.AddSingleton(new ComputedGraphPruner.Options());
-        services.AddSingleton<ComputedGraphPruner>();
-        services.AddHostedService<ComputedGraphPruner>();
 
         // Features
         services.AddScoped<Features>();

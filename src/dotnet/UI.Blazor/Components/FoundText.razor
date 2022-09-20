@@ -15,7 +15,7 @@
 }
 
 @code {
-    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(0.333);
+    private static IUpdateDelayer UpdateDelayer { get; } = new UpdateDelayer.Fixed(0.333);
 
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 

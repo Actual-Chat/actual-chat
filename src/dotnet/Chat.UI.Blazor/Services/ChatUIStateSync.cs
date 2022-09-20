@@ -172,7 +172,7 @@ public class ChatUIStateSync : WorkerBase
             .Capture(() => ChatUI.MustKeepAwake(cancellationToken))
             .ConfigureAwait(false);
 
-        var updateDelayer = FixedDelayer.Get(1);
+        var updateDelayer = new UpdateDelayer.Fixed(1);
         var changes = cMustKeepAwake0.Changes(updateDelayer, cancellationToken);
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;

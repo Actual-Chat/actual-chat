@@ -128,7 +128,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Instant
+            UpdateDelayer = UpdateDelayer.Instant
         };
     }
 
