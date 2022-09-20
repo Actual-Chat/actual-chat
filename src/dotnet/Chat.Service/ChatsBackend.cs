@@ -369,6 +369,26 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
     }
 
+    [CommandHandler(IsFilter = true, Priority = 1001)] // 1000 = DbOperationScopeProvider, we must "wrap" it
+    protected virtual async Task OnChatAuthorCreated(
+        IChatAuthorsBackend.CreateCommand command,
+        CancellationToken cancellationToken)
+    {
+        // This filter sets initial chat read positions
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+
+        var entryId = await GetMaxId(command.ChatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new IChatReadPositionsBackend.SetReadPositionCommand(command.UserId, command.ChatId, entryId),
+            true,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<ChatEntry> UpsertEntry(
         IChatsBackend.UpsertEntryCommand command,

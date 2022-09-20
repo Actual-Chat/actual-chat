@@ -3,7 +3,6 @@ using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
-using Stl.Redis;
 
 namespace ActualChat.Chat;
 
@@ -15,7 +14,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
-    private RedisSequenceSet<ChatAuthor> IdSequences { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
     private IDbEntityResolver<string, DbChatAuthor> DbChatAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbChatAuthor, string> DbChatAuthorLocalIdGenerator { get; }
@@ -26,7 +24,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     {
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
         DbChatAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatAuthor, string>>();
