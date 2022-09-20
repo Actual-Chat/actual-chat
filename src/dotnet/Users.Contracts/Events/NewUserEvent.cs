@@ -1,6 +1,6 @@
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 
-namespace ActualChat.Users.Jobs;
+namespace ActualChat.Users.Events;
 
 [DataContract]
 public record NewUserEvent(

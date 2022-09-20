@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 
 namespace ActualChat.Core.UnitTests.Events;
 

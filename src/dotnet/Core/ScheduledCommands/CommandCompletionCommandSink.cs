@@ -1,13 +1,13 @@
-namespace ActualChat.Events;
+namespace ActualChat.ScheduledCommands;
 
-public class CommandCompletionEventSink : IOperationCompletionListener
+public class CommandCompletionCommandSink : IOperationCompletionListener
 {
-    private LocalEventQueue EventQueue { get; }
+    private LocalCommandQueue CommandQueue { get; }
     private AgentInfo AgentInfo { get; }
 
-    public CommandCompletionEventSink(LocalEventQueue eventQueue, AgentInfo agentInfo)
+    public CommandCompletionCommandSink(LocalCommandQueue commandQueue, AgentInfo agentInfo)
     {
-        EventQueue = eventQueue;
+        CommandQueue = commandQueue;
         AgentInfo = agentInfo;
     }
 
@@ -23,10 +23,10 @@ public class CommandCompletionEventSink : IOperationCompletionListener
             return;
 
         var eventConfigurations = operation.Items.Items.Values
-            .OfType<IEventConfiguration>();
+            .OfType<ICommandConfiguration>();
 
         foreach (var eventConfiguration in eventConfigurations)
             // TODO(AK): it's suspicious the we don't have CancellationToken there
-            await EventQueue.Enqueue(eventConfiguration, CancellationToken.None).ConfigureAwait(false);
+            await CommandQueue.Enqueue(eventConfiguration, CancellationToken.None).ConfigureAwait(false);
     }
 }

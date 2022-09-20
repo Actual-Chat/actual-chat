@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace ActualChat.Events;
+namespace ActualChat.ScheduledCommands;
 
 public static class FusionBuilderExt
 {
@@ -8,13 +8,13 @@ public static class FusionBuilderExt
     {
         var operationCompletionSinkDescriptor = new ServiceDescriptor(
             typeof(IOperationCompletionListener),
-            typeof(CommandCompletionEventSink),
+            typeof(CommandCompletionCommandSink),
             ServiceLifetime.Singleton);
         if (!builder.Services.Contains(operationCompletionSinkDescriptor, new ServiceDescriptorComparer()))
             builder.Services.Add(operationCompletionSinkDescriptor);
-        builder.Services.TryAddSingleton<LocalEventQueue>();
-        builder.Services.TryAddSingleton<EventGateway>();
-        builder.Services.AddHostedService<LocalEventScheduler>();
+        builder.Services.TryAddSingleton<LocalCommandQueue>();
+        builder.Services.TryAddSingleton<CommandGateway>();
+        builder.Services.AddHostedService<LocalCommandScheduler>();
         return builder;
     }
 

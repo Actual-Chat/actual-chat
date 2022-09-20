@@ -1,6 +1,6 @@
-namespace ActualChat.Events;
+namespace ActualChat.ScheduledCommands;
 
-public enum EventPriority
+public enum CommandPriority
 {
     Low = -1,
     Normal = 0,

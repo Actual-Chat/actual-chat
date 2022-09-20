@@ -1,7 +1,8 @@
 using ActualChat.Chat;
+using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
-using FirebaseAdmin.Messaging;
+using ActualChat.ScheduledCommands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -10,21 +11,21 @@ namespace ActualChat.Notification;
 public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private UriMapper UriMapper { get; }
-    private FirebaseMessaging FirebaseMessaging { get; }
+    private IChatsBackend ChatsBackend { get; }
+    private ContentUrlMapper ContentUrlMapper { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
     public NotificationsBackend(
         IServiceProvider services,
         IChatAuthorsBackend chatAuthorsBackend,
-        UriMapper uriMapper,
-        FirebaseMessaging firebaseMessaging,
-        FirebaseMessagingClient firebaseMessagingClient) : base(services)
+        FirebaseMessagingClient firebaseMessagingClient,
+        IChatsBackend chatsBackend,
+        ContentUrlMapper contentUrlMapper) : base(services)
     {
         ChatAuthorsBackend = chatAuthorsBackend;
-        UriMapper = uriMapper;
-        FirebaseMessaging = firebaseMessaging;
         FirebaseMessagingClient = firebaseMessagingClient;
+        ChatsBackend = chatsBackend;
+        ContentUrlMapper = contentUrlMapper;
     }
 
     // [ComputeMethod]
@@ -247,47 +248,62 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         };
     }
 
-    // Private methods
+    // Event handlers
 
-    private async IAsyncEnumerable<(Symbol UserId, string DeviceId)> ListUserDevicePairs(
-        ImmutableArray<Symbol> userIds,
-        Symbol currentUserId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        if (userIds.Length == 0)
-            yield break;
-
-        var filteredUserIds = userIds.Where(userId => userId != currentUserId);
-        foreach (var userId in filteredUserIds) {
-            var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
-            foreach (var device in devices)
-                yield return (userId, device.DeviceId);
-        }
-    }
-
-    private async Task PersistMessages(
-        string chatId,
-        long chatEntryId,
-        IReadOnlyList<(Symbol UserId, string DeviceId)> devices,
-        IReadOnlyList<SendResponse> responses,
+    [CommandHandler]
+    public virtual async Task OnTextEntryChangedEvent(
+        TextEntryChangedEvent @event,
         CancellationToken cancellationToken)
     {
-        // TODO(AK): Sharding by userId - code is running at a sharded service already
-        var dbContext = CreateDbContext(readWrite: true);
-        await using var __ = dbContext.ConfigureAwait(false);
+        var (chatId, entryId, authorId, content) = @event;
+        if (Computed.IsInvalidating())
+            return;
 
-        var dbMessages = responses
-            .Zip(devices)
-            .Where(pair => pair.First.IsSuccess)
-            .Select(pair => new DbMessage {
-                Id = pair.First.MessageId,
-                DeviceId = pair.Second.DeviceId,
-                ChatId = chatId,
-                ChatEntryId = chatEntryId,
-                CreatedAt = Clocks.SystemClock.Now,
-            });
-
-        await dbContext.AddRangeAsync(dbMessages, cancellationToken).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+        var userId = chatAuthor!.UserId;
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+        var title = GetTitle(chat, chatAuthor);
+        var iconUrl = GetIconUrl(chat, chatAuthor);
+        var textContent = GetContent(content);
+        var notificationTime = DateTime.UtcNow;
+        var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
+        foreach (var uid in userIds.Where(uid => !OrdinalEquals(uid, userId)))
+            await new INotificationsBackend.NotifyUserCommand(
+                    uid,
+                    new NotificationEntry(
+                        Ulid.NewUlid().ToString(),
+                        NotificationType.Message,
+                        title,
+                        textContent,
+                        iconUrl,
+                        notificationTime) {
+                        Message = new MessageNotificationEntry(chatId, entryId, authorId),
+                    })
+                .Configure()
+                .ScheduleNow(cancellationToken)
+                .ConfigureAwait(false);
     }
+
+    // Private methods
+
+    private string GetIconUrl(Chat.Chat chat, ChatAuthor chatAuthor)
+         => chat.ChatType switch {
+             ChatType.Group => !chat.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
+             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
+         };
+
+    private static string GetTitle(Chat.Chat chat, ChatAuthor chatAuthor)
+         => chat.ChatType switch {
+             ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
+             ChatType.Peer => $"{chatAuthor.Name}",
+             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
+         };
+
+     private static string GetContent(string chatEventContent)
+     {
+         var markup = MarkupParser.ParseRaw(chatEventContent);
+         markup = new MarkupTrimmer(100).Rewrite(markup);
+         return MarkupFormatter.ReadableUnstyled.Format(markup);
+     }
 }

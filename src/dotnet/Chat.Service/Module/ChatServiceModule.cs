@@ -1,10 +1,9 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Jobs;
 using ActualChat.Db;
 using ActualChat.Db.Module;
-using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.ScheduledCommands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
@@ -102,14 +101,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
-        // Jobs
+        // Events
         fusion.AddLocalEventScheduler();
-        fusion.AddComputeService<ChatJobs>();
-
-        // // Events
-        // services.AddEvent<NewChatEntryEvent>();
-        // services.AddEventHandler<NewChatEntryEvent, NewChatEntryEventHandler>();
-        // services.AddEventHandler<NewUserEvent, NewUserEventHandler>();
 
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);

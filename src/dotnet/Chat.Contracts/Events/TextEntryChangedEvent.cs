@@ -1,9 +1,9 @@
-using ActualChat.Events;
+using ActualChat.ScheduledCommands;
 
 namespace ActualChat.Chat.Events;
 
 [DataContract]
-public record NewTextEntryEvent(
+public record TextEntryChangedEvent(
     [property: DataMember(Order = 0)]
     string ChatId,
     [property: DataMember(Order = 1)]
