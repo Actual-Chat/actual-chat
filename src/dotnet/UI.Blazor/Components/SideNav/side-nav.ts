@@ -37,7 +37,7 @@ export class SideNav implements Disposable {
             return;
         }
 
-        fromEvent(this.element, 'transitionstart')
+        fromEvent(this.element, 'transitionend')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 if (element.classList.contains('side-nav-open')){
