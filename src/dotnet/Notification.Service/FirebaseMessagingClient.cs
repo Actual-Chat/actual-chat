@@ -128,7 +128,7 @@ public class FirebaseMessagingClient
             var responseGroups = responses
                 .GroupBy(x => x.MessagingErrorCode);
             foreach (var responseGroup in responseGroups)
-                if (responseGroup.Key == MessagingErrorCode.Unregistered) {
+                if (responseGroup.Key is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch) {
                     var tokensToRemove = responseGroup
                         .Select(g => g.DeviceId)
                         .ToImmutableArray();
