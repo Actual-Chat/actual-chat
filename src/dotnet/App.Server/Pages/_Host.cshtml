@@ -52,12 +52,13 @@
         // Set App.windowId
         window.addEventListener("beforeunload", function (e) {
             let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            windowIds.push(window.windowId);
+            windowIds.push(window.App.windowId);
             window.sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
         window.addEventListener("load", function (e) {
             let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            windowIds = windowIds.filter(function(value, i, a) { return value != null; });
             window.App.windowId = windowIds.pop();
             if (window.App.windowId == null)
                 window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
