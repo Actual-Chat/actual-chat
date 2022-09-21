@@ -45,5 +45,5 @@
 }
 
 .side-nav-animate {
-    @apply transition-transform duration-250 ease-in-out;
+    @apply transition-transform duration-300 ease-in-out;
 }

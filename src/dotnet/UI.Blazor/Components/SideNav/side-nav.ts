@@ -71,13 +71,15 @@ export class SideNav implements Disposable {
                     return;
                 }
 
+                const speed = 7;
+
                 if (this.options.direction == SideNavDirection.LeftToRight) {
                     if (this.diffX > 0) {
                         // closing <-
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
                     } else {
                         // opening ->
-                        this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / speed;
                     }
 
                     if (this.translate >= -100 && this.translate <= 0) {
@@ -86,10 +88,10 @@ export class SideNav implements Disposable {
                 } else {
                     if (this.diffX > 0) {
                         // opening <-
-                        this.translate = 100 - element.clientWidth / 100 * this.diffX / 10;
+                        this.translate = 100 - element.clientWidth / 100 * this.diffX / speed;
                     } else {
                         // closing ->
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
                     }
 
                     if (this.translate >= 0 && this.translate <= 100) {
