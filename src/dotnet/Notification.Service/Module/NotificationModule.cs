@@ -38,7 +38,8 @@ public class NotificationModule : HostModule<NotificationSettings>
         dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
 
         // Commander & Fusion
-        var commander = services.AddCommander();
+        var commander = services.AddCommander()
+            .AddLocalEventHandlers();
         commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
