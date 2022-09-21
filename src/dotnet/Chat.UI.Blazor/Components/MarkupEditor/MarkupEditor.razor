@@ -38,14 +38,6 @@
         _onMentionSelected = mention => _ = InsertMention(mention);
     }
 
-    protected override void OnParametersSet() {
-        if (_lastMentionListManager != null)
-            _lastMentionListManager.MentionSelected -= _onMentionSelected;
-        _lastMentionListManager = MentionListManager;
-        if (_lastMentionListManager != null)
-            _lastMentionListManager.MentionSelected += _onMentionSelected;
-    }
-
     public async ValueTask DisposeAsync() {
         _whenReadySource.TrySetCanceled();
         if (_lastMentionListManager != null)
@@ -54,6 +46,14 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+    }
+
+    protected override void OnParametersSet() {
+        if (_lastMentionListManager != null)
+            _lastMentionListManager.MentionSelected -= _onMentionSelected;
+        _lastMentionListManager = MentionListManager;
+        if (_lastMentionListManager != null)
+            _lastMentionListManager.MentionSelected += _onMentionSelected;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -70,9 +70,14 @@
         _whenReadySource.TrySetResult(default);
     }
 
+    protected override bool ShouldRender()
+        => false;
+
     public async ValueTask<string> GetText() {
         await WhenReady;
-        return await JSRef.InvokeAsync<string>("getText");
+        var text = await JSRef.InvokeAsync<string>("getText");
+        text = text.Replace("\u8203", ""); // Inserted after mention to resolve "no cursor" issue there
+        return text;
     }
 
     public async ValueTask SetHtml(string html) {

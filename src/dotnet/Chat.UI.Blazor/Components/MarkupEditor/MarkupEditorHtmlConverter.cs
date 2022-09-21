@@ -15,7 +15,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         PreformattedTextClass = "editor-preformatted";
         CodeBlockClass = "editor-preformatted";
         NewLineHtml = "\n";
-        NewLineReplacement = null;
+        NewLineReplacement = "\n";
     }
 
     public async Task<string> Convert(string markupText, CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHiddenText("`", ref state);
         AddText(markup.NameOrNotAvailable, ref state);
         AddHiddenText("`" + markup.Id, ref state);
-        AddHtml("</span>", ref state);
+        AddHtml("</span>&#8203", ref state);
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)

@@ -1,5 +1,6 @@
 import './markup-editor.css';
 import { debounce } from '../../../../nodejs/src/debounce';
+import { UndoStack } from './undo-stack';
 
 const LogScope = 'MarkupEditor';
 const MentionListId = '@';
@@ -19,6 +20,7 @@ export class MarkupEditor {
     private listHandler?: ListHandler = null;
     private listFilter: string = "";
     private lastSelectedRange?: Range = null;
+    private undoStack: UndoStack<string>;
 
     constructor(
         public readonly editorDiv: HTMLDivElement,
@@ -29,13 +31,28 @@ export class MarkupEditor {
         if (debug)
             console.debug(`${LogScope}.ctor`);
 
-        this.contentDiv = editorDiv.querySelector(":scope > .editor-content");
+        this.contentDiv = editorDiv.querySelector(":scope > .editor-content") as HTMLDivElement;
         this.listHandlers = [new MentionListHandler(this)]
+        this.undoStack = new UndoStack<string>(
+            () => normalize(this.contentDiv.innerHTML),
+            value => {
+                // To make sure both undo and redo stacks have something
+                document.execCommand("insertHTML", false, "&#8203")
+                document.execCommand("insertHTML", false, "&#8203")
+                document.execCommand("undo", false);
+                this.contentDiv.innerHTML = value;
+                this.moveCursorToTheEnd();
+            },
+            (x: string, y: string) => x === y,
+            333, debug);
 
         // Attach listeners & observers
+        this.editorDiv.addEventListener("focusin", this.onEditorFocusIn)
+        this.contentDiv.addEventListener("focusin", this.onFocusIn)
         this.contentDiv.addEventListener("keydown", this.onKeyDown);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
+        this.contentDiv.addEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.addEventListener("input", this.onInput);
         document.addEventListener("selectionchange", this.onSelectionChange);
         // this.contentChangeObserver = new MutationObserver(this.onContentChange);
@@ -46,9 +63,12 @@ export class MarkupEditor {
     }
 
     public dispose() {
+        this.editorDiv.removeEventListener("focusin", this.onEditorFocusIn)
+        this.contentDiv.removeEventListener("focusin", this.onFocusIn)
         this.contentDiv.removeEventListener("keydown", this.onKeyDown);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
+        this.contentDiv.removeEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.removeEventListener("input", this.onInput);
         document.removeEventListener("selectionchange", this.onSelectionChange);
         // this.contentChangeObserver.disconnect();
@@ -64,6 +84,7 @@ export class MarkupEditor {
 
     public setHtml(html: string) {
         this.contentDiv.innerHTML = html;
+        this.undoStack.clear();
     }
 
     public insertHtml(html: string, listId?: string) {
@@ -118,6 +139,15 @@ export class MarkupEditor {
     }
 
     // Event handlers
+
+    private onEditorFocusIn = () => {
+        this.focus();
+    }
+
+    private onFocusIn = () => {
+        document.execCommand("insertBrOnReturn", false, "true");
+        document.execCommand("styleWithCSS", false, "false");
+    }
 
     private onKeyDown = (e: KeyboardEvent) => {
         // console.debug(`${LogScope}.onKeyDown: code = "${e.code}"`)
@@ -220,7 +250,28 @@ export class MarkupEditor {
         this.updateListUIDebounced();
     };
 
-    private onInput = () => this.updateListUIDebounced();
+    private onBeforeInput = (e: InputEvent) => {
+        const ok = () => e.preventDefault();
+
+        switch (e.inputType) {
+            case "historyUndo":
+                console.debug(this.contentDiv.innerHTML);
+                this.undoStack.undo();
+                return ok();
+            case "historyRedo": {
+                console.debug(this.contentDiv.innerHTML);
+                this.undoStack.redo();
+                return ok();
+            }
+            default:
+                break;
+        }
+    }
+
+    private onInput = (e: InputEvent) => {
+        this.undoStack.pushDebounced();
+        this.updateListUIDebounced();
+    }
 
     // List UI (lists, etc.) support
 
@@ -253,6 +304,28 @@ export class MarkupEditor {
     }
 
     // Helpers
+
+    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range) : boolean {
+        const matchText = listHandler.getMatchText(cursorRange);
+        const isActive = listHandler == this.listHandler;
+        if (!matchText) {
+            if (isActive)
+                void this.closeListUI();
+            return false;
+        }
+
+        const listFilter = listHandler.getFilter(matchText);
+        if (!isActive) {
+            this.listHandler = listHandler;
+            this.listFilter = listFilter;
+            void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Show, listFilter));
+        }
+        else if (listFilter != this.listFilter) {
+            this.listFilter = listFilter;
+            void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Show, listFilter));
+        }
+        return true;
+    }
 
     private getCursorRange(): Range | null {
         const selection = document.getSelection();
@@ -325,28 +398,6 @@ export class MarkupEditor {
         catch (e) {
             console.error(`${LogScope}.restoreSelection: error`, e);
         }
-    }
-
-    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range) : boolean {
-        const matchText = listHandler.getMatchText(cursorRange);
-        const isActive = listHandler == this.listHandler;
-        if (!matchText) {
-            if (isActive)
-                void this.closeListUI();
-            return false;
-        }
-
-        const listFilter = listHandler.getFilter(matchText);
-        if (!isActive) {
-            this.listHandler = listHandler;
-            this.listFilter = listFilter;
-            void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Show, listFilter));
-        }
-        else if (listFilter != this.listFilter) {
-            this.listFilter = listFilter;
-            void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Show, listFilter));
-        }
-        return true;
     }
 
     private expandSelection(listHandler: ListHandler) : boolean {
@@ -455,8 +506,13 @@ enum ListCommandKind {
 // Helpers
 
 const emptyLinesRe = /\n*/g
+const newLineRe = /\r\n/g
 
 function trimText(text: string) {
     // NOTE(AY): Write a real implementation of this later
     return text.trim();
+}
+
+function normalize(text: string) {
+    return text.normalize().replace(newLineRe, "\n");
 }
