@@ -447,7 +447,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // Events
 
-    [CommandHandler]
+    [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
     {
         await JoinToAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);

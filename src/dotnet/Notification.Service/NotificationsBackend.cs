@@ -250,7 +250,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     // Event handlers
 
-    [CommandHandler]
+    [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(
         TextEntryChangedEvent @event,
         CancellationToken cancellationToken)

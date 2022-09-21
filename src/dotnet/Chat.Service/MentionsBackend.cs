@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
+using ActualChat.ScheduledCommands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -32,7 +33,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
 
     // Events
 
-    [CommandHandler]
+    [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
     {
         var (chatId, entryId, authorId, content, state) = @event;
