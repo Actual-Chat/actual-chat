@@ -293,7 +293,8 @@ export class MarkupEditor {
 
         // Post + fix the new line insertion when cursor is in the end of the document
         if (e.code === 'Enter') {
-            if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) {
+            const isPost = e.ctrlKey || e.metaKey || e.altKey || !e.shiftKey;
+            if (isPost) {
                 void this.onPost()
                 return ok();
             }
