@@ -119,7 +119,7 @@
     }
 
     private Task Edit(ChatEntry chatEntry) {
-        return UIEventHub.Publish(new EditMessage(chatEntry));
+        return UIEventHub.Publish(new EditChatMessage(chatEntry));
     }
 
     public sealed record Model {

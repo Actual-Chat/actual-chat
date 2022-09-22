@@ -10,9 +10,9 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 
-<OnUIEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusRequested" />
-<OnUIEvent TEvent="@EditMessage" Handler="OnMessageEdit" />
-<OnUIEvent TEvent="@CancelMessageEdit" Handler="OnMessageEditCancel" />
+<OnUIEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusChatMessageEditor" />
+<OnUIEvent TEvent="@EditChatMessage" Handler="OnEditChatMessage" />
+<OnUIEvent TEvent="@CancelChatMessageEdit" Handler="OnCancelChatMessageEdit" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentListPreview
@@ -37,14 +37,16 @@
                         </ContextMenuToggleTrigger>
                         <input class="files-picker" type="file" hidden multiple/>
                         <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
-                            <SlateEditor @ref="SlateEditorRef" Id="message-input"
-                                         Class="message-input -flex-y"
-                                         Autofocus="true"
-                                         Placeholder="@("#" + Chat.Title)"
-                                         Rendered="OnSlateRendered"
-                                         Post="text => Post(text)"
-                                         Cancel="@(() => OnCancel())"
-                                         OpenPrevious="OnOpenPrevious"/>
+                            <MarkupEditor
+                                @ref="MarkupEditorRef"
+                                HtmlConverter="@HtmlConverter"
+                                Id="message-input"
+                                Class="message-input -flex-y"
+                                Autofocus="true"
+                                Placeholder="@("#" + Chat.Title)"
+                                Post="text => Post(text)"
+                                Cancel="@(() => OnCancel())"
+                                OpenPrevious="OnOpenPrevious"/>
                             <button class="btn btn-round post-message"
                                     @onclick="_ => Post(clearEditor: true)">
                                 <i class="icon-paper-plane text-2xl"></i>
@@ -71,10 +73,10 @@
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
-    private SlateEditor SlateEditorRef { get; set; } = null!;
+    private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
-    private EditedMarkupConverter EditedMarkupConverter { get; set; } = null!;
+    private MarkupEditorHtmlConverter HtmlConverter => MarkupHub.MarkupEditorHtmlConverter;
     private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -91,12 +93,13 @@
     [CascadingParameter] public ScreenSize ScreenSizeKind { get; set; }
 
     protected override async Task OnInitializedAsync() {
-        EditedMarkupConverter = new EditedMarkupConverter(MarkupHub);
+        MarkupHub.ChatId = Chat.Id;
         LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
     }
 
-    protected override void OnParametersSet()
-        => MarkupHub.ChatId = Chat.Id;
+    protected override void OnParametersSet() {
+        MarkupHub.ChatId = Chat.Id;
+    }
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -113,18 +116,20 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 Ref, BlazorRef);
+            await MarkupEditorRef.WhenReady;
+            await JSRef.InvokeVoidAsync("onMarkupEditorReady", MarkupEditorRef.JSRef);
         }
     }
 
     private async Task Post(string? text = null, bool clearEditor = false) {
-        text ??= await SlateEditorRef.GetText();
+        text ??= await MarkupEditorRef.GetText();
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
             if (clearEditor)
-                await SlateEditorRef.Clear();
+                await MarkupEditorRef.Clear();
             AttachmentListPreviewRef.Clear();
             StateHasChanged();
             var linked = ChatUI.LinkedChatEntry.Value;
@@ -176,10 +181,8 @@
         ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
         UICommander.CancelUpdateDelays();
 
-        var editableMarkup = await EditedMarkupConverter.Convert(chatEntry.Content, cancellationToken);
-        await SlateEditorRef.SetMarkup(editableMarkup, cancellationToken);
-        await SlateEditorRef.Focus(cancellationToken);
-        await SlateEditorRef.MoveCursorToEnd(cancellationToken);
+        await MarkupEditorRef.SetText(chatEntry.Content);
+        await MarkupEditorRef.Focus();
     }
 
     private async Task TryUpdatePeerChatRecency() {
@@ -196,18 +199,15 @@
         }
     }
 
-    private async Task OnSlateRendered()
-        => await JSRef.InvokeVoidAsync("onSlateEditorRendered");
+    private async Task OnFocusChatMessageEditor(FocusChatMessageEditor @event, CancellationToken cancellationToken)
+        => await MarkupEditorRef.Focus();
 
-    private Task OnFocusRequested(FocusChatMessageEditor @event, CancellationToken cancellationToken)
-        => SlateEditorRef.Focus(cancellationToken);
-
-    private async Task OnMessageEdit(EditMessage @event, CancellationToken cancellationToken) {
+    private async Task OnEditChatMessage(EditChatMessage @event, CancellationToken cancellationToken) {
         var chatEntry = @event.ChatEntry;
         await EditMessage(chatEntry, cancellationToken);
     }
 
-    private async Task OnMessageEditCancel(CancelMessageEdit cancelMessageEdit, CancellationToken cancellationToken) {
+    private async Task OnCancelChatMessageEdit(CancelChatMessageEdit cancelChatMessageEdit, CancellationToken cancellationToken) {
         await OnCancel(cancellationToken);
     }
 
@@ -232,7 +232,7 @@
     {
         ChatUI.LinkedChatEntry.Value = null;
         UICommander.CancelUpdateDelays();
-        await SlateEditorRef.Clear();
-        await SlateEditorRef.Focus(cancellationToken);
+        await MarkupEditorRef.Clear();
+        await MarkupEditorRef.Focus();
     }
 }

@@ -15,14 +15,12 @@
     private Action<MentionSearchResult> _onMentionSelected;
 
     private ElementReference Ref { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IMarkupEditorBackend> BlazorRef { get; set; } = null!;
 
     [Inject] public IJSRuntime JS { get; init; } = null!;
-    [Inject] public MarkupEditorHtmlConverter HtmlConverter { get; init; } = null!;
-    public MarkupHub MarkupHub => HtmlConverter.MarkupHub;
 
     [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
+    [Parameter, EditorRequired] public MarkupEditorHtmlConverter HtmlConverter { get; set; } = null!;
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -31,6 +29,8 @@
     [Parameter] public EventCallback Cancel { get; set; }
     [Parameter] public EventCallback OpenPrevious { get; set; }
 
+    public IJSObjectReference JSRef { get; private set; } = null!;
+    public MarkupHub MarkupHub => HtmlConverter.MarkupHub;
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {

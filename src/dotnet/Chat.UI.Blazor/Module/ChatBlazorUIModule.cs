@@ -32,7 +32,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Transient
         services.AddTransient<MarkupHub>();
-        services.AddTransient<MarkupEditorHtmlConverter>();
 
         // Navbar widgets
         services.RegisterNavbarWidget<ChatListNavbarWidget>(navbarGroupId: ChatListNavbarWidget.NavbarGroupId);

@@ -15,12 +15,15 @@ export class MarkupEditor {
     }
 
     public readonly contentDiv: HTMLDivElement;
-    // private readonly contentChangeObserver: MutationObserver;
+    public changed: (value: string) => void = () => { };
+
     private readonly listHandlers: Array<ListHandler>;
     private listHandler?: ListHandler = null;
     private listFilter: string = "";
     private lastSelectedRange?: Range = null;
     private undoStack: UndoStack<string>;
+    private currentTransaction: () => void | null;
+    private lastHtml: string = null;
 
     constructor(
         public readonly editorDiv: HTMLDivElement,
@@ -36,14 +39,16 @@ export class MarkupEditor {
         this.undoStack = new UndoStack<string>(
             () => normalize(this.contentDiv.innerHTML),
             value => {
-                // To make sure both undo and redo stacks have something
-                document.execCommand("insertHTML", false, "&#8203");
-                document.execCommand("insertHTML", false, "&#8203");
-                document.execCommand("undo", false);
-                this.setHtml(value, false);
+                this.transaction(() => {
+                    // To make sure both undo and redo stacks have something
+                    document.execCommand("insertHTML", false, "&#8203");
+                    document.execCommand("insertHTML", false, "&#8203");
+                    document.execCommand("undo", false);
+                    this.setHtml(value, false);
+                });
             },
             (x: string, y: string) => x === y,
-            333, debug);
+            333);
 
         // Attach listeners & observers
         this.editorDiv.addEventListener("focusin", this.onEditorFocusIn)
@@ -54,8 +59,6 @@ export class MarkupEditor {
         this.contentDiv.addEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.addEventListener("input", this.onInput);
         document.addEventListener("selectionchange", this.onSelectionChange);
-        // this.contentChangeObserver = new MutationObserver(this.onContentChange);
-        // this.contentChangeObserver.observe(this.contentDiv, { attributes: true, childList: true, subtree : true });
 
         if (autofocus)
             this.focus();
@@ -70,7 +73,24 @@ export class MarkupEditor {
         this.contentDiv.removeEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.removeEventListener("input", this.onInput);
         document.removeEventListener("selectionchange", this.onSelectionChange);
-        // this.contentChangeObserver.disconnect();
+    }
+
+    public transaction(action: () => void): void {
+        const oldTransaction = this.currentTransaction;
+        this.currentTransaction = action;
+        try {
+            action();
+        }
+        finally {
+            this.currentTransaction = oldTransaction;
+            if (oldTransaction == null) {
+                const html = this.contentDiv.innerHTML;
+                if (html != this.lastHtml) {
+                    this.lastHtml = html;
+                    this.changed(html);
+                }
+            }
+        }
     }
 
     public focus() {
@@ -82,8 +102,10 @@ export class MarkupEditor {
     }
 
     public setHtml(html: string, clearUndoStack: boolean = true) {
-        this.contentDiv.innerHTML = html;
-        this.fixContent();
+        this.transaction(() => {
+            this.contentDiv.innerHTML = html;
+            this.fixContent();
+        })
         this.moveCursorToTheEnd();
         if (clearUndoStack)
             this.undoStack.clear();
@@ -96,9 +118,11 @@ export class MarkupEditor {
             this.restoreSelection();
         }
         if (!listId) {
-            document.execCommand('insertHTML', false, html);
-            this.fixContent();
-            this.fixSelection();
+            this.transaction(() => {
+                document.execCommand('insertHTML', false, html);
+                this.fixContent();
+                this.fixSelection();
+            });
             return;
         }
 
@@ -108,9 +132,11 @@ export class MarkupEditor {
         if (!this.expandSelection(listHandler))
             return;
 
-        document.execCommand('insertHTML', true, html);
-        this.fixContent();
-        this.fixSelection();
+        this.transaction(() => {
+            document.execCommand('insertHTML', true, html);
+            this.fixContent();
+            this.fixSelection();
+        });
         this.closeListUI();
     }
 
@@ -203,8 +229,10 @@ export class MarkupEditor {
     }
 
     private onFocusIn = () => {
-        document.execCommand("insertBrOnReturn", false, "true");
-        document.execCommand("styleWithCSS", false, "false");
+        this.transaction(() => {
+            document.execCommand("insertBrOnReturn", false, "true");
+            document.execCommand("styleWithCSS", false, "false");
+        });
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
@@ -269,15 +297,17 @@ export class MarkupEditor {
                 return ok();
             }
 
-            const text1 = this.getText();
-            document.execCommand('insertHTML', false, '\n');
-            const text2 = this.getText();
-            const isBuggy = !text1.endsWith('\n') && text2.startsWith(text1);
-            if (isBuggy) {
-                // Workaround for "Enter does nothing if cursor is in the end of the document" issue
+            this.transaction(() => {
+                const text1 = this.getText();
                 document.execCommand('insertHTML', false, '\n');
-            }
-            this.fixContent();
+                const text2 = this.getText();
+                const isBuggy = !text1.endsWith('\n') && text2.startsWith(text1);
+                if (isBuggy) {
+                    // Workaround for "Enter does nothing if cursor is in the end of the document" issue
+                    document.execCommand('insertHTML', false, '\n');
+                }
+                this.fixContent();
+            });
             return ok();
         }
     }
@@ -299,7 +329,10 @@ export class MarkupEditor {
             // console.debug(`${LogScope}.onPaste: text:`, text)
         }
         text = trimText(text);
-        document.execCommand('insertText', false, text);
+
+        this.transaction(() => {
+            document.execCommand('insertText', false, text);
+        });
         return ok();
     }
 
@@ -327,7 +360,9 @@ export class MarkupEditor {
     }
 
     private onInput = (e: InputEvent) => {
-        this.fixContent();
+        this.transaction(() => {
+            this.fixContent();
+        })
         this.undoStack.pushDebounced();
         this.updateListUIDebounced();
     }
@@ -337,7 +372,7 @@ export class MarkupEditor {
     private updateListUIDebounced = debounce(() => this.updateListUI(), 100);
 
     private updateListUI() {
-        // console.debug(`${LogScope}.updateListUI()`)
+        console.debug(`${LogScope}.updateListUI()`)
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             void this.closeListUI();

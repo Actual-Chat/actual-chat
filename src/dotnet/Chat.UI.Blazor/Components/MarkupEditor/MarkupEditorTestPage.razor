@@ -21,6 +21,7 @@
             <MentionListManager Limit="5">
                 <MarkupEditor
                     @ref="_editorRef"
+                    HtmlConverter="@_htmlConverter"
                     Id="message-input"
                     Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
                     Placeholder="Enter some text..."
@@ -38,9 +39,12 @@
     private MarkupEditor _editorRef = null!;
     private string _markup = "@`Mention`the-actual-one:361 normal *italic* **bold** `code`\n\n```cs\nCode\n```";
     private Markup _parsedMarkup = null!;
+    private MarkupEditorHtmlConverter _htmlConverter = null!;
 
-    private MarkupHub MarkupHub => _editorRef.MarkupHub;
-    private MarkupEditorHtmlConverter HtmlConverter => _editorRef.HtmlConverter;
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+
+    protected override void OnInitialized()
+        => _htmlConverter = new MarkupEditorHtmlConverter(MarkupHub);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

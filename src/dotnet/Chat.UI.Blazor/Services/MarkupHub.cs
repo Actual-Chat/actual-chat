@@ -7,10 +7,14 @@ public class MarkupHub : IHasServices
     private IChatMentionResolver? _chatMentionResolver;
     private ChatMentionSearchProvider? _chatMentionSearchProvider;
     private MentionNamer? _mentionNamer;
+    private MarkupEditorHtmlConverter? _markupEditorHtmlConverter;
 
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public Symbol ChatId { get; set; } = Symbol.Empty;
+
+    public MarkupEditorHtmlConverter MarkupEditorHtmlConverter
+        => _markupEditorHtmlConverter ??= new(this);
 
     public IMarkupParser MarkupParser
         => _markupParser ??= Services.GetRequiredService<IMarkupParser>();

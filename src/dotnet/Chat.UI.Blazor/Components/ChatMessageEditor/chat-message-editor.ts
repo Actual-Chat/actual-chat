@@ -1,6 +1,7 @@
 import './chat-message-editor.css';
 import { SlateEditorHandle } from '../SlateEditor/slate-editor-handle';
 import { debounce } from 'debounce';
+import { MarkupEditor } from '../MarkupEditor/markup-editor';
 
 const LogScope: string = 'MessageEditor';
 
@@ -9,6 +10,7 @@ export class ChatMessageEditor {
     private readonly editorDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
     private slateInput: HTMLDivElement;
+    private markupEditor: MarkupEditor;
     private readonly filesPicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
@@ -252,10 +254,7 @@ export class ChatMessageEditor {
     }
 
     private getText(): string {
-        const editorHandle = this.editorHandle();
-        if (!editorHandle)
-            return '';
-        return editorHandle.getText();
+        return this.markupEditor?.getText() ?? "";
     }
 
     private async addAttachment(file: File): Promise<boolean> {
@@ -345,21 +344,12 @@ export class ChatMessageEditor {
         this.filesPicker.click();
     };
 
-    public onSlateEditorRendered()
+    public onMarkupEditorReady(markupEditor: MarkupEditor)
     {
-        const editorHandle = this.editorHandle();
-        if (!editorHandle) {
-            console.error('SlateEditorHandle is undefined');
-            return;
-        }
+        this.markupEditor = markupEditor;
+        markupEditor.changed = () => this.changeMode();
         this.changeMode();
-        editorHandle.onHasContentChanged = () => this.changeMode();
     }
-
-    private editorHandle = () : SlateEditorHandle => {
-        // @ts-ignore
-        return this.input.editorHandle as SlateEditorHandle;
-    };
 
     public dispose() {
         window.visualViewport.removeEventListener('resize', this.onChangeViewSize);
