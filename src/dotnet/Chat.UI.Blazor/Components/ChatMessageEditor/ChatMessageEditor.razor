@@ -19,7 +19,7 @@
             @ref="AttachmentListPreviewRef"
             RemoveRequested="RemoveAttachment"
             ClearAllRequested="ClearAttachments"
-            Post="@(_ => Post(clearEditor: true))"/>
+            Post="@(_ => Post())"/>
         <LinkedMessagePanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
@@ -48,7 +48,7 @@
                                 Cancel="@(() => OnCancel())"
                                 OpenPrevious="OnOpenPrevious"/>
                             <button class="btn btn-round post-message"
-                                    @onclick="_ => Post(clearEditor: true)">
+                                    @onclick="@(_ => Post())">
                                 <i class="icon-paper-plane text-2xl"></i>
                             </button>
                         </label>
@@ -121,14 +121,14 @@
         }
     }
 
-    private async Task Post(string? text = null, bool clearEditor = false) {
+    private async Task Post(string? text = null, bool mustClear = true) {
         text ??= await MarkupEditorRef.GetText();
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
-            if (clearEditor)
+            if (mustClear)
                 await MarkupEditorRef.Clear();
             AttachmentListPreviewRef.Clear();
             StateHasChanged();

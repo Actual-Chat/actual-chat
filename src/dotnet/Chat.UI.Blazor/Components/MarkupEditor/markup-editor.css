@@ -7,7 +7,7 @@
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content .editor-mention {
-    @apply inline relative z-[-1];
+    @apply inline;
     @apply px-1.5 py-0.25 mx-[1px];
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;

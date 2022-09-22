@@ -102,6 +102,7 @@ export class MarkupEditor {
     }
 
     public setHtml(html: string, clearUndoStack: boolean = true) {
+        console.log("Here");
         this.transaction(() => {
             this.contentDiv.innerHTML = html;
             this.fixContent();
@@ -372,7 +373,7 @@ export class MarkupEditor {
     private updateListUIDebounced = debounce(() => this.updateListUI(), 100);
 
     private updateListUI() {
-        console.debug(`${LogScope}.updateListUI()`)
+        // console.debug(`${LogScope}.updateListUI()`)
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             void this.closeListUI();
