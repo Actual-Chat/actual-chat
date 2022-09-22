@@ -458,9 +458,9 @@ export class MarkupEditor {
             const parents = new Array<HTMLElement>();
             let parent = node;
             while (parent !== this.contentDiv) {
-                const eParent = castNode<HTMLElement>(parent, node.ELEMENT_NODE);
-                if (parent.nodeType == Node.ELEMENT_NODE)
-                    parents.push(parent as HTMLElement)
+                const eParent = asHTMLElement(parent);
+                if (eParent)
+                    parents.push(eParent)
                 parent = parent.parentElement;
             }
             parents.reverse();
@@ -614,6 +614,8 @@ function asText(node: Node) : Text | null {
 }
 
 function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | null {
+    if (!node)
+        return null;
     if (node.nodeType !== nodeType)
         return null;
     return node as unknown as TNode;
