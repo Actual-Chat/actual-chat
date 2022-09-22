@@ -13,7 +13,7 @@ public class LocalCommandScheduler : WorkerBase
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var commands = LocalCommandQueue.ReadEvents(cancellationToken);
+        var commands = LocalCommandQueue.Read(cancellationToken);
         await foreach (var command in commands.ConfigureAwait(false))
             _ = Commander.Start(command, true, cancellationToken);
     }

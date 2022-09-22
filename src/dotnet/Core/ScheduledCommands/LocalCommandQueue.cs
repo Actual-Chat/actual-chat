@@ -12,6 +12,6 @@ public class LocalCommandQueue
     public async Task Enqueue(ICommandConfiguration commandConfiguration, CancellationToken cancellationToken)
         => await ScheduledCommands.Writer.WriteAsync(commandConfiguration.Command, cancellationToken).ConfigureAwait(false);
 
-    public IAsyncEnumerable<ICommand> ReadEvents(CancellationToken cancellationToken)
+    public IAsyncEnumerable<ICommand> Read(CancellationToken cancellationToken)
         => ScheduledCommands.Reader.ReadAllAsync(cancellationToken);
 }

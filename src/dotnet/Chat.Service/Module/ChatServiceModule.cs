@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.ScheduledCommands;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
@@ -63,7 +64,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
                 || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
-                || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
+                || commandAssembly == typeof(ChatAuthors).Assembly // Chat.Service assembly
+                || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
         });
         var fusion = services.AddFusion();
 
