@@ -80,6 +80,16 @@
         return text;
     }
 
+    public async ValueTask SetText(string text) {
+        var markup = await MarkupHub.ParseAndNameMentions(text, default);
+        await SetMarkup(markup);
+    }
+
+    public async ValueTask SetMarkup(Markup markup) {
+        var html = HtmlConverter.Format(markup);
+        await SetHtml(html);
+    }
+
     public async ValueTask SetHtml(string html) {
         await WhenReady;
         await JSRef.InvokeVoidAsync("setHtml", html);

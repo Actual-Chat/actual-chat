@@ -56,9 +56,7 @@
     }
 
     private async Task OnSetMarkupClick() {
-        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
-        var html = await HtmlConverter.Convert(_markup, CancellationToken.None);
-        await _editorRef.SetHtml(html);
+        await _editorRef.SetText(_markup);
         StateHasChanged();
     }
 

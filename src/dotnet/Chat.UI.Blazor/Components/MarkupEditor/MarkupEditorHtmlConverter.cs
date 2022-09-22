@@ -14,15 +14,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         MentionClass = "editor-mention";
         PreformattedTextClass = "editor-preformatted";
         CodeBlockClass = "editor-preformatted";
-        NewLineHtml = "\n";
-        NewLineReplacement = "\n";
-    }
-
-    public async Task<string> Convert(string markupText, CancellationToken cancellationToken)
-    {
-        var markup = MarkupHub.MarkupParser.Parse(markupText);
-        markup = await MarkupHub.MentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
-        return Format(markup);
+        NewLineHtml = NewLineReplacement = "\n";
     }
 
     protected override void VisitMention(MentionMarkup markup, ref Utf16ValueStringBuilder state)
@@ -35,7 +27,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHiddenText("`", ref state);
         AddText(markup.NameOrNotAvailable, ref state);
         AddHiddenText("`" + markup.Id, ref state);
-        AddHtml("</span>&#8203", ref state);
+        AddHtml("</span>", ref state);
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)
