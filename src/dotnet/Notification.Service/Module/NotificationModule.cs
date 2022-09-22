@@ -35,7 +35,8 @@ public class NotificationModule : HostModule<NotificationSettings>
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
-        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db,
+            db => db.AddEntityResolver<string, DbNotification>());
 
         // Commander & Fusion
         var commander = services.AddCommander()

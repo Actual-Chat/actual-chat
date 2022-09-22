@@ -12,6 +12,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 {
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
+    private IDbEntityResolver<string, DbNotification> EntityResolver { get; }
     private ContentUrlMapper ContentUrlMapper { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
@@ -20,11 +21,13 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         IChatAuthorsBackend chatAuthorsBackend,
         FirebaseMessagingClient firebaseMessagingClient,
         IChatsBackend chatsBackend,
+        IDbEntityResolver<string, DbNotification> entityResolver,
         ContentUrlMapper contentUrlMapper) : base(services)
     {
         ChatAuthorsBackend = chatAuthorsBackend;
         FirebaseMessagingClient = firebaseMessagingClient;
         ChatsBackend = chatsBackend;
+        EntityResolver = entityResolver;
         ContentUrlMapper = contentUrlMapper;
     }
 
@@ -82,30 +85,38 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         }
 
         var notificationIds = await ListRecentNotificationIds(userId, cancellationToken).ConfigureAwait(false);
-        foreach (var existingId in notificationIds) {
-            var existingEntry = await GetNotification(userId, existingId, cancellationToken).ConfigureAwait(false);
-            if (existingEntry.Type != notificationType)
-                continue;
+        var notifications = await notificationIds
+            .Select(id => GetNotification(userId, id, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
 
-            if (notificationType == NotificationType.Message) {
-                var messageDetails = entry.Message;
-                var existingMessageDetails = existingEntry.Message;
-                if (messageDetails == null || existingMessageDetails == null)
-                    continue;
+        if (notificationType == NotificationType.Message) {
+            var messageDetails = entry.Message;
+            var existingEntry = notifications
+                .OrderByDescending(n => n.NotificationTime)
+                .FirstOrDefault(n => n.Type == notificationType
+                    && OrdinalEquals(n.Message?.ChatId, messageDetails?.ChatId));
 
-                var chatId = messageDetails.ChatId;
-                var existingChatId = existingMessageDetails.ChatId;
-                if (!OrdinalEquals(chatId,existingChatId))
-                    continue;
+            if (existingEntry != null) {
+                // throttle message notifications
+                if (entry.NotificationTime - existingEntry.NotificationTime <= TimeSpan.FromMinutes(5))
+                    return;
 
                 entry = entry with { NotificationId = existingEntry.NotificationId };
-                break;
             }
-            if (notificationType is NotificationType.Reply or NotificationType.Invitation)
-                continue;
-
-            throw new ArgumentOutOfRangeException();
         }
+        else if (notificationType == NotificationType.Invitation) {
+
+        }
+        else if (notificationType == NotificationType.Reply) {
+
+        }
+        else if (notificationType == NotificationType.Mention) {
+
+        }
+        else
+            throw StandardError.NotSupported<NotificationType>("Notification type is unsupported.");
+
 
         await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
         await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
@@ -223,7 +234,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbNotification = await dbContext.Notifications.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await EntityResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
@@ -268,7 +279,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var title = GetTitle(chat, chatAuthor);
         var iconUrl = GetIconUrl(chat, chatAuthor);
         var textContent = GetContent(content);
-        var notificationTime = DateTime.UtcNow;
+        var notificationTime = Clocks.CoarseSystemClock.Now;
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
         foreach (var uid in userIds.Where(uid => !OrdinalEquals(uid, userId)))
             await new INotificationsBackend.NotifyUserCommand(
@@ -283,6 +294,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                         Message = new MessageNotificationEntry(chatId, entryId, authorId),
                     })
                 .Configure()
+                .ShardByUserId(uid)
                 .ScheduleNow(cancellationToken)
                 .ConfigureAwait(false);
     }
