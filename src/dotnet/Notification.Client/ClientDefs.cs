@@ -19,4 +19,7 @@ public interface INotificationsClientDef
 
     [Post(nameof(RegisterDevice))]
     Task RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(HandleNotification))]
+    public Task HandleNotification([Body] INotifications.HandleNotificationCommand command, CancellationToken cancellationToken);
 }
