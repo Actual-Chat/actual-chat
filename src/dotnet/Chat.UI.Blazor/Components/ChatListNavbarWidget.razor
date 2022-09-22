@@ -81,7 +81,7 @@
     private Task<ImmutableArray<Chat>> ListChats(TabId tabId, CancellationToken cancellationToken)
         => tabId switch {
             TabId.All => Chats.List(Session, cancellationToken),
-            TabId.Recent => RecentChats.List(cancellationToken),
+            TabId.Recent => RecentChats.ListIncludingActive(),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
 
