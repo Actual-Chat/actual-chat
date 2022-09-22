@@ -37,11 +37,10 @@ export class MarkupEditor {
             () => normalize(this.contentDiv.innerHTML),
             value => {
                 // To make sure both undo and redo stacks have something
-                document.execCommand("insertHTML", false, "&#8203")
-                document.execCommand("insertHTML", false, "&#8203")
+                document.execCommand("insertHTML", false, "&#8203");
+                document.execCommand("insertHTML", false, "&#8203");
                 document.execCommand("undo", false);
-                this.contentDiv.innerHTML = value;
-                this.moveCursorToTheEnd();
+                this.setHtml(value, false);
             },
             (x: string, y: string) => x === y,
             333, debug);
@@ -82,9 +81,12 @@ export class MarkupEditor {
         return this.contentDiv.innerText;
     }
 
-    public setHtml(html: string) {
+    public setHtml(html: string, clearUndoStack: boolean = true) {
         this.contentDiv.innerHTML = html;
-        this.undoStack.clear();
+        this.fixContent();
+        this.moveCursorToTheEnd();
+        if (clearUndoStack)
+            this.undoStack.clear();
     }
 
     public insertHtml(html: string, listId?: string) {
@@ -95,6 +97,7 @@ export class MarkupEditor {
         }
         if (!listId) {
             document.execCommand('insertHTML', false, html);
+            this.fixContent();
             this.fixSelection();
             return;
         }
@@ -106,6 +109,7 @@ export class MarkupEditor {
             return;
 
         document.execCommand('insertHTML', true, html);
+        this.fixContent();
         this.fixSelection();
         this.closeListUI();
     }
@@ -117,6 +121,60 @@ export class MarkupEditor {
         const selection = document.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
+    }
+
+    public fixContent() {
+        // We remove all elements with contentEditable == "false", which
+        // aren't followed by "\u8203" character to workaround an issue with
+        // typing & deletion of such elements in Chrome Android:
+        // - https://github.com/ProseMirror/prosemirror/issues/565#issuecomment-552805191
+        const process = (parent: Node) => {
+            let mustNormalize = false;
+            let skipAfter: Node = null;
+            for (const node0 of parent.childNodes) {
+                if (skipAfter) {
+                    if (node0 !== skipAfter)
+                        continue;
+                    skipAfter = null;
+                    continue;
+                }
+
+                const t0 = asText(node0);
+                if (t0) {
+                    const oldText = t0.textContent;
+                    const newText = oldText.replace(/\u200B/g, ""); // \u200B (hex) = 8203 (dec)
+                    if (newText.length !== oldText.length) {
+                        t0.textContent = newText;
+                        mustNormalize = true;
+                    }
+                    continue;
+                }
+
+                const e0 = asHTMLElement(node0);
+                if (e0) {
+                    if (e0.contentEditable !== "false") {
+                        process(e0);
+                        continue;
+                    }
+                    let t1 = asText(e0.nextSibling);
+                    while (t1 && t1.textContent.length == 0) {
+                        const t2 = asText(t1.nextSibling);
+                        t1.remove();
+                        t1 = t2;
+                    }
+                    if (t1 && t1.textContent.startsWith("\u200B")) {
+                        skipAfter = t1;
+                        continue;
+                    }
+                    node0.remove();
+                }
+            }
+
+            if (mustNormalize)
+                parent.normalize();
+        }
+
+        process(this.contentDiv);
     }
 
     // Backend method invokers
@@ -174,7 +232,6 @@ export class MarkupEditor {
                 e.preventDefault();
                 if (!this.expandSelection(listHandler))
                     return ok();
-                document.execCommand('insertHTML', false, "");
                 this.closeListUI();
                 return ok();
             }
@@ -215,11 +272,12 @@ export class MarkupEditor {
             const text1 = this.getText();
             document.execCommand('insertHTML', false, '\n');
             const text2 = this.getText();
-            const isFailed = !text2.endsWith('\n') || (text2.startsWith(text1) && !text1.endsWith('\n'));
-            if (isFailed) {
+            const isBuggy = !text1.endsWith('\n') && text2.startsWith(text1);
+            if (isBuggy) {
                 // Workaround for "Enter does nothing if cursor is in the end of the document" issue
                 document.execCommand('insertHTML', false, '\n');
             }
+            this.fixContent();
             return ok();
         }
     }
@@ -269,6 +327,7 @@ export class MarkupEditor {
     }
 
     private onInput = (e: InputEvent) => {
+        this.fixContent();
         this.undoStack.pushDebounced();
         this.updateListUIDebounced();
     }
@@ -362,6 +421,7 @@ export class MarkupEditor {
             const parents = new Array<HTMLElement>();
             let parent = node;
             while (parent !== this.contentDiv) {
+                const eParent = castNode<HTMLElement>(parent, node.ELEMENT_NODE);
                 if (parent.nodeType == Node.ELEMENT_NODE)
                     parents.push(parent as HTMLElement)
                 parent = parent.parentElement;
@@ -507,6 +567,20 @@ enum ListCommandKind {
 
 const emptyLinesRe = /\n*/g
 const newLineRe = /\r\n/g
+
+function asHTMLElement(node: Node) : HTMLElement | null {
+    return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
+}
+
+function asText(node: Node) : Text | null {
+    return castNode<Text>(node, Node.TEXT_NODE);
+}
+
+function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | null {
+    if (node.nodeType !== nodeType)
+        return null;
+    return node as unknown as TNode;
+}
 
 function trimText(text: string) {
     // NOTE(AY): Write a real implementation of this later

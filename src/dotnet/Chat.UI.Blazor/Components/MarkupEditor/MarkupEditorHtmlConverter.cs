@@ -27,7 +27,7 @@ public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHiddenText("`", ref state);
         AddText(markup.NameOrNotAvailable, ref state);
         AddHiddenText("`" + markup.Id, ref state);
-        AddHtml("</span>", ref state);
+        AddHtml("&#8203</span>&#8203", ref state);
     }
 
     protected override void VisitStylized(StylizedMarkup markup, ref Utf16ValueStringBuilder state)

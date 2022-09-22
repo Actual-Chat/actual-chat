@@ -5,6 +5,7 @@ const LogScope = 'UndoStack';
 export class UndoStack<T> {
     private items: Array<T> = new Array<T>();
     private position: number = 0;
+    private isPushEnabled: boolean = true;
     public maxSize: number = 200;
     public pushDebounced: Debounced<() => void>
 
@@ -17,15 +18,37 @@ export class UndoStack<T> {
     ) {
         this.pushDebounced = debounce(this.push, pushDebounceDelay)
         this.clear();
+
+        // Replacing writer so it temporary disables push.
+        const oldWriter = this.writer;
+        this.writer = (value) => {
+            const oldIsPushEnabled = this.isPushEnabled;
+            this.isPushEnabled = false;
+            try {
+                oldWriter(value);
+            }
+            finally {
+                this.isPushEnabled = oldIsPushEnabled;
+            }
+        }
     }
 
     public push() {
+        if (!this.isPushEnabled)
+            return;
+
         const value = this.reader();
-        const position = this.position - 1;
-        const storedValue = this.items[position];
-        if (this.equalityComparer(value, storedValue)) {
+
+        // Checking if next redo is the same
+        if (this.position < this.items.length && this.equalityComparer(value, this.items[this.position])) {
             if (this.debug)
-                console.debug(`${LogScope}.push: skipping`);
+                console.debug(`${LogScope}.push: skipping (matching redo)`);
+            return;
+        }
+        // Checking if prev. undo is the same
+        if (this.equalityComparer(value, this.items[this.position - 1])) {
+            if (this.debug)
+                console.debug(`${LogScope}.push: skipping (matching undo)`);
             return;
         }
 
@@ -39,60 +62,50 @@ export class UndoStack<T> {
             console.debug(`${LogScope}.push: items:`, this.items, `, position: `, this.position);
     }
 
-    public undo(nested: boolean = false) {
-        if (!nested)
-            this.pushDebounced.cancel();
+    public undo() {
+        this.pushDebounced.cancel();
+        this.push();
 
-        if (this.debug)
-            console.debug(`${LogScope}.undo: items:`, this.items, `, position: `, this.position);
-
-        const value = this.reader();
-        const position = this.position - 1;
-        const storedValue = this.items[position];
-        if (position <= 0) {
-            if (this.debug)
-                console.debug(`${LogScope}.undo: last item`);
-            return this.writer(storedValue);
+        try {
+            const value = this.reader();
+            while (true) {
+                const position = this.position - 1;
+                const storedValue = this.items[position];
+                if (position == 0)
+                    return this.writer(storedValue);
+                this.position = position;
+                if (!this.equalityComparer(value, storedValue))
+                    return this.writer(storedValue);
+            }
         }
-
-        this.position = position;
-        if (this.equalityComparer(value, storedValue))
-            return this.undo(true);
-
-        this.writer(storedValue);
-        if (!nested)
-            this.items[position] = value;
-
-        if (this.debug)
-            console.debug(`${LogScope}.undo: completed, items:`, this.items, `, position: `, this.position);
+        finally {
+            if (this.debug)
+                console.debug(`${LogScope}.undo: items:`, this.items, `, position: `, this.position);
+        }
     }
 
-    public redo(nested: boolean = false) {
-        if (!nested)
-            this.pushDebounced.cancel();
+    public redo() {
+        this.pushDebounced.cancel();
+        this.push();
 
-        if (this.debug)
-            console.debug(`${LogScope}.redo: items:`, this.items, `, position: `, this.position);
+        try {
+            if (this.position >= this.items.length)
+                return;
 
-        const value = this.reader();
-        const position = this.position + 1;
-        if (position > this.items.length) {
-            if (this.debug)
-                console.debug(`${LogScope}.redo: last item`);
-            return;
+            const value = this.reader();
+            while (true) {
+                this.position++;
+                const storedValue = this.items[this.position - 1];
+                if (this.position >= this.items.length)
+                    return this.writer(storedValue);
+                if (!this.equalityComparer(value, storedValue))
+                    return this.writer(storedValue);
+            }
         }
-
-        const storedValue = this.items[position - 1];
-        this.position = position;
-        if (this.equalityComparer(value, storedValue))
-            return this.redo(true);
-
-        this.writer(storedValue);
-        if (!nested)
-            this.items[position - 1] = value;
-
-        if (this.debug)
-            console.debug(`${LogScope}.redo: completed, items:`, this.items, `, position: `, this.position);
+        finally {
+            if (this.debug)
+                console.debug(`${LogScope}.redo: items:`, this.items, `, position: `, this.position);
+        }
     }
 
     public clearRedo() {

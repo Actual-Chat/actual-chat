@@ -2,8 +2,8 @@
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content {
-    @apply relative overflow-auto whitespace-pre-wrap;
-    @apply w-full min-w-full max-w-full h-full min-h-full m-2;
+    @apply relative inline-block overflow-auto whitespace-pre-wrap;
+    @apply min-w-full max-w-full w-full m-2;
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content .editor-mention {
@@ -13,7 +13,7 @@
     @apply text-mention-other-text font-medium;
 }
 .markup-editor .editor-hidden {
-    @apply inline-block relative overflow-hidden w-[1px] h-[1px];
+    @apply inline-block overflow-hidden w-[1px] h-[1px];
 }
 .markup-editor .editor-preformatted {
     @apply font-mono font-medium;
