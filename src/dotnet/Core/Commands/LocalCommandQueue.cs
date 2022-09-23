@@ -1,4 +1,4 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public class LocalCommandQueue
 {

@@ -3,7 +3,7 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;

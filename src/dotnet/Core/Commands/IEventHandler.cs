@@ -1,4 +1,4 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public interface IEventHandler<in TEvent> : ICommandHandler<TEvent>
     where TEvent : class, IEvent

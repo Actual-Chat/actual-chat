@@ -2,7 +2,7 @@ using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 

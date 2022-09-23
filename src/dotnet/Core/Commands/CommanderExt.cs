@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public static class CommanderExt
 {

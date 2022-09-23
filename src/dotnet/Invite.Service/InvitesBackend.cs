@@ -2,7 +2,7 @@ using System.Security;
 using ActualChat.Chat;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;

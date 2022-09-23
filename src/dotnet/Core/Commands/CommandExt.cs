@@ -1,7 +1,12 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public static class CommandExt
 {
+    public static ValueTask Enqueue(this IEvent @event, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
     public static CommandConfiguration Configure(this IEvent @event)
         => new (@event);
 

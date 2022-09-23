@@ -1,4 +1,4 @@
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.Time.Testing;

@@ -1,4 +1,4 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 #pragma warning disable MA0049
 public class CommandGateway

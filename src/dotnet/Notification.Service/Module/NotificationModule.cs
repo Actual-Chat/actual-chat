@@ -3,7 +3,7 @@ using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
 using ActualChat.Redis.Module;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Stl.Fusion.EntityFramework.Operations;
