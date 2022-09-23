@@ -1,4 +1,4 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public interface IEvent : ICommand<Unit>, IBackendCommand
 { }

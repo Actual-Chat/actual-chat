@@ -1,4 +1,4 @@
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;

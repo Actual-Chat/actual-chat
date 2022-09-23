@@ -1,4 +1,4 @@
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public interface ICommandConfiguration
 {
@@ -13,5 +13,5 @@ public record CommandConfiguration(
     [property: DataMember] IBackendCommand Command,
     [property: DataMember] ShardKind ShardKind = ShardKind.None,
     [property: DataMember] string ShardKey = "",
-    [property: DataMember] CommandPriority Priority = CommandPriority.Normal) : ICommandConfiguration;
+    [property: DataMember] CommandPriority Priority = CommandPriority.Default) : ICommandConfiguration;
 

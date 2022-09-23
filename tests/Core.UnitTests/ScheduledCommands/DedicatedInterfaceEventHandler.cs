@@ -1,4 +1,4 @@
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 
 namespace ActualChat.Core.UnitTests.ScheduledCommands;
 
@@ -15,7 +15,9 @@ public class DedicatedInterfaceEventHandler : IEventHandler<TestEvent2>
             return Task.CompletedTask;
 
         throw new InvalidOperationException("Should not run!");
+ #pragma warning disable CS0162
         TestService.ProcessedEvents.Enqueue(@event);
         return Task.CompletedTask;
+ #pragma warning restore CS0162
     }
 }

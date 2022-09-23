@@ -1,6 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 

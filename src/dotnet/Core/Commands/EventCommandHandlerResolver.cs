@@ -1,6 +1,6 @@
 using Stl.Reflection;
 
-namespace ActualChat.ScheduledCommands;
+namespace ActualChat.Commands;
 
 public class EventCommandHandlerResolver : ICommandHandlerResolver
 {

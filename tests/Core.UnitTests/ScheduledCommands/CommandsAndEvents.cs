@@ -1,4 +1,4 @@
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 
 namespace ActualChat.Core.UnitTests.ScheduledCommands;
 

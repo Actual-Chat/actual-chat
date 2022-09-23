@@ -3,7 +3,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
-using ActualChat.ScheduledCommands;
+using ActualChat.Commands;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
