@@ -51,10 +51,6 @@ public class CoreModule : HostModule<CoreSettings>
         fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
 
-        // ComputedGraphPruner - added here solely to pass correct ILogger to it
-        services.AddSingleton(new ComputedGraphPruner.Options());
-        services.AddSingleton<ComputedGraphPruner>();
-
         // Features
         services.AddScoped<Features>();
         fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
