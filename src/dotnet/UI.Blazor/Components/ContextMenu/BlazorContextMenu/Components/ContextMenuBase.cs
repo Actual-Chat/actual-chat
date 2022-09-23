@@ -97,6 +97,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
     protected bool IsShown;
     protected string X { get; set; } = "";
     protected string Y { get; set; } = "";
+    protected ContextMenuPosition MenuPosition { get; set; }
     protected string? TargetId { get; set; }
     protected ContextMenuTrigger? Trigger { get; set; }
     internal object? Data { get; set; }
@@ -206,6 +207,7 @@ public abstract class ContextMenuBase : MenuTreeComponent
         IsShown = true;
         X = x;
         Y = y;
+        MenuPosition = trigger?.MenuPosition ?? ContextMenuPosition.None;
         TargetId = targetId;
         Trigger = trigger;
         StateHasChanged();

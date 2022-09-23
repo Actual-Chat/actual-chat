@@ -128,14 +128,15 @@
     @apply bg-04 text-02 rounded-md;
 }
 
+.message-hover-menu-placement {
+    @apply absolute z-20 right-2 -mt-6;
+    @apply w-px h-px; /* we need to have non-zero size, otherwise hit test will indicate that element is not visible */
+}
+
 .message-hover-menu {
-    @apply absolute z-20 right-2 -mt-6 p-1 mx-0 flex-x gap-x-0.5;
     @apply rounded-full bg-01 border border-bg-03;
-    @apply invisible;
 }
-.message-wrapper:hover .message-hover-menu {
-    @apply invisible md:visible;
-}
+
 .message-hover-menu .btn.btn-round .btn-content {
     @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
 }

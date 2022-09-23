@@ -1,7 +1,14 @@
 @inherits ContextMenuBase
 @namespace BlazorContextMenu
 
-<div @attributes="@Attributes" class="@($"{BaseClass} {ClassCalc} {DisplayClassCalc}")" id="@Id" style="@($"left:{X}px;top:{Y}px;z-index:{ZIndex};")" data-autohide="@AutoHide.ToString().ToLower()" data-autohideevent="@AutoHideEvent.ToString().ToLower()">
+@{
+    double.TryParse(X, out var x);
+    var style = x < 0
+        ? $"right:{-x}px;top:{Y}px;z-index:{ZIndex};"
+        : $"left:{X}px;top:{Y}px;z-index:{ZIndex};";
+}
+
+<div @attributes="@Attributes" class="@($"{BaseClass} {ClassCalc} {DisplayClassCalc}")" id="@Id" style="@style" data-autohide="@AutoHide.ToString().ToLower()" data-autohideevent="@AutoHideEvent.ToString().ToLower()">
     @if (IsShown) {
         <ul class="@ListClassCalc">
             <CascadingValue Value="@((MenuTreeComponent)this)" Name="ParentComponent">

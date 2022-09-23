@@ -38,21 +38,28 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
 
         builder.AddMultipleAttributes(1, Microsoft.AspNetCore.Components.CompilerServices.RuntimeHelpers.TypeCheck<global::System.Collections.Generic.IEnumerable<global::System.Collections.Generic.KeyValuePair<string, object>>>(Attributes!));
 
-        var triggerHandler = $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});";
-        if (MouseButtonTrigger == MouseButtonTrigger.Left || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(2, "onclick", triggerHandler);
+        if (!string.IsNullOrEmpty(MenuId)) {
+            var triggerHandler = $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnContextMenu(event, '{MenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});";
+            if (MouseButtonTrigger == MouseButtonTrigger.Left || MouseButtonTrigger == MouseButtonTrigger.Both)
+                builder.AddAttribute(2, "onclick", triggerHandler);
 
-        if (MouseButtonTrigger == MouseButtonTrigger.Right || MouseButtonTrigger == MouseButtonTrigger.Both)
-            builder.AddAttribute(3, "oncontextmenu", triggerHandler);
+            if (MouseButtonTrigger == MouseButtonTrigger.Right || MouseButtonTrigger == MouseButtonTrigger.Both)
+                builder.AddAttribute(3, "oncontextmenu", triggerHandler);
 
-        if (MouseButtonTrigger == MouseButtonTrigger.DoubleClick)
-            builder.AddAttribute(4, "ondblclick", triggerHandler);
-
+            if (MouseButtonTrigger == MouseButtonTrigger.DoubleClick)
+                builder.AddAttribute(4, "ondblclick", triggerHandler);
+        }
+        if (!string.IsNullOrEmpty(HoverMenuId)) {
+            var triggerHandler = $"{BlazorUICoreModule.ImportName}.blazorContextMenu.OnHoverContextMenu(event, '{HoverMenuId.Replace("'", "\\'")}', {StopPropagation.ToString().ToLower()});";
+            builder.AddAttribute(5, "onmouseenter", triggerHandler);
+        }
         if (!string.IsNullOrWhiteSpace(CssClass))
-            builder.AddAttribute(5, "class", CssClass);
-        builder.AddAttribute(6, "id", Id);
-        builder.AddContent(7, ChildContent);
-        builder.AddElementReferenceCapture(8, (__value) =>
+            builder.AddAttribute(6, "class", CssClass);
+        builder.AddAttribute(7, "id", Id);
+        if (MenuPosition != ContextMenuPosition.None)
+            builder.AddAttribute(8, "data-menu-position", MenuPosition.ToString().ToLowerInvariant());
+        builder.AddContent(20, ChildContent);
+        builder.AddElementReferenceCapture(21, (__value) =>
         {
             ContextMenuTriggerElementRef = __value;
         });
@@ -73,10 +80,16 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
     public string? Id { get; set; }
 
     /// <summary>
-    /// The Id of the <see cref="ContextMenu" /> to open. This parameter is required.
+    /// The Id of the <see cref="ContextMenu" /> to open.
     /// </summary>
-    [Parameter, EditorRequired]
+    [Parameter]
     public string MenuId { get; set; } = "";
+
+    /// <summary>
+    /// The Id of the <see cref="ContextMenu" /> to open on hover.
+    /// </summary>
+    [Parameter]
+    public string HoverMenuId { get; set; } = "";
 
     /// <summary>
     /// Additional css class for the trigger's wrapper element.
@@ -112,10 +125,13 @@ public class ContextMenuTrigger : ComponentBase, IDisposable
     [Parameter]
     public RenderFragment ChildContent { get; set; } = null!;
 
+    [Parameter]
+    public ContextMenuPosition MenuPosition { get; set; }
+
     protected override void OnInitialized()
     {
-        if (string.IsNullOrEmpty(MenuId))
-            throw new ArgumentNullException(nameof(MenuId));
+        if (string.IsNullOrEmpty(MenuId) && string.IsNullOrEmpty(HoverMenuId))
+            throw StandardError.Constraint($"At least one of {nameof(MenuId)} or {nameof(HoverMenuId)} should be specified.");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
