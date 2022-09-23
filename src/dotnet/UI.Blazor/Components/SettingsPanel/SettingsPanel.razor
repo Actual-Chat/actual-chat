@@ -62,11 +62,12 @@
                 }
             </div>
             <div class="flex-y w-full bg-03 border-t border-bg-04">
-                <div class="flex-x items-center justify-between px-4 gap-x-4 text-xxs">
-                    <div><b class="text-03 font-medium">@Version</b></div>
-                    @if (HostInfo.HostKind != HostKind.Maui)
-                    {
-                        <BlazorModeToggle/>
+                <div class="flex-x items-center justify-between px-4 gap-x-2 text-xxs">
+                    <div class="flex-initial text-03 font-medium truncate">@Version</div>
+                    @if (HostInfo.HostKind != HostKind.Maui) {
+                        <div class="flex-none">
+                            <BlazorModeToggle/>
+                        </div>
                     }
                 </div>
             </div>
