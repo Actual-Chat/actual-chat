@@ -169,7 +169,7 @@ export class ChatMessageEditor {
     private onInputPaste = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
         // We need to handle only files pasting.
-        // Text pasting is controlled by slate editor.
+        // Text pasting is controlled by markup editor.
         const clipboardData = event.clipboardData;
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {

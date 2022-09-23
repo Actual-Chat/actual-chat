@@ -39,4 +39,9 @@
     <Content Remove="Components\ChatSettings\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\SlateEditor\SlateEditor.razor" />
+    <_ContentIncludedByDefault Remove="Components\SlateEditor\SlateEditorTestPage.razor" />
+  </ItemGroup>
+
 </Project>
