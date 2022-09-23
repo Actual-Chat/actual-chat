@@ -61,7 +61,7 @@
                     RetainedPart = text[..commonPrefixLength];
                     ChangedPart = text[commonPrefixLength..];
                     StateHasChanged();
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(false); // Ok here
                 lastText = text;
             }
         }

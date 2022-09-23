@@ -98,8 +98,9 @@
     {
         var chatEntry = ChatMessageModel.Entry;
         var chatId = chatEntry.ChatId;
-        var requestAuthor = await ChatAuthors.Get(Session, chatId, CancellationToken.None).ConfigureAwait(false);
+        var requestAuthor = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // Default scheduler is used from here
         var сanReply = rules.CanWrite();
 
         return new Model {

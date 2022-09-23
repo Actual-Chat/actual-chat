@@ -52,13 +52,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken);
         if (!account.IsActive())
             return Model.None;
 
-        var contacts = await ListContacts(_activeTabId, cancellationToken).ConfigureAwait(false);
-
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        var contacts = await ListContacts(_activeTabId, cancellationToken);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
             var activeContactId = GetActiveContactId(activeChatId);
@@ -71,7 +70,7 @@
                 ).ToList();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
         var pinnedContacts = contacts
             .Where(c => pinnedChatIds.ContainsKey(c.GetFullPeerChatId()))
             .ToList();
@@ -102,7 +101,7 @@
             TabId.Favorites => contacts.Where(x => x.IsFavorite).ToList(),
             TabId.Recent => await RecentEntries
                 .OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken)
-                .ConfigureAwait(false),
+                .ConfigureAwait(false), // Ok here
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
     }

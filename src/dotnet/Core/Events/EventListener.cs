@@ -40,11 +40,7 @@ public class EventListener<T>: WorkerBase where T: IEvent
                 foreach (var (@event, id) in batch) {
                     var task = _eventHandler.Value
                         .Handle(@event, _commander, cancellationToken)
-                        .ContinueWith(
-                            _ => _eventReader.Ack(id, cancellationToken),
-                            CancellationToken.None,
-                            TaskContinuationOptions.ExecuteSynchronously,
-                            TaskScheduler.Default);
+                        .ContinueWith(_ => _eventReader.Ack(id, cancellationToken), TaskScheduler.Default);
                     ackTasks.Add(task);
                 }
                 await Task.WhenAll(ackTasks).ConfigureAwait(false);

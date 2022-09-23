@@ -60,16 +60,12 @@
         MarkupHub.ChatId = Message.Entry.ChatId;
         var markup = await MarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
         Text = MarkupFormatter.ReadableUnstyled.Format(markup);
-        _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None).ConfigureAwait(false);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
+        _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None);
     }
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }

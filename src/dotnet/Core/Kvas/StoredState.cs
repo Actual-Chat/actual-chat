@@ -22,7 +22,7 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
         : base(options, services, false)
     {
         Settings = options;
-        WhenReadSource = TaskSource.New<Unit>(false);
+        WhenReadSource = TaskSource.New<Unit>(true);
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);

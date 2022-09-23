@@ -59,7 +59,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             StartPlayingDelay = 0;
             StateHasChanged();
             _cts = new CancellationTokenSource();
-            var audioSource = await CreateAudioSource(_uri, _cts.Token).ConfigureAwait(false);
+            var audioSource = await CreateAudioSource(_uri, _cts.Token);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var stopWatch = Stopwatch.StartNew();
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
@@ -116,7 +116,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioUri)) {
             var audioDownloader = new AudioDownloader(Services);
-            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
+            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioUri;
         }
         await _audioSource.WhenFormatAvailable;

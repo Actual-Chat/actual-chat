@@ -84,8 +84,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                                 CancellationToken.None,
                                 _blazorRef,
                                 DebugLog != null,
-                                _id
-                            ).ConfigureAwait(true);
+                                _id);
                     break;
                 case PauseCommand:
                     if (!_isStopSent) {
@@ -157,7 +156,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     try {
                         try {
                             if (jsRef != null)
-                                await jsRef.DisposeAsync().ConfigureAwait(true);
+                                await jsRef.DisposeAsync();
                         }
                         finally {
                             blazorRef?.Dispose();
@@ -167,10 +166,11 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
-            ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            ));
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
+
 #pragma warning disable RCS1229
     private Task<TResult?> CircuitInvoke<TResult>(Func<Task<TResult?>> workItem)
     {

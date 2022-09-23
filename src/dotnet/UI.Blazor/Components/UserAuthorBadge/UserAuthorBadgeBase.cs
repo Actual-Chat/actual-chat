@@ -17,7 +17,7 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
         if (UserId.IsNullOrEmpty())
             return Model.None;
 
-        var author = await Accounts.GetUserAuthor(UserId, cancellationToken).ConfigureAwait(true);
+        var author = await Accounts.GetUserAuthor(UserId, cancellationToken);
         if (author == null)
             return Model.None;
 
@@ -30,7 +30,7 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
 
         var presence = Presence.Unknown;
         if (ShowPresence)
-            presence = await UserPresences.Get(UserId, cancellationToken).ConfigureAwait(true);
+            presence = await UserPresences.Get(UserId, cancellationToken);
 
         return new(author, presence);
     }

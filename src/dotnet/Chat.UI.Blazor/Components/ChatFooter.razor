@@ -134,13 +134,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var (account, rules, canJoin) = await Accounts.Get(Session, cancellationToken)
+            .Join(
+                Chats.GetRules(Session, chatId, cancellationToken),
+                Chats.CanJoin(Session, chatId, cancellationToken)
+            ).ConfigureAwait(false);
+        // Default scheduler is used from here
         var canPost = rules.CanWrite();
-        var canJoin = !canPost && await Chats.CanJoin(Session, chatId, cancellationToken).ConfigureAwait(false);
         return new () {
             CanPost = canPost,
-            CanJoin = canJoin,
+            CanJoin = !canPost && canJoin,
             IsAuthenticated = account != null,
         };
     }

@@ -48,17 +48,18 @@
     [Parameter, EditorRequired] public UserContact Contact { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var presenceTask = UserPresences.Get(Contact.TargetUserId, cancellationToken);
-
-        var presence = await presenceTask.ConfigureAwait(false);
+        var presence = await UserPresences.Get(Contact.TargetUserId, cancellationToken);
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
-        var isActive = await ChatUI.IsActive(fullChatId).ConfigureAwait(false);
-        var isListening = await ChatUI.IsListening(fullChatId).ConfigureAwait(false);
-        var isRecording = await ChatUI.IsRecording(fullChatId).ConfigureAwait(false);
-
+        var (isActive, isListening, isRecording) =
+            await ChatUI.IsActive(fullChatId)
+                .Join(
+                    ChatUI.IsListening(fullChatId),
+                    ChatUI.IsRecording(fullChatId)
+                ).ConfigureAwait(false);
+        // Default scheduler is used from here
         return new(
             fullChatId,
             shortChatId,

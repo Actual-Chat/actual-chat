@@ -99,6 +99,7 @@
     protected override async Task OnInitializedAsync() {
         MarkupHub.ChatId = Chat.Id;
         LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+        // Default scheduler is used from here
     }
 
     protected override void OnParametersSet() {
@@ -185,11 +186,11 @@
     }
 
     private async Task TryUpdatePeerChatRecency() {
-        await Update(RecencyScope.ChatContact, Chat.Id).ConfigureAwait(false);
+        await Update(RecencyScope.ChatContact, Chat.Id);
 
         if (Chat.ChatType == ChatType.Peer) {
-            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require().ConfigureAwait(false);
-            await Update(RecencyScope.UserContact, contact.Id).ConfigureAwait(false);
+            var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require();
+            await Update(RecencyScope.UserContact, contact.Id);
         }
 
         Task Update(RecencyScope scope, string key) {

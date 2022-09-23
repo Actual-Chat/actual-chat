@@ -63,7 +63,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     protected override async Task OnParametersSetAsync()
     {
-        await WhenInitialized.ConfigureAwait(false);
+        await WhenInitialized;
         TryNavigateToEntry();
     }
 
@@ -165,8 +165,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
+            .Collect();
+
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
@@ -220,7 +220,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 var minVisibleEntryId = visibleEntryIds.Min();
                 visibleEntryIds.Remove(maxVisibleEntryId);
                 visibleEntryIds.Remove(minVisibleEntryId);
-                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
+                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; });
 
                 if (LastReadEntryState?.Value >= maxVisibleEntryId)
                     continue;

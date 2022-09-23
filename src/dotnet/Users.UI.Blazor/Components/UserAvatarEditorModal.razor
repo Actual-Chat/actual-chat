@@ -104,16 +104,16 @@
     private async Task SetDefaultAvatar(string avatarId)
     {
         var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 
     private async Task SetActiveAvatar(string avatarId)
     {
-        var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default).ConfigureAwait(false);
+        var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default);
         chatUserSettings ??= new();
         chatUserSettings = chatUserSettings with { AvatarId = avatarId };
         var command = new IChatUserSettings.SetCommand(Session, ModalModel.ChatId, chatUserSettings);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 
     private void OnCancel()

@@ -52,9 +52,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await ListChats(_activeTabId, cancellationToken);
 
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        // Default scheduler is used from here
         if (!searchPhrase.IsEmpty) {
-            var activeChat = await RecentChats.GetActiveChat(cancellationToken).ConfigureAwait(false);
+            var activeChat = await RecentChats.GetActiveChat(cancellationToken);
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Title)
@@ -64,7 +65,7 @@
                 ).ToImmutableArray();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
         var pinnedChats = chats
             .Where(c => pinnedChatIds.ContainsKey(c.Id))
             .ToList();

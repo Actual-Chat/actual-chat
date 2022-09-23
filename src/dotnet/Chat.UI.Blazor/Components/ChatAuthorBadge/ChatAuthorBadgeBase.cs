@@ -20,7 +20,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     [Parameter] public bool ShowsRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync().ConfigureAwait(true);
+        await base.DisposeAsync();
         ChatRecordingActivity?.Dispose();
     }
 
@@ -29,6 +29,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
+        // Default scheduler is used from here
         _ = State.Recompute(); // ~ Same as what's in base.OnParametersSetAsync()
     }
 
@@ -81,7 +82,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         if (!IsValid)
             return null;
 
-        var author = await ChatAuthors.GetAuthor(session, chatId, authorId, true, cancellationToken).ConfigureAwait(true);
+        var author = await ChatAuthors.GetAuthor(session, chatId, authorId, true, cancellationToken);
         if (author == null)
             return null;
         if (string.IsNullOrWhiteSpace(author.Picture)) {
@@ -102,9 +103,9 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
 
         var presence = Presence.Unknown;
         if (ShowsPresence)
-            presence = await ChatAuthors.GetAuthorPresence(session, chatId, authorId, cancellationToken).ConfigureAwait(true);
+            presence = await ChatAuthors.GetAuthorPresence(session, chatId, authorId, cancellationToken);
         if (ChatRecordingActivity != null) {
-            var isRecording = await ChatRecordingActivity.IsAuthorActive(authorId, cancellationToken).ConfigureAwait(true);
+            var isRecording = await ChatRecordingActivity.IsAuthorActive(authorId, cancellationToken);
             if (isRecording)
                 presence = Presence.Recording;
         }

@@ -29,11 +29,13 @@ public class UnreadMessages : IDisposable
 
     public async Task<bool> HasMentions(CancellationToken cancellationToken)
     {
-        var lastReadEntryId = await GetLastReadEntryId(cancellationToken);
+        var lastReadEntryId = await GetLastReadEntryId(cancellationToken).ConfigureAwait(false);
         if (lastReadEntryId == null)
             return false; // Never opened this chat, so no unread mentions
 
-        var lastMention = await Mentions.GetLast(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        var lastMention = await Mentions
+            .GetLast(Session, ChatId, cancellationToken)
+            .ConfigureAwait(false);
 
         return lastMention?.EntryId > lastReadEntryId;
     }

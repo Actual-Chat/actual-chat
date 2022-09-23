@@ -31,7 +31,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken).ConfigureAwait(false);
+        var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken);
         if (userAvatar == null)
             return new Model();
 

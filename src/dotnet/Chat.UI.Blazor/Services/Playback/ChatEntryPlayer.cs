@@ -41,6 +41,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
 
     protected override async Task DisposeAsyncCore()
     {
+        // Default scheduler is used from here
+
         // This method starts inside 'lock (Lock)' block - see ProcessorBase.DisposeAsync,
         // so we don't need to acquire this lock here to access EntryPlaybackTasks.
         var entryPlaybackTasks = EntryPlaybackTasks.ToList();

@@ -64,6 +64,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
+        // Default scheduler is used from here
         if (State.LatestNonErrorValue == null)
             return new Model(isRecording ? RecordingState.On : RecordingState.Off);
         return new Model(isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);

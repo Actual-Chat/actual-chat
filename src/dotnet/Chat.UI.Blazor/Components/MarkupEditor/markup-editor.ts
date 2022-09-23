@@ -277,20 +277,9 @@ export class MarkupEditor {
         const ok = () => e.preventDefault();
 
         const data = e.clipboardData;
-        const html = data.getData("text/html");
-        let text = '';
-        if (html) {
-            // console.debug(`${LogScope}.onPaste: html:`, html)
-            const div = document.createElement("div");
-            div.innerHTML = html;
-            text = div.innerText;
-        }
-        else {
-            text = data.getData('text');
-            // console.debug(`${LogScope}.onPaste: text:`, text)
-        }
-        text = trimText(text);
+        const text = cleanPastedText(data.getData('text'));
 
+        // console.debug(`${LogScope}.onPaste: text:`, text)
         this.transaction(() => {
             document.execCommand('insertText', false, text);
         });
@@ -651,9 +640,8 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function trimText(text: string) {
-    // NOTE(AY): Write a real implementation of this later
-    return text.trim();
+function cleanPastedText(text: string) {
+    return text.replace(ZeroWidthSpaceRe, '');
 }
 
 function normalize(text: string) {

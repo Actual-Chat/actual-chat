@@ -79,7 +79,7 @@ public abstract class HubClientBase : WorkerBase
                 await using var connection = hubConnection.ConfigureAwait(false);
                 retryIndex = 0; // Reset on connect
 
-                var closedTaskSource = TaskSource.New<string?>(false);
+                var closedTaskSource = TaskSource.New<string?>(true);
                 var onClosed = (Func<Exception?, Task>) null!;
                 onClosed = error => {
                     error ??= new ChannelClosedException("SignalR connection is closed.");

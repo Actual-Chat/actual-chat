@@ -64,7 +64,8 @@
         await base.OnInitializedAsync();
 
         FirstAttachment = ChatEntry.HasAttachments
-            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text).GetFirstAttachment(ChatEntry.Id, CancellationToken.None).ConfigureAwait(false)
+            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text)
+                .GetFirstAttachment(ChatEntry.Id, CancellationToken.None)
             : null;
         Markup = ChatEntry.AudioEntryId == null
             ? MarkupParser.Parse(ChatEntry.Content)

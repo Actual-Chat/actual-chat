@@ -40,8 +40,13 @@
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
         var activeAuthorIds = new List<Symbol>();
         var inactiveAuthorIds = new List<Symbol>();
-        foreach (var authorId in allAuthorIds) {
-            var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+        var presences = await allAuthorIds
+            .Select(async authorId => {
+                var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+                return (authorId, presence);
+            })
+            .Collect();
+        foreach (var (authorId, presence) in presences) {
             if (presence is Presence.Online or Presence.Recording) {
                 activeAuthorIds.Add(authorId);
             } else {

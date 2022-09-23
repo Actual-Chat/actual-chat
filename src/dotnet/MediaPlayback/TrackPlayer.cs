@@ -46,7 +46,7 @@ public abstract class TrackPlayer : ProcessorBase
     /// <returns>A running task, which will be completed after playing all media frames or on a cancel + disposing things</returns>
     public Task Play(CancellationToken cancellationToken = default)
     {
-        // Hint: the code here is almost a copy of WrokerBase.Run
+        // Hint: the code here is almost a copy of WorkerBase.Run
         this.ThrowIfDisposedOrDisposing();
 
         lock (Lock) {
@@ -72,7 +72,7 @@ public abstract class TrackPlayer : ProcessorBase
                         catch {
                             // Intended
                         }
-                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                    }, TaskScheduler.Default);
 #pragma warning disable MA0100
                 return _whenPlaying;
 #pragma warning restore MA0100

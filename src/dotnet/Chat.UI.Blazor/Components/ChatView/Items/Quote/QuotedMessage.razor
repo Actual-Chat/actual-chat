@@ -55,7 +55,7 @@
         var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
         return new (Message, _quoteText, principalId);
     }
 
@@ -64,7 +64,7 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }

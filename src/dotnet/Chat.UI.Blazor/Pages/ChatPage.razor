@@ -117,7 +117,7 @@
         if (chat == null)
             return Model.Unavailable;
 
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken);
         var result = new Model(chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }

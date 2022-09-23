@@ -20,6 +20,8 @@ public class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
     {
         var searchPhrase = filter[..Math.Min(64, filter.Length)].ToSearchPhrase(true, true);
         var authors = await Chats.ListMentionableAuthors(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        // Default scheduler is used from here
+
         var mentions = (
             from author in authors
             let searchMatch = searchPhrase.GetMatch(author.Name)

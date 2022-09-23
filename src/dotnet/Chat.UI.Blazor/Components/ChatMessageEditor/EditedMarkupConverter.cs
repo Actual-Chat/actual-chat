@@ -14,6 +14,7 @@ public class EditedMarkupConverter
         var visitor = new Visitor();
         var markup = MarkupHub.MarkupParser.Parse(markupText);
         markup = await MarkupHub.MentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
+        // Default scheduler is used from here
         var result = visitor.Apply(markup);
         return result;
     }

@@ -95,8 +95,10 @@ public class ChatUI
     [ComputeMethod]
     public virtual async Task<SingleChatPlaybackState> GetPlaybackState(Symbol chatId, CancellationToken cancellationToken)
     {
-        var isListening = await IsListening(chatId).ConfigureAwait(false);
-        var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var isListeningTask = IsListening(chatId);
+        var chatPlaybackStateTask = ChatPlayers.ChatPlaybackState.Use(cancellationToken);
+        var isListening = await isListeningTask.ConfigureAwait(false);
+        var chatPlaybackState = await chatPlaybackStateTask.ConfigureAwait(false);
         var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState x && x.ChatId == chatId;
         return new SingleChatPlaybackState(chatId, isListening, isPlayingHistorical);
     }

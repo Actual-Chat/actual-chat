@@ -59,8 +59,8 @@
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    private async Task OnCloseClick()
-        => await ModalInstance.CloseAsync().ConfigureAwait(false);
+    private Task OnCloseClick()
+        => ModalInstance.CloseAsync();
 
     public sealed record Model {
         public static Model None { get; } = new();

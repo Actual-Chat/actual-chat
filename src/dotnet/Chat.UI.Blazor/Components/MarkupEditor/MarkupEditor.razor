@@ -34,7 +34,7 @@
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {
-        _whenReadySource = TaskSource.New<Unit>(false);
+        _whenReadySource = TaskSource.New<Unit>(true);
         _onMentionSelected = mention => _ = InsertMention(mention);
     }
 

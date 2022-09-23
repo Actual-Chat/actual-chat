@@ -24,6 +24,6 @@
     private async Task OnClick() {
         var diff = DiffEngine.Diff<UserContact, UserContactDiff>(Contact, Contact with { IsFavorite = true });
         var command = new IUserContacts.ChangeCommand(Session, Contact.Id, null, new Change<UserContactDiff> { Update = diff });
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 }

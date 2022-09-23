@@ -60,7 +60,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
         var entry = _streams.GetOrAdd(streamId,
             static (streamId1, state) => {
                 var (self, expiresIn) = state;
-                var memoizerTask = TaskSource.New<AsyncMemoizer<TItem>>(false).Task;
+                var memoizerTask = TaskSource.New<AsyncMemoizer<TItem>>(true).Task;
                 var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
                 var entry = Expiring
                     .New(self._streams, streamId1, memoizerTask, disposeTokenSource)
