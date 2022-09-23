@@ -16,11 +16,12 @@
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
-        <AttachmentListPreview
-            @ref="AttachmentListPreviewRef"
-            RemoveRequested="RemoveAttachment"
-            ClearAllRequested="ClearAttachments"
-            Post="@(_ => Post())"/>
+        <AttachmentList
+            @key="AttachmentListKey"
+            @ref="AttachmentListRef"
+            RemoveClick="@(a => RemoveAttachment(a))"
+            ClearClick="@(_ => ClearAttachments())"
+            PostClick="@(_ => Post())"/>
         <LinkedMessagePanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
@@ -67,18 +68,19 @@
             }
         </div>
     </MentionListManager>
-    <AttachMenu UploadFilesRequested="OnUploadFilesRequested"/>
+    <AttachMenu UploadFilesRequested="@(() => ShowFilePicker())"/>
 </div>
 
 @code {
     private static object MentionListManagerKey { get; } = new();
+    private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
-    private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
+    private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private MarkupEditorHtmlConverter HtmlConverter => MarkupHub.MarkupEditorHtmlConverter;
     private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
@@ -102,10 +104,6 @@
         // Default scheduler is used from here
     }
 
-    protected override void OnParametersSet() {
-        MarkupHub.ChatId = Chat.Id;
-    }
-
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -113,6 +111,19 @@
         BlazorRef = null!;
         LastReadEntryState?.Dispose();
         LastReadEntryState = null!;
+    }
+
+    protected override void OnParametersSet() {
+        var oldChatId = MarkupHub.ChatId;
+        if (oldChatId == Chat.Id)
+            return;
+
+        MarkupHub.ChatId = Chat.Id;
+        if (JSRef == null!)
+            return; // Not rendered yet
+
+        ClearAttachments();
+        MarkupEditorRef.Clear();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -126,15 +137,27 @@
         }
     }
 
+    // Backend API
+
+    [JSInvokable]
+    public void CloseNotifyPanel()
+        => NotifyCallPanelRef.Close();
+
+    [JSInvokable]
+    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
+        => AttachmentListRef.Add(id, url, fileName, fileType, length);
+
+    // Private methods
+
     private async Task Post(string? text = null) {
         text ??= await MarkupEditorRef.GetText();
-        var attachments = AttachmentListPreviewRef.GetAttachments();
+        var attachments = AttachmentListRef.Attachments;
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
+            AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
-            AttachmentListPreviewRef.Clear();
 
             var linkedChatEntry = ChatUI.LinkedChatEntry.Value;
             var chatEntry = linkedChatEntry?.Entry;
@@ -154,35 +177,34 @@
 
             if (LastReadEntryState != null)
                 LastReadEntryState.Value = entryId;
-            _ = ChatUI.AddActiveChat(Chat.Id);
             _ = TryUpdatePeerChatRecency();
-
-            await JSRef.InvokeVoidAsync("onPosted");
+            _ = ChatUI.AddActiveChat(Chat.Id);
+            await ClearAttachments();
         }
         catch (Exception e) {
+            AttachmentListRef.Attachments = attachments;
             ErrorUI.ShowError(e);
         }
     }
 
-    [JSInvokable]
-    public void CloseNotifyPanel()
-        => NotifyCallPanelRef.Close();
-
-    [JSInvokable]
-    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
-        => AttachmentListPreviewRef.AddAttachment(id, url, fileName, fileType, length);
-
-    private async Task RemoveAttachment(Attachment attachment)
-        => await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id);
-
-    private async Task ClearAttachments(ImmutableArray<Attachment> attachments)
-        => await JSRef.InvokeVoidAsync("clearAttachments", attachments);
-
-    private async Task EditMessage(ChatEntry chatEntry, CancellationToken cancellationToken)
+    private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
         ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
         UICommander.CancelUpdateDelays();
         await MarkupEditorRef.SetText(chatEntry.Content, true);
+    }
+
+    private ValueTask ShowFilePicker()
+        => JSRef.InvokeVoidAsync("showFilePicker");
+
+    private ValueTask RemoveAttachment(Attachment attachment) {
+        AttachmentListRef.Attachments = AttachmentListRef.Attachments.Remove(attachment);
+        return JSRef.InvokeVoidAsync("removeAttachment", attachment.Id);
+    }
+
+    private ValueTask ClearAttachments() {
+        AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
+        return JSRef.InvokeVoidAsync("clearAttachments");
     }
 
     private async Task TryUpdatePeerChatRecency() {
@@ -199,17 +221,7 @@
         }
     }
 
-    private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
-        => await MarkupEditorRef.Focus();
-
-    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
-        var chatEntry = @event.ChatEntry;
-        await EditMessage(chatEntry, cancellationToken);
-    }
-
-    private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
-        await OnCancel(cancellationToken);
-    }
+    // Event handlers
 
     private async Task OnOpenPrevious() {
         var chatId = ChatUI.ActiveChatId.Value;
@@ -222,11 +234,8 @@
         if (lastEditableEntry == null)
             return;
 
-        await EditMessage(lastEditableEntry, CancellationToken.None);
+        await Edit(lastEditableEntry, CancellationToken.None);
     }
-
-    private async Task OnUploadFilesRequested()
-        => await JSRef.InvokeVoidAsync("showFilePicker");
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
@@ -234,5 +243,19 @@
         UICommander.CancelUpdateDelays();
         await MarkupEditorRef.Clear();
         await MarkupEditorRef.Focus();
+    }
+
+    // UIEventHub event handlers
+
+    private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
+        => await MarkupEditorRef.Focus();
+
+    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
+        var chatEntry = @event.ChatEntry;
+        await Edit(chatEntry, cancellationToken);
+    }
+
+    private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
+        await OnCancel(cancellationToken);
     }
 }

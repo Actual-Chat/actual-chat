@@ -70,9 +70,6 @@
         _whenReadySource.TrySetResult(default);
     }
 
-    protected override bool ShouldRender()
-        => false;
-
     public async ValueTask<string> GetText() {
         await WhenReady;
         var text = await JSRef.InvokeAsync<string>("getText");

@@ -74,21 +74,21 @@ export class ChatMessageEditor {
 
     public post = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
-        const attachmentsList = [];
+        const attachments = [];
         if (this.attachments.size > 0) {
             let i = 0;
             this.attachments.forEach(attachment => {
                 formData.append('files[' + i + ']', attachment.File);
-                attachmentsList.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
+                attachments.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
                 i++;
             });
         }
 
-        const payload = { 'text': text, 'attachments': attachmentsList, 'repliedChatEntryId': repliedChatEntryId };
+        const payload = { 'text': text, 'attachments': attachments, 'repliedChatEntryId': repliedChatEntryId };
         const payloadJson = JSON.stringify(payload);
         formData.append('payload_json', payloadJson);
 
-        console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
+        console.log(`${LogScope}: Sending post message request with ${attachments.length} attachment(s)`);
         let url = 'api/chats/' + chatId + '/message';
         // @ts-ignore
         const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
@@ -110,16 +110,6 @@ export class ChatMessageEditor {
         return Number(entryId);
     };
 
-    public onPosted = () => {
-        for (const attachment of this.attachments.values()) {
-            if (attachment.Url)
-                URL.revokeObjectURL(attachment.Url);
-        }
-        this.attachments.clear();
-        this.attachmentsIdSeed = 0;
-        this.updateTextMode();
-    };
-
     public showFilePicker = () => {
         this.filePicker.click();
     };
@@ -127,18 +117,18 @@ export class ChatMessageEditor {
     public removeAttachment(id: number) {
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
-        if (attachment && attachment.Url)
+        if (attachment?.Url)
             URL.revokeObjectURL(attachment.Url);
         this.updateTextMode();
     }
 
     public clearAttachments() {
-        const attachments = this.attachments;
-        attachments.forEach(a => {
-            if (a && a.Url)
-                URL.revokeObjectURL(a.Url);
-        });
+        for (const attachment of this.attachments.values()) {
+            if (attachment?.Url)
+                URL.revokeObjectURL(attachment.Url);
+        }
         this.attachments.clear();
+        this.attachmentsIdSeed = 0;
         this.updateTextMode();
     }
 
