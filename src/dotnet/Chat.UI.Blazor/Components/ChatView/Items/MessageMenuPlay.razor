@@ -1,18 +1,25 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.MediaPlayback
 @inherits ComputedStateComponent<MessageMenuPlay.Model>
-
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     var canPlay = m.CanPlay;
 }
 
 @if (canPlay) {
-    <ButtonRound Title="Play" Class="play-btn" Click="OnPlay">
+    <ButtonRound
+        Class="play-btn"
+        Click="OnPlay"
+        Tooltip="Play"
+        TooltipPosition="TooltipPosition.Top">
         <i class="icon-play-fill text-xl text-primary"></i>
     </ButtonRound>
 } else {
-    <ButtonRound Title="Stop" Class="play-btn" Click="OnStop">
+    <ButtonRound
+        Class="play-btn"
+        Click="OnStop"
+        Tooltip="Stop"
+        TooltipPosition="TooltipPosition.Top">
         <i class="icon-Stop-fill text-xl text-error"></i>
     </ButtonRound>
 }
@@ -27,22 +34,23 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
     => new() {
-        UpdateDelayer = UpdateDelayer.ZeroDelay,
+        UpdateDelayer = FixedDelayer.Instant,
         InitialValue = Model.NotPlaying,
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
         if (chatId.IsEmpty)
             return Model.NotPlaying;
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
-        if (playback == null) {
+        if (playback == null)
             return State.ValueOrDefault ?? Model.NotPlaying;
-        }
-        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+
+        var isPaused = await playback.IsPaused.Use(cancellationToken);
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken);
         Moment? playingAt = null;
         var canPlay = true;
         foreach (var playbackState in playbackStates) {
@@ -80,7 +88,7 @@
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
         var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
-        var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
+        var audioEntry = await chatEntryReader.Get(audioEntryId, default);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case

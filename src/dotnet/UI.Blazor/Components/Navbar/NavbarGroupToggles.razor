@@ -7,24 +7,38 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (m.Account.IsActive()) {
-    <NavbarGroupToggle Title="Chats" Id="chats">
-        <i class="icon-message-square text-2xl font-medium"></i>
-    </NavbarGroupToggle>
+<NavbarGroupToggle
+    Title="Chats"
+    Id="chats"
+    Tooltip="Chats"
+    TooltipPosition="TooltipPosition.Right">
+    <i class="icon-message-square text-2xl font-medium"></i>
+</NavbarGroupToggle>
 
-    <NavbarGroupToggle Title="Contacts" Id="contacts">
+@if (m.Account.IsActive()) {
+    <NavbarGroupToggle
+        Title="Contacts"
+        Id="contacts"
+        Tooltip="Contacts"
+        TooltipPosition="TooltipPosition.Right">
         <i class="icon-people text-2xl font-medium"></i>
     </NavbarGroupToggle>
-
 }
 @if (m.Account.IsAdmin) {
-    <NavbarGroupToggle Title="Administration" Id="admin">
+    <NavbarGroupToggle
+        Title="Administration"
+        Id="admin"
+        Tooltip="Administration"
+        TooltipPosition="TooltipPosition.Right">
         <i class="icon-adminx text-2xl font-medium"></i>
     </NavbarGroupToggle>
-
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarGroupToggle Title="Test Pages" Id="testPages">
+    <NavbarGroupToggle
+        Title="Test Pages"
+        Id="testPages"
+        Tooltip="Test Pages"
+        TooltipPosition="TooltipPosition.Right">
         <i class="icon-alert-triangle text-2xl font-medium"></i>
     </NavbarGroupToggle>
 }

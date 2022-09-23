@@ -78,9 +78,10 @@
             await ChatAuthors
                 .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
 
-        var contacts = await UserContacts.List(Session, DisposeTokenSource.Token).ConfigureAwait(false);
+        var contacts = await UserContacts.List(Session, DisposeTokenSource.Token);
         var resolvedContacts = await contacts
             .Select(async userContact => {
+                // Default scheduler is used from here (in this block)
                 var userAuthor = await Accounts.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 if (userAuthor == null)
                     return null;
@@ -94,10 +95,12 @@
                 var presence = await UserPresences.Get(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 return new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id));
             })
-            .Collect()
-            .ConfigureAwait(false);
+            .Collect();
 
-        AllChatContacts = resolvedContacts.SkipNullItems().OrderBy(x => x.Author.Name).ToArray();
+        AllChatContacts = resolvedContacts
+            .SkipNullItems()
+            .OrderBy(x => x.Author.Name)
+            .ToArray();
         FilteredChatContacts = AllChatContacts;
     }
 
@@ -111,18 +114,19 @@
             .Select(x => x.Author.Id.Value)
             .ToArray();
         var createChatAuthorsCommand = new IChatAuthors.CreateChatAuthorsCommand(Session, ModalModel.Chat.Id, userIds);
-        await UICommander.Run(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
-        await ModalInstance.CloseAsync().ConfigureAwait(false);
+        await UICommander.Run(createChatAuthorsCommand, DisposeTokenSource.Token);
+        await ModalInstance.CloseAsync();
     }
 
-    private async Task OnCancel() => await ModalInstance.CancelAsync().ConfigureAwait(false);
+    private Task OnCancel()
+        => ModalInstance.CancelAsync();
 
     private void OnFilter(ChangeEventArgs args) {
         var filter = args.Value?.ToString();
         FilteredChatContacts = string.IsNullOrWhiteSpace(filter)
             ? AllChatContacts.ToArray()
             : AllChatContacts
-                .Where(x => x.Author.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.Author.Name.OrdinalIgnoreCaseContains(filter))
                 .ToArray();
     }
 

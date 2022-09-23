@@ -92,13 +92,13 @@ public sealed class ChatEntryReader
         CancellationToken cancellationToken)
     {
         var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(id);
-        var cTile = await Computed.Capture(
-                ct => Chats.GetTile(Session, ChatId, EntryType, idTile.Range, ct),
-                cancellationToken
-            ).ConfigureAwait(false);
+        var cTile = await Computed
+            .Capture(() => Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken))
+            .ConfigureAwait(false);
 
         cTile = await cTile.When(
                 t => predicate(t.Entries.FirstOrDefault(e => e.Id == id)),
+                FixedDelayer.ZeroUnsafe,
                 cancellationToken
             ).ConfigureAwait(false);
         return cTile.Value.Entries.FirstOrDefault(e => e.Id == id);
@@ -268,11 +268,11 @@ public sealed class ChatEntryReader
     private Task<ChatTile> GetTile(Range<long> idRange, CancellationToken cancellationToken)
         => Chats.GetTile(Session, ChatId, EntryType, idRange, cancellationToken);
 
-    private ValueTask<IComputed<Range<long>>> CaptureIdRange(CancellationToken cancellationToken)
-        => Computed.Capture(GetIdRange, cancellationToken);
+    private ValueTask<Computed<Range<long>>> CaptureIdRange(CancellationToken cancellationToken)
+        => Computed.Capture(() => GetIdRange(cancellationToken));
 
-    private ValueTask<IComputed<ChatTile>> CaptureTile(Range<long> idRange, CancellationToken cancellationToken)
-        => Computed.Capture(ct => GetTile(idRange, ct), cancellationToken);
+    private ValueTask<Computed<ChatTile>> CaptureTile(Range<long> idRange, CancellationToken cancellationToken)
+        => Computed.Capture(() => GetTile(idRange, cancellationToken));
 
     private async Task<ChatEntry?> FindByMinBeginsAtPrecise(
         Moment beginsAt,

@@ -121,7 +121,7 @@ public class MessageController : ControllerBase
 
     private async Task<IImageInfo?> GetImageInfo(FileInfo file)
     {
-        if (!file.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase))
+        if (!file.ContentType.OrdinalIgnoreCaseContains("image"))
             return null;
 
         try {

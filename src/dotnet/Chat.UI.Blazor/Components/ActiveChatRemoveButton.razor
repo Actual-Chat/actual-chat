@@ -1,0 +1,22 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var cls = $"pin-toggle blackout {Class}";
+}
+
+<ButtonRound
+    Class="@cls"
+    Click="@OnClick"
+    Tooltip="Remove"
+    TooltipPosition="TooltipPosition.Top">
+    <i class="icon-close text-2xl"></i>
+</ButtonRound>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+
+    private void OnClick()
+        => _ = ChatUI.RemoveActiveChat(ChatId);
+}

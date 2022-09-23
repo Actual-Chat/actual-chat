@@ -1,7 +1,10 @@
+using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.Search;
+using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
@@ -28,25 +31,40 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.TryAddSingleton<IChatMediaResolver, ChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
 
+        // Transient
+        services.AddTransient<MarkupHub>();
+
         // Navbar widgets
-        services.RegisterNavbarWidget<ChatListNavbarWidget>();
-        services.RegisterNavbarWidget<ContactListNavbarWidget>();
+        services.RegisterNavbarWidget<ChatListNavbarWidget>(navbarGroupId: ChatListNavbarWidget.NavbarGroupId);
+        services.RegisterNavbarWidget<ContactListNavbarWidget>(navbarGroupId: ContactListNavbarWidget.NavbarGroupId);
 
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
 
         // Chat UI
+        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
-        services.AddScoped<EditedMarkupConverter>();
-        services.AddScoped<MentionedNameResolver>();
-        services.AddScoped<ChatMarkupToTextConverter>();
+        fusion.AddComputeService<RecentChats>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>();
+        services.AddScoped<FrontendChatMentionResolverFactory>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();
         services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+
+        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
+    }
+
+    private void RegisterShowSettingsHandler(IServiceProvider services)
+    {
+        var eventHub = services.GetRequiredService<UIEventHub>();
+        eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
+            var modalUI = services.GetRequiredService<ModalUI>();
+            modalUI.Show(new SettingsModal.Model(), "modal-full");
+            return Task.CompletedTask;
+        });
     }
 }

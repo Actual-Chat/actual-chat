@@ -1,23 +1,56 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class search-box">
-    <label>
-        <input type="text" class="w-full" placeholder="Search" value="@Text" @oninput="OnInput" @onkeyup="OnKeyUp"/>
-        <ButtonRound Click="OnSearchButtonClick">
-            <svg xmlns="http://www.w3.org/2000/svg" class="fill-current w-5 h-5" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M5.5 11C5.5 7.691 8.191 5 11.5 5C14.809 5 17.5 7.691 17.5 11C17.5 14.309 14.809 17 11.5 17C8.191 17 5.5 14.309 5.5 11ZM21.207 19.293L17.812 15.897C18.865 14.543 19.5 12.846 19.5 11C19.5 6.589 15.911 3 11.5 3C7.089 3 3.5 6.589 3.5 11C3.5 15.411 7.089 19 11.5 19C13.346 19 15.043 18.365 16.397 17.312L19.793 20.707C19.988 20.902 20.244 21 20.5 21C20.756 21 21.012 20.902 21.207 20.707C21.598 20.316 21.598 19.684 21.207 19.293Z"/>
-            </svg>
-        </ButtonRound>
-    </label>
-</div>
+@if (_isCollapsed == true) {
+    <ButtonRound
+        Click="OnExpandClick"
+        Class="transparent"
+        Tooltip="@Placeholder"
+        TooltipPosition="TooltipPosition.Bottom">
+        <i class="icon-search text-2xl"></i>
+    </ButtonRound>
+} else {
+    <div class="@Class search-box">
+        <label>
+            <ButtonRound
+                Click="OnSearchButtonClick"
+                IsDisabled="IsSearchDisabled"
+                Tooltip="@Placeholder"
+                TooltipPosition="TooltipPosition.Bottom">
+                <i class="icon-search text-2xl font-medium"></i>
+            </ButtonRound>
+            <input
+                @ref="_inputRef" type="text" class="w-full"
+                placeholder="@Placeholder"
+                value="@Text"
+                maxlength="@MaxLength"
+                @oninput="OnInput"
+                @onkeyup="OnKeyUp"
+                @onblur="OnInputFocusLost"/>
+            @if (IsProgressEnabled && _isInProgress) {
+                <div style="border-top-color:transparent"
+                     class="search-box-spinner">
+                </div>
+            }
+        </label>
+    </div>
+}
 
 @code {
     private string _text = "";
+    private ElementReference _inputRef;
+    private bool? _isCollapsed;
+    private bool _needsFocus;
+    private bool _isInProgress;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<string> Triggered { get; set; }
+    [Parameter] public EventCallback Cancelled { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool IsCompact { get; set; }
+    [Parameter] public bool IsProgressEnabled { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
 
     public string Text {
         get => _text;
@@ -25,11 +58,22 @@
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
             if (value == _text)
-                return;;
+                return;
 
             _text = value;
             TextChanged.InvokeAsync(value);
             StateHasChanged();
+        }
+    }
+
+    private bool IsSearchDisabled => _isInProgress || _text.IsNullOrEmpty();
+
+    protected override void OnParametersSet() => _isCollapsed ??= IsCompact;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_needsFocus) {
+            await _inputRef.FocusAsync();
+            _needsFocus = false;
         }
     }
 
@@ -39,13 +83,42 @@
     }
 
     private async Task OnKeyUp(KeyboardEventArgs e) {
-        if (e.Key == "Enter" && HasNoModifier(e))
-            await Triggered.InvokeAsync(Text).ConfigureAwait(false);
+        if (e.Key == "Enter" && e.HasNoModifier()) {
+            if (IsSearchDisabled)
+                return;
+
+            try {
+                _isInProgress = true;
+                await Triggered.InvokeAsync(Text).ConfigureAwait(false);
+            }
+            finally {
+                _isInProgress = false;
+            }
+
+        }
+        if (e.Key == "Escape" && e.HasNoModifier()) {
+            await Cancel();
+        }
     }
 
-    private Task OnSearchButtonClick()
-        => Triggered.InvokeAsync(Text);
+    private async Task Cancel()
+    {
+        Text = "";
+        await Cancelled.InvokeAsync();
 
-    private static bool HasNoModifier(KeyboardEventArgs e)
-        => !e.AltKey && !e.CtrlKey && !e.ShiftKey && !e.MetaKey;
+        if (IsCompact)
+            _isCollapsed = true;
+    }
+
+    private Task OnSearchButtonClick() => Triggered.InvokeAsync(Text);
+
+    private void OnInputFocusLost() {
+        if (IsCompact)
+            _isCollapsed = true;
+    }
+
+    private void OnExpandClick() {
+        _isCollapsed = false;
+        _needsFocus = true;
+    }
 }

@@ -1,44 +1,26 @@
-using ActualChat.Audio.Db;
 using ActualChat.Transcription;
-using Stl.Redis;
 
 namespace ActualChat.Audio;
 
 public class TranscriptStreamer : ITranscriptStreamer
 {
-    private const int StreamBufferSize = 64;
-    // ReSharper disable once UnusedAutoPropertyAccessor.Local
+    private ITranscriptStreamServer TranscriptStreamServer { get; }
     private ILogger<TranscriptStreamer> Log { get; }
-    private RedisDb RedisDb { get; }
-    private AudioSettings Settings { get; }
 
     public TranscriptStreamer(
-        RedisDb<AudioContext> audioRedisDb,
-        AudioSettings settings,
+        ITranscriptStreamServer transcriptStreamServer,
         ILogger<TranscriptStreamer> log)
     {
-        Settings = settings;
+        TranscriptStreamServer = transcriptStreamServer;
         Log = log;
-        RedisDb = audioRedisDb.WithKeyPrefix("transcripts");
     }
 
-    public Task Publish(
-        string streamId,
-        IAsyncEnumerable<Transcript> diffs,
-        CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+        Symbol streamId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new () { ExpirationPeriod = Settings.StreamExpirationPeriod });
-        return streamer.Write(diffs, cancellationToken);
-    }
-
-    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
-        string streamId,
-        CancellationToken cancellationToken)
-    {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new() {
-            AppendCheckPeriod = TimeSpan.FromMilliseconds(250),
-        });
-        return streamer.Read(cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
+        var transcriptStream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        await foreach(var transcript in transcriptStream.ConfigureAwait(false))
+            yield return transcript;
     }
 }

@@ -1,11 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 
-@if (Panel.ActiveTab == this) {
-    <div class="@Class tab">
-        @ChildContent
-    </div>
+@if (Panel.ActiveTab != this) {
+    return;
 }
+
+<div class="@Class tab">
+    @ChildContent
+</div>
 
 @code {
     [CascadingParameter] public TabPanel Panel { get; set; } = null!;

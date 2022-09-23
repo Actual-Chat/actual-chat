@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui;
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
     public string BaseUri
-        => MauiContext!.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureSuffix("/")
+        => MauiContext!.Services.GetRequiredService<ClientAppSettings>().BaseUri.EnsureEndsWith("/")
            ?? throw StandardError.Constraint<ClientAppSettings>("Invalid BaseUri.");
     public string SessionId
         => MauiContext!.Services.GetRequiredService<ClientAppSettings>().SessionId;

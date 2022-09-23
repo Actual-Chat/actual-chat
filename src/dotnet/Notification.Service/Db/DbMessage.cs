@@ -12,11 +12,8 @@ public class DbMessage : IHasId<string>
     private DateTime _accessedAt;
 
     [Key] public string Id { get; set; } = null!;
-
     public string DeviceId { get; set; } = null!;
-
     public string? ChatId { get; set; }
-
     public long? ChatEntryId { get; set; }
 
     public DateTime CreatedAt {

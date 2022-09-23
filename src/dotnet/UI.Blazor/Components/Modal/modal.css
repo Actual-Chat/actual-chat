@@ -33,6 +33,9 @@
     @apply flex-y gap-y-4 h-full md:h-auto w-full md:w-modal p-8 pb-4;
     @apply md:rounded-2xl rounded-none font-medium;
 }
+.modal-frame > div {
+    @apply px-1;
+}
 .modal-frame * {
     @apply cursor-default;
 }
@@ -72,4 +75,30 @@
 
 div.blazored-modal-content > form {
     @apply h-full;
+}
+
+/* Fullscreen Modal */
+.modal.modal-full {
+    @apply md:w-full md:h-full;
+}
+.modal-full .modal-frame.modal-chrome {
+    @apply w-full h-full p-0 gap-y-0 rounded-none;
+}
+.modal-full .dialog-body {
+    @apply p-0;
+}
+.modal-full .modal-close-btn {
+    @apply hidden md:flex absolute right-4 top-4;
+}
+.modal-full .modal-header {
+    @apply hidden;
+}
+.modal-full input {
+    @apply cursor-text;
+}
+.modal-full .user-avatar-editor-item,
+.modal-full .user-avatar-editor-item *,
+.modal-full button,
+.modal-full button * {
+    @apply cursor-pointer;
 }

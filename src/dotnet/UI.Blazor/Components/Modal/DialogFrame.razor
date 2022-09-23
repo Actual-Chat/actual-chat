@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 
 <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-    <div class="dialog-body">
+    <div class="dialog-body custom-scrollbar overflow-y-auto md:overflow-y-hidden">
         @Body
     </div>
     <div class="dialog-buttons">
@@ -20,7 +20,7 @@
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
-    [Parameter] public bool HasCloseButton { get; set; } = true;
+    [Parameter] public bool HasCloseButton { get; set; } = false;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }

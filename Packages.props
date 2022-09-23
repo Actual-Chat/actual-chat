@@ -3,22 +3,22 @@
 
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>6.0.8</AspNetCoreVersion>
+    <AspNetCoreVersion>6.0.9</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>6.0.8</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>6.0.6</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreVersion>6.0.9</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreNpgsqlVersion>6.0.7</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreMySqlVersion>6.0.2</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>6.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsPrevVersion>6.0.0</MicrosoftExtensionsPrevVersion>
-    <MySqlVersion>2.1.12</MySqlVersion>
+    <MySqlVersion>2.1.13</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.6.55</RedisVersion>
+    <RedisVersion>2.6.66</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>3.5.23</StlFusionVersion>
+    <StlFusionVersion>3.8.11</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <OpenTelemetryVersion>1.3.0</OpenTelemetryVersion>
+    <OpenTelemetryVersion>1.3.1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
@@ -50,7 +50,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
-    <PackageReference Update="Microsoft.AspNetCore.Components.WebView.Maui" Version="6.0.486" />
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebView.Maui" Version="6.0.536" />
     <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
@@ -63,6 +63,7 @@
     <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsPrevVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Http.Polly" Version="6.0.9" />
     <PackageReference Update="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
@@ -84,6 +85,7 @@
     <PackageReference Update="RestEase" Version="1.5.*"/>
     <PackageReference Update="Pidgin" Version="3.2.0"/>
     <PackageReference Update="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
+    <PackageReference Update="Polly" Version="7.2.3"/>
     <PackageReference Update="Serilog.AspNetCore" Version="5.0.0" />
     <PackageReference Update="SixLabors.ImageSharp" Version="2.1.3" />
     <PackageReference Update="StackExchange.Redis" Version="$(RedisVersion)"/>
@@ -131,10 +133,10 @@
     <PackageReference Update="Crayon" Version="2.0.62"/>
 
     <!-- Build / test time only -->
-    <PackageReference Update="bunit" Version="1.9.8"/>
+    <PackageReference Update="bunit" Version="1.10.14"/>
     <PackageReference Update="FluentAssertions" Version="6.7.*"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="2.0.1" />
-    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.3.0"/>
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.3.1"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
@@ -153,7 +155,7 @@
     <PackageReference Update="xunit.analyzers" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.3.44" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.712" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.728" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Generators -->
     <PackageReference Update="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>

@@ -21,15 +21,15 @@ public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarg
     }
 
     public RecentEntry ToModel()
-        => new(ShardKey, Key, Enum.Parse<RecentScope>(Scope)) {
+        => new(ShardKey, Key, Enum.Parse<RecencyScope>(Scope)) {
             Version = Version,
             UpdatedAt = UpdatedAt,
         };
 
     public void UpdateFrom(RecentEntry model)
     {
-        Id = GetId(model.ShardKey, model.Key);
-        ShardKey = model.ShardKey;
+        Id = GetId(model.GroupKey, model.Key);
+        ShardKey = model.GroupKey;
         Key = model.Key;
         Scope = model.Scope.ToString();
         UpdatedAt = model.UpdatedAt;

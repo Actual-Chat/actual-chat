@@ -1,6 +1,6 @@
 .mobile-control-panel {
-    @apply h-auto py-4;
-    @apply md:hidden justify-center;
+    @apply flex-x md:hidden gap-x-6;
+    @apply h-auto justify-center py-2;
     @apply bg-01;
     @apply self-stretch md:self-end;
     @apply items-center;
@@ -9,29 +9,40 @@
 }
 
 .mobile-control-panel .mobile-button {
-    @apply rounded-full;
+    @apply rounded-full transition-all ease-linear duration-100;
+    @apply shadow-scrollbar shadow-md;
+}
+.mobile-control-panel .mobile-button:active {
+    @apply shadow-md shadow-scrollbar translate-y-0.5;
 }
 
 .mobile-control-panel .btn.btn-round .btn-content {
-    @apply bg-01 rounded-full;
-    max-width: 3.5rem;
-    max-height: 3.5rem;
-    min-width: 3.5rem;
-    min-height: 3.5rem;
+    @apply bg-03 rounded-full;
+    max-width: 3rem;
+    max-height: 3rem;
+    min-width: 3rem;
+    min-height: 3rem;
+}
+
+.mobile-control-panel .btn.chat-language-toggle {
+    @apply text-primary;
 }
 
 .mobile-control-panel .recorder-wrapper {
-    @apply border justify-center flex h-24 w-24;
+    @apply border justify-center flex h-20 w-20 transition-none
+}
+.mobile-control-panel .recorder-wrapper:active {
+    @apply transition-none translate-y-0;
 }
 .mobile-control-panel .recorder-wrapper .btn {
     @apply self-center;
 }
 .mobile-control-panel .recorder-wrapper .btn .btn-content {
     @apply text-04;
-    max-height: 5rem;
-    min-height: 5rem;
-    max-width: 5rem;
-    min-width: 5rem;
+    max-height: 4.25rem;
+    min-height: 4.25rem;
+    max-width: 4.25rem;
+    min-width: 4.25rem;
 }
 .mobile-control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
     @apply bg-primary;
@@ -41,17 +52,11 @@
 }
 .mobile-control-panel .recorder-wrapper.record-off,
 .mobile-control-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-700;
+    @apply border-primary transition-colors duration-300;
 }
 .mobile-control-panel .recorder-wrapper.record-on,
 .mobile-control-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-700;
-}
-.mobile-control-panel .recorder-wrapper .record-on-btn.btn {
-    @apply shadow-mobile-button shadow-error-hover;
-}
-.mobile-control-panel .recorder-wrapper .record-off-btn.btn {
-    @apply shadow-mobile-button shadow-secondary;
+    @apply border-error transition-colors duration-300;
 }
 
 .mobile-control-panel .recorder-wrapper.record-off .record-on-btn.btn {
@@ -83,10 +88,10 @@
 }
 
 .mobile-control-panel .mobile-playback-toggle {
-    @apply w-28 -mr-14;
+    @apply w-24 -mr-12;
 }
 .mobile-control-panel .mobile-playback-toggle .playback-wrapper {
-    @apply relative h-14 flex-x shadow-mobile-button shadow-shadow-main;
+    @apply relative h-12 flex-x bg-03;
 }
 .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn.btn-round {
     @apply absolute;
@@ -96,36 +101,39 @@
     @apply self-center;
 }
 .playback-wrapper.listen-on {
-    @apply w-28;
+    @apply w-24;
 }
 .playback-wrapper.listen-on .loud-btn.btn.btn-round {
-    @apply opacity-100 translate-x-14;
+    @apply opacity-100 translate-x-12;
 }
 .playback-wrapper.listen-off {
-    @apply w-14;
+    @apply w-12;
 }
 .playback-wrapper.listen-off .loud-btn.btn.btn-round {
-    @apply opacity-0 translate-x-14 absolute;
+    @apply opacity-0 translate-x-12 absolute;
 }
 .playback-wrapper.listen-on-to-off {
-    @apply animate-width-full-to-half w-14;
+    @apply animate-width-full-to-half w-12;
 }
 .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply animate-loud-hide absolute transition duration-500 opacity-0 scale-0;
+    @apply animate-loud-hide absolute transition duration-300 opacity-0 scale-0;
 }
 .playback-wrapper.listen-off-to-on {
-    @apply animate-width-half-to-full w-28;
+    @apply animate-width-half-to-full w-24;
 }
 .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-    @apply animate-loud-show absolute translate-x-14;
+    @apply animate-loud-show absolute translate-x-12;
 }
 
 /*Text mode*/
 .narrow-panel .mobile-control-panel {
-    @apply gap-x-2;
+    @apply gap-x-2 py-1;
+}
+.narrow-panel .mobile-control-panel .mobile-button {
+    @apply shadow-sm shadow-scrollbar;
 }
 .narrow-panel .mobile-control-panel .btn.btn-round .btn-content {
-    @apply bg-01 rounded-full;
+    @apply bg-03 rounded-full;
     max-width: 5rem;
     max-height: 3rem;
     min-width: 5rem;
@@ -144,46 +152,41 @@
 .narrow-panel .mobile-control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
     @apply bg-error;
 }
-
 .narrow-panel .mobile-control-panel .mobile-playback-toggle {
-    @apply w-32;
+    @apply w-20 m-0;
 }
 .narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper {
-    @apply h-12;
+    @apply h-12 bg-03;
 }
 .narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn {
     @apply left-4;
 }
 .narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper .btn.btn-round .btn-content {
-    @apply bg-01 rounded-full;
+    @apply bg-transparent rounded-full;
     max-width: 3rem;
     min-width: 3rem;
 }
-.narrow-panel .mobile-control-panel .mobile-playback-toggle .playback-wrapper svg {
-    @apply h-8 w-8;
-}
-
 .narrow-panel .playback-wrapper.listen-on {
-    @apply w-32;
+    @apply w-28;
 }
 .narrow-panel .playback-wrapper.listen-on .loud-btn.btn.btn-round {
-    @apply opacity-100 translate-x-12;
+    @apply opacity-100 translate-x-10;
 }
 .narrow-panel .playback-wrapper.listen-off {
     @apply w-20;
 }
 .narrow-panel .playback-wrapper.listen-off .loud-btn.btn.btn-round {
-    @apply opacity-0 translate-x-12 absolute;
+    @apply absolute opacity-0 translate-x-10;
 }
 .narrow-panel .playback-wrapper.listen-on-to-off {
-    @apply animate-width-full-to-60 w-20;
+    @apply animate-width-7-to-5 w-20;
 }
 .narrow-panel .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
-    @apply animate-loud-hide-text-mode absolute transition duration-500 opacity-0 scale-0;
+    @apply animate-loud-hide-text-mode absolute transition duration-300 opacity-0 scale-0;
 }
 .narrow-panel .playback-wrapper.listen-off-to-on {
-    @apply animate-width-60-to-full w-32;
+    @apply animate-width-5-to-7 w-28;
 }
 .narrow-panel .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
-    @apply animate-loud-show-text-mode absolute translate-x-12;
+    @apply animate-loud-show-text-mode absolute translate-x-10;
 }

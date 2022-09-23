@@ -94,11 +94,27 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
     public Symbol Shorten(Symbol ownerUserId)
     {
         AssertPeerFull();
-        if (ownerUserId == UserId1.Id)
-            return FormatShortPeerChatId(UserId2.Id);
-        if (ownerUserId == UserId2.Id)
-            return FormatShortPeerChatId(UserId1.Id);
-        throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
+        var targetUserId = GetPeerChatTargetUserId(ownerUserId);
+        return FormatShortPeerChatId(targetUserId);
+    }
+
+    public Symbol GetPeerChatTargetUserId(Symbol ownerUserId)
+    {
+        var kind = AssertValid().Kind;
+        switch (kind) {
+        case ChatIdKind.Group:
+            return Symbol.Empty;
+        case ChatIdKind.PeerShort:
+            return UserId1;
+        case ChatIdKind.PeerFull:
+            var targetUserId = (UserId1.Id, UserId2.Id).OtherThan(ownerUserId);
+            if (targetUserId.IsEmpty)
+                throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
+
+            return targetUserId;
+        default:
+            throw StandardError.Internal("Invalid ParsedChatId.Kind.");
+        }
     }
 
     // Equality

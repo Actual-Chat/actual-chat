@@ -28,7 +28,7 @@
             <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
         } else {
             <img class="@_avatarClass @Class rounded-full block"
-                 src="@Author.Picture" alt="avatar" title="@title"
+                 src="@_avatarPictureUrl" alt="avatar" title="@title"
                  @onclick="@Click"/>
         }
 
@@ -43,10 +43,12 @@
 @code {
     private string _avatarClass = "";
     private string _presenceClass = "";
+    private string _avatarPictureUrl = "";
+
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
 
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
-
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasTooltip { get; set; }
@@ -58,6 +60,7 @@
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
         _presenceClass = GetPresenceClass();
+        _avatarPictureUrl = ContentUrlMapper.ContentUrl(Author.Picture);
     }
 
     private string GetPresenceClass() {
@@ -70,6 +73,6 @@
 
     private string GetSizeClass() {
         var size = (int) Size;
-        return $"h-{size} w-{size}";
+        return $"pic-size-{size}";
     }
 }

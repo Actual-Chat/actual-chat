@@ -104,12 +104,16 @@ module.exports = {
         'toggle-on': 'var(--toggle-on)',
         'toggle-hover': 'var(--toggle-hover)',
         'message-hover': 'var(--message-hover)',
-        'mention': 'var(--mention)',
-        'mention-hover': 'var(--mention-hover)',
+        'mention-other': 'var(--mention-other)',
+        'mention-other-text': 'var(--mention-other-text)',
+        'mention-own': 'var(--mention-own)',
+        'mention-own-border': 'var(--mention-own-border)',
+        'mention-own-text': 'var(--mention-own-text)',
+        'mention-invalid': 'var(--mention-invalid)',
+        'mention-invalid-text': 'var(--mention-invalid-text)',
+        'mention-list-item-selected': 'var(--mention-list-item-selected)',
         'mention-message': 'var(--mention-message)',
         'mention-message-hover': 'var(--mention-message-hover)',
-        'own-message': 'var(--own-message)',
-        'own-message-hover': 'var(--own-message-hover)',
         'replied-message': 'var(--replied-message)',
         'replied-message-hover': 'var(--replied-message-hover)',
         'replied-message-border': 'var(--replied-message-border)',
@@ -131,7 +135,7 @@ module.exports = {
         '03': 'var(--text-03)',
         '04': 'var(--text-04)',
         '05': 'var(--text-05)',
-        '07': 'var(--text-07)',
+        '06': 'var(--text-06)',
       },
       borderColor: {
         'bg-01': 'var(--background-01)',
@@ -159,10 +163,10 @@ module.exports = {
     },
     screens: {
       sm: '640px',
-      md: '768px',
-      lg: '1024px',
-      xl: '1280px',
-      '2xl': '1536px',
+      md: '1024px',
+      lg: '1280px',
+      xl: '1536px',
+      '2xl': '1800px',
     },
     colors: ({ colors }) => ({
       inherit: colors.inherit,
@@ -259,6 +263,7 @@ module.exports = {
       64: '16rem',
       72: '18rem',
       80: '20rem',
+      88: '22rem',
       96: '24rem',
       120: '30rem',
       144: '36rem',
@@ -306,20 +311,20 @@ module.exports = {
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
-      'width-half-to-full': 'width-half-to-full 500ms ease-in-out',
-      'width-60-to-full': 'width-60-to-full 500ms ease-in-out',
-      'width-full-to-half': 'width-full-to-half 500ms ease-in-out',
-      'width-full-to-60': 'width-full-to-60 500ms ease-in-out',
-      'loud-show': 'loud-show 500ms ease-in-out',
-      'loud-show-text-mode': 'loud-show-text-mode 500ms ease-in-out',
-      'loud-hide': 'loud-hide 500ms ease-in-out',
-      'loud-hide-text-mode': 'loud-hide-text-mode 500ms ease-in-out',
-      'scale-to-full': 'scale-to-full 1s ease-in-out',
-      'scale-to-5': 'scale-to-5 500ms ease-in-out',
-      'notify-panel-opening': 'notify-panel-opening 500ms ease-in-out',
-      'notify-panel-closing': 'notify-panel-closing 500ms ease-in-out',
-      'notify-toggle-hide': 'notify-toggle-hide 500ms ease-in-out',
-      'notify-toggle-show': 'notify-toggle-show 500ms ease-in-out',
+      'width-half-to-full': 'width-half-to-full 150ms ease-in-out',
+      'width-5-to-7': 'width-5-to-7 150ms ease-in-out',
+      'width-full-to-half': 'width-full-to-half 150ms ease-in-out',
+      'width-7-to-5': 'width-7-to-5 150ms ease-in-out',
+      'loud-show': 'loud-show 150ms ease-in-out',
+      'loud-show-text-mode': 'loud-show-text-mode 150ms ease-in-out',
+      'loud-hide': 'loud-hide 150ms ease-in-out',
+      'loud-hide-text-mode': 'loud-hide-text-mode 150ms ease-in-out',
+      'scale-to-full': 'scale-to-full 300ms ease-in-out',
+      'scale-to-5': 'scale-to-5 150ms ease-in-out',
+      'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
+      'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
+      'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
+      'notify-toggle-show': 'notify-toggle-show 150ms ease-in-out',
 
     },
     aspectRatio: {
@@ -592,10 +597,9 @@ module.exports = {
     fontSize: {
       xxs: ['0.6rem', { lineHeight: '0.75rem' }],
       xs: ['0.75rem', { lineHeight: '1rem' }],
-      sm: ['0.8rem', { lineHeight: '1.1rem' }],
-      base: ['0.875rem', { lineHeight: '1.25rem' }],
-      md: ['1rem', { lineHeight: '1.5rem' }],
-      lg: ['1.125rem', { lineHeight: '1.75rem' }],
+      sm: ['0.875rem', { lineHeight: '1.25rem' }],
+      base: ['1rem', { lineHeight: '1.375rem' }],
+      lg: ['1.125rem', { lineHeight: '1.5rem' }],
       xl: ['1.25rem', { lineHeight: '1.75rem' }],
       '2xl': ['1.5rem', { lineHeight: '2rem' }],
       '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
@@ -905,12 +909,12 @@ module.exports = {
           width: '50%',
         },
       },
-      'width-full-to-60': {
+      'width-7-to-5': {
         from: {
-          width: '100%',
+          width: '7rem',
         },
         to: {
-          width: '60%',
+          width: '5rem',
         },
       },
       'width-half-to-full': {
@@ -921,12 +925,12 @@ module.exports = {
           width: '100%',
         },
       },
-      'width-60-to-full': {
+      'width-5-to-7': {
         from: {
-          width: '60%',
+          width: '5rem',
         },
         to: {
-          width: '100%',
+          width: '7rem',
         },
       },
       'loud-show': {
@@ -934,7 +938,7 @@ module.exports = {
           transform: 'translateX(1.5rem) scale(.05)',
         },
         to: {
-          transform: 'translateX(3.5rem) scale(1)',
+          transform: 'translateX(3rem) scale(1)',
         },
       },
       'loud-show-text-mode': {
@@ -942,12 +946,12 @@ module.exports = {
           transform: 'translateX(1.5rem) scale(.05)',
         },
         to: {
-          transform: 'translateX(3rem) scale(1)',
+          transform: 'translateX(2.5rem) scale(1)',
         },
       },
       'loud-hide': {
         from: {
-          transform: 'translateX(3.5rem) scale(1)',
+          transform: 'translateX(3rem) scale(1)',
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',
@@ -955,7 +959,7 @@ module.exports = {
       },
       'loud-hide-text-mode': {
         from: {
-          transform: 'translateX(3rem) scale(1)',
+          transform: 'translateX(2.5rem) scale(1)',
         },
         to: {
           transform: 'translateX(1.5rem) scale(.05)',

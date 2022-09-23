@@ -2,16 +2,16 @@ namespace ActualChat.Users;
 
 [DataContract]
 public sealed record RecentEntry(
-        [property: DataMember] string ShardKey,
+        [property: DataMember] string GroupKey,
         [property: DataMember] string Key,
-        [property: DataMember] RecentScope Scope
+        [property: DataMember] RecencyScope Scope
     ) : IRequirementTarget
 {
     [property: DataMember] public long Version { get; init; }
     [property: DataMember] public Moment UpdatedAt { get; init; }
 }
 
-public enum RecentScope
+public enum RecencyScope
 {
     UserContact,
     ChatContact,

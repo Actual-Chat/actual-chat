@@ -9,11 +9,11 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
     public MarkupSeq(IEnumerable<Markup> items) : this(ImmutableArray.Create(items.ToArray())) { }
     public MarkupSeq() : this(ImmutableArray<Markup>.Empty) { }
 
-    public override string ToMarkupText()
+    public override string Format()
     {
         using var sb = ZString.CreateStringBuilder();
         foreach (var item in Items)
-            sb.Append(item.ToMarkupText());
+            sb.Append(item.Format());
         return sb.ToString();
     }
 
@@ -30,7 +30,12 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
             if (!ReferenceEquals(item, originalItem))
                 isSimplified = true;
 
-            if (item is not PlainTextMarkup pt) {
+            if (item is NewLineMarkup) {
+                if (lastPlainText != null && !lastPlainText.Text.IsNullOrEmpty())
+                    items.Add(lastPlainText);
+                lastPlainText = null;
+                items.Add(item);
+            } else if (item is not PlainTextMarkup pt) {
                 if (lastPlainText != null)
                     items.Add(lastPlainText);
                 lastPlainText = null;
@@ -48,7 +53,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
         if (!isSimplified)
             return this;
         return items.Count switch {
-            0 => Markup.Empty,
+            0 => Empty,
             1 => items[0],
             _ => new MarkupSeq(items),
         };
@@ -58,7 +63,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
     {
         builder.Append("Items = [");
         builder.Append(Items.ToDelimitedString(", "));
-        builder.Append("]");
+        builder.Append(']');
         return true;
     }
 }

@@ -2,11 +2,11 @@
 @using Stl.Fusion.Authentication.Commands
 @using Stl.Reflection
 
-<Form Model="@M" OnValidSubmit="@OnSave" >
+<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave" >
     <ValidationSummary />
 
-    <FormSection InputId="@M.NameFieldId" Label="Name" IsRequired="true">
-        <TextBox @bind-Value="@M.Name" Id="@M.NameFieldId" Autofocus="true" />
+    <FormSection InputId="@_form.NameFieldId" Label="Name" IsRequired="true">
+        <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true" />
     </FormSection>
 
     <FormButtons>
@@ -15,22 +15,23 @@
 </Form>
 
 @code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private FormModel M { get; set; } = null!;
-
     protected override async Task OnInitializedAsync() {
-        M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var account = await Accounts.Get(Session, default);
-        M.Name = account?.User.Name ?? "";
-        M.CopyToBase();
+        _form.Name = account?.User.Name ?? "";
+        _form.CopyToBase();
     }
 
     private async void OnSave() {
-        var command = new EditUserCommand(Session, M.Name);
+        var command = new EditUserCommand(Session, _form.Name);
         await UICommander.Run(command);
     }
 

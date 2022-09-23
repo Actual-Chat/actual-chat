@@ -1,53 +1,25 @@
-﻿using ActualChat.Chat;
-using ActualChat.Notification.Backend;
+﻿using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
-using ActualChat.Users;
-using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public partial class Notifications : DbServiceBase<NotificationDbContext>, INotifications, INotificationsBackend
+public class Notifications : DbServiceBase<NotificationDbContext>, INotifications
 {
-    private readonly IAuth _auth;
-    private readonly MomentClockSet _clocks;
-    private readonly FirebaseMessaging _firebaseMessaging;
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly ICommander _commander;
-    private readonly IAccountsBackend _accountsBackend;
-    private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
-    private readonly UriMapper _uriMapper;
-    private readonly ILogger<Notifications> _log;
+    private IAuth Auth { get; }
+    private INotificationsBackend Backend { get; }
 
-
-    public Notifications(
-        IServiceProvider services,
-        IAuth auth,
-        MomentClockSet clocks,
-        FirebaseMessaging firebaseMessaging,
-        IChatAuthorsBackend chatAuthorsBackend,
-        ICommander commander,
-        IAccountsBackend accountsBackend,
-        IDbContextFactory<NotificationDbContext> dbContextFactory,
-        UriMapper uriMapper,
-        ILogger<Notifications> log) : base(services)
+    public Notifications(IAuth auth, INotificationsBackend backend, IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _auth = auth;
-        _clocks = clocks;
-        _firebaseMessaging = firebaseMessaging;
-        _chatAuthorsBackend = chatAuthorsBackend;
-        _commander = commander;
-        _accountsBackend = accountsBackend;
-        _dbContextFactory = dbContextFactory;
-        _uriMapper = uriMapper;
-        _log = log;
+        Auth = auth;
+        Backend = backend;
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return ChatNotificationStatus.NotSubscribed;
 
@@ -69,12 +41,12 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = ListDevices(device.UserId, default);
+                _ = Backend.ListDevices(device.UserId, default);
             return;
         }
 
         var (session, deviceId, deviceType) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return;
 
@@ -92,12 +64,12 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
                 Type = deviceType,
                 UserId = user.Id,
                 Version = VersionGenerator.NextVersion(),
-                CreatedAt = _clocks.SystemClock.Now,
+                CreatedAt = Clocks.SystemClock.Now,
             };
             dbContext.Add(dbDevice);
         }
         else
-            dbDevice.AccessedAt = _clocks.SystemClock.Now;
+            dbDevice.AccessedAt = Clocks.SystemClock.Now;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(dbDevice);
@@ -113,12 +85,12 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var invWasMuted = context.Operation().Items.GetOrDefault(false);
             if (invWasMuted == mustSubscribe) {
                 _ = GetStatus(session, chatId, default);
-                _ = ListSubscriberIds(chatId, default);
+                _ = Backend.ListSubscriberIds(chatId, default);
             }
             return;
         }
 
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return;
 

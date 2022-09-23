@@ -40,7 +40,7 @@ public class ChatPlayers : WorkerBase
 
     public void ResumeRealtimePlayback()
         => BackgroundTask.Run(async () => {
-            var playbackState = await ChatUI.GetRealtimeChatPlaybackState(default).ConfigureAwait(false);
+            var playbackState = await ChatUI.GetRealtimePlaybackState(default).ConfigureAwait(false);
             StartPlayback(playbackState);
         }, CancellationToken.None);
 
@@ -177,7 +177,7 @@ public class ChatPlayers : WorkerBase
                 return;
             _players = _players.Remove((chatId, playerKind));
         }
-        await player.DisposeAsync().ConfigureAwait(true);
+        await player.DisposeAsync();
         using (Computed.Invalidate())
             _ = Get(chatId, playerKind, default);
     }

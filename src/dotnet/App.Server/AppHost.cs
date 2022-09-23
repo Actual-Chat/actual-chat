@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 
@@ -28,6 +29,7 @@ public class AppHost : IDisposable
                         options.ValidateOnBuild = true;
                     }
                 })
+                .UseKestrel(ConfigureKestrel)
                 .ConfigureAppConfiguration(ConfigureAppConfiguration)
                 .UseStartup<Startup>()
                 .ConfigureServices(ConfigureAppServices)
@@ -46,7 +48,7 @@ public class AppHost : IDisposable
         var transientDisposables = services.Where(x => x.Lifetime == ServiceLifetime.Transient)
             .Select(x => AsDisposable(x.ImplementationType))
             .SkipNullItems()
-            .Where(x => x.Namespace?.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) != true)
+            .Where(x => x.Namespace?.OrdinalIgnoreCaseStartsWith("Microsoft") != true)
             .ToList();
         if (transientDisposables.Any()) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
@@ -117,9 +119,12 @@ public class AppHost : IDisposable
         HostConfigurationBuilder?.Invoke(cfg);
     }
 
+    private void ConfigureKestrel(WebHostBuilderContext ctx, KestrelServerOptions options)
+    { }
+
     protected virtual void ConfigureAppConfiguration(IConfigurationBuilder appBuilder)
     {
-        // disable FSW, because they eat a lot and can exhaust the handles available to epoll on linux containers
+        // Disable FSW, because they eat a lot and can exhaust the handles available to epoll on linux containers
         var jsonProviders = appBuilder.Sources.OfType<JsonConfigurationSource>().Where(j => j.ReloadOnChange).ToArray();
         foreach (var item in jsonProviders) {
             appBuilder.Sources.Remove(item);

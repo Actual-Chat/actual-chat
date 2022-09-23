@@ -19,16 +19,16 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
-        => await ChatUserSettings.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+    protected override Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
+        => ChatUserSettings.Get(Session, Chat.Id, cancellationToken);
 
     private async Task OnClick()
     {
         var settings = State.Value ?? new() { Language = LanguageId.Default };
         settings = settings with { Language = settings.LanguageOrDefault().Next() };
         var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 }

@@ -87,8 +87,8 @@
 }
 
 .navbar-item .navbar-item-ending {
-    @apply flex-1 justify-self-end h-6;
-    @apply flex flex-row justify-end gap-x-3 w-fit;
+    @apply flex-1 justify-self-end h-8 gap-x-2;
+    @apply flex flex-row justify-end w-fit items-center;
 }
 
 .navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
@@ -123,8 +123,8 @@
     @apply bg-selected;
 }
 
-.listening-chats .navbar-subgroup .pin-toggle,
-.listening-chats .navbar-item .pin-toggle {
+.active-chats .navbar-subgroup .pin-toggle,
+.active-chats .navbar-item .pin-toggle {
     @apply visible;
 }
 
@@ -164,7 +164,7 @@
 }
 
 .left-line {
-    @apply hidden md:block h-8 self-center rounded-lg;
-    width: 2px;
+    @apply h-8 self-center rounded-lg;
+    min-width: 2px;
     margin-right: 3px;
 }

@@ -41,8 +41,7 @@ public class DeviceInfo
             if (_deviceId != null)
                 return;
 
-        var deviceId = await _js.InvokeAsync<string?>($"{BlazorUICoreModule.ImportName}.getDeviceToken", cancellationToken)
-            .ConfigureAwait(true);
+        var deviceId = await _js.InvokeAsync<string?>($"{BlazorUICoreModule.ImportName}.getDeviceToken", cancellationToken);
         if (deviceId != null)
             _ = RegisterDevice(deviceId, cancellationToken);
     }
@@ -56,6 +55,6 @@ public class DeviceInfo
         }
 
         var command = new INotifications.RegisterDeviceCommand(_session, deviceId, DeviceType.WebBrowser);
-        await _uiCommander.Run(command, cancellationToken).ConfigureAwait(true);
+        await _uiCommander.Run(command, cancellationToken);
     }
 }

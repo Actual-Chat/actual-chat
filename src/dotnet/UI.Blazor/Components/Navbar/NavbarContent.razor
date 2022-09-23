@@ -1,16 +1,16 @@
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
-@if (m.Account.IsActive()) {
-    @foreach (var widget in Widgets.OrderBy(c => c.Order)) {
-        @widget.Content
-    }
+@foreach (var widget in OrderedWidgets.Where(x => x.NavbarGroupId == null || x.NavbarGroupId == NavbarUI.ActiveGroupId)) {
+    @widget.Content
 }
+
 @if (m.Account.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/user/invite">Invite Users</NavbarItem>
@@ -24,8 +24,9 @@
         <NavbarItem Url="/test/render-slot">Render Slot</NavbarItem>
         <NavbarItem Url="/test/requirements">Requirements</NavbarItem>
         <NavbarItem Url="/test/features">Features</NavbarItem>
-        <NavbarItem Url="/test/slate-editor">Slate Editor</NavbarItem>
+        <NavbarItem Url="/test/markup-editor">Markup Editor</NavbarItem>
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
+        <NavbarItem Url="/test/blazor">Blazor</NavbarItem>
         @if (HostInfo.HostKind == HostKind.Maui) {
             <NavbarItem Url="/test/maui">Maui</NavbarItem>
         }
@@ -33,3 +34,20 @@
     </NavbarGroup>
 }
 
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+    }
+
+    public override ValueTask DisposeAsync() {
+        NavbarUI.ActiveGroupChanged -= NavbarUIOnActiveGroupChanged;
+        return base.DisposeAsync();
+    }
+
+    private void NavbarUIOnActiveGroupChanged(object? sender, EventArgs e) {
+        StateHasChanged();
+    }
+}

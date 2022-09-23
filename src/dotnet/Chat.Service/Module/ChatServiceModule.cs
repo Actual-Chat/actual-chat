@@ -93,6 +93,13 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IChatRoles, ChatRoles>();
         fusion.AddComputeService<IChatRolesBackend, ChatRolesBackend>();
 
+        // Mentions
+        fusion.AddComputeService<IMentions, Mentions>();
+        fusion.AddComputeService<IMentionsBackend, MentionsBackend>();
+
+        // ChatMentionResolver
+        services.AddSingleton<BackendChatMentionResolverFactory>();
+
         // ContentSaver
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();

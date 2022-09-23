@@ -1,17 +1,17 @@
 .tab-panel {
-    @apply flex-y h-full;
+    @apply flex-y h-full w-full;
 }
 .tab-panel-tabs {
     @apply mb-2.5 pb-1.5 items-center;
     @apply flex-x;
 }
 .tab-panel-tabs .btn-group {
-    @apply justify-evenly w-full;
+    @apply justify-evenly w-full gap-x-1;
 }
 
 .tab-panel-tabs .btn.tab-btn {
-    @apply border-0 rounded-none;
-    @apply text-03 text-md font-medium leading-tight tracking-wider;
+    @apply border-0 rounded-none min-w-2 px-2;
+    @apply text-03 text-base font-medium leading-tight tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
     @apply border-transparent border-b-2;
@@ -24,7 +24,7 @@
 }
 
 .tab-panel .tab {
-    @apply grow overflow-y-auto;
+    @apply grow w-full max-w-full;
 }
 
 .shape {

@@ -13,5 +13,5 @@ public interface IChatReadPositions : IComputeService
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] long ReadEntryId
-        ) : ISessionCommand<UserAvatar>;
+        ) : ISessionCommand<Unit>;
 }

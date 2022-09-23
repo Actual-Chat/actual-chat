@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Blazored.SessionStorage;
@@ -70,10 +69,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             services.AddScoped<TimeZoneConverter, ClientSizeTimeZoneConverter>(); // WASM
         services.AddScoped<ComponentIdGenerator>();
         services.AddScoped<RenderVars>();
-        services.AddScoped<ContentUrlMapper>();
+        services.AddSingleton<ContentUrlMapper>();
 
         // Misc. UI services
-        services.AddScoped<LinkInfoBuilder>();
+        services.AddScoped<UILifetimeEvents>();
         services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
@@ -88,9 +87,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
+        services.AddScoped<LinkInfoBuilder>();
 
         // UI events
-        services.AddScoped<IEventAggregator, EventAggregator>();
+        services.AddScoped<UIEventHub>();
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();

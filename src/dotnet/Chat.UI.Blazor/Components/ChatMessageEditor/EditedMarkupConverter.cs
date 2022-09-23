@@ -4,98 +4,85 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public class EditedMarkupConverter
 {
-    private readonly IMarkupParser _markupParser;
-    private readonly MentionedNameResolver _mentionedNameResolver;
+    public MarkupHub MarkupHub { get; }
 
-    public EditedMarkupConverter(
-        IMarkupParser markupParser,
-        MentionedNameResolver mentionedNameResolver)
+    public EditedMarkupConverter(MarkupHub markupHub)
+        => MarkupHub = markupHub;
+
+    public async Task<ImmutableArray<EditorNode>> Convert(string markupText, CancellationToken cancellationToken)
     {
-        _markupParser = markupParser;
-        _mentionedNameResolver = mentionedNameResolver;
+        var visitor = new Visitor();
+        var markup = MarkupHub.MarkupParser.Parse(markupText);
+        markup = await MarkupHub.MentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
+        // Default scheduler is used from here
+        var result = visitor.Apply(markup);
+        return result;
     }
 
-    public async Task<ImmutableArray<EditorNode>> Convert(
-        string markdown,
-        CancellationToken cancellationToken)
-    {
-        var visitor = new Visitor(_mentionedNameResolver.GetName);
-        var markup = _markupParser.Parse(markdown);
-        return await visitor.Apply(markup, cancellationToken).ConfigureAwait(false);
-    }
+    // Nested types
 
-    private class Visitor : AsyncMarkupVisitor<Unit>
+    private class Visitor : MarkupVisitor<Unit>
     {
         private readonly List<EditorNode> _nodes = new ();
-        private Func<MentionKind, string, CancellationToken, Task<string>> GetName { get; }
 
-        public Visitor(Func<MentionKind, string, CancellationToken, Task<string>> getName)
+        public ImmutableArray<EditorNode> Apply(Markup markup)
         {
-            GetName = getName;
-        }
-
-        public async Task<ImmutableArray<EditorNode>> Apply(Markup markup, CancellationToken cancellationToken)
-        {
-            await Visit(markup, cancellationToken).ConfigureAwait(false);
+            _nodes.Clear();
+            Visit(markup);
             return _nodes.ToImmutableArray();
         }
 
-        protected override async ValueTask<Unit> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken)
+        protected override Unit VisitSeq(MarkupSeq markup)
         {
             foreach (var markupItem in markup.Items)
-                await Visit(markupItem, cancellationToken).ConfigureAwait(false);
+                Visit(markupItem);
 
             return Unit.Default;
         }
 
-        protected override async ValueTask<Unit> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitStylized(StylizedMarkup markup)
         {
-            var token = markup.GetWrapToken();
+            var token = markup.StyleToken;
             AddParagraph(token);
-            await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+            Visit(markup.Content);
             AddParagraph(token);
-
-            return Unit.Default;
+            return default;
         }
 
-        protected override ValueTask<Unit> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitUrl(UrlMarkup markup)
             => AddParagraph(markup);
 
-        protected override async ValueTask<Unit> VisitMention(Mention markup, CancellationToken cancellationToken)
+        protected override Unit VisitMention(MentionMarkup markup)
         {
-            var id = markup.Target;
-            var name = await GetName(markup.Kind, id, cancellationToken).ConfigureAwait(false);
-            _nodes.Add(new ("mention", markup.ToMarkupText().TrimStart('@'), name));
-
-            return Unit.Default;
+            _nodes.Add(new ("mention", markup.Id, markup.Name));
+            return default;
         }
 
-        protected override ValueTask<Unit> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitCodeBlock(CodeBlockMarkup markup)
             => AddParagraph(markup);
 
-        protected override ValueTask<Unit> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitPlainText(PlainTextMarkup markup)
             => AddParagraph(markup);
 
-        protected override ValueTask<Unit> VisitPlayableText(
-            PlayableTextMarkup markup,
-            CancellationToken cancellationToken)
+        protected override Unit VisitNewLine(NewLineMarkup markup)
             => AddParagraph(markup);
 
-        protected override ValueTask<Unit> VisitPreformattedText(
-            PreformattedTextMarkup markup,
-            CancellationToken cancellationToken)
+        protected override Unit VisitPlayableText(PlayableTextMarkup markup)
             => AddParagraph(markup);
 
-        protected override ValueTask<Unit> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitPreformattedText(PreformattedTextMarkup markup)
             => AddParagraph(markup);
 
-        protected override ValueTask<Unit> VisitText(TextMarkup markup, CancellationToken cancellationToken)
+        protected override Unit VisitUnparsed(UnparsedTextMarkup markup)
             => AddParagraph(markup);
 
-        private ValueTask<Unit> AddParagraph(Markup markup)
+        protected override Unit VisitText(TextMarkup markup)
+            => AddParagraph(markup);
+
+        private Unit AddParagraph(Markup markup)
         {
-            AddParagraph(markup.ToMarkupText());
-            return ValueTask.FromResult(Unit.Default);
+            AddParagraph(markup.Format());
+            return default;
         }
 
         private void AddParagraph(string text)

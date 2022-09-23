@@ -32,6 +32,7 @@ import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
                                    └─────────────┘
  */
 
+const LogScope = 'OpusMediaRecorder';
 const AUDIO_BITS_PER_SECOND = 32000;
 
 export class OpusMediaRecorder {
@@ -70,8 +71,8 @@ export class OpusMediaRecorder {
 
 
     public pause(): void {
-        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an pause() call. Lifetime error.");
-        console.assert(this.source != null, 'Recorder: pause() call is invalid when source is null. Lifetime error.');
+        console.assert(this.state !== 'inactive', `${LogScope}.pause: Recorder isn't initialized but got an pause() call`);
+        console.assert(this.source != null, `${LogScope}.pause: Recorder: pause() call is invalid when source is null`);
 
         // Stop stream first
         this.source.disconnect();
@@ -81,8 +82,8 @@ export class OpusMediaRecorder {
     }
 
     public resume(): void {
-        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an resume() call. Lifetime error.");
-        console.assert(this.source != null, 'Recorder: resume() call is invalid when source is null. Lifetime error.');
+        console.assert(this.state !== 'inactive', `${LogScope}.resume: Recorder isn't initialized but got an resume() call`);
+        console.assert(this.source != null, `${LogScope}.resume: Recorder: resume() call is invalid when source is null`);
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
         this.source.connect(this.vadWorklet);
@@ -90,7 +91,7 @@ export class OpusMediaRecorder {
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
-        console.assert(sessionId != '' && chatId != '', 'sessionId and chatId both should have value specified.');
+        console.assert(sessionId != '' && chatId != '', `${LogScope}.start: sessionId and chatId both should have value specified`);
 
         await this.init();
 
@@ -137,7 +138,7 @@ export class OpusMediaRecorder {
     public async stop(): Promise<void> {
         const callbackId = this.lastCallbackId++;
         await new Promise(resolve => {
-            console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an stop command. Lifetime error.");
+            console.assert(this.state !== 'inactive', `${LogScope}.stop: Recorder isn't initialized but got an stop command`);
             this.callbacks.set(callbackId, resolve);
 
             // Stop stream first
@@ -291,6 +292,6 @@ export class OpusMediaRecorder {
         if (this.vadWorklet)
             this.vadWorklet.disconnect();
 
-        console.error(`FileName: ${error.filename} LineNumber: ${error.lineno} Message: ${error.message}`);
+        console.error(`${LogScope}.onWorkerError: FileName: ${error.filename} Line: ${error.lineno} Message: ${error.message}`);
     };
 }

@@ -3,24 +3,31 @@
 @implements IModalView<NewChatModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<Form Model="@_form" OnValidSubmit="@OnCreate">
+<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate">
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
             <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
-                <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true"/>
+                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true"/>
+            </FormSection>
+            <FormSection Class="flex h-12 md:h-8 justify-center">
+                <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
             </FormSection>
         </Body>
         <Buttons>
             <div class="btn-group">
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
                 <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-secondary">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="btn-primary" IsDisabled="@(!context.Validate())">Create</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Create</Button>
             </div>
         </Buttons>
     </DialogFrame>
 </Form>
 
 @code {
+    private Form _formRef = null!;
     private FormModel _form = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -40,6 +47,7 @@
             Create = new ChatDiff() {
                 Title = _form.Title,
                 ChatType = ChatType.Group,
+                IsPublic = _form.IsPublic,
             },
         });
         try {
@@ -58,14 +66,18 @@
 
     public class FormModel
     {
-        [Required] public string Title { get; set; } = "";
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+        public bool IsPublic { get; set; }
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string IsPublicId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            IsPublicId = $"{FormId}-isPublic";
         }
     }
 

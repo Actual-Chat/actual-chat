@@ -127,11 +127,8 @@
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander Commander { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-
-    protected override async Task OnInitializedAsync()
-        => await LiveTime.WhenInitialized.ConfigureAwait(false);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -146,9 +143,9 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false) ?? Account.Guest;
-        var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
+        var account = await Accounts.Get(Session, cancellationToken) ?? Account.Guest;
+        var sessions = await Auth.GetUserSessions(Session, cancellationToken);
         var sessionList = new List<SessionModel>();
 
         foreach (var session in sessions) {
@@ -156,8 +153,8 @@
                 SessionHash = session.SessionHash,
                 IPAddress = session.IPAddress,
                 UserAgent = session.UserAgent,
-                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken).ConfigureAwait(false),
-                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken).ConfigureAwait(false),
+                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken),
+                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken),
                 Version = session.Version,
                 IsCurrent = Session.Hash == session.SessionHash,
             };
@@ -173,7 +170,7 @@
     private async Task OnStatusSelected(AccountStatus newStatus) {
         var account = await Accounts.Get(Session, default).Require();
         var updatedAccount = account with { Status = newStatus };
-        await Commander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
+        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }
 
     public sealed record SessionModel

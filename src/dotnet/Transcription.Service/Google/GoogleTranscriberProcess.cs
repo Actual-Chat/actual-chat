@@ -161,7 +161,7 @@ public class GoogleTranscriberProcess : WorkerBase
             var wordStartTime = (float)word.StartTime.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
-            var wordStart = text.IndexOf(word.Word, parsedOffset, StringComparison.InvariantCultureIgnoreCase);
+            var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
             if (wordStart < 0)
                 continue;
 

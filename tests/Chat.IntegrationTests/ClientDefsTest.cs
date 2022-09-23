@@ -25,8 +25,8 @@ public class ClientDefsTest : AppHostTestBase
         {
             var computeServiceDescriptors = serviceCollection
                 .Where(x => x.ServiceType.IsInterface && x.ServiceType.IsAssignableTo(typeof(IComputeService)))
-                .Where(x => x.ServiceType.Namespace!.StartsWith("ActualChat.", StringComparison.Ordinal))
-                .Where(x => !x.ServiceType.Name.EndsWith("Backend", StringComparison.Ordinal))
+                .Where(x => x.ServiceType.Namespace!.OrdinalStartsWith("ActualChat."))
+                .Where(x => !x.ServiceType.Name.OrdinalEndsWith("Backend"))
                 .Select(x => x.ServiceType)
                 .ToList();
             var clientDefMap = GetClientDefMap();
@@ -43,7 +43,7 @@ public class ClientDefsTest : AppHostTestBase
 
                     foreach (var (parameter, clientDefParameter) in method.GetParameters()
                                  .Zip(clientDefMethod.GetParameters())) {
-                        if (!string.Equals(parameter.Name, clientDefParameter.Name, StringComparison.Ordinal))
+                        if (!OrdinalEquals(parameter.Name, clientDefParameter.Name))
                             throw new Exception($"Parameter '{parameter}' of {clientDef}.{clientDefMethod.Name} does not match {clientDefParameter}.");
 
                         if (IsCommandHandler(method)) {

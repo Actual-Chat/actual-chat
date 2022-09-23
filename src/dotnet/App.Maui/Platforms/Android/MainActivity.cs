@@ -63,9 +63,9 @@ public class MainActivity : MauiAppCompatActivity
 
     public async Task SignOutWithGoogle()
     {
-        await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
+        await mGoogleSignInClient.SignOutAsync();
         var mobileAuthClient = ServiceLocator.Services.GetRequiredService<MobileAuthClient>();
-        await mobileAuthClient.SignOut().ConfigureAwait(true);
+        await mobileAuthClient.SignOut();
     }
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)

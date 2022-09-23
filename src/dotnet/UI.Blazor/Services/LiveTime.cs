@@ -2,9 +2,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface ILiveTime
 {
-    TimeZoneConverter TimeZoneConverter { get; }
-    Task WhenInitialized { get; }
-
     [ComputeMethod]
     Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
 
@@ -16,28 +13,25 @@ public class LiveTime : ILiveTime
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
+    private TimeZoneConverter TimeZoneConverter { get; }
     private MomentClockSet Clocks { get; }
 
-    public Task WhenInitialized => TimeZoneConverter.WhenInitialized;
-    public TimeZoneConverter TimeZoneConverter { get; }
-
-    public LiveTime(MomentClockSet clocks, TimeZoneConverter timeZoneConverter)
+    public LiveTime(TimeZoneConverter timeZoneConverter, MomentClockSet clocks)
     {
-        Clocks = clocks;
         TimeZoneConverter = timeZoneConverter;
+        Clocks = clocks;
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
+    public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
         var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);
         if (delay < TimeSpan.MaxValue) {
             // Invalidate the result when it's supposed to change
             delay = TrimInvalidationDelay(delay + TimeSpan.FromMilliseconds(100));
             Computed.GetCurrent()!.Invalidate(delay, false);
         }
-        return text;
+        return Task.FromResult(text);
     }
 
     public string GetDeltaText(Moment time)
@@ -99,4 +93,3 @@ public class LiveTime : ILiveTime
     private TimeSpan TrimInvalidationDelay(TimeSpan delay)
         => TimeSpanExt.Min(delay, MaxInvalidationDelay);
 }
-

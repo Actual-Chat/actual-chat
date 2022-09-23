@@ -7,5 +7,5 @@ public class Attachment
     public string FileName { get; init; } = "";
     public string FileType { get; init; } = "";
     public int Length { get; init; }
-    public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
+    public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
 }

@@ -17,6 +17,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         Services = services;
         Clocks = Services.Clocks();
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
+        Services.GetRequiredService<UILifetimeEvents>().RaiseOnCircuitContextCreated(Services);
     }
 
     protected override void Dispose(bool disposing)
@@ -31,10 +32,10 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         async Task DelayedDispose()
         {
             // We want it to use the same scheduler everywhere
-            await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(10)).ConfigureAwait(true);
+            await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(10));
             Log.LogDebug("DelayedDispose in Blazor Circuit #{Id}", Id);
             if (serviceScope is IAsyncDisposable ad) {
-                var __ = ad.DisposeAsync().ConfigureAwait(true);
+                var __ = ad.DisposeAsync();
             }
             else
                 serviceScope.Dispose();

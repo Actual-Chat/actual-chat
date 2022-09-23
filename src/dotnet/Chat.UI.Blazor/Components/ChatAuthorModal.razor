@@ -11,7 +11,7 @@
     <Body>
         <div class="flex-x items-center gap-x-3">
             <ChatAuthorCircle AuthorId="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
-            <ChatAuthorName AuthorId="@AuthorId" Class="text-02 font-semibold text-lg"/>
+            <ChatAuthorName AuthorId="@AuthorId" Class="text-02 font-semibold text-lg" EnableDetailsPopup="false" />
         </div>
     </Body>
     <Buttons>
@@ -48,14 +48,16 @@
             return ComputedModel.None;
 
         var chatId = parsedAuthorId.ChatId.Id;
-        var author = await ChatAuthors.GetAuthor(Session, chatId, AuthorId, true, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetAuthor(Session, chatId, AuthorId, true, cancellationToken);
         if (author == null)
             return ComputedModel.None;
 
+        var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, AuthorId, default);
+        var canSendPeerChatMessageTask = Chats.CanSendPeerChatMessage(Session, AuthorId, default);
         return new ComputedModel() {
             Author = author,
-            CanAddContact = await ChatAuthors.CanAddToContacts(Session, AuthorId, default).ConfigureAwait(false),
-            CanSendMessage = await Chats.CanSendPeerChatMessage(Session, AuthorId, default).ConfigureAwait(false),
+            CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
+            CanSendMessage = await canSendPeerChatMessageTask.ConfigureAwait(false),
         };
     }
 

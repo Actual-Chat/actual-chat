@@ -19,7 +19,8 @@ export class FileUpload implements Disposable {
     constructor(
         private readonly input: HTMLInputElement,
         private readonly blazorRef: DotNet.DotNetObject,
-        private readonly options: Options) {
+        private readonly options: Options)
+    {
         fromEvent(input, 'change')
             .pipe(
                 takeUntil(this.disposed$),
@@ -48,6 +49,9 @@ export class FileUpload implements Disposable {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }

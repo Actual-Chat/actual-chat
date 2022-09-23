@@ -15,7 +15,7 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
     {
         // Presence
         services.AddSingleton(_ => new PresenceService.Options() {
-            UpdatePeriod = TimeSpan.FromSeconds(50),
+            UpdatePeriod = Constants.Presence.CheckInPeriod,
         });
     }
 }

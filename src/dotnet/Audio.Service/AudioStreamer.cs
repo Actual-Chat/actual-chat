@@ -1,89 +1,35 @@
-using ActualChat.Audio.Db;
-using ActualChat.Audio.Processing;
-using Stl.Redis;
-
 namespace ActualChat.Audio;
 
-public class AudioStreamer : AudioProcessorBase, IAudioStreamer
+public class AudioStreamer : IAudioStreamer
 {
-    private readonly AudioSettings _settings;
-    private const int StreamBufferSize = 64;
-    private const int MaxStreamDuration = 600;
+    private IAudioStreamServer AudioStreamServer { get; }
+    private ILogger<AudioStreamer> Log { get; }
+    private ILogger<AudioSource> AudioSourceLog { get; }
 
-    private ILogger AudioSourceLog { get; }
-    private RedisDb RedisDb { get; }
-
-    public AudioStreamer(IServiceProvider services) : base(services)
+    // ReSharper disable once ContextualLoggerProblem
+    public AudioStreamer(IAudioStreamServer audioStreamServer, ILogger<AudioStreamer> log, ILogger<AudioSource> audioSourceLog)
     {
-        AudioSourceLog = Services.LogFor<AudioSource>();
-        var audioRedisDb = Services.GetRequiredService<RedisDb<AudioContext>>();
-        RedisDb = audioRedisDb.WithKeyPrefix("audio-sources");
-        _settings = Services.GetRequiredService<AudioSettings>();
+        AudioStreamServer = audioStreamServer;
+        Log = log;
+        AudioSourceLog = audioSourceLog;
     }
 
-    public Task<AudioSource> GetAudio(
-        string streamId,
+    public async Task<AudioSource> GetAudio(
+        Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var audioStream = GetAudioStream(streamId, skipTo, cancellationToken);
+        var audioStream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         var frameStream = audioStream
-            .Select((packet, i) => new AudioFrame {
-                Data = packet,
+            .Select((data, i) => new AudioFrame {
+                Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        return Task.FromResult(new AudioSource(
+        return new AudioSource(
             Task.FromResult(AudioSource.DefaultFormat),
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
-            cancellationToken));
-    }
-
-    public IAsyncEnumerable<byte[]> GetAudioStream(
-        string streamId,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        if (skipTo > TimeSpan.FromSeconds(MaxStreamDuration))
-            return AsyncEnumerable.Empty<byte[]>();
-
-        var streamer = RedisDb.GetStreamer<byte[]>(streamId, new() {
-            AppendCheckPeriod = TimeSpan.FromMilliseconds(250),
-        });
-        var audioStream = streamer
-            .Read(cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
-        return SkipTo(audioStream, skipTo);
-    }
-
-    public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
-    {
-        var streamer = RedisDb.GetStreamer<byte[]>(streamId, new() {
-            MaxStreamLength = 10 * 1024,
-            ExpirationPeriod = _settings.StreamExpirationPeriod,
-        });
-        var audioStream = audio
-            .GetFrames(cancellationToken)
-            .Select(f => f.Data);
-        return streamer.Write(audioStream, cancellationToken);
-    }
-
-    /// <summary>
-    /// Expects 20ms packets
-    /// </summary>
-    /// <param name="audioStream">stream of 20ms long Opus packets</param>
-    /// <param name="skipTo"></param>
-    /// <returns>Stream without skipped packets</returns>
-    private IAsyncEnumerable<byte[]> SkipTo(
-        IAsyncEnumerable<byte[]> audioStream,
-        TimeSpan skipTo)
-    {
-        if (skipTo <= TimeSpan.Zero)
-            return audioStream;
-
-        var skipToFrameN = (int)skipTo.TotalMilliseconds / 20;
-        return audioStream
-            .SkipWhile((_, i) => i < skipToFrameN);
+            cancellationToken);
     }
 }

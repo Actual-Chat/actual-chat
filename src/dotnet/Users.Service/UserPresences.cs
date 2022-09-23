@@ -14,8 +14,10 @@ public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
     [ComputeMethod(AutoInvalidationDelay = 61)]
     public virtual async Task<Presence> Get(string userId, CancellationToken cancellationToken)
     {
-        var cutoffTime = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
-        var userState = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-        return userState?.OnlineCheckInAt > cutoffTime ? Presence.Online : Presence.Offline;
+        var minCheckInTime = Clocks.SystemClock.Now - Constants.Presence.CheckInTimeout;
+        var dbUserPresence = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (dbUserPresence == null)
+            return Presence.Offline;
+        return dbUserPresence.OnlineCheckInAt.ToMoment() >= minCheckInTime ? Presence.Online : Presence.Offline;
     }
 }

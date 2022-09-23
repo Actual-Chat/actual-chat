@@ -9,9 +9,9 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
     public RecentEntriesBackend(IServiceProvider services) : base(services) {}
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableHashSet<string>> List(
+    public virtual async Task<ImmutableArray<RecentEntry>> List(
         string shardKey,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -21,19 +21,19 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
         await PseudoList(shardKey, scope).ConfigureAwait(false);
 
         var list = await dbContext.RecentEntries
-            .Where(x => string.Equals(x.ShardKey, shardKey) && x.Scope == scope.ToString())
+            .Where(x => string.Equals(x.ShardKey, shardKey) && string.Equals(x.Scope, scope.ToString()))
             .OrderByDescending(x => x.UpdatedAt)
             .Take(limit)
-            .Select(x => x.Key)
+            .Select(x => x.ToModel())
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return list.ToImmutableHashSet();
+        return list.ToImmutableArray();
     }
 
     // [CommandHandler]
     public virtual async Task<RecentEntry?> Update(IRecentEntriesBackend.UpdateCommand command, CancellationToken cancellationToken)
     {
-        var (shardKey, scope, key, moment) = command;
+        var (scope, shardKey, key, moment) = command;
 
         if (Computed.IsInvalidating()) {
             _ = PseudoList(command.ShardKey, command.Scope);
@@ -43,19 +43,20 @@ internal class RecentEntriesBackend : DbServiceBase<UsersDbContext>, IRecentEntr
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbRecent = await dbContext.RecentEntries.Get(DbRecentEntry.GetId(shardKey, key), cancellationToken).ConfigureAwait(false);
-        if (dbRecent != null) {
-            dbRecent.UpdatedAt = moment;
-            dbContext.Update(dbRecent);
-        }
-        else {
-            dbRecent ??= new DbRecentEntry(new RecentEntry(shardKey, key, scope));
+        if (dbRecent == null) {
+            dbRecent = new DbRecentEntry(new RecentEntry(shardKey, key, scope) {
+                UpdatedAt = moment,
+            });
             dbContext.Add(dbRecent);
         }
+        else
+            dbRecent.UpdatedAt = moment;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbRecent.ToModel();
     }
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoList(string shardKey, RecentScope scope) => Stl.Async.TaskExt.UnitTask;
+    protected virtual Task<Unit> PseudoList(string shardKey, RecencyScope scope)
+        => Stl.Async.TaskExt.UnitTask;
 }

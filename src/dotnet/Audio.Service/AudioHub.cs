@@ -6,49 +6,57 @@ namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
-    private readonly IAudioProcessor _audioProcessor;
-    private readonly AudioStreamer _audioStreamer;
-    private readonly TranscriptStreamer _transcriptStreamer;
-    private readonly SessionMiddleware _sessionMiddleware;
+    private IAudioProcessor AudioProcessor { get; }
+    private IAudioStreamServer AudioStreamServer { get; }
+    private ITranscriptStreamServer TranscriptStreamServer { get; }
+    private SessionMiddleware SessionMiddleware { get; }
 
     public AudioHub(
         IAudioProcessor audioProcessor,
-        AudioStreamer audioStreamer,
-        TranscriptStreamer transcriptStreamer,
+        IAudioStreamServer audioStreamServer,
+        ITranscriptStreamServer transcriptStreamServer,
         SessionMiddleware sessionMiddleware)
     {
-        _audioProcessor = audioProcessor;
-        _audioStreamer = audioStreamer;
-        _transcriptStreamer = transcriptStreamer;
-        _sessionMiddleware = sessionMiddleware;
+        AudioProcessor = audioProcessor;
+        AudioStreamServer = audioStreamServer;
+        TranscriptStreamServer = transcriptStreamServer;
+        SessionMiddleware = sessionMiddleware;
     }
 
-    public IAsyncEnumerable<byte[]> GetAudioStream(
+    public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
-        CancellationToken cancellationToken)
-        => _audioStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
+            yield return chunk;
+    }
 
-    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
-        CancellationToken cancellationToken)
-        => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
+            yield return chunk;
+    }
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
         var cancellationToken = httpContext.RequestAborted;
-        var session = _sessionMiddleware.GetSession(httpContext).Require();
+        var session = SessionMiddleware.GetSession(httpContext).Require();
 
         var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
-        var frameStream = opusPacketStream
+        var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        await _audioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
+        await AudioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
             .ConfigureAwait(false);
     }
 }

@@ -20,7 +20,7 @@
 </MainHeader>
 
 <div class="user-info_badge">
-    <UserAuthorCircle UserId="@UserId" Size="SquareSize.Size12" ShowsPresence="true" />
+    <UserAuthorCircle UserId="@UserId" Size="SquareSize.Size12" ShowPresence="true" />
     <UserAuthorName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
 </div>
 
@@ -55,7 +55,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -63,10 +63,12 @@
         if (userAuthor == null)
             return Model.Unavailable;
 
+        var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, UserId, default);
+        var canSendPeerChatMessageTask = Chats.CanSendPeerChatMessage(Session, UserId, default);
         return new Model {
             UserAuthor = userAuthor,
-            CanAddContact = await ChatAuthors.CanAddToContacts(Session, UserId, default).ConfigureAwait(false),
-            CanSendMessage = await Chats.CanSendPeerChatMessage(Session, UserId, default).ConfigureAwait(false),
+            CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
+            CanSendMessage = await canSendPeerChatMessageTask.ConfigureAwait(false),
         };
     }
 

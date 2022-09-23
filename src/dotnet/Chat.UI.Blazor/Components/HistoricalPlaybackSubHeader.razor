@@ -9,7 +9,6 @@
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
         return;
-    var timeZoneConverter = LiveTime.TimeZoneConverter;
 }
 
 <div class="historical-playback-sub-header">
@@ -53,7 +52,7 @@
                 }
                 <div class="c-text mobile-hidden">
                     @if (m.PlayingAt is { } playingAt) {
-                        var localTime = timeZoneConverter.ToLocalTime(playingAt);
+                        var localTime = TimeZoneConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                         var relativeTime = LiveTime.GetDeltaText(playingAt, Clocks.SystemClock.Now);
                         <span>
@@ -79,6 +78,7 @@
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -86,22 +86,20 @@
 
     [CascadingParameter] public Chat ChatViewChat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => await LiveTime.WhenInitialized.ConfigureAwait(false);
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = FixedDelayer.Instant,
             InitialValue = Model.NotPlaying,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
         if (chatId.IsEmpty)
             return Model.NotPlaying;
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
         var chatTitle = chat?.Title ?? "";
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         if (playback == null) {
@@ -109,8 +107,8 @@
             // Keep previous state.
             return State.ValueOrDefault ?? Model.NotPlaying;
         }
-        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await playback.IsPaused.Use(cancellationToken);
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken);
         var authorIds = ImmutableArray<Symbol>.Empty;
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
@@ -191,7 +189,7 @@
 
     private async Task PlayAt(HistoricalChatPlayer chatPlayer, DateTime from, TimeSpan shift, CancellationToken cancellationToken = default)
     {
-        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken).ConfigureAwait(false);
+        var newMoment = await chatPlayer.GetRewindMoment(from, shift, cancellationToken);
         if (!newMoment.HasValue)
             return;
         ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);

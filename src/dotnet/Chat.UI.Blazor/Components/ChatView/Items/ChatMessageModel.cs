@@ -57,6 +57,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         List<ChatEntry> chatEntries,
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
+        bool hasVeryFirstItem,
+        bool hasVeryLastItem,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -67,25 +69,25 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         var isBlockStart = true;
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
-        var isPrevAudio = false;
+        var isPrevAudio = (bool?)false;
         for (var index = 0; index < chatEntries.Count; index++) {
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-            var hasDateLine = date != lastDate;
+            var hasDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             var isUnread = entry.Id > (lastReadEntryId ?? 0);
-            var isAudio = entry.AudioEntryId != null;
-            var contentKindChanged = isPrevAudio ^ isAudio;
+            var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
+            var contentKindChanged = !isPrevAudio.HasValue || isPrevAudio.Value ^ isAudio;
             var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
                 IsFirstUnread = isUnread && !isPrevUnread,
-                ShowEntryType = isBlockStart || contentKindChanged
+                ShowEntryType = contentKindChanged
             };
             result.Add(model);
 

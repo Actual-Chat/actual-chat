@@ -33,14 +33,15 @@ export class SideNav implements Disposable {
     ) {
         const position = window.getComputedStyle(element, null).position;
         if (position === 'static') {
+            // desktop view
             return;
         }
 
-        fromEvent(this.element, 'transitionend')
+        fromEvent(this.element, 'transitionstart')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 if (element.classList.contains('side-nav-open')){
-                    blazorRef.invokeMethodAsync('OnOpen');
+                    blazorRef.invokeMethodAsync('OnOpened');
                 } else if (element.classList.contains('side-nav-closed')){
                     blazorRef.invokeMethodAsync('OnClosed');
                 }
@@ -99,7 +100,7 @@ export class SideNav implements Disposable {
 
         fromEvent(this.element, 'touchend')
             .pipe(takeUntil(this.disposed$))
-            .subscribe(()  => {
+            .subscribe(() => {
                 element.classList.add('side-nav-animate');
                 element.style.transform = null;
 
@@ -139,6 +140,9 @@ export class SideNav implements Disposable {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }

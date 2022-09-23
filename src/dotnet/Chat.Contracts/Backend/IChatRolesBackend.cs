@@ -23,5 +23,5 @@ public interface IChatRolesBackend : IComputeService
         [property: DataMember] string RoleId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatRoleDiff> Change
-    ) : ICommand<ChatRole?>;
+    ) : ICommand<ChatRole?>, IBackendCommand;
 }

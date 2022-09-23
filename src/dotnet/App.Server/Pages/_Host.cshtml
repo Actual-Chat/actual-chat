@@ -52,12 +52,13 @@
         // Set App.windowId
         window.addEventListener("beforeunload", function (e) {
             let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            windowIds.push(window.windowId);
+            windowIds.push(window.App.windowId);
             window.sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
         window.addEventListener("load", function (e) {
             let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
+            windowIds = windowIds.filter(function(value, i, a) { return value != null; });
             window.App.windowId = windowIds.pop();
             if (window.App.windowId == null)
                 window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
@@ -71,7 +72,7 @@
 <div id="blazor-error-ui" class="hidden fixed inset-x-0 md:inset-x-1/4 mt-16 mx-2" style="z-index:100000;">
     <div class="flex w-full justify-center">
         <div class="flex flex-1 max-w-3xl bg-error rounded-md shadow-lg">
-            <div class="bg-error-hover w-16 text-error-toast-text rounded-l-md justify-center flex items-center">
+            <div class="bg-error w-16 text-error-toast-text rounded-l-md justify-center flex items-center">
                 <i class="fa fa-2x fa-exclamation-triangle"></i>
             </div>
             <div class="h-full flex-1 flex border-error">
@@ -86,7 +87,7 @@
                         </environment>
                     </p>
                 </div>
-                <div class="flex-col grid items-center bg-error-hover text-error-toast-text rounded-r-md p-2">
+                <div class="flex-col grid items-center bg-error text-error-toast-text rounded-r-md p-2">
                     <div class="block dismiss cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" class="w-5 h-5 fill-current">
                             <path d="M23.954 21.03l-9.184-9.095 9.092-9.174-2.832-2.807-9.09 9.179-9.176-9.088-2.81 2.81 9.186 9.105-9.095 9.184 2.81 2.81 9.112-9.192 9.18 9.1z"/>

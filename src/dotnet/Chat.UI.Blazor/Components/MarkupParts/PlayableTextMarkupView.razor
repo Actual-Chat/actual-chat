@@ -13,7 +13,7 @@
         _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
         };
 }
-<span class="playable-text-markup @colorCls whitespace-break-spaces">
+<span class="playable-text-markup @colorCls">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
@@ -44,7 +44,7 @@
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
         var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
-        var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
+        var audioEntry = await chatEntryReader.Get(audioEntryId, default);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
@@ -130,11 +130,10 @@
             return Model.None;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not
-            ChatAudioTrackInfo trackInfo)
+        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken) is not ChatAudioTrackInfo trackInfo)
             return Model.None;
 
-        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
         if (playbackState == null || playbackState.IsCompleted)
             return Model.None;
 
@@ -213,15 +212,12 @@
         PlayedStart =  Played | 0x01,
     }
 
-    public record Model {
+    public sealed record Model {
         public static readonly Model None = new Model();
 
         public WordPlayback[]? Map { get; init; }
-
         public PlayableTextColor? Color { get; init; }
-
         public IPlayableTextColorLease? ColorLease { get; init; }
-
         public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
     }
 }

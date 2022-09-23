@@ -3,9 +3,9 @@ namespace ActualChat.Users;
 public interface IRecentEntriesBackend
 {
     [ComputeMethod]
-    Task<ImmutableHashSet<string>> List(
+    Task<ImmutableArray<RecentEntry>> List(
         string shardKey,
-        RecentScope scope,
+        RecencyScope scope,
         int limit,
         CancellationToken cancellationToken);
 
@@ -14,9 +14,9 @@ public interface IRecentEntriesBackend
 
     [DataContract]
     public sealed record UpdateCommand(
+        [property: DataMember] RecencyScope Scope,
         [property: DataMember] string ShardKey,
-        [property: DataMember] RecentScope Scope,
         [property: DataMember] string Key,
         [property: DataMember] Moment Date
-    ) : ICommand<RecentEntry?>;
+    ) : ICommand<RecentEntry?>, IBackendCommand;
 }

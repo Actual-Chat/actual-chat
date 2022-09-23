@@ -3,7 +3,7 @@
 @{
     var attachment = Attachment;
     var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
-    var previewUrl = ContentUrlMapper.ImagePreviewUrl(url);
+    var previewUrl = ContentUrlMapper.ImagePreviewUrl(url, 400, 300);
     var imgStyle = "max-width: 400px; max-height: 300px";
     if (attachment.Height > 0 && attachment.Width > 0) {
         var width = attachment.Width;

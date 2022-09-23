@@ -25,7 +25,7 @@
         => CurrentValue = Value;
 
     private void OnChange(ChangeEventArgs eventArgs) {
-        CurrentValue = eventArgs.Value is bool and true;
+        CurrentValue = eventArgs.Value is true;
         ValueChanged.InvokeAsync(CurrentValue);
     }
 }

@@ -7,7 +7,7 @@
 }
 
 .message-input {
-    @apply flex-1 overflow-y-auto max-h-36 md:max-h-72 mx-2 md:ml-1 md:mr-4;
+    @apply flex-1 overflow-y-auto max-h-48 md:max-h-88 mx-2 md:ml-1 md:mr-4;
     @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-07 md:bg-03;
 }
 .post-panel {
@@ -43,7 +43,7 @@
 .notify-call-content,
 .panel-closed .notify-call-content {
     @apply flex-x gap-x-0 justify-end items-center cursor-text;
-    @apply w-0 scale-0;
+    @apply w-0 scale-0 translate-x-full;
 }
 .notify-call-content .actions {
     @apply flex-x items-center gap-x-2 max-h-12 md:mr-4;
@@ -80,7 +80,7 @@
     @apply animate-notify-toggle-hide scale-0 w-0;
 }
 .panel-opening .notify-call-content {
-    @apply scale-100 w-full animate-notify-panel-opening;
+    @apply scale-100 w-full translate-x-0 transition duration-300 ease-in-out;
 }
 
 /* Closing panel */
@@ -147,10 +147,10 @@
 
 /* Desktop control panel */
 .recorder-panel {
-    @apply hidden md:-flex-x;
+    @apply hidden md:-flex-x h-12;
     @apply justify-center gap-x-2.5;
     @apply bg-01 outline-none rounded-none;
-    @apply self-stretch md:self-end;
+    @apply self-end;
 }
 .recorder-panel > div {
     @apply flex flex-1 w-fit h-fit self-end rounded-full;
@@ -172,11 +172,11 @@
 }
 .recorder-panel .recorder-wrapper.record-off,
 .recorder-panel-control-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-700;
+    @apply border-primary transition-colors duration-300;
 }
 .recorder-panel .recorder-wrapper.record-on,
 .recorder-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-700;
+    @apply border-error transition-colors duration-300;
 }
 .recorder-panel .recorder-wrapper .record-on-btn.btn .btn-content {
     @apply shadow-mobile-button shadow-error-hover;
@@ -214,5 +214,5 @@
 }
 
 .linked-message-panel {
-    @apply flex-x bg-04 w-full outline-none bg-01 p-1 md:py-0 md:px-10;
+    @apply flex-x bg-03 w-full h-8 outline-none py-0;
 }

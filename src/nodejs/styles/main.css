@@ -2,10 +2,6 @@
 
 * {
     font-family: 'TT Commons Pro', sans-serif;
-    /*font-family: 'Noto Sans', sans-serif;*/
-    /*font-family: 'Rubik', sans-serif;*/
-    /*font-family: 'Figtree', sans-serif;*/
-    /*font-family: 'Gantari', sans-serif;*/
 }
 
 html {
@@ -105,7 +101,7 @@ input.input-underlined {
 }
 
 .error-toast {
-    @apply flex flex-col w-full justify-center my-1 shadow-md rounded-md text-error-toast-text z-50;
+    @apply flex flex-col w-full justify-center shadow-md rounded-md text-error-toast-text z-50;
 }
 
 .error-toast .toast-header {
@@ -145,7 +141,7 @@ input.input-underlined {
     @apply flex-x gap-x-2 items-center;
 }
 .context-menu-text {
-    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+    @apply w-full text-02 text-base font-medium ml-2 mr-6;
 }
 .context-menu-icon {
     @apply text-icons-01;
@@ -189,6 +185,10 @@ input.input-underlined {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
     @apply p-0;
 }
+.chat-layout .layout-footer {
+    @apply flex-y flex-none  w-full overflow-hidden z-40 min-h-0;
+    @apply shadow-up md:shadow-none border-t md:border-none border-bg-04 min-h-footer;
+}
 
 .no-chat-layout .layout-body {
     @apply p-4;
@@ -199,7 +199,7 @@ input.input-underlined {
     @apply fixed flex-y md:flex-x h-full w-full p-8;
     background-image: linear-gradient(to right bottom, #96d6f9, #8bdef6, #88e6ee, #8febe2, #9ff0d4, #97ecd2, #8fe9d0, #87e5ce, #65d7da, #54c7e3, #5eb5e4, #76a1db);
 }
-@media not (min-width: 768px) {
+@media not (min-width: 1024px) {
     .welcome-page {
         @apply fixed flex-y md:flex-x h-full w-full p-1;
         background-image: linear-gradient(to right bottom, #bff0f5, #c8f1f9, #d1f2fc, #daf4fe, #e3f5ff, #dceffc, #d6eafa, #d1e4f7, #bcd6f1, #a7c8ea, #93bae4, #7eacde);
@@ -214,4 +214,11 @@ input.input-underlined {
 }
 .welcome-btn.btn .btn-content {
     @apply flex-x gap-x-4 items-center text-primary;
+}
+
+/* Error container */
+
+.error-container {
+    @apply fixed z-90 w-auto md:w-1/5 inset-x-2 md:inset-x-auto md:right-2 py-4;
+    @apply h-full overflow-y-auto;
 }

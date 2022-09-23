@@ -20,6 +20,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {
             endpoints.MapHub<AudioHub>("/api/hub/audio");
+            endpoints.MapHub<AudioHubBackend>("/backend/hub/audio");
         });
 
     public override void InjectServices(IServiceCollection services)
@@ -39,11 +40,13 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             options.StreamBufferCapacity = 20;
             options.EnableDetailedErrors = true;
         });
-        if (!Constants.DebugMode.SignalR)
-            signalR.AddMessagePackProtocol();
+        signalR.AddJsonProtocol();
+        signalR.AddMessagePackProtocol();
 
         // Module's own services
         services.AddScoped<AudioHub>();
+        services.AddSingleton<AudioHubBackend>();
+        services.AddSingleton<AudioHubBackendClientFactory>();
 
         services.TryAddSingleton<AudioProcessor.Options>();
         services.AddSingleton<AudioProcessor>();
@@ -53,9 +56,15 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioStreamer>();
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
-        services.AddSingleton<TranscriptSplitter>();
-        services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
+        services.AddSingleton<TranscriptSplitter>();
+        services.AddSingleton<TranscriptPostProcessor>();
+        services.AddSingleton<AudioStreamServer>();
+        services.AddSingleton<AudioStreamProxy>();
+        services.AddTransient<IAudioStreamServer>(c => c.GetRequiredService<AudioStreamProxy>());
+        services.AddSingleton<TranscriptStreamServer>();
+        services.AddSingleton<TranscriptStreamProxy>();
+        services.AddTransient<ITranscriptStreamServer>(c => c.GetRequiredService<TranscriptStreamProxy>());
     }
 }

@@ -140,12 +140,12 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        // Fetching chat: if it doesn't exist, this command can't proceed anyway
         await dbContext.Chats.FindAsync(DbKey.Compose(chatId)).Require().ConfigureAwait(false);
 
         ChatRole? chatRole;
         DbChatRole? dbChatRole;
-        ChatRoleDiff? update;
-        if (change.RequireValid().IsCreate(out update)) {
+        if (change.RequireValid().IsCreate(out var update)) {
             roleId.RequireEmpty("Command.RoleId");
             var localId = await DbChatRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
@@ -156,6 +156,13 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             };
             chatRole = DiffEngine.Patch(chatRole, update).Fix();
             dbChatRole = new DbChatRole(chatRole);
+            if (chatRole.SystemRole != SystemChatRole.None) {
+                var dbSameSystemRole = await dbContext.ChatRoles
+                    .SingleOrDefaultAsync(r => r.ChatId == dbChatRole.ChatId && r.SystemRole == dbChatRole.SystemRole, cancellationToken)
+                    .ConfigureAwait(false);
+                if (dbSameSystemRole != null)
+                    throw StandardError.Constraint("Only one system role of a given kind is allowed.");
+            }
             dbContext.Add(dbChatRole);
         }
         else {
@@ -196,11 +203,13 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
             // Adding items
-            foreach (var authorId in update.AuthorIds.AddedItems)
-                dbContext.ChatAuthorRoles.Add(
-                    new() { DbChatRoleId = roleId, DbChatAuthorId = authorId });
+            foreach (var authorId in update.AuthorIds.AddedItems.Distinct())
+                dbContext.ChatAuthorRoles.Add(new() {
+                    DbChatRoleId = roleId,
+                    DbChatAuthorId = authorId
+                });
             // Removing items
-            var removedAuthorIds = update.AuthorIds.RemovedItems.Select(i => i.Value).ToList();
+            var removedAuthorIds = update.AuthorIds.RemovedItems.Distinct().Select(i => i.Value).ToList();
             if (removedAuthorIds.Any()) {
  #pragma warning disable MA0002
                 var dbChatAuthorRoles = await dbContext.ChatAuthorRoles

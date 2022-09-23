@@ -1,0 +1,67 @@
+@using Microsoft.Toolkit.HighPerformance
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+@{
+    var sizeClass = $"pic-size-{(int)Size}";
+    var cursorClass = EnableImagePreview || Click.HasDelegate ? "pic-show-cursor" : "";
+}
+
+<div class="@sizeClass">
+    @if (_hasPicture) {
+        <img class="pic-image @sizeClass @cursorClass"
+             alt=""
+             src="@_pictureUrl"
+             @onclick="OnPictureClick"
+             @onclick:preventDefault="true"/>
+    } else if(NoPicture != null) {
+        @NoPicture
+    } else {
+        <div class="pic-generated @sizeClass"
+             style="@_picStyle">
+            @((Title.NullIfEmpty() ?? " ")[..1])
+        </div>
+    }
+</div>
+
+@code {
+    private string _picStyle = "";
+    private string _pictureUrl = "";
+    private bool _hasPicture;
+
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string ContentId { get; set; } = "";
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public bool EnableImagePreview { get; set; }
+    [Parameter] public RenderFragment? NoPicture { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        _hasPicture = !ContentId.IsNullOrEmpty();
+        if (_hasPicture) {
+            var contentUrl = ContentUrlMapper.ContentUrl(ContentId);
+            _pictureUrl = ContentUrlMapper.PicturePreviewUrl(contentUrl);
+        } else if(NoPicture == null) {
+            _picStyle = $"background-color: {GenerateColor()}";
+            _pictureUrl = "";
+        }
+    }
+
+    private string GenerateColor() {
+        var hash = Title.GetDjb2HashCode();
+        var h = hash % 360;
+        return $"hsl({h}, 30%, 80%)";
+    }
+
+    private async Task OnPictureClick(MouseEventArgs arg) {
+        await Click.InvokeAsync(arg).ConfigureAwait(false);
+
+        if (EnableImagePreview) {
+            var url = ContentUrlMapper.ContentUrl(ContentId);
+            await ImagePreviewUI.Show(url);
+        }
+    }
+}

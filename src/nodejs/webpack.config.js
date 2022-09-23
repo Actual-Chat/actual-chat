@@ -117,7 +117,8 @@ module.exports = (env, args) => {
       }
     },
     // to enable ts debug uncomment the line below
-    devtool: isDevelopment ? 'source-map' : false,
+    devtool: 'source-map',
+    // devtool: isDevelopment ? 'source-map' : false,
     // another type of inlined source maps
     //devtool: isDevelopment ? 'eval' : false,
     plugins: [
@@ -300,7 +301,7 @@ module.exports = (env, args) => {
       },
       sw: {
         import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
-        chunkLoading: false,
+        chunkLoading: 'import',
         asyncChunks: false,
         runtime: false,
         library: {

@@ -8,12 +8,12 @@ namespace ActualChat.Users;
 public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPositions
 {
     private IAccounts Accounts { get; }
-    private IDbEntityResolver<string, DbChatReadPosition> DbChatReadPositionResolver { get; }
+    private IChatReadPositionsBackend Backend { get; }
 
     public ChatReadPositions(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        DbChatReadPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatReadPosition>>();
+        Backend = services.GetRequiredService<IChatReadPositionsBackend>();
     }
 
     // [ComputeMethod]
@@ -23,42 +23,23 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
         if (account == null)
             return null;
 
-        var compositeId = DbChatReadPosition.ComposeId(account.Id, chatId);
-        var position = await DbChatReadPositionResolver.Get(compositeId, cancellationToken).ConfigureAwait(false);
-        return position?.ReadEntryId;
+        return await Backend.Get(account.Id, chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     public virtual async Task Set(IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken)
     {
-        var (session, chatId, readEntryId) = command;
-        if (Computed.IsInvalidating()) {
-            _ = Get(session, chatId, default);
-            return;
-        }
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
 
+        var (session, chatId, readEntryId) = command;
         var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbPosition = await dbContext.ChatReadPositions
-            .FindAsync(DbKey.Compose(DbChatReadPosition.ComposeId(account.Id, chatId)), cancellationToken)
+        await Commander.Call(
+            new IChatReadPositionsBackend.SetReadPositionCommand(account.Id, chatId, readEntryId),
+            true, cancellationToken)
             .ConfigureAwait(false);
-        if (dbPosition == null) {
-            dbPosition = new DbChatReadPosition {
-                Id = DbChatReadPosition.ComposeId(account.Id, chatId),
-                ReadEntryId = readEntryId,
-            };
-            dbContext.Add(dbPosition);
-        }
-        else {
-            if (readEntryId > dbPosition.ReadEntryId)
-                dbPosition.ReadEntryId = readEntryId;
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

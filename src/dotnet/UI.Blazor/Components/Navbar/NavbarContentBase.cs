@@ -10,10 +10,18 @@ public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBa
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected IEnumerable<NavbarWidget> Widgets { get; init; } = null!;
 
+    protected ImmutableArray<NavbarWidget> OrderedWidgets { get; private set; }
+
+    protected override void OnInitialized()
+    {
+        OrderedWidgets = Widgets.OrderBy(w => w.Order).ToImmutableArray();
+        base.OnInitialized();
+    }
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Guest,
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

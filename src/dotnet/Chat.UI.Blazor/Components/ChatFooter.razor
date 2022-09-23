@@ -7,7 +7,7 @@
 <div class="flex-y w-full bg-05 md:bg-01" oncontextmenu="return false;">
     @if (m == Model.None) {
         // render skeletons until State is computed
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:p-2 md:px-10 md:pt-0 gap-x-2.5 animate-pulse">
+        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
@@ -126,18 +126,24 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new () { InitialValue = Model.None };
+        return new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant
+        };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var (account, rules, canJoin) = await Accounts.Get(Session, cancellationToken)
+            .Join(
+                Chats.GetRules(Session, chatId, cancellationToken),
+                Chats.CanJoin(Session, chatId, cancellationToken)
+            ).ConfigureAwait(false);
+        // Default scheduler is used from here
         var canPost = rules.CanWrite();
-        var canJoin = !canPost && await Chats.CanJoin(Session, chatId, cancellationToken).ConfigureAwait(false);
         return new () {
             CanPost = canPost,
-            CanJoin = canJoin,
+            CanJoin = !canPost && canJoin,
             IsAuthenticated = account != null,
         };
     }

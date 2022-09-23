@@ -1,4 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
+@{
+    _lastSkeletonCount = SkeletonCount;
+}
 
 <SkeletonContainer Class="flex flex-nowrap items-stretch content-start justify-start flex-col">
     @if (Skeleton != null) {
@@ -11,6 +14,11 @@
 </SkeletonContainer>
 
 @code {
+    private int? _lastSkeletonCount;
+
     [Parameter] public int SkeletonCount { get; set; }
-    [Parameter] [EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
+
+    protected override bool ShouldRender()
+        => SkeletonCount != _lastSkeletonCount;
 }

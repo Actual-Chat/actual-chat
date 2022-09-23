@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Pidgin;
 using static Pidgin.Parser;
 using static Pidgin.Parser<char>;
@@ -23,8 +24,8 @@ internal static class ParserExt
 
     // Extensions
 
-    public static Parser<char, Markup> ToPlainTextMarkup(this Parser<char, string> parser)
-        => parser.Select(s => s.IsNullOrEmpty() ? Markup.Empty : new PlainTextMarkup(s));
+    public static Parser<char, Markup> ToTextMarkup(this Parser<char, string> parser, TextMarkupKind textMarkupKind, bool parseNewLines)
+        => parser.Select(s => TextMarkup.New(textMarkupKind, s, parseNewLines));
 
     public static Parser<char, T?> OrEnd<T>(this Parser<char, T> parser)
         => End.ThenReturn(default(T)).Or(parser!);

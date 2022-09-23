@@ -8,13 +8,15 @@
     @apply select-none;
 }
 .btn .btn-content {
-    @apply flex flex-row place-self-center;
+    @apply flex flex-row self-center;
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn.disabled {
     @apply opacity-70;
 }
-.btn.-disabled:disabled {
+.btn.-disabled:disabled,
+.btn.-disabled.disabled {
     @apply opacity-100;
 }
 
@@ -31,7 +33,9 @@
     @apply bg-primary border-primary;
 }
 .btn.btn-primary:disabled,
-.btn.btn-secondary:disabled {
+.btn.btn-primary.disabled,
+.btn.btn-secondary:disabled,
+.btn.btn-secondary.disabled {
     @apply bg-disabled text-primary-title border-disabled;
 }
 
@@ -56,7 +60,8 @@
 .btn.btn-outline:focus:hover {
     @apply bg-secondary-hover border-primary;
 }
-.btn.btn-outline:disabled {
+.btn.btn-outline:disabled,
+.btn.btn-outline.disabled {
     @apply bg-outline border-disabled text-disabled;
 }
 
@@ -113,12 +118,12 @@
 }
 
 .btn.btn-xs {
-    @apply text-md md:text-base;
+    @apply text-base md:text-base;
     @apply h-8 md:h-6 min-h-8 md:min-h-6;
     @apply min-w-0 md:min-w-16;
 }
 .btn.btn-sm {
-    @apply text-lg md:text-md;
+    @apply text-lg md:text-base;
     @apply h-10 md:h-8 min-h-10 md:min-h-8;
     @apply min-w-0 md:min-w-20;
 }
@@ -134,10 +139,12 @@
     @apply border-0;
     @apply text-base font-semibold text-icons-01;
 }
-.btn.btn-square:disabled {
+.btn.btn-square:disabled,
+.btn.btn-square.disabled {
     @apply opacity-70;
 }
-.btn.btn-square.-disabled:disabled {
+.btn.btn-square.-disabled:disabled,
+.btn.btn-square.-disabled.disabled {
     @apply opacity-100;
 }
 .btn.btn-square .btn-content {
@@ -167,10 +174,12 @@
     @apply text-base text-icons-01;
     @apply rounded-full w-fit h-fit self-center;
 }
-.btn.btn-round:disabled {
+.btn.btn-round:disabled,
+.btn.btn-round.disabled {
     @apply opacity-70;
 }
-.btn.btn-round.-disabled:disabled {
+.btn.btn-round.-disabled:disabled,
+.btn.btn-round.-disabled.disabled {
     @apply opacity-100;
 }
 .btn.btn-round .btn-content {
@@ -205,7 +214,7 @@
     @apply p-1 self-center;
 }
 
-@media not (min-width: 768px) {
+@media not (min-width: 1024px) {
     .btn.mobile-hidden {
         @apply hidden;
     }

@@ -1,16 +1,21 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<UnreadMessagesSubHeader.Model>
 @{
-    var m = State.ValueOrDefault ?? Model.None;
+    var m = State.LatestNonErrorValue ?? Model.None;
     if (m.Count == 0)
         return;
+
+    var messagesWord = m.Count == 1 ? "message" : "messages";
+    var text = $"{m.Count.Format()} unread {messagesWord}";
 }
 
 <div class="unread-messages-sub-header" @onclick="Click">
-    @GetUnreadCountMessage()
+    @text
 </div>
 
 @code {
+    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
 
@@ -19,9 +24,10 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
-    protected override Task OnInitializedAsync() {
+    protected override Task OnParametersSetAsync() {
+        UnreadMessages.DisposeSilently();
         UnreadMessages = UnreadMessagesFactory.Get(Chat.Id);
-        return Task.CompletedTask;
+        return base.OnParametersSetAsync();
     }
 
     public override async ValueTask DisposeAsync() {
@@ -32,39 +38,18 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = new UpdateDelayer(UIActionTracker.None, 2),
+            UpdateDelayer = UpdateDelayer,
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await UnreadMessages.GetCount(cancellationToken);
-        if (!count.HasValue)
-            return Model.None;
-
-        return new() {
-            Count = count.Value,
-        };
-    }
-
-    private string PluralizeMessage(int count) {
-        return count switch {
-            1 => "message",
-            _ => "messages",
-        };
-    }
-
-    private string GetUnreadCountMessage() {
-        var model = State.ValueOrDefault;
-        return model?.Count switch {
-            > 0 and < 10 => $"{ model.Count } unread { PluralizeMessage(model.Count) }",
-            > 0 => $"{ model.Count }+ unread messages",
-            _ => string.Empty
-        };
+        return count == 0 ? Model.None : new() { Count = count };
     }
 
     public sealed record Model {
         public static readonly Model None = new();
 
-        public int Count { get; init; }
+        public MaybeEstimate<int> Count { get; init; }
     }
 }

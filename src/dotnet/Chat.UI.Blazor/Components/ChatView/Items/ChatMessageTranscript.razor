@@ -3,7 +3,11 @@
 @implements IAsyncDisposable
 
 <p class="@Class chat-message-transcript">
-    <span>@Transcript.Text</span>
+    @if (ShowEntryType) {
+        <span class="chat-entry-type-marker icon-volume-up"></span>
+    }@*
+    *@<span class="retained">@RetainedPart</span>@*
+    *@<span class="changes">@ChangedPart</span>
 </p>
 
 @code {
@@ -14,9 +18,12 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
+    [Parameter] public bool ShowEntryType { get; set; }
 
     private CancellationTokenSource? RestartCts { get; set; }
     private Transcript Transcript { get; set; } = new();
+    private string RetainedPart { get; set; } = "";
+    private string ChangedPart { get; set; } = "";
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
@@ -45,11 +52,17 @@
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
             var circuitDispatcher = CircuitContext.Dispatcher;
             var transcripts = diffs.ApplyDiffs(cancellationToken);
+            var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+                var text = transcript.Text;
+                var commonPrefixLength = lastText.GetCommonPrefixLength(text);
                 await circuitDispatcher.InvokeAsync(() => {
                     Transcript = transcript;
+                    RetainedPart = text[..commonPrefixLength];
+                    ChangedPart = text[commonPrefixLength..];
                     StateHasChanged();
-                }).ConfigureAwait(false);
+                }).ConfigureAwait(false); // Ok here
+                lastText = text;
             }
         }
         catch (Exception e) {

@@ -1,15 +1,11 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public abstract class TimeZoneConverter
 {
     protected ILogger Log { get; }
 
-    public Task WhenInitialized { get; init; } = null!;
-
-    protected TimeZoneConverter(ILogger? log = null)
-        => Log = log ?? NullLogger.Instance;
+    protected TimeZoneConverter(IServiceProvider services)
+        => Log = services.LogFor(GetType());
 
     public DateTime ToLocalTime(Moment moment)
         => ToLocalTime(moment.ToDateTime());
@@ -27,8 +23,7 @@ public abstract class TimeZoneConverter
 
 public sealed class ClientSizeTimeZoneConverter : TimeZoneConverter
 {
-    public ClientSizeTimeZoneConverter(ILogger<ClientSizeTimeZoneConverter> log) : base(log)
-        => WhenInitialized = Task.CompletedTask;
+    public ClientSizeTimeZoneConverter(IServiceProvider services) : base(services) { }
 
     public override DateTime ToLocalTime(DateTime utcTime)
     {
@@ -39,20 +34,12 @@ public sealed class ClientSizeTimeZoneConverter : TimeZoneConverter
 
 public sealed class ServerSideTimeZoneConverter : TimeZoneConverter
 {
-    private readonly TaskSource<Unit> _whenInitializedSource;
     private TimeSpan _utcOffset;
 
-    public ServerSideTimeZoneConverter(ILogger<ServerSideTimeZoneConverter> log) : base(log)
-    {
-        _whenInitializedSource = TaskSource.New<Unit>(true);
-        WhenInitialized = _whenInitializedSource.Task;
-    }
+    public ServerSideTimeZoneConverter(IServiceProvider services) : base(services) { }
 
     public void Initialize(TimeSpan utcOffset)
-    {
-        _utcOffset = utcOffset;
-        _whenInitializedSource.TrySetResult(default);
-    }
+        => _utcOffset = utcOffset;
 
     public override DateTime ToLocalTime(DateTime utcTime)
     {

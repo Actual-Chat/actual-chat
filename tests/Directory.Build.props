@@ -43,6 +43,7 @@
     <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.Mathematics" />
+    <Using Include="ActualChat.OrdinalStringExt" Static="true" />
     <Using Include="ActualChat.Testing" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />

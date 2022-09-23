@@ -43,24 +43,25 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                BlazorRef, _session.Id).ConfigureAwait(true);
+                BlazorRef, _session.Id);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _messageProcessor.Complete().SuppressExceptions().ConfigureAwait(false);
-        await _messageProcessor.DisposeAsync().ConfigureAwait(false);
-        await StopRecordingInternal().ConfigureAwait(true);
-        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
-        // ReSharper disable once ConstantConditionalAccessQualifier
-        BlazorRef?.Dispose();
+        await _messageProcessor.Complete().SuppressExceptions();
+        await _messageProcessor.DisposeAsync();
+        await StopRecordingInternal();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     public async Task<bool> CanRecord()
     {
-        await WhenInitialized.ConfigureAwait(false);
-        return await JSRef!.InvokeAsync<bool>("canRecord").ConfigureAwait(false);
+        await WhenInitialized;
+        return await JSRef!.InvokeAsync<bool>("canRecord");
     }
 
     public IMessageProcess<StartAudioRecorderCommand> StartRecording(Symbol chatId, CancellationToken cancellationToken = default)
@@ -78,14 +79,14 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         switch (command) {
         case StartAudioRecorderCommand startCommand:
             var chatId = startCommand.ChatId;
-            await WhenInitialized.ConfigureAwait(false);
-            await StartRecordingInternal(chatId).ConfigureAwait(false);
+            await WhenInitialized;
+            await StartRecordingInternal(chatId);
             break;
         case StopAudioRecorderCommand:
             if (!WhenInitialized.IsCompletedSuccessfully)
                 throw StandardError.StateTransition(GetType(), "Recorder is not initialized yet.");
 
-            await StopRecordingInternal().ConfigureAwait(false);
+            await StopRecordingInternal();
             break;
         default:
             throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
@@ -115,11 +116,11 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
                     return; // We don't want to stop the next recording here
 
                 _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
-                await OnRecordingStopped().ConfigureAwait(true);
-            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+                await OnRecordingStopped();
+            }, TaskScheduler.Current);
 
         if (JSRef != null)
-            await JSRef.InvokeVoidAsync("stopRecording").ConfigureAwait(false);
+            await JSRef.InvokeVoidAsync("stopRecording");
     }
 
     // JS backend callback handlers

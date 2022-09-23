@@ -45,6 +45,53 @@ public static class AsyncEnumerableExt
         return Option<T>.None;
     }
 
+    public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
+        this IAsyncEnumerable<T> source,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        // ReSharper disable once PossibleMultipleEnumeration
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        try {
+            var hasCurrent = await enumerator
+                .MoveNextAsync().AsTask()
+                .WaitAsync(timeout, cancellationToken)
+                .ConfigureAwait(false);
+            // ReSharper disable once PossibleMultipleEnumeration
+            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+        }
+        catch (TimeoutException) {
+            return Option<IAsyncEnumerable<T>>.None;
+        }
+    }
+
+    public static async Task<Option<IAsyncEnumerable<T>>> IsNonEmpty<T>(
+        this IAsyncEnumerable<T> source,
+        IMomentClock clock,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        // ReSharper disable once PossibleMultipleEnumeration
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        try {
+            var hasCurrent = await enumerator
+                .MoveNextAsync().AsTask()
+                .WaitAsync(clock, timeout, cancellationToken)
+                .ConfigureAwait(false);
+            // ReSharper disable once PossibleMultipleEnumeration
+            return Option<IAsyncEnumerable<T>>.Some(source.WithUsedEnumerator(enumerator, hasCurrent));
+        }
+        catch (TimeoutException) {
+            return Option<IAsyncEnumerable<T>>.None;
+        }
+    }
+
+    public static IAsyncEnumerable<T> WithUsedEnumerator<T>(
+        this IAsyncEnumerable<T> source,
+        IAsyncEnumerator<T> usedEnumerator,
+        bool hasCurrent)
+        => new AsyncEnumerableWithUsedEnumerator<T>(source, usedEnumerator, hasCurrent);
+
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this IAsyncEnumerator<T> source,
         CancellationToken cancellationToken = default)
@@ -105,7 +152,7 @@ public static class AsyncEnumerableExt
             SingleReader = true,
         });
 
-        _ = Task.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             Exception? error = null;
             try {
                 await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -139,7 +186,7 @@ public static class AsyncEnumerableExt
         var buffer = new List<TSource>(count);
         await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             buffer.Add(item);
-            if (buffer.Count != count)
+            if (buffer.Count < count)
                 continue;
 
             yield return buffer;
@@ -151,7 +198,7 @@ public static class AsyncEnumerableExt
             yield return buffer;
     }
 
-    // originally copied from there https://github.com/dotnet/reactive/blob/9f2a8090cea4bf931d4ac3ad071f4df147f4df50/Ix.NET/Source/System.Interactive.Async/System/Linq/Operators/Merge.cs#L20
+    // Originally copied from there https://github.com/dotnet/reactive/blob/9f2a8090cea4bf931d4ac3ad071f4df147f4df50/Ix.NET/Source/System.Interactive.Async/System/Linq/Operators/Merge.cs#L20
     // fixed bugs and refactored later
 
     /// <summary>
@@ -246,6 +293,31 @@ public static class AsyncEnumerableExt
                 case > 1:
                     throw new AggregateException(errors);
                 }
+        }
+    }
+
+    public static async IAsyncEnumerable<TSource> Buffer<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        int count,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+        if (count <= 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        var buffer = new Queue<TSource>(count);
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            buffer.Enqueue(item);
+            while (buffer.Count >= count) {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return buffer.Dequeue();
+            }
+        }
+
+        while (buffer.Count > 0) {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return buffer.Dequeue();
         }
     }
 

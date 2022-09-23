@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -21,21 +22,33 @@ public abstract class HubClientBase : WorkerBase
     protected TimeSpan GetConnectionRetryDelay { get; init; } = TimeSpan.FromSeconds(0.1);
     protected RetryDelaySeq RetryDelays { get; init; } = new(0.5, 10, 0.25);
 
-    protected HubClientBase(string hubUrl, IServiceProvider services)
+    protected HubClientBase(string hubRelativeUrl, IServiceProvider services)
+        : this(services.UriMapper().ToAbsolute(hubRelativeUrl), services)
+    { }
+
+    protected HubClientBase(Uri hubUrl, IServiceProvider services)
     {
         Services = services;
         Clocks = Services.Clocks();
         Log = Services.LogFor(GetType());
 
-        HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
+        // Workaround for missing SSL CA cert for local.actual.chat
+        var hostInfo = Services.GetRequiredService<HostInfo>();
+        if (hostInfo.IsDevelopmentInstance
+            && hubUrl.ToString().OrdinalHasPrefix("https://local.actual.chat/backend/hub/", out var suffix))
+            hubUrl = new Uri("http://local.actual.chat:7080/backend/hub/" + suffix);
+
+        HubUrl = hubUrl;
         ConnectionBuilderFactory = () => {
             var builder = new HubConnectionBuilder()
                 .WithUrl(HubUrl, options => {
                     options.SkipNegotiation = true;
                     options.Transports = HttpTransportType.WebSockets;
                 });
-            if (!Constants.DebugMode.SignalR)
-                builder = builder.AddMessagePackProtocol();
+            if (Constants.DebugMode.SignalR)
+                builder.AddJsonProtocol();
+            else
+                builder.AddMessagePackProtocol();
             return builder;
         };
     }
@@ -66,7 +79,7 @@ public abstract class HubClientBase : WorkerBase
                 await using var connection = hubConnection.ConfigureAwait(false);
                 retryIndex = 0; // Reset on connect
 
-                var closedTaskSource = TaskSource.New<string?>(false);
+                var closedTaskSource = TaskSource.New<string?>(true);
                 var onClosed = (Func<Exception?, Task>) null!;
                 onClosed = error => {
                     error ??= new ChannelClosedException("SignalR connection is closed.");

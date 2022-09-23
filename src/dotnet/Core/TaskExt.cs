@@ -140,7 +140,6 @@ public static class TaskExt
             task.ConfigureAwait(false).GetAwaiter().OnCompleted(_onReady[index]);
         }
 
-
         /// <summary>
         /// Replaces the task buffer and starts awaiting new entries. Previous task buffer must be copied at the beginning of the new one.
         /// </summary>

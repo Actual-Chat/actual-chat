@@ -8,24 +8,20 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     private static ITextSerializer<ChatUserSettings> Serializer { get; } =
         SystemJsonSerializer.Default.ToTyped<ChatUserSettings>();
 
-    private readonly IAuth _auth;
-    private readonly ICommander _commander;
+    private IAuth Auth { get; }
 
     public ChatUserSettingsService(IAuth auth, ICommander commander)
         : base(commander.Services)
-    {
-        _auth = auth;
-        _commander = commander;
-    }
+        => Auth = auth;
 
     // [ComputeMethod]
     public virtual async Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user != null)
             return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
 
-        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         var serializedSettings = options[$"ChatUserSettings::{chatId}"] as string;
         if (serializedSettings.IsNullOrEmpty())
             return null;
@@ -43,16 +39,16 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
         if (Computed.IsInvalidating()) return;
 
         var (session, chatId, settings) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user != null) {
             var command1 = new IChatUserSettingsBackend.UpsertCommand(user.Id, chatId, settings);
-            await _commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
         }
         else {
             var serializedSettings = Serializer.Write(settings);
             var updatedPair = KeyValuePair.Create($"ChatUserSettings::{chatId}", serializedSettings);
             var command2 = new ISessionOptionsBackend.UpsertCommand(session, updatedPair);
-            await _commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -9,6 +9,7 @@ public class ChatDbContext : DbContextBase
 {
     public DbSet<DbChat> Chats { get; protected set; } = null!;
     public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
+    public DbSet<DbMention> Mentions { get; protected set; } = null!;
     public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
     public DbSet<DbChatOwner> ChatOwners { get; protected set; } = null!;
     public DbSet<DbChatAuthor> ChatAuthors { get; protected set; } = null!;

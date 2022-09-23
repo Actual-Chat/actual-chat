@@ -1,0 +1,26 @@
+.pic-upload {
+    @apply relative;
+    align-self: flex-start;
+}
+
+.pic-upload-picker {
+    @apply absolute bg-01 rounded-full right-0 bottom-0;
+}
+
+.pic-upload-picker {
+    @apply w-9 h-9;
+}
+
+.pic-upload-input-file-label {
+    @apply flex items-center justify-center w-full h-full cursor-pointer;
+}
+
+.pic-upload-drop-zone {
+    border: 2px dashed;
+    @apply border-primary;
+    @apply rounded-full;
+}
+
+.pic-upload-drop-zone-hover {
+    border-style: solid;
+}

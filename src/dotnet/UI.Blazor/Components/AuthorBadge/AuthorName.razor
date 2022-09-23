@@ -2,15 +2,16 @@
 @using ActualChat.Users
 
 @if (ReferenceEquals(Author, Users.Author.None)) {
+    // See author-name-spacings class - any width mentioned below has to be listed there
     var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
     var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
     var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
-    <span class="skeleton flex items-start animate-pulse">
+    <span class="skeleton flex animate-pulse @_class">
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@firstLength h-4"></span>
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
     </span>
 } else {
-    <span class="@_class">@Author.Name</span>
+    <span class="@_class" onclick="@Click">@Author.Name</span>
 }
 
 @code {
@@ -19,6 +20,7 @@
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
@@ -29,7 +31,7 @@
         if (!Class.IsNullOrEmpty())
             return Class;
 
-        var sizeClass = (int)Size > 8 ? "text-md" : "";
+        var sizeClass = (int)Size > 8 ? "text-base" : "";
         return "select-none " + sizeClass;
     }
 }

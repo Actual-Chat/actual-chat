@@ -3,7 +3,7 @@
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record Chat : IRequirementTarget
+public sealed record Chat : IHasId<Symbol>, IRequirementTarget
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),

@@ -53,9 +53,8 @@ public class NotificationModule : HostModule<NotificationSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<Notifications>();
-        services.AddSingleton<INotifications>(c => c.GetRequiredService<Notifications>());
-        services.AddSingleton<INotificationsBackend>(c => c.GetRequiredService<Notifications>());
+        fusion.AddComputeService<INotifications, Notifications>();
+        fusion.AddComputeService<INotificationsBackend, NotificationsBackend>();
 
         // Firebase
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();

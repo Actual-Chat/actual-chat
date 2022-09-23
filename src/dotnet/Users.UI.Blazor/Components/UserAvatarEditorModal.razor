@@ -1,56 +1,67 @@
-@using Stl.Reflection
+@using System.ComponentModel.DataAnnotations
 @implements IModalView<UserAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<Form Model="@M" OnValidSubmit="@OnSave">
+<Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame Title="Edit avatar">
         <Body>
-            <DataAnnotationsValidator />
-            <ValidationSummary />
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+            <PicUpload
+                ImageUploadUrl="@UploadUrl"
+                ImagePicked="OnImagePicked"
+                Size="SquareSize.Size20"
+                Title="@_form.Bio"
+                ContentId="@_form.Picture">
+                <NoPicture>
+                    <AnonymousIcon Class="w-20 h-20"/>
+                </NoPicture>
+            </PicUpload>
 
-            <FormSection InputId="@M.PictureFieldId" Label="Picture">
-                <TextBox @bind-Value="@M.Picture" Id="@M.PictureFieldId" Autofocus="true" />
+            <FormSection InputId="@_form.BioFieldId" Label="Bio">
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
             </FormSection>
 
-            <FormSection InputId="@M.BioFieldId" Label="Bio">
-                <TextBox @bind-Value="@M.Bio" Id="@M.BioFieldId" />
-            </FormSection>
-
-            <FormSection InputId="@M.IsDefaultFieldId">
-                <ToggleEdit @bind-Value="@M.IsDefault" Id="@M.IsDefaultFieldId"
-                            Label="Default for the user" />
+            <FormSection InputId="@_form.IsDefaultFieldId">
+                <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"
+                            Label="Default for the user"/>
             </FormSection>
 
             @if (!ModalModel.ChatId.IsNullOrEmpty()) {
-                <FormSection InputId="@M.IsActiveFieldId">
-                    <ToggleEdit @bind-Value="@M.IsActive" Id="@M.IsActiveFieldId"
+                <FormSection InputId="@_form.IsActiveFieldId">
+                    <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
                                 Label="Used in this chat (otherwise the default one is used)"/>
                 </FormSection>
             }
         </Body>
         <Buttons>
             <FormButtons>
-                <Button Class="btn-secondary" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" class="btn-primary">Save</Button>
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-secondary" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </FormButtons>
         </Buttons>
     </DialogFrame>
 </Form>
 
 @code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-
-    private FormModel M { get; set; } = null!;
+    private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        M = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
         var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
         var isDefault = OrdinalEquals(ModalModel.AvatarId, defaultAvatarId);
@@ -61,43 +72,48 @@
             isActive = OrdinalEquals(ModalModel.AvatarId, activeAvatarId);
         }
 
-        M.Name = userAvatar?.Name ?? "";
-        M.Picture = userAvatar?.Picture ?? "";
-        M.Bio = userAvatar?.Bio ?? "";
-        M.IsDefault = isDefault;
-        M.IsActive = isActive;
-        M.CopyToBase();
+        _form.Name = userAvatar?.Name ?? "";
+        _form.Picture = userAvatar?.Picture ?? "";
+        _form.Bio = userAvatar?.Bio ?? "";
+        _form.IsDefault = isDefault;
+        _form.IsActive = isActive;
+        _form.CopyToBase();
     }
 
     private async void OnSave() {
         var avatarId = ModalModel.AvatarId;
-        var command = new IUserAvatars.UpdateCommand(Session, avatarId, M.Name, M.Picture, M.Bio);
+        var command = new IUserAvatars.UpdateCommand(Session, avatarId, _form.Name, _form.Picture, _form.Bio);
         await UICommander.Run(command);
 
-        if (M.IsDefault && !M.Base.IsDefault)
-            await SetDefaultAvatar(M.IsDefault ? avatarId : "");
+        if (_form.IsDefault && !_form.Base.IsDefault)
+            await SetDefaultAvatar(_form.IsDefault ? avatarId : "");
 
         if (!ModalModel.ChatId.IsNullOrEmpty()) {
-            if (M.IsActive && !M.Base.IsActive)
-                await SetActiveAvatar(M.IsActive ? avatarId : "");
+            if (_form.IsActive && !_form.Base.IsActive)
+                await SetActiveAvatar(_form.IsActive ? avatarId : "");
         }
 
         CloseModal();
     }
 
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
+        StateHasChanged();
+    }
+
     private async Task SetDefaultAvatar(string avatarId)
     {
         var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 
     private async Task SetActiveAvatar(string avatarId)
     {
-        var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default).ConfigureAwait(false);
+        var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default);
         chatUserSettings ??= new();
         chatUserSettings = chatUserSettings with { AvatarId = avatarId };
         var command = new IChatUserSettings.SetCommand(Session, ModalModel.ChatId, chatUserSettings);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 
     private void OnCancel()
@@ -107,24 +123,18 @@
         => ModalInstance.CancelAsync();
 
     public sealed class FormModel : FormModel<FormModel> {
-        public string Name { get; set; } = "";
-        public string NameFieldId { get; set; } = "";
-
+        [Required, MinLength(1)] public string Name { get; set; } = "";
         public string Picture { get; set; } = "";
-        public string PictureFieldId { get; set; } = "";
-
         public string Bio { get; set; } = "";
         public string BioFieldId { get; set; } = "";
-
         public bool IsDefault { get; set; }
         public string IsDefaultFieldId { get; set; } = "";
-
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("avatar-editor", componentIdGenerator)
-        { }
+            : base("avatar-editor", componentIdGenerator) {
+        }
     }
 
     public sealed record Model(string AvatarId, string ChatId);

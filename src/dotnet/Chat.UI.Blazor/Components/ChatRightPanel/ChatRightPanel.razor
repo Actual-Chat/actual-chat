@@ -5,35 +5,37 @@
     var m = State.LatestNonErrorValue;
 }
 
-<SideNav Direction="SideNavDirection.RightToLeft"
-         Open="() => RightPanelUI.IsVisible.Value = true"
-         Closed="() => RightPanelUI.IsVisible.Value = false"
-         IsOpen="@m.IsRightPanelVisible">
-    <div class="flex-y w-full h-full border-l border-bg-04">
+<SideNav
+    Direction="SideNavDirection.RightToLeft"
+    Opened="@(() => RightPanelUI.IsVisible.Value = true)"
+    Closed="@(() => RightPanelUI.IsVisible.Value = false)"
+    IsOpen="@m.IsVisible">
+    <div class="flex-y w-full md:w-80 h-full border-l border-bg-04">
         <RightPanelHeader/>
-        <RightPanelChatInfo/>
-        <div class="flex w-full min-h-2 bg-04"></div>
-        <div class="flex flex-col w-full h-full overflow-hidden">
-            @if (m.EnableMembersUI || m.EnableIncompleteUI) {
-                <TabPanel TabsClass="wide-left-panel-tabs" BottomHill="true">
-                    @if (m.EnableMembersUI) {
-                        <Tab Title="Members" TabIndex="0">
-                            <ChatAuthors/>
-                        </Tab>
-                    }
-                    @if (m.EnableIncompleteUI) {
-                        <Tab Title="Media" TabIndex="1">
-                            <ToBeDone/>
-                        </Tab>
-                        <Tab Title="Files" TabIndex="2">
-                            <ToBeDone/>
-                        </Tab>
-                        <Tab Title="Links" TabIndex="3">
-                            <ToBeDone/>
-                        </Tab>
-                    }
-                </TabPanel>
-            }
+        <div class="flex flex-col overflow-y-auto custom-scrollbar">
+            <RightPanelChatInfo/>
+            <div class="flex flex-col border-t border-bg-04">
+                @if (m.ShowMembers || m.EnableIncompleteUI) {
+                    <TabPanel TabsClass="left-panel-tabs wide-left-panel-tabs" BottomHill="true">
+                        @if (m.ShowMembers) {
+                            <Tab Title="Members" TabIndex="0">
+                                <ChatAuthors/>
+                            </Tab>
+                        }
+                        @if (m.EnableIncompleteUI) {
+                            <Tab Title="Media" TabIndex="1">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab Title="Files" TabIndex="2">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab Title="Links" TabIndex="3">
+                                <ToBeDone/>
+                            </Tab>
+                        }
+                    </TabPanel>
+                }
+            </div>
         </div>
     </div>
 </SideNav>
@@ -45,29 +47,31 @@
     [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-        var canSeeMembers = rules.CanSeeMembers();
+        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
+        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
+        var showMembers = rules.CanSeeMembers();
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
         return new () {
-            IsRightPanelVisible = isRightPanelVisible,
+            IsVisible = isRightPanelVisible,
+            ShowMembers = showMembers,
             EnableIncompleteUI = enableIncompleteUI,
-            EnableMembersUI = canSeeMembers,
         };
     }
 
     public sealed record Model {
         public static Model None { get; } = new();
-        public bool IsRightPanelVisible { get; init; }
+
+        public bool IsVisible { get; init; }
+        public bool ShowMembers { get; init; }
         public bool EnableIncompleteUI { get; init; }
-        public bool EnableMembersUI { get; init; }
     }
 }

@@ -1,0 +1,47 @@
+@inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+@if (m.Chats.Count > 0) {
+    <div class="active-chats">
+        <div class="flex-x h-5 px-2 text-sm font-medium my-1 items-center gap-x-4">
+            <div>Active chats</div>
+        </div>
+
+        <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats"/>
+    </div>
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var activeChatIds = await ChatUI.ActiveChatIds.Use(cancellationToken);
+        var chats = (await activeChatIds
+            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+            .Collect()
+            ).SkipNullItems()
+            .Reverse()
+            .ToList();
+
+        return new Model {
+            Chats = chats,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public List<Chat> Chats { get; init; } = new ();
+    }
+}

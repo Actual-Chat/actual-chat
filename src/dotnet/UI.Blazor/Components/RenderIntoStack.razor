@@ -13,6 +13,7 @@
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public string Key { get; set; } = "";
     [Parameter] public double Order { get; set; } = 0;
     [Parameter] public bool MustPrepend { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

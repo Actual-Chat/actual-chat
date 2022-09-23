@@ -18,6 +18,9 @@ export class EscapistSubscription implements Disposable {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
         this.disposed$.next();
         this.disposed$.complete();
     }

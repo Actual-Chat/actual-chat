@@ -2,10 +2,10 @@
 @using BlazorContextMenu
 
 @if (!Contact.IsFavorite) {
-    <Item OnClick="OnClick" CssClass="context-menu-item warning-item">
+    <Item OnClick="OnClick" CssClass="context-menu-item">
         <div class="context-menu-content">
             <div class="context-menu-icon">
-                @* TODO: *@
+                <i class="icon-heart-fill text-2xl"></i>
             </div>
             <div class="context-menu-text">
                 Add to Favorites
@@ -15,15 +15,15 @@
 }
 
 @code {
-    [Inject] private UICommander Commander { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public UserContact Contact { get; set; } = null!;
 
     private async Task OnClick() {
         var diff = DiffEngine.Diff<UserContact, UserContactDiff>(Contact, Contact with { IsFavorite = true });
         var command = new IUserContacts.ChangeCommand(Session, Contact.Id, null, new Change<UserContactDiff> { Update = diff });
-        await Commander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 }

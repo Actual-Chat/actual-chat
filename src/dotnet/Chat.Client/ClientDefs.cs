@@ -19,18 +19,12 @@ public interface IChatsClientDef
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetLastIdTile0))]
-    Task<Range<long>> GetLastIdTile0(
+    [Get(nameof(GetLastIdTile))]
+    Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [Get(nameof(GetLastIdTile1))]
-    Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetEntryCount))]
@@ -75,8 +69,10 @@ public interface IChatsClientDef
     [Get(nameof(GetPeerChatContact))]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(ListMentionCandidates))]
-    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(ListMentionableAuthors))]
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(FindNext))]
+    Task<ChatEntry?> FindNext(Session session, string chatId, long? startEntryId, string text, CancellationToken cancellationToken);
 
     [Post(nameof(ChangeChat))]
     Task<Chat?> ChangeChat([Body] IChats.ChangeChatCommand command, CancellationToken cancellationToken);
@@ -141,4 +137,14 @@ public interface IChatUserSettingsClientDef
 
     [Post(nameof(Set))]
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
+}
+
+[BasePath("mentions")]
+public interface IMentionsClientDef
+{
+    [Get(nameof(GetLast))]
+    Task<Mention?> GetLast(
+        Session session,
+        Symbol chatId,
+        CancellationToken cancellationToken);
 }

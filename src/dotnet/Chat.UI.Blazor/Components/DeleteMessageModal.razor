@@ -2,7 +2,7 @@
 @implements IModalView<DeleteMessageModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
-    var model = ModalModel.MessageModel;
+    var m = ModalModel.MessageModel;
 }
 
 <DialogFrame Title="Delete message" Class="delete-message-modal">
@@ -15,23 +15,23 @@
                 <div class="flex-1">
                     <div class="ml-1 flex-x py-2">
                         <div class="">
-                            <ChatMessageAuthorCircle AuthorId="@model.Entry.AuthorId"/>
+                            <ChatMessageAuthorCircle AuthorId="@m.Entry.AuthorId"/>
                         </div>
                         <div class="flex-y float-left px-2">
-                            <ChatAuthorName AuthorId="@model.Entry.AuthorId" Class="font-bold text-03"/>
-                            <ChatMessageTimestamp Moment="model.Entry.BeginsAt"/>
+                            <ChatAuthorName AuthorId="@m.Entry.AuthorId" Class="font-bold text-03"/>
+                            <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                         </div>
                     </div>
                     <div class="content message-content custom-scrollbar">
                         @if (FirstAttachment != null) {
-                            var isImage = FirstAttachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                            var isImage = FirstAttachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                             @if (isImage) {
                                 <ImageAttachment Attachment="@FirstAttachment"/>
                             } else {
                                 <FileAttachment Attachment="@FirstAttachment"/>
                             }
                         }
-                        <CascadingValue Value="@model.Entry">
+                        <CascadingValue Value="@m.Entry">
                             <MarkupView Markup="Markup"/>
                         </CascadingValue>
                     </div>
@@ -48,10 +48,10 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private IMarkupParser MarkupParser { get; set; } = null!;
-    [Inject] private UICommander UICommander { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private TextEntryAttachment? FirstAttachment { get; set; }
     private Markup Markup { get; set; } = Markup.Empty;
@@ -64,7 +64,8 @@
         await base.OnInitializedAsync();
 
         FirstAttachment = ChatEntry.HasAttachments
-            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text).GetFirstAttachment(ChatEntry.Id, CancellationToken.None).ConfigureAwait(false)
+            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text)
+                .GetFirstAttachment(ChatEntry.Id, CancellationToken.None)
             : null;
         Markup = ChatEntry.AudioEntryId == null
             ? MarkupParser.Parse(ChatEntry.Content)

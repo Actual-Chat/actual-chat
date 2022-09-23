@@ -26,56 +26,54 @@
 }
 @* @key=... ensures child components are recreated on navigation to another chat *@
 <RenderIntoSlot Name="MainHeader">
-    <CascadingValue Value="chat" @key="chat.Id">
+    <CascadingValue Value="chat">
         <ChatHeader/>
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="-1000_000">
+<RenderIntoStack Name="SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
     <CascadingValue Value="chat">
         <HistoricalPlaybackSubHeader/>
     </CascadingValue>
 </RenderIntoStack>
-<RenderIntoStack Name="SubHeader" Order="1000_000">
-    <CascadingValue Value="chat" @key="chat.Id">
+<RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
+    <CascadingValue Value="chat">
         <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
     </CascadingValue>
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainFooter">
-    <CascadingValue Value="chat" @key="chat.Id">
+    <CascadingValue Value="chat">
         <ChatFooter/>
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000">
-    <CascadingValue Value="chat" @key="chat.Id">
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="RecordingElsewhereSubHeader">
+    <CascadingValue Value="chat">
         <RecordingElsewhereSubHeader/>
     </CascadingValue>
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightPanel">
-    <CascadingValue Value="chat" @key="chat.Id">
+    <CascadingValue Value="chat">
         <ChatRightPanel/>
     </CascadingValue>
 </RenderIntoSlot>
 
 <CascadingValue Value="chat" @key="chat.Id">
-    <ChatView @ref="_chatView" />
+    <ChatView @ref="_chatViewRef" />
 </CascadingValue>
 
 @code {
     private Model? _lastRenderedModel;
-    private ChatView _chatView = null!;
+    private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
-    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
@@ -85,8 +83,11 @@
         var chat = await Chats.Get(Session, ChatId, default);
         if (chat != null)
             fullChatId = chat.Id;
-        if (ChatUI.ActiveChatId.Value != fullChatId)
+        if (ChatUI.ActiveChatId.Value != fullChatId) {
             ChatUI.ActiveChatId.Value = fullChatId;
+            ChatUI.LinkedChatEntry.Value = null;
+            UICommander.CancelUpdateDelays();
+        }
         await base.OnParametersSetAsync();
     }
 
@@ -104,10 +105,7 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer.MinDelay,
-        };
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (ChatId.IsNullOrEmpty()) {
@@ -119,13 +117,13 @@
         if (chat == null)
             return Model.Unavailable;
 
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(Session, cancellationToken);
         var result = new Model(chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
     private void OnUnreadMessagesClick()
-        => _ = _chatView.NavigateToUnreadEntry();
+        => _ = _chatViewRef.NavigateToUnreadEntry();
 
     public sealed record Model(Chat? Chat, Account? Account) {
         public static Model None { get; } = new(null, null);

@@ -8,6 +8,7 @@ public record Author : IAuthorLike, IRequirementTarget
         VersionBasedEqualityComparer<Author, Symbol>.Instance;
 
     public static Author None { get; } = new();
+    public static Author Removed { get; } = new() { Name = "(Removed)"};
 
     public Symbol Id { get; init; } = Symbol.Empty;
     public long Version { get; init; }

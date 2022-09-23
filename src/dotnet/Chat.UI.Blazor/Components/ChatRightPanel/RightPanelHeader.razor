@@ -12,8 +12,9 @@
     @if (m.CanEditProperties()) {
         <ButtonRound
             Class="transparent"
+            Click="@OnEditChatSettingsClick"
             Tooltip="Edit"
-            Click="@OnEditChatSettingsClick">
+            TooltipPosition="TooltipPosition.Bottom">
             <i class="icon-edit text-2xl"></i>
         </ButtonRound>
     }
@@ -37,7 +38,7 @@
     protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
         => new() {
             InitialValue = ChatAuthorRules.None(Chat.Id),
-            UpdateDelayer = UpdateDelayer.MinDelay,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override Task<ChatAuthorRules> ComputeState(CancellationToken cancellationToken)

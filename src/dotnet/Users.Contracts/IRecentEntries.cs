@@ -3,14 +3,20 @@ namespace ActualChat.Users;
 public interface IRecentEntries : IComputeService
 {
     [ComputeMethod]
-    Task<ImmutableHashSet<string>> ListUserContactIds(Session session, int limit, CancellationToken cancellationToken);
+    Task<ImmutableArray<RecentEntry>> List(
+        Session session,
+        RecencyScope scope,
+        int limit,
+        CancellationToken cancellationToken);
+
     [CommandHandler]
-    Task<RecentEntry?> Update(UpdateUserContactCommand command, CancellationToken cancellationToken);
+    Task<RecentEntry?> Update(UpdateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record UpdateUserContactCommand(
+    public sealed record UpdateCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ContactId,
+        [property: DataMember] RecencyScope Scope,
+        [property: DataMember] string Key,
         [property: DataMember] Moment Date
     ) : ISessionCommand<RecentEntry?>;
 }

@@ -20,9 +20,9 @@
     public Dictionary<string, object> InputAttributes { get; set; } = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender) {
+        if (!firstRender)
             return;
-        }
+
         BlazorRef = DotNetObjectReference.Create(this);
         var options = new Options {
             MaxSize = MaxSize,
@@ -37,8 +37,8 @@
     }
 
     [JSInvokable]
-    public async Task OnUploaded(string fileUrl) {
-        await Uploaded.InvokeAsync(fileUrl).ConfigureAwait(false);
+    public async Task OnUploaded(string contentId) {
+        await Uploaded.InvokeAsync(contentId).ConfigureAwait(false);
     }
 
     [JSInvokable]

@@ -391,7 +391,7 @@ public ref struct SpanReader
     private string? ReadString(Encoding decoder, int size)
     {
         if (size == 0)
-            return string.Empty;
+            return "";
 
         if (Position + size > _span.Length)
             return null;

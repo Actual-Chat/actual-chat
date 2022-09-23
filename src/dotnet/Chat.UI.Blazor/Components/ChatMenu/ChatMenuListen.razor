@@ -12,9 +12,7 @@
     <Item OnClick="@OnListenClick" CssClass="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
-                <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M18 19C16.897 19 16 18.103 16 17C16 15.897 16.897 15 18 15C19.103 15 20 15.897 20 17C20 18.103 19.103 19 18 19ZM6 15C7.103 15 8 15.897 8 17C8 18.103 7.103 19 6 19C4.897 19 4 18.103 4 17C4 15.897 4.897 15 6 15ZM12 2C6.486 2 2 6.65 2 12.366V17C2 19.206 3.794 21 6 21C8.206 21 10 19.206 10 17C10 14.794 8.206 13 6 13C5.268 13 4.591 13.212 4 13.557V12.366C4 7.753 7.589 4 12 4C16.411 4 20 7.753 20 12.366V13.557C19.409 13.212 18.732 13 18 13C15.794 13 14 14.794 14 17C14 19.206 15.794 21 18 21C20.206 21 22 19.206 22 17V12.366C22 6.65 17.514 2 12 2Z"></path>
-                </svg>
+                <i class="icon-listen text-2xl"></i>
             </div>
             <div class="context-menu-text">
                 Listen
@@ -44,14 +42,14 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnListenClick()
-        => ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
+        => _ = ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
             InitialValue = SingleChatPlaybackState.None,
-            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetSingleChatPlaybackState(Chat.Id, cancellationToken);
+        => ChatUI.GetPlaybackState(Chat.Id, cancellationToken);
 }

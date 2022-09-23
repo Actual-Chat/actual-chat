@@ -15,22 +15,22 @@ public class RemoteInvalidationBugTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var t = appHost.NewWebClientTester();
 
-        var c1a = await Computed.Capture(_ => t.Auth.GetUser(t.Session));
+        var c1a = await Computed.Capture(() => t.Auth.GetUser(t.Session));
         var u1a = c1a.Value;
         u1a.Should().BeNull();
 
         // var altAuth = (DbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>) t.Auth;
-        // var c1aa = await Computed.Capture(_ => altAuth.GetUser(t.Session));
+        // var c1aa = await Computed.Capture(() => altAuth.GetUser(t.Session));
         // c1aa.Should().BeSameAs(c1a);
 
-        var c1b = await Computed.Capture(_ => t.ClientAuth.GetUser(t.Session));
+        var c1b = await Computed.Capture(() => t.ClientAuth.GetUser(t.Session));
         var u1b = c1b.Value;
         u1b.Should().BeNull();
 
         var r1 = ((IReplicaMethodComputed)c1b).Replica!;
         var publisher = t.AppServices.GetRequiredService<IPublisher>();
         var p1 = publisher.Get(r1.PublicationRef.PublicationId)!;
-        var c1bb = (IComputed<User>) p1.State.UntypedComputed;
+        var c1bb = (Computed<User>) p1.State.UntypedComputed;
         var i1a = (ComputeMethodInput) c1a.Input;
         var i1bb =  (ComputeMethodInput) c1bb.Input;
         i1a.Function.Should().BeSameAs(i1bb.Function);
@@ -46,10 +46,10 @@ public class RemoteInvalidationBugTest : AppHostTestBase
         await t.SignIn(new User("Bob"));
         await Task.Delay(100);
 
-        var c2a = await Computed.Capture(_ => t.Auth.GetUser(t.Session));
+        var c2a = await Computed.Capture(() => t.Auth.GetUser(t.Session));
         var u2a = c2a.Value;
         u2a.Should().NotBeNull();
-        var c2b = await Computed.Capture(_ => t.ClientAuth.GetUser(t.Session));
+        var c2b = await Computed.Capture(() => t.ClientAuth.GetUser(t.Session));
         var u2b = c2b.Value;
         u2b.Should().NotBeNull();
     }

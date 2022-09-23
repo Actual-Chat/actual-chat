@@ -18,8 +18,11 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpGet, Publish]
-    public Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.Get(session, chatId, cancellationToken);
+    // NOTE(AY): We use string? chatId here to make sure this method can be invoked with "" -
+    // and even though this is not valid parameter value, we want it to pass ASP.NET Core
+    // parameter validation & trigger the error later.
+    public Task<Chat?> Get(Session session, string? chatId, CancellationToken cancellationToken)
+        => _service.Get(session, chatId ?? "", cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
@@ -52,20 +55,13 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Range<long>> GetLastIdTile0(
+    public Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken)
-        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        CancellationToken cancellationToken)
-        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
+        => _service.GetLastIdTile(session, chatId, entryType, layerIndex, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatAuthorRules> GetRules(
@@ -96,9 +92,21 @@ public class ChatsController : ControllerBase, IChats
     public Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
         => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
-    [HttpGet]
-    public Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.ListMentionCandidates(session, chatId, cancellationToken);
+    [HttpGet, Publish]
+    public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.ListMentionableAuthors(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken)
+        => _service.FindNext(session, chatId,
+            startEntryId,
+            text,
+            cancellationToken);
 
     // Commands
 

@@ -1,37 +1,26 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<QuotedMessage.Model?>
-
 @{
     var model = State.LatestNonErrorValue;
-}
+    if (model == null)
+        return;
 
-@if (model == null) {
-    return;
-}
-
-@{
     var message = model.Message;
     var entry = message.Entry;
+    var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
+    authorNameCls += "font-bold text-base min-w-fit";
 }
 
-<div class="quoted-message h-5" @onclick="OnQuoteClick">
-    <div class="mx-2 min-w-8 justify-end">
-        <i class="icon-share-fill text-xl -mt-1"></i>
-    </div>
-    <QuotedMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-    <div class="flex-x items-baseline overflow-hidden gap-x-1 max-w-full">
-        <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-base min-w-fit"/>
-        <div class="flex-x items-center text-sm pointer-events-none overflow-hidden">
-            <div class="pointer-cursor truncate mr-2">
-                @model.Quote
+<div class="quoted-message" @onclick="OnQuoteClick">
+    <div class="block bg-primary left-line min-h-10"></div>
+    <div class="flex-y w-full px-2 opacity-90">
+        <div class="flex pl-0.5">
+            <ChatAuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
+        </div>
+        <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
+            <div class="flex-x w-full overflow-hidden">
+                <div class="truncate font-medium pointer-cursor text-base text-03">@model.Quote</div>
             </div>
-            @if (model.HasAttachments) {
-                <div class="min-w-fit">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="-1 -1 32 32">
-                        <path d="M21.586 10.461l-10.05 10.075c-1.95 1.949-5.122 1.949-7.071 0s-1.95-5.122 0-7.072l10.628-10.585c1.17-1.17 3.073-1.17 4.243 0 1.169 1.17 1.17 3.072 0 4.242l-8.507 8.464c-.39.39-1.024.39-1.414 0s-.39-1.024 0-1.414l7.093-7.05-1.415-1.414-7.093 7.049c-1.172 1.172-1.171 3.073 0 4.244s3.071 1.171 4.242 0l8.507-8.464c.977-.977 1.464-2.256 1.464-3.536 0-2.769-2.246-4.999-5-4.999-1.28 0-2.559.488-3.536 1.465l-10.627 10.583c-1.366 1.368-2.05 3.159-2.05 4.951 0 3.863 3.13 7 7 7 1.792 0 3.583-.684 4.95-2.05l10.05-10.075-1.414-1.414z"/>
-                    </svg>
-                </div>
-            }
         </div>
     </div>
 </div>
@@ -41,11 +30,11 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
-    [Inject] private IEventAggregator EventAggregator { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ChatMarkupToTextConverter ChatMarkupToTextConverter { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -57,19 +46,17 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    protected override async Task OnInitializedAsync() {
-        await TimeZoneConverter.WhenInitialized.ConfigureAwait(false);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(false);
-    }
+    protected override void OnParametersSet()
+        => MarkupHub.ChatId = Message.Entry.ChatId;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var hasAttachments = Message.Entry.HasAttachments;
-        var text = await ChatMarkupToTextConverter.Convert(Message.Entry.Content, cancellationToken);
+        var chatEntry = Message.Entry;
+        var hasAttachments = chatEntry.HasAttachments;
+        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
+        var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        return new (Message, _quoteText, hasAttachments);
+        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
+        return new (Message, _quoteText, principalId);
     }
 
     private void OnChatAuthorClick()
@@ -77,11 +64,11 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await EventAggregator.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }
 
-    public record Model(ChatMessageModel Message, string Quote, bool HasAttachments);
+    public record Model(ChatMessageModel Message, string Quote, Symbol PrincipalId);
 
 }

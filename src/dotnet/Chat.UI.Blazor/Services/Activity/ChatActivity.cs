@@ -27,7 +27,7 @@ public class ChatActivity
 
     public async Task<IChatRecordingActivity> GetRecordingActivity(Symbol chatId, CancellationToken cancellationToken)
     {
-        var lease = await _activityPool.Rent(chatId, cancellationToken).ConfigureAwait(false);
+        var lease = await _activityPool.Rent(chatId, cancellationToken).ConfigureAwait(false); // Ok here
         return new ChatRecordingActivityReplica(lease);
     }
 

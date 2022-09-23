@@ -39,7 +39,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             throw new ArgumentNullException(nameof(message));
         Start();
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
-        _ = Task.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             try {
                 await Queue!.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);
             }
@@ -113,7 +113,10 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         {
             if (message is not (ITerminatorMessage or IMaybeTerminatorMessage { IsTerminator: true }))
                 return false;
-            _ = Task.Run(() => Queue.Writer.TryComplete(), CancellationToken.None);
+            _ = BackgroundTask.Run(() => {
+                Queue.Writer.TryComplete();
+                return Task.CompletedTask;
+            }, CancellationToken.None);
             return true;
         }
     }

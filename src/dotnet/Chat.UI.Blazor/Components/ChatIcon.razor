@@ -1,0 +1,36 @@
+@switch (Chat.ChatType) {
+    case ChatType.Group:
+        <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="Size"/>
+        break;
+    case ChatType.Peer:
+        <UserAuthorCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="Size"/>
+        break;
+    default:
+        throw new ArgumentOutOfRangeException(nameof(Chat.ChatType), Chat.ChatType, null);
+}
+
+@code {
+    private Symbol _peerChatTargetUserId;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public Chat Chat { get; set; } = null!;
+    [Parameter] public bool ShowPresence { get; set; }
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+
+    protected override async Task OnParametersSetAsync() {
+        _peerChatTargetUserId = await GetPeerChatTargetUserId();
+    }
+
+    private async Task<Symbol> GetPeerChatTargetUserId() {
+        if (Chat.ChatType != ChatType.Peer)
+            return Symbol.Empty;
+
+        var account = await Accounts.Get(Session, CancellationToken.None);
+        if (account is null)
+            return Symbol.Empty;
+
+        return new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.User.Id);
+    }
+}

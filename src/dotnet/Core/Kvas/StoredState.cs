@@ -22,7 +22,7 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
         : base(options, services, false)
     {
         Settings = options;
-        WhenReadSource = TaskSource.New<Unit>(false);
+        WhenReadSource = TaskSource.New<Unit>(true);
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -36,30 +36,38 @@ public class StoredState<T> : MutableState<T>, IStoredState<T>
         if (oldSnapshot == null!) {
             // Initial value
             var firstSnapshot = Snapshot;
-            using var _ = ExecutionContextExt.SuppressFlow();
-            Task.Run(async () => {
+            BackgroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
-                    valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    Log.LogError(e, "Failed to read the initial value");
-                }
-                if (valueOpt.IsSome(out var value)) {
-                    lock (Lock) {
-                        if (Snapshot == firstSnapshot) {
-                            _snapshotOnSync = firstSnapshot;
-                            Set(value);
+                    try {
+                        valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        Log.LogError(e, "Failed to read the initial value");
+                    }
+                    if (valueOpt.IsSome(out var value)) {
+                        lock (Lock) {
+                            if (Snapshot == firstSnapshot) {
+                                _snapshotOnSync = firstSnapshot;
+                                Set(value);
+                            }
                         }
                     }
                 }
-                WhenReadSource.TrySetResult(default);
+                finally {
+                    WhenReadSource.TrySetResult(default);
+                }
             });
         }
         else {
-            if (oldSnapshot == _snapshotOnSync)
-                _snapshotOnSync = null; // Let's make it available for GC
-            else if (computed.IsValue(out var value))
+            // Subsequent change
+            lock (Lock) {
+                if (oldSnapshot == _snapshotOnSync) {
+                    _snapshotOnSync = null; // Let's make it available for GC
+                    return computed;
+                }
+            }
+            if (computed.IsValue(out var value))
                 _ = Settings.Write(value, CancellationToken.None);
         }
         return computed;

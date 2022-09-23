@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.7")
+                .HasAnnotation("ProductVersion", "6.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -325,6 +325,38 @@ namespace ActualChat.Chat.Migrations
                         .HasDatabaseName("ix_chat_roles_chat_id_name");
 
                     b.ToTable("chat_roles");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AuthorId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
+
+                    b.Property<long>("EntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("entry_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mentions");
+
+                    b.HasIndex("ChatId", "AuthorId", "EntryId")
+                        .HasDatabaseName("ix_mentions_chat_id_author_id_entry_id");
+
+                    b.HasIndex("ChatId", "EntryId", "AuthorId")
+                        .HasDatabaseName("ix_mentions_chat_id_entry_id_author_id");
+
+                    b.ToTable("mentions");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>

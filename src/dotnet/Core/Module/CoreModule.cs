@@ -1,9 +1,11 @@
 ﻿using ActualChat.Blobs.Internal;
+using ActualChat.DependencyInjection;
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
+using Stl.Fusion.Internal;
 using Stl.Plugins;
 
 namespace ActualChat.Module;
@@ -26,6 +28,9 @@ public class CoreModule : HostModule<CoreSettings>
             .Distinct()
             .ToList();
 
+        // Common services
+        services.AddTransient(typeof(Lazy<>), typeof(LazyService<>));
+
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options() {
             ScannedAssemblies = pluginAssemblies,
@@ -43,7 +48,12 @@ public class CoreModule : HostModule<CoreSettings>
 
         // Fusion
         var fusion = services.AddFusion();
+        fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
+
+        // ComputedGraphPruner - added here solely to pass correct ILogger to it
+        services.AddSingleton(new ComputedGraphPruner.Options());
+        services.AddSingleton<ComputedGraphPruner>();
 
         // Features
         services.AddScoped<Features>();

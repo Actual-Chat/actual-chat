@@ -1,7 +1,0 @@
-@using Stl.Extensibility
-@inherits MarkupViewBase<ChatEntryTypeMarkup>
-@attribute [MatchFor(typeof(ChatEntryTypeMarkup), typeof(IMarkupView))]
-@{
-    var cls = Markup.Type == ChatEntryType.Audio ? "icon-volume-up" : "icon-text";
-}
-<span class="chat-entry-type-markup @cls"></span>

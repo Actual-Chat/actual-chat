@@ -116,9 +116,12 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             var serverAddressesFeature =
                 server.Features.Get<IServerAddressesFeature>()
                 ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
-            baseUri = serverAddressesFeature.Addresses.First();
+            baseUri = serverAddressesFeature.Addresses.FirstOrDefault()
+                ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                    "No server addresses found. Most likely you trying to use UriMapper before the server has started.");
             return new UriMapper(baseUri);
         });
+        services.AddSingleton<ContentUrlMapper>();
 
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
@@ -162,8 +165,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
             o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
-            o.MaxBufferedUnacknowledgedRenderBatches = 100; // Default is 10
+            o.MaxBufferedUnacknowledgedRenderBatches = 1000; // Default is 10
             o.DetailedErrors = true;
+        }).AddHubOptions(o => {
+            o.MaximumParallelInvocationsPerClient = 4;
         });
         fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
 

@@ -1,0 +1,8 @@
+<Toggle Value="@(ThemeUI.CurrentTheme.ValueOrDefault == Theme.Dark)" ValueChanged="OnThemeChanged" Class="toggle-sm"/>
+
+@code {
+    [Inject] ThemeUI ThemeUI { get; init; } = null!;
+
+    private void OnThemeChanged(bool isDark)
+        => ThemeUI.CurrentTheme.Value = isDark ? Theme.Dark : Theme.Light;
+}

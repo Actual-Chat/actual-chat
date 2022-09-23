@@ -32,7 +32,7 @@
 
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
-        await UICommander.Run(command).ConfigureAwait(false);
+        await UICommander.Run(command);
     }
 
     private void EditAvatar(string avatarId) {

@@ -44,10 +44,14 @@ public interface IUserAvatarsClientDef
 [BasePath("recentEntries")]
 public interface IRecentEntriesClientDef
 {
-    [Get(nameof(ListUserContactIds))]
-    Task<ImmutableHashSet<string>> ListUserContactIds(Session session, int limit, CancellationToken cancellationToken);
+    [Get(nameof(List))]
+    Task<ImmutableArray<RecentEntry>> List(
+        Session session,
+        RecencyScope scope,
+        int limit,
+        CancellationToken cancellationToken);
     [Post(nameof(Update))]
-    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateUserContactCommand command, CancellationToken cancellationToken);
+    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatReadPositions")]

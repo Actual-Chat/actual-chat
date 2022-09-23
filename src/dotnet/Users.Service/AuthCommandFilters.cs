@@ -190,18 +190,12 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
     private void InvalidateUserPresenceIfOffline(string userId)
     {
-        if (userId.IsNullOrEmpty())
-            return;
-
         var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
-        if (c?.IsConsistent() != true)
-            return;
-        if (c.IsValue(out var v) && v is not Presence.Offline)
-            return;
+        if (c == null || c.IsInvalidated())
+            return; // No computed to invalidate
+        if (c.IsConsistent() && c.IsValue(out var v) && v is not Presence.Offline)
+            return; // Consistent + already in desirable (non-Offline) state
 
-        // We invalidate only when there is a cached value, and it is
-        // either false or an error, because the only change that may happen
-        // due to sign-in is that this value becomes true.
         _ = UserPresences.Get(userId, default);
     }
 

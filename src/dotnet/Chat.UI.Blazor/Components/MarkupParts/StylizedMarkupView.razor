@@ -2,10 +2,14 @@
 @inherits MarkupViewBase<StylizedMarkup>
 @attribute [MatchFor(typeof(StylizedMarkup), typeof(IMarkupView))]
 
-@if (Markup.Style == TextStyle.Bold) {
-    <strong><MarkupView Markup="@Markup.Content"/></strong>
-} else if (Markup.Style == TextStyle.Italic) {
-    <em><MarkupView Markup="@Markup.Content"/></em>
-} else {
+@switch (Markup.Style) {
+case TextStyle.Bold:
+    <strong class="stylized-text-markup"><MarkupView Markup="@Markup.Content"/></strong>
+    break;
+case TextStyle.Italic:
+    <em class="stylized-text-markup"><MarkupView Markup="@Markup.Content"/></em>
+    break;
+default:
     <MarkupView Markup="@Markup.Content"/>
+    break;
 }

@@ -1,18 +1,25 @@
 import './chat-message-editor.css';
-import { SlateEditorHandle } from '../SlateEditor/slate-editor-handle';
+import { debounce } from 'debounce';
+import { MarkupEditor } from '../MarkupEditor/markup-editor';
 
 const LogScope: string = 'MessageEditor';
 
 export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
+    private markupEditor: MarkupEditor;
     private readonly input: HTMLDivElement;
-    private readonly filesPicker: HTMLInputElement;
+    private readonly filePicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
+    private readonly attachButton: HTMLButtonElement;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
-    private isTextMode: boolean = false;
-    private isPanelOpened: boolean = false;
+    private lastHeight: number;
+    private lastWidth: number;
+    private isMobile: boolean = null; // Intended: updateLayout needs this on the first run
+    private isNarrowMode: boolean = null; // Intended: updateLayout needs this on the first run
+    private isTextMode: boolean = null; // Intended: updateTextMode needs this on the first run
+    private isPanelOpen: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
 
@@ -24,169 +31,48 @@ export class ChatMessageEditor {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
-        this.filesPicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
+        this.filePicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
         this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
         this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
 
+        this.updateLayout();
+        this.updateTextMode();
+
         // Wiring up event listeners
-        this.input.addEventListener('paste', this.inputPasteListener);
-        this.input.addEventListener('focusin', this.inputFocusInListener);
-        this.input.addEventListener('focusout', this.inputFocusOutListener);
-        this.filesPicker.addEventListener('change', this.filesPickerChangeListener);
-        this.postButton.addEventListener('click', this.postClickListener);
-        this.notifyPanel.addEventListener('click', this.notifyPanelListener);
-        this.notifyPanelObserver = new MutationObserver(this.syncAttachDropdownVisibility);
+        window.visualViewport.addEventListener('resize', debounce(this.onWindowResize, 100));
+        this.input.addEventListener('paste', this.onInputPaste);
+        this.filePicker.addEventListener('change', this.onFilePickerChange);
+        this.attachButton.addEventListener('click', this.onAttachButtonClick);
+        this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
+
+        this.notifyPanelObserver = new MutationObserver(this.updateAttachDropdown);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
-        this.changeMode();
     }
 
-    private notifyPanelListener = (async (event: Event & { target: Element; }) => {
-        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
-            if (this.notifyPanel.classList.contains('panel-opening')) {
-                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
-            }
-        }
-    });
-
-    private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
-        // Get pasted data via clipboard API
-        // We need to handle only files pasting.
-        // Text pasting is controlled by slate editor.
-        const clipboardData = event.clipboardData;
-        for (const item of clipboardData.items) {
-            if (item.kind === 'file') {
-                const file = item.getAsFile();
-                void this.addAttachment(file);
-                event.preventDefault();
-            }
-        }
-    });
-
-    private inputFocusInListener = ((event: Event & { target: Element; }) => {
-        if (!this.editorDiv.classList.contains('narrow-panel'))
-            this.editorDiv.classList.add('narrow-panel');
-    });
-
-    private inputFocusOutListener = ((event: Event & { target: Element; }) => {
-        setTimeout(() => {
-            this.editorDiv.classList.remove('narrow-panel');
-        }, 200)
-    });
-
-    private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filesPicker.files) {
-            const added : boolean = await this.addAttachment(file);
-            if (!added)
-                break;
-        }
-        this.filesPicker.value = '';
-    });
-
-    private postClickListener = ((event: MouseEvent & { target: Element; }) => {
-        const input = this.input.querySelector('[role="textbox"]') as HTMLDivElement;
-        input.focus();
-        this.changeMode();
-    });
-
-    private syncAttachDropdownVisibility = () => {
-        const isPanelOpened = this.notifyPanel.classList.contains('panel-opening');
-        if (this.isPanelOpened === isPanelOpened)
-            return;
-        this.isPanelOpened = isPanelOpened;
-        const attach = this.editorDiv.querySelector(':scope .dropdown');
-        const label = this.editorDiv.querySelector(':scope label');
-        if (isPanelOpened) {
-            setTimeout(() => {
-                attach.classList.add('hidden');
-                label.classList.add('w-0');
-            }, 500);
-        } else {
-            attach.classList.remove('hidden');
-            label.classList.remove('w-0');
-        }
-
-        if (this.notifyPanel.classList.contains('panel-closing')) {
-            setTimeout(() => {
-                this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
-            }, 500);
-        }
-    };
-
-    private changeMode() {
-        const text = this.getText();
-        const isTextMode = text != '' || this.attachments.size > 0;
-        if (this.isTextMode === isTextMode)
-            return;
-        this.isTextMode = isTextMode;
-        if (isTextMode)
-            this.editorDiv.classList.add('text-mode');
-        else
-            this.editorDiv.classList.remove('text-mode');
-        this.playbackAnimationOff();
-        this.notifyPanelAnimationOff();
+    public dispose() {
+        window.visualViewport.removeEventListener('resize', this.onWindowResize);
+        this.input.removeEventListener('paste', this.onInputPaste);
+        this.filePicker.removeEventListener('change', this.onFilePickerChange);
+        this.attachButton.removeEventListener('click', this.onAttachButtonClick);
+        this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
+        this.notifyPanelObserver.disconnect();
     }
 
-    private notifyPanelAnimationOff() : void {
-        let classes = this.notifyPanel.classList;
-        classes.remove('panel-opening', 'panel-closing');
+    // Public methods
+
+    public onMarkupEditorReady(markupEditor: MarkupEditor)
+    {
+        this.markupEditor = markupEditor;
+        markupEditor.changed = () => this.updateTextMode();
+        this.updateTextMode();
+        if (this.isMobile)
+            this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
     }
 
-    private playbackAnimationOff() : void {
-        const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
-        let classes = playbackWrapper.classList;
-        if (classes.contains('listen-on-to-off')) {
-            classes.replace('listen-on-to-off', 'listen-off');
-        }
-        else if (classes.contains('listen-off-to-on')) {
-            classes.replace('listen-off-to-on', 'listen-on');
-        }
-    }
-
-    private getText(): string {
-        const editorHandle = this.editorHandle();
-        if (!editorHandle)
-            return '';
-        return editorHandle.getText();
-    }
-
-    private async addAttachment(file: File): Promise<boolean> {
-        const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
-        if (file.type.startsWith('image'))
-            attachment.Url = URL.createObjectURL(file);
-        const added : boolean = await this.blazorRef.invokeMethodAsync('AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
-        if (!added) {
-            if (attachment.Url)
-                URL.revokeObjectURL(attachment.Url);
-        }
-        else {
-            this.attachmentsIdSeed++;
-            this.attachments.set(attachment.Id, attachment);
-            this.changeMode();
-        }
-        return added;
-    }
-
-    public removeAttachment(id: number) {
-        const attachment = this.attachments.get(id);
-        this.attachments.delete(id);
-        if (attachment && attachment.Url)
-            URL.revokeObjectURL(attachment.Url);
-        this.changeMode();
-    }
-
-    public clearAttachments() {
-        const attachments = this.attachments;
-        attachments.forEach(a => {
-            if (a && a.Url)
-                URL.revokeObjectURL(a.Url);
-        });
-        this.attachments.clear();
-        this.changeMode();
-    }
-
-    public postMessage = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
+    public post = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachmentsList = [];
         if (this.attachments.size > 0) {
@@ -224,44 +110,199 @@ export class ChatMessageEditor {
         return Number(entryId);
     };
 
-    public onPostSucceeded = () => {
+    public onPosted = () => {
         for (const attachment of this.attachments.values()) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
         }
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
-        this.changeMode();
+        this.updateTextMode();
     };
 
-    public showFilesPicker = () => {
-        this.filesPicker.click();
+    public showFilePicker = () => {
+        this.filePicker.click();
     };
 
-    public onSlateEditorRendered()
-    {
-        const editorHandle = this.editorHandle();
-        if (!editorHandle) {
-            console.error('SlateEditorHandle is undefined');
-            return;
-        }
-        this.changeMode();
-        editorHandle.onHasContentChanged = () => this.changeMode();
+    public removeAttachment(id: number) {
+        const attachment = this.attachments.get(id);
+        this.attachments.delete(id);
+        if (attachment && attachment.Url)
+            URL.revokeObjectURL(attachment.Url);
+        this.updateTextMode();
     }
 
-    private editorHandle = () : SlateEditorHandle => {
-        // @ts-ignore
-        return this.input.editorHandle as SlateEditorHandle;
+    public clearAttachments() {
+        const attachments = this.attachments;
+        attachments.forEach(a => {
+            if (a && a.Url)
+                URL.revokeObjectURL(a.Url);
+        });
+        this.attachments.clear();
+        this.updateTextMode();
+    }
+
+    // Event handlers
+
+    private onWindowResize = () => this.updateLayout()
+
+    private onAttachButtonClick = ((event: Event & { target: Element; }) => {
+        if (this.isNarrowMode)
+            this.markupEditor.focus();
+    });
+
+    private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
+        if (this.isNarrowMode) {
+            this.markupEditor.focus();
+            this.updateTextMode();
+        }
+    });
+
+    private onNotifyPanelClick = (async (event: Event & { target: Element; }) => {
+        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
+            if (this.notifyPanel.classList.contains('panel-opening')) {
+                await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
+            }
+        }
+    });
+
+    private onInputPaste = ((event: ClipboardEvent & { target: Element; }) => {
+        // Get pasted data via clipboard API
+        // We need to handle only files pasting.
+        // Text pasting is controlled by markup editor.
+        const clipboardData = event.clipboardData;
+        for (const item of clipboardData.items) {
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                void this.addAttachment(file);
+                event.preventDefault();
+            }
+        }
+    });
+
+    private onFilePickerChange = (async (event: Event & { target: Element; }) => {
+        for (const file of this.filePicker.files) {
+            const added : boolean = await this.addAttachment(file);
+            if (!added)
+                break;
+        }
+        this.filePicker.value = '';
+    });
+
+    // Private methods
+
+    private updateLayout = () => {
+        const width = window.visualViewport.width;
+        const height = window.visualViewport.height;
+        const isMobile = width < 1024;
+
+        if (this.isMobile === isMobile) {
+            if (!isMobile)
+                return; // Nothing to update in desktop mode
+
+            if (width != this.lastWidth) {
+                // Orientation changed
+                this.lastWidth = width;
+                this.lastHeight = height;
+                return;
+            }
+            if (height == this.lastHeight)
+                return;
+
+            // Maybe mobile keyboard pull-out / pull-in
+            const minHeight = Math.min(height, this.lastHeight);
+            const maxHeight = Math.max(height, this.lastHeight);
+            const keyboardHeight = maxHeight - minHeight;
+            console.debug(`${LogScope}.updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
+            if (keyboardHeight >= 0.2 * maxHeight) {
+                // Mobile keyboard pull-out / pull-in
+                const isNarrowMode = Math.abs(height - minHeight) < 0.01; // FP: height == minHeight
+                if (this.isNarrowMode !== isNarrowMode) {
+                    this.isNarrowMode = isNarrowMode;
+                    if (isNarrowMode)
+                        this.editorDiv.classList.add('narrow-panel');
+                    else
+                        this.editorDiv.classList.remove('narrow-panel');
+                }
+            }
+            this.lastHeight = height;
+            return;
+        }
+
+        this.isMobile = isMobile;
+        this.lastHeight = height;
+        this.lastWidth = width;
+        const buttons = this.editorDiv.querySelectorAll(':scope div.mobile-control-panel .btn');
+        if (isMobile)
+            buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
+        else
+            buttons.forEach(b => b.removeEventListener('click', this.onReturnFocusOnInput));
+    }
+
+    private updateTextMode() {
+        const text = this.markupEditor?.getText() ?? '';
+        const isTextMode = text != '' || this.attachments.size > 0;
+        if (this.isTextMode === isTextMode)
+            return;
+        this.isTextMode = isTextMode;
+        if (isTextMode)
+            this.editorDiv.classList.add('text-mode');
+        else
+            this.editorDiv.classList.remove('text-mode');
+        this.endAnimations();
+    }
+
+    private updateAttachDropdown = () => {
+        const isPanelOpen = this.notifyPanel.classList.contains('panel-opening');
+        if (this.isPanelOpen === isPanelOpen)
+            return;
+        this.isPanelOpen = isPanelOpen;
+        const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
+        const label = this.editorDiv.querySelector(':scope label');
+        if (isPanelOpen) {
+            setTimeout(() => {
+                attach.classList.add('hidden');
+                label.classList.add('w-0');
+                this.markupEditor.isEditable(false);
+            }, 150);
+        } else {
+            attach.classList.remove('hidden');
+            label.classList.remove('w-0');
+            this.markupEditor.isEditable(true);
+        }
+
+        if (this.notifyPanel.classList.contains('panel-closing')) {
+            setTimeout(() => {
+                this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
+            }, 150);
+        }
     };
 
-    public dispose() {
-        this.input.removeEventListener('paste', this.inputPasteListener);
-        this.input.removeEventListener('focusin', this.inputFocusInListener);
-        this.input.removeEventListener('focusout', this.inputFocusOutListener);
-        this.filesPicker.removeEventListener('change', this.filesPickerChangeListener);
-        this.postButton.removeEventListener('click', this.postClickListener);
-        this.notifyPanel.removeEventListener('click', this.notifyPanelListener);
-        this.notifyPanelObserver.disconnect();
+    private endAnimations() : void {
+        this.notifyPanel.classList.remove('panel-opening', 'panel-closing');
+        const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
+        if (!playbackWrapper)
+            return;
+        playbackWrapper.classList.replace('listen-on-to-off', 'listen-off');
+        playbackWrapper.classList.replace('listen-off-to-on', 'listen-on');
+    }
+
+    private async addAttachment(file: File): Promise<boolean> {
+        const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
+        if (file.type.startsWith('image'))
+            attachment.Url = URL.createObjectURL(file);
+        const added : boolean = await this.blazorRef.invokeMethodAsync(
+            'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
+        if (!added) {
+            if (attachment.Url)
+                URL.revokeObjectURL(attachment.Url);
+        }
+        else {
+            this.attachmentsIdSeed++;
+            this.attachments.set(attachment.Id, attachment);
+            this.updateTextMode();
+        }
+        return added;
     }
 }
 

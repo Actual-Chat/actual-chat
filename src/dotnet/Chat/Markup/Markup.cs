@@ -2,7 +2,7 @@
 
 public abstract record Markup
 {
-    public static Markup Empty { get; } = new PlainTextMarkup("");
+    public static Markup Empty => PlainTextMarkup.Empty;
 
     public static Markup Join(Markup first, Markup second)
     {
@@ -36,7 +36,7 @@ public abstract record Markup
         };
     }
 
-    public abstract string ToMarkupText();
+    public abstract string Format();
 
     public virtual Markup Simplify()
         => this;

@@ -22,7 +22,6 @@ const IronPantsHandleTimeout: number = 1600;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
-const StickyEdgeTolerance: number = 50;
 const RenderTimeout: number = 640;
 const UpdateTimeout: number = 1200;
 
@@ -63,6 +62,7 @@ export class VirtualList implements VirtualListAccessor {
     private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
+    private _scrollTime: number | null = null;
 
     private _lastPlan?: VirtualListRenderPlan = null;
     private _plan: VirtualListRenderPlan;
@@ -82,7 +82,7 @@ export class VirtualList implements VirtualListAccessor {
         bufferZoneSize: number,
         debugMode: boolean) {
         if (debugMode) {
-            console.log(`${LogScope}: .ctor`);
+            console.log(`${LogScope}.ctor`);
             window['virtualList'] = this;
         }
 
@@ -309,6 +309,26 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
         if (hasChanged) {
+            const rs = this.renderState;
+            let hasStickyEdge = false;
+            if (rs.hasVeryLastItem) {
+                const edgeKey = this.getLastItemKey();
+                if (this._visibleItems.has(edgeKey)) {
+                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+                    hasStickyEdge = true;
+                }
+            }
+            if (!hasStickyEdge && rs.hasVeryFirstItem) {
+                const edgeKey = this.getFirstItemKey();
+                if (this._visibleItems.has(edgeKey)) {
+                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.Start });
+                    hasStickyEdge = true;
+                }
+            }
+            if (!hasStickyEdge && this._stickyEdge !== null) {
+                this.setStickyEdge(null);
+            }
+
             if (lastKey) {
                 this._lastVisibleKey = lastKey;
             }
@@ -338,6 +358,17 @@ export class VirtualList implements VirtualListAccessor {
                     this._pivotOffset = null;
                     this._top = null;
                     this._viewport = null;
+                }
+
+                const location = window.location;
+                const now = Date.now();
+                const timeSinceLastScroll = now - this._scrollTime ?? 0;
+                // longest scroll animation at Chrome is 3s
+                if (location.hash !== '' && timeSinceLastScroll > 3000) {
+                    const scrollToKey = location.hash.substring(1);
+                    if (!this._visibleItems.has(scrollToKey)) {
+                        history.pushState("", document.title, location.pathname + location.search);
+                    }
                 }
             }
 
@@ -389,64 +420,59 @@ export class VirtualList implements VirtualListAccessor {
             if (rs.query.expandEndBy > 0 && !rs.hasVeryLastItem)
                 this.statistics.addResponse(rs.endExpansion, rs.query.expandEndBy * ratio);
 
-            await new Promise<void>(resolve => {
-                requestAnimationFrame(time => {
-                    const scrollToItemRef = this.getItemRef(rs.scrollToKey);
-                    if (scrollToItemRef != null) {
-                        // Server-side scroll request
-                        if (!this.isItemFullyVisible(scrollToItemRef)) {
-                            if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                                this.scrollTo(scrollToItemRef, false, 'end');
-                                this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                            } else {
-                                this.scrollTo(scrollToItemRef, true, 'center');
-                            }
-                        }
-                        else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                            this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                        }
-                    } else if (this._stickyEdge != null) {
-                        // Sticky edge scroll
-                        const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
-                                ? this.getFirstItemKey()
-                                : this._stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
-                                    ? this.getLastItemKey()
-                                    : null;
-                        if (itemKey == null) {
-                            this.setStickyEdge(null);
-                        } else {
-                            this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
-                            // scroll is required for start edge only - the list is reverse-rendered
-                            if (this._stickyEdge?.edge === VirtualListEdge.Start) {
-                                let itemRef = this.getItemRef(itemKey);
-                                this.scrollTo(itemRef, false);
-                            }
+            const scrollToItemRef = this.getItemRef(rs.scrollToKey);
+            if (scrollToItemRef != null) {
+                // Server-side scroll request
+                if (!this.isItemFullyVisible(scrollToItemRef)) {
+                    if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
+                        this.scrollTo(scrollToItemRef, false, 'end');
+                        this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                    } else {
+                        this.scrollTo(scrollToItemRef, true, 'center');
+                    }
+                }
+                else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
+                    this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                }
+            } else if (this._stickyEdge != null) {
+                // Sticky edge scroll
+                const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
+                        ? this.getFirstItemKey()
+                        : this._stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
+                            ? this.getLastItemKey()
+                            : null;
+                if (itemKey == null) {
+                    this.setStickyEdge(null);
+                } else {
+                    this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
+                    // scroll is required for start edge only - the list is reverse-rendered
+                    if (this._stickyEdge?.edge === VirtualListEdge.Start) {
+                        let itemRef = this.getItemRef(itemKey);
+                        this.scrollTo(itemRef, false);
+                    }
+                }
+            }
+            else if (this._pivotKey != null) {
+                // resync scroll to make pivot ref position the same within viewport
+                const pivotRef = this.getItemRef(this._pivotKey);
+                if (pivotRef) {
+                    const pivotOffset = this._pivotOffset;
+                    const pivotOffsetScrollDiff = this._top;
+                    const newScrollTop = pivotRef.offsetTop - pivotOffset + pivotOffsetScrollDiff;
+                    const scrollTop = this._ref.scrollTop;
+                    const dScrollTop = newScrollTop - scrollTop;
+                    if (Math.abs(dScrollTop) > SizeEpsilon) {
+                        if (this._debugMode)
+                            console.warn(`${LogScope}.onRenderEnd: resync [${this._pivotKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                        this._ref.scrollTop = newScrollTop;
+                    } else {
+                        if (this._debugMode) {
+                            const itemRect = pivotRef.getBoundingClientRect();
+                            console.warn(`${LogScope}.onRenderEnd: resync skipped [${this._pivotKey}]: ${pivotOffset} ~ ${itemRect.top}`);
                         }
                     }
-                    else if (this._pivotKey != null) {
-                        // resync scroll to make pivot ref position the same within viewport
-                        const pivotRef = this.getItemRef(this._pivotKey);
-                        if (pivotRef) {
-                            const pivotOffset = this._pivotOffset;
-                            const pivotOffsetScrollDiff = this._top;
-                            const newScrollTop = pivotRef.offsetTop - pivotOffset + pivotOffsetScrollDiff;
-                            const scrollTop = this._ref.scrollTop;
-                            const dScrollTop = newScrollTop - scrollTop;
-                            if (Math.abs(dScrollTop) > SizeEpsilon) {
-                                if (this._debugMode)
-                                    console.warn(`${LogScope}.onRenderEnd: resync [${this._pivotKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                                this._ref.scrollTop = newScrollTop;
-                            } else {
-                                if (this._debugMode) {
-                                    const itemRect = pivotRef.getBoundingClientRect();
-                                    console.warn(`${LogScope}.onRenderEnd: resync skipped [${this._pivotKey}]: ${pivotOffset} ~ ${itemRect.top}`);
-                                }
-                            }
-                        }
-                    }
-                    resolve();
-                });
-            });
+                }
+            }
 
             // wait for render
             await new Promise<void>(resolve => {
@@ -459,7 +485,6 @@ export class VirtualList implements VirtualListAccessor {
                     resolve();
                 });
             });
-            this.renewStickyEdge();
         } finally {
             this._isRendering = false;
             this._whenRenderCompleted?.complete();
@@ -622,10 +647,6 @@ export class VirtualList implements VirtualListAccessor {
         return getItemKey(this.getLastItemRef());
     }
 
-    private getItemY0(): number {
-        return this._spacerRef.getBoundingClientRect().bottom;
-    }
-
     private isItemVisible(itemRef: HTMLElement): boolean {
         const itemRect = itemRef.getBoundingClientRect();
         const viewRect = this._ref.getBoundingClientRect();
@@ -656,6 +677,7 @@ export class VirtualList implements VirtualListAccessor {
         blockPosition: ScrollLogicalPosition = 'nearest') {
         if (this._debugMode)
             console.warn(`${LogScope}.scrollTo, item key =`, getItemKey(itemRef));
+        this._scrollTime = Date.now();
         itemRef?.scrollIntoView(
             {
                 behavior: useSmoothScroll ? 'smooth' : 'auto',
@@ -673,28 +695,6 @@ export class VirtualList implements VirtualListAccessor {
             return true;
         }
         return false;
-    }
-
-    private renewStickyEdge(): boolean {
-        const viewRect = this._ref.getBoundingClientRect();
-        if (this._debugMode)
-            console.info(`${LogScope}.renewStickyEdge`);
-        for (const stickyEdge of this.getStickyEdgeCandidates()) {
-            if (stickyEdge.itemKey == null)
-                return;
-            const itemRef = this.getItemRef(stickyEdge.itemKey);
-            if (itemRef && isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect, StickyEdgeTolerance))
-                return this.setStickyEdge(stickyEdge);
-        }
-        return this.setStickyEdge(null);
-    }
-
-    private* getStickyEdgeCandidates(): IterableIterator<VirtualListStickyEdgeState> {
-        const rs = this.renderState;
-        if (rs.hasVeryFirstItem)
-            yield { itemKey: this.getFirstItemKey(), edge: VirtualListEdge.Start };
-        if (rs.hasVeryLastItem)
-            yield { itemKey: this.getLastItemKey(), edge: VirtualListEdge.End };
     }
 
     private async requestData(): Promise<void> {
@@ -800,8 +800,4 @@ function getItemCountAs(itemRef?: HTMLElement): number | null {
         return null;
 
     return parseInt(countString);
-}
-
-function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect, tolerance: number = 0): boolean {
-    return rect.bottom > viewRect.top - tolerance && rect.top < viewRect.bottom + tolerance;
 }

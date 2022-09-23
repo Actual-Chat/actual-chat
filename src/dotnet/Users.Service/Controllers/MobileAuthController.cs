@@ -47,7 +47,7 @@ public class MobileAuthController : Controller
         }
         else {
             var claims = auth.Principal.Identities.FirstOrDefault()?.Claims;
-            var email = claims?.FirstOrDefault(c => string.Equals(c.Type, ClaimTypes.Email, StringComparison.Ordinal))?.Value;
+            var email = claims?.FirstOrDefault(c => OrdinalEquals(c.Type, ClaimTypes.Email))?.Value;
 
             // Get parameters to send back to the callback
             (string Key, string? Value)[] qs = {

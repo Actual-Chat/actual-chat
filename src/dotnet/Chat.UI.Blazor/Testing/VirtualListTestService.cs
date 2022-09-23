@@ -20,7 +20,7 @@ public class VirtualListTestService
         int? contentSeed,
         CancellationToken cancellationToken)
     {
-        var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
+        var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken);
         var range = GetKeyRange(rangeSeedValue);
         var start = range.Start;
         var end = range.End;
@@ -44,7 +44,7 @@ public class VirtualListTestService
                 .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed)),
             start == range.Start,
             end == range.End);
-        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(100, cancellationToken);
         return result;
     }
 
@@ -53,14 +53,14 @@ public class VirtualListTestService
     {
         var key = itemRef.Id;
         var keyRange = GetKeyRange(itemRef.RangeSeed);
-        var contentSeed = itemRef.ContentSeed ?? await GetSeed(key % 10, 10, cancellationToken).ConfigureAwait(false);
+        var contentSeed = itemRef.ContentSeed ?? await GetSeed(key % 10, 10, cancellationToken);
         var rnd = new Random(contentSeed + key);
         var fontSize = 1 + rnd.NextDouble();
         if (fontSize > 1.95)
             fontSize = 3;
         var wordCount = rnd.Next(20);
         if (key == keyRange.End) {
-            var wordCountSeed = itemRef.ContentSeed ?? await GetSeed(0, 0.25, cancellationToken).ConfigureAwait(false);
+            var wordCountSeed = itemRef.ContentSeed ?? await GetSeed(0, 0.25, cancellationToken);
             wordCount = wordCountSeed % 100;
         }
         var description = Enumerable.Range(0, wordCount)

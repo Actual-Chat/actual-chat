@@ -2,11 +2,11 @@ namespace ActualChat.Users;
 
 public interface IAccounts : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Account?> Get(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
 
     [CommandHandler]

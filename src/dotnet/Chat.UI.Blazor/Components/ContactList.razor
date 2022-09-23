@@ -1,0 +1,25 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@if (Contacts == null || Contacts.Count == 0) {
+    return;
+}
+<div class="@GetCss(Kind)">
+    @foreach (var contact in Contacts) {
+        <ContactListItem @key="contact" Contact="@contact" />
+    }
+</div>
+@if (Kind == ContactListKind.Pinned) {
+    <div class="mx-4 mb-2 border-b border-bg-04"></div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ContactListKind Kind { get; set; } = ContactListKind.Unpinned;
+    [Parameter, EditorRequired] public List<UserContact>? Contacts { get; set; }
+
+    private string GetCss(ContactListKind kind)
+        => kind switch {
+            ContactListKind.Pinned => "pinned-chats",
+            ContactListKind.Unpinned => "unpinned-chats custom-scrollbar",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+}

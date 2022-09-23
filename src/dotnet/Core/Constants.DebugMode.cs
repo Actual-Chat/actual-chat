@@ -16,16 +16,21 @@ public static partial class Constants
         public static bool AudioPlaybackPlayMyOwnAudio => HostInfo.IsDevelopmentInstance;
         public static bool AudioRecording { get; } = false;
         public static bool AudioRecordingStream { get; } = false;
+        public static bool AudioStreamProxy { get; } = true;
 
         public static bool Transcription { get; } = false;
         public static bool TranscriberAny { get; } = false;
         public static bool TranscriberGoogle { get; } = false;
+        public static bool TranscriptStreamProxy { get; } = true;
 
         public static bool WebMReader { get; } = false;
         public static bool MarkupParser { get; } = false;
 
         public static bool SignalR { get; } = false;
 
+        public static bool MarkupEditor { get; } = true;
         public static bool SlateEditor { get; } = false;
+
+        public static bool KubeEmulation { get; } = false;
     }
 }

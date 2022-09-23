@@ -29,15 +29,10 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Range<long>> GetLastIdTile0(
+    Task<Range<long>> GetLastIdTile(
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<Range<long>> GetLastIdTile1(
-        string chatId,
-        ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

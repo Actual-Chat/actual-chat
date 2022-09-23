@@ -23,10 +23,14 @@ public class UserContacts : IUserContacts
             return ImmutableArray<UserContact>.Empty;
 
         var contactIds = await ContactsBackend.GetContactIds(user.Id, cancellationToken).ConfigureAwait(false);
-        var contacts = await contactIds.Select(c => ContactsBackend.Get(c, cancellationToken))
+        var contacts = await contactIds
+            .Select(c => ContactsBackend.Get(c, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return contacts.SkipNullItems().ToImmutableArray();
+        return contacts
+            .SkipNullItems()
+            .OrderBy(c => c.Name)
+            .ToImmutableArray();
     }
 
     // [CommandHandler]

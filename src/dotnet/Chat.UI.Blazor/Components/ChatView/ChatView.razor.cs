@@ -11,8 +11,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
-    private long _lastNavigateToEntryId;
-    private long _initialLastReadEntryId;
+    private long? _lastNavigateToEntryId;
+    private long? _initialLastReadEntryId;
     private HashSet<long> _fullyVisibleEntryIds = new ();
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
@@ -30,99 +30,80 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private Task WhenInitialized => _whenInitializedSource.Task;
-    private IMutableState<long> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
-    private SyncedStateLease<long> LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    public void Dispose()
-    {
-        Nav.LocationChanged -= OnLocationChanged;
-        _disposeToken.Cancel();
-        LastReadEntryState.Dispose();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        await WhenInitialized.ConfigureAwait(false);
-
-        TryNavigateToEntryIfExists();
-    }
-
-    public async Task NavigateToUnreadEntry()
-    {
-        long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryState?.Value ?? 0;
-        if (lastReadEntryId > 0)
-            navigateToEntryId = lastReadEntryId;
-        else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
-            navigateToEntryId = chatIdRange.ToInclusive().End;
-        }
-
-        // reset to ensure navigation will happen
-        _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntry(navigateToEntryId);
-    }
 
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable(0L);
+            NavigateToEntryId = StateFactory.NewMutable<long?>();
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token).ConfigureAwait(false);
+            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token);
             _initialLastReadEntryId = LastReadEntryState.Value;
         }
         finally {
-            await TimeZoneConverter.WhenInitialized;
             _whenInitializedSource.SetResult(Unit.Default);
         }
     }
 
-    protected override bool ShouldRender()
-        => WhenInitialized.IsCompleted;
-
-    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
+    public void Dispose()
     {
-        while (!cancellationToken.IsCancellationRequested)
-            try {
-                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
-                var visibleKeys = await VisibleKeys.Use(cancellationToken);
-                if (visibleKeys.Count == 0)
-                    continue;
-
-                var visibleEntryIds = visibleKeys
-                    .Select(key =>
-                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
-                            ? (long?)entryId
-                            : null)
-                    .Where(entryId => entryId.HasValue)
-                    .Select(entryId => entryId!.Value)
-                    .ToHashSet();
-
-                var maxVisibleEntryId = visibleEntryIds.Max();
-                var minVisibleEntryId = visibleEntryIds.Min();
-                visibleEntryIds.Remove(maxVisibleEntryId);
-                visibleEntryIds.Remove(minVisibleEntryId);
-                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
-
-                if (LastReadEntryState?.Value >= maxVisibleEntryId)
-                    continue;
-
-                if (LastReadEntryState != null)
-                    LastReadEntryState.Value = maxVisibleEntryId;
-            }
-            catch (Exception e) when(e is not OperationCanceledException) {
-                Log.LogWarning(e,
-                    "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
-                    LastReadEntryState!.Value);
-            }
+        Nav.LocationChanged -= OnLocationChanged;
+        _disposeToken.Cancel();
+        LastReadEntryState?.Dispose();
+        LastReadEntryState = null;
     }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await WhenInitialized;
+        TryNavigateToEntry();
+    }
+
+    public async Task NavigateToUnreadEntry()
+    {
+        long navigateToEntryId;
+        var lastReadEntryId = LastReadEntryState?.Value;
+        if (lastReadEntryId is { } entryId)
+            navigateToEntryId = entryId;
+        else {
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
+            navigateToEntryId = chatIdRange.ToInclusive().End;
+        }
+
+        // Reset to ensure the navigation will happen
+        _initialLastReadEntryId = navigateToEntryId;
+        NavigateToEntry(navigateToEntryId);
+    }
+
+    public void NavigateToEntry(long navigateToEntryId)
+    {
+        // reset to ensure navigation will happen
+        _lastNavigateToEntryId = null;
+        NavigateToEntryId.Value = null;
+        NavigateToEntryId.Value = navigateToEntryId;
+    }
+
+    public void TryNavigateToEntry()
+    {
+        // ignore location changed events if already disposed
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
+        var uri = new Uri(Nav.Uri);
+        var entryIdString = uri.Fragment.TrimStart('#');
+        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
+            NavigateToEntry(entryId);
+    }
+
+    // Private methods
 
     async Task<VirtualListData<ChatMessageModel>> IVirtualListDataSource<ChatMessageModel>.GetData(
         VirtualListDataQuery query,
@@ -161,14 +142,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
         if (!mustScrollToEntry) {
-            if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
+            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId.Value)) {
                 isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
-                entryId = navigateToEntryId;
-                mustScrollToEntry = true;
-            }
-            else if (query.ScrollToKey != null) {
-                entryId = long.Parse(query.ScrollToKey, NumberStyles.Number, CultureInfo.InvariantCulture);
+                entryId = navigateToEntryId.Value;
                 mustScrollToEntry = true;
             }
         }
@@ -188,29 +165,30 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
+            .Collect();
+
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 
+        var hasVeryFirstItem = adjustedRange.Start <= chatIdRange.Start;
+        var hasVeryLastItem = adjustedRange.End + 1 >= chatIdRange.End;
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
             _initialLastReadEntryId,
+            hasVeryFirstItem,
+            hasVeryLastItem,
             TimeZoneConverter);
         var scrollToKey = mustScrollToEntry
             ? entryId.ToString(CultureInfo.InvariantCulture)
             : null;
-        // if scroll position has been changed - return actual query to the client
         var result = VirtualListData.New(
-            OrdinalEquals(query.ScrollToKey, scrollToKey)
-                ? query
-                : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
+            new VirtualListDataQuery(adjustedRange.AsStringRange()),
             chatMessages,
-            adjustedRange.Start <= chatIdRange.Start,
-            adjustedRange.End + 1 >= chatIdRange.End,
+            hasVeryFirstItem,
+            hasVeryLastItem,
             scrollToKey);
 
         if (isHighlighted)
@@ -220,32 +198,51 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return result;
     }
 
-    public void NavigateToEntry(long navigateToEntryId)
+    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
-        // reset to ensure navigation will happen
-        _lastNavigateToEntryId = 0;
-        NavigateToEntryId.Value = navigateToEntryId;
-        NavigateToEntryId.Invalidate();
+        while (!cancellationToken.IsCancellationRequested)
+            try {
+                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
+                var visibleKeys = await VisibleKeys.Use(cancellationToken);
+                if (visibleKeys.Count == 0)
+                    continue;
+
+                var visibleEntryIds = visibleKeys
+                    .Select(key =>
+                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
+                            ? (long?)entryId
+                            : null)
+                    .Where(entryId => entryId.HasValue)
+                    .Select(entryId => entryId!.Value)
+                    .ToHashSet();
+
+                var maxVisibleEntryId = visibleEntryIds.Max();
+                var minVisibleEntryId = visibleEntryIds.Min();
+                visibleEntryIds.Remove(maxVisibleEntryId);
+                visibleEntryIds.Remove(minVisibleEntryId);
+                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; });
+
+                if (LastReadEntryState?.Value >= maxVisibleEntryId)
+                    continue;
+
+                if (LastReadEntryState != null)
+                    LastReadEntryState.Value = maxVisibleEntryId;
+            }
+            catch (Exception e) when(e is not OperationCanceledException) {
+                Log.LogWarning(e,
+                    "Error monitoring visible key changes, LastReadEntryId = {LastReadEntryId}",
+                    LastReadEntryState?.Value);
+            }
     }
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntry navigation, CancellationToken cancellationToken)
+    // Event handlers
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => TryNavigateToEntry();
+
+    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent navigation, CancellationToken cancellationToken)
     {
         NavigateToEntry(navigation.ChatEntryId);
         return Task.CompletedTask;
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => TryNavigateToEntryIfExists();
-
-    private void TryNavigateToEntryIfExists()
-    {
-        // ignore location changed events if already disposed
-        if (_disposeToken.IsCancellationRequested)
-            return;
-
-        var uri = new Uri(Nav.Uri);
-        var entryIdString = uri.Fragment.TrimStart('#');
-        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
-            NavigateToEntry(entryId);
     }
 }

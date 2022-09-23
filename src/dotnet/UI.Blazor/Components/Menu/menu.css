@@ -8,7 +8,7 @@
     @apply h-8 px-2 rounded-lg whitespace-nowrap;
 }
 .menu-item-text {
-    @apply w-full text-02 text-md font-medium ml-2 mr-6;
+    @apply w-full text-02 text-base font-medium ml-2 mr-6;
 }
 .menu-item-icon {
     @apply text-icons-01;

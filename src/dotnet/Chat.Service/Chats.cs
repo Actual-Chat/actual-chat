@@ -1,5 +1,7 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Module;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -39,14 +41,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Chat>> List(
+        Session session,
+        CancellationToken cancellationToken)
     {
         var chatIds = await ChatAuthors.ListChatIds(session, cancellationToken).ConfigureAwait(false);
         var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return chats.Where(c => c is { ChatType: ChatType.Group }).ToImmutableArray()!;
+        return chats.SkipNullItems().OrderBy(x => x.Title).ToImmutableArray();
     }
 
     // [ComputeMethod]
@@ -86,25 +90,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile0(
+    public virtual async Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile0(chatId, entryType, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        CancellationToken cancellationToken)
-    {
-        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile0(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLastIdTile(chatId, entryType, layerIndex, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -198,22 +192,41 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-
         var authors = await chatAuthorIds
             .Select(id => ChatAuthors.GetAuthor(session, chatId, id, true, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        var items = authors
-            .Where(c => c != null)
-            .Select(c => c!)
-            .OrderBy(c => c.Name)
-            .Select(c => new MentionCandidate("a:" + c.Id, c.Name))
+        return authors
+            .SkipNullItems()
+            .OrderBy(a => a.Name)
             .ToImmutableArray();
-        return items;
+    }
+
+    // Not a [ComputeMethod]!
+    public virtual async Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account is null)
+            return null;
+
+        text.RequireMaxLength(Constants.Chat.MaxSearchFilterLength, "text.length");
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbEntry = await dbContext.ChatEntries.OrderByDescending(x => x.Id)
+            .FirstOrDefaultAsync(x => (startEntryId == null || x.Id < startEntryId) && x.Content.Contains(text), cancellationToken)
+            .ConfigureAwait(false);
+        return dbEntry?.ToModel();
     }
 
     // [CommandHandler]
@@ -319,9 +332,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId);
-        if (!parsedChatId.IsValid)
-            return null;
+        var parsedChatId = new ParsedChatId(chatId).AssertValid();
 
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerShort:
@@ -362,8 +373,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         var parsedChatId = new ParsedChatId(chatId).AssertValid();
-        if (!parsedChatId.IsValid)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
 
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerFull:
@@ -379,7 +388,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual  async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
+    protected virtual async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
         string chatId, Symbol ownerUserId, CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
@@ -414,7 +423,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-
         var chatEntry = new ChatEntry {
             ChatId = chatId,
             AuthorId = author.Id,
@@ -470,7 +478,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
-
 
     // Private methods
 

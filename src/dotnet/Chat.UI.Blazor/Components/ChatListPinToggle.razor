@@ -24,14 +24,14 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(ChatId, cancellationToken);
+        => ChatUI.IsPinned(ChatId);
 
     private void Toggle()
-        => ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
 }

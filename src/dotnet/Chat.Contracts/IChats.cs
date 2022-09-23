@@ -4,13 +4,13 @@ namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -19,29 +19,23 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<Range<long>> GetLastIdTile0(
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<Range<long>> GetLastIdTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<Range<long>> GetLastIdTile1(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
+        int layerIndex,
         CancellationToken cancellationToken);
 
     // Client-side method always skips entries with IsRemoved flag
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 10)]
     Task<ChatTile> GetTile(
         Session session,
         string chatId,
@@ -49,7 +43,7 @@ public interface IChats : IComputeService
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatAuthorRules> GetRules(
         Session session,
         string chatId,
@@ -75,7 +69,17 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
-    Task<ImmutableArray<MentionCandidate>> ListMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
+
+    // Non-compute methods
+
+    Task<ChatEntry?> FindNext(
+        Session session,
+        string chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken);
 
     // Commands
 
@@ -110,7 +114,8 @@ public interface IChats : IComputeService
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] long? Id,
-        [property: DataMember] string Text) : ISessionCommand<ChatEntry>
+        [property: DataMember] string Text
+        ) : ISessionCommand<ChatEntry>
     {
         [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
             ImmutableArray<TextEntryAttachmentUpload>.Empty;
