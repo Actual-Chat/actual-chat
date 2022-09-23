@@ -19,7 +19,6 @@ public class WebModule : HostModule, IWebModule
         services.AddMvcCore(options => {
             options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
         });
-
     }
 
     public void ConfigureApp(IApplicationBuilder app)

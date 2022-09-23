@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Npgsql;
@@ -76,7 +78,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
-        app.UseFusionSession();
 
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
@@ -86,7 +87,11 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
         });
 
+        // Response compression
+        app.UseResponseCompression();
+
         // API controllers
+        app.UseFusionSession();
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
@@ -161,6 +166,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             options.KnownNetworks.Clear();
             options.KnownProxies.Clear();
         });
+
+        services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+        services.AddResponseCompression(o => {
+            o.EnableForHttps = true;
+            o.Providers.Add<BrotliCompressionProvider>();
+        });
+
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
