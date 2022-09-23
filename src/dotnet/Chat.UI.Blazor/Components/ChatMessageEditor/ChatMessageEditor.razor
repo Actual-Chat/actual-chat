@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Events
 @using ActualChat.Hosting
@@ -10,9 +11,9 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 
-<OnUIEvent TEvent="@FocusChatMessageEditor" Handler="OnFocusChatMessageEditor" />
-<OnUIEvent TEvent="@EditChatMessage" Handler="OnEditChatMessage" />
-<OnUIEvent TEvent="@CancelChatMessageEdit" Handler="OnCancelChatMessageEdit" />
+<OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
+<OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
+<OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
 <div @ref="Ref" class="chat-message-editor min-h-auto">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentListPreview
@@ -38,6 +39,7 @@
                         <input class="files-picker" type="file" hidden multiple/>
                         <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                             <MarkupEditor
+                                @key="MarkupEditorKey"
                                 @ref="MarkupEditorRef"
                                 HtmlConverter="@HtmlConverter"
                                 Id="message-input"
@@ -48,7 +50,8 @@
                                 Cancel="@(() => OnCancel())"
                                 OpenPrevious="OnOpenPrevious"/>
                             <button class="btn btn-round post-message"
-                                    @onclick="@(_ => Post())">
+                                    @onmousedown="@(_ => Post())"
+                                    @onmousedown:preventDefault="true">
                                 <i class="icon-paper-plane text-2xl"></i>
                             </button>
                         </label>
@@ -69,6 +72,7 @@
 
 @code {
     private static object MentionListManagerKey { get; } = new();
+    private static object MarkupEditorKey { get; } = new();
 
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -121,50 +125,47 @@
         }
     }
 
-    private async Task Post(string? text = null, bool mustClear = true) {
+    private async Task Post(string? text = null) {
         text ??= await MarkupEditorRef.GetText();
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
-            if (mustClear)
-                await MarkupEditorRef.Clear();
+            _ = MarkupEditorRef.Clear();
             AttachmentListPreviewRef.Clear();
-            StateHasChanged();
-            var linked = ChatUI.LinkedChatEntry.Value;
+
+            var linkedChatEntry = ChatUI.LinkedChatEntry.Value;
+            var chatEntry = linkedChatEntry?.Entry;
             ChatUI.LinkedChatEntry.Value = null;
-            var entryId = linked?.Type == ChatEntryLinkType.Edit
-                ? await UpdateMessage(linked.Entry, text)
-                : await PostNewMessage(text, linked?.Entry);
+            UICommander.CancelUpdateDelays();
+
+            long entryId;
+            if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
+                if (chatEntry == null)
+                    throw new InternalError("Linked chat entry points to null entry.");
+                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
+                entryId = chatEntry.Id;
+
+            } else {
+                entryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
+            }
 
             if (LastReadEntryState != null)
                 LastReadEntryState.Value = entryId;
             _ = ChatUI.AddActiveChat(Chat.Id);
             _ = TryUpdatePeerChatRecency();
 
-            await JSRef.InvokeVoidAsync("onPostSucceeded");
+            await JSRef.InvokeVoidAsync("onPosted");
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);
         }
     }
 
-    private async Task<long> PostNewMessage(string text, ChatEntry? repliedChatEntry) {
-        ChatUI.LinkedChatEntry.Value = null;
-        UICommander.CancelUpdateDelays();
-        return await JSRef.InvokeAsync<long>("postMessage", Chat.Id, text, repliedChatEntry?.Id);
-    }
-
-    private async Task<long> UpdateMessage(ChatEntry chatEntry, string text) {
-        ChatUI.LinkedChatEntry.Value = null;
-        await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
-        return chatEntry.Id;
-    }
-
     [JSInvokable]
     public void CloseNotifyPanel()
-        => NotifyCallPanelRef.OnCloseClick();
+        => NotifyCallPanelRef.Close();
 
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
@@ -180,9 +181,7 @@
     {
         ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
         UICommander.CancelUpdateDelays();
-
-        await MarkupEditorRef.SetText(chatEntry.Content);
-        await MarkupEditorRef.Focus();
+        await MarkupEditorRef.SetText(chatEntry.Content, true);
     }
 
     private async Task TryUpdatePeerChatRecency() {
@@ -199,15 +198,15 @@
         }
     }
 
-    private async Task OnFocusChatMessageEditor(FocusChatMessageEditor @event, CancellationToken cancellationToken)
+    private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
         => await MarkupEditorRef.Focus();
 
-    private async Task OnEditChatMessage(EditChatMessage @event, CancellationToken cancellationToken) {
+    private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.ChatEntry;
         await EditMessage(chatEntry, cancellationToken);
     }
 
-    private async Task OnCancelChatMessageEdit(CancelChatMessageEdit cancelChatMessageEdit, CancellationToken cancellationToken) {
+    private async Task OnCancelChatMessageEditEvent(CancelChatMessageEditEvent @event, CancellationToken cancellationToken) {
         await OnCancel(cancellationToken);
     }
 
@@ -226,7 +225,7 @@
     }
 
     private async Task OnUploadFilesRequested()
-        => await JSRef.InvokeVoidAsync("showFilesPicker");
+        => await JSRef.InvokeVoidAsync("showFilePicker");
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {

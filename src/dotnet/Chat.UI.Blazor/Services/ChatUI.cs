@@ -93,17 +93,16 @@ public class ChatUI
     public virtual Task<bool> IsActive(string chatId) => Task.FromResult(ActiveChatId.Value == chatId);
 
     [ComputeMethod]
-    public virtual async Task<SingleChatPlaybackState> GetSingleChatPlaybackState(Symbol chatId, CancellationToken cancellationToken)
+    public virtual async Task<SingleChatPlaybackState> GetPlaybackState(Symbol chatId, CancellationToken cancellationToken)
     {
-        var listeningChatIds = await ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var isListening = listeningChatIds.Contains(chatId);
+        var isListening = await IsListening(chatId).ConfigureAwait(false);
         var chatPlaybackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState;
+        var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState x && x.ChatId == chatId;
         return new SingleChatPlaybackState(chatId, isListening, isPlayingHistorical);
     }
 
     [ComputeMethod]
-    public virtual async Task<RealtimeChatPlaybackState?> GetRealtimeChatPlaybackState(CancellationToken cancellationToken)
+    public virtual async Task<RealtimeChatPlaybackState?> GetRealtimePlaybackState(CancellationToken cancellationToken)
     {
         var listeningChatIds = await ListeningChatIds.Use(cancellationToken).ConfigureAwait(false);
         return !listeningChatIds.Any() ? null : new RealtimeChatPlaybackState(listeningChatIds.ToImmutableHashSet());

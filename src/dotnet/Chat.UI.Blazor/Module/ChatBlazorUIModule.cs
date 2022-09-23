@@ -4,6 +4,7 @@ using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Search;
+using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
@@ -60,7 +61,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
     private void RegisterShowSettingsHandler(IServiceProvider services)
     {
         var eventHub = services.GetRequiredService<UIEventHub>();
-        eventHub.Subscribe<ShowSettingsModal>((@event, ct) => {
+        eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
             var modalUI = services.GetRequiredService<ModalUI>();
             modalUI.Show(new SettingsModal.Model(), "modal-full");
             return Task.CompletedTask;

@@ -31,5 +31,5 @@
         };
 
     protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetSingleChatPlaybackState(ChatId, cancellationToken);
+        => ChatUI.GetPlaybackState(ChatId, cancellationToken);
 }

@@ -2,7 +2,7 @@ const LogScope: string = 'ScreenSizeProvider';
 
 export class ScreenSizeProvider {
     private readonly window: Window;
-    private lastScreenSize : string;
+    private size : string;
 
     static create = (containerDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) => {
         return new ScreenSizeProvider(containerDiv, blazorRef);
@@ -14,15 +14,15 @@ export class ScreenSizeProvider {
     ) {
         this.window = window;
         this.window.addEventListener('resize', this.onWindowResize);
-        this.lastScreenSize = this.getScreenSize();
-        this.notifySizeChanged(this.lastScreenSize);
+        this.size = this.measureSize();
+        this.notifySizeChanged(this.size);
     }
 
     public dispose() {
         this.window.removeEventListener('resize', this.onWindowResize);
     }
 
-    public getScreenSize(): string {
+    public measureSize(): string {
         let itemDiv : HTMLDivElement = null;
         for (const item of this.containerDiv.children) {
             itemDiv = item as HTMLDivElement;
@@ -39,16 +39,16 @@ export class ScreenSizeProvider {
     };
 
     private onWindowResize = (event: Event) => {
-        const screenSize = this.getScreenSize();
-        if (screenSize === this.lastScreenSize)
+        const size = this.measureSize();
+        if (size === this.size)
             return;
 
-        this.lastScreenSize = screenSize;
-        this.notifySizeChanged(screenSize);
+        this.size = size;
+        this.notifySizeChanged(size);
     };
 
-    private notifySizeChanged(screenSize: string): void {
-        console.debug(`${LogScope}: screen size changed to ${screenSize}`);
-        this.blazorRef.invokeMethodAsync('OnSizeChanged', screenSize)
+    private notifySizeChanged(size: string): void {
+        console.debug(`${LogScope}: screen size changed to ${size}`);
+        this.blazorRef.invokeMethodAsync('OnSizeChanged', size)
     };
 }

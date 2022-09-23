@@ -32,7 +32,7 @@
         if (nextEntry == null)
             return;
 
-        await UIEventHub.Publish(new NavigateToChatEntry(nextEntry.Id));
+        await UIEventHub.Publish(new NavigateToChatEntryEvent(nextEntry.Id));
         ChatUI.HighlightedChatEntryId.Value = nextEntry.Id;
         _lastFoundEntry = nextEntry;
     }

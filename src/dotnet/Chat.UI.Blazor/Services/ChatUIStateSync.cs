@@ -57,7 +57,7 @@ public class ChatUIStateSync : WorkerBase
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
         var cExpectedPlaybackState = await Computed
-            .Capture(() => ChatUI.GetRealtimeChatPlaybackState(cancellationToken))
+            .Capture(() => ChatUI.GetRealtimePlaybackState(cancellationToken))
             .ConfigureAwait(false);
         var playbackState = ChatPlayers.ChatPlaybackState;
 

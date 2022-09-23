@@ -5,6 +5,10 @@ import { UndoStack } from './undo-stack';
 const LogScope = 'MarkupEditor';
 const MentionListId = '@';
 
+const ZeroWidthSpace = "\u200b";
+const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
+const CrlfRe = /\r\n/g
+
 export class MarkupEditor {
     static create(
         editorDiv: HTMLDivElement,
@@ -15,7 +19,7 @@ export class MarkupEditor {
     }
 
     public readonly contentDiv: HTMLDivElement;
-    public changed: (value: string) => void = () => { };
+    public changed: (html: string, text: string) => void = () => { };
 
     private readonly listHandlers: Array<ListHandler>;
     private listHandler?: ListHandler = null;
@@ -44,15 +48,16 @@ export class MarkupEditor {
                     document.execCommand("insertHTML", false, "&#8203");
                     document.execCommand("insertHTML", false, "&#8203");
                     document.execCommand("undo", false);
-                    this.setHtml(value, false);
+                    this.setHtml(value, false, false);
                 });
             },
             (x: string, y: string) => x === y,
             333);
 
         // Attach listeners & observers
-        this.editorDiv.addEventListener("focusin", this.onEditorFocusIn)
-        this.contentDiv.addEventListener("focusin", this.onFocusIn)
+        this.contentDiv.addEventListener("focus", this.onFocus)
+        this.contentDiv.addEventListener("blur", this.onBlur)
+        this.contentDiv.addEventListener("mousedown", this.onMouseDown)
         this.contentDiv.addEventListener("keydown", this.onKeyDown);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
@@ -65,8 +70,9 @@ export class MarkupEditor {
     }
 
     public dispose() {
-        this.editorDiv.removeEventListener("focusin", this.onEditorFocusIn)
-        this.contentDiv.removeEventListener("focusin", this.onFocusIn)
+        this.contentDiv.removeEventListener("focus", this.onFocus)
+        this.contentDiv.removeEventListener("blur", this.onBlur)
+        this.contentDiv.removeEventListener("mousedown", this.onMouseDown)
         this.contentDiv.removeEventListener("keydown", this.onKeyDown);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
@@ -87,7 +93,7 @@ export class MarkupEditor {
                 const html = this.contentDiv.innerHTML;
                 if (html != this.lastHtml) {
                     this.lastHtml = html;
-                    this.changed(html);
+                    this.changed(html, this.getText());
                 }
             }
         }
@@ -95,17 +101,23 @@ export class MarkupEditor {
 
     public focus() {
         this.contentDiv.focus();
+        this.fixVirtualKeyboard();
+    }
+
+    public isEditable(isEditable: boolean = null) : boolean {
+        if (isEditable !== null)
+            this.contentDiv.setAttribute('contenteditable', isEditable ? 'true' : 'false');
+        return this.contentDiv.isContentEditable;
     }
 
     public getText() {
         return this.contentDiv.innerText;
     }
 
-    public setHtml(html: string, clearUndoStack: boolean = true) {
-        console.log("Here");
+    public setHtml(html: string, mustFocus: boolean = false, clearUndoStack: boolean = true) {
         this.transaction(() => {
             this.contentDiv.innerHTML = html;
-            this.fixContent();
+            this.fixEverything();
         })
         this.moveCursorToTheEnd();
         if (clearUndoStack)
@@ -121,8 +133,7 @@ export class MarkupEditor {
         if (!listId) {
             this.transaction(() => {
                 document.execCommand('insertHTML', false, html);
-                this.fixContent();
-                this.fixSelection();
+                this.fixEverything();
             });
             return;
         }
@@ -135,8 +146,7 @@ export class MarkupEditor {
 
         this.transaction(() => {
             document.execCommand('insertHTML', true, html);
-            this.fixContent();
-            this.fixSelection();
+            this.fixEverything();
         });
         this.closeListUI();
     }
@@ -148,60 +158,6 @@ export class MarkupEditor {
         const selection = document.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
-    }
-
-    public fixContent() {
-        // We remove all elements with contentEditable == "false", which
-        // aren't followed by "\u8203" character to workaround an issue with
-        // typing & deletion of such elements in Chrome Android:
-        // - https://github.com/ProseMirror/prosemirror/issues/565#issuecomment-552805191
-        const process = (parent: Node) => {
-            let mustNormalize = false;
-            let skipAfter: Node = null;
-            for (const node0 of parent.childNodes) {
-                if (skipAfter) {
-                    if (node0 !== skipAfter)
-                        continue;
-                    skipAfter = null;
-                    continue;
-                }
-
-                const t0 = asText(node0);
-                if (t0) {
-                    const oldText = t0.textContent;
-                    const newText = oldText.replace(/\u200B/g, ""); // \u200B (hex) = 8203 (dec)
-                    if (newText.length !== oldText.length) {
-                        t0.textContent = newText;
-                        mustNormalize = true;
-                    }
-                    continue;
-                }
-
-                const e0 = asHTMLElement(node0);
-                if (e0) {
-                    if (e0.contentEditable !== "false") {
-                        process(e0);
-                        continue;
-                    }
-                    let t1 = asText(e0.nextSibling);
-                    while (t1 && t1.textContent.length == 0) {
-                        const t2 = asText(t1.nextSibling);
-                        t1.remove();
-                        t1 = t2;
-                    }
-                    if (t1 && t1.textContent.startsWith("\u200B")) {
-                        skipAfter = t1;
-                        continue;
-                    }
-                    node0.remove();
-                }
-            }
-
-            if (mustNormalize)
-                parent.normalize();
-        }
-
-        process(this.contentDiv);
     }
 
     // Backend method invokers
@@ -225,15 +181,18 @@ export class MarkupEditor {
 
     // Event handlers
 
-    private onEditorFocusIn = () => {
-        this.focus();
-    }
-
-    private onFocusIn = () => {
+    private onFocus = () => {
         this.transaction(() => {
             document.execCommand("insertBrOnReturn", false, "true");
             document.execCommand("styleWithCSS", false, "false");
         });
+        this.fixVirtualKeyboard();
+    }
+
+    private onBlur = () => this.fixVirtualKeyboard()
+
+    private onMouseDown = () => {
+        this.focus();
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
@@ -362,9 +321,7 @@ export class MarkupEditor {
     }
 
     private onInput = (e: InputEvent) => {
-        this.transaction(() => {
-            this.fixContent();
-        })
+        this.fixContent();
         this.undoStack.pushDebounced();
         this.updateListUIDebounced();
     }
@@ -436,6 +393,43 @@ export class MarkupEditor {
         return cursorRange;
     }
 
+    private restoreSelection() {
+        if (!this.lastSelectedRange)
+            return;
+
+        const selection = document.getSelection();
+        selection.removeAllRanges();
+        try {
+            selection.addRange(this.lastSelectedRange);
+        }
+        catch (e) {
+            console.error(`${LogScope}.restoreSelection: error`, e);
+        }
+    }
+
+    private expandSelection(listHandler: ListHandler) : boolean {
+        const cursorRange = this.getCursorRange();
+        if (!cursorRange)
+            return false;
+
+        const matchRange = listHandler.getMatchRange(cursorRange);
+        if (!matchRange)
+            return false;
+
+        const selection = document.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(matchRange);
+        return true;
+    }
+
+    // State fixers
+
+    private fixEverything() {
+        this.fixContent();
+        this.fixSelection();
+        this.fixVirtualKeyboard();
+    }
+
     private fixSelection() {
         const selection = document.getSelection();
         if (!selection.rangeCount)
@@ -483,33 +477,72 @@ export class MarkupEditor {
         return;
     }
 
-    private restoreSelection() {
-        if (!this.lastSelectedRange)
-            return;
+    private fixContent() {
+        // We remove all elements with contentEditable == "false", which
+        // aren't followed by "\u8203" character to workaround an issue with
+        // typing & deletion of such elements in Chrome Android:
+        // - https://github.com/ProseMirror/prosemirror/issues/565#issuecomment-552805191
+        const process = (parent: Node) => {
+            let mustNormalize = false;
+            let skipAfter: Node = null;
+            for (const node0 of parent.childNodes) {
+                if (skipAfter) {
+                    if (node0 !== skipAfter)
+                        continue;
+                    skipAfter = null;
+                    continue;
+                }
 
-        const selection = document.getSelection();
-        selection.removeAllRanges();
-        try {
-            selection.addRange(this.lastSelectedRange);
+                const t0 = asText(node0);
+                if (t0) {
+                    const oldText = t0.textContent;
+                    const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
+                    if (newText.length !== oldText.length) {
+                        t0.textContent = newText;
+                        mustNormalize = true;
+                    }
+                    continue;
+                }
+
+                const e0 = asHTMLElement(node0);
+                if (e0) {
+                    if (e0.contentEditable !== "false") {
+                        process(e0);
+                        continue;
+                    }
+                    let t1 = asText(e0.nextSibling);
+                    while (t1 && t1.textContent.length == 0) {
+                        const t2 = asText(t1.nextSibling);
+                        t1.remove();
+                        t1 = t2;
+                    }
+                    if (t1 && t1.textContent.startsWith(ZeroWidthSpace)) {
+                        skipAfter = t1;
+                        continue;
+                    }
+                    node0.remove();
+                }
+            }
+
+            if (mustNormalize)
+                parent.normalize();
         }
-        catch (e) {
-            console.error(`${LogScope}.restoreSelection: error`, e);
-        }
+
+        this.transaction(() => process(this.contentDiv));
     }
 
-    private expandSelection(listHandler: ListHandler) : boolean {
-        const cursorRange = this.getCursorRange();
-        if (!cursorRange)
-            return false;
+    private fixVirtualKeyboard() {
+        return; // Maybe we'll use it some day
 
-        const matchRange = listHandler.getMatchRange(cursorRange);
-        if (!matchRange)
-            return false;
-
-        const selection = document.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(matchRange);
-        return true;
+        if (!('virtualKeyboard' in navigator))
+            return;
+        let mustShow = document.activeElement == this.contentDiv;
+        // @ts-ignore
+        let virtualKeyboard = navigator.virtualKeyboard as { show(), hide() };
+        if (mustShow)
+            virtualKeyboard.show();
+        else
+            virtualKeyboard.hide();
     }
 }
 
@@ -602,9 +635,6 @@ enum ListCommandKind {
 
 // Helpers
 
-const emptyLinesRe = /\n*/g
-const newLineRe = /\r\n/g
-
 function asHTMLElement(node: Node) : HTMLElement | null {
     return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
 }
@@ -627,5 +657,5 @@ function trimText(text: string) {
 }
 
 function normalize(text: string) {
-    return text.normalize().replace(newLineRe, "\n");
+    return text.normalize().replace(CrlfRe, "\n");
 }

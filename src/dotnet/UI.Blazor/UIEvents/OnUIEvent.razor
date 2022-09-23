@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
-@typeparam TEvent where TEvent : class
+@typeparam TEvent where TEvent : class, IUIEvent
 
 @code {
     [Inject] UIEventHub UIEventHub { get; init; } = null!;

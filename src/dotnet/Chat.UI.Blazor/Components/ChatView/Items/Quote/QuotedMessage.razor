@@ -64,7 +64,7 @@
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
-            await UIEventHub.Publish(new NavigateToChatEntry(Message.Entry.Id)).ConfigureAwait(false);
+            await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id)).ConfigureAwait(false);
             ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
         }
     }

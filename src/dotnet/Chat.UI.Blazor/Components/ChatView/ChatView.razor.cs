@@ -240,7 +240,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => TryNavigateToEntry();
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntry navigation, CancellationToken cancellationToken)
+    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent navigation, CancellationToken cancellationToken)
     {
         NavigateToEntry(navigation.ChatEntryId);
         return Task.CompletedTask;

@@ -59,10 +59,8 @@
         StateHasChanged();
     }
 
-    private async Task OnSetMarkupClick() {
-        await _editorRef.SetText(_markup);
-        StateHasChanged();
-    }
+    private async Task OnSetMarkupClick()
+        => await _editorRef.SetText(_markup, true);
 
     private async Task OnPost(string text) {
         _markup = text;

@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using BlazorContextMenu
+@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<MessageMenuContent.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -110,7 +111,7 @@
 
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
-        await UIEventHub.Publish(new FocusChatMessageEditor());
+        await UIEventHub.Publish<FocusChatMessageEditorEvent>();
     }
 
     private async Task CopyLink(ChatEntry chatEntry) {
@@ -119,11 +120,11 @@
     }
 
     private Task Edit(ChatEntry chatEntry) {
-        return UIEventHub.Publish(new EditChatMessage(chatEntry));
+        return UIEventHub.Publish(new EditChatMessageEvent(chatEntry));
     }
 
     public sealed record Model {
-        public static readonly Model None = new Model();
+        public static readonly Model None = new();
 
         public bool IsJoined { get; init; }
         public bool IsEntryAuthor { get; init; }

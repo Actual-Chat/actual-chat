@@ -49,7 +49,12 @@
 
     private PanelState _panelState = PanelState.Closed;
 
-    public void OnClick() {
+    public void Close() {
+        _panelState = PanelState.Closing;
+        StateHasChanged();
+    }
+
+    private void OnClick() {
         _panelState = _panelState switch {
             PanelState.Closed => PanelState.Opening,
             PanelState.Opening => PanelState.Closing,
@@ -58,8 +63,6 @@
         };
     }
 
-    public void OnCloseClick() {
-        _panelState = PanelState.Closing;
-        StateHasChanged();
-    }
+    private void OnCloseClick()
+        => Close();
 }

@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<MessageHoverMenu.Model>
 @{
     var entry = Message.Entry;
@@ -51,7 +52,7 @@
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
         Services.UICommander().CancelUpdateDelays();
-        await UIEventHub.Publish(new FocusChatMessageEditor());
+        await UIEventHub.Publish<FocusChatMessageEditorEvent>();
     }
 
     public record Model(bool CanReply) {

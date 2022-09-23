@@ -80,23 +80,23 @@
         return text;
     }
 
-    public async ValueTask SetText(string text) {
+    public async ValueTask SetText(string text, bool mustFocus = false) {
         var markup = await MarkupHub.ParseAndNameMentions(text, default);
-        await SetMarkup(markup);
+        await SetMarkup(markup, mustFocus);
     }
 
-    public async ValueTask SetMarkup(Markup markup) {
+    public async ValueTask SetMarkup(Markup markup, bool mustFocus = false) {
         var html = HtmlConverter.Format(markup);
-        await SetHtml(html);
+        await SetHtml(html, mustFocus);
     }
 
-    public async ValueTask SetHtml(string html) {
+    public async ValueTask SetHtml(string html, bool mustFocus = false) {
         await WhenReady;
-        await JSRef.InvokeVoidAsync("setHtml", html);
+        await JSRef.InvokeVoidAsync("setHtml", html, mustFocus);
     }
 
-    public ValueTask Clear()
-        => SetHtml("");
+    public ValueTask Clear(bool mustFocus = false)
+        => SetHtml("", mustFocus);
 
     public async ValueTask Focus() {
         await WhenReady;

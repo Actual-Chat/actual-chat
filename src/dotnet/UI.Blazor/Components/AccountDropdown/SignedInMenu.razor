@@ -2,6 +2,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Events
 @inject NavigationManager Navigator
 
 <button class="account-btn btn-square" onclick="@OnSettingsClick">
@@ -13,5 +14,5 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     private void OnSettingsClick()
-        => _ = UIEventHub.Publish(new ShowSettingsModal());
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }
