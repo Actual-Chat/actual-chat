@@ -23,7 +23,7 @@
 }
 
 <div class="author-avatar-badge flex-x items-center rounded-full">
-    <div class="relative">
+    <div class="relative overflow-hidden">
         @if (ReferenceEquals(Author, Users.Author.None)) {
             <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
         } else {
