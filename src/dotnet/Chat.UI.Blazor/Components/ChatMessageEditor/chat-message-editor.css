@@ -6,12 +6,25 @@
     height: 0;
 }
 
-.message-input {
-    @apply flex-1 overflow-y-auto max-h-48 md:max-h-88 mx-2 md:ml-1 md:mr-4;
-    @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-07 md:bg-03;
-}
 .post-panel {
-    @apply bg-07 md:bg-03 rounded-3xl min-h-12 items-center outline-none;
+    @apply flex-x justify-between items-center;
+    @apply w-full min-h-12;
+    @apply border-bg-01 outline-none bg-07 md:bg-03 rounded-3xl;
+}
+.post-panel .message-input {
+    @apply flex-1;
+    @apply max-h-48 md:max-h-88;
+    @apply mr-2 md:mr-4;
+    @apply break-words text-counter md:text-02 hover:cursor-text;
+    @apply outline-none bg-07 md:bg-03;
+    @apply overflow-y-auto overflow-x-hidden;
+}
+.post-panel .message-input .editor-content {
+    @apply ml-0;
+    /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
+       but flexbox ensures it never grows above what's allowed;
+       I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
+    @apply w-8;
 }
 
 .not-recording {
