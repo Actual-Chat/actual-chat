@@ -6,7 +6,7 @@
 <DialogFrame HasCloseButton="true" Class="image-preview-modal">
     <Body>
         <div class="flex flex-y w-full h-full justify-center">
-            <img src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+            <img width="@ModalModel.Width" height="@ModalModel.Height" src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
             <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
         </div>
     </Body>
@@ -15,5 +15,5 @@
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model(string Url, string? AltText);
+    public sealed record Model(string Url, string? AltText, int Width = 0, int Height = 0);
 }
