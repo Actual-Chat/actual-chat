@@ -4,7 +4,6 @@
 @using ActualChat.MediaPlayback
 @using Timer = System.Timers.Timer;
 @using System.Timers
-
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
     if (m == Model.NotPlaying)
@@ -12,11 +11,13 @@
 }
 
 <div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content relative">
-        <div class="flex-x self-center">
-            <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon mobile-hidden">
-                <i class="icon-rewind-left-fill text-2xl"></i>
-            </ButtonRound>
+    <div class="historical-playback-sub-header-content flex-x justify-between items-center gap-x-2">
+        <div class="flex-none flex-x">
+            @if (ScreenSize.IsDesktop()) {
+                <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+                    <i class="icon-rewind-left-fill text-2xl"></i>
+                </ButtonRound>
+            }
             @if (m.IsPaused) {
                 <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon">
                     <i class="icon-play-fill text-2xl"></i>
@@ -25,32 +26,25 @@
                 <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
-                <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon mobile-hidden">
-                    <i class="icon-Stop-fill text-2xl"></i>
+            }
+            <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+                <i class="icon-Stop-fill text-2xl"></i>
+            </ButtonRound>
+            @if (ScreenSize.IsDesktop()) {
+                <ButtonRound Title="Fast-forward" Click="@OnForward" Class="transparent hover-primary-icon">
+                    <i class="icon-rewind-right-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Fast-forward" Click="@OnFastForward" Class="transparent hover-primary-icon mobile-hidden">
-                <i class="icon-rewind-right-fill text-2xl"></i>
-            </ButtonRound>
         </div>
 
-        <div class="flex-1"></div>
-
-        @* Position *@
-        @* Replace position with playing chat title *@
-        <div class="absolute left-52 flex-x items-center ">
-            <ChatAuthorCirclesGroup
-                Class="historical-playback-active-authors-panel mobile-hidden"
-                MaxIconCount="4"
-                Size="SquareSize.Size6"
-                AuthorIds="@m.AuthorIds" />
-            <div class="flex-y">
-                @if (m.DisplayChatTitle) {
-                    <div class="c-text">
-                        <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.Title</a>
-                    </div>
-                }
-                <div class="c-text mobile-hidden">
+        <div class="flex-auto flex-y">
+            @if (m.ShowChatTitle) {
+                <div class="c-chat-title truncate whitespace-nowrap">
+                    <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
+                </div>
+            }
+            @if (ScreenSize.IsDesktop()) {
+                <div class="c-text truncate whitespace-nowrap">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = TimeZoneConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
@@ -61,12 +55,20 @@
                         </span>
                     }
                 </div>
-            </div>
+            }
         </div>
 
-        <div class="flex-x self-center self-end">
+        <div class="flex-none flex-x">
+            <ChatAuthorCirclesGroup
+                Class="historical-playback-active-authors-panel"
+                MaxIconCount="4"
+                Size="SquareSize.Size6"
+                AuthorIds="@m.AuthorIds" />
+        </div>
+
+        <div class="flex-none">
             @* Speed Selector *@
-            <ButtonRound Title="Close" Click="OnStop" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Close" Click="@OnStop" Class="transparent hover-primary-icon">
                 <i class="icon-close-fill text-2xl"></i>
             </ButtonRound>
         </div>
@@ -76,15 +78,16 @@
 @code {
     private RewindController? _rewindController;
 
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
     [CascadingParameter] public Chat ChatViewChat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -93,6 +96,8 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var lastModel = State.ValueOrDefault;
+
         var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
         if (chatId.IsEmpty)
             return Model.NotPlaying;
@@ -103,10 +108,11 @@
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         if (playback == null) {
-            // There is no playback. This may happen if playback is not started yet or is being restarting.
-            // Keep previous state.
-            return State.ValueOrDefault ?? Model.NotPlaying;
+            // This may happen when player is being disposed, which means this method
+            // will soon recompute anyway.
+            return lastModel ?? Model.NotPlaying;
         }
+
         var isPaused = await playback.IsPaused.Use(cancellationToken);
         var playbackStates = await playback.PlayingTracks.Use(cancellationToken);
         var authorIds = ImmutableArray<Symbol>.Empty;
@@ -124,31 +130,26 @@
                 continue;
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
-        if (!playingAt.HasValue && State.ValueOrDefault != null) {
-            // Try to keep last state to avoid blinks
-            var m = State.LatestNonErrorValue;
-            if (m.ChatId == chatId &&
-                m.ChatPlayer == historicalChatPlayer &&
-                m.Title == chatTitle &&
-                m.IsPaused == isPaused)
-                return m;
-        }
+        if (playingAt.HasValue)
+            return new Model {
+                ChatId = chatId,
+                PlayingAt = playingAt,
+                ChatPlayer = historicalChatPlayer,
+                IsPaused = isPaused,
+                ChatTitle = chatTitle,
+                ShowChatTitle = chatId != ChatViewChat.Id,
+                AuthorIds = authorIds
+            };
 
-        return new Model {
-            ChatId = chatId,
-            PlayingAt = playingAt,
-            ChatPlayer = historicalChatPlayer,
-            IsPaused = isPaused,
-            Title = chatTitle,
-            DisplayChatTitle = chatId != ChatViewChat.Id,
-            AuthorIds = authorIds
-        };
+        var canUseLastModel = lastModel != null
+            && lastModel.ChatId == chatId
+            && lastModel.ChatPlayer == historicalChatPlayer
+            && lastModel.IsPaused == isPaused;
+        return canUseLastModel ? lastModel! : Model.NotPlaying;
     }
 
-    private Task OnStop() {
-        ChatPlayers.StopPlayback();
-        return Task.CompletedTask;
-    }
+    private void OnStop()
+        => ChatPlayers.StopPlayback();
 
     private void OnResume() {
         var m = State.LatestNonErrorValue;
@@ -164,7 +165,7 @@
         _ = m.ChatPlayer.Playback.Pause(default);
     }
 
-    private void OnFastForward()
+    private void OnForward()
         => Rewind(TimeSpan.FromSeconds(15));
 
     private void OnBackward()
@@ -202,9 +203,9 @@
         public DateTime? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
         public HistoricalChatPlayer? ChatPlayer { get; init; }
-        public string Title { get; init; } = "";
+        public string ChatTitle { get; init; } = "";
         public Symbol ChatId { get; init; }
-        public bool DisplayChatTitle { get; init; }
+        public bool ShowChatTitle { get; init; }
         public ImmutableArray<Symbol> AuthorIds { get; init; }
     }
 

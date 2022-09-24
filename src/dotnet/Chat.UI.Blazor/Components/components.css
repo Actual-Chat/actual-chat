@@ -23,6 +23,9 @@
 .historical-playback-sub-header-content {
     @apply flex-x w-full items-center;
 }
+.historical-playback-sub-header-content .c-chat-title {
+    @apply font-semibold;
+}
 .historical-playback-sub-header-content .c-text {
     @apply font-light;
 }
@@ -109,9 +112,6 @@
     @apply m-0;
 }
 
-.invite-chat-author-modal .dialog-body input:not([type='checkbox']) {
-    @apply w-full pl-8 py-2;
-}
 .people-tab .author-badge {
     @apply p-0.5 mr-1 rounded-xl cursor-pointer;
 }

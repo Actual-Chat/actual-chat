@@ -6,29 +6,21 @@
 <DialogFrame Class="invite-chat-author-modal" Title="Invite users" HasCloseButton="true">
     <Body>
     <div class="flex-y h-full w-full">
-        <div class="relative text-placeholder -ml-0.5">
-            <span class="absolute inset-y-0 left-1 flex items-center">
-                <button type="submit" class="focus:outline-none focus:shadow-outline">
-                    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" class="w-6 h-6">
-                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </button>
-            </span>
-            <input type="search"
-                   name="q"
-                   @oninput="OnFilter"
-                   placeholder="Search..."
-                   autocomplete="off">
-        </div>
-        <div class="flex-1 overflow-y-auto custom-scrollbar mt-2 max-h-[60vh] min-h-[60vh]">
-            @foreach (var contact in FilteredChatContacts) {
-                <div class="flex-x w-full gap-x-2 hover:bg-02"
+        <SearchBox
+            @ref="_searchBoxRef"
+            Class="mt-1"
+            Placeholder="Find contacts..."
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <div class="flex-1 gap-y-1 mt-2 ml-1 mr-2 max-h-[60vh] min-h-[60vh] overflow-y-auto custom-scrollbar">
+            @foreach (var contact in FilteredContacts) {
+                <div class="flex-x items-center gap-x-2 w-full rounded-md pl-2 hover:bg-02"
                      @key="@contact.Author.Id"
                      @onclick="() => OnContactClick(contact)">
                     @if (contact.IsExisting) {
-                        <Checkbox Checked="true" Disabled="true" Class="self-center ml-4"/>
+                        <Checkbox Checked="true" Disabled="true"/>
                     } else {
-                        <Checkbox Checked="@contact.IsChecked" Class="self-center ml-4"/>
+                        <Checkbox Checked="@contact.IsChecked"/>
                     }
                     <AuthorBadge
                         Author="@contact.Author"
@@ -58,6 +50,8 @@
 </DialogFrame>
 
 @code {
+    private SearchBox _searchBoxRef;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -68,15 +62,14 @@
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
-    private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
     private bool CanInvite { get; set; }
     private CancellationTokenSource DisposeTokenSource { get; } = new();
 
     protected override async Task OnInitializedAsync() {
         var existingChatUserIds = new HashSet<Symbol>(
-            await ChatAuthors
-                .ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
+            await ChatAuthors.ListUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token));
 
         var contacts = await UserContacts.List(Session, DisposeTokenSource.Token);
         var resolvedContacts = await contacts
@@ -97,19 +90,41 @@
             })
             .Collect();
 
-        AllChatContacts = resolvedContacts
+        AllContacts = resolvedContacts
             .SkipNullItems()
             .OrderBy(x => x.Author.Name)
             .ToArray();
-        FilteredChatContacts = AllChatContacts;
+        FilteredContacts = AllContacts;
     }
 
-    public void Dispose() => DisposeTokenSource.Cancel();
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            _ = _searchBoxRef.Focus();
+    }
+
+    public void Dispose()
+        => DisposeTokenSource.Cancel();
+
+    private void OnFilter(string filter) {
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Author.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
+    }
+
+    private void OnContactClick(Contact contact) {
+        if (contact.IsExisting)
+            return;
+
+        contact.IsChecked = !contact.IsChecked;
+        CanInvite = AllContacts.Any(x => !x.IsExisting && x.IsChecked);
+    }
 
     private async Task OnInvite() {
         CanInvite = false;
 
-        var userIds = AllChatContacts
+        var userIds = AllContacts
             .Where(x => !x.IsExisting && x.IsChecked)
             .Select(x => x.Author.Id.Value)
             .ToArray();
@@ -121,22 +136,9 @@
     private Task OnCancel()
         => ModalInstance.CancelAsync();
 
-    private void OnFilter(ChangeEventArgs args) {
-        var filter = args.Value?.ToString();
-        FilteredChatContacts = string.IsNullOrWhiteSpace(filter)
-            ? AllChatContacts.ToArray()
-            : AllChatContacts
-                .Where(x => x.Author.Name.OrdinalIgnoreCaseContains(filter))
-                .ToArray();
-    }
+    // Nested types
 
-    private void OnContactClick(Contact contact) {
-        if (contact.IsExisting)
-            return;
-
-        contact.IsChecked = !contact.IsChecked;
-        CanInvite = AllChatContacts.Any(x => !x.IsExisting && x.IsChecked);
-    }
+    public sealed record Model(Chat Chat);
 
     private sealed class Contact {
         public UserAuthor Author { get; }
@@ -151,6 +153,4 @@
             IsChecked = isExisting;
         }
     }
-
-    public sealed record Model(Chat Chat);
 }

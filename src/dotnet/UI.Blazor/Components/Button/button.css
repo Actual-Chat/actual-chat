@@ -214,12 +214,6 @@
     @apply p-1 self-center;
 }
 
-@media not (min-width: 1024px) {
-    .btn.mobile-hidden {
-        @apply hidden;
-    }
-}
-
 /*Default horizontal*/
 .btn-group {
     @apply flex flex-row gap-x-4;

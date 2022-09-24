@@ -2,7 +2,10 @@
     @apply w-full;
 }
 .search-box input {
-    @apply h-10 rounded-full pl-12 pr-4 text-left bg-04;
+    @apply h-10 rounded-full pl-10 pr-4 text-left bg-04;
+}
+.dialog-body .search-box input {
+    @apply bg-02;
 }
 .search-box input::placeholder {
     @apply text-left;

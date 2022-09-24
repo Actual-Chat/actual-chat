@@ -52,19 +52,20 @@
 .dialog-body {
     @apply flex-y grow;
 }
-.dialog-body input:not([type='checkbox']) {
+.dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;
 }
-.dialog-body input:not([type='checkbox']).invalid {
+.dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid {
     @apply border-error;
 }
-.dialog-body input:focus {
+.dialog-body input:focus:not(.dialog-unstyled) {
     @apply outline-none border-primary;
     @apply ring-1 ring-primary;
 }
-.dialog-body input:not([type='checkbox']).invalid:focus {
+.dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus {
     @apply border-error;
 }
+
 .dialog-buttons {
     @apply flex flex-row justify-end;
 }
