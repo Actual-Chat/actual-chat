@@ -7,6 +7,6 @@ public class ImagePreviewUI
     public ImagePreviewUI(ModalUI modalUI)
         => _modalUI = modalUI;
 
-    public Task Show(string url, string? altText = null)
-        => _modalUI.Show(new ImagePreviewModal.Model(url, altText)).Result;
+    public Task Show(string url, string? altText = null, int width = 0, int height = 0)
+        => _modalUI.Show(new ImagePreviewModal.Model(url, altText, width, height)).Result;
 }
