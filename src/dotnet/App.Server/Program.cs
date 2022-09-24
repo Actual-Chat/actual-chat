@@ -2,6 +2,7 @@ using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using Grpc.Core;
+using Stl.OS;
 
 namespace ActualChat.App.Server;
 
@@ -14,6 +15,7 @@ internal static class Program
         Activity.ForceDefaultIdFormat = true;
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
+
         using var appHost = new AppHost();
         try {
             await appHost.Build().ConfigureAwait(false);
@@ -34,14 +36,15 @@ internal static class Program
         // we preserve default thread pool settings only if they are bigger of our minimals
         static void AdjustThreadPool()
         {
-            ThreadPool.SetMaxThreads(16384, 16384);
+            var (maxWorker, maxIO) = (16384, 16384);
+            ThreadPool.SetMaxThreads(maxWorker, maxIO);
 
-            var sMinIO = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO") ?? "").Trim();
             var sMinWorker = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER") ?? "").Trim();
-            if (!int.TryParse(sMinIO, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIO))
-                minIO = 128;
+            var sMinIO = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO") ?? "").Trim();
             if (!int.TryParse(sMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorker))
-                minWorker = 128;
+                minWorker = HardwareInfo.GetProcessorCountFactor(4);
+            if (!int.TryParse(sMinIO, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIO))
+                minIO = HardwareInfo.GetProcessorCountFactor(4);
             ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
             minIO = Math.Max(minIO, currentMinIO);
             minWorker = Math.Max(minWorker, currentMinIO);
@@ -49,18 +52,20 @@ internal static class Program
             if ((minIO, minWorker) == (currentMinWorker, currentMinWorker))
                 return;
 
-            if (!ThreadPool.SetMinThreads(currentMinWorker, minIO))
+            Console.WriteLine($"Thread pool thread size: {minWorker}..{maxWorker} worker, {minIO}..{maxIO} IO threads");
+            if (!ThreadPool.SetMinThreads(minWorker, minIO))
                 throw StandardError.Internal("Can't set min. thread count.");
         }
 
         static void AdjustGrpcCoreThreadPool()
         {
-            var grpcThreadsEnv = (Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE") ?? "").Trim();
-            if (!int.TryParse(grpcThreadsEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int grpcThreads))
-                grpcThreads = 64;
+            var threadCountEnv = (Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE") ?? "").Trim();
+            if (!int.TryParse(threadCountEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int threadCount))
+                threadCount = HardwareInfo.GetProcessorCountFactor(4);
 
-            GrpcEnvironment.SetThreadPoolSize(grpcThreads);
-            GrpcEnvironment.SetCompletionQueueCount(grpcThreads);
+            Console.WriteLine($"GRPC thread pool size: {threadCount}");
+            GrpcEnvironment.SetThreadPoolSize(threadCount);
+            GrpcEnvironment.SetCompletionQueueCount(threadCount);
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
         }
