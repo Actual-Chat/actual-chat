@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using ActualChat.Commands;
 
-namespace ActualChat.Core.UnitTests.ScheduledCommands;
+namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandTestService
 {
@@ -33,14 +33,13 @@ public class ScheduledCommandTestService
     [CommandHandler]
     public virtual async Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
         => await new TestEvent(command.Error)
-            .Configure()
-            .ScheduleOnCompletion(command, cancellationToken)
+            .EnqueueOnCompletion(command, cancellationToken)
             .ConfigureAwait(false);
 
     [CommandHandler]
     public virtual async Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken)
         => await new TestEvent2()
-            .ScheduleOnCompletion(command, cancellationToken)
+            .EnqueueOnCompletion(command, cancellationToken)
             .ConfigureAwait(false);
 
 }

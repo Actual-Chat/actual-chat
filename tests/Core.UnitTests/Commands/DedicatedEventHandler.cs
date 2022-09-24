@@ -1,7 +1,7 @@
 using ActualChat.Commands;
 using Stl.Time.Testing;
 
-namespace ActualChat.Core.UnitTests.ScheduledCommands;
+namespace ActualChat.Core.UnitTests.Commands;
 
 public class DedicatedEventHandler
 {

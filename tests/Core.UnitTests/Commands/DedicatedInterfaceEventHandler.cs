@@ -1,6 +1,6 @@
 using ActualChat.Commands;
 
-namespace ActualChat.Core.UnitTests.ScheduledCommands;
+namespace ActualChat.Core.UnitTests.Commands;
 
 public class DedicatedInterfaceEventHandler : IEventHandler<TestEvent2>
 {

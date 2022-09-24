@@ -1,17 +1,17 @@
 namespace ActualChat.Commands;
 
-public class LocalCommandQueue
+public class LocalCommandQueue : ICommandQueue
 {
-    private Channel<ICommand> ScheduledCommands { get; }
+    private Channel<IBackendCommand> ScheduledCommands { get; }
 
     public LocalCommandQueue()
-        => ScheduledCommands = Channel.CreateBounded<ICommand>(new BoundedChannelOptions(1000) {
+        => ScheduledCommands = Channel.CreateBounded<IBackendCommand>(new BoundedChannelOptions(1000) {
             FullMode = BoundedChannelFullMode.DropOldest,
         });
 
-    public async Task Enqueue(ICommandConfiguration commandConfiguration, CancellationToken cancellationToken)
-        => await ScheduledCommands.Writer.WriteAsync(commandConfiguration.Command, cancellationToken).ConfigureAwait(false);
+    public ValueTask Enqueue(IBackendCommand command, CancellationToken cancellationToken)
+        => ScheduledCommands.Writer.WriteAsync(command, cancellationToken);
 
-    public IAsyncEnumerable<ICommand> Read(CancellationToken cancellationToken)
+    public IAsyncEnumerable<IBackendCommand> Read(CancellationToken cancellationToken)
         => ScheduledCommands.Reader.ReadAllAsync(cancellationToken);
 }

@@ -2,12 +2,12 @@ namespace ActualChat.Commands;
 
 public class CommandCompletionCommandSink : IOperationCompletionListener
 {
-    private LocalCommandQueue CommandQueue { get; }
+    private ICommandQueueProvider CommandQueueProvider { get; }
     private AgentInfo AgentInfo { get; }
 
-    public CommandCompletionCommandSink(LocalCommandQueue commandQueue, AgentInfo agentInfo)
+    public CommandCompletionCommandSink(ICommandQueueProvider commandQueueProvider, AgentInfo agentInfo)
     {
-        CommandQueue = commandQueue;
+        CommandQueueProvider = commandQueueProvider;
         AgentInfo = agentInfo;
     }
 
@@ -22,11 +22,28 @@ public class CommandCompletionCommandSink : IOperationCompletionListener
         if (operation.Items.Items.Count == 0)
             return;
 
-        var eventConfigurations = operation.Items.Items.Values
-            .OfType<ICommandConfiguration>();
+        var queuedCommands = operation.Items.Items.Values
+            .OfType<QueuedCommand>();
 
-        foreach (var eventConfiguration in eventConfigurations)
-            // TODO(AK): it's suspicious the we don't have CancellationToken there
-            await CommandQueue.Enqueue(eventConfiguration, CancellationToken.None).ConfigureAwait(false);
+        // TODO(AK): it's suspicious the we don't have CancellationToken there
+        var cancellationToken = CancellationToken.None;
+        var enqueueTasks = queuedCommands
+            .SelectMany(qc => qc.QueueRefs, (c, r) => (c.Command, Queue: CommandQueueProvider.Get(r)))
+            .Select(p => p.Queue.Enqueue(p.Command, cancellationToken))
+            .ToList();
+        switch (enqueueTasks.Count)
+        {
+        case 0:
+            return;
+        case 1:
+            await enqueueTasks[0].ConfigureAwait(false);
+            break;
+        case 2:
+            await TaskExt.WhenAll(enqueueTasks[0], enqueueTasks[1]).ConfigureAwait(false);
+            break;
+        default:
+            await TaskExt.WhenAll(enqueueTasks).ConfigureAwait(false);
+            break;
+        }
     }
 }

@@ -3,63 +3,126 @@ namespace ActualChat.Commands;
 public static class CommandExt
 {
     public static ValueTask Enqueue(this IEvent @event, CancellationToken cancellationToken)
+        => Enqueue((IBackendCommand)@event, cancellationToken);
+
+    public static ValueTask Enqueue(this IEvent @event, QueueRef queueRef, CancellationToken cancellationToken)
+        => Enqueue((IBackendCommand)@event, queueRef, cancellationToken);
+
+    public static ValueTask Enqueue(
+        this IEvent @event,
+        QueueRef queueRef1,
+        QueueRef queueRef2,
+        CancellationToken cancellationToken)
+        => Enqueue((IBackendCommand)@event, queueRef1, queueRef2, cancellationToken);
+
+    public static ValueTask Enqueue(this IBackendCommand command, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var commandContext = CommandContext.GetCurrent();
+        var provider = commandContext.Services.GetRequiredService<ICommandQueueProvider>();
+        var queue = provider.Get(QueueRef.Default);
+        return queue.Enqueue(command, cancellationToken);
     }
 
-    public static CommandConfiguration Configure(this IEvent @event)
-        => new (@event);
-
-    public static CommandConfiguration Configure(this IBackendCommand command)
-        => new (command);
-
-    public static CommandConfiguration ShardByUserId(this CommandConfiguration existingConfiguration, Symbol userId)
-        => existingConfiguration with { ShardKind = ShardKind.User, ShardKey = userId };
-
-    public static CommandConfiguration ShardByChatId(this CommandConfiguration existingConfiguration, Symbol chatId)
-        => existingConfiguration with { ShardKind = ShardKind.Chat, ShardKey = chatId };
-
-    public static CommandConfiguration WithPriority(this CommandConfiguration existingConfiguration, CommandPriority priority)
-        => existingConfiguration with { Priority = priority };
-
-    public static Task ScheduleNow(
-        this CommandConfiguration commandConfiguration,
+    public static ValueTask Enqueue(
+        this IBackendCommand command,
+        QueueRef queueRef,
         CancellationToken cancellationToken)
     {
         var commandContext = CommandContext.GetCurrent();
-        var jobs = commandContext.Services.GetRequiredService<CommandGateway>();
-        return jobs.Schedule(commandConfiguration, cancellationToken);
+        var provider = commandContext.Services.GetRequiredService<ICommandQueueProvider>();
+        var queue = provider.Get(queueRef);
+        return queue.Enqueue(command, cancellationToken);
     }
 
-    public static Task ScheduleNow(
-        this CommandConfiguration commandConfiguration,
-        CommandGateway commandGateway,
-        CancellationToken cancellationToken)
-        => commandGateway.Schedule(commandConfiguration, cancellationToken);
-
-    // ReSharper disable once UnusedParameter.Global
-    public static Task ScheduleOnCompletion(
-        this CommandConfiguration commandConfiguration,
-        ICommand command,
+    public static ValueTask Enqueue(
+        this IBackendCommand command,
+        QueueRef queueRef1,
+        QueueRef queueRef2,
         CancellationToken cancellationToken)
     {
         var commandContext = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating())
-            return Task.CompletedTask;
+        var provider = commandContext.Services.GetRequiredService<ICommandQueueProvider>();
+        var queue1 = provider.Get(queueRef1);
+        var queue2 = provider.Get(queueRef2);
+        var enqueue1 = queue1.Enqueue(command, cancellationToken);
+        var enqueue2 = queue2.Enqueue(command, cancellationToken);
 
-        commandContext.Operation().Items.Set(commandConfiguration);
-        return Task.CompletedTask;
+        return TaskExt.WhenAll(enqueue1, enqueue2);
     }
 
-    // ReSharper disable once UnusedParameter.Global
-    public static Task ScheduleOnCompletion(
+    public static ValueTask EnqueueOnCompletion(this IEvent @event, ICommand after, CancellationToken cancellationToken)
+        => EnqueueOnCompletion((IBackendCommand)@event, after, cancellationToken);
+
+    public static ValueTask EnqueueOnCompletion(
+        this IEvent @event,
+        ICommand after,
+        QueueRef queueRef,
+        CancellationToken cancellationToken)
+        => EnqueueOnCompletion((IBackendCommand)@event, after, queueRef, cancellationToken);
+
+    public static ValueTask EnqueueOnCompletion(
+        this IEvent @event,
+        ICommand after,
+        QueueRef queueRef1,
+        QueueRef queueRef2,
+        CancellationToken cancellationToken)
+        => EnqueueOnCompletion((IBackendCommand)@event,
+            after,
+            queueRef1,
+            queueRef2,
+            cancellationToken);
+
+    public static ValueTask EnqueueOnCompletion(
         this IBackendCommand command,
         ICommand after,
         CancellationToken cancellationToken)
     {
         var commandContext = CommandContext.GetCurrent();
-        var eventConfiguration = command.Configure();
-        commandContext.Operation().Items.Set(eventConfiguration);
-        return Task.CompletedTask;
+        if (Computed.IsInvalidating())
+            return ValueTask.CompletedTask;
+
+        if (!ReferenceEquals(commandContext.UntypedCommand, after))
+            throw StandardError.Constraint<ICommand>("doesn't handled by current CommandContext.");
+
+        commandContext.OutermostContext.Operation()
+            .Items.Set(new QueuedCommand(command, ImmutableArray.Create(QueueRef.Default)));
+        return ValueTask.CompletedTask;
+    }
+
+    public static ValueTask EnqueueOnCompletion(
+        this IBackendCommand command,
+        ICommand after,
+        QueueRef queueRef,
+        CancellationToken cancellationToken)
+    {
+        var commandContext = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return ValueTask.CompletedTask;
+
+        if (!ReferenceEquals(commandContext.UntypedCommand, after))
+            throw StandardError.Constraint<ICommand>("doesn't handled by current CommandContext.");
+
+        commandContext.OutermostContext.Operation()
+            .Items.Set(new QueuedCommand(command, ImmutableArray.Create(queueRef)));
+        return ValueTask.CompletedTask;
+    }
+
+    public static ValueTask EnqueueOnCompletion(
+        this IBackendCommand command,
+        ICommand after,
+        QueueRef queueRef1,
+        QueueRef queueRef2,
+        CancellationToken cancellationToken)
+    {
+        var commandContext = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return ValueTask.CompletedTask;
+
+        if (!ReferenceEquals(commandContext.UntypedCommand, after))
+            throw StandardError.Constraint<ICommand>("doesn't handled by current CommandContext.");
+
+        commandContext.OutermostContext.Operation()
+            .Items.Set(new QueuedCommand(command, ImmutableArray.Create(queueRef1, queueRef2)));
+        return ValueTask.CompletedTask;
     }
 }

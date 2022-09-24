@@ -13,7 +13,8 @@ public static class FusionBuilderExt
         if (!builder.Services.Contains(operationCompletionSinkDescriptor, new ServiceDescriptorComparer()))
             builder.Services.Add(operationCompletionSinkDescriptor);
         builder.Services.TryAddSingleton<LocalCommandQueue>();
-        builder.Services.TryAddSingleton<CommandGateway>();
+        builder.Services.TryAddSingleton<ICommandQueue>(services => services.GetRequiredService<LocalCommandQueue>());
+        builder.Services.TryAddSingleton<ICommandQueueProvider, LocalCommandQueueProvider>();
         builder.Services.AddHostedService<LocalCommandScheduler>();
         return builder;
     }

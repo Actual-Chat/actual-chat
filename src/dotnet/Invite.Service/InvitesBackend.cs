@@ -137,18 +137,18 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             await new IAccountsBackend.UpdateCommand(account with {
                     Status = AccountStatus.Active,
                 })
-                .ScheduleOnCompletion(command, cancellationToken)
+                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
                 .ConfigureAwait(false);
         else if (chatInviteDetails != null) {
             await new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new ("Invite::Id", invite.Id.Value))
-                .ScheduleOnCompletion(command, cancellationToken)
+                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
                 .ConfigureAwait(false);
             await new ISessionOptionsBackend.UpsertCommand(
                     session,
                     new ("Invite::ChatId", chatInviteDetails.ChatId.Value))
-                .ScheduleOnCompletion(command, cancellationToken)
+                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
                 .ConfigureAwait(false);
         }
 

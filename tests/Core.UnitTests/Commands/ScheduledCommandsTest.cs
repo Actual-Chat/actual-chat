@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.Time.Testing;
 
-namespace ActualChat.Core.UnitTests.ScheduledCommands;
+namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandsTest: TestBase
 {
