@@ -293,9 +293,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                         notificationTime) {
                         Message = new MessageNotificationEntry(chatId, entryId, authorId),
                     })
-                .Configure()
-                .ShardByUserId(uid)
-                .ScheduleNow(cancellationToken)
+                .Enqueue(Queues.Users.ShardBy(uid), cancellationToken)
                 .ConfigureAwait(false);
     }
 

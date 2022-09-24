@@ -1,6 +1,6 @@
 using ActualChat.Commands;
 
-namespace ActualChat.Core.UnitTests.ScheduledCommands;
+namespace ActualChat.Core.UnitTests.Commands;
 
 public record TestEvent(string? Error) : IEvent;
 public record TestEvent2 : IEvent;

@@ -397,13 +397,14 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entry = command.Entry;
         var context = CommandContext.GetCurrent();
         var isUpdate = entry.Id != 0;
+        var chatId = entry.ChatId;
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
-                InvalidateChatPages(entry.ChatId, entry.Type, invChatEntry.Id, isUpdate);
+                InvalidateChatPages(chatId, entry.Type, invChatEntry.Id, isUpdate);
             var invIsNew = context.Operation().Items.GetOrDefault(false);
             if (invIsNew)
-                _ = GetMaxId(entry.ChatId, entry.Type, default); // We invalidate min-max Id range at last
+                _ = GetMaxId(chatId, entry.Type, default); // We invalidate min-max Id range at last
             return null!;
         }
 
@@ -411,7 +412,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             // Injecting mention names into the markup
             var content = entry.Content;
             var markup = MarkupParser.Parse(content);
-            var mentionNamer = new MentionNamer(ChatMentionResolverFactory.Create(entry.ChatId));
+            var mentionNamer = new MentionNamer(ChatMentionResolverFactory.Create(chatId));
             markup = await mentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
             content = MarkupFormatter.Default.Format(markup);
             entry = entry with { Content = content };
@@ -434,13 +435,22 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 : entry.IsRemoved
                     ? EntryState.Removed
                     : EntryState.Updated;
-        if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text)
-            await new TextEntryChangedEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content, state)
-                .Configure()
-                .ShardByChatId(entry.ChatId)
-                .WithPriority(CommandPriority.Low)
-                .ScheduleOnCompletion(command, cancellationToken)
+        if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
+            var authorId = entry.AuthorId;
+            var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+            var userId = chatAuthor!.UserId;
+            await new TextEntryChangedEvent(chatId,
+                    entry.Id,
+                    authorId,
+                    entry.Content,
+                    state)
+                .EnqueueOnCompletion(
+                    command,
+                    Queues.Chats.ShardBy(chatId),
+                    Queues.Users.ShardBy(userId),
+                    cancellationToken)
                 .ConfigureAwait(false);
+        }
 
         return entry;
     }

@@ -36,6 +36,70 @@ public static class TaskExt
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
+    // WhenAll
+
+    public static async ValueTask WhenAll(ValueTask task1, ValueTask task2)
+    {
+        if (task1.IsCompletedSuccessfully && task2.IsCompletedSuccessfully)
+            return;
+
+        if (task1.IsCompletedSuccessfully)
+            await task2.ConfigureAwait(false);
+
+        if (task2.IsCompletedSuccessfully)
+            await task1.ConfigureAwait(false);
+
+        Exception? exception1 = null;
+        Exception? exception2 = null;
+
+        try {
+            await task1.ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            exception1 = e;
+        }
+
+        if (exception1 == null) {
+            await task2.ConfigureAwait(false);
+            return;
+        }
+
+        try {
+            await task2.ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            exception2 = e;
+        }
+        if (exception2 == null)
+            throw exception1;
+
+        throw new AggregateException(exception1, exception2);
+    }
+
+    public static async ValueTask WhenAll(IReadOnlyCollection<ValueTask> source)
+    {
+        List<Exception>? exceptions = null;
+
+        foreach (var valueTask in source)
+            try {
+                if (valueTask.IsCompletedSuccessfully)
+                    continue;
+
+                await valueTask.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                exceptions ??= new List<Exception>(source.Count);
+                exceptions.Add(ex);
+            }
+
+        if (exceptions is not null) {
+            if (exceptions.Count == 1)
+                throw exceptions[0];
+            throw new AggregateException(exceptions);
+        }
+    }
+
     // WhenAny
 
     // Source (with some refactorings):
