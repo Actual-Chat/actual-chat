@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Commands;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;
@@ -39,6 +40,13 @@ public static class TestAuthExt
 
         // Let's wait a bit to ensure all invalidations go through
         await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+
+        var localCommandQueue = services.GetRequiredService<LocalCommandQueue>();
+        while (localCommandQueue.HasCommands)
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+
         return user;
     }
 
