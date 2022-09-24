@@ -19,7 +19,7 @@ export class ChatMessageEditor {
     private isMobile: boolean = null; // Intended: updateLayout needs this on the first run
     private isNarrowMode: boolean = null; // Intended: updateLayout needs this on the first run
     private isTextMode: boolean = null; // Intended: updateTextMode needs this on the first run
-    private isPanelOpen: boolean = false;
+    private isNotifyPanelOpen: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
 
@@ -30,11 +30,11 @@ export class ChatMessageEditor {
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
-        this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
-        this.filePicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
-        this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.input = this.editorDiv.querySelector(':scope .post-panel .message-input');
+        this.postButton = this.editorDiv.querySelector(':scope .post-panel .post-message');
         this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
-        this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
+        this.filePicker = this.editorDiv.querySelector(':scope .post-panel input.file-picker');
+        this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
 
         this.updateLayout();
         this.updateTextMode();
@@ -46,7 +46,7 @@ export class ChatMessageEditor {
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
 
-        this.notifyPanelObserver = new MutationObserver(this.updateAttachDropdown);
+        this.notifyPanelObserver = new MutationObserver(this.updateNotifyPanelRelated);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
@@ -242,22 +242,23 @@ export class ChatMessageEditor {
         this.endAnimations();
     }
 
-    private updateAttachDropdown = () => {
-        const isPanelOpen = this.notifyPanel.classList.contains('panel-opening');
-        if (this.isPanelOpen === isPanelOpen)
+    private updateNotifyPanelRelated = () => {
+        const isNotifyPanelOpen = this.notifyPanel.classList.contains('panel-opening');
+        if (this.isNotifyPanelOpen === isNotifyPanelOpen)
             return;
-        this.isPanelOpen = isPanelOpen;
+
+        this.isNotifyPanelOpen = isNotifyPanelOpen;
         const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
         const label = this.editorDiv.querySelector(':scope label');
-        if (isPanelOpen) {
+        if (isNotifyPanelOpen) {
             setTimeout(() => {
                 attach.classList.add('hidden');
-                label.classList.add('w-0');
+                label.classList.add('hidden');
                 this.markupEditor.isEditable(false);
             }, 150);
         } else {
             attach.classList.remove('hidden');
-            label.classList.remove('w-0');
+            label.classList.remove('hidden');
             this.markupEditor.isEditable(true);
         }
 

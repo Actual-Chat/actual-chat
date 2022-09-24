@@ -1,10 +1,6 @@
 .chat-message-editor {
     @apply bg-07 md:bg-01;
 }
-.message-input::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-}
 
 .post-panel {
     @apply flex-x justify-between items-center;
@@ -24,7 +20,10 @@
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
-    @apply w-8;
+    @apply w-10;
+}
+.post-panel .message-input .editor-content::-webkit-scrollbar {
+    display: none;
 }
 
 .not-recording {
@@ -42,11 +41,11 @@
 /* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex flex-row-reverse right-2 h-12 w-12 bg-transparent;
+    @apply flex-none flex flex-row-reverse right-2 h-12 w-12 bg-transparent; /* -flex-x here somehow makes webpack fail */
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none p-0 h-12 scale-100;
+    @apply flex-none flex-x self-end outline-none p-0 h-12 scale-100;
     @apply text-05 md:text-icons-01 bg-07 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
@@ -63,7 +62,7 @@
     @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
-    @apply rounded-full min-h-0 h-auto px-0 min-w-0;
+    @apply flex-none rounded-full min-h-0 h-auto px-0 min-w-0;
 }
 .notify-call-content .btn.notify-btn {
     @apply md:bg-04 md:border-bg-04 md:text-03;

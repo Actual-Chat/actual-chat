@@ -9,7 +9,7 @@
     };
 }
 
-<div class="@panelCls notify-call-panel">
+<div class="@Class @panelCls notify-call-panel">
     <ButtonRound Class="notify-call-toggle blackout" Click="OnClick">
         <i class="icon-hand text-2xl"></i>
     </ButtonRound>
@@ -48,6 +48,8 @@
     }
 
     private PanelState _panelState = PanelState.Closed;
+
+    [Parameter] public string Class { get; set; } = "";
 
     public void Close() {
         _panelState = PanelState.Closing;
