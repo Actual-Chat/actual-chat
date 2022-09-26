@@ -259,8 +259,8 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var chatAuthor = context.Items.Get<ChatAuthor>()!;
-        if (!chatAuthor.UserId.IsEmpty)
+        var chatAuthor = context.Items.Get<ChatAuthor>();
+        if (chatAuthor is not { UserId.IsEmpty: true })
             return;
         await UserAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, chatAuthor.Name, cancellationToken)
             .ConfigureAwait(false);
