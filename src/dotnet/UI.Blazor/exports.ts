@@ -4,11 +4,13 @@ import './Components/AuthorBadge/author-badge.css'
 import './Components/Button/button.css';
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
+import './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.css';
 import './Components/ContextMenu/context-menu.css';
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/Menu/menu.css'
-import './Components/Modal/modal.css'
+import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
+import './Components/Modal/modal.css' // based on BlazoredModal
 import './Components/Navbar/navbar.css'
 import './Components/Pic/pic.css'
 import './Components/PicUpload/pic-upload.css'
@@ -28,11 +30,13 @@ export * from './Services/KeepAwakeUI/keep-awake-ui'
 
 export * from './Components/components';
 export * from './Components/Clipboard/clipboard';
+export * from './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.js';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';
 export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
+export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/ScreenSizeProvider/screen-size-provider';
 export * from './Components/TextBox/text-box';
 export * from './Components/VirtualList/virtual-list';

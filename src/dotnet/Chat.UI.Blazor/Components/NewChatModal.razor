@@ -53,7 +53,7 @@
         try {
             var chat = await UICommander.Call(cmd);
             chat = chat.Require();
-            await ModalInstance.CancelAsync();
+            await ModalInstance.CloseAsync();
             Nav.NavigateTo(Links.ChatPage(chat.Id));
         }
         catch {
@@ -62,7 +62,7 @@
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync();
+        => ModalInstance.CloseAsync();
 
     public class FormModel
     {

@@ -111,7 +111,7 @@ var blazorContextMenu = function (blazorContextMenu) {
         var menu = document.getElementById(menuId);
         if (!menu) throw new Error("No context menu with id '" + menuId + "' was found");
         addToOpenMenus(menu, menuId, e.target);
-        var triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
+        const triggerDotnetRef = getTriggerDotnetRef(e.currentTarget);
         showMenuCommon(menu, menuId, e.x, e.y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
@@ -119,6 +119,124 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
         return false;
     };
+
+    let hoverMenuReference = null;
+    let hoverMenuTarget = null;
+    let hideHoverMenuOnLeave = true;
+    let debug = false;
+
+    blazorContextMenu.SetHideHoverMenuOnLeave = function(value) {
+        // It's hard to inspect hover menu elements.
+        // Setting this option to false, simplifies this task.
+        // When option is false, hover menu is not hiding on leaving target element.
+        // Only moving over other element hides current menu.
+        hideHoverMenuOnLeave = value;
+    }
+
+    blazorContextMenu.OnHoverContextMenu = function (e, menuId, stopPropagation) {
+        if (debug) console.log('OnHoverContextMenu invoked for ', e.currentTarget);
+        innerOnHoverContextMenu(e, menuId);
+        e.preventDefault();
+        if (stopPropagation)
+            e.stopPropagation();
+        return false;
+    }
+
+    const innerOnHoverContextMenu = function(e, menuId) {
+        if (hoverMenuTarget) {
+            if (hoverMenuTarget === e.currentTarget) {
+                if (debug) console.log('OnHoverContextMenu re-entered to current target ', hoverMenuTarget);
+                hoverMenuTarget.removeEventListener('mouseout', onMouseOutHoverMenu);
+                hoverMenuTarget.addEventListener('mouseleave', onMouseLeftHoverMenu);
+                return;
+            }
+            else {
+                if (debug) console.log('OnHoverContextMenu stopped in target ', hoverMenuTarget);
+                closeHoverMenu();
+            }
+        }
+
+        if (debug) console.log('OnHoverContextMenu started for ', e.currentTarget);
+        const menu = document.getElementById(menuId);
+        if (!menu) throw new Error("No context menu with id '" + menuId + "' was found");
+        const {x, y, isVisible} = getPlacement(e);
+        if (debug) console.log('hover menu placement is (x,y, isVisible):', x, y, isVisible);
+        if (!isVisible) {
+            // Do not show menu if placement is not visible
+            if (debug) console.log('hover menu placement is not visible');
+            closeHoverMenu();
+            return;
+        }
+
+        hoverMenuTarget = e.currentTarget;
+        hoverMenuReference = menu;
+
+        hoverMenuTarget.addEventListener('mouseleave', onMouseLeftHoverMenu);
+        addToOpenMenus(menu, menuId, e.target);
+        const triggerDotnetRef = getTriggerDotnetRef(e.currentTarget);
+
+        showMenuCommon(menu, menuId, x, y, e, triggerDotnetRef);
+    }
+
+    const onMouseLeftHoverMenu = function (e) {
+        if (debug) console.log('onmouseleave invoked for ', e.currentTarget);
+        e.currentTarget.removeEventListener('mouseleave', onMouseLeftHoverMenu);
+        const isOverMenu = isOverHoverMenu(e);
+        if (isOverMenu) {
+            if (debug) console.log('mouse moved over hover menu for ', e.currentTarget);
+            hoverMenuReference.addEventListener('mouseout', onMouseOutHoverMenu);
+        }
+        else {
+            if (debug) console.log('mouse left from ', e.currentTarget);
+            closeHoverMenu();
+        }
+    }
+
+    const onMouseOutHoverMenu = function (e) {
+        if (debug) console.log('mouseout invoked for ', e.currentTarget);
+        const isOverMenu = isOverHoverMenu(e);
+        if (isOverMenu) {
+            if (debug) console.log('mouse is over hover menu for', hoverMenuTarget);
+            return;
+        }
+        if (debug) console.log('mouse left hover menu for', hoverMenuTarget);
+        if (hideHoverMenuOnLeave)
+            closeHoverMenu();
+    }
+
+    const closeHoverMenu = function() {
+        if (hoverMenuTarget) {
+            hoverMenuTarget.removeEventListener('mouseleave', onMouseLeftHoverMenu);
+            hoverMenuTarget.removeEventListener('mouseout', onMouseOutHoverMenu);
+            hoverMenuTarget = null;
+        }
+        if (hoverMenuReference) {
+            blazorContextMenu.Hide(hoverMenuReference.id);
+            hoverMenuReference = null;
+        }
+    };
+
+    const isOverHoverMenu = function (e) {
+        if (!hoverMenuReference)
+            return false;
+        const elements = document.elementsFromPoint(e.pageX, e.pageY);
+        for (const element of elements) {
+            if (element === hoverMenuReference)
+                return true;
+        }
+        return false;
+    }
+
+    const getTriggerDotnetRef = function (trigger) {
+        const attrs = trigger.attributes;
+        for(const attr of attrs) {
+            const name = attr.name;
+            const prefix = '_bl_';
+            if (name.startsWith(prefix))
+                return name.substring(prefix.length);
+        }
+        return "";
+    }
 
     var getOpenedMenuForToggle = function (toggle) {
         if (openMenus.length > 0) {
@@ -142,16 +260,9 @@ var blazorContextMenu = function (blazorContextMenu) {
             blazorContextMenu.Hide(currentMenu.id);
             return false;
         }
-        const placement = target.getElementsByClassName('placement');
-        let x = e.x;
-        let y = e.y;
-        if (placement && placement.length > 0) {
-            const rect = placement[0].getBoundingClientRect();
-            x = rect.left;
-            y = rect.top;
-        }
+        const {x, y} = getPlacement(e);
         addToOpenMenus(menu, menuId, e.target, target);
-        const triggerDotnetRef = JSON.parse(e.currentTarget.dataset["dotnetref"]);
+        const triggerDotnetRef = getTriggerDotnetRef(e.currentTarget);
         showMenuCommon(menu, menuId, x, y, e, triggerDotnetRef);
         e.preventDefault();
         if (stopPropagation) {
@@ -159,6 +270,46 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
         return false;
     };
+
+    let getPlacement = function (e) {
+        const target = e.currentTarget;
+        const placement = target.getElementsByClassName('placement');
+        let x = e.x;
+        let y = e.y;
+        let isVisible = true;
+        if (placement && placement.length > 0) {
+            const placementEl = placement[0];
+            const rect = placementEl.getBoundingClientRect();
+            x = rect.left + (rect.width / 2.0);
+            y = rect.top + (rect.height / 2.0);
+            const elements = document.elementsFromPoint(x, y);
+            let i = 0;
+            for (const element of elements) {
+                if (element === placementEl)
+                    break;
+                const parentElement = element.parentElement;
+                const isContextMenu = parentElement.tagName === 'DIV' && parentElement.className === 'context-menu-container';
+                if (isContextMenu)
+                    continue;
+                const style = window.getComputedStyle(element, null);
+                const bgColor = style.getPropertyValue("background-color");
+                const opacity = style.getPropertyValue("opacity");
+                const isTransparent = bgColor === "rgba(0, 0, 0, 0)" || opacity === "0";
+                if (!isTransparent) {
+                    isVisible = false;
+                    if (debug) console.log('not transparent element', element);
+                    break;
+                }
+                i++;
+            }
+        }
+        const menuPosition = target.dataset['menuPosition'];
+        // Menu should be placed on left from the target point
+        if (menuPosition === 'left')
+            // We use negative X coordinate to indicate that menu should be positioned relative to the right edge.
+            x = -(window.innerWidth - x);
+        return {x: x, y: y, isVisible: isVisible};
+    }
 
     let showMenuCommon = function (menu, menuId, x, y, event, triggerDotnetRef) {
         const target = event.target;
@@ -168,16 +319,20 @@ var blazorContextMenu = function (blazorContextMenu) {
         const isTopHalf = y < window.innerHeight / 2;
         if (currentTarget.dataset.contextMenuToggle === undefined) {
             return blazorContextMenu.Show(menuId, x, y, target, triggerDotnetRef).then(function () {
-                if (isLeftHalf)
-                    menu.style.left = x + "px";
-                else
-                    menu.style.left = (x - menu.clientWidth) + "px";
+                // When a menu is positioned relative to the right edge, correction is not needed.
+                if (menu.style.left !== '') {
+                    if (isLeftHalf)
+                        menu.style.left = x + "px";
+                    else
+                        menu.style.left = (x - menu.clientWidth) + "px";
+                }
                 let topOverflownPixels = menu.offsetTop + menu.clientHeight - window.innerHeight;
                 if (topOverflownPixels > 0) {
                     menu.style.top = (window.innerHeight - menu.clientHeight - offset) + "px";
                 }
             });
         }
+        // @Andrew: can you remind what do you try to achieve at this branch
         let btn = target.closest('button');
         let rect = btn.getBoundingClientRect();
         let left = rect.left;
@@ -358,14 +513,9 @@ var blazorContextMenu = function (blazorContextMenu) {
         }
     }
 
-
-    blazorContextMenu.RegisterTriggerReference = function (triggerElement, triggerDotNetRef) {
-        if (triggerElement) {
-            triggerElement.dataset["dotnetref"] = JSON.stringify(triggerDotNetRef.serializeAsArg());
-        }
-    }
-
     return blazorContextMenu;
 }({});
 
 blazorContextMenu.Init();
+
+export { blazorContextMenu }

@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
+using Blazored.Modal.Services;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -25,16 +26,24 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
-        services.AddBlazoredModal();
+        services.AddScoped<ModalService>();
         services.AddBlazorContextMenu(options =>
         {
             options.ConfigureTemplate(defaultTemplate =>
             {
-                defaultTemplate.MenuCssClass = "context-menu";
-                defaultTemplate.MenuItemCssClass = "context-menu-item";
-                defaultTemplate.MenuListCssClass = "context-menu-list";
-                defaultTemplate.SeperatorCssClass = "context-menu-separator";
+                defaultTemplate.MenuClass += " context-menu";
+                defaultTemplate.MenuItemClass += " context-menu-item";
+                defaultTemplate.MenuListClass += " context-menu-list";
+                defaultTemplate.SeparatorClass += " context-menu-separator";
             });
+
+            options.ConfigureTemplate("horizontal",
+                template => {
+                    template.MenuClass = "blazor-context-menu--horizontal context-menu";
+                    template.MenuItemClass = "blazor-context-menu__item--horizontal";
+                    template.MenuListClass += " blazor-context-menu__list--horizontal context-menu-list";
+                    template.SeparatorClass += " context-menu-separator";
+                });
         });
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options

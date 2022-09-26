@@ -72,11 +72,12 @@
     private void OnSubmit() {
         ModalModel.Comment = _comment;
         ModalModel.Rating = _rating;
-        ModalInstance.CloseAsync(ModalResult.Ok(true));
+        ModalModel.HasSubmitted = true;
+        _ = ModalInstance.CloseAsync();
     }
 
     private void OnCancel() {
-        ModalInstance.CloseAsync(ModalResult.Cancel());
+        _ = ModalInstance.CloseAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -93,5 +94,6 @@
         public string? FeatureTitle { get; init; }
         public int Rating { get; set; }
         public string Comment { get; set; } = "";
+        public bool HasSubmitted { get; set; }
     }
 }

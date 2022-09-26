@@ -28,5 +28,5 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     private void OnCloseClick()
-        => ModalInstance.CancelAsync();
+        => _ = ModalInstance.CloseAsync();
 }

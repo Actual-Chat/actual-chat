@@ -1,0 +1,110 @@
+﻿@using System.Collections.ObjectModel
+@using ActualChat.UI.Blazor.Module
+@using Microsoft.AspNetCore.Components.Routing
+@namespace Blazored.Modal
+
+<CascadingValue Value="this">
+    <CascadingValue Value="_globalModalOptions">
+        @foreach (var modal in _modals) {
+            @modal.ModalInstance
+        }
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ModalService ModalService { get; set; } = default!;
+
+    [Parameter] public string? OverlayCustomClass { get; set; }
+    [Parameter] public string? PositionCustomClass { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool? ActivateFocusTrap { get; set; }
+
+    private readonly Collection<ModalReference> _modals = new();
+    private readonly ModalOptions _globalModalOptions = new();
+    private bool _haveActiveModals;
+
+    internal event Action? OnModalClosed;
+
+    protected override void OnInitialized()
+    {
+        if (ModalService == null)
+            throw new InvalidOperationException($"{GetType()} requires a cascading parameter of type {nameof(ModalService)}.");
+
+        ModalService.OnModalInstanceAdded += Update;
+        ModalService.OnModalCloseRequested += CloseInstance;
+        Nav.LocationChanged += CancelModals;
+
+        _globalModalOptions.Class = Class;
+        _globalModalOptions.PositionCustomClass = PositionCustomClass;
+        _globalModalOptions.OverlayCustomClass = OverlayCustomClass;
+        _globalModalOptions.ActivateFocusTrap = ActivateFocusTrap;
+    }
+
+    private async Task CloseInstance(ModalReference? modal)
+    {
+        if (modal?.ModalInstanceRef != null) {
+            // Gracefully close the modal
+            await modal.ModalInstanceRef.CloseAsync();
+            if (!_modals.Any())
+                await ClearBodyStyles();
+            OnModalClosed?.Invoke();
+        }
+        else {
+            await DismissInstance(modal);
+        }
+    }
+
+    internal Task DismissInstance(Guid id)
+    {
+        var reference = GetModalReference(id);
+        return DismissInstance(reference);
+    }
+
+    private async Task DismissInstance(ModalReference? modal)
+    {
+        if (modal != null) {
+            modal.Dismiss();
+            _modals.Remove(modal);
+            if (!_modals.Any())
+                await ClearBodyStyles();
+            await InvokeAsync(StateHasChanged);
+            OnModalClosed?.Invoke();
+        }
+    }
+
+    private async void CancelModals(object? sender, LocationChangedEventArgs e)
+    {
+        if (_modals.Count == 0 && !_haveActiveModals)
+            return;
+
+        foreach (var modalReference in _modals.ToList())
+            modalReference.Dismiss();
+
+        _modals.Clear();
+        await ClearBodyStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Update(ModalReference modalReference)
+    {
+        _modals.Add(modalReference);
+
+        if (!_haveActiveModals) {
+            _haveActiveModals = true;
+            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.setBodyStyle");
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private ModalReference? GetModalReference(Guid id)
+        => _modals.SingleOrDefault(x => x.Id == id);
+
+    private async Task ClearBodyStyles()
+    {
+        _haveActiveModals = false;
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.removeBodyStyle");
+    }
+}

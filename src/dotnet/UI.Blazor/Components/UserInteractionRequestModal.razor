@@ -16,7 +16,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnContinueClick()
-        => ModalInstance.CloseAsync();
+        => _ = ModalInstance.CloseAsync();
 
     public record Model(string Operation);
 }

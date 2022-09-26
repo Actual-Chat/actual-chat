@@ -3,9 +3,9 @@
 @using BlazorContextMenu
 
 <RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
-    <ContextMenu Id="@MenuId" CssClass="context-menu dropdown-menu">
+    <ContextMenu Id="@MenuId" Class="dropdown-menu">
         <ChildContent>
-            <Item OnClick="UploadFilesRequested" CssClass="context-menu-item">
+            <Item OnClick="UploadFilesRequested">
                 <div class="context-menu-content">
                     <div class="context-menu-icon">
                         <i class="icon-attach-2 text-2xl"></i>

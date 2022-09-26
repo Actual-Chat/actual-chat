@@ -4,11 +4,11 @@
 
 @{
     var isRecording = State.Value;
-    var cls = "context-menu-item important-item " + (isRecording ? "on" : "off");
+    var cls = "important-item " + (isRecording ? "on" : "off");
 }
 
 @if (isRecording) {
-    <Item OnClick="@(_ => ChatUI.SetRecordingState(Symbol.Empty))" CssClass="@cls">
+    <Item OnClick="@(_ => ChatUI.SetRecordingState(Symbol.Empty))" Class="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-Stop-fill text-2xl"></i>
@@ -19,7 +19,7 @@
         </div>
     </Item>
 } else {
-    <Item OnClick="@(_ => ChatUI.SetRecordingState(Chat.Id))" CssClass="@cls">
+    <Item OnClick="@(_ => ChatUI.SetRecordingState(Chat.Id))" Class="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-mic text-2xl"></i>

@@ -5,11 +5,11 @@
     var m = State.LatestNonErrorValue;
     var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
     var listeningClass = m.IsListening ? "on" : "off";
-    var cls = $"context-menu-item play {listeningClass} {playingHistoricalClass}";
+    var cls = $"play {listeningClass} {playingHistoricalClass}";
 }
 
 @if (!m.IsListening) {
-    <Item OnClick="@OnListenClick" CssClass="@cls">
+    <Item OnClick="@OnListenClick" Class="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <i class="icon-listen text-2xl"></i>
@@ -20,7 +20,7 @@
         </div>
     </Item>
 } else {
-    <Item OnClick="@OnListenClick" CssClass="@cls">
+    <Item OnClick="@OnListenClick" Class="@cls">
         <div class="context-menu-content">
             <div class="context-menu-icon">
                 <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
