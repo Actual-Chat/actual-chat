@@ -1,3 +1,5 @@
+using Stl.Fusion.Operations.Internal;
+
 namespace ActualChat.Commands;
 
 public class CommandCompletionCommandSink : IOperationCompletionListener
@@ -23,7 +25,11 @@ public class CommandCompletionCommandSink : IOperationCompletionListener
             return;
 
         var queuedCommands = operation.Items.Items.Values
-            .OfType<QueuedCommand>();
+            .OfType<QueuedCommand>()
+            .Concat(operation.Items.Items.Values.OfType<ImmutableList<NestedCommandEntry>>()
+                .SelectMany(l => l)
+                .SelectMany(nce => nce.Items.Items.Values
+                    .OfType<QueuedCommand>()));
 
         // TODO(AK): it's suspicious the we don't have CancellationToken there
         var cancellationToken = CancellationToken.None;
