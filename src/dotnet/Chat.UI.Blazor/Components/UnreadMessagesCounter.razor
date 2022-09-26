@@ -1,0 +1,78 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@inherits ComputedStateComponent<UnreadMessagesCounter.Model>
+@{
+    var m = State.LatestNonErrorValue;
+    if (m.Count == 0)
+        return;
+    var countText = m.Count == 0 ? "" : m.Count.Format();
+}
+
+<div class="bg-primary message-counter-badge">
+    <div class="h-6 p-0.5 rounded-full">
+        <span>@countText</span>
+    </div>
+</div>
+
+@code {
+    private static readonly IUpdateDelayer UpdateDelayer = FixedDelayer.Get(1);
+    private readonly List<(Symbol Chat, UnreadMessages UnreadMessages)> _chatUnreadMessages = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; init; } = null!;
+    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
+
+    [Parameter, EditorRequired] public List<Symbol> Chats { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        _chatUnreadMessages.ForEach(x => x.UnreadMessages.DisposeSilently());
+        _chatUnreadMessages.Clear();
+        foreach (var chat in Chats) {
+            _chatUnreadMessages.Add((chat, UnreadMessagesFactory.Get(chat)));
+        }
+        await base.OnParametersSetAsync();
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        _chatUnreadMessages.ForEach(x => x.UnreadMessages.DisposeSilently());
+        _chatUnreadMessages.Clear();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer,
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (_chatUnreadMessages.Count == 0)
+            return Model.None;
+
+        var results = new ConcurrentBag<MaybeEstimate<int>>();
+        var countTasks = _chatUnreadMessages
+            .Select(async chatUnreadMessages => {
+                var notificationStatus = await Notifications.GetStatus(
+                    Session,
+                    chatUnreadMessages.Chat,
+                    CancellationToken.None);
+                if (!notificationStatus.IsSubscribed)
+                    return;
+                var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken).AsTask();
+                results.Add(count);
+            })
+            .ToList();
+
+        await Task.WhenAll(countTasks);
+        return new() {
+            Count = results.Sum(),
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public MaybeEstimate<int> Count { get; init; }
+    }
+}

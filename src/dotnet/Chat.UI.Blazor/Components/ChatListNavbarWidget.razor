@@ -1,15 +1,23 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
+    var chats = m.PinnedChats.Concat(m.UnpinnedChats).Select(x => x.Id).ToList();
 
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
              Title="@tabTitle" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
-            <div class="h-full flex-y my-2">
-                <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
-                <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
-            </div>
+            <TitleContent>
+                <span>@tabTitle</span>
+                <UnreadMessagesCounter Chats="chats">
+                </UnreadMessagesCounter>
+            </TitleContent>
+            <ChildContent>
+                <div class="h-full flex-y my-2">
+                    <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
+                    <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
+                </div>
+            </ChildContent>
         </Tab>;
 }
 
