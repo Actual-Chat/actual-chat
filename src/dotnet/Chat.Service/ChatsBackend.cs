@@ -460,10 +460,10 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
     {
-        await JoinToAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+        await JoinAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance)
-            await JoinAdminToDefaultChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+            await JoinDefaultChatIfAdmin(@event.UserId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<TextEntryAttachment> CreateTextEntryAttachment(IChatsBackend.CreateTextEntryAttachmentCommand command,
@@ -561,7 +561,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // Private / internal methods
 
-    private async Task JoinToAnnouncementsChat(string userId, CancellationToken cancellationToken)
+    private async Task JoinAnnouncementsChat(string userId, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
         var chatAuthor = await ChatAuthorsBackend.GetOrCreate(
@@ -581,7 +581,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task JoinAdminToDefaultChat(string userId, CancellationToken cancellationToken)
+    private async Task JoinDefaultChatIfAdmin(string userId, CancellationToken cancellationToken)
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account == null || !account.IsAdmin)
