@@ -131,7 +131,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             var invChatRole = context.Operation().Items.Get<ChatRole>();
             if (invChatRole != null) {
                 _ = Get(chatId, invChatRole.Id, default);
-                _ = PseudoList(invChatRole.Id);
+                _ = PseudoList(chatId);
             }
             return default;
         }
