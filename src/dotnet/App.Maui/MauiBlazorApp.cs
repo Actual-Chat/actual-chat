@@ -9,5 +9,8 @@ public class MauiBlazorApp : UI.Blazor.App.App
     [Inject] private NavigationInterceptor NavInterceptor { get; init; } = null!;
 
     protected override void OnInitialized()
-        => NavInterceptor.Initialize(Nav);
+    {
+        NavInterceptor.Initialize(Nav);
+        base.OnInitialized();
+    }
 }
