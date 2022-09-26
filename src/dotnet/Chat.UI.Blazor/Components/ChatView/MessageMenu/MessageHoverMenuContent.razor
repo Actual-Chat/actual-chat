@@ -11,13 +11,14 @@
     <MessageMenuPlay Entry="@entry"/>
 }
 @if (m.CanReply) {
-    <Tooltip Text="Reply" Position="TooltipPosition.Top">
-        <Item OnClick="@(() => Reply(Message.Entry))">
-            <ButtonRound Class="reply-btn">
-                <i class="icon-reply text-xl text-icon-01"></i>
-            </ButtonRound>
-        </Item>
-    </Tooltip>
+    <Item OnClick="@(() => Reply(Message.Entry))">
+        <ButtonRound
+            Class="reply-btn"
+            Tooltip="Reply"
+            TooltipPosition="TooltipPosition.Top">
+            <i class="icon-reply text-xl text-icon-01"></i>
+        </ButtonRound>
+    </Item>
 }
 <ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
     <ButtonRound Class="more-btn">
