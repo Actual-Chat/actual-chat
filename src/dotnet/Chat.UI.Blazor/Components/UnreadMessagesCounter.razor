@@ -5,10 +5,15 @@
     var m = State.LatestNonErrorValue;
     if (m.Count == 0)
         return;
+
+    var bgColor = m.IsSubscribed
+        ? "bg-primary"
+        : "bg-counter";
+
     var countText = m.Count == 0 ? "" : m.Count.Format();
 }
 
-<div class="bg-primary message-counter-badge">
+<div class="@bgColor message-counter-badge">
     <div class="h-6 p-0.5 rounded-full">
         <span>@countText</span>
     </div>
@@ -50,23 +55,24 @@
         if (_chatUnreadMessages.Count == 0)
             return Model.None;
 
+        var isSubscribed = 0;
         var results = new ConcurrentBag<MaybeEstimate<int>>();
         var countTasks = _chatUnreadMessages
             .Select(async chatUnreadMessages => {
-                var notificationStatus = await Notifications.GetStatus(
-                    Session,
-                    chatUnreadMessages.Chat,
-                    CancellationToken.None);
-                if (!notificationStatus.IsSubscribed)
-                    return;
                 var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken).AsTask();
                 results.Add(count);
+                if (count.Value <= 0)
+                    return;
+                var status = await Notifications.GetStatus(Session, chatUnreadMessages.Chat, CancellationToken.None);
+                if (status.IsSubscribed)
+                    Interlocked.Exchange(ref isSubscribed, 1);
             })
             .ToList();
 
         await Task.WhenAll(countTasks);
         return new() {
             Count = results.Sum(),
+            IsSubscribed = isSubscribed == 1,
         };
     }
 
@@ -74,5 +80,6 @@
         public static readonly Model None = new();
 
         public MaybeEstimate<int> Count { get; init; }
+        public bool IsSubscribed { get; init; }
     }
 }
