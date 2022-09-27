@@ -68,7 +68,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(Data, LastData) || RenderIndex == 0;
+        => !ReferenceEquals(Data, LastData) || RenderIndex == 0 || (Data.Items.Count > 0 && VisibleKeysState?.Value.Count == 0);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
