@@ -1,7 +1,6 @@
-/*
-   See _Host.cshtml, it imports this stylesheet as well:
-   - https://github.com/Blazored/Modal/blob/main/src/Blazored.Modal/wwwroot/blazored-modal.css
-*/
+.blazored-modal-focus-trap {
+    @apply h-full w-full;
+}
 
 .modal {
     @apply h-full w-full md:h-auto md:w-auto;
