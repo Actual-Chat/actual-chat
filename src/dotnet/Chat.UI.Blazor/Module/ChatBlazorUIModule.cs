@@ -63,7 +63,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var eventHub = services.GetRequiredService<UIEventHub>();
         eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
             var modalUI = services.GetRequiredService<ModalUI>();
-            modalUI.Show(new SettingsModal.Model(), "modal-full");
+            modalUI.Show(new SettingsModal.Model(), true);
             return Task.CompletedTask;
         });
     }

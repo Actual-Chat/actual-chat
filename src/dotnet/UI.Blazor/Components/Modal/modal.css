@@ -1,4 +1,12 @@
 .blazored-modal-focus-trap {
+    @apply h-full w-full md:h-auto md:w-auto;
+}
+
+.position-fullscreen {
+    @apply h-full w-full;
+}
+
+.position-fullscreen .blazored-modal-focus-trap {
     @apply h-full w-full;
 }
 
@@ -78,27 +86,27 @@ div.bm-content > form {
 }
 
 /* Fullscreen Modal */
-.modal.modal-full {
+.position-fullscreen .modal {
     @apply md:w-full md:h-full;
 }
-.modal-full .modal-frame.modal-chrome {
+.position-fullscreen .modal-frame.modal-chrome {
     @apply w-full h-full p-0 gap-y-0 rounded-none;
 }
-.modal-full .dialog-body {
+.position-fullscreen .dialog-body {
     @apply p-0;
 }
-.modal-full .modal-close-btn {
+.position-fullscreen .modal-close-btn {
     @apply hidden md:flex absolute right-4 top-4;
 }
-.modal-full .modal-header {
+.position-fullscreen .modal-header {
     @apply hidden;
 }
-.modal-full input {
+.position-fullscreen input {
     @apply cursor-text;
 }
-.modal-full .user-avatar-editor-item,
-.modal-full .user-avatar-editor-item *,
-.modal-full button,
-.modal-full button * {
+.position-fullscreen .user-avatar-editor-item,
+.position-fullscreen .user-avatar-editor-item *,
+.position-fullscreen button,
+.position-fullscreen button * {
     @apply cursor-pointer;
 }

@@ -15,7 +15,7 @@ public sealed class ModalUI
         MatchingTypeFinder = matchingTypeFinder;
     }
 
-    public IModalReference Show<TModel>(TModel model, string cls = "")
+    public IModalReference Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
@@ -24,8 +24,10 @@ public sealed class ModalUI
                 $"No modal view component for '{model.GetType()}' model.");
 
         var modalOptions = new ModalOptions {
-            Class = $"blazored-modal modal {cls}"
+            Class = $"blazored-modal modal"
         };
+        if (isFullScreen)
+            modalOptions.PositionCustomClass = "position-fullscreen";
         var modalContent = new RenderFragment(builder => {
             builder.OpenComponent(0, componentType);
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
