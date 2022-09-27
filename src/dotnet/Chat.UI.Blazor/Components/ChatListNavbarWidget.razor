@@ -33,7 +33,6 @@
                 ActiveTabChanged="@OnActiveTabChanged">
 
                 @RenderTab(TabId.Recent, "Recent")
-                @RenderTab(TabId.All, "A-Z")
             </TabPanel>
         </div>
         <ChatMenu />
@@ -45,7 +44,6 @@
     private TabId _activeTabId;
 
     [Inject] private RecentChats RecentChats { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -58,7 +56,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await ListChats(_activeTabId, cancellationToken);
+        var chats = await ListChats(_activeTabId);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         // Default scheduler is used from here
@@ -87,9 +85,8 @@
         };
     }
 
-    private Task<ImmutableArray<Chat>> ListChats(TabId tabId, CancellationToken cancellationToken)
+    private Task<ImmutableArray<Chat>> ListChats(TabId tabId)
         => tabId switch {
-            TabId.All => Chats.List(Session, cancellationToken),
             TabId.Recent => RecentChats.ListIncludingActive(),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
@@ -105,7 +102,6 @@
 
     public enum TabId {
         Recent,
-        All,
     }
 
     public sealed record Model {
