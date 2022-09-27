@@ -60,6 +60,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
+        if (!parsedChatId.IsValid)
+            return ChatAuthorRules.None(chatId);
 
         // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
