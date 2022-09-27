@@ -331,8 +331,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId).AssertValid();
-
+        var parsedChatId = new ParsedChatId(chatId);
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerShort:
             var fullChatId = await GetFullPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -341,7 +340,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return await GetPeerChat(session, fullChatId, cancellationToken).ConfigureAwait(false);
         case ChatIdKind.PeerFull:
             break;
-        default:
+        default: // Group or Invalid
             return null;
         }
 
@@ -360,6 +359,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
 
         var (contactUserId, contact) = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        if (contactUserId.IsNullOrEmpty())
+            return null;
+
         var title = contact?.Name ?? await UserContactsBackend.SuggestContactName(contactUserId, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;
@@ -368,11 +370,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<string?> GetFullPeerChatId(Session session, string chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNullOrEmpty())
-            throw new ArgumentOutOfRangeException(nameof(chatId));
-
-        var parsedChatId = new ParsedChatId(chatId).AssertValid();
-
+        var parsedChatId = new ParsedChatId(chatId);
         switch (parsedChatId.Kind) {
         case ChatIdKind.PeerFull:
             return chatId;
@@ -381,18 +379,27 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             if (account == null)
                 return null;
             return ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1);
-        default:
+        default: // Group or Invalid
             throw new ArgumentOutOfRangeException(nameof(chatId));
         }
     }
 
     [ComputeMethod]
-    protected virtual async Task<(string TargetUserId, UserContact? Contact)> GetPeerChatContact(
+    protected virtual async Task<(string? TargetUserId, UserContact? Contact)> GetPeerChatContact(
         string chatId, Symbol ownerUserId, CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
-        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+        var parsedChatId = new ParsedChatId(chatId);
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.PeerFull:
+            break;
+        case ChatIdKind.PeerShort:
+            parsedChatId = chatId = ParsedChatId.FormatFullPeerChatId(ownerUserId, parsedChatId.UserId1);
+            break;
+        default: // Group or Invalid
+            return (null, null);
+        }
 
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         var targetUserId = (userId1, userId2).OtherThan(ownerUserId);
         if (targetUserId.IsEmpty)
             throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");

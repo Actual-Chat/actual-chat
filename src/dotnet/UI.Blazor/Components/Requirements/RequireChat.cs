@@ -15,8 +15,12 @@ public class RequireChat : RequirementComponent
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
-        if (ChatId.IsNullOrEmpty())
-            Log.LogWarning("ChatId is null");
+        var parsedChatId = new ParsedChatId(ChatId);
+        if (!parsedChatId.IsValid) {
+            Log.LogWarning("Invalid ChatId");
+            parsedChatId.AssertValid();
+            return default; // Prev. line always throws, so it should never get here
+        }
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         return default;

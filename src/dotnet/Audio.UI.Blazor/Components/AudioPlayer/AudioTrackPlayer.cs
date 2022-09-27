@@ -166,7 +166,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
-            ));
+            ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });

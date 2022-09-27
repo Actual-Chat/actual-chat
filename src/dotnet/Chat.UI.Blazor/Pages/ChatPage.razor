@@ -4,26 +4,22 @@
 @layout ChatLayout
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
-    var error = State.Error;
     if (m.IsUnavailable) {
-        <RequireChat ChatId="@ChatId" />
+        <RequireChat ChatId="@m.ParsedChatId.Id.Value" />
         return;
     }
+    var error = State.Error; // AY: Add code displaying the error bar later
     var chat = m.Chat;
+    if (chat == null) {
+        <div>Loading...</div>
+        return;
+    }
+    if (!chat.IsPublic && !m.Account.IsActive()) {
+        /* We check account here to avoid excessive render */
+        <RequireAccount/>
+    }
 }
 
-@if (error != null) {
-    <Error Title="Update error" Class="mb-3">@error.Message</Error>
-    return;
-}
-@if (chat == null) {
-    <div>Loading...</div>
-    return;
-}
-@if (!chat.IsPublic && !m.Account.IsActive()) {
-    /* We check account here to avoid excessive render */
-    <RequireAccount/>
-}
 @* @key=... ensures child components are recreated on navigation to another chat *@
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="chat">
@@ -78,19 +74,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override async Task OnParametersSetAsync() {
-        var fullChatId = ChatId;
-        var chat = await Chats.Get(Session, ChatId, default);
-        if (chat != null)
-            fullChatId = chat.Id;
-        if (ChatUI.ActiveChatId.Value != fullChatId) {
-            ChatUI.ActiveChatId.Value = fullChatId;
-            ChatUI.LinkedChatEntry.Value = null;
-            UICommander.CancelUpdateDelays();
-        }
-        await base.OnParametersSetAsync();
-    }
-
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
             || State.HasError
@@ -105,36 +88,58 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatId.IsNullOrEmpty()) {
-            Log.LogWarning("ChatId is null or empty");
-            return Model.Unavailable;
+        if (ChatId.IsNullOrEmpty())
+            return Model.Loading;
+
+        var accountTask = Accounts.Get(Session, default);
+        var account = (Account?) null;
+
+        var parsedChatId = new ParsedChatId(ChatId);
+        if (parsedChatId.Kind is ChatIdKind.PeerShort) {
+            account ??= await accountTask;
+            parsedChatId = account != null
+                ? ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1)
+                : parsedChatId.Invalid();
         }
 
-        var chat = await Chats.Get(Session, ChatId, cancellationToken);
-        if (chat == null)
-            return Model.Unavailable;
+        // parsedChatId is either (valid & not short) or invalid at this point
+        if (parsedChatId.IsValid && ChatUI.ActiveChatId.Value != parsedChatId.Id) {
+            ChatUI.ActiveChatId.Value = parsedChatId.Id;
+            if (ChatUI.LinkedChatEntry.Value != null)
+                ChatUI.LinkedChatEntry.Value = null;
+            UICommander.CancelUpdateDelays();
+        }
 
-        var account = await Accounts.Get(Session, cancellationToken);
-        var result = new Model(chat, account);
+        account ??= await accountTask;
+        if (!parsedChatId.IsValid)
+            return new Model(parsedChatId, null, account); // Unavailable
+
+        var chat = await Chats.Get(Session, parsedChatId.Id, cancellationToken);
+        if (chat == null)
+            return new Model(parsedChatId, null, account); // Unavailable
+
+        var result = new Model(parsedChatId, chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
     private void OnUnreadMessagesClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(Chat? Chat, Account? Account) {
-        public static Model None { get; } = new(null, null);
-        public static Model Unavailable { get; } = new(null, null) { IsUnavailable = true };
+    public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, Account? Account) {
+        public static Model Loading { get; } = new(default, null, null);
 
-        public bool IsUnavailable { get; init; }
+        public bool IsNone => ParsedChatId.Id.IsEmpty;
+        public bool IsUnavailable => !IsNone && Chat is null;
 
         public bool IsSame(Model? other) {
             if (other == null)
                 return false;
-            return ReferenceEquals(Chat, other.Chat) && ReferenceEquals(Account, other.Account);
+            return ParsedChatId == other.ParsedChatId
+                && ReferenceEquals(Chat, other.Chat)
+                && ReferenceEquals(Account, other.Account);
         }
     }
 }

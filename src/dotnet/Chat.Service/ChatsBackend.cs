@@ -59,7 +59,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId).AssertValid();
+        var parsedChatId = new ParsedChatId(chatId);
 
         // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
@@ -641,7 +641,9 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId).AssertPeerFull();
+        var parsedChatId = new ParsedChatId(chatId);
+        if (parsedChatId.Kind != ChatIdKind.PeerFull)
+            return ChatAuthorRules.None(chatId);
 
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);

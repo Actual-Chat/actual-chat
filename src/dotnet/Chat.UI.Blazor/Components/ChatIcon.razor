@@ -1,16 +1,18 @@
 @switch (Chat.ChatType) {
     case ChatType.Group:
-        <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="Size"/>
+        <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="@Size"/>
         break;
     case ChatType.Peer:
-        <UserAuthorCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="Size"/>
+        <UserAuthorCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="@Size"/>
         break;
     default:
-        throw new ArgumentOutOfRangeException(nameof(Chat.ChatType), Chat.ChatType, null);
+        <AuthorCircle Author="Author.None" Size="@Size" />
+        break;
 }
 
 @code {
     private Symbol _peerChatTargetUserId;
+
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 

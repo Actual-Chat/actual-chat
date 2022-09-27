@@ -11,13 +11,13 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
     public Symbol Id { get; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatIdKind Kind { get; }
+    public ChatIdKind Kind { get; private init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ParsedUserId UserId1 { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ParsedUserId UserId2 { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsValid { get; }
+    public bool IsValid => Kind is not ChatIdKind.Invalid;
 
     public static Symbol FormatShortPeerChatId(Symbol peerUserId)
         => $"{PeerChatIdPrefix}{peerUserId}";
@@ -33,8 +33,7 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
         Id = id;
         UserId1 = Symbol.Empty;
         UserId2 = Symbol.Empty;
-        Kind = ChatIdKind.Group;
-        IsValid = false;
+        Kind = ChatIdKind.Invalid;
         if (id.IsEmpty)
             return;
 
@@ -45,7 +44,6 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
                 if (!(c == '-' || char.IsLetterOrDigit(c)))
                     return;
             Kind = ChatIdKind.Group;
-            IsValid = true;
             return;
         }
 
@@ -53,17 +51,21 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
         var tail = idValue.AsSpan(2);
         var dashIndex = tail.IndexOf('-');
         if (dashIndex < 0) {
-            Kind = ChatIdKind.PeerShort;
             UserId1 = tail.ToString();
-            IsValid = UserId1.IsValid;
+            if (UserId1.IsValid)
+                Kind = ChatIdKind.PeerShort;
+            return;
         }
-        else {
+
+        // Full peer chat Id
+        UserId1 = tail[..dashIndex].ToString();
+        UserId2 = tail[(dashIndex + 1)..].ToString();
+        if (UserId1.IsValid && UserId2.IsValid && UserId1.Id != UserId2.Id)
             Kind = ChatIdKind.PeerFull;
-            UserId1 = tail[..dashIndex].ToString();
-            UserId2 = tail[(dashIndex + 1)..].ToString();
-            IsValid = UserId1.IsValid && UserId2.IsValid && UserId1.Id != UserId2.Id;
-        }
     }
+
+    public ParsedChatId Invalid()
+        => this with { Kind = ChatIdKind.Invalid };
 
     public ParsedChatId AssertValid()
         => IsValid ? this : throw StandardError.Format("Invalid chat Id format.");
@@ -100,8 +102,7 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
 
     public Symbol GetPeerChatTargetUserId(Symbol ownerUserId)
     {
-        var kind = AssertValid().Kind;
-        switch (kind) {
+        switch (Kind) {
         case ChatIdKind.Group:
             return Symbol.Empty;
         case ChatIdKind.PeerShort:
@@ -110,10 +111,9 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
             var targetUserId = (UserId1.Id, UserId2.Id).OtherThan(ownerUserId);
             if (targetUserId.IsEmpty)
                 throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
-
             return targetUserId;
         default:
-            throw StandardError.Internal("Invalid ParsedChatId.Kind.");
+            throw StandardError.Format("Invalid chat Id format.");
         }
     }
 

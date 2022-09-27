@@ -64,7 +64,8 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
             return ImmutableArray<Symbol>.Empty;
 
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        rules.Require(ChatPermissions.SeeMembers);
+        if (!rules.CanSeeMembers())
+            return ImmutableArray<Symbol>.Empty;
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }

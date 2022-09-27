@@ -50,7 +50,7 @@
 </DialogFrame>
 
 @code {
-    private SearchBox _searchBoxRef;
+    private SearchBox _searchBoxRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
