@@ -211,7 +211,7 @@ export class MarkupEditor {
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.GoToNextItem));
                 return ok();
             }
-            if (e.code === 'Enter') {
+            if (e.code === 'Enter' || e.code === 'NumpadEnter') {
                 e.preventDefault();
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
                 return ok();
@@ -251,7 +251,7 @@ export class MarkupEditor {
         }
 
         // Post + fix the new line insertion when cursor is in the end of the document
-        if (e.code === 'Enter') {
+        if (e.code === 'Enter' || e.code === 'NumpadEnter') {
             const isPost = e.ctrlKey || e.metaKey || e.altKey || !e.shiftKey;
             if (isPost) {
                 void this.onPost()
