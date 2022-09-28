@@ -118,6 +118,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryState?.Value ?? 0;
+        if (LastReadEntryState != null && lastReadEntryId >= chatIdRange.End) {
+            // looks like an error, let's reset last read position to the las entry id
+            lastReadEntryId = chatIdRange.End - 1;
+            LastReadEntryState.Value = lastReadEntryId;
+        }
         var entryId = lastReadEntryId;
         var mustScrollToEntry = query.IsNone && entryId != 0;
 
@@ -141,14 +146,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isHighlighted = false;
         // handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
-        if (!mustScrollToEntry) {
-            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId.Value)) {
+        if (!mustScrollToEntry)
+            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
                 isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
                 entryId = navigateToEntryId.Value;
-                mustScrollToEntry = true;
+                if (!_fullyVisibleEntryIds.Contains(navigateToEntryId.Value))
+                    mustScrollToEntry = true;
             }
-        }
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
             ? IdTileStack.Layers[0].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)

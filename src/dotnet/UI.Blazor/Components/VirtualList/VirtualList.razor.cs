@@ -52,6 +52,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [JSInvokable]
     public Task UpdateVisibleKeys(string?[] visibleKeys)
     {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        // Do not update state if disposed
+        if (JSRef == null)
+            return Task.CompletedTask;
+
         if (visibleKeys?.Length > 0 && VisibleKeysState != null)
             VisibleKeysState.Value = visibleKeys.ToList()!;
 
@@ -60,11 +65,14 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     public override async ValueTask DisposeAsync()
     {
-        await base.DisposeAsync();
-        await JSRef.DisposeSilentlyAsync("dispose");
+        var jsRef = JSRef;
+        var blazorRef = BlazorRef;
         JSRef = null!;
-        BlazorRef.DisposeSilently();
         BlazorRef = null!;
+
+        await base.DisposeAsync();
+        await jsRef.DisposeSilentlyAsync("dispose");
+        blazorRef.DisposeSilently();
     }
 
     protected override bool ShouldRender()
