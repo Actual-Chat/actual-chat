@@ -1,0 +1,17 @@
+@using ActualChat.Search
+@{
+    var m = Match;
+    if (m.Parts.Length == 0) {
+        <span>@m.Text</span>
+        return;
+    }
+}
+@foreach (var part in m.PartsWithGaps) {
+    var textClass = part.Rank > 0 ? HighlightedClass : "";
+    <span class="@textClass">@m.Text[part.Range.Start..part.Range.End]</span>
+}
+
+@code {
+    [Parameter] public string HighlightedClass { get; set; } = "font-semibold";
+    [Parameter, EditorRequired] public SearchMatch Match { get; set; } = "";
+}

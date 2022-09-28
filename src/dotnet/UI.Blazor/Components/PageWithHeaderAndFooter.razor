@@ -1,20 +1,20 @@
 <div class="page-with-header-and-footer h-full w-full flex-x">
     <div class="@Class h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
-        <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02 z-50">
+        <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
             @Header
+        </div>
+        <div class="layout-subheader flex-none flex-y w-full overflow-visible">
+            @SubHeader
         </div>
         <div class="flex-1 flex-x h-full overflow-hidden">
             <div class="flex-1 -flex-y h-full overflow-hidden relative">
-                <div class="layout-subheader flex-none flex-y w-full absolute overflow-hidden z-60 top-0">
-                    @SubHeader
-                </div>
-                <div class="layout-footer hidden">
+                <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
                     @Footer
                 </div>
-                <div class="layout-subfooter flex-none flex-y w-full overflow-hidden z-30">
+                <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
                     @SubFooter
                 </div>
-                <div class="layout-body flex-1 custom-scrollbar z-10">
+                <div class="layout-body flex-1 custom-scrollbar">
                     @Body
                 </div>
             </div>

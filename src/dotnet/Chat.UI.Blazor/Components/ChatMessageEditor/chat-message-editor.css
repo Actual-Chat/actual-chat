@@ -1,4 +1,5 @@
 .chat-message-editor {
+    @apply relative;
     @apply bg-07 md:bg-01;
 }
 

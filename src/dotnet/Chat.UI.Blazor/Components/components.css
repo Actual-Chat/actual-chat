@@ -1,7 +1,3 @@
-.chat-playback-toggles .btn.btn-square {
-    @apply block;
-}
-
 /* DeleteMessageModal */
 
 .delete-message-modal .message-content {
@@ -15,7 +11,7 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative flex-x z-20 py-1 px-2;
+    @apply relative flex-x py-1 px-2;
     @apply bg-01 shadow-lg text-02;
     @apply border-b border-bg-04;
     @apply animate-display-from-top-slow;
@@ -37,20 +33,20 @@
 }
 
 .unread-messages-sub-header {
-    @apply relative z-10 mx-4 px-2 pb-0.5;
+    @apply relative mx-4 px-2 pb-0.5;
     @apply bg-unread rounded-b-lg shadow;
     @apply text-04 font-semibold;
     @apply animate-display-from-top-slow hover:cursor-pointer;
 }
 
 .recording-elsewhere-sub-header {
-    @apply relative z-20 p-0.5 md:mx-4 rounded-t-lg;
-    @apply flex flex-row items-center justify-center;
+    @apply relative p-0.25 md:mx-4 rounded-t-lg;
+    @apply flex-x items-center justify-center;
     @apply bg-error text-04 shadow-lg opacity-75;
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
-    @apply flex-x flex-1 items-center justify-center gap-x-2 px-4 w-full;
+    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full;
 }
 .recording-elsewhere-sub-header-content .c-text {
     @apply font-light;
@@ -228,15 +224,4 @@
 }
 .chat-header-control-panel .btn.btn-round .btn-content {
     @apply min-h-10 min-w-10;
-}
-
-.mention-list {
-    @apply overflow-y-auto max-h-48 md:max-h-64 w-full;
-    @apply border-y-2 border-bg-04 bg-01;
-}
-.mention-list-item {
-    @apply cursor-pointer;
-}
-.mention-list-item.selected {
-    @apply bg-mention-list-item-selected;
 }
