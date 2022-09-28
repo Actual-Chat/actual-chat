@@ -2,11 +2,14 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Google.Api.Gax;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IDisposable
 {
+    private const int PageSize = 40;
+
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
@@ -156,10 +159,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
-            ? IdTileStack.Layers[0].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
+            ? new Range<long>(
+                entryId - PageSize,
+                entryId + PageSize)
             : query.IsNone
                 ? new Range<long>(
-                    chatIdRange.End - IdTileStack.Layers[1].TileSize,
+                    chatIdRange.End - (2*PageSize),
                     chatIdRange.End)
                 : query.InclusiveRange
                     .AsLongRange()
