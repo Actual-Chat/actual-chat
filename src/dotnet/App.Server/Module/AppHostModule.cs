@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
@@ -45,6 +46,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
     public void ConfigureApp(IApplicationBuilder app)
     {
+        if (Settings.AssumeHttps) {
+            Log.LogWarning("AssumeHttps is on");
+            app.Use((context, next) => {
+                context.Request.Scheme = "https";
+                return next();
+            });
+        }
+
         // This server serves static content from Blazor Client,
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -82,10 +91,12 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles();
+        /*
         app.UseSwagger();
         app.UseSwaggerUI(c => {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
         });
+        */
 
         // Response compression
         app.UseResponseCompression();
@@ -96,7 +107,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
-        app.UseAuthorization();
         app.UseEndpoints(endpoints => {
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
@@ -155,14 +165,28 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
                 builder.AllowAnyOrigin().WithFusionHeaders();
-                builder.WithOrigins("https://0.0.0.0")
+                builder.WithOrigins(
+                        "http://0.0.0.0",
+                        "https://0.0.0.0",
+                        "http://0.0.0.0:7080",
+                        "https://0.0.0.0:7080",
+                        "https://0.0.0.0:7081"
+                    )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
             });
         });
+        /*
+        services.Configure<HstsOptions>(options => {
+            options.ExcludedHosts.Add("local.actual.chat");
+            options.ExcludedHosts.Add("localhost");
+        });
+        */
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.All;
+            if (Settings.AssumeHttps)
+                options.ForwardedHeaders &= ~ForwardedHeaders.XForwardedProto;
             options.KnownNetworks.Clear();
             options.KnownProxies.Clear();
         });
@@ -185,12 +209,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
+        /*
         services.AddSwaggerGen(c => {
             c.SwaggerDoc("v1",
                 new OpenApiInfo {
                     Title = "ActualChat API", Version = "v1",
                 });
         });
+        */
 
         // OpenTelemetry
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
