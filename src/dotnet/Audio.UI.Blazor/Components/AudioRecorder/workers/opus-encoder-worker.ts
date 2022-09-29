@@ -122,6 +122,16 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         throw new Error('vadPort has already been specified.');
     }
 
+    const retryPolicy: signalR.IRetryPolicy = {
+        nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
+            if (retryContext.previousRetryCount < 5)
+                return 100;
+
+            const averageDelay = Math.min(5000, retryContext.elapsedMilliseconds / retryContext.previousRetryCount);
+            return averageDelay * (1.2 + Math.random());
+        },
+    };
+
     const { audioHubUrl, callbackId } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
@@ -129,7 +139,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     vadPort.onmessage = onVadMessage;
     connection = new signalR.HubConnectionBuilder()
         .withUrl(audioHubUrl)
-        .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
+        .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)
         .build();
