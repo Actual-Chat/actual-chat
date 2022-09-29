@@ -1,6 +1,7 @@
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Components.SideNav
 @inherits ComputedStateComponent<bool>
 
 @{
@@ -8,10 +9,15 @@
     var cls = isOpen ? "thin-open" : "thin-closed";
 }
 
-<div class="@cls flex-x h-full w-full bg-04">
-    <ThinLeftPanel/>
-    <WideLeftPanel/>
-</div>
+<SideNav Direction="SideNavDirection.LeftToRight"
+         Opened="() => NavbarUI.IsVisible = true"
+         Closed="() => NavbarUI.IsVisible = false"
+         IsOpen="@NavbarUI.IsVisible">
+    <div class="@cls flex-x h-full w-full bg-04">
+        <ThinLeftPanel/>
+        <WideLeftPanel/>
+    </div>
+</SideNav>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;

@@ -1,14 +1,16 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.Chat.UI.Blazor.Components
 @inherits NavbarContentBase
 @{
     var m = State.Value;
 }
 
-@foreach (var widget in OrderedWidgets.Where(x => x.NavbarGroupId == null || x.NavbarGroupId == NavbarUI.ActiveGroupId)) {
-    @widget.Content
+@if (NavbarUI.ActiveGroupId == ChatListNavbarWidget.NavbarGroupId) {
+    <ChatListNavbarWidget />
+} else if (NavbarUI.ActiveGroupId == ChatListNavbarWidget.NavbarGroupId) {
+    <ContactListNavbarWidget />
 }
 
 @if (m.Account.IsAdmin) {
@@ -38,8 +40,8 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+        base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
