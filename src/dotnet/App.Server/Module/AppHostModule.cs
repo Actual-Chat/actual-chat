@@ -23,6 +23,7 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
+using Stl.Generators;
 using Stl.Plugins;
 
 namespace ActualChat.App.Server.Module;
@@ -143,7 +144,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
-        services.AddSingleton(new PublisherOptions { Id = hostName });
+        services.AddSingleton(new PublisherOptions {
+            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, RandomStringGenerator.Base32Alphabet)}",
+        });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
