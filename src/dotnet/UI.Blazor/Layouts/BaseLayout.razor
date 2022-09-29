@@ -1,7 +1,6 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Components.SideNav
 @using System.Text.RegularExpressions
 @implements IDisposable
 @implements IBaseLayoutBackend
@@ -11,16 +10,8 @@
 
 <div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
     <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
-    <SideNav Direction="SideNavDirection.LeftToRight"
-             Opened="() => NavbarUI.IsVisible = true"
-             Closed="() => NavbarUI.IsVisible = false"
-             IsOpen="@NavbarUI.IsVisible">
-        <div class="h-full w-full overflow-hidden bg-04">
-            <LeftPanel/>
-        </div>
-    </SideNav>
     <div class="base-layout-body">
-        <div class="bg-01 flex-1 overflow-y-auto">
+        <div class="bg-01 flex-1 overflow-hidden">
             @if (failures.Count != 0) {
                 <div class="error-container custom-scrollbar">
                     <div class="relative flex-y gap-y-1 h-full overflow-y-auto custom-scrollbar">

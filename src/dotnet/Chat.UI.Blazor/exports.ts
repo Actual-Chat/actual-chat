@@ -9,4 +9,5 @@ import './Components/MarkupParts/markup-parts.css';
 import './Components/Notifications/stack.css'
 import './Components/Notifications/notification.css'
 import './Components/MobileControlPanel/mobile-control-panel.css';
+import './Components/Navbar/navbar.css';
 import './Pages/user-page.css'

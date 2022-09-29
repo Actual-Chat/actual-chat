@@ -21,6 +21,13 @@
 }
 
 @* @key=... ensures child components are recreated on navigation to another chat *@
+
+<RenderIntoSlot Name="MainLeftPanel">
+    <CascadingValue Value="chat">
+        <LeftPanel/>
+    </CascadingValue>
+</RenderIntoSlot>
+
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="chat">
         <ChatHeader/>
