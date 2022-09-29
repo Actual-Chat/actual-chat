@@ -104,7 +104,6 @@ export async function enableChromiumAec(stream: MediaStream): Promise<() => void
         await outboundPeerConnection.setRemoteDescription(answer);
 
         const onStop = (): void => {
-            console.warn(`${LogScope}: onStop`);
             inboundPeerConnection.removeEventListener('iceconnectionstatechange', inboundOnIceConnectionStateChange);
             outboundPeerConnection.removeEventListener('iceconnectionstatechange', outboundOnIceConnectionStateChange);
             tracks.forEach(track => outboundPeerConnection.removeTrack(track));

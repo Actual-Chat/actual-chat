@@ -209,6 +209,9 @@ export class AudioPlayer {
                     console.debug(`[AudioTrackPlayer #${this.id}] onUpdateOffsetTick(controllerId:${controller.id}): ` +
                         `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
                 }
+                if (this.state !== 'playing')
+                    return;
+
                 await this.invokeOnPlayTimeChanged(state.playbackTime);
             }
         }
