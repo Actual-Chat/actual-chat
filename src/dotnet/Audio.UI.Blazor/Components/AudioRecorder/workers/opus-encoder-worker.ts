@@ -15,6 +15,7 @@ import { ResolveCallbackMessage } from 'resolve-callback-message';
 import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
+import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 
 const LogScope: string = 'OpusEncoderWorker';
 
@@ -48,7 +49,10 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     };
 }
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 10;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
+const FADE_CHUNKS = CHUNKS_WILL_BE_SENT_ON_RESUME;
+const CHUNK_SIZE = 960;
+
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer | number>();
 const worker = self as unknown as Worker;
@@ -61,6 +65,7 @@ let vadPort: MessagePort = null;
 let encoder: Encoder;
 let lastInitMessage: InitEncoderMessage | null = null;
 let isEncoding = false;
+let kbdWindow: Float32Array | null = null;
 
 const debug = false;
 
@@ -147,12 +152,15 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     // Connect to the hub endpoint
     await connection.start();
 
+    // get fade-in window
+    kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
+
     // Setting encoder module
     if (codecModule == null) {
         await codecModuleReady;
     }
     encoder = new codecModule.Encoder();
-    console.warn(`${LogScope}.onCreate, encoder:`, encoder);
+    console.log(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
     const readyToInit: ResolveCallbackMessage = {
@@ -224,7 +232,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             recordingSubject = new signalR.Subject<Uint8Array>();
             await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
             vadState = newVadState;
-            processQueue();
+            processQueue('in');
         }
     }
     catch (error) {
@@ -232,13 +240,17 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     }
 };
 
-function processQueue(): void {
+function processQueue(fade: 'in' | 'none' = 'none'): void {
     if (isEncoding) {
         return;
     }
 
     try {
         isEncoding = true;
+        let fadeWindowIndex: number | null = null;
+        if (fade === 'in' && queue.length >= FADE_CHUNKS ) {
+            fadeWindowIndex = 0;
+        }
         while (true) {
             if (queue.isEmpty()) {
                 return;
@@ -255,6 +267,17 @@ function processQueue(): void {
                 }
             }
             else {
+                if (fadeWindowIndex !== null) {
+                    const samples = new Float32Array(item);
+                    for (let i = 0; i < samples.length; i++) {
+                        samples[i]*=kbdWindow[fadeWindowIndex + i];
+                    }
+                    fadeWindowIndex += samples.length;
+                    if (fadeWindowIndex >= FADE_CHUNKS * CHUNK_SIZE) {
+                        fadeWindowIndex = null;
+                    }
+                }
+
                 const result = encoder.encode(item);
                 const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
                 workletPort.postMessage(workletMessage, [item]);
