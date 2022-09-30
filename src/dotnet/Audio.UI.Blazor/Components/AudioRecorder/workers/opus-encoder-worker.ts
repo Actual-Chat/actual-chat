@@ -49,8 +49,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     };
 }
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
-const FADE_CHUNKS = CHUNKS_WILL_BE_SENT_ON_RESUME;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
+const FADE_CHUNKS = CHUNKS_WILL_BE_SENT_ON_RESUME / 2;
 const CHUNK_SIZE = 960;
 
 /** buffer or callbackId: number of `end` message */
