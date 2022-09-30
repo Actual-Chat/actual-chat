@@ -8,11 +8,11 @@ public class AudioHubBackendClient : HubClientBase,
     IAudioStreamClient,
     ITranscriptStreamClient
 {
-    protected int AudioStreamBufferSize { get; init; } = 64;
-    protected int TranscriptStreamBufferSize { get; init; } = 16;
+    public int AudioStreamBufferSize { get; init; } = 64;
+    public int TranscriptStreamBufferSize { get; init; } = 16;
 
     internal AudioHubBackendClient(string address, int port, IServiceProvider services)
-        : base(BuildUri(address, port), services)
+        : base(GetHubUrl(address, port), services)
     { }
 
     public async Task<IAsyncEnumerable<byte[]>> Read(
@@ -20,7 +20,7 @@ public class AudioHubBackendClient : HubClientBase,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var stream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId.Value, skipTo, cancellationToken)
             .WithBuffer(AudioStreamBufferSize, cancellationToken);
@@ -31,7 +31,7 @@ public class AudioHubBackendClient : HubClientBase,
         Symbol streamId,
         CancellationToken cancellationToken)
     {
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var stream = connection
             .StreamAsync<Transcript>("GetTranscriptStream", streamId.Value, cancellationToken)
             .WithBuffer(TranscriptStreamBufferSize, cancellationToken);
@@ -40,23 +40,23 @@ public class AudioHubBackendClient : HubClientBase,
 
     public async Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
     {
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         await connection.SendAsync("WriteAudioStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
     {
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         await connection.SendAsync("WriteTranscriptStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private static Uri BuildUri(string address, int port)
+    private static string GetHubUrl(string address, int port)
     {
         var protocol = port.ToString(CultureInfo.InvariantCulture).EndsWith("80", StringComparison.Ordinal)
             ? "http"
             : "https";
-        return new Uri($"{protocol}://{address}:{port}/backend/hub/audio");
+        return $"{protocol}://{address}:{port}/backend/hub/audio";
     }
 }

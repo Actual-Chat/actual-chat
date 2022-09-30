@@ -8,9 +8,9 @@ public class AudioClient : HubClientBase,
     IAudioStreamer,
     ITranscriptStreamer
 {
-    private const int StreamBufferSize = 64;
-
     private ILogger AudioSourceLog { get; }
+
+    public int StreamBufferSize { get; init; } = 64;
 
     public AudioClient(IServiceProvider services)
         : base("api/hub/audio", services)
@@ -22,7 +22,7 @@ public class AudioClient : HubClientBase,
         CancellationToken cancellationToken)
     {
         Log.LogDebug("GetAudio: StreamId = {StreamId}, SkipTo = {SkipTo}", streamId.Value, skipTo.ToShortString());
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var audioStream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId.Value, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
@@ -46,7 +46,7 @@ public class AudioClient : HubClientBase,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId.Value);
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var updates = connection
             .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
