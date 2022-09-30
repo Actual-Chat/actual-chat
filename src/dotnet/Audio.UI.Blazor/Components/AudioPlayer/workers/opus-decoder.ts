@@ -90,47 +90,54 @@ export class OpusDecoder {
 
     private processQueue(): void {
         const { queue, workletPort, debug } = this;
-        if (queue.isEmpty() || this.state === 'decoding') {
+
+        if (this.state === 'decoding') {
             return;
         }
 
         try {
             this.state = 'decoding';
-            const item = queue.shift();
-            if (item === 'end') {
+            while(true) {
+                if (queue.isEmpty()) {
+                    return;
+                }
+
+                const item = queue.shift();
+                if (item === 'end') {
+                    if (debug) {
+                        console.debug(`${LogScope}.processQueue: end is reached, sending end to worklet and stopping queue processing`);
+                    }
+                    // tell the worklet, that we are at the end of playing
+                    const msg: EndDecoderWorkerMessage = { type: 'end' };
+                    workletPort.postMessage(msg);
+                    this.stop();
+                    return;
+                }
+
+                const samples = this.decoder.decode(item);
                 if (debug) {
-                    console.debug(`${LogScope}.processQueue: end is reached, sending end to worklet and stopping queue processing`);
+                    if (!!samples && samples.length > 0) {
+                        console.debug(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
+                                          + `returned ${samples.byteLength} `
+                                          + `bytes / ${samples.length} samples`);
+                    }
+                    else {
+                        console.error(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
+                                          + 'returned empty/unknown result');
+                    }
                 }
-                // tell the worklet, that we are at the end of playing
-                const msg: EndDecoderWorkerMessage = { type: 'end' };
-                workletPort.postMessage(msg);
-                this.stop();
-                return;
+
+                if (samples == null || samples.length === 0)
+                    return;
+
+                const msg: SamplesDecoderWorkerMessage = {
+                    type: 'samples',
+                    buffer: samples,
+                    length: samples.byteLength,
+                    offset: samples.byteOffset,
+                };
+                workletPort.postMessage(msg, [samples.buffer]);
             }
-
-            const samples = this.decoder.decode(item);
-            if (debug) {
-                if (!!samples && samples.length > 0) {
-                    console.debug(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
-                        + `returned ${samples.byteLength} `
-                        + `bytes / ${samples.length} samples`);
-                }
-                else {
-                    console.error(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
-                        + 'returned empty/unknown result');
-                }
-            }
-
-            if (samples == null || samples.length === 0)
-                return;
-
-            const msg: SamplesDecoderWorkerMessage = {
-                type: 'samples',
-                buffer: samples,
-                length: samples.byteLength,
-                offset: samples.byteOffset,
-            };
-            workletPort.postMessage(msg, [samples.buffer]);
         }
         catch (error) {
             console.error(`${LogScope}.processQueue error:`, error);
@@ -139,7 +146,5 @@ export class OpusDecoder {
             if (this.state === 'decoding')
                 this.state = 'waiting';
         }
-
-        this.processQueue();
     }
 }

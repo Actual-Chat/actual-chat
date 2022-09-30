@@ -48,7 +48,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     };
 }
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 10;
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer | number>();
 const worker = self as unknown as Worker;
@@ -233,31 +233,33 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
 };
 
 function processQueue(): void {
-    if (queue.isEmpty()) {
-        return;
-    }
-
     if (isEncoding) {
         return;
     }
 
     try {
         isEncoding = true;
-        const item: ArrayBuffer | number = queue.shift();
-        if (typeof (item) === 'number') {
-            try {
-                const message: ResolveCallbackMessage = { callbackId: item, };
-                worker.postMessage(message);
+        while (true) {
+            if (queue.isEmpty()) {
+                return;
             }
-            finally {
-                recordingSubject.complete();
+
+            const item: ArrayBuffer | number = queue.shift();
+            if (typeof (item) === 'number') {
+                try {
+                    const message: ResolveCallbackMessage = { callbackId: item, };
+                    worker.postMessage(message);
+                }
+                finally {
+                    recordingSubject.complete();
+                }
             }
-        }
-        else {
-            const result = encoder.encode(item);
-            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
-            workletPort.postMessage(workletMessage, [item]);
-            recordingSubject.next(result);
+            else {
+                const result = encoder.encode(item);
+                const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
+                workletPort.postMessage(workletMessage, [item]);
+                recordingSubject.next(result);
+            }
         }
     }
     catch (error) {
@@ -266,5 +268,4 @@ function processQueue(): void {
     finally {
         isEncoding = false;
     }
-    processQueue();
 }

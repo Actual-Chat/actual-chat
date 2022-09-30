@@ -107,42 +107,39 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
 };
 
 async function processQueue(): Promise<void> {
-    if (queue.isEmpty()) {
-        return;
-    }
-
-    if (isVadRunning) {
-        return;
-    }
-
-    if (resampler == null) {
+    if (isVadRunning || resampler == null) {
         return;
     }
 
     try {
         isVadRunning = true;
+        while (true) {
+            if (queue.isEmpty()) {
+                return;
+            }
 
-        const buffer = queue.shift();
-        const dataToResample = new Uint8Array(buffer);
-        const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
+            const buffer = queue.shift();
+            const dataToResample = new Uint8Array(buffer);
+            const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
 
-        const bufferMessage: BufferVadWorkletMessage = {
-            type: 'buffer',
-            buffer: buffer,
-        };
+            const bufferMessage: BufferVadWorkletMessage = {
+                type: 'buffer',
+                buffer: buffer,
+            };
 
-        workletPort.postMessage(bufferMessage, [buffer]);
+            workletPort.postMessage(bufferMessage, [buffer]);
 
-        const monoPcm = new Float32Array(resampled, 0, 512);
-        const vadEvent = await voiceDetector.appendChunk(monoPcm);
-        if (vadEvent) {
-            const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
-            encoderPort.postMessage(adjustedVadEvent);
+            const monoPcm = new Float32Array(resampled, 0, 512);
+            const vadEvent = await voiceDetector.appendChunk(monoPcm);
+            if (vadEvent) {
+                const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
+                encoderPort.postMessage(adjustedVadEvent);
+            }
         }
-
+    }
+    catch (error) {
+        console.error(`${LogScope}.processQueue error:`, error);
     } finally {
         isVadRunning = false;
     }
-
-    await processQueue();
 }
