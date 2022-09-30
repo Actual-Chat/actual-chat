@@ -140,6 +140,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (entry.AuthorId != authorId || entry.Id <= _initialLastReadEntryId)
                 continue;
 
+            // scroll only on text entries
+            if (entry.IsStreaming || entry.AudioEntryId != null)
+                continue;
+
             // scroll to the latest Author entry - e.g.m when author submits the new one
             _initialLastReadEntryId = entry.Id;
             entryId = entry.Id;
