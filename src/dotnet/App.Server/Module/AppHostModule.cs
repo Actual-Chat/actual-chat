@@ -194,10 +194,16 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             options.KnownProxies.Clear();
         });
 
+        // Compression
         services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
         services.AddResponseCompression(o => {
             o.EnableForHttps = true;
             o.Providers.Add<BrotliCompressionProvider>();
+        });
+        services.AddSingleton(new WebSocketServer.Options() {
+            ConfigureWebSocket = () => new WebSocketAcceptContext() {
+                DangerousEnableCompression = true,
+            },
         });
 
         services.AddRouting();
