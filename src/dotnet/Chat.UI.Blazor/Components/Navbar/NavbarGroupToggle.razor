@@ -10,23 +10,22 @@
 }
 
 <div class="flex-x">
-    <div class="@lineClass left-line hidden md:block">
+    <div class="@lineClass left-line">
     </div>
     <ButtonSquare
         Click="@OnClick"
         Class="@btnClass"
         Tooltip="@Tooltip"
+        ContentClass="navbar-navigation-button"
         TooltipPosition="@TooltipPosition">
-        <div class="flex w-12 md:justify-center pl-1 md:pl-0">
-            @ChildContent
-        </div>
-        <div class="@cls navbar-group-title ml-2 md:hidden">@Title</div>
+        @ChildContent
     </ButtonSquare>
+    <div class="w-[5px]">
+    </div>
 </div>
 
 @code {
     private EventHandler? _onActiveGroupChanged;
-    private bool _isThinPanelOpen;
 
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
@@ -49,7 +48,5 @@
 
     private void OnClick() {
         NavbarUI.ActivateGroup(Id, Title);
-        _isThinPanelOpen = !NavbarUI.IsThinPanelOpen.Value;
-        NavbarUI.IsThinPanelOpen.Value = _isThinPanelOpen;
     }
 }

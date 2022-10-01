@@ -251,6 +251,7 @@ module.exports = {
       20: '5rem',
       24: '6rem',
       28: '7rem',
+      30: '7.5rem',
       32: '8rem',
       36: '9rem',
       40: '10rem',
@@ -265,6 +266,7 @@ module.exports = {
       80: '20rem',
       88: '22rem',
       96: '24rem',
+      110: '27.5rem',
       120: '30rem',
       144: '36rem',
     },
@@ -298,10 +300,6 @@ module.exports = {
       'scale-from-right': 'scale-from-right 150ms ease-in-out',
       'from-left': 'from-left 150ms ease-in-out',
       'from-right': 'from-right 150ms ease-in-out',
-      'hide-thin-panel': 'hide-thin-panel 300ms ease-in-out',
-      'show-thin-panel': 'show-thin-panel 300ms ease-in-out',
-      'hide-wide-panel': 'hide-wide-panel 300ms ease-in-out',
-      'show-wide-panel': 'show-wide-panel 300ms ease-in-out',
       'width-to-zero': 'width-to-zero 150ms ease-in-out',
       'width-to-full': 'width-to-full 150ms ease-in-out',
       'hide-to-left': 'hide-to-left 150ms ease-in-out',
@@ -851,38 +849,6 @@ module.exports = {
           transform: 'translateX(0rem) scale(1)',
         },
       },
-      'hide-thin-panel': {
-        from: {
-          transform: 'translateX(0%)',
-        },
-        to: {
-          transform: '-translateX(100%)',
-        },
-      },
-      'show-thin-panel': {
-        from: {
-          transform: '-translateX(100%)',
-        },
-        to: {
-          transform: 'translateX(0%)',
-        },
-      },
-      'hide-wide-panel': {
-        from: {
-          transform: '-translateX(84%)',
-        },
-        to: {
-          transform: 'translateX(0%)',
-        },
-      },
-      'show-wide-panel': {
-        from: {
-          transform: 'translateX(0%)',
-        },
-        to: {
-          transform: '-translateX(84%)',
-        },
-      },
       'width-to-zero': {
         from: {
           width: '100%',
@@ -1178,7 +1144,6 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       'modal': '480px',
-      'nav-left': '7.5rem',
     }),
     objectPosition: {
       bottom: 'bottom',
