@@ -9,7 +9,6 @@
 }
 
 <div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
-    <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
     <div class="base-layout-body">
         <div class="bg-01 flex-1 overflow-hidden">
             @if (failures.Count != 0) {
@@ -84,7 +83,7 @@
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         UIActionFailureTracker.Clear();
-        NavbarUI.IsVisible = false;
+        NavbarUI.ChangeVisibility(false);
         StateHasChanged();
     }
 
