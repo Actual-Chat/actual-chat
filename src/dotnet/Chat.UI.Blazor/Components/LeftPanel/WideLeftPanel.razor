@@ -2,7 +2,10 @@
 @using ActualChat.UI.Blazor.Services
 
 <div class="wide-left-panel flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
-    <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 px-4 gap-x-1 panel-content">
+    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full panel-content">
+        <NavbarContent/>
+    </div>
+    <div class="flex-x justify-center items-center min-h-14 border-t border-bg-04 px-4 gap-x-1 panel-content">
         <SearchBox
             Placeholder="Find chat..."
             TextChanged="OnSearchBoxTextChanged"/>
@@ -15,9 +18,6 @@
                 <i class="icon-message-add text-2xl"></i>
             </ButtonRound>
         </div>
-    </div>
-    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full panel-content">
-        <NavbarContent/>
     </div>
 </div>
 
