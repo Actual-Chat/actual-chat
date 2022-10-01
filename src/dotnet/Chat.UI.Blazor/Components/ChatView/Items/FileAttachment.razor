@@ -2,7 +2,7 @@
 
 @{
     var fileSize = Attachment.Length / (1024 * 1024d);
-    var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
+    var url = UrlMapper.ContentUrl(Attachment.ContentId);
 }
 <div class="message-attachment-file mt-1">
     <div class="flex w-[400px] p-2 bg-zinc-200 rounded-md items-center">
@@ -29,7 +29,7 @@
 </div>
 
 @code {
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;

@@ -3,20 +3,22 @@ using Java.Interop;
 
 namespace ActualChat.App.Maui;
 
-partial class MauiBlazorWebViewHandler
+public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
         base.ConnectHandler(platformView);
+        var baseUri = UrlMapper.BaseUri;
+        var sessionId = AppSettings.SessionId;
 
         platformView.Settings.JavaScriptEnabled = true;
         var cookieManager = CookieManager.Instance!;
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(platformView, true);
-        var sessionCookieValue = $"FusionAuth.SessionId={SessionId}; path=/; secure; samesite=none; httponly";
+        var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
-        cookieManager.SetCookie("https://" + new Uri(BaseUri).Host, sessionCookieValue);
+        cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
         var jsInterface = new JavascriptInterface(this, platformView);
         platformView.AddJavascriptInterface(jsInterface, "Android");
     }
@@ -40,8 +42,8 @@ partial class MauiBlazorWebViewHandler
         {
             _webView.Post(() => {
                 try {
-                    var sessionHash = new Session(_handler.SessionId).Hash;
-                    var script = $"window.App.initPage('{_handler.BaseUri}', '{sessionHash}')";
+                    var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
+                    var script = $"window.App.initPage('{_handler.UrlMapper.BaseUrl}', '{sessionHash}')";
                     _webView.EvaluateJavascript(script, null);
                 }
                 catch (Exception ex) {

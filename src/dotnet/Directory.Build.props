@@ -3,20 +3,6 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
-    <!-- Include the PDB and xmldoc in the built .nupkg -->
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <IncludeSymbols>false</IncludeSymbols>
-    <IsPackable>False</IsPackable>
-    <IsPublishable>False</IsPublishable>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-  </PropertyGroup>
-
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>

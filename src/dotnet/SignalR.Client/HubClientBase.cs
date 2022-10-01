@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Stl.Fusion.Bridge;
@@ -7,9 +6,9 @@ namespace ActualChat.SignalR.Client;
 
 public abstract class HubClientBase : IDisposable
 {
+    protected Connector<HubConnection> Connector { get; }
     protected IServiceProvider Services { get; }
     protected ILogger Log { get; }
-    protected Connector<HubConnection> Connector { get; }
 
     public string HubUrl { get; init; }
     public RetryDelaySeq ReconnectDelays { get; init; } = new(0.5, 10);
@@ -47,7 +46,7 @@ public abstract class HubClientBase : IDisposable
 
     protected virtual async Task<HubConnection> Connect(CancellationToken cancellationToken)
     {
-        var hubUri = GetAbsoluteHubUri();
+        var hubUri = Services.UrlMapper().GetHubUrl(HubUrl);
         var builder = new HubConnectionBuilder()
             .WithUrl(hubUri, options => {
                 options.SkipNegotiation = true;
@@ -71,20 +70,5 @@ public abstract class HubClientBase : IDisposable
             await connection.DisposeSilentlyAsync().ConfigureAwait(false);
             throw;
         }
-    }
-
-    protected virtual Uri GetAbsoluteHubUri()
-    {
-        if (!Uri.TryCreate(HubUrl, UriKind.Absolute, out var hubUri))
-            hubUri = Services.UriMapper().ToAbsolute(HubUrl);
-
-        var hostInfo = Services.GetRequiredService<HostInfo>();
-        if (!hostInfo.IsDevelopmentInstance)
-            return hubUri;
-
-        // Workaround for missing SSL CA cert for local.actual.chat
-        if (hubUri.ToString().OrdinalHasPrefix("https://local.actual.chat/backend/hub/", out var suffix))
-            hubUri = new Uri("http://local.actual.chat:7080/backend/hub/" + suffix);
-        return hubUri;
     }
 }

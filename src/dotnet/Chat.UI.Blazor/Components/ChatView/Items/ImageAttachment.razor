@@ -2,8 +2,8 @@
 
 @{
     var attachment = Attachment;
-    var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
-    var previewUrl = ContentUrlMapper.ImagePreviewUrl(url, 400, 300);
+    var url = UrlMapper.ContentUrl(Attachment.ContentId);
+    var previewUrl = UrlMapper.ImagePreviewUrl(url, 400, 300);
     var imgStyle = "max-width: 400px; max-height: 300px";
     if (attachment.Height > 0 && attachment.Width > 0) {
         var width = attachment.Width;
@@ -26,7 +26,7 @@
 
 @code {
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter, EditorRequired]

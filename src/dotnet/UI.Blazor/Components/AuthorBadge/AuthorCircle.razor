@@ -45,7 +45,7 @@
     private string _presenceClass = "";
     private string _avatarPictureUrl = "";
 
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
@@ -60,7 +60,7 @@
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
         _presenceClass = GetPresenceClass();
-        _avatarPictureUrl = ContentUrlMapper.ContentUrl(Author.Picture);
+        _avatarPictureUrl = UrlMapper.ContentUrl(Author.Picture);
     }
 
     private string GetPresenceClass() {

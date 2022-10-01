@@ -3,23 +3,24 @@ namespace ActualChat.App.Maui.Services;
 
 public class NavigationInterceptor
 {
-    private NavigationManager? _nav;
-    private readonly Uri _baseUri;
+    private NavigationManager? Nav { get; set; }
+    private UrlMapper UrlMapper { get; }
 
-    public NavigationInterceptor(ClientAppSettings appSettings)
-        => _baseUri = new Uri(appSettings.BaseUri);
+    public NavigationInterceptor(UrlMapper urlMapper)
+        => UrlMapper = urlMapper;
 
     internal void Initialize(NavigationManager nav)
-        => _nav = nav;
+        => Nav = nav;
 
     internal bool TryIntercept(Uri uri)
     {
-        if (_nav == null)
+        if (Nav == null)
             return false;
 
-        if (_baseUri.IsBaseOf(uri)) {
-            var relativeUri = _baseUri.MakeRelativeUri(uri);
-            _nav.NavigateTo(relativeUri.ToString());
+        var baseUri = UrlMapper.BaseUri;
+        if (baseUri.IsBaseOf(uri)) {
+            var relativeUri = baseUri.MakeRelativeUri(uri);
+            Nav.NavigateTo(relativeUri.ToString());
             return true;
         }
         return false;

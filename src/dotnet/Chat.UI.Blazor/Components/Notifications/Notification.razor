@@ -40,7 +40,7 @@
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private INotifications Notifications { get; set; } = null!;
-    [Inject] private UriMapper UriMapper { get; set; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; set; } = null!;
 
     [Parameter] public NotificationEntry NotificationEntry { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
@@ -82,7 +82,7 @@
             Content = notification.Content,
             NavigateToUrl = chatId.IsNullOrEmpty()
                 ? null
-                : UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString(),
+                : UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId)),
             AuthorId = authorId,
         });
     }

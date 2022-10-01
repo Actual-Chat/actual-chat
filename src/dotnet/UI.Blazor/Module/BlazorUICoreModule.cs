@@ -78,7 +78,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             services.AddScoped<TimeZoneConverter, ClientSizeTimeZoneConverter>(); // WASM
         services.AddScoped<ComponentIdGenerator>();
         services.AddScoped<RenderVars>();
-        services.AddSingleton<ContentUrlMapper>();
 
         // Misc. UI services
         services.AddScoped<UILifetimeEvents>();

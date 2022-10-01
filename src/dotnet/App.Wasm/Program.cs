@@ -11,8 +11,8 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
-        await ConfigureServices(builder.Services, builder.Configuration, baseUri).ConfigureAwait(false);
+        var baseUrl = builder.HostEnvironment.BaseAddress;
+        await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
 
         var host = builder.Build();
         Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
@@ -26,7 +26,7 @@ public static class Program
     public static async Task ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
-        Uri baseUri)
+        string baseUrl)
     {
         // Logging
         services.AddLogging(logging => logging
@@ -52,10 +52,9 @@ public static class Program
                 .Add(ServiceScope.BlazorUI),
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
+            BaseUrl = baseUrl,
         });
 
-        await AppConfigurator
-            .ConfigureServices(services, baseUri)
-            .ConfigureAwait(false);
+        await AppConfigurator.ConfigureServices(services).ConfigureAwait(false);
     }
 }

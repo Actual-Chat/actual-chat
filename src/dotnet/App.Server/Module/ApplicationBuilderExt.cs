@@ -2,8 +2,9 @@ namespace ActualChat.App.Server.Module;
 
 public static class ApplicationBuilderExt
 {
-    public static IApplicationBuilder UseBaseUri(this IApplicationBuilder app, Uri baseUri)
+    public static IApplicationBuilder UseBaseUrl(this IApplicationBuilder app, string baseUrl)
     {
+        var baseUri = baseUrl.ToUri();
         var scheme = baseUri.Scheme;
         var host = baseUri.Host;
         var port = baseUri.Port;

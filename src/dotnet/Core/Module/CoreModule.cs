@@ -5,7 +5,6 @@ using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
-using Stl.Fusion.Internal;
 using Stl.Plugins;
 
 namespace ActualChat.Module;
@@ -29,6 +28,7 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
+        services.AddSingleton<UrlMapper>();
         services.AddTransient(typeof(Lazy<>), typeof(LazyService<>));
 
         // Matching type finder

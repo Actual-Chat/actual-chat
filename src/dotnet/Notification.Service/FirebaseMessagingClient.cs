@@ -5,18 +5,18 @@ namespace ActualChat.Notification;
 
 public class FirebaseMessagingClient
 {
-    private UriMapper UriMapper { get; }
+    private UrlMapper UrlMapper { get; }
     private FirebaseMessaging FirebaseMessaging { get; }
     private ICommander Commander { get; }
     private ILogger Log { get; }
 
     public FirebaseMessagingClient(
-        UriMapper uriMapper,
+        UrlMapper urlMapper,
         FirebaseMessaging firebaseMessaging,
         ICommander commander,
         ILogger<FirebaseMessagingClient> log)
     {
-        UriMapper = uriMapper;
+        UrlMapper = urlMapper;
         FirebaseMessaging = firebaseMessaging;
         Commander = commander;
         Log = log;
@@ -25,7 +25,7 @@ public class FirebaseMessagingClient
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
         var (notificationId, notificationType, title, content, iconUrl, _) = entry;
-        var absoluteIconUrl = UriMapper.ToAbsolute(iconUrl).ToString();
+        var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl);
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
@@ -34,7 +34,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString();
+                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
             }
             break;
         }
@@ -43,7 +43,7 @@ public class FirebaseMessagingClient
             var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = UriMapper.ToAbsolute(Links.ChatPage(chatId, entryId)).ToString();
+                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
             }
             break;
         }
@@ -51,7 +51,7 @@ public class FirebaseMessagingClient
             var chatId = entry.Chat?.ChatId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
-                link = UriMapper.ToAbsolute(Links.ChatPage(chatId)).ToString();
+                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId));
             }
             break;
         }
@@ -106,7 +106,7 @@ public class FirebaseMessagingClient
                     Icon = absoluteIconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    Link = OrdinalEquals(UriMapper.BaseUri.Host, "localhost")
+                    Link = OrdinalEquals(UrlMapper.BaseUri.Host, "localhost")
                         ? null
                         : link,
                 },

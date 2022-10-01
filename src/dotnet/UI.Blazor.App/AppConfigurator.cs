@@ -23,10 +23,8 @@ namespace ActualChat.UI.Blazor.App
 {
     public static class AppConfigurator
     {
-        public static async Task ConfigureServices(IServiceCollection services, Uri baseUri, params Type[] platformPluginTypes)
+        public static async Task ConfigureServices(IServiceCollection services, params Type[] platformPluginTypes)
         {
-            services.AddSingleton(_ => new UriMapper(baseUri));
-
             // Commander - it must be added first to make sure its options are set
             var commander = services.AddCommander().Configure(new CommanderOptions() {
                 AllowDirectCommandHandlerCalls = false,
@@ -62,16 +60,18 @@ namespace ActualChat.UI.Blazor.App
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
             fusionClient.ConfigureHttpClient((c, name, o) => {
-                var uriMapper = c.GetRequiredService<UriMapper>();
-                var apiBaseUri = uriMapper.ToAbsolute("api/");
+                var urlMapper = c.GetRequiredService<UrlMapper>();
                 var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
-                var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
-                o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
+                var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
+                o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUrl.ToUri());
             });
-            fusionClient.ConfigureWebSocketChannel(_ => new() {
-                BaseUri = baseUri,
-                LogLevel = LogLevel.Information,
-                MessageLogLevel = LogLevel.None,
+            fusionClient.ConfigureWebSocketChannel(c => {
+                var urlMapper = c.GetRequiredService<UrlMapper>();
+                return new () {
+                    BaseUri = urlMapper.BaseUri,
+                    LogLevel = LogLevel.Information,
+                    MessageLogLevel = LogLevel.None,
+                };
             });
 
             // Injecting plugin services

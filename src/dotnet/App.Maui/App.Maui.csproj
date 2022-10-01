@@ -1,21 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <BuilderOS>other</BuilderOS>
-    <BuilderOS Condition="'$(OS)' == 'Windows_NT'">windows</BuilderOS>
-    <BuilderOS Condition="$([MSBuild]::IsOSPlatform('windows'))">windows</BuilderOS>
-  </PropertyGroup>
-
-  <PropertyGroup>
+    <TargetFramework/>
     <TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="'$(BuilderOS)' == 'windows'">$(TargetFrameworks);net6.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net6.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
+    <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
-    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    <IsPackable>true</IsPackable>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
+    <!--
+    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    -->
 
     <!-- Display name -->
     <ApplicationTitle>Actual Chat</ApplicationTitle>
@@ -62,6 +60,14 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0-android'">
+    <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- App Icon -->
@@ -118,14 +124,6 @@
   <ItemGroup>
     <EmbeddedResource Include="appsettings.Development.json" />
     <EmbeddedResource Include="appsettings.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0-android'">
-    <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
   </ItemGroup>
 
 </Project>

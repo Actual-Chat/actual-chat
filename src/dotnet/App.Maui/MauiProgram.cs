@@ -23,15 +23,15 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-        var fileprovider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
-        var files = fileprovider.GetDirectoryContents("").ToArray();
+        var fileProvider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
+        var files = fileProvider.GetDirectoryContents("").ToArray();
         builder.Configuration.AddJsonFile(
-            fileprovider,
+            fileProvider,
             "appsettings.Development.json",
             optional: true,
             reloadOnChange: false);
         builder.Configuration.AddJsonFile(
-            fileprovider,
+            fileProvider,
             "appsettings.json",
             optional: true,
             reloadOnChange: false);
@@ -49,30 +49,27 @@ public static class MauiProgram
         );
 
         services.TryAddSingleton(builder.Configuration);
+
+        // var settings = builder.Configuration.Get<ClientAppSettings>();
+        var sessionId = new SessionFactory().CreateSession().Id;
+        var settings = new ClientAppSettings { SessionId = sessionId };
+        services.TryAddSingleton(settings);
+
         services.AddSingleton(c => new HostInfo {
             HostKind = HostKind.Maui,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
                 .Add(ServiceScope.BlazorUI),
             Environment = "Development", // there is hosting environment service, TODO: use configuration
-            Configuration = c.GetRequiredService<IConfiguration>()
+            Configuration = c.GetRequiredService<IConfiguration>(),
+            BaseUrl = GetBaseUrl(),
         });
 
         builder.ConfigureMauiHandlers(handlers => {
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
-        // var settings = builder.Configuration.Get<ClientAppSettings>();
-        var sessionId = new SessionFactory().CreateSession().Id;
-        var settings = new ClientAppSettings {
-            BaseUri = GetBackendUrl(),
-            SessionId = sessionId
-        };
-        if (string.IsNullOrWhiteSpace(settings.BaseUri))
-            throw StandardError.Constraint<ClientAppSettings>("BaseUri cannot be empty.");
-        services.TryAddSingleton<ClientAppSettings>(settings);
-
-        ConfigureServices(services, new Uri(settings.BaseUri));
+        ConfigureServices(services);
 
         var mauiApp = builder.Build();
 
@@ -89,7 +86,7 @@ public static class MauiProgram
         => mauiApp.Services.HostedServices().Start()
             .Wait(); // wait on purpose, CreateMauiApp is synchronous.
 
-    private static string GetBackendUrl()
+    private static string GetBaseUrl()
     {
         // Host address for local debugging
         // https://devblogs.microsoft.com/xamarin/debug-local-asp-net-core-web-apis-android-emulators/
@@ -97,7 +94,7 @@ public static class MauiProgram
         // Unfortunately, this base address does not work in WSA.
         // TODO(DF): find solution for WSA
         var ipAddress = DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
-        var backendUrl = $"http://{ipAddress}:7080";
+        var baseUrl = $"http://{ipAddress}:7080/";
 
         // To use BaseUri : https://local.actual.chat
         // We need to modify hosts file on Android emulator similarly to how we did it for Windows hosts.
@@ -108,21 +105,19 @@ public static class MauiProgram
         // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
 
         //return "https://local.actual.chat";
-        return "https://dev.actual.chat";
+        return "https://dev.actual.chat/";
     }
 
-    private static void ConfigureServices(IServiceCollection services, Uri baseUri)
+    private static void ConfigureServices(IServiceCollection services)
     {
-        AppConfigurator
-            .ConfigureServices(services, baseUri, typeof(Module.BlazorUIClientAppModule))
-            .Wait();
-
-        services.AddTransient<MainPage>();
+        AppConfigurator.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
         services.AddScoped<IClientAuth, MauiClientAuth>();
         services.AddTransient<MobileAuthClient>();
 
+        // UI
         services.AddSingleton<NavigationInterceptor>();
+        services.AddTransient<MainPage>();
     }
 }

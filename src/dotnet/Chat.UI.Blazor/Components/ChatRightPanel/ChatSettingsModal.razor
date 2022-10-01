@@ -42,7 +42,7 @@
                 @if (_form.IsPublic) {
                     @if (m.PublicUrl != null) {
                         <h4 class="section">Public join link</h4>
-                        <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl.CopyLink.ToString()"/>
+                        <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl.CopyLink"/>
                     }
                 } else {
                     @if (m.Rules.CanInvite()) {
@@ -78,7 +78,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;

@@ -62,7 +62,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
@@ -75,8 +75,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatLinkInfo = Chat.IsPublic ? LinkInfoBuilder.GetFrom(Links.ChatPage(Chat.Id)) : null;
-        var publicUrl = chatLinkInfo?.CopyLink.ToString();
-        var chatAbsolutePath = chatLinkInfo?.CopyLink.AbsolutePath;
+        var publicUrl = chatLinkInfo?.CopyLink;
+        var chatAbsolutePath = chatLinkInfo?.CopyLink.ToUri().AbsolutePath;
         var publicUrlTitle = chatAbsolutePath == null
             ? ""
             : chatAbsolutePath.Substring(1, chatAbsolutePath.Length - 1);

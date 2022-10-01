@@ -28,7 +28,7 @@
     private IJSObjectReference _jsRef = null!;
 
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";

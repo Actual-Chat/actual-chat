@@ -78,11 +78,12 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
         // - https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-6.0
         app.UseForwardedHeaders();
+
         // And here we can modify httpContext.Request.Scheme & Host manually to whatever we like
-        if (!Settings.BaseUri.IsNullOrEmpty()) {
-            var baseUri = new Uri(Settings.BaseUri);
-            Log.LogInformation("Overriding request host to {BaseUri}", baseUri);
-            app.UseBaseUri(baseUri);
+        var baseUrl = Settings.BaseUrl;
+        if (!baseUrl.IsNullOrEmpty()) {
+            Log.LogInformation("Overriding request host to {BaseUrl}", baseUrl);
+            app.UseBaseUrl(baseUrl);
         }
 
         app.UseWebSockets(new WebSocketOptions {
@@ -121,23 +122,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         base.InjectServices(services);
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
-
-        // UriMapper
-        services.AddSingleton(c => {
-            var baseUri = Settings.BaseUri;
-            if (!baseUri.IsNullOrEmpty())
-                return new UriMapper(baseUri);
-
-            var server = c.GetRequiredService<IServer>();
-            var serverAddressesFeature =
-                server.Features.Get<IServerAddressesFeature>()
-                ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
-            baseUri = serverAddressesFeature.Addresses.FirstOrDefault()
-                ?? throw StandardError.NotFound<IServerAddressesFeature>(
-                    "No server addresses found. Most likely you trying to use UriMapper before the server has started.");
-            return new UriMapper(baseUri);
-        });
-        services.AddSingleton<ContentUrlMapper>();
 
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
@@ -231,7 +215,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
-            var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
+            var openTelemetryEndpointUri = Invariant($"http://{host}:{port}").ToUri();
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
             services.AddOpenTelemetryMetrics(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))

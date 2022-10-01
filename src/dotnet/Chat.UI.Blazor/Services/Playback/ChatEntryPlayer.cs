@@ -6,13 +6,13 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryPlayer : ProcessorBase
 {
-    private ILogger Log { get; }
-    private MomentClockSet Clocks { get; }
     private IServiceProvider Services { get; }
+    private MomentClockSet Clocks { get; }
+    private UrlMapper UrlMapper { get; }
+    private ILogger Log { get; }
 
     private AudioDownloader AudioDownloader { get; }
     private IAudioStreamer AudioStreamer { get; }
-    private IChatMediaResolver ChatMediaResolver { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();
     private CancellationTokenSource AbortTokenSource { get; }
@@ -22,7 +22,12 @@ public sealed class ChatEntryPlayer : ProcessorBase
     public Symbol ChatId { get; }
     public Playback Playback { get; }
 
-    public ChatEntryPlayer(Session session, Symbol chatId, Playback playback, IServiceProvider services, CancellationToken cancellationToken)
+    public ChatEntryPlayer(
+        Session session,
+        Symbol chatId,
+        Playback playback,
+        IServiceProvider services,
+        CancellationToken cancellationToken)
     {
         Session = session;
         ChatId = chatId;
@@ -31,8 +36,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
 
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
-        ChatMediaResolver = services.GetRequiredService<IChatMediaResolver>();
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
 
         AbortTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -144,9 +149,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audioBlobUri = ChatMediaResolver.GetAudioBlobUri(audioEntry);
+        var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
         var audio = await AudioDownloader
-            .Download(audioBlobUri, skipTo, cancellationToken)
+            .Download(audioBlobUrl, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,

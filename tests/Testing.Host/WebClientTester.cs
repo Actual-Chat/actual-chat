@@ -12,7 +12,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     IAuth Auth { get; }
     IAuthBackend AuthBackend { get; }
     Session Session { get; }
-    UriMapper UriMapper { get; }
+    UrlMapper UrlMapper { get; }
 }
 
 public interface IWebClientTester : IWebTester
@@ -33,7 +33,7 @@ public class WebClientTester : IWebClientTester
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
-    public UriMapper UriMapper => AppServices.UriMapper();
+    public UrlMapper UrlMapper => AppServices.UrlMapper();
 
     public IServiceProvider ClientServices => _clientServicesLazy.Value;
     public ICommander ClientCommander => ClientServices.Commander();
@@ -67,7 +67,7 @@ public class WebClientTester : IWebClientTester
         var output = AppHost.Services.GetRequiredService<ITestOutputHelper>();
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
-        Program.ConfigureServices(services, configuration, UriMapper.BaseUri).Wait();
+        Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl).Wait();
         TestHostFactory.ConfigureLogging(services, output); // Override logging
 
         var serviceProvider = services.BuildServiceProvider();

@@ -100,8 +100,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeToken.IsCancellationRequested)
             return;
 
-        var uri = new Uri(Nav.Uri);
-        var entryIdString = uri.Fragment.TrimStart('#');
+        var entryIdString = Nav.Uri.ToUri().Fragment.TrimStart('#');
         if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0)
             NavigateToEntry(entryId);
     }

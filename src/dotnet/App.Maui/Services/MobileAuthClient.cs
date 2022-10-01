@@ -2,43 +2,45 @@ namespace ActualChat.App.Maui.Services;
 
 public class MobileAuthClient
 {
-    private readonly ClientAppSettings _appSettings;
-    private readonly ILogger<MobileAuthClient> _log;
+    private ClientAppSettings AppSettings { get; }
+    private UrlMapper UrlMapper { get; }
+    private ILogger<MobileAuthClient> Log { get; }
 
-    public MobileAuthClient(ClientAppSettings appSettings, ILogger<MobileAuthClient> log)
+    public MobileAuthClient(ClientAppSettings appSettings, UrlMapper urlMapper, ILogger<MobileAuthClient> log)
     {
-        _appSettings = appSettings;
-        _log = log;
+        AppSettings = appSettings;
+        UrlMapper = urlMapper;
+        Log = log;
     }
 
     public async Task<bool> SignInGoogle(string code)
     {
         if (string.IsNullOrEmpty(code))
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
-        var sessionId = _appSettings.SessionId;
-        var requestUri = _appSettings.BaseUri.EnsureEndsWith("/") + $"mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
+        var sessionId = AppSettings.SessionId;
+        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
             var httpClient = new HttpClient();
             var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            _log.LogError("Failed to sign in google", e);
+            Log.LogError("Failed to sign in google", e);
             return false;
         }
     }
 
     public async Task<bool> SignOut()
     {
-        var sessionId = _appSettings.SessionId;
-        var requestUri = _appSettings.BaseUri.EnsureEndsWith("/") + $"mobileAuth/signOut/{sessionId.UrlEncode()}";
+        var sessionId = AppSettings.SessionId;
+        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
             var httpClient = new HttpClient();
             var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            _log.LogError("Failed to sign out", e);
+            Log.LogError("Failed to sign out", e);
             return false;
         }
     }

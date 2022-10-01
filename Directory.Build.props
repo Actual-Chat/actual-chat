@@ -34,6 +34,7 @@
 
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
     <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>
@@ -43,8 +44,16 @@
     <!-- Output -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
+
+    <!-- NuGet -->
     <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <!-- Include the PDB and xmldoc in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <IncludeSymbols>false</IncludeSymbols>
 
     <!-- Debug info -->
     <DebugType>portable</DebugType>

@@ -4,12 +4,14 @@ namespace ActualChat.App.Maui.Services;
 
 internal sealed class MauiClientAuth : IClientAuth
 {
-    private ClientAppSettings ClientAppSettings { get; }
+    private ClientAppSettings AppSettings { get; }
+    private UrlMapper UrlMapper { get; }
     private ILogger<MauiClientAuth> Log { get; }
 
-    public MauiClientAuth(ClientAppSettings clientAppSettings, ILogger<MauiClientAuth> log)
+    public MauiClientAuth(ClientAppSettings appSettings, UrlMapper urlMapper, ILogger<MauiClientAuth> log)
     {
-        ClientAppSettings = clientAppSettings;
+        AppSettings = appSettings;
+        UrlMapper = urlMapper;
         Log = log;
     }
 
@@ -23,7 +25,7 @@ internal sealed class MauiClientAuth : IClientAuth
 #endif
         }
 
-        var uri = $"{ClientAppSettings.BaseUri.EnsureEndsWith("/")}mobileauth/signin/{ClientAppSettings.SessionId}/{scheme}";
+        var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{AppSettings.SessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
@@ -37,7 +39,7 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var uri = $"{ClientAppSettings.BaseUri.EnsureEndsWith("/")}mobileauth/signout/{ClientAppSettings.SessionId}";
+        var uri = $"{UrlMapper.BaseUrl}mobileauth/signout/{AppSettings.SessionId}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
@@ -50,8 +52,7 @@ internal sealed class MauiClientAuth : IClientAuth
     private async Task OpenSystemBrowserForSignIn(string url)
     {
         try {
-            var uri = new Uri(url);
-            await Browser.Default.OpenAsync(uri, BrowserLaunchMode.SystemPreferred).ConfigureAwait(true);
+            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(true);
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to authenticate");

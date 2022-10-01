@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Hosting;
 
-public record HostInfo
+public sealed record HostInfo
 {
     private bool? _isProductionInstance;
     private bool? _isStagingInstance;
@@ -17,6 +17,7 @@ public record HostInfo
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
     public ImmutableHashSet<Symbol> RequiredServiceScopes { get; init; } = ImmutableHashSet<Symbol>.Empty;
+    public string BaseUrl { get; init; } = "";
 
     public bool IsProductionInstance => _isProductionInstance ??= Environment == ProductionEnvironment;
     public bool IsStagingInstance => _isStagingInstance ??= Environment == StagingEnvironment;

@@ -18,8 +18,8 @@ public static class AppHostExt
 
     public static HttpClient NewHttpClient(this AppHost appHost)
     {
-        var uriMapper = appHost.Services.UriMapper();
-        return new() { BaseAddress = uriMapper.BaseUri };
+        var urlMapper = appHost.Services.UrlMapper();
+        return new() { BaseAddress = urlMapper.BaseUri };
     }
 
     public static IServer Server(this IServiceProvider services)

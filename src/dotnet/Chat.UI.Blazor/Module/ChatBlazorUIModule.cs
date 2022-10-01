@@ -28,7 +28,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Singletons
-        services.TryAddSingleton<IChatMediaResolver, ChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
 
         // Transient

@@ -14,7 +14,7 @@ public class BlazorTester : TestContext, IWebTester
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
-    public UriMapper UriMapper => AppServices.UriMapper();
+    public UrlMapper UrlMapper => AppServices.UrlMapper();
 
     public BlazorTester(AppHost appHost)
     {

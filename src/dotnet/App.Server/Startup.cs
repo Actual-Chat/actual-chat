@@ -1,6 +1,8 @@
 using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Console;
 using Stl.Plugins;
@@ -35,13 +37,28 @@ public class Startup
         });
 
         // HostInfo
-        services.AddSingleton(new HostInfo() {
-            HostKind = HostKind.WebServer,
-            RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                .Add(ServiceScope.Server)
-                .Add(ServiceScope.BlazorUI),
-            Environment = Env.EnvironmentName,
-            Configuration = Cfg,
+        services.AddSingleton(c => {
+            var hostSettings = Cfg.GetSettings<HostSettings>();
+            var baseUrl = hostSettings.BaseUrl;
+            if (baseUrl.IsNullOrEmpty()) {
+                var server = c.GetRequiredService<IServer>();
+                var serverAddressesFeature =
+                    server.Features.Get<IServerAddressesFeature>()
+                    ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
+                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
+                    ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                        "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
+            }
+
+            return new HostInfo() {
+                HostKind = HostKind.WebServer,
+                RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
+                    .Add(ServiceScope.Server)
+                    .Add(ServiceScope.BlazorUI),
+                Environment = Env.EnvironmentName,
+                Configuration = Cfg,
+                BaseUrl = baseUrl,
+            };
         });
 
         // Commander - it must be added first to make sure its options are set

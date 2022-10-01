@@ -19,6 +19,12 @@
       "commands": [
         "nbgv"
       ]
+    },
+    "redth.net.maui.check": {
+      "version": "1.0.0",
+      "commands": [
+        "maui-check"
+      ]
     }
   }
 }

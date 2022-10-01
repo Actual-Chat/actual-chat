@@ -76,18 +76,18 @@ public abstract class ChatPlayer : ProcessorBase
         }
 
         _ = BackgroundTask.Run(async () => {
-            var entrySequencePlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
+            var chatEntryPlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
             try {
-                await Play(entrySequencePlayer, startAt, playToken).ConfigureAwait(false);
+                await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 if (e is not OperationCanceledException)
                     Log.LogError(e, "Playback (reader part) failed in chat #{ChatId}", ChatId);
-                entrySequencePlayer.Abort();
+                chatEntryPlayer.Abort();
             }
             finally {
                 // We should wait for playback completion first
-                await entrySequencePlayer.DisposeAsync().ConfigureAwait(false);
+                await chatEntryPlayer.DisposeAsync().ConfigureAwait(false);
                 playTokenSource.CancelAndDisposeSilently();
                 whenPlayingSource.TrySetResult(default);
                 lock (Lock)

@@ -39,8 +39,8 @@ public static class StringExt
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
 
-    public static string EnsureEndsWith(this string source, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
-        => source.EndsWith(suffix, comparison) ? source : source + suffix;
+    public static string EnsureSuffix(this string source, string suffix)
+        => source.OrdinalEndsWith(suffix) ? source : source + suffix;
 
     public static string Truncate(this string source, int maxLength)
         => source.Length <= maxLength ? source : source[..maxLength];
@@ -71,6 +71,10 @@ public static class StringExt
             index = match.Index + match.Length;
         }
     }
+
+    [return: NotNullIfNotNull(nameof(url))]
+    public static Uri? ToUri(this string? url)
+        => url == null ? null : new Uri(url);
 
     public static string UrlEncode(this string input)
         => WebUtility.UrlEncode(input);

@@ -13,13 +13,13 @@ public class LocalAudioDownloader : AudioDownloader
         => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
 
     public override async Task<AudioSource> Download(
-        Uri audioUri,
+        string audioBlobUrl,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var match = AudioBlobIdRegex.Match(audioUri.ToString());
+        var match = AudioBlobIdRegex.Match(audioBlobUrl);
         if (!match.Success)
-            return await base.Download(audioUri, skipTo, cancellationToken).ConfigureAwait(false);
+            return await base.Download(audioBlobUrl, skipTo, cancellationToken).ConfigureAwait(false);
 
         var blobId = match.Groups["blobId"].Value;
         Log.LogDebug("Fetching blob #{BlobId}", blobId);

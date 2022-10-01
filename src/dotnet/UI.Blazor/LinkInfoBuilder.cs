@@ -4,25 +4,28 @@ namespace ActualChat.UI.Blazor;
 
 public class LinkInfoBuilder
 {
-    private readonly NavigationManager _nav;
-    private readonly UriMapper _uriMapper;
-    private readonly bool _isMaui;
+    private NavigationManager Nav { get;}
+    private UrlMapper UrlMapper { get; }
+    private HostInfo HostInfo { get; }
 
-    public LinkInfoBuilder(NavigationManager nav, UriMapper uriMapper, HostInfo hostInfo)
+    public LinkInfoBuilder(NavigationManager nav, UrlMapper urlMapper, HostInfo hostInfo)
     {
-        _nav = nav;
-        _uriMapper = uriMapper;
-        _isMaui = hostInfo.HostKind == HostKind.Maui;
+        Nav = nav;
+        UrlMapper = urlMapper;
+        HostInfo = hostInfo;
     }
 
     public LinkInfo GetFrom(string relativeUri)
     {
-        var navigateLink = _nav.ToAbsoluteUri(relativeUri);
-        return new LinkInfo(navigateLink, _isMaui ? _uriMapper.ToAbsolute(relativeUri) : navigateLink);
+        var navigateLink = Nav.ToAbsoluteUri(relativeUri).ToString();
+        var copyLink = HostInfo.HostKind == HostKind.Maui
+            ? UrlMapper.ToAbsolute(relativeUri)
+            : navigateLink;
+        return new LinkInfo(navigateLink, copyLink);
     }
 }
 
-public record LinkInfo(Uri NavigateLink, Uri CopyLink)
+public record LinkInfo(string NavigateLink, string CopyLink)
 {
-    public Uri DisplayLink => CopyLink;
+    public string DisplayLink => CopyLink;
 }

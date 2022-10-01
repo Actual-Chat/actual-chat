@@ -11,7 +11,7 @@
     <div class="flex-none text-02">
         <a href="@linkInfo.NavigateLink">@linkInfo.DisplayLink</a>
     </div>
-    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@linkInfo.CopyLink.ToString()"/>
+    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@linkInfo.CopyLink"/>
 </div>
 
 @code {
@@ -20,7 +20,7 @@
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
     protected override ComputedState<User?>.Options GetStateOptions()
-    => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<User?> ComputeState(CancellationToken cancellationToken)
         => Auth.GetUser(Session, default);

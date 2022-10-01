@@ -112,12 +112,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         _isPaused = !_isPaused;
     }
 
-    private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
+    private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)
     {
-        if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioUri)) {
+        if (_audioSource == null || !OrdinalEquals(_audioBlobStreamUri, audioBlobUrl)) {
             var audioDownloader = new AudioDownloader(Services);
-            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
-            _audioBlobStreamUri = audioUri;
+            _audioSource = await audioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
+            _audioBlobStreamUri = audioBlobUrl;
         }
         await _audioSource.WhenFormatAvailable;
         return _audioSource;

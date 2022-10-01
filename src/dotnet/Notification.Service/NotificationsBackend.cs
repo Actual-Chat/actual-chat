@@ -12,23 +12,23 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 {
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
-    private IDbEntityResolver<string, DbNotification> EntityResolver { get; }
-    private ContentUrlMapper ContentUrlMapper { get; }
+    private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
+    private UrlMapper UrlMapper { get; }
 
     public NotificationsBackend(
         IServiceProvider services,
         IChatAuthorsBackend chatAuthorsBackend,
         FirebaseMessagingClient firebaseMessagingClient,
         IChatsBackend chatsBackend,
-        IDbEntityResolver<string, DbNotification> entityResolver,
-        ContentUrlMapper contentUrlMapper) : base(services)
+        IDbEntityResolver<string, DbNotification> dbNotificationResolver,
+        UrlMapper urlMapper) : base(services)
     {
         ChatAuthorsBackend = chatAuthorsBackend;
         FirebaseMessagingClient = firebaseMessagingClient;
         ChatsBackend = chatsBackend;
-        EntityResolver = entityResolver;
-        ContentUrlMapper = contentUrlMapper;
+        DbNotificationResolver = dbNotificationResolver;
+        UrlMapper = urlMapper;
     }
 
     // [ComputeMethod]
@@ -234,7 +234,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbNotification = await EntityResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
@@ -301,8 +301,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private string GetIconUrl(Chat.Chat chat, ChatAuthor chatAuthor)
          => chat.ChatType switch {
-             ChatType.Group => !chat.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? ContentUrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+             ChatType.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
+             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
          };
 

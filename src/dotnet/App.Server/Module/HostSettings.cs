@@ -2,7 +2,7 @@ namespace ActualChat.App.Server.Module;
 
 public class HostSettings
 {
-    public string BaseUri { get; set; } = "";
+    public string BaseUrl { get; set; } = "";
     public string WebRootPath { get; set; } = "";
     public bool AssumeHttps { get; set; } = false;
 
@@ -11,4 +11,9 @@ public class HostSettings
     /// </summary>
     public string DataProtection { get; set; } = "";
     public string OpenTelemetryEndpoint { get; set; } = "";
+
+    // Obsolete
+
+    [Obsolete("Use BaseUrl instead.")]
+    public string BaseUri { get => BaseUrl; set => BaseUrl = value; }
 }

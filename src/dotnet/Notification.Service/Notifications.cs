@@ -34,21 +34,24 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(
+        Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.ListRecentNotificationIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
+    public virtual async Task<NotificationEntry> GetNotification(
+        Session session, string notificationId, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.GetNotification(user.Id, notificationId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task HandleNotification(INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+    public virtual async Task HandleNotification(
+        INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             _ = GetNotification(command.Session, command.NotificationId, default);

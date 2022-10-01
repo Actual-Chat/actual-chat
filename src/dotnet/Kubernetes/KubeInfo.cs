@@ -52,8 +52,8 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
         else if (Constants.DebugMode.KubeEmulation) {
             host = "this.host.does.not.exist";
             port = 53; // DNS port, definitely can't run Kubernetes service
-            var uriMapper = Services.GetRequiredService<UriMapper>();
-            podIP = uriMapper.BaseUri.Host;
+            var urlMapper = Services.GetRequiredService<UrlMapper>();
+            podIP = urlMapper.BaseUri.Host;
             _token = new KubeToken(Services, "");
         }
 

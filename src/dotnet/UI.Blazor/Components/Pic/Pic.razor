@@ -29,7 +29,7 @@
     private string _pictureUrl = "";
     private bool _hasPicture;
 
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
@@ -42,8 +42,8 @@
     protected override void OnParametersSet() {
         _hasPicture = !ContentId.IsNullOrEmpty();
         if (_hasPicture) {
-            var contentUrl = ContentUrlMapper.ContentUrl(ContentId);
-            _pictureUrl = ContentUrlMapper.PicturePreviewUrl(contentUrl);
+            var contentUrl = UrlMapper.ContentUrl(ContentId);
+            _pictureUrl = UrlMapper.ImagePreview100Url(contentUrl);
         } else if(NoPicture == null) {
             _picStyle = $"background-color: {GenerateColor()}";
             _pictureUrl = "";
@@ -60,7 +60,7 @@
         await Click.InvokeAsync(arg).ConfigureAwait(false);
 
         if (EnableImagePreview) {
-            var url = ContentUrlMapper.ContentUrl(ContentId);
+            var url = UrlMapper.ContentUrl(ContentId);
             await ImagePreviewUI.Show(url);
         }
     }
