@@ -1,6 +1,8 @@
 <div class="flex-x justify-items-stretch items-center px-1 min-h-14 border-b border-bg-04">
-    <div class="flex-none self-start">
-        <NavbarButton/>
+    <div>
+        <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
+            <i class="icon-arrow-left text-2xl"></i>
+        </ButtonRound>
     </div>
     <div class="flex-auto flex-x justify-between items-center w-full gap-x-2 py-0.5 md:pl-2 overflow-auto">
         <ChatIcon Chat="Chat"/>
@@ -40,6 +42,7 @@
 
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -48,4 +51,7 @@
 
     private void OnSwitchRightPanelClick()
         => RightPanelUI.IsVisible.Value = !RightPanelUI.IsVisible.Value;
+
+    private void OnOpenLeftPanelClick()
+        => NavbarUI.ChangeVisibility(true);
 }

@@ -80,7 +80,3 @@
 .active-chats .navbar-item .pin-toggle {
     @apply visible;
 }
-
-.add-to-chat.btn.btn-round {
-    @apply flex float-right self-center;
-}

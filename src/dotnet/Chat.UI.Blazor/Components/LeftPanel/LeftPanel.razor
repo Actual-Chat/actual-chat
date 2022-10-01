@@ -1,9 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Components.SideNav
+@implements IDisposable
 
 <SideNav Direction="SideNavDirection.LeftToRight"
-         Opened="() => NavbarUI.IsVisible = true"
-         Closed="() => NavbarUI.IsVisible = false"
+         Opened="() => NavbarUI.ChangeVisibility(true)"
+         Closed="() => NavbarUI.ChangeVisibility(false)"
          IsOpen="@NavbarUI.IsVisible">
     <div class="flex-x h-full w-full bg-04">
         <ThinLeftPanel/>
@@ -12,5 +13,18 @@
 </SideNav>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    [Inject]
+    private NavbarUI NavbarUI { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;
+    }
+
+    public void Dispose() {
+        NavbarUI.VisibilityChanged -= OnNavbarVisibilityChanged;
+    }
+
+    private void OnNavbarVisibilityChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
 }

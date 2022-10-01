@@ -25,8 +25,6 @@
 </div>
 
 @code {
-    private EventHandler? _onActiveGroupChanged;
-
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
@@ -39,14 +37,16 @@
     [Parameter] public TooltipPosition TooltipPosition { get; set; }
 
     protected override void OnInitialized() {
-        _onActiveGroupChanged = (s, e) => StateHasChanged();
-        NavbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;
     }
 
     public void Dispose()
-        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+        => NavbarUI.ActiveGroupChanged -= OnNavbarActiveGroupChanged;
 
     private void OnClick() {
         NavbarUI.ActivateGroup(Id, Title);
     }
+
+    private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
+        => InvokeAsync(StateHasChanged);
 }
