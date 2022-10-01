@@ -1,0 +1,16 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Components.SideNav
+
+<SideNav Direction="SideNavDirection.LeftToRight"
+         Opened="() => NavbarUI.IsVisible = true"
+         Closed="() => NavbarUI.IsVisible = false"
+         IsOpen="@NavbarUI.IsVisible">
+    <div class="flex-x h-full w-full bg-04">
+        <ThinLeftPanel/>
+        <WideLeftPanel/>
+    </div>
+</SideNav>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+}

@@ -2,19 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    private bool _isVisible;
-
-    public bool IsVisible {
-        get => _isVisible;
-        set {
-            if (_isVisible == value) return;
-            _isVisible = value;
-            if (!value)
-                IsThinPanelOpen.Value = false;
-        }
-    }
-
-    public IMutableState<bool> IsThinPanelOpen { get; set; }
+    public bool IsVisible { get; set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
     public Dictionary<string, Action> AddButtonAction { get; } = new (StringComparer.Ordinal);
@@ -29,7 +17,4 @@ public class NavbarUI
         ActiveGroupTitle = title;
         ActiveGroupChanged?.Invoke(this, EventArgs.Empty);
     }
-
-    public NavbarUI(IStateFactory stateFactory)
-        => IsThinPanelOpen = stateFactory.NewMutable(false);
 }

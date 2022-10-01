@@ -1,0 +1,5 @@
+.left-line {
+    @apply h-8 self-center rounded-lg;
+    min-width: 2px;
+    margin-right: 3px;
+}
