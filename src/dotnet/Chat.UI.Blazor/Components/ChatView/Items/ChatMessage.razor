@@ -65,9 +65,9 @@
                             </p>
                         }
                     </div>
-                    @if (m.Attachments.Length > 0) {
+                    @if (entry.HasAttachments) {
                         <div class="message-attachments mx-1">
-                            @foreach (var attachment in m.Attachments) {
+                            @foreach (var attachment in entry.Attachments) {
                                 var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                                 @if (isImage) {
                                     <ImageAttachment Attachment="@attachment"/>
@@ -137,7 +137,6 @@
         var principalId = await ChatAuthors.GetPrincipalId(Session, chatId, cancellationToken);
         var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
 
-        var attachments = await LoadAttachments(cancellationToken);
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
         var isMentioned = IsMentioned(Markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
@@ -145,9 +144,7 @@
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
             PrincipalId = principalId,
-            Attachments = attachments,
             RepliedChatMessage = repliedChatMessage,
-            HasAnyMentions = hasAnyMentions,
             IsMentioned = isMentioned,
             IsHighlighted = isHighlighted,
             IsReplied = isReplied,
@@ -213,22 +210,13 @@
         return hasAnyMentions && MarkupValidator.ContainsMention($"a:{authorId}").IsValid(markup);
     }
 
-    private async Task<ImmutableArray<TextEntryAttachment>> LoadAttachments(CancellationToken cancellationToken) {
-        if (!Message.Entry.HasAttachments)
-            return ImmutableArray<TextEntryAttachment>.Empty;
-
-        return await Reader.GetAttachments(Message.Entry.Id, cancellationToken).ConfigureAwait(false);
-    }
-
     // Nested types
 
     public sealed record Model {
         public static readonly Model None = new();
 
         public Symbol PrincipalId { get; init; }
-        public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
         public ChatMessageModel? RepliedChatMessage { get; init; }
-        public bool HasAnyMentions { get; init; }
         public bool IsMentioned { get; init; }
         public bool IsHighlighted { get; init; }
         public bool IsReplied { get; init; }

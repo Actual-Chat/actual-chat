@@ -219,23 +219,22 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             .OrderBy(e => e.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var entries = dbEntries.Select(e => e.ToModel()).ToImmutableArray();
+        var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
+            .Select(x => x.CompositeId)
+            .ToList();
+        var allAttachments = entryIdsWithAttachments.Count > 0
+            ? await dbContext.TextEntryAttachments
+                .Where(x => entryIdsWithAttachments.Contains(x.ChatEntryId))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false)
+            : (IReadOnlyCollection<DbTextEntryAttachment>)Array.Empty<DbTextEntryAttachment>();
+        var attachmentsLookup = allAttachments.ToLookup(x => x.ChatEntryId, StringComparer.Ordinal);
+        var entries = dbEntries.Select(e => {
+                var entryAttachments = attachmentsLookup[e.CompositeId].Select(a => a.ToModel());
+                return e.ToModel(entryAttachments);
+            })
+            .ToImmutableArray();
         return new ChatTile(idTileRange, true, entries);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
-        string chatId, long entryId, CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbAttachments = await dbContext.TextEntryAttachments
-            .Where(a => a.ChatId == chatId && a.EntryId == entryId)
-            .OrderBy(e => e.Index)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var attachments = dbAttachments.Select(e => e.ToModel()).ToImmutableArray();
-        return attachments;
     }
 
     // Command handlers
@@ -473,7 +472,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            _ = GetTextEntryAttachments(command.Attachment.ChatId, command.Attachment.EntryId, default);
+            InvalidateChatPages(command.Attachment.ChatId, ChatEntryType.Text, command.Attachment.EntryId, true);
             return default!;
         }
 

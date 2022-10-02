@@ -42,7 +42,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
-            && IsFirstUnread == other.IsFirstUnread;
+            && IsFirstUnread == other.IsFirstUnread
+            && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
     }
 
     public override int GetHashCode()

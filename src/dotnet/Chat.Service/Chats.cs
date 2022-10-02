@@ -126,12 +126,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
-        Session session, string chatId, long entryId, CancellationToken cancellationToken)
-    {
-        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetTextEntryAttachments(chatId, entryId, cancellationToken).ConfigureAwait(false);
-    }
 
     // [ComputeMethod]
     public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)

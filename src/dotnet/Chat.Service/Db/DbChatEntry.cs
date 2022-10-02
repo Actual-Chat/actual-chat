@@ -64,7 +64,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public static string ComposeId(string chatId, ChatEntryType entryType, long entryId)
         => $"{chatId}:{entryType:D}:{entryId.ToString(CultureInfo.InvariantCulture)}";
 
-    public ChatEntry ToModel()
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
         => new() {
             ChatId = ChatId,
             Type = Type,
@@ -83,6 +83,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
             RepliedChatEntryId = RepliedChatEntryId!,
+            Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
             TextToTimeMap = Type == ChatEntryType.Text
                 ? TextToTimeMap != null
