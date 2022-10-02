@@ -11,8 +11,7 @@ public class DbTextEntryAttachment
 
     // (ChatId, EntryId, Index)
     [Key] public string CompositeId { get; set; } = "";
-    public string ChatId { get; set; } = "";
-    public long EntryId { get; set; }
+    public string ChatEntryId { get; set; } = "";
     public int Index { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
     public string ContentId { get; set; } = "";
@@ -22,20 +21,22 @@ public class DbTextEntryAttachment
         => Invariant($"{chatId}:{entryId}:{index}");
 
     public TextEntryAttachment ToModel()
-        => new () {
-            ChatId = ChatId,
-            EntryId = EntryId,
+    {
+        var chatEntryId = new ParsedChatEntryId(ChatEntryId);
+        return new () {
+            ChatId = chatEntryId.ChatId,
+            EntryId = chatEntryId.EntryId,
             Index = Index,
             Version = Version,
             ContentId = ContentId,
             MetadataJson = MetadataJson
         };
+    }
 
     public void UpdateFrom(TextEntryAttachment model)
     {
         CompositeId = ComposeId(model.ChatId, model.EntryId, model.Index);
-        ChatId = model.ChatId;
-        EntryId = model.EntryId;
+        ChatEntryId = new ParsedChatEntryId(model.ChatId, ChatEntryType.Text, model.EntryId);
         Index = model.Index;
         Version = model.Version;
         ContentId = model.ContentId;

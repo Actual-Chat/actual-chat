@@ -53,12 +53,6 @@ public interface IChatsBackend : IComputeService
         string chatPrincipalId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
-        string chatId,
-        long entryId,
-        CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]

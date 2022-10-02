@@ -75,12 +75,6 @@ public class ChatsController : ControllerBase, IChats
         => _service.CanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
-        Session session, string chatId, long entryId,
-        CancellationToken cancellationToken)
-        => _service.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
         => _service.CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken);
 

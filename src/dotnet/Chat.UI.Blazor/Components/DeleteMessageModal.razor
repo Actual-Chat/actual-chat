@@ -63,10 +63,7 @@
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
 
-        FirstAttachment = ChatEntry.HasAttachments
-            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text)
-                .GetFirstAttachment(ChatEntry.Id, CancellationToken.None)
-            : null;
+        FirstAttachment = ChatEntry.Attachments.FirstOrDefault();
         Markup = ChatEntry.AudioEntryId == null
             ? MarkupParser.Parse(ChatEntry.Content)
             : new PlayableTextMarkup(ChatEntry.Content, ChatEntry.TextToTimeMap);

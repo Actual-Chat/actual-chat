@@ -55,11 +55,6 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetTextEntryAttachments))]
-    Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
-        Session session, string chatId, long entryId,
-        CancellationToken cancellationToken);
-
     [Get(nameof(CanSendPeerChatMessage))]
     Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken);
 
