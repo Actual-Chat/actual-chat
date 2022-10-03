@@ -25,13 +25,14 @@ public class FirebaseMessagingClient
     public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
     {
         var (notificationId, notificationType, title, content, iconUrl, _) = entry;
+        var message = entry.Message;
+        var chatId = message?.ChatId;
+        var entryId = message?.EntryId;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl);
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
         case NotificationType.Message: {
-            var chatId = entry.Message?.ChatId;
-            var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
@@ -39,8 +40,6 @@ public class FirebaseMessagingClient
             break;
         }
         case NotificationType.Reply: {
-            var chatId = entry.Message?.ChatId;
-            var entryId = entry.Message?.EntryId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
@@ -48,7 +47,6 @@ public class FirebaseMessagingClient
             break;
         }
         case NotificationType.Invitation: {
-            var chatId = entry.Chat?.ChatId;
             if (!chatId.IsNullOrEmpty()) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId));
@@ -64,6 +62,8 @@ public class FirebaseMessagingClient
             Data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) {
                 { "notificationId", notificationId },
                 { "tag", tag },
+                { "chatId", chatId ?? "" },
+                { "entryId", entryId.HasValue ? entryId.Value.ToString(CultureInfo.InvariantCulture) : "" },
                 { "icon", absoluteIconUrl },
             },
             Notification = new FirebaseAdmin.Messaging.Notification {
@@ -74,7 +74,11 @@ public class FirebaseMessagingClient
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
                     // Color = ??? TODO(AK): set color
-                    Priority = NotificationPriority.DEFAULT,
+                    // For test purpose put priority to high
+                    // To have notification message appears on top of screen no matter what type notification it is.
+                    // Later I want to keep this behavior only for 'mention' and 'reply' messages.
+                    // Normal messages will be shown only in system tray without popping up on top of a screen.
+                    Priority = NotificationPriority.HIGH,
                     // Sound = ??? TODO(AK): set sound
                     Tag = tag,
                     Visibility = NotificationVisibility.PRIVATE,
