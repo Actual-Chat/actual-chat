@@ -72,7 +72,7 @@ public static class StringExt
         }
     }
 
-    [return: NotNullIfNotNull(nameof(url))]
+    [return: NotNullIfNotNull("url")]
     public static Uri? ToUri(this string? url)
         => url == null ? null : new Uri(url);
 
