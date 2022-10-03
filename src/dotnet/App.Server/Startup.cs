@@ -40,14 +40,26 @@ public class Startup
         services.AddSingleton(c => {
             var hostSettings = Cfg.GetSettings<HostSettings>();
             var baseUrl = hostSettings.BaseUrl;
+            Func<string>? baseUrlProvider = null;
             if (baseUrl.IsNullOrEmpty()) {
                 var server = c.GetRequiredService<IServer>();
                 var serverAddressesFeature =
                     server.Features.Get<IServerAddressesFeature>()
                     ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
-                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
-                    ?? throw StandardError.NotFound<IServerAddressesFeature>(
-                        "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
+                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault();
+                if (baseUrl.IsNullOrEmpty()) {
+                    // If we can't figure out base url at the moment,
+                    // lets define a base url provider to resolve base url later on demand.
+                    string? resolvedBaseUrl = null;
+                    baseUrlProvider = () => {
+                        if (resolvedBaseUrl.IsNullOrEmpty()) {
+                            resolvedBaseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
+                                ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                                    "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
+                        }
+                        return resolvedBaseUrl;
+                    };
+                }
             }
 
             return new HostInfo() {
@@ -57,7 +69,8 @@ public class Startup
                     .Add(ServiceScope.BlazorUI),
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
-                BaseUrl = baseUrl,
+                BaseUrl = baseUrl ?? "",
+                BaseUrlProvider = baseUrlProvider,
             };
         });
 
