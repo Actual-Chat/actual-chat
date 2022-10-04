@@ -1,8 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
 @using ActualChat.UI.Blazor.Services
 
-<div class="wide-left-panel flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
-    <div class="flex-x md:-flex-x justify-center items-center min-h-14 border-b border-bg-04 px-2 gap-x-1">
+<div class="wide-left-panel -flex-y md:flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
+    <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 px-2 gap-x-1">
+        <SearchBox
+            Placeholder="Find chat..."
+            TextChanged="OnSearchBoxTextChanged"/>
         <div>
             <ButtonRound
                 Click="@OnClick"
@@ -12,17 +16,18 @@
                 <i class="icon-message-add text-2xl"></i>
             </ButtonRound>
         </div>
-        <SearchBox
-            Placeholder="Find chat..."
-            TextChanged="OnSearchBoxTextChanged"/>
-        <div>
+    </div>
+    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
+        <NavbarContent/>
+    </div>
+    <div class="flex-x md:hidden justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
+        <div class="text-02 text-lg font-medium">@NavbarUI.ActiveGroupTitle</div>
+        <div class="flex grow"></div>
+        <div class="flex">
             <ButtonRound Click="OnHideLeftPanelClick" Class="md:!hidden transparent">
                 <i class="icon-arrow-right text-2xl"></i>
             </ButtonRound>
         </div>
-    </div>
-    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
-        <NavbarContent/>
     </div>
 </div>
 
@@ -30,6 +35,13 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;
+    }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= OnNavbarActiveGroupChanged;
 
     private void OnClick() {
         if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
@@ -41,4 +53,7 @@
 
     private void OnSearchBoxTextChanged(string text)
         => SearchUI.Text.Value = text;
+
+    private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
+        => InvokeAsync(StateHasChanged);
 }
