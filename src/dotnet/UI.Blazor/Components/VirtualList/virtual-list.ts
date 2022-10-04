@@ -428,7 +428,7 @@ export class VirtualList implements VirtualListAccessor {
                         this.scrollTo(scrollToItemRef, false, 'end');
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     } else {
-                        this.scrollTo(scrollToItemRef, true, 'center');
+                        this.scrollTo(scrollToItemRef, false, 'center');
                     }
                 }
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
