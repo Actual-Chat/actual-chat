@@ -108,11 +108,11 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
         console.log(`${LogScope}.onInit`);
     }
 
-    recordingSubject = new signalR.Subject<Uint8Array>();
-    await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+    // recordingSubject = new signalR.Subject<Uint8Array>();
+    // await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
 
     state = 'encoding';
-    vadState = 'voice';
+    vadState = 'silence';
 
     const msg: ResolveCallbackMessage = { callbackId };
     worker.postMessage(msg);
