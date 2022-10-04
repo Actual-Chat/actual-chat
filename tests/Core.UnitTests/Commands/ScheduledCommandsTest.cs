@@ -30,7 +30,7 @@ public class ScheduledCommandsTest: TestBase
 
         await commandTask.ConfigureAwait(false);
         var testClock = new TestClock();
-        await testClock.Delay(500).ConfigureAwait(false);
+        await testClock.Delay(1000).ConfigureAwait(false);
 
         testService.ProcessedEvents.Count.Should().Be(1);
     }
@@ -61,7 +61,7 @@ public class ScheduledCommandsTest: TestBase
 
         await commandTask.ConfigureAwait(false);
         var testClock = new TestClock();
-        await testClock.Delay(500).ConfigureAwait(false);
+        await testClock.Delay(2000).ConfigureAwait(false);
 
         testService.ProcessedEvents.Count.Should().Be(2);
     }
