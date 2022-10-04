@@ -56,15 +56,17 @@ public class FirebaseMessagingClient
         default:
             throw new InvalidOperationException("NotificationType is not supported.");
         }
+        var entryIdAsString = entryId.HasValue ? entryId.Value.ToString(CultureInfo.InvariantCulture) : "";
 
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds,
-            Data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) {
-                { "notificationId", notificationId },
-                { "tag", tag },
-                { "chatId", chatId ?? "" },
-                { "entryId", entryId.HasValue ? entryId.Value.ToString(CultureInfo.InvariantCulture) : "" },
-                { "icon", absoluteIconUrl },
+            Data = new Dictionary<string, string>(StringComparer.Ordinal) {
+                { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
+                { NotificationConstants.MessageDataKeys.Tag, tag },
+                { NotificationConstants.MessageDataKeys.ChatId, chatId ?? "" },
+                { NotificationConstants.MessageDataKeys.EntryId, entryIdAsString },
+                { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
+                { NotificationConstants.MessageDataKeys.Link, link },
             },
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
@@ -87,6 +89,7 @@ public class FirebaseMessagingClient
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
                     Icon = absoluteIconUrl,
+                    ChannelId = NotificationConstants.ChannelIds.Default,
                 },
                 Priority = Priority.Normal,
                 CollapseKey = "topics",
