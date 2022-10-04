@@ -108,8 +108,6 @@ export class VoiceActivityDetector {
 
             this.speechProbabilities = new StreamedMedian();
             this.triggeredSpeechProbability = prob;
-            console.log(prob);
-            console.log(speechProbabilityTrigger);
         }
         else if (currentEvent.kind === 'start' && avgProb < longAvgProb && longAvgProb < silenceProbabilityTrigger) {
             this.endResetCounter = 0;
@@ -124,7 +122,8 @@ export class VoiceActivityDetector {
                 const duration = offset - currentEvent.offset
                 const durationS = duration / SAMPLE_RATE;
                 const speechMedian = this.speechProbabilities.median;
-                if (speechMedian > 0.6 && durationS > 2 && this.triggeredSpeechProbability != null) {
+                const speechPercentage = this.speechProbabilities.count / (duration / SAMPLES_PER_WINDOW);
+                if (speechMedian > 0.6 && speechPercentage > 0.5 &&  durationS > 2 && this.triggeredSpeechProbability != null) {
                     this.speechBoundaries.push(this.triggeredSpeechProbability)
                 }
                 this.speechProbabilities = null;
@@ -200,7 +199,8 @@ export class VoiceActivityDetector {
 
 class StreamedMedian {
     private readonly counts: Int32Array;
-    private totalValues: number;
+    private _count: number;
+    private _median: number;
 
     constructor() {
         this.counts = new Int32Array(100).fill(0);
@@ -208,24 +208,26 @@ class StreamedMedian {
             this.counts[index] = 0;
         }
         this._median = 0;
-        this.totalValues = 0;
+        this._count = 0;
     }
-
-    private _median: number;
 
     public get median(): number {
         return this._median;
     }
 
+    public get count(): number {
+        return this._count;
+    }
+
     public push(value: number): number {
-        this.totalValues++;
+        this._count++;
         const index = Math.round(Math.abs(value) * 100);
         this.counts[index]++;
         let sumOfCounts = 0;
         for (let j = 0; j < this.counts.length; j++) {
             const count = this.counts[j];
             sumOfCounts += count;
-            if (sumOfCounts >= this.totalValues / 2) {
+            if (sumOfCounts >= this._count / 2) {
                 this._median = j / 100;
                 break;
             }
