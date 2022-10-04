@@ -16,7 +16,7 @@ export interface VoiceActivityChanged {
     speechProb: number;
 }
 
-export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = 16000): VoiceActivityChanged {
+export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = SAMPLE_RATE): VoiceActivityChanged {
     return {
         kind: event.kind,
         offset: event.offset / sampleRate,
@@ -25,28 +25,27 @@ export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleR
     };
 }
 
-const MIN_SILENCE_SAMPLES = 8000;
-const MAX_SILENCE_SAMPLES = 64000;
-const MIN_SPEECH_SAMPLES = 8000;
-const MAX_SPEECH_SAMPLES = 16000 * 60 * 2;
+const SAMPLE_RATE = 16000;
+const MIN_SILENCE_SAMPLES = 8000; // 500ms
+const MIN_SPEECH_SAMPLES = 8000; // 500ms
+const MAX_SPEECH_SAMPLES = 16000 * 60 * 2; // 2m
 const PAD_SAMPLES = 512;
-const SAMPLES_PER_WINDOW = 512;
-const ACCUMULATIVE_PERIOD_START = 100;
-const ACCUMULATIVE_PERIOD_END = 300;
+const SAMPLES_PER_WINDOW = 512; // 32ms
 
 export class VoiceActivityDetector {
     private readonly modelUri: URL;
     private readonly movingAverages: ExponentialMovingAverage;
-    private readonly streamedMedian: StreamedMedian;
+    private readonly longMovingAverages: ExponentialMovingAverage;
+    private readonly speechBoundaries: StreamedMedian ;
 
     private session: ort.InferenceSession = null;
     private sampleCount = 0;
     private lastActivityEvent: VoiceActivityChanged;
-    private endOffset: number = null;
+    private endOffset?: number = null;
     private speechSteps = 0;
-    private endResetCounter = 0;
-    private speechProbabilityTrigger = 0.26;
-    private silenceProbabilityTrigger = 0.15;
+    private speechProbabilities: StreamedMedian | null = null;
+    private triggeredSpeechProbability: number | null = null;
+    private endResetCounter: number = 0;
     private h0: ort.Tensor;
     private c0: ort.Tensor;
 
@@ -54,8 +53,10 @@ export class VoiceActivityDetector {
     constructor(modelUri: URL) {
         this.modelUri = modelUri;
 
-        this.movingAverages = new ExponentialMovingAverage(8);
-        this.streamedMedian = new StreamedMedian();
+        this.movingAverages = new ExponentialMovingAverage(8); // 32ms*8 ~ 250ms
+        this.longMovingAverages = new ExponentialMovingAverage(128); // 32ms*128 ~ 4s
+        this.speechBoundaries = new StreamedMedian();
+        this.speechBoundaries.push(0.5); // initial speech probability boundary
         this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
 
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
@@ -72,7 +73,7 @@ export class VoiceActivityDetector {
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged | null> {
-        const { movingAverages, streamedMedian, h0, c0 } = this;
+        const { movingAverages, speechBoundaries, h0, c0 } = this;
         if (this.session == null) {
             // skip processing until initialized
             return null;
@@ -89,64 +90,83 @@ export class VoiceActivityDetector {
         this.h0 = hn;
         this.c0 = cn;
 
-        let trigSum = this.speechProbabilityTrigger;
-        let negTrigSum = this.silenceProbabilityTrigger;
-
         const prob: number = output.data[1] as number;
-        const smoothedProb = movingAverages.append(prob);
+        const avgProb = movingAverages.append(prob);
+        const longAvgProb = this.longMovingAverages.append(prob);
         let currentEvent = this.lastActivityEvent;
         const currentOffset = this.sampleCount;
 
-        if (this.speechSteps >= ACCUMULATIVE_PERIOD_START) {
-            // enough statistics to adjust trigSum \ negTrigSum
-            const probMedian = streamedMedian.median;
-            this.speechProbabilityTrigger = trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
-            this.silenceProbabilityTrigger = negTrigSum = 0.3 * probMedian;
-        }
+        const probMedian = speechBoundaries.median;
+        const speechProbabilityTrigger = 0.67 * probMedian;
+        const silenceProbabilityTrigger = 0.15 * probMedian;
 
-        if (smoothedProb >= trigSum && this.endOffset > 0) {
-            if (this.endResetCounter++ > 5) {
-                // silence period is too short
-                this.endOffset = null;
-                this.endResetCounter = 0;
-            }
-        }
-
-        if ((smoothedProb >= trigSum || prob > 0.95) && currentEvent.kind === 'end') {
+        if (currentEvent.kind === 'end' && avgProb >= longAvgProb && prob >= speechProbabilityTrigger) {
+            // optimistic speech boundary detection
             const offset = Math.max(0, currentOffset - PAD_SAMPLES);
             const duration = offset - currentEvent.offset;
-            currentEvent = { kind: 'start', offset, speechProb: smoothedProb, duration };
-            if (this.speechSteps++ < ACCUMULATIVE_PERIOD_END) {
-                this.streamedMedian.push(prob);
-            }
+            currentEvent = { kind: 'start', offset, speechProb: avgProb, duration };
+
+            this.speechProbabilities = new StreamedMedian();
+            this.triggeredSpeechProbability = prob;
+            console.log(prob);
+            console.log(speechProbabilityTrigger);
         }
-        else if (smoothedProb < negTrigSum && currentEvent.kind === 'start') {
+        else if (currentEvent.kind === 'start' && avgProb < longAvgProb && longAvgProb < silenceProbabilityTrigger) {
             this.endResetCounter = 0;
             if (this.endOffset === null) {
+                // set end of speech boundary - will be cleaned up if speech begins again
                 this.endOffset = currentOffset;
             }
+
+            if (this.speechProbabilities !== null) {
+                // adjust speech boundary triggers if current period was speech with high probabilities
+                const offset = currentOffset + PAD_SAMPLES;
+                const duration = offset - currentEvent.offset
+                const durationS = duration / SAMPLE_RATE;
+                const speechMedian = this.speechProbabilities.median;
+                if (speechMedian > 0.6 && durationS > 2 && this.triggeredSpeechProbability != null) {
+                    this.speechBoundaries.push(this.triggeredSpeechProbability)
+                }
+                this.speechProbabilities = null;
+                this.triggeredSpeechProbability = null;
+            }
+        }
+
+        if (currentEvent.kind === 'start') {
             const currentSpeechSamples = currentOffset - currentEvent.offset;
-            const currentSilenceSamples = currentOffset - this.endOffset;
-            if (currentSilenceSamples < MAX_SILENCE_SAMPLES) {
-                if (currentSpeechSamples > MAX_SPEECH_SAMPLES) {
-                    // try to break long speech at the nearest short pause
-                    if (currentSilenceSamples > MIN_SILENCE_SAMPLES) {
+
+            if (this.endOffset > 0) {
+                // silence boundary has been detected
+                if (avgProb >= speechProbabilityTrigger) {
+                    if (this.endResetCounter++ > 10) {
+                        // silence period is too short - cleanup silence boundary
+                        this.endOffset = null;
+                        this.endResetCounter = 0;
+                    }
+                } else if (avgProb < silenceProbabilityTrigger) {
+                    const currentSilenceSamples = currentOffset - this.endOffset;
+                    if (currentSilenceSamples > MIN_SILENCE_SAMPLES && currentSpeechSamples > MIN_SPEECH_SAMPLES) {
                         const offset = this.endOffset + PAD_SAMPLES;
-                        const duration = offset - currentEvent.offset
-                        currentEvent = { kind: 'end', offset, speechProb: smoothedProb, duration };
+                        const duration = offset - currentEvent.offset;
+                        currentEvent = { kind: 'end', offset, speechProb: avgProb, duration };
                         this.endOffset = null;
                     }
                 }
-                // do nothing - current silence period is too short
-            } else {
-                if (currentSpeechSamples > MIN_SPEECH_SAMPLES) {
-                    const offset = this.endOffset + PAD_SAMPLES;
-                    const duration = offset - currentEvent.offset
-                    currentEvent = { kind: 'end', offset, speechProb: smoothedProb, duration };
-                    this.endOffset = null;
-                }
+            }
+
+            if (currentEvent.kind === 'start' && currentSpeechSamples > MAX_SPEECH_SAMPLES) {
+                // break long speech regardless speech probability
+                const offset = this.endOffset ?? currentOffset;
+                const duration = offset - currentEvent.offset;
+                currentEvent = { kind: 'end', offset: currentOffset, speechProb: avgProb, duration };
+                this.endOffset = null;
+            }
+
+            if (this.speechProbabilities !== null && prob > 0.08) {
+                this.speechProbabilities.push(prob);
             }
         }
+
         this.sampleCount += monoPcm.length;
         if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
             return null;

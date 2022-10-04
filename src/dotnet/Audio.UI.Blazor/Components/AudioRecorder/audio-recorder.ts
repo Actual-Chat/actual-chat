@@ -5,18 +5,19 @@ const LogScope = 'AudioRecorder';
 
 export class AudioRecorder {
     private static recorderPool =
-        new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
-    private readonly debug = false;
+        new ObjectPool<OpusMediaRecorder>((debug: boolean) => new OpusMediaRecorder(debug));
+    private readonly debug: boolean = false;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
     private state: 'inactive' | 'recording' = 'inactive';
     private readonly sessionId: string;
     private readonly recorderPromise: Promise<OpusMediaRecorder>;
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
+    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, debug: boolean) {
         this.blazorRef = blazorRef;
         this.sessionId = sessionId;
         this.isMicrophoneAvailable = false;
+        this.debug = debug;
 
         if (blazorRef == null)
             console.error(`${LogScope}.ctor: blazorRef == null`);
@@ -32,7 +33,7 @@ export class AudioRecorder {
             this.isMicrophoneAvailable = true;
         }
 
-        this.recorderPromise = AudioRecorder.recorderPool.get();
+        this.recorderPromise = AudioRecorder.recorderPool.get(this.debug);
         this.recorderPromise.catch(ex => {
             console.error(`${LogScope}.constructor: recorder initialization failed.`, ex);
         });
@@ -43,8 +44,8 @@ export class AudioRecorder {
         await AudioRecorder.recorderPool.release(recorder);
     }
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
-        return new AudioRecorder(blazorRef, sessionId);
+    public static create(blazorRef: DotNet.DotNetObject, sessionId: string, isDebug: boolean) {
+        return new AudioRecorder(blazorRef, sessionId, isDebug);
     }
 
     public async canRecord(): Promise<boolean> {

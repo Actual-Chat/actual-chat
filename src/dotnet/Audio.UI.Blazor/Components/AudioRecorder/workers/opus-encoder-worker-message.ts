@@ -6,6 +6,7 @@ export interface EncoderMessage {
 export interface CreateEncoderMessage extends EncoderMessage {
     type: 'create';
     audioHubUrl: string;
+    debug: boolean;
 }
 
 export interface InitEncoderMessage extends EncoderMessage {

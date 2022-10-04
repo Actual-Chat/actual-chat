@@ -66,8 +66,7 @@ let encoder: Encoder;
 let lastInitMessage: InitEncoderMessage | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
-
-const debug = false;
+let debug: boolean = false;
 
 /** control flow from the main thread */
 worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
@@ -120,6 +119,7 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
 }
 
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+    debug = message.debug;
     if (workletPort != null) {
         throw new Error('workletPort has already been specified.');
     }
