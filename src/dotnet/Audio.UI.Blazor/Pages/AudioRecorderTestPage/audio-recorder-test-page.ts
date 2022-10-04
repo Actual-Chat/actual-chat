@@ -50,7 +50,7 @@ export class AudioRecorderTestPage extends AudioRecorder {
         recordsRef: HTMLElement,
         recordNumber: number,
         sessionId: string) {
-        super(blazorRef, sessionId);
+        super(blazorRef, sessionId, true);
         this._recordsRef = recordsRef;
         this._recordNumber = recordNumber;
     }
