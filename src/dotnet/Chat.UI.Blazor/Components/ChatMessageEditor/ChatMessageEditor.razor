@@ -65,11 +65,11 @@
                         <NotifyCallPanel @ref="NotifyCallPanelRef" Class="flex-1"/>
                     </div>
                 </div>
-                @if (ScreenSizeKind.IsMobile()) {
+                @if (ScreenSize.IsMobile()) {
                     <MobileControlPanel/>
                 }
             </div>
-            @if (ScreenSizeKind.IsDesktop()) {
+            @if (ScreenSize.IsDesktop()) {
                 <RecorderPanel/>
             }
         </div>
@@ -104,7 +104,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSizeKind { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnInitializedAsync() {
         MarkupHub.ChatId = Chat.Id;
