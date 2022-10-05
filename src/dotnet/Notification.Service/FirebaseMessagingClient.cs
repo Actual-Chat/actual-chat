@@ -28,7 +28,7 @@ public class FirebaseMessagingClient
         var message = entry.Message;
         var chatId = message?.ChatId;
         var entryId = message?.EntryId;
-        var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl);
+        var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
