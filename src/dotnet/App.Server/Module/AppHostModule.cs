@@ -123,6 +123,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // Host options
+        services.Configure<HostOptions>(o => {
+            o.ShutdownTimeout = Env.IsDevelopment()
+                ? TimeSpan.FromSeconds(1)
+                : TimeSpan.FromSeconds(30);
+        });
+
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
 
