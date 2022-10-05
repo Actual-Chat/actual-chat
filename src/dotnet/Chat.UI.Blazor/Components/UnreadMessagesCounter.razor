@@ -20,7 +20,7 @@
 </div>
 
 @code {
-    private static readonly IUpdateDelayer UpdateDelayer = FixedDelayer.Get(1.5);
+    private static readonly IUpdateDelayer UpdateDelayer = FixedDelayer.Get(1);
     private readonly List<(Symbol Chat, UnreadMessages UnreadMessages)> _chatUnreadMessages = new();
 
     [Inject] private Session Session { get; init; } = null!;
