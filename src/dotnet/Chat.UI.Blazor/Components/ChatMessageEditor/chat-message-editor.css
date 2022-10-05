@@ -128,7 +128,7 @@
     @apply bg-error text-error-title min-w-full;
 }
 .post-attachments-btn.btn.btn-round {
-    @apply hidden md:flex relative min-w-12 self-center;
+    @apply relative min-w-12 self-center;
 }
 .post-attachments-btn.btn.btn-round .btn-content {
     @apply bg-primary text-primary-title min-w-full;

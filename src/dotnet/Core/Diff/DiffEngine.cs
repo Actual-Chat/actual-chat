@@ -54,6 +54,7 @@ public class DiffEngine : IHasServices
 
     // Protected methods
 
+#pragma warning disable IL2070
     protected virtual IDiffHandler CreateHandler(Type sourceType, Type diffType)
     {
         var tHandler = DiffHandlerFinder.TryFind(diffType, typeof(IDiffHandler));
@@ -64,4 +65,5 @@ public class DiffEngine : IHasServices
         tHandler ??= typeof(MissingDiffHandler<,>).MakeGenericType(sourceType, diffType);
         return (IDiffHandler) Services.Activate(tHandler);
     }
+#pragma warning restore IL2070
 }

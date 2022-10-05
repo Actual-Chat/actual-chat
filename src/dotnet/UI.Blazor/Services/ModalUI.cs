@@ -15,6 +15,7 @@ public sealed class ModalUI
         MatchingTypeFinder = matchingTypeFinder;
     }
 
+#pragma warning disable IL2072
     public IModalReference Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
@@ -35,4 +36,5 @@ public sealed class ModalUI
         });
         return ModalService.Show(modalContent, modalOptions);
     }
+#pragma warning restore IL2072
 }

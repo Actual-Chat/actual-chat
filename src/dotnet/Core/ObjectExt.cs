@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 using Stl.Reflection;
@@ -37,6 +38,7 @@ public static class ObjectExt
     {
         public readonly Func<T, T> Cloner;
 
+#pragma warning disable IL2090
         public Info()
         {
             var type = typeof(T);
@@ -54,5 +56,6 @@ public static class ObjectExt
             eBody = Expression.Call(Expression.Convert(pUntypedSelf, type), mClone!);
             UntypedCloner = (Func<object, object>) Expression.Lambda(eBody, pUntypedSelf).Compile();
         }
+#pragma warning restore IL2090
     }
 }

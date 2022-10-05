@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 using Stl.CommandR.Interception;
@@ -16,6 +17,7 @@ public static class ComputeServiceExt
     public static IServiceProvider GetServiceProvider(this ICommandService commandService)
         => GetServiceProviderFromProxy(commandService);
 
+#pragma warning disable IL2070
     private static IServiceProvider GetServiceProviderFromProxy(object proxy)
         => CachedServiceProviderGetters.GetOrAdd(
             proxy.GetType(),
@@ -33,4 +35,5 @@ public static class ComputeServiceExt
                     return interceptors.First().Services;
                 };
             }).Invoke(proxy);
+#pragma warning restore IL2070
 }

@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace ActualChat.Web.Internal;
 
+#pragma warning disable IL2075
+
 public class StringIdentifierModelBinder : IModelBinder
 {
-    private Func<string,IIdentifier>? _identifierFactory;
+    private Func<string, IIdentifier>? _identifierFactory;
 
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {

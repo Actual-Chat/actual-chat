@@ -1,9 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Stl.Reflection;
 
 namespace ActualChat.Diff.Handlers;
 
-public class RecordDiffHandler<TRecord, TDiff> : DiffHandlerBase<TRecord, TDiff>
+public class RecordDiffHandler<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRecord,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff> : DiffHandlerBase<TRecord, TDiff>
     where TRecord : class
     where TDiff : RecordDiff, new()
 {

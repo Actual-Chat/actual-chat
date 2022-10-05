@@ -73,7 +73,7 @@ public static class MauiProgram
 
         var mauiApp = builder.Build();
 
-        ServiceLocator.Initialize(mauiApp.Services);
+        AppServices = mauiApp.Services;
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244

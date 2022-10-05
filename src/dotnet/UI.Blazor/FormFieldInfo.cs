@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Stl.Reflection;
 
@@ -17,7 +18,9 @@ public abstract class FormFieldInfo
     public Action<FormModel, string> FieldIdSetter { get; }
     public Action<FormModel, FormModel> Copier { get; init; } = null!;
 
-    public static FormFieldInfo[] GetFields(Type formType)
+#pragma warning disable IL2070
+    public static FormFieldInfo[] GetFields(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type formType)
         => FieldInfoCache.GetOrAdd(formType, static formType1 => {
             var fields = new List<FormFieldInfo>();
             foreach (var fieldIdProperty in formType1.GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
@@ -30,6 +33,7 @@ public abstract class FormFieldInfo
             }
             return fields.ToArray();
         });
+#pragma warning restore IL2070
 
     public static FormFieldInfo New(Type formType, PropertyInfo fieldIdProperty)
     {
