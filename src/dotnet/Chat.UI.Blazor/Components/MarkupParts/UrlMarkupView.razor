@@ -26,7 +26,7 @@ default:
 @code {
     private MarkupUrlKind _kind;
 
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override void OnParametersSet() {
@@ -37,7 +37,7 @@ default:
 
     private void OnClick() {
         if (_kind == MarkupUrlKind.Image)
-            ImagePreviewUI.Show(Markup.Url);
+            ImageViewerUI.Show(Markup.Url);
         else
             Nav.NavigateTo(Markup.Url);
     }

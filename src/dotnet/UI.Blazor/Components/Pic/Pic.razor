@@ -30,7 +30,7 @@
     private bool _hasPicture;
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string ContentId { get; set; } = "";
@@ -43,7 +43,7 @@
         _hasPicture = !ContentId.IsNullOrEmpty();
         if (_hasPicture) {
             var contentUrl = UrlMapper.ContentUrl(ContentId);
-            _pictureUrl = UrlMapper.ImagePreview100Url(contentUrl);
+            _pictureUrl = UrlMapper.ImagePreview128Url(contentUrl);
         } else if(NoPicture == null) {
             _picStyle = $"background-color: {GenerateColor()}";
             _pictureUrl = "";
@@ -61,7 +61,7 @@
 
         if (EnableImagePreview) {
             var url = UrlMapper.ContentUrl(ContentId);
-            await ImagePreviewUI.Show(url);
+            await ImageViewerUI.Show(url);
         }
     }
 }

@@ -64,7 +64,7 @@ public sealed class UrlMapper
     public string ContentUrl(string contentId)
         => ToAbsolute(ContentBaseUrl, contentId, true);
 
-    public string ImagePreviewUrl(string imageUrl, int maxWidth = 800, int maxHeight = 600)
+    public string ImagePreviewUrl(string imageUrl, int maxWidth, int maxHeight)
     {
         if (!HasImageProxy)
             return imageUrl;
@@ -74,6 +74,6 @@ public sealed class UrlMapper
         return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight},fit/{imageUrl}";
     }
 
-    public string ImagePreview100Url(string imageUrl)
-        => HasImageProxy ? $"{ImageProxyBaseUrl}100/{imageUrl}" : imageUrl;
+    public string ImagePreview128Url(string imageUrl)
+        => HasImageProxy ? $"{ImageProxyBaseUrl}128/{imageUrl}" : imageUrl;
 }

@@ -32,12 +32,14 @@
 
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
+    @apply max-h-[100vh] max-w-[100vw];
     @apply bg-01 text-03;
     @apply overflow-hidden;
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y gap-y-4 h-full md:h-auto w-full md:w-modal p-8 pb-4;
+    @apply flex-y gap-y-4 p-8 pb-4;
+    @apply h-full w-full md:h-auto md:w-modal;
     @apply md:rounded-2xl rounded-none font-medium;
 }
 .modal-frame > div {
@@ -53,11 +55,13 @@
     @apply bg-transparent opacity-90;
 }
 .modal-header {
-    @apply flex justify-between items-center;
+    @apply flex-none flex-x justify-between items-center;
 }
 
 .dialog-body {
-    @apply flex-y grow;
+    @apply flex-initial flex-y;
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;

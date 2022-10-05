@@ -1,27 +1,27 @@
+// Please sort the imports alphabetically!
 import './Components/components.css';
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/AuthorBadge/author-badge.css'
+import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 import './Components/Button/button.css';
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
 import './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.css';
 import './Components/ContextMenu/context-menu.css';
+import './Components/Dropdown/dropdown.css'
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
+import './Components/ImageViewerModal/image-viewer-modal.css'
 import './Components/Menu/menu.css'
 import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
 import './Components/Modal/modal.css' // based on BlazoredModal
 import './Components/Pic/pic.css'
 import './Components/PicUpload/pic-upload.css'
-import './Components/TabPanel/tab.css'
-import './Components/SettingsPanel/settings-panel.css'
-import './Components/tooltip.css'
-import './Components/SideNav/side-nav.css'
 import './Components/SearchBox/search-box.css'
-import './Components/Dropdown/dropdown.css'
-import './Components/BlazorModeToggle/blazor-mode-toggle.css'
+import './Components/SettingsPanel/settings-panel.css'
+import './Components/SideNav/side-nav.css'
+import './Components/TabPanel/tab.css'
 import './Components/Tooltip/tooltip.css'
-import './Components/ImagePreviewModal/image-preview-modal.css'
 
 export * from './Services/Settings/local-settings';
 export * from './Services/UserInteractionUI/user-interaction-ui';

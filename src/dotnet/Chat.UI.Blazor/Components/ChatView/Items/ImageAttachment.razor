@@ -1,31 +1,33 @@
+@using System.Numerics
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.ContentId);
-    var previewUrl = UrlMapper.ImagePreviewUrl(url, 400, 300);
-    var imgStyle = "max-width: 400px; max-height: 300px";
+    var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+    var imgStyle = "max-width: 800px; max-height: 600px";
     if (attachment.Height > 0 && attachment.Width > 0) {
-        var width = attachment.Width;
-        var height = attachment.Height;
-        if (width > 400 || height > 300) {
-            var ratio = Math.Min(400d / width, 300d / height);
-            width = (int)Math.Round(ratio * width);
-            height = (int)Math.Round(ratio * height);
-        }
+        var (width, height) = (attachment.Width, attachment.Height)
+            .ToVector2()
+            .ScaleToFitInto(MaxSize)
+            .ToIntPair();
         imgStyle = $"width: {width}px; height: {height}px";
     }
 }
 
 <div class="message-attachment-image mt-1">
     <a class="cursor-pointer" href="@url"
-       role="button" @onclick="_ => ImagePreviewUI.Show(url, null, previewUrl, attachment.Width, attachment.Height)" @onclick:preventDefault="true">
+       role="button" @onclick="_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height)" @onclick:preventDefault="true">
         <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>
 </div>
 
 @code {
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    private const int MaxWidth = 400; // In pixels
+    private const int MaxHeight = 300; // In pixels
+    private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
+    private const int ActualResolutionMultiplier = 2;
+
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 

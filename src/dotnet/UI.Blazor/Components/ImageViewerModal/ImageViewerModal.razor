@@ -1,19 +1,18 @@
 @using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
-@implements IModalView<ImagePreviewModal.Model>
+@implements IModalView<ImageViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame HasCloseButton="true" Class="image-preview-modal">
+<DialogFrame HasCloseButton="true" Class="image-viewer-modal">
     <Body>
-        <div class="flex flex-y w-full h-full justify-center items-center">
-            <img class="hidden object-scale-down"
+        <div class="image-viewer-content">
+            <img class="hidden"
                  width="@ModalModel.Width"
                  height="@ModalModel.Height"
                  src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
                  onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
             <img id="@_cachedImgElementId"
-                 class="object-scale-down"
                  width="@ModalModel.Width"
                  height="@ModalModel.Height"
                  src="@ModalModel.CachedImageUrl"
@@ -31,7 +30,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _cachedImgElementId = IdGenerator.Next("image-preview-modal-cached-image");
+        => _cachedImgElementId = IdGenerator.Next("image-viewer-modal-cached-image");
 
     public sealed record Model(
         string Url,
