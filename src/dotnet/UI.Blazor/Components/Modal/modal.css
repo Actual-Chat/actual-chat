@@ -32,7 +32,6 @@
 
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
-    @apply max-h-[100vh] max-w-[100vw];
     @apply bg-01 text-03;
     @apply overflow-hidden;
     @apply z-10;
@@ -59,7 +58,7 @@
 }
 
 .dialog-body {
-    @apply flex-initial flex-y;
+    @apply flex-y grow;
     @apply overflow-y-auto;
     @apply custom-scrollbar;
 }
