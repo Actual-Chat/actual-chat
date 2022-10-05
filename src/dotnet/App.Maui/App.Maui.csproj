@@ -66,7 +66,9 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net6.0-android'">
+    <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
+    <PackageReference Include="Xamarin.Google.Dagger" />
   </ItemGroup>
 
   <ItemGroup>
@@ -119,11 +121,16 @@
   <ItemGroup>
     <Content Remove="appsettings.Development.json" />
     <Content Remove="appsettings.json" />
+    <Content Remove="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="appsettings.Development.json" />
     <EmbeddedResource Include="appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
 
 </Project>

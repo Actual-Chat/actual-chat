@@ -42,6 +42,7 @@
     [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private NotificationNavigationHandler NotificationHandler { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -64,22 +65,8 @@
     }
 
     [JSInvokable]
-    public Task HandleNotificationNavigation(string url) {
-        var origin = Nav.BaseUri.TrimEnd('/');
-        if (url.IsNullOrEmpty() || !url.StartsWith(origin))
-            return Task.CompletedTask;
-
-        var chatPageRe = new Regex($"^{origin}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
-        var match = chatPageRe.Match(url);
-        if (!match.Success)
-            return Task.CompletedTask;
-
-        var chatIdGroup = match.Groups["chatid"];
-        if (chatIdGroup.Success) {
-            Nav.NavigateTo(url, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
-        }
-        return Task.CompletedTask;
-    }
+    public Task HandleNotificationNavigation(string url)
+        => NotificationHandler.Handle(url);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         UIActionFailureTracker.Clear();

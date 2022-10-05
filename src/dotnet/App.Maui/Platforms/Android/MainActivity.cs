@@ -8,6 +8,9 @@ using Android.Util;
 using Android.Content;
 using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
+using ActualChat.Notification;
+using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
@@ -17,6 +20,8 @@ public class MainActivity : MauiAppCompatActivity
     private const int RC_SIGN_IN_GOOGLE = 800;
     private const string TAG = nameof(MainActivity);
     private const string GoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
+
+    internal static readonly int NotificationID = 101;
 
     private GoogleSignInClient mGoogleSignInClient = null!;
 
@@ -45,6 +50,17 @@ public class MainActivity : MauiAppCompatActivity
         mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
 
         _ = AutoSignInOnStart();
+
+        CreateNotificationChannel();
+
+        TryProcessNotificationTap(Intent);
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+
+        TryProcessNotificationTap(intent);
     }
 
     public Task SignInWithGoogle()
@@ -103,5 +119,47 @@ public class MainActivity : MauiAppCompatActivity
         // Check for existing Google Sign In account, if it exists then request authentication code and authenticate session.
         if (IsSignedInWithGoogle())
             await SignInWithGoogle().ConfigureAwait(true);
+    }
+
+    private void CreateNotificationChannel()
+    {
+        if (OperatingSystem.IsOSPlatformVersionAtLeast("android", 26)) {
+            var notificationManager = (NotificationManager)GetSystemService(Android.Content.Context.NotificationService)!;
+            // After you create a notification channel,
+            // you cannot change the notification behaviors—the user has complete control at that point.
+            // Though you can still change a channel's name and description.
+            // https://developer.android.com/develop/ui/views/notifications/channels
+            var channel = new NotificationChannel(NotificationConstants.ChannelIds.Default, "Default", NotificationImportance.High);
+            notificationManager.CreateNotificationChannel(channel);
+        }
+    }
+
+    private void TryProcessNotificationTap(Intent? intent)
+    {
+        var extras = intent?.Extras;
+        if (extras == null)
+            return;
+
+        var keySet = extras.KeySet()!.ToArray();
+        if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
+            return;
+
+        // a notification action, lets collect message data
+        var data = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach(var key in keySet) {
+            if (!NotificationConstants.MessageDataKeys.IsValidKey(key))
+                continue;
+            if (data.ContainsKey(key))
+                continue;
+            var extraValue = extras.Get(key);
+            if (extraValue != null)
+                data.Add(key, extraValue.ToString());
+        }
+
+        data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url);
+        if (!url.IsNullOrEmpty() && ScopedServiceLocator.IsInitialized) {
+            var handler = ScopedServiceLocator.Services.GetRequiredService<NotificationNavigationHandler>();
+            handler.Handle(url);
+        }
     }
 }
