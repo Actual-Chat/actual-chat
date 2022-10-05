@@ -99,7 +99,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
             if (existingEntry != null) {
                 // throttle message notifications
-                if (entry.NotificationTime - existingEntry.NotificationTime <= TimeSpan.FromMinutes(5))
+                if (entry.NotificationTime - existingEntry.NotificationTime <= TimeSpan.FromSeconds(30))
                     return;
 
                 entry = entry with { NotificationId = existingEntry.NotificationId };
