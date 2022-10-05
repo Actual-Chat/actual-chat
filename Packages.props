@@ -16,7 +16,7 @@
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
     <RedisVersion>2.6.66</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>3.9.9</StlFusionVersion>
+    <StlFusionVersion>4.0.12</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.3.1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
@@ -134,12 +134,12 @@
     <PackageReference Update="bunit" Version="1.10.14"/>
     <PackageReference Update="FluentAssertions" Version="6.7.*"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="2.0.1" />
-    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.3.1"/>
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.3.2"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
-    <PackageReference Update="Microsoft.Playwright" Version="1.25.0"/>
+    <PackageReference Update="Microsoft.Playwright" Version="1.26.0"/>
     <PackageReference Update="Moq" Version="4.18.2"/>
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
@@ -153,7 +153,7 @@
     <PackageReference Update="xunit.analyzers" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.3.44" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.728" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.733" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Generators -->
     <PackageReference Update="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
