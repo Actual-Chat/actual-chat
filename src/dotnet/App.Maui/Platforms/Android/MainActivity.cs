@@ -11,6 +11,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
+using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 
@@ -28,6 +29,12 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+
+        // atempt to have notification reception even after app is swiped out.
+        // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
+        // seems it does not help
+        var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
+        PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
 
         // TODO: move permissions request to where it's really needed
         // https://github.com/dotnet/maui/issues/3694#issuecomment-1014880727
