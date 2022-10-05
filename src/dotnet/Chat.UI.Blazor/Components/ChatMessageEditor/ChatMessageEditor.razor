@@ -56,12 +56,12 @@
                                 Post="text => Post(text)"
                                 Cancel="@(() => OnCancel())"
                                 OpenPrevious="OnOpenPrevious"/>
-                            <button class="btn btn-round post-message"
-                                    @onmousedown="@(_ => Post())"
-                                    @onmousedown:preventDefault="true">
-                                <i class="icon-paper-plane text-2xl"></i>
-                            </button>
                         </label>
+                        <button class="btn btn-round post-message swiftclick-ignore"
+                                @onmousedown="@(_ => Post())"
+                                @onmousedown:preventDefault="true">
+                            <i class="icon-paper-plane text-2xl"></i>
+                        </button>
                         <NotifyCallPanel @ref="NotifyCallPanelRef" Class="flex-1"/>
                     </div>
                 </div>

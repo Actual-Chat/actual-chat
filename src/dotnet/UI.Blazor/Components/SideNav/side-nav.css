@@ -19,7 +19,7 @@
 
 .side-nav-drawer {
     @apply fixed;
-    @apply top-0 bottom-0 w-[15px];
+    @apply top-14 bottom-14 w-[15px];
     @apply bg-transparent;
 }
 

@@ -6,7 +6,7 @@
 .post-panel {
     @apply flex-x justify-between items-center;
     @apply w-full min-h-12;
-    @apply border-bg-01 outline-none bg-07 md:bg-03 rounded-3xl;
+    @apply border-bg-01 outline-none bg-07 md:bg-03 md:rounded-3xl;
 }
 .post-panel .message-input {
     @apply flex-1;
