@@ -236,7 +236,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         }
 
         { // Test 3 + entry creation
-            using var cts = new CancellationTokenSource(1000);
+            using var cts = new CancellationTokenSource(2000);
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     tester.AppServices.GetRequiredService<IChats>(), session, ChatId,
@@ -269,7 +269,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
 
         { // Test 1
-            using var cts = new CancellationTokenSource(1000);
+            using var cts = new CancellationTokenSource(2000);
             var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, ChatId,
