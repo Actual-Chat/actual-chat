@@ -15,7 +15,19 @@ using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 
-[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density )]
+[Activity(
+    Theme = "@style/Maui.SplashTheme",
+    MainLauncher = true,
+    // When user tap on a notification which was created by FCM when app was in background mode,
+    // It causes creating a new instance of MainActivity. Apparently this happens because Intent has NewTask flag.
+    // Creating a new instance of MainActivity causes creating a new instance of MauiBlazorApp even without disposing an existing one.
+    // Setting LaunchMode to SingleTask prevents this behavior. Existing instance of MainActivity is used and Intent is passed to OnNewIntent method.
+    // MauiBlazorApp instance is kept.
+    LaunchMode = LaunchMode.SingleTask,
+    ConfigurationChanges =
+        ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
+        ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density  
+    )]
 public class MainActivity : MauiAppCompatActivity
 {
     private const int RC_SIGN_IN_GOOGLE = 800;
