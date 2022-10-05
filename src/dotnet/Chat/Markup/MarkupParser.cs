@@ -46,7 +46,7 @@ public class MarkupParser : IMarkupParser
     private static readonly Parser<char, char> SpecialChar =
         Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
-        Token(c => !(char.IsWhiteSpace(c) || c is '_' or '*' or '`' or '@'))
+        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@'))
             .Labelled("not whitespace, line separator, '_', '*', '`', or '@'");
 
     // Tokens

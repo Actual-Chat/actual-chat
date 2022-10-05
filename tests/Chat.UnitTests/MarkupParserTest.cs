@@ -10,6 +10,9 @@ public class MarkupParserTest : TestBase
         var m = Parse<PlainTextMarkup>("123 456", out var text);
         m.Text.Should().Be(text);
 
+        m = Parse<PlainTextMarkup>("123 _ 456", out text);
+        m.Text.Should().Be(text);
+
         m = Parse<PlainTextMarkup>(" ", out text);
         m.Text.Should().Be(text);
 
