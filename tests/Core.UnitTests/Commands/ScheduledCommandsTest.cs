@@ -1,10 +1,10 @@
 using ActualChat.Commands;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
+using ActualChat.Testing.Collections;
 using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
+[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
 public class ScheduledCommandsTest: TestBase
 {
     public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
@@ -19,10 +19,7 @@ public class ScheduledCommandsTest: TestBase
             .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
-
-        var hostedServices = services.GetServices<IHostedService>().ToList();
-        foreach (var hostedService in hostedServices)
-            await hostedService.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await services.HostedServices().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
@@ -53,10 +50,7 @@ public class ScheduledCommandsTest: TestBase
             .AddComputeService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
-
-        var hostedServices = services.GetServices<IHostedService>().ToList();
-        foreach (var hostedService in hostedServices)
-            await hostedService.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await services.HostedServices().Start();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
