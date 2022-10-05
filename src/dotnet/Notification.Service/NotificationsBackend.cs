@@ -137,7 +137,6 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
                 existingEntry.ModifiedAt = entry1.NotificationTime;
                 existingEntry.HandledAt = null;
-                existingEntry.ModifiedAt = null;
                 context.Operation().Items.Set(entry1.NotificationId);
             }
             else {
@@ -215,12 +214,15 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(string userId, CancellationToken cancellationToken)
     {
+        // Get notifications for last day
+        var yesterdayId = Ulid.NewUlid(Clocks.CoarseSystemClock.UtcNow.AddDays(-1));
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         return dbContext.Notifications
+            // ReSharper disable once StringCompareToIsCultureSpecific
+            .Where(n => n.UserId == userId && n.Id.CompareTo(yesterdayId.ToString()) > 0)
             .OrderByDescending(n => n.Id)
-            .Take(20)
             .Select(n => n.Id)
             .ToImmutableArray();
     }

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Notification.Db;
 
 [Table("Notifications")]
+[Index(nameof(UserId), nameof(Id))]
 public class DbNotification : IHasId<string>
 {
     private DateTime _createdAt;
