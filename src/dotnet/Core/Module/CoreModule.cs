@@ -1,5 +1,4 @@
 ﻿using ActualChat.Blobs.Internal;
-using ActualChat.DependencyInjection;
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
@@ -29,7 +28,6 @@ public class CoreModule : HostModule<CoreSettings>
 
         // Common services
         services.AddSingleton<UrlMapper>();
-        services.AddTransient(typeof(Lazy<>), typeof(LazyService<>));
 
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options() {
