@@ -7,6 +7,7 @@ using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 
@@ -119,5 +120,10 @@ public static class MauiProgram
         // UI
         services.AddSingleton<NavigationInterceptor>();
         services.AddTransient<MainPage>();
+
+        //Firebase messaging
+        #if ANDROID
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
+        #endif
     }
 }

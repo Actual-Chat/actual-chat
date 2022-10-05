@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Notification.UI.Blazor.Module;
@@ -18,5 +19,7 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<DeviceInfo>(ServiceLifetime.Scoped);
+
+        services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
     }
 }
