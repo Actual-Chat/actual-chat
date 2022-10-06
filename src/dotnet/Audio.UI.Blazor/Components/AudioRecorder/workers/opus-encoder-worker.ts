@@ -10,13 +10,11 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { handleRpc, RpcResultMessage } from 'rpc';
+import { handleRpcCall, handleRpcCustom, RpcCallMessage, RpcResultMessage } from 'rpc';
 
-import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
-import { serializedError, serializedValue } from 'serialized';
 
 const LogScope: string = 'OpusEncoderWorker';
 
@@ -64,33 +62,24 @@ let vadState: 'voice' | 'silence' = 'voice';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
-let lastInitMessage: InitEncoderMessage | null = null;
+let lastInitArguments: { sessionId: string, chatId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let debug: boolean = false;
 
 /** control flow from the main thread */
-worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => handleRpc(
-    ev.data.rpcResultId,
+worker.onmessage = async (ev: MessageEvent<RpcCallMessage>) => handleRpcCall(
+    ev.data as RpcCallMessage,
     (message) => worker.postMessage(message),
-    async () => {
-        const request = ev.data;
-        switch (request.type) {
-            case 'create':
-                return await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
-            case 'init':
-                return await onInit(request as InitEncoderMessage);
-            case 'end':
-                return onEnd(request as EndMessage);
-            default:
-                throw new Error(`Unsupported message type: ${request.type as string}`);
-        }
+    {
+        create: (...args: unknown[]) => (<any>onCreate)(...args, ev.ports[0], ev.ports[1]),
+        init: (...args: unknown[]) => (<any>onInit)(...args),
+        end: (...args: unknown[]) => (<any>onEnd)(...args),
     },
     error => console.error(`${LogScope}.worker.onmessage error:`, error),
 );
 
-async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
-    debug = message.debug;
+async function onCreate(audioHubUrl: string, debug: boolean, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     if (workletPort != null)
         throw new Error('workletPort has already been set.');
     if (vadPort != null)
@@ -106,7 +95,6 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         },
     };
 
-    const { audioHubUrl, rpcResultId } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -134,9 +122,8 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     state = 'readyToInit';
 }
 
-async function onInit(message: InitEncoderMessage): Promise<void> {
-    const { sessionId, chatId, rpcResultId } = message;
-    lastInitMessage = message;
+async function onInit(sessionId: string, chatId: string): Promise<void> {
+    lastInitArguments = { sessionId, chatId };
 
     if (debug)
         console.log(`${LogScope}.onInit`);
@@ -148,7 +135,7 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     vadState = 'silence';
 }
 
-function onEnd(message: EndMessage): void {
+function onEnd(): void {
     state = 'ended';
     processQueue();
     recordingSubject.complete();
@@ -205,11 +192,11 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             recordingSubject.complete();
         }
         else {
-            if (!lastInitMessage)
+            if (!lastInitArguments)
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
 
             // start new stream and then set state
-            const { sessionId, chatId } = lastInitMessage;
+            const { sessionId, chatId } = lastInitArguments;
             recordingSubject = new signalR.Subject<Uint8Array>();
             await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
             vadState = newVadState;

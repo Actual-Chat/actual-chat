@@ -4,6 +4,21 @@ import { PromiseSource } from 'promises';
 const LogScope = 'Rpc';
 const debug = true;
 
+export interface RpcCallMessage {
+    rpcResultId: number;
+    method: string,
+    arguments: unknown[],
+}
+
+export function rpcCallMessage(rpcResult: RpcResult<unknown> | number, method: string, ...args: unknown[]) : RpcCallMessage {
+    const rpcResultId = typeof rpcResult === 'number' ? rpcResult : rpcResult.id;
+    return {
+        rpcResultId: rpcResultId,
+        method: method,
+        arguments: args,
+    }
+}
+
 export interface RpcResultMessage {
     rpcResultId: number;
     result: Serialized;
@@ -59,7 +74,23 @@ export function rpc<T>(sender: (rpcResult: RpcResult<T>) => unknown, timeout?: n
     return rpcResult;
 }
 
-export async function handleRpc<T>(
+export async function handleRpcCall(
+    rpcCallMessage: RpcCallMessage,
+    sender: (message: RpcResultMessage) => Promise<void> | void,
+    target: object,
+    errorHandler?: (error: unknown) => void
+) : Promise<unknown> {
+    if (debug)
+        console.debug(`${LogScope}.handleRpcCall:`, rpcCallMessage)
+    return handleRpcCustom<unknown>(rpcCallMessage.rpcResultId, sender, async () => {
+        // eslint-disable-next-line @typescript-eslint/ban-types
+        const method = target[rpcCallMessage.method] as Function;
+        const result = await method.apply(sender, rpcCallMessage.arguments) as unknown;
+        return result;
+    }, errorHandler);
+}
+
+export async function handleRpcCustom<T>(
     rpcResultId: number | null,
     sender: (message: RpcResultMessage) => Promise<void> | void,
     handler: () => Promise<T>,
