@@ -1,6 +1,6 @@
 import { addInteractionHandler } from 'first-interaction';
 import { Disposable } from 'disposable';
-import { delayAsync } from 'delay';
+import { delayAsync } from 'promises';
 
 const LogScope = 'AudioContextLazy';
 

@@ -12,7 +12,7 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
-import { delayAsync } from 'delay';
+import { delayAsync } from 'promises';
 import { whenCompleted, WhenCompleted } from 'when';
 
 const LogScope: string = 'VirtualList';

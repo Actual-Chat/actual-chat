@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { CallbackRegistry } from 'callback-registry';
+import { completeRpc, RpcResultMessage, rpc } from 'rpc';
 import { audioContextLazy } from 'audio-context-lazy';
-import { ResolveCallbackMessage } from 'resolve-callback-message';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
@@ -49,7 +48,6 @@ export class OpusMediaRecorder {
     private context: AudioContext = null;
     private encoderWorklet: AudioWorkletNode = null;
     private vadWorklet: AudioWorkletNode = null;
-    private callbacks = new CallbackRegistry<void>();
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
@@ -114,9 +112,7 @@ export class OpusMediaRecorder {
         this.source = this.context.createMediaStreamSource(this.stream);
         this.state = 'recording';
 
-        await new Promise<void>(resolve => {
-            const callbackId = this.callbacks.register(resolve);
-
+        await rpc((rpcResult) => {
             const { channelCount } = this;
             const initMessage: InitEncoderMessage = {
                 type: 'init',
@@ -124,7 +120,7 @@ export class OpusMediaRecorder {
                 bitsPerSecond: AUDIO_BITS_PER_SECOND,
                 sessionId: sessionId,
                 chatId: chatId,
-                callbackId: callbackId,
+                rpcResultId: rpcResult.id,
             };
             // Initialize the worker
             // Expected 'initCompleted' event from the worker.
@@ -133,7 +129,7 @@ export class OpusMediaRecorder {
             // Initialize new stream at the VAD worker
             const vadInitMessage: VadMessage = { type: 'reset', };
             this.vadWorker.postMessage(vadInitMessage);
-        });
+        })
 
         // Start streaming
         this.source.connect(this.encoderWorklet);
@@ -142,11 +138,10 @@ export class OpusMediaRecorder {
     }
 
     public async stop(): Promise<void> {
-        await new Promise<void>(resolve => {
+        await rpc((rpcResult) => {
             console.assert(
                 this.state !== 'inactive',
                 `${LogScope}.stop: Recorder isn't initialized but got an stop command`);
-            const callbackId = this.callbacks.register(resolve);
 
             // Stop stream first
             if (this.source)
@@ -166,7 +161,7 @@ export class OpusMediaRecorder {
             // Stop event will be triggered at _onmessageFromWorker(),
             const msg: EndMessage = {
                 type: 'end',
-                callbackId
+                rpcResultId: rpcResult.id
             };
             // Tell encoder finalize the job and destroy itself.
             // Expects callback event from the worker.
@@ -177,16 +172,14 @@ export class OpusMediaRecorder {
 
     // Private methods
 
-    private load(): Promise<void> {
+    private async load(): Promise<void> {
         const audioHubUrl = new URL('/api/hub/audio', OpusMediaRecorder.origin).toString();
 
-        return new Promise<void>(resolve => {
-            const callbackId = this.callbacks.register(resolve);
-
+        await rpc((rpcResult) => {
             const msg: CreateEncoderMessage = {
                 type: 'create',
                 audioHubUrl: audioHubUrl,
-                callbackId: callbackId,
+                rpcResultId: rpcResult.id,
                 debug: this.debug,
             };
 
@@ -283,10 +276,7 @@ export class OpusMediaRecorder {
         return mediaStream;
     }
 
-    private onWorkerMessage = (ev: MessageEvent<ResolveCallbackMessage>) => {
-        const { callbackId } = ev.data;
-        this.callbacks.invoke(callbackId);
-    };
+    private onWorkerMessage = (ev: MessageEvent<RpcResultMessage>) => completeRpc(ev.data);
 
     private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first

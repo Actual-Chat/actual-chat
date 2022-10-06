@@ -10,12 +10,13 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { ResolveCallbackMessage } from 'resolve-callback-message';
+import { RpcResultMessage } from 'rpc';
 
 import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
+import { serializedError, serializedValue } from 'serialized';
 
 const LogScope: string = 'OpusEncoderWorker';
 
@@ -54,7 +55,7 @@ const FADE_CHUNKS = CHUNKS_WILL_BE_SENT_ON_RESUME / 2;
 const CHUNK_SIZE = 960;
 
 /** buffer or callbackId: number of `end` message */
-const queue = new Denque<ArrayBuffer | number>();
+const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
 let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
@@ -70,27 +71,39 @@ let debug: boolean = false;
 
 /** control flow from the main thread */
 worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
+    const request = ev.data;
+    let result: unknown = null;
     try {
-        const msg = ev.data;
-        switch (msg.type) {
+        switch (request.type) {
         case 'create':
-            await onCreate(msg as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
+            result = await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
             break;
-
         case 'init':
-            await onInit(msg as InitEncoderMessage);
+            result = await onInit(request as InitEncoderMessage);
             break;
-
         case 'end':
-            onEnd(msg as EndMessage);
+            result = onEnd(request as EndMessage);
             break;
-
         default:
-            throw new Error(`Unsupported message type: ${msg.type as string}`);
+            throw new Error(`Unsupported message type: ${request.type as string}`);
+        }
+        if (request.rpcResultId != null) {
+            const response: RpcResultMessage = {
+                rpcResultId: request.rpcResultId,
+                result: serializedValue(result)
+            }
+            worker.postMessage(response);
         }
     }
     catch (error) {
         console.error(`${LogScope}.worker.onmessage error:`, error);
+        if (request.rpcResultId != null) {
+            const response: RpcResultMessage = {
+                rpcResultId: request.rpcResultId,
+                result: serializedError(error)
+            }
+            worker.postMessage(response);
+        }
     }
 };
 
@@ -111,7 +124,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         },
     };
 
-    const { audioHubUrl, callbackId } = message;
+    const { audioHubUrl, rpcResultId } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -130,20 +143,17 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
 
     // Setting encoder module
-    if (codecModule == null) {
+    if (codecModule == null)
         await codecModuleReady;
-    }
     encoder = new codecModule.Encoder();
     console.log(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
-    const readyToInit: ResolveCallbackMessage = { callbackId };
-    worker.postMessage(readyToInit);
     state = 'readyToInit';
 }
 
 async function onInit(message: InitEncoderMessage): Promise<void> {
-    const { sessionId, chatId, callbackId } = message;
+    const { sessionId, chatId, rpcResultId } = message;
     lastInitMessage = message;
 
     if (debug)
@@ -154,15 +164,12 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
 
     state = 'encoding';
     vadState = 'silence';
-
-    const msg: ResolveCallbackMessage = { callbackId };
-    worker.postMessage(msg);
 }
 
-function onEnd(message: EndMessage) {
+function onEnd(message: EndMessage): void {
     state = 'ended';
-    queue.push(message.callbackId);
     processQueue();
+    recordingSubject.complete();
 }
 
 // Worklet sends messages with raw audio
@@ -183,12 +190,10 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
 
         if (state === 'encoding') {
             queue.push(buffer);
-            if (vadState === 'voice') {
+            if (vadState === 'voice')
                 processQueue();
-            }
-            else if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
+            else if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
                 queue.shift();
-            }
         }
     }
     catch (error) {
@@ -209,7 +214,6 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
 
         if (vadState === newVadState)
             return;
-
         if (state !== 'encoding')
             return;
 
@@ -242,40 +246,25 @@ function processQueue(fade: 'in' | 'none' = 'none'): void {
     try {
         isEncoding = true;
         let fadeWindowIndex: number | null = null;
-        if (fade === 'in' && queue.length >= FADE_CHUNKS ) {
+        if (fade === 'in' && queue.length >= FADE_CHUNKS )
             fadeWindowIndex = 0;
-        }
-        while (true) {
-            if (queue.isEmpty())
-                return;
 
-            const item: ArrayBuffer | number = queue.shift();
-            if (typeof (item) === 'number') {
-                try {
-                    const message: ResolveCallbackMessage = { callbackId: item, };
-                    worker.postMessage(message);
-                }
-                finally {
-                    recordingSubject.complete();
-                }
-            }
-            else {
-                if (fadeWindowIndex !== null) {
-                    const samples = new Float32Array(item);
-                    for (let i = 0; i < samples.length; i++) {
-                        samples[i]*=kbdWindow[fadeWindowIndex + i];
-                    }
-                    fadeWindowIndex += samples.length;
-                    if (fadeWindowIndex >= FADE_CHUNKS * CHUNK_SIZE) {
-                        fadeWindowIndex = null;
-                    }
-                }
+        while (!queue.isEmpty()) {
+            const item = queue.shift();
+            if (fadeWindowIndex !== null) {
+                const samples = new Float32Array(item);
+                for (let i = 0; i < samples.length; i++)
+                    samples[i] *= kbdWindow[fadeWindowIndex + i];
 
-                const result = encoder.encode(item);
-                const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
-                workletPort.postMessage(workletMessage, [item]);
-                recordingSubject.next(result);
+                fadeWindowIndex += samples.length;
+                if (fadeWindowIndex >= FADE_CHUNKS * CHUNK_SIZE)
+                    fadeWindowIndex = null;
             }
+
+            const result = encoder.encode(item);
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
+            workletPort.postMessage(workletMessage, [item]);
+            recordingSubject.next(result);
         }
     }
     catch (error) {

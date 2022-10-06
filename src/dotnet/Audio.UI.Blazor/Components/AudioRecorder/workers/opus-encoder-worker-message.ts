@@ -1,6 +1,6 @@
 export interface EncoderMessage {
     type: 'create' | 'init' | 'end';
-    callbackId: number;
+    rpcResultId: number;
 }
 
 export interface CreateEncoderMessage extends EncoderMessage {
