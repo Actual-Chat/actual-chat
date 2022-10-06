@@ -10,7 +10,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { RpcResultMessage } from 'rpc';
+import { handleRpc, RpcResultMessage } from 'rpc';
 
 import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
@@ -70,42 +70,24 @@ let kbdWindow: Float32Array | null = null;
 let debug: boolean = false;
 
 /** control flow from the main thread */
-worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
-    const request = ev.data;
-    let result: unknown = null;
-    try {
+worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => handleRpc(
+    ev.data.rpcResultId,
+    (message) => worker.postMessage(message),
+    async () => {
+        const request = ev.data;
         switch (request.type) {
-        case 'create':
-            result = await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
-            break;
-        case 'init':
-            result = await onInit(request as InitEncoderMessage);
-            break;
-        case 'end':
-            result = onEnd(request as EndMessage);
-            break;
-        default:
-            throw new Error(`Unsupported message type: ${request.type as string}`);
+            case 'create':
+                return await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
+            case 'init':
+                return await onInit(request as InitEncoderMessage);
+            case 'end':
+                return onEnd(request as EndMessage);
+            default:
+                throw new Error(`Unsupported message type: ${request.type as string}`);
         }
-        if (request.rpcResultId != null) {
-            const response: RpcResultMessage = {
-                rpcResultId: request.rpcResultId,
-                result: serializedValue(result)
-            }
-            worker.postMessage(response);
-        }
-    }
-    catch (error) {
-        console.error(`${LogScope}.worker.onmessage error:`, error);
-        if (request.rpcResultId != null) {
-            const response: RpcResultMessage = {
-                rpcResultId: request.rpcResultId,
-                result: serializedError(error)
-            }
-            worker.postMessage(response);
-        }
-    }
-};
+    },
+    error => console.error(`${LogScope}.worker.onmessage error:`, error),
+);
 
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     debug = message.debug;

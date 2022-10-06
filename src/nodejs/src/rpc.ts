@@ -1,7 +1,8 @@
-import { Serialized } from 'serialized';
+import { Serialized, serializedError, serializedValue } from 'serialized';
 import { PromiseSource } from 'promises';
 
 const LogScope = 'Rpc';
+const debug = true;
 
 export interface RpcResultMessage {
     rpcResultId: number;
@@ -19,15 +20,21 @@ export class RpcResult<T> extends PromiseSource<T> {
         const oldResolve = this.resolve;
         const oldReject = this.reject;
         this.resolve = (value: T) => {
+            if (debug)
+                console.debug(`${LogScope}.RpcResult.resolve[#${this.id}] =`, value)
             this.unregister();
             oldResolve(value);
         };
         this.reject = (reason: unknown) => {
+            if (debug)
+                console.debug(`${LogScope}.RpcResult.reject[#${this.id}] =`, reason)
             this.unregister();
             oldReject(reason);
         };
         this.id = id ?? ++lastResultId;
         results.set(this.id, this);
+        if (debug)
+            console.debug(`${LogScope}.RpcResult.ctor[#${this.id}]`)
     }
 
     public static get<T>(id: number) : RpcResult<T> | null {
@@ -50,6 +57,32 @@ export function rpc<T>(sender: (rpcResult: RpcResult<T>) => unknown, timeout?: n
         rpcResult.reject(error);
     }
     return rpcResult;
+}
+
+export async function handleRpc<T>(
+    rpcResultId: number | null,
+    sender: (message: RpcResultMessage) => Promise<void> | void,
+    handler: () => Promise<T>,
+    errorHandler?: (error: unknown) => void
+) : Promise<T> {
+    let result: T | undefined = undefined;
+    let error: unknown = null;
+    try {
+        result = await handler();
+    }
+    catch (e) {
+        error = e;
+    }
+    const response: RpcResultMessage = {
+        rpcResultId: rpcResultId,
+        result: error != null ? serializedError(error) : serializedValue(result),
+    }
+    if (debug)
+        console.debug(`${LogScope}.handleRpc[#${rpcResultId}] =`, response)
+    await sender(response);
+    if (error != null && errorHandler != null)
+        errorHandler(error);
+    return result;
 }
 
 export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | null {
