@@ -51,8 +51,7 @@ public static class MauiProgram
 
         services.TryAddSingleton(builder.Configuration);
 
-        // var settings = builder.Configuration.Get<ClientAppSettings>();
-        var sessionId = new SessionFactory().CreateSession().Id;
+        var sessionId = GetSessionId();
         var settings = new ClientAppSettings { SessionId = sessionId };
         services.TryAddSingleton(settings);
 
@@ -125,5 +124,21 @@ public static class MauiProgram
         #if ANDROID
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
         #endif
+    }
+
+    private static Symbol GetSessionId()
+    {
+        const string sessionIdStorageKey = "Fusion.SessionId";
+        Symbol sessionId = Symbol.Empty;
+        if (Preferences.ContainsKey(sessionIdStorageKey)) {
+            var value = Preferences.Get(sessionIdStorageKey, null);
+            if (!string.IsNullOrEmpty(value))
+                sessionId = value;
+        }
+        if (sessionId.IsEmpty) {
+            sessionId = new SessionFactory().CreateSession().Id;
+            Preferences.Set(sessionIdStorageKey, sessionId.Value);
+        }
+        return sessionId;
     }
 }
