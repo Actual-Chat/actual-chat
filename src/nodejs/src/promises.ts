@@ -79,6 +79,6 @@ export class PromiseSource<T> implements Promise<T> {
 /** Async version of setTimeout */
 export function delayAsync(timeout: number): PromiseSource<void> {
     const promise = new PromiseSource<void>();
-    promise.setTimeout(timeout, p => p.resolve(null))
+    promise.setTimeout(timeout, p => p.resolve(undefined))
     return promise;
 }
