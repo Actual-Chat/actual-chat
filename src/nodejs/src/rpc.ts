@@ -28,7 +28,9 @@ export interface RpcResultMessage extends Result<unknown> {
     rpcResultId: number;
 }
 
-export function rpcResultMessage(rpcResultId: number, value: unknown, error?: unknown = undefined) : RpcResultMessage {
+export function rpcResultMessage(rpcResultId: number, value: unknown, error?: unknown) : RpcResultMessage {
+    if (error !== undefined)
+        return rpcErrorResultMessage(rpcResultId, error);
     return {
         rpcResultId: rpcResultId,
         value: value,
@@ -161,10 +163,11 @@ if (selfTest) {
 
         rpcResult = rpc<string>(() => undefined);
         console.assert(!rpcResult.isResolved());
-        void completeRpc(rpcErrorResultMessage(rpcResult.id, 'Error'));
+        void completeRpc(rpcResultMessage(rpcResult.id, null, 'Error'));
         console.assert(rpcResult.isResolved());
         try {
             await rpcResult;
+            console.error('rpcResult.Error is undefined.');
         }
         catch (error) {
             console.assert('Error' == error);
