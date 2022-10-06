@@ -250,7 +250,10 @@ export class OpusMediaRecorder {
         return mediaStream;
     }
 
-    private onWorkerMessage = (ev: MessageEvent<RpcResultMessage>) => completeRpc(ev.data);
+    private onWorkerMessage = (ev: MessageEvent<RpcResultMessage>) => {
+        void completeRpc(ev.data);
+        return;
+    }
 
     private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first

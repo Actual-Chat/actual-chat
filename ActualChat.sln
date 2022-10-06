@@ -189,7 +189,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\on-device-awake.ts = src\nodejs\src\on-device-awake.ts
 		src\nodejs\src\when.ts = src\nodejs\src\when.ts
 		src\nodejs\src\serialize.ts = src\nodejs\src\serialize.ts
-		src\nodejs\src\serialized.ts = src\nodejs\src\serialized.ts
 		src\nodejs\src\promises.ts = src\nodejs\src\promises.ts
 		src\nodejs\src\rpc.ts = src\nodejs\src\rpc.ts
 	EndProjectSection
