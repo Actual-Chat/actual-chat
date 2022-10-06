@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
+import { CallbackRegistry } from 'callback-registry';
 import { audioContextLazy } from 'audio-context-lazy';
 import { ResolveCallbackMessage } from 'resolve-callback-message';
 
@@ -43,13 +44,12 @@ export class OpusMediaRecorder {
     private readonly channelCount: number = 1;
     private readonly encoderWorkerChannel: MessageChannel;
     private readonly vadWorkerChannel: MessageChannel;
+    private readonly whenLoaded: Promise<void>;
 
     private context: AudioContext = null;
     private encoderWorklet: AudioWorkletNode = null;
     private vadWorklet: AudioWorkletNode = null;
-    private loadCompleted: Promise<void>;
-    private lastCallbackId = 0;
-    private callbacks = new Map<number, Function>();
+    private callbacks = new CallbackRegistry<void>();
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
@@ -60,6 +60,7 @@ export class OpusMediaRecorder {
 
     constructor(debug: boolean) {
         this.debug = debug;
+
         this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
@@ -68,13 +69,16 @@ export class OpusMediaRecorder {
         this.vadWorkerChannel = new MessageChannel();
         this.vadWorker = new Worker('/dist/vadWorker.js');
 
-        this.loadCompleted = this.loadWorkers();
+        this.whenLoaded = this.load();
     }
 
-
     public pause(): void {
-        console.assert(this.state !== 'inactive', `${LogScope}.pause: Recorder isn't initialized but got an pause() call`);
-        console.assert(this.source != null, `${LogScope}.pause: Recorder: pause() call is invalid when source is null`);
+        console.assert(
+            this.state !== 'inactive',
+            `${LogScope}.pause: Recorder isn't initialized but got an pause() call`);
+        console.assert(
+            this.source != null,
+            `${LogScope}.pause: Recorder: pause() call is invalid when source is null`);
 
         // Stop stream first
         this.source.disconnect();
@@ -84,8 +88,13 @@ export class OpusMediaRecorder {
     }
 
     public resume(): void {
-        console.assert(this.state !== 'inactive', `${LogScope}.resume: Recorder isn't initialized but got an resume() call`);
-        console.assert(this.source != null, `${LogScope}.resume: Recorder: resume() call is invalid when source is null`);
+        console.assert(
+            this.state !== 'inactive',
+            `${LogScope}.resume: Recorder isn't initialized but got an resume() call`);
+        console.assert(
+            this.source != null,
+            `${LogScope}.resume: Recorder: resume() call is invalid when source is null`);
+
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
         this.source.connect(this.vadWorklet);
@@ -93,7 +102,9 @@ export class OpusMediaRecorder {
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
-        console.assert(sessionId != '' && chatId != '', `${LogScope}.start: sessionId and chatId both should have value specified`);
+        console.assert(
+            sessionId != '' && chatId != '',
+            `${LogScope}.start: sessionId and chatId both should have value specified`);
 
         await this.init();
 
@@ -101,17 +112,10 @@ export class OpusMediaRecorder {
             this.source.disconnect();
         this.stream = await OpusMediaRecorder.GetMicrophoneStream();
         this.source = this.context.createMediaStreamSource(this.stream);
-
         this.state = 'recording';
 
-        if (this.loadCompleted != null) {
-            await this.loadCompleted;
-            this.loadCompleted = null;
-        }
-
-        const callbackId = this.lastCallbackId++;
         await new Promise<void>(resolve => {
-            this.callbacks.set(callbackId, resolve);
+            const callbackId = this.callbacks.register(resolve);
 
             const { channelCount } = this;
             const initMessage: InitEncoderMessage = {
@@ -120,14 +124,14 @@ export class OpusMediaRecorder {
                 bitsPerSecond: AUDIO_BITS_PER_SECOND,
                 sessionId: sessionId,
                 chatId: chatId,
-                callbackId
+                callbackId: callbackId,
             };
             // Initialize the worker
             // Expected 'initCompleted' event from the worker.
             this.worker.postMessage(initMessage);
 
             // Initialize new stream at the VAD worker
-            const vadInitMessage: VadMessage = { type: 'init', };
+            const vadInitMessage: VadMessage = { type: 'reset', };
             this.vadWorker.postMessage(vadInitMessage);
         });
 
@@ -138,10 +142,11 @@ export class OpusMediaRecorder {
     }
 
     public async stop(): Promise<void> {
-        const callbackId = this.lastCallbackId++;
-        await new Promise(resolve => {
-            console.assert(this.state !== 'inactive', `${LogScope}.stop: Recorder isn't initialized but got an stop command`);
-            this.callbacks.set(callbackId, resolve);
+        await new Promise<void>(resolve => {
+            console.assert(
+                this.state !== 'inactive',
+                `${LogScope}.stop: Recorder isn't initialized but got an stop command`);
+            const callbackId = this.callbacks.register(resolve);
 
             // Stop stream first
             if (this.source)
@@ -170,12 +175,13 @@ export class OpusMediaRecorder {
         this.state = 'inactive';
     }
 
-    private loadWorkers(): Promise<void> {
+    // Private methods
+
+    private load(): Promise<void> {
         const audioHubUrl = new URL('/api/hub/audio', OpusMediaRecorder.origin).toString();
 
-        const callbackId = this.lastCallbackId++;
-        return new Promise(resolve => {
-            this.callbacks.set(callbackId, resolve);
+        return new Promise<void>(resolve => {
+            const callbackId = this.callbacks.register(resolve);
 
             const msg: CreateEncoderMessage = {
                 type: 'create',
@@ -185,7 +191,7 @@ export class OpusMediaRecorder {
             };
 
             const crossWorkerChannel = new MessageChannel();
-            // Expected 'loadCompleted' event from the worker.
+            // Expected 'whenLoaded' event from the worker.
             this.worker.postMessage(msg, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
 
             const msgVad: VadMessage = { type: 'create', };
@@ -197,10 +203,13 @@ export class OpusMediaRecorder {
         if (this.context != null)
             return;
 
-        this.context = await audioContextLazy.get();
-        if (this.context.sampleRate !== 48000)
+        const context = await audioContextLazy.get();
+        if (context.sampleRate !== 48000)
             throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
+        this.context = context; // We want to assign it only when it's a proper AudioContext
+        await this.whenLoaded;
 
+        // Encoder worklet init
         const encoderWorkletOptions: AudioWorkletNodeOptions = {
             numberOfInputs: 1,
             numberOfOutputs: 1,
@@ -217,6 +226,8 @@ export class OpusMediaRecorder {
             encoderWorkletOptions);
         const initPortMessage: EncoderWorkletMessage = { type: 'init' };
         this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
+
+        // VAD worklet init
         const vadWorkletOptions: AudioWorkletNodeOptions = {
             numberOfInputs: 1,
             numberOfOutputs: 1,
@@ -274,17 +285,8 @@ export class OpusMediaRecorder {
 
     private onWorkerMessage = (ev: MessageEvent<ResolveCallbackMessage>) => {
         const { callbackId } = ev.data;
-        this.popCallback(callbackId)();
+        this.callbacks.invoke(callbackId);
     };
-
-    private popCallback(callbackId: number): Function {
-        const callback = this.callbacks.get(callbackId);
-        if (callback === undefined)
-            throw new Error(`Callback #${callbackId} is not found.`);
-
-        this.callbacks.delete(callbackId);
-        return callback;
-    }
 
     private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first

@@ -57,7 +57,7 @@
 
 @code {
     private RequirementChecker _requirementCheckerRef = null!;
-    private System.EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
+    private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;

@@ -56,7 +56,7 @@ const CHUNK_SIZE = 960;
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer | number>();
 const worker = self as unknown as Worker;
-let connection: signalR.HubConnection;
+let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
 let state: 'inactive' | 'readyToInit' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'voice';
@@ -94,38 +94,12 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     }
 };
 
-function onEnd(message: EndMessage) {
-    state = 'ended';
-    queue.push(message.callbackId);
-    processQueue();
-}
-
-async function onInit(message: InitEncoderMessage): Promise<void> {
-    const { sessionId, chatId, callbackId } = message;
-    lastInitMessage = message;
-
-    if (debug) {
-        console.log(`${LogScope}.onInit`);
-    }
-
-    // recordingSubject = new signalR.Subject<Uint8Array>();
-    // await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
-
-    state = 'encoding';
-    vadState = 'silence';
-
-    const msg: ResolveCallbackMessage = { callbackId };
-    worker.postMessage(msg);
-}
-
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     debug = message.debug;
-    if (workletPort != null) {
-        throw new Error('workletPort has already been specified.');
-    }
-    if (vadPort != null) {
-        throw new Error('vadPort has already been specified.');
-    }
+    if (workletPort != null)
+        throw new Error('workletPort has already been set.');
+    if (vadPort != null)
+        throw new Error('vadPort has already been set.');
 
     const retryPolicy: signalR.IRetryPolicy = {
         nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
@@ -142,17 +116,17 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
     vadPort.onmessage = onVadMessage;
-    connection = new signalR.HubConnectionBuilder()
+
+    // Connect to SignalR Hub
+    hubConnection = new signalR.HubConnectionBuilder()
         .withUrl(audioHubUrl)
         .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)
         .build();
+    await hubConnection.start();
 
-    // Connect to the hub endpoint
-    await connection.start();
-
-    // get fade-in window
+    // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
 
     // Setting encoder module
@@ -163,13 +137,35 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     console.log(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
-    const readyToInit: ResolveCallbackMessage = {
-        callbackId
-    };
+    const readyToInit: ResolveCallbackMessage = { callbackId };
     worker.postMessage(readyToInit);
     state = 'readyToInit';
 }
-// worklet sends messages with raw audio
+
+async function onInit(message: InitEncoderMessage): Promise<void> {
+    const { sessionId, chatId, callbackId } = message;
+    lastInitMessage = message;
+
+    if (debug)
+        console.log(`${LogScope}.onInit`);
+
+    // recordingSubject = new signalR.Subject<Uint8Array>();
+    // await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+    state = 'encoding';
+    vadState = 'silence';
+
+    const msg: ResolveCallbackMessage = { callbackId };
+    worker.postMessage(msg);
+}
+
+function onEnd(message: EndMessage) {
+    state = 'ended';
+    queue.push(message.callbackId);
+    processQueue();
+}
+
+// Worklet sends messages with raw audio
 const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
     try {
         const { type, buffer } = ev.data;
@@ -223,14 +219,13 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             recordingSubject.complete();
         }
         else {
-            if (!lastInitMessage) {
+            if (!lastInitMessage)
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
-            }
 
             // start new stream and then set state
             const { sessionId, chatId } = lastInitMessage;
             recordingSubject = new signalR.Subject<Uint8Array>();
-            await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+            await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
             vadState = newVadState;
             processQueue('in');
         }
@@ -241,9 +236,8 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
 };
 
 function processQueue(fade: 'in' | 'none' = 'none'): void {
-    if (isEncoding) {
+    if (isEncoding)
         return;
-    }
 
     try {
         isEncoding = true;
@@ -252,9 +246,8 @@ function processQueue(fade: 'in' | 'none' = 'none'): void {
             fadeWindowIndex = 0;
         }
         while (true) {
-            if (queue.isEmpty()) {
+            if (queue.isEmpty())
                 return;
-            }
 
             const item: ArrayBuffer | number = queue.shift();
             if (typeof (item) === 'number') {

@@ -9,9 +9,9 @@ export class AudioRecorder {
     private readonly debug: boolean = false;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
-    private state: 'inactive' | 'recording' = 'inactive';
     private readonly sessionId: string;
-    private readonly recorderPromise: Promise<OpusMediaRecorder>;
+    private readonly whenRecorderAvailable: Promise<OpusMediaRecorder>;
+    private isRecording: boolean = false;
 
     public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, debug: boolean) {
         this.blazorRef = blazorRef;
@@ -33,14 +33,14 @@ export class AudioRecorder {
             this.isMicrophoneAvailable = true;
         }
 
-        this.recorderPromise = AudioRecorder.recorderPool.get(this.debug);
-        this.recorderPromise.catch(ex => {
+        this.whenRecorderAvailable = AudioRecorder.recorderPool.get(this.debug);
+        this.whenRecorderAvailable.catch(ex => {
             console.error(`${LogScope}.constructor: recorder initialization failed.`, ex);
         });
     }
 
     public async dispose(): Promise<void> {
-        const recorder = await this.recorderPromise;
+        const recorder = await this.whenRecorderAvailable;
         await AudioRecorder.recorderPool.release(recorder);
     }
 
@@ -60,7 +60,7 @@ export class AudioRecorder {
 
     public async startRecording(chatId : string): Promise<void> {
         try {
-            if (this.isRecording())
+            if (this.isRecording)
                 return;
 
             if (!this.isMicrophoneAvailable) {
@@ -69,7 +69,7 @@ export class AudioRecorder {
             }
 
             const { blazorRef, sessionId } = this;
-            const recorder = await this.recorderPromise;
+            const recorder = await this.whenRecorderAvailable;
             await recorder.start(sessionId, chatId);
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
@@ -77,18 +77,18 @@ export class AudioRecorder {
             console.error(e);
         }
         finally {
-            this.state = 'recording';
+            this.isRecording = true;
         }
     }
 
     public async stopRecording(): Promise<void> {
         try {
-            if (!this.isRecording())
+            if (!this.isRecording)
                 return;
             if (this.debug)
                 console.log(`${LogScope}.stopRecording: started`);
 
-            const recorder = await this.recorderPromise;
+            const recorder = await this.whenRecorderAvailable;
             await recorder.stop();
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -99,11 +99,7 @@ export class AudioRecorder {
             console.error(e);
         }
         finally {
-            this.state = 'inactive';
+            this.isRecording = false;
         }
-    }
-
-    private isRecording() {
-        return this.state === 'recording';
     }
 }

@@ -17,9 +17,9 @@ const queue = new Denque<ArrayBuffer>();
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
-let workletPort: MessagePort = null;
 
-let state: 'inactive' | 'active' = 'inactive';
+let workletPort: MessagePort = null;
+let isActive: boolean = false;
 let encoderPort: MessagePort = null;
 let resampler: SoxrResampler = null;
 let voiceDetector: VoiceActivityDetector = null;
@@ -33,8 +33,8 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
         case 'create':
             await onCreate(ev.ports[0], ev.ports[1]);
             break;
-        case 'init':
-            onInit();
+        case 'reset':
+            onReset();
             break;
         default:
             throw new Error(`Unsupported message type: ${type as string}`);
@@ -67,22 +67,22 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
     await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
     voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
     await voiceDetector.init();
-    state = 'active';
+    isActive = true;
 }
 
-function onInit(): void {
+function onReset(): void {
     // it is safe to skip init while it still not active
-    if (state !== 'active')
+    if (!isActive)
         return;
 
-    // resample silence to clean up internal state
+    // resample silence to clean up internal isActive
     const silence = new Uint8Array(768 * 4);
     resampler.processChunk(silence, resampleBuffer);
     voiceDetector.reset();
 }
 
 const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
-    if (state !== 'active')
+    if (!isActive)
         return;
 
     try {
@@ -98,7 +98,6 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
         }
         if (vadBuffer && vadBuffer.byteLength !== 0) {
             queue.push(buffer);
-
             await processQueue();
         }
     } catch (error) {
@@ -107,9 +106,8 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
 };
 
 async function processQueue(): Promise<void> {
-    if (isVadRunning || resampler == null) {
+    if (isVadRunning || resampler == null)
         return;
-    }
 
     try {
         isVadRunning = true;
