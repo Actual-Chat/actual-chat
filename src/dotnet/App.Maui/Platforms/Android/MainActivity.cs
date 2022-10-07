@@ -16,7 +16,7 @@ using AndroidX.Core.Content;
 namespace ActualChat.App.Maui;
 
 [Activity(
-    Theme = "@style/Maui.SplashTheme",
+    Theme = "@style/SplashTheme",
     MainLauncher = true,
     // When user tap on a notification which was created by FCM when app was in background mode,
     // It causes creating a new instance of MainActivity. Apparently this happens because Intent has NewTask flag.
@@ -73,6 +73,20 @@ public class MainActivity : MauiAppCompatActivity
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
+    }
+
+    const string tag = "actual.chat";
+
+    protected override void OnStart()
+    {
+        Log.Debug(tag, "OnStart");
+        base.OnStart();
+    }
+
+    protected override void OnStop()
+    {
+        Log.Debug(tag, "OnStop");
+        base.OnStop();
     }
 
     protected override void OnNewIntent(Intent? intent)
