@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { completeRpc, RpcResultMessage, rpc, RpcCallMessage, rpcCallMessage } from 'rpc';
+import { completeRpc, RpcResultMessage, rpc } from 'rpc';
 import { audioContextLazy } from 'audio-context-lazy';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
 import { VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
+import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './workers/opus-encoder-worker-message';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -53,7 +54,6 @@ export class OpusMediaRecorder {
 
     // TODO: clearer states
     public state: RecordingState = 'inactive';
-    public onerror: ((ev: MediaRecorderErrorEvent) => void) | null;
 
     constructor(debug: boolean) {
         this.debug = debug;
@@ -112,17 +112,22 @@ export class OpusMediaRecorder {
         this.state = 'recording';
 
         await rpc((rpcResult) => {
-            this.worker.postMessage(rpcCallMessage(rpcResult, "init", sessionId, chatId));
-
+            const initMessage: InitEncoderMessage = {
+                type: 'init',
+                sessionId: sessionId,
+                chatId: chatId,
+                rpcResultId: rpcResult.id,
+            };
+            // Initialize the worker
+            this.worker.postMessage(initMessage);
             // Initialize new stream at the VAD worker
             const vadInitMessage: VadMessage = { type: 'reset', };
             this.vadWorker.postMessage(vadInitMessage);
-        })
+        });
 
         // Start streaming
-        this.source.connect(this.encoderWorklet);
-        // It's OK to not wait for VAD worker init-new-stream message to be processed
         this.source.connect(this.vadWorklet);
+        this.source.connect(this.encoderWorklet);
     }
 
     public async stop(): Promise<void> {
@@ -145,7 +150,13 @@ export class OpusMediaRecorder {
             }
             this.stream = null;
             this.source = null;
-            this.worker.postMessage(rpcCallMessage(rpcResult, "end"));
+
+            const msg: EndMessage = {
+                type: 'end',
+                rpcResultId: rpcResult.id
+            };
+            // Tell encoder finalize the job and destroy itself.
+            this.worker.postMessage(msg);
         });
         this.state = 'inactive';
     }
@@ -156,9 +167,16 @@ export class OpusMediaRecorder {
         const audioHubUrl = new URL('/api/hub/audio', OpusMediaRecorder.origin).toString();
 
         await rpc((rpcResult) => {
+            const msg: CreateEncoderMessage = {
+                type: 'create',
+                audioHubUrl: audioHubUrl,
+                rpcResultId: rpcResult.id,
+                debug: this.debug,
+            };
+
             const crossWorkerChannel = new MessageChannel();
             this.worker.postMessage(
-                rpcCallMessage(rpcResult, "create", audioHubUrl, this.debug),
+                msg,
                 [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
 
             const msgVad: VadMessage = { type: 'create', };

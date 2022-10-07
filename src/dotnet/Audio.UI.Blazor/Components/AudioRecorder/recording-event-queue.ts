@@ -291,5 +291,3 @@ export class RecordingEventQueue implements IRecordingEventQueue {
     }
 
 }
-
-export default RecordingEventQueue;

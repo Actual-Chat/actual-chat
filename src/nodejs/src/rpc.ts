@@ -103,17 +103,16 @@ export async function handleRpcCall(
 ) : Promise<unknown> {
     if (debug)
         console.debug(`${LogScope}.handleRpcCall:`, rpcCallMessage)
-    return handleRpcCustom<unknown>(rpcCallMessage.rpcResultId, sender, async () => {
+    return handleRpc<unknown>(rpcCallMessage.rpcResultId, sender, async () => {
         // eslint-disable-next-line @typescript-eslint/ban-types
         const method = target[rpcCallMessage.method] as Function;
-        const result = await method.apply(sender, rpcCallMessage.arguments) as unknown;
-        return result;
+        return await method.apply(sender, rpcCallMessage.arguments) as unknown;
     }, errorHandler);
 }
 
-export async function handleRpcCustom<T>(
+export async function handleRpc<T>(
     rpcResultId: number | null,
-    sender: (message: RpcResultMessage) => Promise<void> | void,
+    resultCallback: (message: RpcResultMessage) => Promise<void> | void,
     handler: () => Promise<T>,
     errorHandler?: (error: unknown) => void
 ) : Promise<T> {
@@ -128,7 +127,7 @@ export async function handleRpcCustom<T>(
     const message = rpcResultMessage(rpcResultId, value, error);
     if (debug)
         console.debug(`${LogScope}.handleRpc[#${rpcResultId}] =`, message)
-    await sender(message);
+    await resultCallback(message);
     if (error !== undefined && errorHandler != null)
         errorHandler(error);
     return value;

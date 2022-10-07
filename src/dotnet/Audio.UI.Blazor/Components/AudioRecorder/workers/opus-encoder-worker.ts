@@ -10,11 +10,12 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { handleRpcCall, handleRpcCustom, RpcCallMessage, RpcResultMessage } from 'rpc';
+import { handleRpc } from 'rpc';
 
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
+import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './opus-encoder-worker-message';
 
 const LogScope: string = 'OpusEncoderWorker';
 
@@ -55,6 +56,7 @@ const CHUNK_SIZE = 960;
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
+
 let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
 let state: 'inactive' | 'readyToInit' | 'encoding' | 'ended' = 'inactive';
@@ -65,21 +67,30 @@ let encoder: Encoder;
 let lastInitArguments: { sessionId: string, chatId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
+let pinkNoiseChunk: Float32Array | null = null;
+let lowNoiseChunk: Float32Array | null = null;
 let debug: boolean = false;
 
-/** control flow from the main thread */
-worker.onmessage = async (ev: MessageEvent<RpcCallMessage>) => handleRpcCall(
-    ev.data as RpcCallMessage,
+worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMessage | EndMessage>) => handleRpc(
+    ev.data.rpcResultId,
     (message) => worker.postMessage(message),
-    {
-        create: (...args: unknown[]) => (<any>onCreate)(...args, ev.ports[0], ev.ports[1]),
-        init: (...args: unknown[]) => (<any>onInit)(...args),
-        end: (...args: unknown[]) => (<any>onEnd)(...args),
+    async () => {
+        const request = ev.data;
+        switch (request.type) {
+            case 'create':
+                return await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
+            case 'init':
+                return await onInit(request as InitEncoderMessage);
+            case 'end':
+                return onEnd();
+            default:
+                throw new Error(`Unsupported message type: ${request['type'] as string}`);
+        }
     },
     error => console.error(`${LogScope}.worker.onmessage error:`, error),
 );
 
-async function onCreate(audioHubUrl: string, debug: boolean, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     if (workletPort != null)
         throw new Error('workletPort has already been set.');
     if (vadPort != null)
@@ -99,10 +110,11 @@ async function onCreate(audioHubUrl: string, debug: boolean, workletMessagePort:
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
     vadPort.onmessage = onVadMessage;
+    debug = message.debug;
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(audioHubUrl)
+        .withUrl(message.audioHubUrl)
         .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)
@@ -111,25 +123,34 @@ async function onCreate(audioHubUrl: string, debug: boolean, workletMessagePort:
 
     // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
+    pinkNoiseChunk = initPinkNoiseBuffer(1.0);
+    lowNoiseChunk = initPinkNoiseBuffer(0.05);
 
     // Setting encoder module
     if (codecModule == null)
         await codecModuleReady;
     encoder = new codecModule.Encoder();
+    // warmup encoder
+    for (let i=0; i < 2; i++) {
+        encoder.encode(pinkNoiseChunk.buffer);
+    }
     console.log(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
     state = 'readyToInit';
 }
 
-async function onInit(sessionId: string, chatId: string): Promise<void> {
+async function onInit(message: InitEncoderMessage): Promise<void> {
+    const { sessionId, chatId } = message;
     lastInitArguments = { sessionId, chatId };
 
     if (debug)
         console.log(`${LogScope}.onInit`);
 
-    // recordingSubject = new signalR.Subject<Uint8Array>();
-    // await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+    // cleanup encoder state
+    for (let i=0; i < 2; i++) {
+        encoder.encode(lowNoiseChunk.buffer);
+    }
 
     state = 'encoding';
     vadState = 'silence';
@@ -242,4 +263,24 @@ function processQueue(fade: 'in' | 'none' = 'none'): void {
     finally {
         isEncoding = false;
     }
+}
+
+function initPinkNoiseBuffer(gain: number = 1): Float32Array {
+    const buffer = new Float32Array(CHUNK_SIZE);
+    let b0, b1, b2, b3, b4, b5, b6;
+    b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
+    for (let i = 0; i < buffer.length; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        buffer[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+        buffer[i] *= 0.11;
+        buffer[i] *= gain;
+        b6 = white * 0.115926;
+    }
+    return buffer;
 }
