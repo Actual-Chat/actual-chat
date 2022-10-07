@@ -196,11 +196,13 @@
 }
 .btn.btn-round:focus .btn-content,
 .btn.btn-round.transparent:focus .btn-content,
-.btn.btn-round:hover .btn-content,
-.btn.btn-round.transparent:hover .btn-content,
 .btn.btn-round:active .btn-content,
 .btn.btn-round.transparent:active .btn-content {
     @apply bg-round-focus;
+}
+.btn.btn-round:hover .btn-content,
+.btn.btn-round.transparent:hover .btn-content {
+    @apply hover:bg-round-focus;
 }
 .btn.btn-round.blackout:hover .btn-content,
 .btn.btn-round.blackout:focus .btn-content,
