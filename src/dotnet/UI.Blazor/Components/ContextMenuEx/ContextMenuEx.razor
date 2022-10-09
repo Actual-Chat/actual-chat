@@ -1,0 +1,31 @@
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
+@implements IAsyncDisposable
+
+<div class="ac-menu">
+    menu 123
+</div>
+
+@code {
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<ContextMenuEx> _blazorRef = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.ContextMenu.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                identifier,
+                _blazorRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+}
