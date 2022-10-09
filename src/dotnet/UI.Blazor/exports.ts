@@ -23,6 +23,7 @@ import './Components/SignIn/sign-in.css'
 import './Components/SideNav/side-nav.css'
 import './Components/TabPanel/tab.css'
 import './Components/Tooltip/tooltip.css'
+import './Components/ContextMenuEx/context-menu.css'
 
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/FocusUI/focus-ui'
@@ -43,6 +44,7 @@ export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/Tooltip/tooltip';
 export * from './Components/VirtualList/virtual-list';
+export * from './Components/ContextMenuEx/context-menu';
 
 export * from './Layouts/base-layout';
 
