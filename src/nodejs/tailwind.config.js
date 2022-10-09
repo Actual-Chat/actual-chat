@@ -1430,7 +1430,8 @@ module.exports = {
       80: '80',
       90: '90',
       'minus': '-1',
-      'max': '9999',
+      'menu': '9998',
+      'tooltip': '9999',
     },
   },
   variantOrder: [
