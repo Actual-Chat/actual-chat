@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework />
@@ -78,7 +78,7 @@
 
     <!-- Splash Screen -->
     <!--<MauiSplashScreen Include="Resources\appiconfg.svg" Color="#512BD4" BaseSize="128,128" />-->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" />
+    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" />
 
     <!-- Images -->
     <MauiImage Include="Resources\Images\*" />
