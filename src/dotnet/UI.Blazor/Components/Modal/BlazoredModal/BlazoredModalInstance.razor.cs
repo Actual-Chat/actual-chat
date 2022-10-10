@@ -1,5 +1,4 @@
-﻿using Blazored.Modal.Services;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Blazored.Modal;
 

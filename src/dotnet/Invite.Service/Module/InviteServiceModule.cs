@@ -3,7 +3,6 @@ using ActualChat.Hosting;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
 using ActualChat.Redis.Module;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 

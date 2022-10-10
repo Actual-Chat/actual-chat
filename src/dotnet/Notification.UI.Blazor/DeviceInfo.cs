@@ -1,5 +1,3 @@
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.Notification.UI.Blazor;
 
 public class DeviceInfo

@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using Blazored.Modal;
 using Blazored.Modal.Services;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;

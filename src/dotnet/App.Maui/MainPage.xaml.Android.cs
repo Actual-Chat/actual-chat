@@ -1,7 +1,3 @@
-using AndroidX.Activity;
-using Microsoft.AspNetCore.Components.WebView;
-using Microsoft.Maui.Platform;
-
 namespace ActualChat.App.Maui;
 
 public partial class MainPage

@@ -1,17 +1,5 @@
-using Android;
-using Android.App;
-using Android.Content.PM;
-using Android.OS;
-using AndroidX.Core.App;
-using Android.Gms.Auth.Api.SignIn;
-using Android.Util;
-using Android.Content;
 using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
-using ActualChat.Notification;
-using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.UI.Blazor.Services;
-using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 

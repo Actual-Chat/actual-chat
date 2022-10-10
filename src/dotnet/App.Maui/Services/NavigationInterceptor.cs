@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components;
-
 namespace ActualChat.App.Maui.Services;
 
 public class NavigationInterceptor

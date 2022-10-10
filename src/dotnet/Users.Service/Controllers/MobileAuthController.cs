@@ -9,9 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
-using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authentication.OAuth;
-using NetBox.Extensions;
 
 namespace ActualChat.Users.Controllers;
 
