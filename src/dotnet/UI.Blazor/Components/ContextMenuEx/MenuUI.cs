@@ -1,14 +1,19 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public class MenuUI
+public static class MenuUI
 {
-    public void ShowMenu()
-    {
+    private static volatile ConcurrentDictionary<string, Type> _menus = new (StringComparer.Ordinal);
 
+    public static void Register<TMenu>()
+    {
+        if (!_menus.TryAdd(typeof(TMenu).Name, typeof(TMenu)))
+            throw new ArgumentOutOfRangeException(nameof(TMenu), typeof(TMenu).Name, null);
     }
 
-    public void HideMenu()
+    public static Type Get(string menu)
     {
-
+        if (_menus.TryGetValue(menu, out var type))
+            return type;
+        throw new KeyNotFoundException(menu);
     }
 }
