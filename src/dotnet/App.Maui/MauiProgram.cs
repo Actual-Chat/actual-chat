@@ -105,7 +105,11 @@ public static class MauiProgram
         // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
 
         //return "https://local.actual.chat";
+#if ISDEVMAUI
         return "https://dev.actual.chat/";
+#else
+        return "https://actual.chat/";
+#endif
     }
 
     private static void ConfigureServices(IServiceCollection services)

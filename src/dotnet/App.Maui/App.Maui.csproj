@@ -19,7 +19,7 @@
     <ApplicationTitle>Actual Chat</ApplicationTitle>
 
     <!-- App Identifier -->
-    <ApplicationId>chat.actual.dev.app</ApplicationId>
+    <ApplicationId>chat.actual.app</ApplicationId>
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
 
     <!-- Versions -->
@@ -43,6 +43,21 @@
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
     <IsPublishable>true</IsPublishable>
+  </PropertyGroup>
+
+  <!-- Here we can alter either app is build to connect to dev or prod environment -->
+  <!-- Comment property group below to build an app connecting to prod -->
+  <PropertyGroup>
+    <IsDevMaui>true</IsDevMaui>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
+    <DefineConstants>ISDEVMAUI</DefineConstants>
+    <!-- Display name -->
+    <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
+    <!-- App Identifier -->
+    <ApplicationId>chat.actual.dev.app</ApplicationId>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IsDevMaui)' != 'true'">
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
@@ -123,7 +138,8 @@
   <ItemGroup>
     <Content Remove="appsettings.Development.json" />
     <Content Remove="appsettings.json" />
-    <Content Remove="Platforms\Android\Resources\google-services.json" />
+    <Content Remove="Platforms\Android\Resources\google-services.json.dev" />
+    <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
   </ItemGroup>
 
   <ItemGroup>
@@ -131,8 +147,11 @@
     <EmbeddedResource Include="appsettings.json" />
   </ItemGroup>
 
-  <ItemGroup>
-    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json" />
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true'">
+    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true'">
+    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
 
 </Project>

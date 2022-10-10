@@ -32,7 +32,12 @@ public class MainActivity : MauiAppCompatActivity
 {
     private const int RC_SIGN_IN_GOOGLE = 800;
     private const string TAG = nameof(MainActivity);
-    private const string GoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
+    // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
+#if ISDEVMAUI
+    private const string ServerGoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
+#else
+    private const string ServerGoogleClientId = "936885469539-89riml3ri3rsu35tdh9gtdvrtj4c08fs.apps.googleusercontent.com";
+#endif
 
     internal static readonly int NotificationID = 101;
 
@@ -61,8 +66,8 @@ public class MainActivity : MauiAppCompatActivity
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
             .RequestEmail()
-            .RequestIdToken(GoogleClientId)
-            .RequestServerAuthCode(GoogleClientId)
+            .RequestIdToken(ServerGoogleClientId)
+            .RequestServerAuthCode(ServerGoogleClientId)
             .Build();
 
         // Build a GoogleSignInClient with the options specified by gso.
@@ -135,6 +140,12 @@ public class MainActivity : MauiAppCompatActivity
             }
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
+            else {
+                new AlertDialog.Builder(this)
+                    .SetTitle("Google SignIn")
+                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")
+                    .Show();
+            }
         }
     }
 
