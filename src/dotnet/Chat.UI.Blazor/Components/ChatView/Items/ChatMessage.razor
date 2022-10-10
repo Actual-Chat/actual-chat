@@ -28,7 +28,7 @@
 }
 
     <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
-         data-menu="@(MenuFormatter.FormatTrigger<ChatMessageContextMenu>())">
+         data-menu="@(MenuTriggerFormatter.Format<ChatMessageContextMenu>())">
         <div class="flex-y w-full">
             <div class="chat-message group px-1.5 py-1 relative">
                 @if (showPicture || isReply) {
