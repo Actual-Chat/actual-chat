@@ -1,7 +1,6 @@
 <#@ template language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Collections.Generic" #>
-<#@ import namespace="System.Linq" #>
 <#
     List<string> entityTypeNames = new () {
         "TestString",

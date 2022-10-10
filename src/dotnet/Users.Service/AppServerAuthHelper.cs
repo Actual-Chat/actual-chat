@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Internal;
 
 namespace ActualChat.Users;
 

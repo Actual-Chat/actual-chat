@@ -1,13 +1,5 @@
-using System.ComponentModel.DataAnnotations;
-using ActualChat.Hosting;
-using Microsoft.AspNetCore.Components.WebView.Maui;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 

@@ -1,5 +1,3 @@
-using Stl.Internal;
-
 namespace ActualChat.App.Maui;
 
 public static class AppServicesAccessor

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
-using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
 using Stl.Testing.Output;

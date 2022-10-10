@@ -5,12 +5,7 @@
 <#@ Assembly Name="System.Xml.Linq.dll" #>
 <#@ import namespace="System" #>
 <#@ import namespace="System.IO" #>
-<#@ import namespace="System.Diagnostics" #>
-<#@ import namespace="System.Reflection" #>
-<#@ import namespace="System.Linq" #>
-<#@ import namespace="System.Collections" #>
 <#@ import namespace="System.Collections.Generic" #>
-<#@ import namespace="System.Xml.Linq" #>
 <#
     string XmlFile = "ebml.xml";
     string MatroskaXmlFile = "ebml_matroska.xml";

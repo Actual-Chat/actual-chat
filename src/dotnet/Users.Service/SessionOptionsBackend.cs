@@ -1,5 +1,4 @@
 using ActualChat.Users.Db;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 

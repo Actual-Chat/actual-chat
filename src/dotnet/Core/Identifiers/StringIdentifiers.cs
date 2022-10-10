@@ -1,7 +1,5 @@
-using System;
 using System.ComponentModel;
-using System.Globalization;
-using System.Runtime.Serialization;
+
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
 

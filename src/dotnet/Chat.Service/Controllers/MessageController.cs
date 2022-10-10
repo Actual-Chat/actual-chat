@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Primitives;
-using Npgsql.Replication.PgOutput.Messages;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.Controllers;

@@ -2,11 +2,8 @@ using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
-using ActualChat.Kvas;
-using ActualChat.Search;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
