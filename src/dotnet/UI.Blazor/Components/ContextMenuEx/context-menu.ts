@@ -17,6 +17,7 @@ interface Coords {
 }
 
 interface EventData {
+    trigger: string;
     element: HTMLElement;
     coords?: Coords;
 }
@@ -27,11 +28,13 @@ export class ContextMenu implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly menuRef: HTMLElement;
 
-    public static create(): ContextMenu {
-        return new ContextMenu();
+    public static create(blazorRef: DotNet.DotNetObject): ContextMenu {
+        return new ContextMenu(blazorRef);
     }
 
-    constructor() {
+    constructor(
+        private readonly blazorRef: DotNet.DotNetObject,
+    ) {
         try {
             this.menuRef = document.getElementsByClassName('ac-menu')[0] as HTMLElement;
             this.listenForEvents();
@@ -73,7 +76,9 @@ export class ContextMenu implements Disposable {
                     }
                     if (!(closestElement instanceof HTMLElement))
                         return undefined;
+                    const trigger = closestElement.dataset['menu'];
                     const eventData: EventData = {
+                        trigger,
                         element: closestElement,
                         coords: {
                             x: event.clientX,
@@ -99,8 +104,9 @@ export class ContextMenu implements Disposable {
     }
 
     private showMenu(eventData: EventData) {
+        this.blazorRef.invokeMethodAsync('ShowMenu', eventData.trigger);
         this.menuRef.style.display = 'block';
-        this.updatePosition(eventData);
+        // this.updatePosition(eventData);
     }
 
     private hideMenu() {

@@ -3,14 +3,31 @@
 @implements IAsyncDisposable
 
 <div class="ac-menu">
-    menu 123
+    @if (_menuType != null) {
+        <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+    }
 </div>
 
 @code {
+    private Type? _menuType;
+    private IDictionary<string,object>? _parameters;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<ContextMenuEx> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [JSInvokable]
+    public Task ShowMenu(string trigger) {
+        var (menu, argument) = MenuTrigger.Parse(trigger);
+        _menuType = MenuUI.Get(menu);
+        _parameters = argument.IsNullOrEmpty()
+            ? null
+            : new Dictionary<string, object> {
+                { "Argument", argument },
+            };
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
