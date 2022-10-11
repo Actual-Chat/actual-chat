@@ -119,7 +119,10 @@ export class MarkupEditor {
             this.contentDiv.innerHTML = html;
             this.fixEverything();
         })
-        this.moveCursorToTheEnd();
+        // Moving cursor to the end, brings focus to the editor.
+        // Will do it only when html is not empty or focus is requested explicitly.
+        if (html !== "" || mustFocus)
+            this.moveCursorToTheEnd();
         if (clearUndoStack)
             this.undoStack.clear();
     }

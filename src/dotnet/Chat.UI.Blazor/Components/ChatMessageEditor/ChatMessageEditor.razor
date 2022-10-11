@@ -51,7 +51,7 @@
                                 HtmlConverter="@HtmlConverter"
                                 Id="message-input"
                                 Class="message-input -flex-y"
-                                Autofocus="true"
+                                Autofocus="Autofocus"
                                 Placeholder="@("#" + Chat.Title)"
                                 Post="text => Post(text)"
                                 Cancel="@(() => OnCancel())"
@@ -84,6 +84,7 @@
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
+    private bool Autofocus => ScreenSize.IsDesktop();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -131,7 +132,7 @@
             return; // Not rendered yet
 
         ClearAttachments();
-        MarkupEditorRef.Clear();
+        MarkupEditorRef.Clear(Autofocus);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
