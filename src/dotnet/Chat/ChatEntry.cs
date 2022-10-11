@@ -19,8 +19,6 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>
     public Moment? EndsAt { get; init; }
     public Moment? ContentEndsAt { get; init; }
     public string Content { get; init; } = "";
-    public bool HasAttachments { get; init; }
-
     public Symbol StreamId { get; init; } = "";
     public long? AudioEntryId { get; init; }
     public long? VideoEntryId { get; init; }

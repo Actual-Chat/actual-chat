@@ -224,7 +224,9 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             .ToList();
         var allAttachments = entryIdsWithAttachments.Count > 0
             ? await dbContext.TextEntryAttachments
+ #pragma warning disable MA0002
                 .Where(x => entryIdsWithAttachments.Contains(x.ChatEntryId))
+ #pragma warning restore MA0002
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false)
             : (IReadOnlyCollection<DbTextEntryAttachment>)Array.Empty<DbTextEntryAttachment>();
@@ -424,7 +426,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // TODO: Use entity resolver or remove this check (?)
         var isNew = entry.Id == 0;
-        var dbEntry = await DbUpsertEntry(dbContext, entry, cancellationToken).ConfigureAwait(false);
+        var dbEntry = await DbUpsertEntry(dbContext, entry, command.HasAttachments, cancellationToken).ConfigureAwait(false);
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
         context.Operation().Items.Set(isNew);
@@ -524,6 +526,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     protected async Task<DbChatEntry> DbUpsertEntry(
         ChatDbContext dbContext,
         ChatEntry entry,
+        bool? hasAttachments,
         CancellationToken cancellationToken)
     {
         // AK: Suspicious - probably can lead to performance issues
@@ -533,13 +536,18 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entryType = entry.Type;
         DbChatEntry dbEntry;
         if (isNew) {
+            if (hasAttachments == null && entry.Type == ChatEntryType.Text)
+                throw StandardError.Constraint("HasAttachments must be specified when creating text entry");
             var id = await DbNextEntryId(dbContext, entry.ChatId, entryType, cancellationToken).ConfigureAwait(false);
             entry = entry with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = Clocks.SystemClock.Now,
             };
-            dbEntry = new (entry);
+            dbEntry = new (entry) {
+                HasAttachments = hasAttachments.GetValueOrDefault(),
+            };
+
             dbContext.Add(dbEntry);
         }
         else {

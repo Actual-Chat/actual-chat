@@ -51,7 +51,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
-        var hasAttachments = chatEntry.HasAttachments;
+        var hasAttachments = chatEntry.Attachments.Length > 0;
         var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
