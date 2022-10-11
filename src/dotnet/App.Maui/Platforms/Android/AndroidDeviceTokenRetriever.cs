@@ -1,3 +1,7 @@
+using ActualChat.Notification.UI.Blazor;
+using Android.Gms.Extensions;
+using Firebase.Messaging;
+
 namespace ActualChat.App.Maui;
 
 internal class AndroidDeviceTokenRetriever : IDeviceTokenRetriever

@@ -1,3 +1,6 @@
+using ObjCRuntime;
+using UIKit;
+
 namespace ActualChat.App.Maui;
 
 public static class Program

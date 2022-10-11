@@ -1,3 +1,5 @@
+using Foundation;
+
 namespace ActualChat.App.Maui;
 
 [Register("AppDelegate")]

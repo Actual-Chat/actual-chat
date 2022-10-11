@@ -1,3 +1,11 @@
+using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Notification;
+using Android.App;
+using Android.Content;
+using AndroidX.Core.App;
+using Firebase.Messaging;
+using NetBox.Extensions;
+
 namespace ActualChat.App.Maui;
 
 [Service(Exported = true)]

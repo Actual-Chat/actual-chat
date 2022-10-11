@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+
 namespace ActualChat.App.Maui;
 
 public class MauiBlazorApp : UI.Blazor.App.App

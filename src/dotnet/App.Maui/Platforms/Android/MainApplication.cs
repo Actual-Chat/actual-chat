@@ -1,3 +1,6 @@
+using Android.App;
+using Android.Runtime;
+
 namespace ActualChat.App.Maui;
 
 // https://stackoverflow.com/questions/67071052/how-to-fix-cleartext-http-traffic-to-x-not-permitted-in-xamarin-android

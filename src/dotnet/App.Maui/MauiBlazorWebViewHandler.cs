@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components.WebView.Maui;
+
 namespace ActualChat.App.Maui;
 
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler

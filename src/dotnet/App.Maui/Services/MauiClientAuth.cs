@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.App.Maui.Services;
 
 internal sealed class MauiClientAuth : IClientAuth

@@ -1,3 +1,6 @@
+using Android.Webkit;
+using Java.Interop;
+
 namespace ActualChat.App.Maui;
 
 public partial class MauiBlazorWebViewHandler
