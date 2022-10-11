@@ -28,6 +28,8 @@ export class ContextMenu implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly menuRef: HTMLElement;
 
+    private currentData: EventData | undefined = undefined;
+
     public static create(blazorRef: DotNet.DotNetObject): ContextMenu {
         return new ContextMenu(blazorRef);
     }
@@ -44,6 +46,11 @@ export class ContextMenu implements Disposable {
         }
     }
 
+    public showMenu() {
+
+        this.updatePosition(this.currentData);
+    }
+
     public dispose() {
         if (this.disposed$.isStopped)
             return;
@@ -56,7 +63,7 @@ export class ContextMenu implements Disposable {
     }
 
     private listenForEvents(): void {
-        let currentData: EventData | undefined = undefined;
+
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
@@ -67,10 +74,10 @@ export class ContextMenu implements Disposable {
                     if (!(event.target instanceof HTMLElement))
                         return undefined;
                     const closestElement = event.target.closest('[data-menu]');
-                    if (closestElement == currentData?.element)
+                    if (closestElement == this.currentData?.element)
                         return undefined;
-                    if (!closestElement && currentData?.element) {
-                        currentData = undefined;
+                    if (!closestElement && this.currentData?.element) {
+                        this.currentData = undefined;
                         this.hideMenu();
                         return undefined;
                     }
@@ -92,8 +99,8 @@ export class ContextMenu implements Disposable {
                 }),
             )
             .subscribe((eventData: EventData) => {
-                currentData = eventData;
-                this.showMenu(currentData);
+                this.currentData = eventData;
+                this.renderMenu(this.currentData);
             });
 
         escapist.escapeEvents()
@@ -103,10 +110,8 @@ export class ContextMenu implements Disposable {
             });
     }
 
-    private showMenu(eventData: EventData) {
-        this.blazorRef.invokeMethodAsync('ShowMenu', eventData.trigger);
-        this.menuRef.style.display = 'block';
-        // this.updatePosition(eventData);
+    private renderMenu(eventData: EventData) {
+        this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
     }
 
     private hideMenu() {
@@ -126,7 +131,11 @@ export class ContextMenu implements Disposable {
             // placement: placement,
             middleware: middleware,
         }).then(({ x, y }) => {
-
+            Object.assign(this.menuRef.style, {
+                left: `${eventData.coords.x}px`,
+                top: `${eventData.coords.y}px`,
+            });
+            this.menuRef.style.display = 'block';
         });
     }
 

@@ -4,29 +4,35 @@
 
 <div class="ac-menu">
     @if (_menuType != null) {
-        <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+        <CascadingValue Value="@this" IsFixed="true">
+            <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+        </CascadingValue>
     }
 </div>
 
 @code {
     private Type? _menuType;
-    private IDictionary<string,object>? _parameters;
+    private Dictionary<string,object>? _parameters;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<ContextMenuEx> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [JSInvokable]
-    public Task ShowMenu(string trigger) {
+    public Task RenderMenu(string trigger) {
         var (menu, argument) = MenuTrigger.Parse(trigger);
         _menuType = MenuUI.Get(menu);
         _parameters = argument.IsNullOrEmpty()
             ? null
-            : new Dictionary<string, object> {
+            : new() {
                 { "Argument", argument },
             };
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    public async Task ShowMenu() {
+        await _jsRef.InvokeVoidAsync("showMenu");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
