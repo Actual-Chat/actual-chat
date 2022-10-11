@@ -428,10 +428,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             AuthorId = author.Id,
             Content = text,
             Type = ChatEntryType.Text,
-            HasAttachments = command.Attachments.Length > 0,
             RepliedChatEntryId = command.RepliedChatEntryId!,
         };
-        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
+        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry, command.Attachments.Length > 0);
         var textEntry =  await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         for (var i = 0; i < command.Attachments.Length; i++) {

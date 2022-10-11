@@ -78,7 +78,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             EndsAt = EndsAt,
             ContentEndsAt = ContentEndsAt,
             Content = Content,
-            HasAttachments = HasAttachments,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
@@ -109,7 +108,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         Content = model.Content;
-        HasAttachments = model.HasAttachments;
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
