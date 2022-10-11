@@ -1,3 +1,7 @@
+.ac-menu-container {
+    @apply fixed w-screen h-screen overflow-hidden pointer-events-none;
+}
+
 .ac-menu {
     @apply hidden absolute bg-01 top-0 left-0 text-base text-02 px-[12px] py-[7px] rounded-lg whitespace-nowrap z-menu;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
