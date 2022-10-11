@@ -63,6 +63,40 @@ export class ContextMenu implements Disposable {
     }
 
     private listenForEvents(): void {
+        fromEvent(document, 'click')
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event: Event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    console.log(event);
+                    if (!(event.target instanceof HTMLElement))
+                        return undefined;
+                    const closestElement = event.target.closest('[data-menu]');
+                    if (closestElement == this.currentData?.element)
+                        return undefined;
+                    if (!closestElement && this.currentData?.element) {
+                        this.currentData = undefined;
+                        this.hideMenu();
+                        return undefined;
+                    }
+                    if (!(closestElement instanceof HTMLElement))
+                        return undefined;
+                    const trigger = closestElement.dataset['menu'];
+                    const eventData: EventData = {
+                        trigger,
+                        element: closestElement,
+                    };
+                    return eventData;
+                }),
+                switchMap((eventData: EventData | undefined) => {
+                    return eventData ? of(eventData) : empty();
+                }),
+            )
+            .subscribe((eventData: EventData) => {
+                this.currentData = eventData;
+                this.renderMenu(this.currentData);
+            });
 
         fromEvent(document, 'contextmenu')
             .pipe(
@@ -119,21 +153,28 @@ export class ContextMenu implements Disposable {
     }
 
     private updatePosition(eventData: EventData): void {
-        const placement = this.getPlacement(eventData.element);
-        const middleware: Middleware[] = [];
         if (eventData.coords) {
-            middleware.push(inline({ x: eventData.coords.x, y: eventData.coords.y }));
-        }
-        // middleware.push(offset(6));
-        // middleware.push(flip());
-        // middleware.push(shift({ padding: 5 }));
-        computePosition(eventData.element, this.menuRef, {
-            // placement: placement,
-            middleware: middleware,
-        }).then(({ x, y }) => {
             Object.assign(this.menuRef.style, {
                 left: `${eventData.coords.x}px`,
                 top: `${eventData.coords.y}px`,
+            });
+            this.menuRef.style.display = 'block';
+
+            return;
+        }
+
+        const placement = this.getPlacement(eventData.element);
+        const middleware: Middleware[] = [];
+        middleware.push(offset(6));
+        middleware.push(flip());
+        middleware.push(shift({ padding: 5 }));
+        computePosition(eventData.element, this.menuRef, {
+            placement: placement,
+            middleware: middleware,
+        }).then(({ x, y }) => {
+            Object.assign(this.menuRef.style, {
+                left: `${x}px`,
+                top: `${y}px`,
             });
             this.menuRef.style.display = 'block';
         });
