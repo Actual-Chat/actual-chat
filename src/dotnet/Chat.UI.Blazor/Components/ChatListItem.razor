@@ -30,19 +30,29 @@
                         <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     }
                     <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat">
-                        <div class="flex">
-                            <ButtonRound
-                                ContentClass="!bg-transparent"
-                                Class="chat-menu-btn blackout">
-                                <i class="icon-more-vertical text-2xl"></i>
-                            </ButtonRound>
-                            <div class="relative">
-                                <div class="placement">
-                                </div>
+                    @* <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat"> *@
+                    @*     <div class="flex"> *@
+                    @*         <ButtonRound *@
+                    @*             Class="chat-menu-btn blackout"> *@
+                    @*             <i class="icon-more-vertical text-2xl"></i> *@
+                    @*         </ButtonRound> *@
+                    @*         <div class="relative"> *@
+                    @*             <div class="placement"> *@
+                    @*             </div> *@
+                    @*         </div> *@
+                    @*     </div> *@
+                    @* </ContextMenuToggleTrigger> *@
+                    <div class="flex"
+                         data-menu="@(MenuTrigger.Format<ChatContextMenu>(Chat.Id))">
+                        <ButtonRound
+                            Class="chat-menu-btn blackout">
+                            <i class="icon-more-vertical text-2xl"></i>
+                        </ButtonRound>
+                        <div class="relative">
+                            <div class="placement">
                             </div>
                         </div>
-                    </ContextMenuToggleTrigger>
+                    </div>
                 }
             </div>
             <UnreadMessageCounter ChatId="@Chat.Id"/>
