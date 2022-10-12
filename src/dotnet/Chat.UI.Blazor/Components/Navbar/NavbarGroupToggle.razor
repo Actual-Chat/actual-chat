@@ -17,7 +17,7 @@
         Class="@btnClass"
         Tooltip="@Tooltip"
         ContentClass="navbar-navigation-button"
-        TooltipPosition="@TooltipPosition">
+        FloatingPosition="@FloatingPosition">
         @ChildContent
     </ButtonSquare>
     <div class="w-[5px]">
@@ -34,7 +34,7 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public TooltipPosition TooltipPosition { get; set; }
+    [Parameter] public FloatingPosition FloatingPosition { get; set; }
 
     protected override void OnInitialized() {
         NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;
