@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public enum TooltipPosition
+public enum FloatingPosition
 {
     None,
     Top,
