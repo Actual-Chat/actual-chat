@@ -22,6 +22,14 @@ interface EventData {
     coords?: Coords;
 }
 
+enum MenuTriggers
+{
+    None = 0,
+    LeftClick = 1,
+    RightClick = 2,
+    LongClick = 4,
+}
+
 const LogScope = 'ContextMenu';
 
 export class ContextMenu implements Disposable {
@@ -73,6 +81,11 @@ export class ContextMenu implements Disposable {
                     if (!(event.target instanceof HTMLElement))
                         return undefined;
                     const closestElement = event.target.closest('[data-menu]');
+                    if (closestElement instanceof HTMLElement) {
+                        const menuTrigger = closestElement.dataset['menuTrigger'];
+                        if (!menuTrigger || !(this.hasFlag(menuTrigger, MenuTriggers.LeftClick)))
+                            return undefined;
+                    }
                     if (closestElement == this.currentData?.element)
                         return undefined;
                     if (!closestElement && this.currentData?.element) {
@@ -108,6 +121,11 @@ export class ContextMenu implements Disposable {
                     if (!(event.target instanceof HTMLElement))
                         return undefined;
                     const closestElement = event.target.closest('[data-menu]');
+                    if (closestElement instanceof HTMLElement) {
+                        const menuTrigger = closestElement.dataset['menuTrigger'];
+                        if (!menuTrigger || !(this.hasFlag(menuTrigger, MenuTriggers.RightClick)))
+                            return undefined;
+                    }
                     if (closestElement == this.currentData?.element)
                         return undefined;
                     if (!closestElement && this.currentData?.element) {
@@ -185,5 +203,9 @@ export class ContextMenu implements Disposable {
         if (placement)
             return placement as Placement;
         return 'top';
+    }
+
+    private hasFlag(num: string, trigger: MenuTriggers): boolean {
+        return (Number(num) & trigger) === trigger;
     }
 }

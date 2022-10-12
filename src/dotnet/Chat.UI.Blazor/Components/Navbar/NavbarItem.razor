@@ -5,7 +5,8 @@
     var statusClass = IsOnline switch { true  => "status-online", false  => "status-offline", _ => "status-unknown" };
 }
 
-<div class="@Class @activeClass @statusClass navbar-item group">
+<div class="@Class @activeClass @statusClass navbar-item group"
+     @attributes="InputAttributes">
     <div class="navbar-item-status"></div>
     <div class="navbar-item-content">
         @if (Url.IsNullOrEmpty()) {
@@ -32,6 +33,7 @@
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> InputAttributes { get; set; } = new();
 
     private void Click() {
         FocusUI.Blur();
