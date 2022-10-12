@@ -40,7 +40,7 @@ public class ChatPlayers : WorkerBase
 
     public void ResumeRealtimePlayback()
         => BackgroundTask.Run(async () => {
-            var playbackState = await ChatUI.GetRealtimePlaybackState(default).ConfigureAwait(false);
+            var playbackState = await ChatUI.GetRealtimePlaybackState().ConfigureAwait(false);
             StartPlayback(playbackState);
         }, CancellationToken.None);
 

@@ -101,10 +101,10 @@ public class ChatUI
     }
 
     [ComputeMethod]
-    public virtual async Task<RealtimeChatPlaybackState?> GetRealtimePlaybackState(CancellationToken cancellationToken)
+    public virtual async Task<RealtimeChatPlaybackState?> GetRealtimePlaybackState()
     {
         var listeningChatIds = await ListeningChatIds().ConfigureAwait(false);
-        return !listeningChatIds.Any() ? null : new RealtimeChatPlaybackState(listeningChatIds);
+        return listeningChatIds.Count == 0 ? null : new RealtimeChatPlaybackState(listeningChatIds);
     }
 
     [ComputeMethod]

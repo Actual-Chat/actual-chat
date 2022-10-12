@@ -125,33 +125,35 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
-        var cExpectedPlaybackState = await Computed
-            .Capture(() => ChatUI.GetRealtimePlaybackState(cancellationToken))
+        using var dCancellationTask = cancellationToken.ToTask();
+        var cancellationTask = dCancellationTask.Resource;
+
+        var cExpectedPlaybackStateBase = await Computed
+            .Capture(() => ChatUI.GetRealtimePlaybackState())
             .ConfigureAwait(false);
         var playbackState = ChatPlayers.ChatPlaybackState;
 
-        while (true) {
-            if (!cExpectedPlaybackState.IsConsistent())
-                cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+        var changes = cExpectedPlaybackStateBase.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cExpectedPlaybackState in changes.ConfigureAwait(false)) {
             var expectedPlaybackState = cExpectedPlaybackState.ValueOrDefault;
-
-            var playbackStateValue = playbackState.Value;
-            if (playbackStateValue is null or RealtimeChatPlaybackState) {
-                if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
-                    if (playbackStateValue is not null && !UserInteractionUI.IsInteractionHappened.Value)
-                        await UserInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
-                    playbackState.Value = expectedPlaybackState;
+            while (cExpectedPlaybackState.IsConsistent()) {
+                var playbackStateValue = playbackState.Value;
+                if (playbackStateValue is null or RealtimeChatPlaybackState) {
+                    if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
+                        if (playbackStateValue is not null && !UserInteractionUI.IsInteractionHappened.Value)
+                            await UserInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
+                        playbackState.Value = expectedPlaybackState;
+                    }
                 }
-            }
 
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-            var completedTask = await Task.WhenAny(
-                playbackState.Computed.WhenInvalidated(cancellationToken),
-                cExpectedPlaybackState.WhenInvalidated(cancellationToken))
-                .ConfigureAwait(false);
-#pragma warning disable MA0004
-            await completedTask; // Will throw an exception on cancellation
-#pragma warning restore MA0004
+                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                await Task.WhenAny(
+                        playbackState.Computed.WhenInvalidated(CancellationToken.None),
+                        cExpectedPlaybackState.WhenInvalidated(CancellationToken.None),
+                        cancellationTask)
+                    .ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
         // ReSharper disable once FunctionNeverReturns
     }
