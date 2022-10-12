@@ -33,7 +33,8 @@
                 <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                 <div class="flex"
                      data-menu="@(MenuTrigger.Format<ChatContextMenu>(Chat.Id))"
-                     data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())">
+                     data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())"
+                     data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound
                         ContentClass="!bg-transparent"
                         Class="chat-menu-btn blackout">
