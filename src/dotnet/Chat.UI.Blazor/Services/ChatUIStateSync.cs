@@ -8,8 +8,15 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ChatUIStateSync : WorkerBase
 {
     // All properties are resolved in lazy fashion because otherwise we'll get a dependency cycle
-    private ChatUI? _chatUI;
+    private IChats? _chats;
     private ChatPlayers? _chatPlayers;
+    private IChatUserSettings? _chatUserSettings;
+    private AudioRecorder? _audioRecorder;
+    private AudioSettings? _audioSettings;
+    private KeepAwakeUI? _keepAwakeUI;
+    private ChatUI? _chatUI;
+    private UserInteractionUI? _userInteractionUI;
+
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
     private Symbol _lastRecorderChatId;
@@ -19,14 +26,14 @@ public class ChatUIStateSync : WorkerBase
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    private IChats Chats { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private IChatUserSettings ChatUserSettings { get; }
-    private AudioRecorder AudioRecorder { get; }
-    private AudioSettings AudioSettings { get; }
-    private KeepAwakeUI KeepAwakeUI { get; }
+    private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
+    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private UserInteractionUI UserInteractionUI { get; }
+    private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -34,13 +41,6 @@ public class ChatUIStateSync : WorkerBase
         Services = services;
         Log = Services.LogFor(GetType());
         Clocks = services.Clocks();
-
-        Chats = Services.GetRequiredService<IChats>();
-        ChatUserSettings = Services.GetRequiredService<IChatUserSettings>();
-        AudioRecorder = Services.GetRequiredService<AudioRecorder>();
-        AudioSettings = Services.GetRequiredService<AudioSettings>();
-        KeepAwakeUI = Services.GetRequiredService<KeepAwakeUI>();
-        UserInteractionUI = Services.GetRequiredService<UserInteractionUI>();
     }
 
     // Protected methods
