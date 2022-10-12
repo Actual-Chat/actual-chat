@@ -1,5 +1,3 @@
-import { Handler } from 'first-interaction';
-
 export class PromiseSource<T> implements Promise<T> {
     public resolve: (T) => void;
     public reject: (any) => void;

@@ -38,7 +38,7 @@ const ensureWorker = () => {
     }
 };
 
-const onDeviceAwake = (handler: () => void) => {
+const onDeviceAwake = (handler: () => void): () => void => {
     console.debug(`${LogScope}.onAwake`, 'adding onAwakeHandler', handler)
     _handlers.push(handler);
     ensureWorker();

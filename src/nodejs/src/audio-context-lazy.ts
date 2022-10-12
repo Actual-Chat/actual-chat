@@ -1,6 +1,7 @@
 import { addInteractionHandler } from 'first-interaction';
 import { Disposable } from 'disposable';
 import { delayAsync } from 'promises';
+import { onDeviceAwake } from 'on-device-awake';
 
 const LogScope = 'AudioContextLazy';
 
@@ -25,9 +26,12 @@ async function defaultFactory() : Promise<AudioContext> {
     return audioContext;
 }
 
-async function resume(audioContext: AudioContext) : Promise<AudioContext> {
+async function resume(audioContext: AudioContext, force = false) : Promise<AudioContext> {
     console.debug(`${LogScope}.resume start: audioContext.state =`, audioContext.state);
-    if (audioContext.state !== 'running' && audioContext.state !== 'closed') {
+    if (force || audioContext.state !== 'running' && audioContext.state !== 'closed') {
+        if (force) {
+            await audioContext.suspend();
+        }
         const resumeTask = audioContext.resume().then(() => true);
         const delayTask = delayAsync(250).then(() => false);
         const result = await Promise.race([resumeTask, delayTask]);
@@ -68,7 +72,8 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
 }
 
 export class AudioContextLazy implements Disposable {
-    private readonly audioContextTask: Promise<AudioContext> = null;
+    private audioContextTask: Promise<AudioContext> = null;
+    private audioContext: AudioContext | null = null;
     private firstInteractionDisposable?: Disposable = null;
 
     constructor(factory: (() => Promise<AudioContext>) = null) {
@@ -76,18 +81,65 @@ export class AudioContextLazy implements Disposable {
         this.audioContextTask = new Promise<AudioContext>(resolve => {
             this.firstInteractionDisposable = addInteractionHandler(LogScope, async () => {
                 const audioContext = await factory();
+                audioContext['lastTime'] = audioContext.currentTime;
+                onDeviceAwake(() => this.wakeUp());
+                this.audioContext = audioContext;
                 resolve(audioContext);
-                return true;
+                return false;
             });
-        })
+        });
     }
 
     public dispose(): void {
         this.firstInteractionDisposable?.dispose();
     }
 
-    public get(): Promise<AudioContext> {
+    public async get(): Promise<AudioContext> {
+        const audioContext = this.audioContext;
+        if (audioContext) {
+            let lastContextTime = audioContext['lastTime'] as number;
+            let currentContextTime = audioContext.currentTime;
+            if (lastContextTime == currentContextTime) {
+                if (audioContext.state === 'suspended')
+                    return resume(audioContext);
+
+                // probably the context is stuck after wakeup
+                await delayAsync(20);
+                lastContextTime = audioContext['lastTime'] as number;
+                currentContextTime = audioContext.currentTime;
+                if (lastContextTime == currentContextTime) {
+                    // can't do resume there - user gesture context has already been lost
+                    // return resume(audioContext, true);
+                    this.refreshAudioContextTask();
+                    return this.audioContextTask;
+                }
+            }
+            return audioContext;
+        }
         return this.audioContextTask;
+    }
+
+    private refreshAudioContextTask() {
+        const audioContext = this.audioContext;
+        this.firstInteractionDisposable?.dispose();
+        this.firstInteractionDisposable = null;
+        this.audioContext = null;
+        this.audioContextTask = new Promise<AudioContext>(resolve => {
+            this.firstInteractionDisposable = addInteractionHandler(LogScope, async () => {
+                await resume(audioContext, true);
+                audioContext['lastTime'] = audioContext.currentTime;
+                this.audioContext = audioContext;
+                resolve(audioContext);
+                return false;
+            });
+        });
+    }
+
+    private wakeUp(): void {
+        if (this.audioContext === null)
+            return;
+
+        this.refreshAudioContextTask();
     }
 }
 

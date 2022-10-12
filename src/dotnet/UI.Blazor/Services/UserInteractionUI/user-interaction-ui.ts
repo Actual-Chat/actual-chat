@@ -1,13 +1,12 @@
-import { addPostInteractionHandler } from 'first-interaction';
+import { audioContextLazy } from 'audio-context-lazy';
 
 const LogScope: string = 'UserInteractionUI';
 
 export class UserInteractionUI {
-    public static initialize(blazorRef: DotNet.DotNetObject): void {
+    public static async initialize(blazorRef: DotNet.DotNetObject): Promise<void> {
         console.debug(`${LogScope}: initialize`);
-        addPostInteractionHandler(() => {
-            console.debug(`${LogScope}: calling MarkInteractionHappened`);
-            blazorRef.invokeMethodAsync("MarkInteractionHappened");
-        });
+        await audioContextLazy.get();
+        console.debug(`${LogScope}: calling MarkInteractionHappened`);
+        await blazorRef.invokeMethodAsync("MarkInteractionHappened");
     }
 }

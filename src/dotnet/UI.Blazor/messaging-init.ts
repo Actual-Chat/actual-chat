@@ -111,9 +111,7 @@ addInteractionHandler(LogScope, async () => {
 
     // Notification permissions are granted on touchend
     // that follows scroll, but this isn't what considered
-    // "user interaction" w/ AudioContext, so we always
-    // return false here.
-    // Only AudioContextLazy returns true when it
-    // completes the initialization.
+    // "user interaction" w/ AudioContext
+    // we need to trigger this just once
     return false;
 });
