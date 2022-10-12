@@ -36,7 +36,6 @@ class Handler implements Disposable {
         }
         if (result === true && !_isInteractionHappened) {
             console.log(`${LogScope}.Handler.run: handler '${this.name}' reported that user interaction happened.`);
-
         }
     }
 
