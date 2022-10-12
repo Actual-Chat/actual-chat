@@ -1,5 +1,13 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil, map, switchMap, of, empty, merge } from 'rxjs';
+import {
+    fromEvent,
+    Subject,
+    takeUntil,
+    map,
+    switchMap,
+    of,
+    empty,
+} from 'rxjs';
 import {
     Placement,
     Middleware,
@@ -7,7 +15,6 @@ import {
     flip,
     shift,
     offset,
-    inline,
 } from '@floating-ui/dom';
 import escapist from '../Escapist/escapist';
 
@@ -54,8 +61,11 @@ export class ContextMenu implements Disposable {
         }
     }
 
-    public showMenu() {
+    private get isMenuVisible() : boolean {
+        return this.menuRef.style.display === 'block';
+    }
 
+    public showMenu() {
         this.updatePosition(this.currentData);
     }
 
@@ -74,85 +84,25 @@ export class ContextMenu implements Disposable {
         fromEvent(document, 'click')
             .pipe(
                 takeUntil(this.disposed$),
-                map((event: Event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    console.log(event);
-                    if (!(event.target instanceof HTMLElement))
-                        return undefined;
-                    const closestElement = event.target.closest('[data-menu]');
-                    if (closestElement instanceof HTMLElement) {
-                        const menuTrigger = closestElement.dataset['menuTrigger'];
-                        if (!menuTrigger || !(this.hasFlag(menuTrigger, MenuTriggers.LeftClick)))
-                            return undefined;
-                    }
-                    if (closestElement == this.currentData?.element)
-                        return undefined;
-                    if (!closestElement && this.currentData?.element) {
-                        this.currentData = undefined;
-                        this.hideMenu();
-                        return undefined;
-                    }
-                    if (!(closestElement instanceof HTMLElement))
-                        return undefined;
-                    const trigger = closestElement.dataset['menu'];
-                    const eventData: EventData = {
-                        trigger,
-                        element: closestElement,
-                    };
-                    return eventData;
-                }),
+                map((e) => this.mapEvent(e, MenuTriggers.LeftClick, false, true)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
                 }),
             )
             .subscribe((eventData: EventData) => {
-                this.currentData = eventData;
-                this.renderMenu(this.currentData);
+                this.renderMenu(eventData);
             });
 
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
-                map((event: PointerEvent) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    console.log(event);
-                    if (!(event.target instanceof HTMLElement))
-                        return undefined;
-                    const closestElement = event.target.closest('[data-menu]');
-                    if (closestElement instanceof HTMLElement) {
-                        const menuTrigger = closestElement.dataset['menuTrigger'];
-                        if (!menuTrigger || !(this.hasFlag(menuTrigger, MenuTriggers.RightClick)))
-                            return undefined;
-                    }
-                    if (closestElement == this.currentData?.element)
-                        return undefined;
-                    if (!closestElement && this.currentData?.element) {
-                        this.currentData = undefined;
-                        this.hideMenu();
-                        return undefined;
-                    }
-                    if (!(closestElement instanceof HTMLElement))
-                        return undefined;
-                    const trigger = closestElement.dataset['menu'];
-                    const eventData: EventData = {
-                        trigger,
-                        element: closestElement,
-                        coords: {
-                            x: event.clientX,
-                            y: event.clientY,
-                        },
-                    };
-                    return eventData;
-                }),
+                map((e) => this.mapEvent(e, MenuTriggers.RightClick, true, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
                 }),
             )
             .subscribe((eventData: EventData) => {
-                this.currentData = eventData;
-                this.renderMenu(this.currentData);
+                this.renderMenu(eventData);
             });
 
         escapist.escapeEvents()
@@ -162,12 +112,69 @@ export class ContextMenu implements Disposable {
             });
     }
 
-    private renderMenu(eventData: EventData) {
-        this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
+    private mapEvent(
+        event: Event | PointerEvent,
+        triggers: MenuTriggers,
+        byCoords: boolean,
+        closeOnSecondClick: boolean): EventData | undefined {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log(event);
+        if (!(event.target instanceof HTMLElement))
+            return undefined;
+        const closestElement = event.target.closest('[data-menu]');
+        if (closestElement instanceof HTMLElement) {
+            const menuTrigger = closestElement.dataset['menuTrigger'];
+            if (!menuTrigger || !(this.hasFlag(menuTrigger, triggers))) {
+                if (this.isMenuVisible)
+                    this.hideMenu();
+                return undefined;
+            }
+        }
+        if (closestElement == null) {
+            if (this.isMenuVisible)
+                this.hideMenu();
+            return undefined;
+        }
+        if (closestElement == this.currentData?.element) {
+            if (this.isMenuVisible && closeOnSecondClick) {
+                this.hideMenu();
+                return undefined;
+            } else if (!this.isMenuVisible) {
+                this.showMenu();
+                return undefined;
+            }
+        }
+        if (!closestElement && this.currentData?.element) {
+            this.hideMenu();
+            return undefined;
+        }
+        if (!(closestElement instanceof HTMLElement))
+            return undefined;
+        const trigger = closestElement.dataset['menu'];
+        const coords = byCoords && event instanceof PointerEvent
+                       ? { x: event.clientX, y: event.clientY }
+                       : undefined;
+        const eventData: EventData = {
+            trigger,
+            element: closestElement,
+            coords: coords,
+        };
+        return eventData;
+    };
+
+    private async renderMenu(eventData: EventData): Promise<void> {
+        if (this.currentData?.trigger === eventData.trigger) {
+            await this.hideMenu();
+        }
+        this.currentData = eventData;
+        await this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
     }
 
-    private hideMenu() {
+    private async hideMenu(): Promise<void> {
+        this.currentData = undefined;
         this.menuRef.style.display = '';
+        await this.blazorRef.invokeMethodAsync('HideMenu');
     }
 
     private updatePosition(eventData: EventData): void {
