@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat;
 
-public record TextEntryAttachment
+public sealed record TextEntryAttachment
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
@@ -13,30 +13,14 @@ public record TextEntryAttachment
 
     public string MetadataJson {
         get => _metadata.Data;
-        set => _metadata.Data = value;
+        init => _metadata.Data = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ImmutableOptionSet Metadata {
         get => _metadata.Value;
-        set => _metadata.Value = value;
+        init => _metadata.Value = value;
     }
-
-    private T GetMetadataValue<T>(T @default = default!, [CallerMemberName] string symbol = "")
-    {
-        var value = Metadata[symbol];
-        if (value == null)
-            return @default;
-
-        // TODO: remove this workaround when int is not deserialized as long
-        if (typeof(T) == typeof(int))
-            value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
-
-        return (T)value;
-    }
-
-    private void SetMetadataValue<T>(T value, [CallerMemberName] string symbol = "")
-        => Metadata = Metadata.Set(symbol, value);
 
     public long Length {
         get => GetMetadataValue(0L);
@@ -67,4 +51,22 @@ public record TextEntryAttachment
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
+
+    // Private methods
+
+    private T GetMetadataValue<T>(T @default = default!, [CallerMemberName] string symbol = "")
+    {
+        var value = Metadata[symbol];
+        if (value == null)
+            return @default;
+
+        // TODO: remove this workaround when int is not deserialized as long
+        if (typeof(T) == typeof(int))
+            value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+
+        return (T)value;
+    }
+
+    private void SetMetadataValue<T>(T value, [CallerMemberName] string symbol = "")
+        => _metadata.Value = Metadata.Set(symbol, value);
 }
