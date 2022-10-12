@@ -27,7 +27,9 @@
                 <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
                 <ContextMenuToggleTrigger MenuId="@ContactMenu.MenuId" Data="@Contact">
                     <div class="flex">
-                        <ButtonRound Class="chat-menu-btn blackout">
+                        <ButtonRound
+                            ContentClass="!bg-transparent"
+                            Class="chat-menu-btn blackout">
                             <i class="icon-more-vertical text-2xl"></i>
                         </ButtonRound>
                         <div class="absolute -right-6">
