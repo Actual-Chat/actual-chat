@@ -526,7 +526,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     protected async Task<DbChatEntry> DbUpsertEntry(
         ChatDbContext dbContext,
         ChatEntry entry,
-        bool? hasAttachments,
+        bool hasAttachments,
         CancellationToken cancellationToken)
     {
         // AK: Suspicious - probably can lead to performance issues
@@ -536,8 +536,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entryType = entry.Type;
         DbChatEntry dbEntry;
         if (isNew) {
-            if (hasAttachments == null && entry.Type == ChatEntryType.Text)
-                throw StandardError.Constraint("HasAttachments must be specified when creating text entry");
             var id = await DbNextEntryId(dbContext, entry.ChatId, entryType, cancellationToken).ConfigureAwait(false);
             entry = entry with {
                 Id = id,
@@ -545,7 +543,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 BeginsAt = Clocks.SystemClock.Now,
             };
             dbEntry = new (entry) {
-                HasAttachments = hasAttachments.GetValueOrDefault(),
+                HasAttachments = hasAttachments,
             };
 
             dbContext.Add(dbEntry);

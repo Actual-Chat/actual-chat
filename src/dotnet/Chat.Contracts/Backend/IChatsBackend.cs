@@ -89,7 +89,7 @@ public interface IChatsBackend : IComputeService
     [DataContract]
     public sealed record UpsertEntryCommand(
         [property: DataMember] ChatEntry Entry,
-        [property: DataMember] bool? HasAttachments = null
+        [property: DataMember] bool HasAttachments = false
     ) : ICommand<ChatEntry>, IBackendCommand;
 
     [DataContract]
