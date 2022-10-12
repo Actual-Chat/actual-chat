@@ -84,7 +84,7 @@ export class ContextMenu implements Disposable {
         fromEvent(document, 'click')
             .pipe(
                 takeUntil(this.disposed$),
-                map((e) => this.mapEvent(e, MenuTriggers.LeftClick, false, true)),
+                map((event) => this.mapEvent(event, MenuTriggers.LeftClick, false, true)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
                 }),
@@ -96,7 +96,7 @@ export class ContextMenu implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
-                map((e) => this.mapEvent(e, MenuTriggers.RightClick, true, false)),
+                map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
                 }),
@@ -107,8 +107,8 @@ export class ContextMenu implements Disposable {
 
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
-            .subscribe(async _ => {
-                this.hideMenu();
+            .subscribe(() => {
+               this.hideMenu();
             });
     }
 
@@ -119,13 +119,12 @@ export class ContextMenu implements Disposable {
         closeOnSecondClick: boolean): EventData | undefined {
         event.preventDefault();
         event.stopPropagation();
-        console.log(event);
         if (!(event.target instanceof HTMLElement))
             return undefined;
         const closestElement = event.target.closest('[data-menu]');
         if (closestElement instanceof HTMLElement) {
             const menuTrigger = closestElement.dataset['menuTrigger'];
-            if (!menuTrigger || !(this.hasFlag(menuTrigger, triggers))) {
+            if (!menuTrigger || !(this.hasTrigger(menuTrigger, triggers))) {
                 if (this.isMenuVisible)
                     this.hideMenu();
                 return undefined;
@@ -163,18 +162,18 @@ export class ContextMenu implements Disposable {
         return eventData;
     };
 
-    private async renderMenu(eventData: EventData): Promise<void> {
+    private renderMenu(eventData: EventData): void {
         if (this.currentData?.trigger === eventData.trigger) {
-            await this.hideMenu();
+            this.hideMenu();
         }
         this.currentData = eventData;
-        await this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
+        this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
     }
 
-    private async hideMenu(): Promise<void> {
+    private hideMenu(): void {
         this.currentData = undefined;
         this.menuRef.style.display = '';
-        await this.blazorRef.invokeMethodAsync('HideMenu');
+        this.blazorRef.invokeMethodAsync('HideMenu');
     }
 
     private updatePosition(eventData: EventData): void {
@@ -212,7 +211,7 @@ export class ContextMenu implements Disposable {
         return 'top';
     }
 
-    private hasFlag(num: string, trigger: MenuTriggers): boolean {
-        return (Number(num) & trigger) === trigger;
+    private hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
+        return (Number(trigger) & triggers) === triggers;
     }
 }
