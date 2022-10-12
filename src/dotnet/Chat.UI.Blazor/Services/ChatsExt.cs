@@ -6,6 +6,7 @@ public static class ChatsExt
         this IChats chats,
         Session session,
         string chatId,
-        ChatEntryType entryType)
-        => new(chats, session, chatId, entryType);
+        ChatEntryType entryType,
+        TileLayer<long>? idTileLayer = null)
+        => new(chats, session, chatId, entryType, idTileLayer);
 }

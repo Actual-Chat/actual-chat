@@ -76,8 +76,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         for (var entryId = idRange.End - 3; entryId < idRange.End; entryId++) {
             entry = await reader.Get(entryId, CancellationToken.None);
-            var beginsAt = entry!.BeginsAt;
-            var eCopy = await reader.FindByMinBeginsAt(beginsAt, idRange, CancellationToken.None);
+            var eCopy = await reader.FindByMinBeginsAt(entry!.BeginsAt, idRange, CancellationToken.None);
             eCopy!.Id.Should().Be(entryId);
             eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id, entry.Id + 1), CancellationToken.None);
             eCopy!.Id.Should().Be(entryId);
@@ -149,7 +148,8 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         await CreateChatEntries(chats, session, ChatId, 3);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
-        var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
+        var idTileRange = ChatEntryReader.IdTileStack.LastLayer;
+        var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text, idTileRange);
         var tiles = await reader.ReadTilesReverse(idRange, CancellationToken.None).ToListAsync();
 
         tiles.Should().HaveCount(2);
@@ -197,7 +197,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
             await services.Commander().Call(new IChats.RemoveTextEntryCommand(session, ChatId, chatEntry.Id), CancellationToken.None);
 
-        var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, CancellationToken.None);
+        var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
         entry?.Content.Should().Be(expected);
     }
 

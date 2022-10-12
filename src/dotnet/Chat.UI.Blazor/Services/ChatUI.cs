@@ -317,7 +317,7 @@ public class ChatUI
 
             var chatIdRange = await Chats.GetIdRange(Session, chat.ChatId, ChatEntryType.Audio, ct);
             var chatEntryReader = Chats.NewEntryReader(Session, chat.ChatId, ChatEntryType.Audio);
-            var lastEntry = await chatEntryReader.GetLast(chatIdRange, _ => true, ct);
+            var lastEntry = await chatEntryReader.GetLast(chatIdRange, ct);
             if (lastEntry == null)
                 return chat.Recency;
             return lastEntry.IsStreaming

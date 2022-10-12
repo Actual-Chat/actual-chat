@@ -2,39 +2,41 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryReader
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    public static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     public IChats Chats { get; }
-    public Session Session { get; init; } = Session.Null;
+    public Session Session { get; init; }
     public Symbol ChatId { get; init; }
     public ChatEntryType EntryType { get; init; }
+    public TileLayer<long> IdTileLayer { get; init; }
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
+    public int MaxEntryCountDisorder { get; init; } = 1000;
 
-    public ChatEntryReader(IChats chats, Session session, Symbol chatId, ChatEntryType entryType)
+    public ChatEntryReader(IChats chats, Session session, Symbol chatId, ChatEntryType entryType, TileLayer<long>? idTileLayer = null)
     {
         Chats = chats;
         Session = session;
         ChatId = chatId;
         EntryType = entryType;
+        IdTileLayer = idTileLayer ?? IdTileStack.FirstLayer;
     }
 
     public async Task<ChatEntry?> Get(long id, CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.FirstLayer.GetTile(id);
+        var idTile = IdTileLayer.GetTile(id);
         var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
         return tile.Entries.SingleOrDefault(e => e.Id == id);
     }
 
     public async Task<ChatEntry?> GetFirst(Range<long> idRange, CancellationToken cancellationToken)
     {
-        var idTilesLayer0 = IdTileStack.FirstLayer;
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
-            var idTile = idTilesLayer0.GetTile(minId);
+            var idTile = IdTileLayer.GetTile(minId);
             var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
             foreach (var entry in tile.Entries) {
                 if (entry.Id >= maxIdExclusive)
-                    return null;
+                    break;
                 if (entry.Id >= minId)
                     return entry;
             }
@@ -43,37 +45,64 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async Task<ChatEntry?> GetFirst(Range<long> idRange, Func<ChatEntry, bool> filter, CancellationToken cancellationToken)
+    public async Task<ChatEntry?> GetFirst(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
     {
-        var idTilesLayer0 = IdTileStack.FirstLayer;
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
-            var idTile = idTilesLayer0.GetTile(minId);
+            var idTile = IdTileLayer.GetTile(minId);
             var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
             foreach (var entry in tile.Entries) {
                 if (entry.Id >= maxIdExclusive)
-                    return null;
-                if (entry.Id >= minId && filter(entry))
-                    return entry;
+                    break;
+                if (entry.Id >= minId) {
+                    if (filter(entry))
+                        return entry;
+                    if (--filterLimit < 0)
+                        break;
+                }
             }
             minId = idTile.End;
         }
         return null;
     }
 
-    public async Task<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, CancellationToken cancellationToken)
+    public async Task<ChatEntry?> GetLast(Range<long> idRange, CancellationToken cancellationToken)
     {
-        var (minId, maxId) = idRange;
-
-        await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
-            foreach (var entry in tile.Entries.Reverse()) {
+        var (minId, maxIdExclusive) = idRange;
+        while (minId < maxIdExclusive) {
+            var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
+            var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
+                var entry = tile.Entries[i];
                 if (entry.Id < minId)
-                    return null;
-                if (entry.Id <= maxId && filter(entry))
+                    break;
+                if (entry.Id < maxIdExclusive)
                     return entry;
             }
+            maxIdExclusive = idTile.Start;
         }
+        return null;
+    }
 
+    public async Task<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+    {
+        var (minId, maxIdExclusive) = idRange;
+        while (minId < maxIdExclusive) {
+            var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
+            var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
+                var entry = tile.Entries[i];
+                if (entry.Id < minId)
+                    break;
+                if (entry.Id < maxIdExclusive) {
+                    if (filter(entry))
+                        return entry;
+                    if (--filterLimit < 0)
+                        break;
+                }
+            }
+            maxIdExclusive = idTile.Start;
+        }
         return null;
     }
 
@@ -82,7 +111,7 @@ public sealed class ChatEntryReader
         Func<ChatEntry?, bool> predicate,
         CancellationToken cancellationToken)
     {
-        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(id);
+        var idTile = IdTileLayer.GetTile(id);
         var cTile = await Computed
             .Capture(() => Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken))
             .ConfigureAwait(false);
@@ -115,7 +144,8 @@ public sealed class ChatEntryReader
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var tile in ReadTilesReverse(idRange, cancellationToken).ConfigureAwait(false)) {
-            foreach (var entry in tile.Entries.Reverse()) {
+            for (var i = tile.Entries.Length - 1; i >= 0; i--) {
+                var entry = tile.Entries[i];
                 if (entry.Id >= idRange.End)
                     continue;
                 if (entry.Id < idRange.Start)
@@ -133,16 +163,14 @@ public sealed class ChatEntryReader
         if (idRange.Size() <= 0)
             yield break;
 
-        var idTilesLayer0 = IdTileStack.FirstLayer;
-        for (var idTile = idTilesLayer0.GetTile(idRange.Start);
+        for (var idTile = IdTileLayer.GetTile(idRange.Start);
              idTile.Start < idRange.End;
              idTile = idTile.Next())
         {
             var tile = await GetTile(idTile.Range, cancellationToken).ConfigureAwait(false);
             // tile can be empty, i.e. when all entries are removed
-            if (tile.IsEmpty)
-                continue;
-            yield return tile;
+            if (!tile.IsEmpty)
+                yield return tile;
         }
     }
 
@@ -154,16 +182,14 @@ public sealed class ChatEntryReader
         if (idRange.Size() <= 0)
             yield break;
 
-        var idTilesLastLayer = IdTileStack.LastLayer;
-        for (var idTile = idTilesLastLayer.GetTile(idRange.End);
+        for (var idTile = IdTileLayer.GetTile(idRange.End - 1);
              idTile.End > idRange.Start;
              idTile = idTile.Prev())
         {
             var tile = await GetTile(idTile.Range, cancellationToken).ConfigureAwait(false);
             // tile can be empty, i.e. when all entries are removed
-            if (tile.IsEmpty)
-                continue;
-            yield return tile;
+            if (!tile.IsEmpty)
+                yield return tile;
         }
     }
 
@@ -186,9 +212,7 @@ public sealed class ChatEntryReader
     // This method never returns an empty tile
     public async Task<ChatTile> ObserveTileWithSuccessiveEntries(long minEntryId, CancellationToken cancellationToken)
     {
-        var idTilesLayer0 = IdTileStack.FirstLayer;
-        var idTile = idTilesLayer0.GetTile(minEntryId);
-
+        var idTile = IdTileLayer.GetTile(minEntryId);
         var cTileTask = CaptureTile(idTile.Range, cancellationToken);
         var cIdRangeTask = CaptureIdRange(cancellationToken);
         await Task.WhenAll(cTileTask.AsTask(), cIdRangeTask.AsTask()).ConfigureAwait(false);
@@ -196,6 +220,7 @@ public sealed class ChatEntryReader
         var cTile = await cTileTask;
         var cIdRange = await cIdRangeTask;
 #pragma warning restore MA0004
+
         while (true) {
             if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
                 (cTile, cIdRange) = await ComputedExt.Update(cTile, cIdRange, cancellationToken).ConfigureAwait(false);
@@ -213,7 +238,7 @@ public sealed class ChatEntryReader
             if (idTile.Range.End <= idRange.Start) {
                 // The tile lies before the very first tile
                 // -> move to the very first tile
-                idTile = idTilesLayer0.GetTile(idTile.Range.Start);
+                idTile = IdTileLayer.GetTile(idTile.Range.Start);
                 cTile = await CaptureTile(idTile.Range, cancellationToken).ConfigureAwait(false);
                 continue;
             }
@@ -247,7 +272,7 @@ public sealed class ChatEntryReader
             .ConfigureAwait(false);
         if (entry == null)
             return null;
-        return await GetFirst((entry.Id, idRange.End), e => e.BeginsAt >= minBeginsAt, cancellationToken)
+        return await GetFirst((entry.Id, idRange.End), e => e.BeginsAt >= minBeginsAt, MaxEntryCountDisorder, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -285,7 +310,7 @@ public sealed class ChatEntryReader
             else
                 minId = midId + 1;
         }
-        entry = await GetFirst((minId, idRange.End), e => e.BeginsAt >= beginsAt, cancellationToken)
+        entry = await GetFirst((minId, idRange.End), e => e.BeginsAt >= beginsAt, MaxEntryCountDisorder, cancellationToken)
             .ConfigureAwait(false);
         return entry;
     }

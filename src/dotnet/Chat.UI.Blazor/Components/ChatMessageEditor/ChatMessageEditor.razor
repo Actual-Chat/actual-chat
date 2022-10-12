@@ -239,7 +239,13 @@
             return;
 
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, CancellationToken.None);
-        var lastEditableEntry = await Chats.NewEntryReader(Session, chatId, ChatEntryType.Text).GetLast(chatIdRange, x => x.AuthorId == author.Id && x.StreamId.IsEmpty, CancellationToken.None);
+        var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
+        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryType.Text, idTileLayer);
+        var lastEditableEntry = await chatEntryReader.GetLast(
+            chatIdRange,
+            x => x.AuthorId == author.Id && !x.AudioEntryId.HasValue && x.StreamId.IsEmpty,
+            1000, // Max. 1000 entries to scan upwards
+            CancellationToken.None);
         if (lastEditableEntry == null)
             return;
 
