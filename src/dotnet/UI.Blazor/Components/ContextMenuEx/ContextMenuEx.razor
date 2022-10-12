@@ -5,7 +5,7 @@
 <div class="ac-menu">
     @if (_menuType != null) {
         <CascadingValue Value="@this" IsFixed="true">
-            <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+            <DynamicComponent Type="@_menuType" Parameters="@_parameters" />
         </CascadingValue>
     }
 </div>
@@ -27,6 +27,14 @@
             : new() {
                 { "Argument", argument },
             };
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task HideMenu() {
+        _menuType = null;
+        _parameters = null;
         StateHasChanged();
         return Task.CompletedTask;
     }
