@@ -50,7 +50,9 @@ export class AudioRecorder {
 
     public async canRecord(): Promise<boolean> {
         try {
-            await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+            const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+            stream.getAudioTracks().forEach(t => t.stop());
+            stream.getVideoTracks().forEach(t => t.stop());
             return true;
         } catch (ex: any) {
             console.error(`${LogScope}.isMicrophoneAvailable: microphone is unavailable.`, ex);

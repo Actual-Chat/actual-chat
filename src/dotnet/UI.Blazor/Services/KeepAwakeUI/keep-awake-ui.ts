@@ -20,5 +20,5 @@ addInteractionHandler('KeepAwakeUI', async () => {
     console.debug(`${LogScope}.onFirstInteraction: warming up noSleep`);
     await noSleep.enable();
     noSleep.disable();
-    return false;
+    return true;
 });
