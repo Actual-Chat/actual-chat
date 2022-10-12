@@ -7,8 +7,9 @@
     var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
 }
 
-<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@Chat" CssClass="flex-x items-center gap-x-2">
-    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsSelected="@m.IsSelected">
+<NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@m.IsActive"
+            data-menu="@(MenuTrigger.Format<ChatContextMenu>(Chat.Id))"
+            data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).ToTriggersString())">
         <ChildContent>
             <div class="flex-x items-center gap-x-2">
                 <ChatIcon Chat="Chat"/>
@@ -30,20 +31,9 @@
                         <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                     }
                     <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    @* <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat"> *@
-                    @*     <div class="flex"> *@
-                    @*         <ButtonRound *@
-                    @*             Class="chat-menu-btn blackout"> *@
-                    @*             <i class="icon-more-vertical text-2xl"></i> *@
-                    @*         </ButtonRound> *@
-                    @*         <div class="relative"> *@
-                    @*             <div class="placement"> *@
-                    @*             </div> *@
-                    @*         </div> *@
-                    @*     </div> *@
-                    @* </ContextMenuToggleTrigger> *@
                     <div class="flex"
-                         data-menu="@(MenuTrigger.Format<ChatContextMenu>(Chat.Id))">
+                         data-menu="@(MenuTrigger.Format<ChatContextMenu>(Chat.Id))"
+                         data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())">
                         <ButtonRound
                             Class="chat-menu-btn blackout">
                             <i class="icon-more-vertical text-2xl"></i>
@@ -58,7 +48,6 @@
             <UnreadMessageCounter ChatId="@Chat.Id"/>
         </Ending>
     </NavbarItem>
-</ContextMenuTrigger>
 
 @code {
     private Model? _lastRenderedModel;
