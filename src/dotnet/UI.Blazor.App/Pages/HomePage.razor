@@ -19,11 +19,11 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private RecentChats RecentChats { get; init; } = null!;
+    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    protected override Task OnInitializedAsync() => ChatUI.ActiveChatId.WhenRead;
+    protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = new Model(null, Symbol.Empty) };
@@ -31,7 +31,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        var chat = await RecentChats.GetActiveChatOrDefault(cancellationToken).ConfigureAwait(false);
+        var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
         return new(account, chat?.Id ?? Symbol.Empty);
     }
 

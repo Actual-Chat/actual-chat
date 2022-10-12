@@ -1,16 +1,16 @@
-namespace ActualChat.Kvas;
+namespace ActualChat;
 
-public static class KvasSerializers
+public static class TextSerializers
 {
     public static ITextSerializer ValueTupleSerializer { get; set; } =
         new SystemJsonSerializer(new JsonSerializerOptions {
             IncludeFields = true,
-            PropertyNamingPolicy = SystemJsonSerializer.DefaultOptions.PropertyNamingPolicy
+            PropertyNamingPolicy = SystemJsonSerializer.DefaultOptions.PropertyNamingPolicy,
         });
 }
 
-public static class KvasSerializers<T>
+public static class TextSerializers<T>
 {
     public static ITextSerializer<T> ValueTupleSerializer { get; set; } =
-        KvasSerializers.ValueTupleSerializer.ToTyped<T>();
+        TextSerializers.ValueTupleSerializer.ToTyped<T>();
 }

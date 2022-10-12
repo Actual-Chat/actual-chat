@@ -59,8 +59,8 @@
         var contacts = await ListContacts(_activeTabId, cancellationToken);
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
-            var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken);
-            var activeContactId = GetActiveContactId(activeChatId);
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var activeContactId = GetContactId(selectedChatId);
             contacts = (
                 from contact in contacts
                 let rank = searchPhrase.GetMatchRank(contact.Name)
@@ -70,12 +70,12 @@
                 ).ToList();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
+        var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.ContainsKey(c.GetFullPeerChatId()))
+            .Where(c => pinnedChatIds.Contains(c.GetFullPeerChatId()))
             .ToList();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.ContainsKey(c.GetFullPeerChatId()))
+            .Where(c => !pinnedChatIds.Contains(c.GetFullPeerChatId()))
             .ToList();
 
         return new Model {
@@ -83,8 +83,8 @@
             UnpinnedContacts = unpinnedContacts,
         };
 
-        Symbol GetActiveContactId(string activeChatId) {
-            var targetUserId = ParsedChatId.TryParse(activeChatId, out var parsedChatId)
+        Symbol GetContactId(string chatId) {
+            var targetUserId = ParsedChatId.TryParse(chatId, out var parsedChatId)
                 ? parsedChatId.GetPeerChatTargetUserId(account.User.Id)
                 : Symbol.Empty;
             return contacts.All(c => c.TargetUserId != targetUserId)

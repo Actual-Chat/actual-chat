@@ -12,7 +12,7 @@
     <NavbarItem
         Url="@($"/chat/{m.ShortChatId.UrlEncode()}")"
         IsOnline="@m.IsOnline"
-        IsActive="@m.IsActive">
+        IsSelected="@m.IsSelected">
         <ChildContent>
             <div class="flex-x items-center gap-x-2">
                 <UserAuthorCircle UserId="@Contact.TargetUserId" ShowPresence="true"/>
@@ -53,8 +53,8 @@
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
-        var (isActive, isListening, isRecording) =
-            await ChatUI.IsActive(fullChatId)
+        var (isSelected, isListening, isRecording) =
+            await ChatUI.IsSelected(fullChatId)
                 .Join(
                     ChatUI.IsListening(fullChatId),
                     ChatUI.IsRecording(fullChatId)
@@ -63,7 +63,7 @@
         return new(
             fullChatId,
             shortChatId,
-            isActive,
+            isSelected,
             isOnline,
             isListening,
             isRecording);
@@ -72,7 +72,7 @@
     public record Model(
         string FullChatId,
         string ShortChatId,
-        bool IsActive,
+        bool IsSelected,
         bool IsOnline,
         bool IsListening,
         bool IsRecording);

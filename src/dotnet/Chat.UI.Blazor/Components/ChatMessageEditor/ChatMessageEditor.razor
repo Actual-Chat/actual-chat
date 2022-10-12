@@ -233,7 +233,7 @@
     // Event handlers
 
     private async Task OnOpenPrevious() {
-        var chatId = ChatUI.ActiveChatId.Value;
+        var chatId = ChatUI.SelectedChatId.Value;
         var author = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
         if (author == null)
             return;

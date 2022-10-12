@@ -39,7 +39,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var chatId);
         if (!chatId.IsNullOrEmpty() && ScopedServiceLocator.IsInitialized) {
             var chatUI = ScopedServiceLocator.Services.GetRequiredService<ChatUI>();
-            if (!chatId.IsNullOrEmpty() && OrdinalEquals(chatUI.ActiveChatId.Value, chatId))
+            if (!chatId.IsNullOrEmpty() && OrdinalEquals(chatUI.SelectedChatId.Value, chatId))
                 return; // Do nothing if notification came for the active chat.
         }
 

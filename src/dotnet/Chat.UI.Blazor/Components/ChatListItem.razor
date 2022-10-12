@@ -8,7 +8,7 @@
 }
 
 <ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@Chat" CssClass="flex-x items-center gap-x-2">
-    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@m.IsActive">
+    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsSelected="@m.IsSelected">
         <ChildContent>
             <div class="flex-x items-center gap-x-2">
                 <ChatIcon Chat="Chat"/>
@@ -77,21 +77,21 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var (rules, isListening, isRecording, isActive) =
+        var (rules, isListening, isRecording, isSelected) =
             await Chats.GetRules(Session, Chat.Id, cancellationToken)
                 .Join(
                     ChatUI.IsListening(Chat.Id),
                     ChatUI.IsRecording(Chat.Id),
-                    ChatUI.IsActive(Chat.Id)
+                    ChatUI.IsSelected(Chat.Id)
                 ).ConfigureAwait(false);
-        return new(rules.CanWrite(), isListening, isRecording, isActive);
+        return new(rules.CanWrite(), isListening, isRecording, isSelected);
     }
 
     public record Model(
         bool CanRecord,
         bool IsListening,
         bool IsRecording,
-        bool IsActive) {
+        bool IsSelected) {
         public static readonly Model None = new(false, false, false, false);
     }
 }

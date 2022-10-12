@@ -39,7 +39,7 @@
         if (await ChatUI.IsRecording(Chat.Id))
             return Model.None;
 
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken);
+        var recordingChatId = await ChatUI.RecordingChatId();
         if (recordingChatId.IsEmpty)
             return Model.None;
 
@@ -65,7 +65,7 @@
     }
 
     private void OnStop()
-        => _ = ChatUI.SetRecordingState(Symbol.Empty);
+        => _ = ChatUI.SetRecordingChatId(Symbol.Empty);
 
     public sealed record Model {
         public static Model None { get; } = new();

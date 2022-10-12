@@ -8,51 +8,120 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ChatUIStateSync : WorkerBase
 {
     // All properties are resolved in lazy fashion because otherwise we'll get a dependency cycle
-    private ILogger? _log;
-    private ChatPlayers? _chatPlayers;
-    private IChats? _chats;
-    private IChatUserSettings? _chatUserSettings;
-    private AudioRecorder? _audioRecorder;
-    private AudioSettings? _chatSettings;
-    private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
-    private UserInteractionUI? _userInteractionUI;
-
+    private ChatPlayers? _chatPlayers;
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
     private Symbol _lastRecorderChatId;
 
-    private IServiceProvider Services { get; }
     private Session Session { get; }
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private IServiceProvider Services { get; }
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
+
+    private IChats Chats { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
-    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    private AudioSettings ChatSettings => _chatSettings ??= Services.GetRequiredService<AudioSettings>();
-    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
+    private IChatUserSettings ChatUserSettings { get; }
+    private AudioRecorder AudioRecorder { get; }
+    private AudioSettings AudioSettings { get; }
+    private KeepAwakeUI KeepAwakeUI { get; }
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
+    private UserInteractionUI UserInteractionUI { get; }
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
         Session = session;
         Services = services;
+        Log = Services.LogFor(GetType());
+        Clocks = services.Clocks();
+
+        Chats = Services.GetRequiredService<IChats>();
+        ChatUserSettings = Services.GetRequiredService<IChatUserSettings>();
+        AudioRecorder = Services.GetRequiredService<AudioRecorder>();
+        AudioSettings = Services.GetRequiredService<AudioSettings>();
+        KeepAwakeUI = Services.GetRequiredService<KeepAwakeUI>();
+        UserInteractionUI = Services.GetRequiredService<UserInteractionUI>();
     }
 
     // Protected methods
 
     protected override Task RunInternal(CancellationToken cancellationToken)
         => Task.WhenAll(
+            InvalidateSelectedChatDependencies(cancellationToken),
+            InvalidatePinnedChatsDependencies(cancellationToken),
+            InvalidateActiveChatsDependencies(cancellationToken),
             SyncPlaybackState(cancellationToken),
             SyncRecordingState(cancellationToken),
             SyncKeepAwakeState(cancellationToken),
             StopRecordingWhenInactive(cancellationToken),
             ResetHighlightedChatEntry(cancellationToken),
-            SyncIsActive(cancellationToken),
-            SyncIsRecording(cancellationToken),
-            SyncIsListening(cancellationToken),
-            SyncIsPinned(cancellationToken));
+            Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
+
+    private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
+    {
+        var oldSelectedChatId = ChatUI.SelectedChatId.Value;
+        var changes = ChatUI.SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cSelectedChatId in changes.ConfigureAwait(false)) {
+            var newSelectedChatId = cSelectedChatId.Value;
+
+            using (Computed.Invalidate()) {
+                _ = ChatUI.IsSelected(oldSelectedChatId);
+                _ = ChatUI.IsSelected(newSelectedChatId);
+            }
+
+            oldSelectedChatId = newSelectedChatId;
+        }
+    }
+
+    private async Task InvalidatePinnedChatsDependencies(CancellationToken cancellationToken)
+    {
+        var oldPinnedChatIds = new HashSet<Symbol>();
+        var changes = ChatUI.PinnedChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cPinnedChats in changes.ConfigureAwait(false)) {
+            var newPinnedChatIds = cPinnedChats.Value.Select(c => c.ChatId).ToHashSet();
+
+            var addedChatIds = newPinnedChatIds.Except(oldPinnedChatIds);
+            var removedChatIds = oldPinnedChatIds.Except(newPinnedChatIds);
+            var changedChatIds = addedChatIds.Concat(removedChatIds);
+            using (Computed.Invalidate()) {
+                foreach (var chatId in changedChatIds)
+                    _ = ChatUI.IsPinned(chatId);
+            }
+
+            oldPinnedChatIds = newPinnedChatIds;
+        }
+    }
+
+    private async Task InvalidateActiveChatsDependencies(CancellationToken cancellationToken)
+    {
+        var oldRecordingChatId = Symbol.Empty;
+        var oldListeningChatIds = new HashSet<Symbol>();
+        var changes = ChatUI.ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cActiveChats in changes.ConfigureAwait(false)) {
+            var activeChats = cActiveChats.Value;
+            var newRecordingChatId = activeChats.FirstOrDefault(c => c.IsRecording).ChatId;
+            var newListeningChatIds = activeChats.Where(c => c.IsListening).Select(c => c.ChatId).ToHashSet();
+
+            var addedListeningChatIds = newListeningChatIds.Except(oldListeningChatIds);
+            var removedListeningChatIds = oldListeningChatIds.Except(newListeningChatIds);
+            var changedListeningChatIds = addedListeningChatIds.Concat(removedListeningChatIds).ToList();
+            using (Computed.Invalidate()) {
+                if (newRecordingChatId != oldRecordingChatId) {
+                    _ = ChatUI.RecordingChatId();
+                    _ = ChatUI.IsRecording(oldRecordingChatId);
+                    _ = ChatUI.IsRecording(newRecordingChatId);
+                }
+                if (changedListeningChatIds.Count > 0) {
+                    _ = ChatUI.ListeningChatIds();
+                    foreach (var id in changedListeningChatIds)
+                        _ = ChatUI.IsListening(id);
+                }
+            }
+
+            oldRecordingChatId = newRecordingChatId;
+            oldListeningChatIds = newListeningChatIds;
+        }
+    }
 
     private async Task SyncPlaybackState(CancellationToken cancellationToken)
     {
@@ -93,7 +162,7 @@ public class ChatUIStateSync : WorkerBase
             .Capture(() => SyncRecordingStateImpl(cancellationToken))
             .ConfigureAwait(false);
         // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
-        await cRecordingChatId.When(_ => false, cancellationToken).ConfigureAwait(false);
+        await cRecordingChatId.When(_ => false, FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -102,7 +171,7 @@ public class ChatUIStateSync : WorkerBase
         // This compute method creates dependencies & gets recomputed on changes by SyncRecordingState.
         // The result it returns doesn't have any value - it runs solely for its own side effects.
 
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatUI.RecordingChatId().ConfigureAwait(false);
         var recordingChatIdChanged = recordingChatId != _lastRecordingChatId;
         _lastRecordingChatId = recordingChatId;
 
@@ -128,7 +197,7 @@ public class ChatUIStateSync : WorkerBase
             }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
-            await ChatUI.SetRecordingState(recorderChatId).ConfigureAwait(false);
+            await ChatUI.SetRecordingChatId(recorderChatId).ConfigureAwait(false);
         }
         return default;
 
@@ -169,11 +238,10 @@ public class ChatUIStateSync : WorkerBase
     {
         var lastMustKeepAwake = false;
         var cMustKeepAwake0 = await Computed
-            .Capture(() => ChatUI.MustKeepAwake(cancellationToken))
+            .Capture(() => ChatUI.MustKeepAwake())
             .ConfigureAwait(false);
 
-        var updateDelayer = FixedDelayer.Get(1);
-        var changes = cMustKeepAwake0.Changes(updateDelayer, cancellationToken);
+        var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
@@ -196,10 +264,10 @@ public class ChatUIStateSync : WorkerBase
         var lastChatEntry = (Symbol.Empty, 0L);
 
         while (!cancellationToken.IsCancellationRequested) {
-            // wait for recording started
-            cLastChatEntry = await cLastChatEntry.When(x => !x.ChatId.IsEmpty, cancellationToken: cancellationToken).ConfigureAwait(false);
+            // Wait for recording started
+            cLastChatEntry = await cLastChatEntry.When(x => !x.ChatId.IsEmpty, cancellationToken).ConfigureAwait(false);
 
-            using var timeoutCts = new CancellationTokenSource(ChatSettings.IdleRecordingTimeout);
+            using var timeoutCts = new CancellationTokenSource(AudioSettings.IdleRecordingTimeout);
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             try {
@@ -217,7 +285,7 @@ public class ChatUIStateSync : WorkerBase
     protected virtual async Task<(Symbol ChatId, long LastEntryId)> GetLastRecordingChatEntryInfo(
         CancellationToken cancellationToken)
     {
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatUI.RecordingChatId().ConfigureAwait(false);
         if (recordingChatId.IsEmpty)
             return (recordingChatId, 0);
 
@@ -229,85 +297,26 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
     {
-        var changes = ChatUI.HighlightedChatEntryId.Changes(cancellationToken).Where(x => x.Value != 0);
-        await foreach (var cEntryId in changes.ConfigureAwait(false)) {
-            var cts = cancellationToken.CreateLinkedTokenSource();
-            cts.CancelAfter(2000);
-            try {
-                await ChatUI.HighlightedChatEntryId.When(x => x != cEntryId.Value, cts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
-                ChatUI.HighlightedChatEntryId.Value = 0;
-            }
-            finally {
+        var changes = ChatUI.HighlightedChatEntryId
+            .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
+            .Where(x => x.Value != 0);
+        CancellationTokenSource? cts = null;
+        try {
+            await foreach (var cHighlightedChatEntryId in changes.ConfigureAwait(false)) {
                 cts.CancelAndDisposeSilently();
+                cts = cancellationToken.CreateLinkedTokenSource();
+                var ctsToken = cts.Token;
+                var highlightedChatEntryId = cHighlightedChatEntryId.Value;
+                _ = BackgroundTask.Run(async () => {
+                    await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
+                    ChatUI.HighlightedChatEntryId.Set(
+                        highlightedChatEntryId,
+                        (expected, result) => result.IsValue(out var v) && v == expected ? 0 : result);
+                }, CancellationToken.None);
             }
         }
-    }
-
-    private async Task SyncIsActive(CancellationToken cancellationToken)
-    {
-        var old = ChatUI.ActiveChatId.Value;
-        var changes = ChatUI.ActiveChatId.Changes(cancellationToken);
-        await foreach (var cActiveChatId in changes.ConfigureAwait(false)) {
-            using (Computed.Invalidate()) {
-                _ = ChatUI.IsActive(old);
-                _ = ChatUI.IsActive(cActiveChatId.Value);
-            }
-
-            old = cActiveChatId.Value;
-        }
-    }
-
-    private async Task SyncIsRecording(CancellationToken cancellationToken)
-    {
-        var old = ChatUI.RecordingChatId.Value;
-        var changes = ChatUI.RecordingChatId.Changes(cancellationToken);
-        await foreach (var cRecordingChatId in changes.ConfigureAwait(false)) {
-            using (Computed.Invalidate()) {
-                _ = ChatUI.IsRecording(old);
-                _ = ChatUI.IsRecording(cRecordingChatId.Value);
-            }
-
-            old = cRecordingChatId.Value;
-        }
-    }
-
-    private async Task SyncIsListening(CancellationToken cancellationToken)
-    {
-        var old = ImmutableList<Symbol>.Empty;
-        var changes = ChatUI.ListeningChatIds.Changes(cancellationToken);
-        await foreach (var cListeningChatId in changes.ConfigureAwait(false)) {
-            var removedIds = old.Except(cListeningChatId.Value).ToList();
-            var addedIds = cListeningChatId.Value.Except(old).ToList();
-            var changedIds = addedIds.Concat(removedIds);
-
-            using (Computed.Invalidate())
-                foreach (var id in changedIds)
-                    _ = ChatUI.IsListening(id);
-
-            old = cListeningChatId.Value;
-        }
-    }
-
-    private async Task SyncIsPinned(CancellationToken cancellationToken)
-    {
-        var comparer = StringComparer.Ordinal;
-        var old = ImmutableDictionary<string, Moment>.Empty;
-        var changes = ChatUI.PinnedChatIds.Changes(cancellationToken);
-        await foreach (var cPinnedChatIds in changes.ConfigureAwait(false)) {
-            var newKeys = cPinnedChatIds.Value.Keys.ToList();
-            var oldKeys = old.Keys.ToList();
-
-            var addedKeys = newKeys.Except(old.Keys, comparer);
-            var removedKeys = oldKeys.Except(newKeys, comparer);
-            var changedKeys = addedKeys.Concat(removedKeys);
-
-            using (Computed.Invalidate())
-                foreach (var id in changedKeys)
-                    _ = ChatUI.IsPinned(id);
-
-            old = cPinnedChatIds.Value;
+        finally {
+            cts.CancelAndDisposeSilently();
         }
     }
 }

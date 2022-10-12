@@ -113,8 +113,8 @@
         }
 
         // parsedChatId is either (valid & not short) or invalid at this point
-        if (parsedChatId.IsValid && ChatUI.ActiveChatId.Value != parsedChatId.Id) {
-            ChatUI.ActiveChatId.Value = parsedChatId.Id;
+        if (parsedChatId.IsValid && ChatUI.SelectedChatId.Value != parsedChatId.Id) {
+            ChatUI.SelectedChatId.Value = parsedChatId.Id;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
             UICommander.CancelUpdateDelays();

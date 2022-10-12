@@ -26,17 +26,14 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeChatIds = await ChatUI.ActiveChatIds.Use(cancellationToken);
-        var chats = (await activeChatIds
+        var activeChats = await ChatUI.ActiveChats.Use(cancellationToken);
+        var chats = (await activeChats
+            .OrderByDescending(c => c.Recency)
             .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
             .Collect()
             ).SkipNullItems()
-            .Reverse()
             .ToList();
-
-        return new Model {
-            Chats = chats,
-        };
+        return new Model { Chats = chats };
     }
 
     public sealed record Model {

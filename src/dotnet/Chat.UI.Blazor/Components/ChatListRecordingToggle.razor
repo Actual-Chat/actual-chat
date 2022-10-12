@@ -8,7 +8,7 @@
 @if (isRecording) {
     <ButtonRound
         Class="@cls"
-        Click="_ => ChatUI.SetRecordingState(Symbol.Empty)"
+        Click="_ => ChatUI.SetRecordingChatId(Symbol.Empty)"
         Tooltip="Stop"
         TooltipPosition="TooltipPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -16,7 +16,7 @@
 } else {
     <ButtonRound
         Class="@cls"
-        Click="_ => ChatUI.SetRecordingState(ChatId)"
+        Click="_ => ChatUI.SetRecordingChatId(ChatId)"
         Tooltip="Start"
         TooltipPosition="TooltipPosition.Top">
         <i class="icon-mic text-2xl"></i>

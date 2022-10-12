@@ -43,7 +43,7 @@
     public const string NavbarGroupId = "chats";
     private TabId _activeTabId;
 
-    [Inject] private RecentChats RecentChats { get; init; } = null!;
+    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -61,22 +61,22 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         // Default scheduler is used from here
         if (!searchPhrase.IsEmpty) {
-            var activeChat = await RecentChats.GetActiveChat(cancellationToken);
+            var selectedChat = await RecentChatsUI.GetSelectedChat(cancellationToken);
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Title)
-                where rank > 0 || c.Id == activeChat?.Id
+                where rank > 0 || c.Id == selectedChat?.Id
                 orderby rank descending
                 select c
-                ).ToImmutableArray();
+                ).ToImmutableList();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken);
+        var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedChats = chats
-            .Where(c => pinnedChatIds.ContainsKey(c.Id))
+            .Where(c => pinnedChatIds.Contains(c.Id))
             .ToList();
         var unpinnedChats = chats
-            .Where(c => !pinnedChatIds.ContainsKey(c.Id))
+            .Where(c => !pinnedChatIds.Contains(c.Id))
             .ToList();
 
         return new Model {
@@ -85,9 +85,9 @@
         };
     }
 
-    private Task<ImmutableArray<Chat>> ListChats(TabId tabId)
+    private Task<ImmutableList<Chat>> ListChats(TabId tabId)
         => tabId switch {
-            TabId.Recent => RecentChats.ListIncludingActive(),
+            TabId.Recent => RecentChatsUI.ListIncludingSelected(),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
 
