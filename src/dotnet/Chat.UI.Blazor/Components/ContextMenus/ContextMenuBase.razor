@@ -1,0 +1,11 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@code {
+    [Parameter] public string Argument { get; set; } = "";
+
+    [CascadingParameter] public ContextMenuEx ContextMenu { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await ContextMenu.ShowMenu();
+    }
+}
