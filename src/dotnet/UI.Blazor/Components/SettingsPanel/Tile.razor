@@ -1,0 +1,9 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="tile">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

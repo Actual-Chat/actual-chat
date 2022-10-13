@@ -7,11 +7,13 @@
     }
 
 <div class="@Class settings-tab">
-    <div class="settings-tab-header">
-        <SettingsHeader Title="@Title" OnArrowClick="@OnChangeView"/>
-    </div>
-    <div class="settings-tab-content">
-        @ChildContent
+    <div class="tab-inner">
+        <div class="settings-tab-header">
+            <SettingsHeader Title="@Title" OnArrowClick="@OnChangeView"/>
+        </div>
+        <div class="settings-tab-content">
+            @ChildContent
+        </div>
     </div>
 </div>
 
