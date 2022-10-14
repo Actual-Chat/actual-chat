@@ -3,7 +3,7 @@
     var m = State.LatestNonErrorValue;
     var title = "Active chats";
     var titleClass = "text-sm font-medium px-2 pb-2";
-    if (m.IsSearchModeOn) {
+    if (m.IsCollapsed) {
         title += " are hidden on search";
         titleClass = titleClass.Replace("pb-2", "");
     }
@@ -13,7 +13,7 @@
     <div class="active-chats">
         <div class="@titleClass">@title</div>
 
-        @if (!m.IsSearchModeOn) {
+        @if (!m.IsCollapsed) {
             <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats"/>
         }
     </div>
@@ -44,7 +44,7 @@
         var searchText = await SearchUI.Text.Use(cancellationToken);
         return new Model {
             Chats = chats,
-            IsSearchModeOn = searchText.NullIfWhiteSpace() != null,
+            IsCollapsed = searchText.NullIfWhiteSpace() != null,
         };
     }
 
@@ -52,7 +52,6 @@
         public static Model None { get; } = new();
 
         public List<Chat> Chats { get; init; } = new ();
-        public bool IsSearchModeOn { get; init; } = false;
-
+        public bool IsCollapsed { get; init; } = false;
     }
 }
