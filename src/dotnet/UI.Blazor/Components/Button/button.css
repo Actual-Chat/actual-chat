@@ -186,7 +186,10 @@
     @apply bg-round min-h-12 min-w-12 max-h-12 max-w-12 items-center justify-center;
 }
 .btn.btn-round.transparent .btn-content {
-    @apply bg-transparent min-h-12 min-w-12 max-h-12 max-w-12 items-center justify-center;
+    @apply bg-transparent;
+}
+.btn.btn-round.btn-sm .btn-content {
+    @apply min-h-8 min-w-8 max-h-8 max-w-8;
 }
 .btn.btn-round.primary-icon .btn-content {
     @apply text-primary;

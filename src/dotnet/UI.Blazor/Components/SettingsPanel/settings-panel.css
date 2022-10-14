@@ -46,7 +46,7 @@
 }
 .settings-header-title {
     @apply flex-x justify-start items-center w-full gap-x-2 px-4 text-xl font-semibold;
-    @apply md:text-lg md:font-normal;
+    @apply md:text-lg md:font-medium;
 }
 .settings-header-title i {
     @apply font-normal;
@@ -61,13 +61,40 @@
     @apply hidden md:flex-y;
 }
 .tile {
-    @apply bg-01 rounded-lg p-2 shadow-md;
+    @apply flex-y gap-y-2 bg-01 rounded-lg p-2 shadow-md;
 }
 .tile-topic {
     @apply bg-transparent p-2 pb-0 -mb-2 font-medium text-02;
 }
 .tile-item {
-    @apply flex-x h-12 px-2;
+    @apply flex-x h-10 w-full rounded-lg items-center gap-x-2;
+}
+.tile-item-icon {
+    @apply flex min-w-10 justify-center text-icons-01;
+}
+.tile-item-body {
+    @apply flex-y max-w-full max-h-12;
+}
+.tile-item-body-content {
+    @apply overflow-y-hidden leading-5 max-h-10 text-sm;
+}
+.tile-item-body-caption {
+    @apply text-xs font-light text-03;
+}
+.tile-item-right {
+    @apply flex-1 flex-x h-6 justify-end;
+}
+.tile-hidden-btn {
+    @apply btn-sm transparent;
+}
+.tile-hidden-btn:hover {
+    @apply transparent text-primary;
+}
+.tile-btn {
+    @apply btn-sm transparent;
+}
+.tile-btn:hover {
+    @apply text-primary;
 }
 .settings-tab-title {
     @apply flex-x items-center gap-x-4 font-semibold md:font-medium;
@@ -76,10 +103,10 @@
     @apply font-normal;
 }
 .settings-tab-content {
-    @apply flex-y gap-y-4 w-full md:w-5/12 p-2 md:p-0;
+    @apply flex-y gap-y-4 w-full md:w-80 p-2 md:p-0;
 }
 .settings-tab-header {
-    @apply flex min-h-14 w-full md:w-5/12 items-center border-b border-bg-04 md:border-none;
+    @apply flex min-h-14 w-full md:w-80 items-center border-b border-bg-04 md:border-none;
 }
 .settings-tab-header .settings-header-title {
     @apply flex-x gap-x-2 text-xl md:text-lg md:font-medium items-center md:px-0;
