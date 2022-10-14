@@ -24,12 +24,11 @@ namespace ActualChat.App.Maui;
     LaunchMode = LaunchMode.SingleTask,
     ConfigurationChanges =
         ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
-        ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density  
+        ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density
     )]
 public class MainActivity : MauiAppCompatActivity
 {
     private const int RC_SIGN_IN_GOOGLE = 800;
-    private const string TAG = nameof(MainActivity);
     // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
 #if ISDEVMAUI
     private const string ServerGoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
@@ -78,17 +77,15 @@ public class MainActivity : MauiAppCompatActivity
         TryProcessNotificationTap(Intent);
     }
 
-    const string tag = "actual.chat";
-
     protected override void OnStart()
     {
-        Log.Debug(tag, "OnStart");
+        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnStart");
         base.OnStart();
     }
 
     protected override void OnStop()
     {
-        Log.Debug(tag, "OnStop");
+        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnStop");
         base.OnStop();
     }
 
@@ -133,7 +130,7 @@ public class MainActivity : MauiAppCompatActivity
                         _ = OnSignInWithGoogle(account);
                 }
                 catch (Android.Gms.Common.Apis.ApiException e) {
-                    Log.Debug(TAG, "Could not get an account from intent: " + e.ToString());
+                    Log.Debug(AndroidConstants.LogTag, "Could not get an account from intent: " + e.ToString());
                 }
             }
             if (resultCode == Result.Ok)

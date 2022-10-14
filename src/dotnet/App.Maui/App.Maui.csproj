@@ -28,7 +28,7 @@
     <MajorMinorVersion Condition="'$(MajorMinorVersion)' == ''">$(VersionMajor).$(VersionMinor)</MajorMinorVersion>
 
     <ApplicationDisplayVersion>$(MajorMinorVersion)</ApplicationDisplayVersion>
-    <ApplicationVersion>$(VersionMajor)</ApplicationVersion>
+    <ApplicationVersion>3</ApplicationVersion>
 
     <!-- Required for C# Hot Reload -->
     <UseInterpreter Condition="'$(Configuration)' == 'Debug' OR '$(Configuration)'=='Debug-maui'">True</UseInterpreter>
