@@ -10,15 +10,19 @@
 
 <Tile>
     @* <UserNameEditor/> *@
-    <TileItem>
+    <TileItem Unselected="true">
         <Icon>
-            <i class="icon-at text-xl"></i>
+            <UserAuthorBadge
+                UserId="@(user?.Id ?? "")"
+                Size="SquareSize.Size9"
+                ShowPresence="false"
+                TextClass="hidden" />
         </Icon>
         <Right>
             <TileButtons/>
         </Right>
         <Content>
-            Ophelia the daughter of Polonius
+            @user.Name
         </Content>
     </TileItem>
 
@@ -79,8 +83,8 @@
         </Right>
         <Content>
             <div class="user-page-link flex-x justify-start items-center gap-x-1">
-                <div class="flex-none text-02">
-                    <a href="@linkInfo.NavigateLink">@linkInfo.ShortDisplayLink</a>
+                <div class="flex-none">
+                    <a class="text-02" href="@linkInfo.NavigateLink">@linkInfo.ShortDisplayLink</a>
                 </div>
             </div>
         </Content>
