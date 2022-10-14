@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework />
@@ -43,13 +43,20 @@
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
-    <DefineConstants>ISDEVMAUI</DefineConstants>
+    <DefineConstants>$(DefineConstants);ISDEVMAUI</DefineConstants>
     <!-- Display name -->
     <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
     <!-- App Identifier -->
     <ApplicationId>chat.actual.dev.app</ApplicationId>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' != 'true'">
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''"></FixedEnvironment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
+    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PPRODUCTION</DefineConstants>
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->

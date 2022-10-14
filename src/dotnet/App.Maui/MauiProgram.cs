@@ -8,6 +8,8 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using ActualChat.Audio.WebM;
 
 namespace ActualChat.App.Maui;
 
@@ -55,12 +57,18 @@ public static class MauiProgram
         var settings = new ClientAppSettings { SessionId = sessionId };
         services.TryAddSingleton(settings);
 
+#if IS_FIXED_ENVIRONMENT_PPRODUCTION
+        var environment = Environments.Production;
+#else
+        var environment = Environments.Development;
+#endif
+
         services.AddSingleton(c => new HostInfo {
             HostKind = HostKind.Maui,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
                 .Add(ServiceScope.BlazorUI),
-            Environment = "Development", // there is hosting environment service, TODO: use configuration
+            Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = GetBaseUrl(),
         });
@@ -74,6 +82,10 @@ public static class MauiProgram
         var mauiApp = builder.Build();
 
         AppServices = mauiApp.Services;
+
+        Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
