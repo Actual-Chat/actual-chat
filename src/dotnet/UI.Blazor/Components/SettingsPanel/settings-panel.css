@@ -76,7 +76,10 @@
     @apply bg-transparent;
 }
 .tile-item-icon {
-    @apply flex min-w-10 justify-center text-icons-01;
+    @apply flex min-w-10 max-w-10 justify-center text-icons-01;
+}
+.first-tile-item .tile-item-icon {
+    @apply justify-start;
 }
 .tile-item-body {
     @apply flex-y max-w-full max-h-12;
