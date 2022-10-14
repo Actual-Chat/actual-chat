@@ -9,7 +9,7 @@
 <BlazoredModal ActivateFocusTrap="true" />
 <ScreenSizeProvider @ref="_screenSizeProviderRef">
 
-    @if (!(_isInitialized && _screenSizeProviderRef.ScreenSize is not ScreenSize.Unknown)) {
+    @if (!(_whenReadyToRender.IsCompletedSuccessfully && _screenSizeProviderRef.ScreenSize is not ScreenSize.Unknown)) {
         @*
         <div class="flex justify-center items-center h-screen">
             Initializing...
@@ -40,7 +40,7 @@
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
-    private bool _isInitialized;
+    private Task _whenReadyToRender = null!;
     private ScreenSizeProvider _screenSizeProviderRef = null!;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
@@ -74,34 +74,35 @@
         }
 
         CircuitContext.RootComponent = this;
-        InitializeTimeZoneConverter();
-        UILifetimeEvents.RaiseOnAppInitialized(Services);
+        _whenReadyToRender = PrepareForTheFirstRender();
+        _whenReadyToRender.ContinueWith(_ => {
+            StateHasChanged();
+            UILifetimeEvents.RaiseOnAppInitialized(Services);
+        });
     }
 
     public void Dispose()
         => CircuitContext.Dispose();
 
-    private void InitializeTimeZoneConverter() {
-        if (TimeZoneConverter is not ServerSideTimeZoneConverter serverSideTimeZoneConverter) {
-            _isInitialized = true;
-            return;
-        }
+    private async Task PrepareForTheFirstRender() {
+        var themeUI = Services.GetRequiredService<ThemeUI>();
+        themeUI.Start();
 
-        _ = Initialize();
-
-        async Task Initialize() {
+        if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter) {
             // Useful JS functions:
             // Intl.DateTimeFormat().resolvedOptions().timeZone
             // new Date().getTimezoneOffset()
             try {
                 var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
                 serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
-                _isInitialized = true;
-                StateHasChanged();
             }
             catch (Exception ex) {
                 Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
+                serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(0));
             }
         }
+
+        await themeUI.Theme.WhenFirstTimeRead;
+        await themeUI.ApplyTheme(themeUI.Theme.Value);
     }
 }

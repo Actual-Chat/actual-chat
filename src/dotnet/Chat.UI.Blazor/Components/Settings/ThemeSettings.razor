@@ -25,11 +25,11 @@
     [Inject] ThemeUI ThemeUI { get; init; } = null!;
 
     private void SetTheme(Theme theme)
-        => ThemeUI.CurrentTheme.Value = theme;
+        => ThemeUI.Theme.Value = theme;
 
     protected override ComputedState<Theme>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Theme> ComputeState(CancellationToken cancellationToken)
-        => await ThemeUI.CurrentTheme.Use(cancellationToken);
+        => await ThemeUI.Theme.Use(cancellationToken);
 }

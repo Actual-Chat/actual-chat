@@ -8,6 +8,8 @@ const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
+const PrefixLfRe = /^(\s*\n)+/g
+const SuffixLfRe = /(\n\s*)+$/g
 
 export class MarkupEditor {
     static create(
@@ -643,10 +645,12 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function cleanPastedText(text: string) {
-    return text.replace(ZeroWidthSpaceRe, '');
+function cleanPastedText(text: string) : string {
+    text = text.replace(ZeroWidthSpaceRe, '');
+    text = normalize(text);
+    return text;
 }
 
-function normalize(text: string) {
+function normalize(text: string) : string {
     return text.normalize().replace(CrlfRe, "\n");
 }

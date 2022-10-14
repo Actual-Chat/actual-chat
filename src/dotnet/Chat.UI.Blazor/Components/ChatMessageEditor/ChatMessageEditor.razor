@@ -256,8 +256,7 @@
     {
         ChatUI.LinkedChatEntry.Value = null;
         UICommander.CancelUpdateDelays();
-        await MarkupEditorRef.Clear();
-        await MarkupEditorRef.Focus();
+        await MarkupEditorRef.Clear(true);
     }
 
     // UIEventHub event handlers

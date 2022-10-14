@@ -78,27 +78,32 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ComponentIdGenerator>();
         services.AddScoped<RenderVars>();
 
-        // Misc. UI services
+        // UI events
         services.AddScoped<UILifetimeEvents>();
+        services.AddScoped<UIEventHub>();
+
+        // General UI services
         services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();
-        services.AddScoped<FeedbackUI>();
-        services.AddScoped<NavbarUI>();
-        services.AddScoped<ImageViewerUI>();
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
-        services.AddScoped<ThemeUI>();
+        services.AddScoped<FocusUI>();
         services.AddScoped<KeepAwakeUI>();
-        fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
+
+        // Actual.chat-specific UI services
+        services.AddScoped<ThemeUI>();
+        services.AddScoped<FeedbackUI>();
+        services.AddScoped<NavbarUI>();
+        services.AddScoped<ImageViewerUI>();
+        fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
+
+        // Misc. helpers
         services.AddScoped<LinkInfoBuilder>();
         services.AddScoped<NotificationNavigationHandler>();
-
-        // UI events
-        services.AddScoped<UIEventHub>();
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();

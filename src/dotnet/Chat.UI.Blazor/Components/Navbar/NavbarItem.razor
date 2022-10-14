@@ -19,6 +19,7 @@
 </div>
 
 @code {
+    [Inject] private FocusUI FocusUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
@@ -28,5 +29,8 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
 
-    private void Click() => Nav.NavigateTo(Url);
+    private void Click() {
+        FocusUI.Blur();
+        Nav.NavigateTo(Url);
+    }
 }

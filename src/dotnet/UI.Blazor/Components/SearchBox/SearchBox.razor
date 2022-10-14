@@ -1,4 +1,5 @@
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 @if (_isCollapsed == true) {
@@ -42,6 +43,7 @@
     private bool? _isCollapsed;
     private bool _needsFocus;
 
+    [Inject] private FocusUI FocusUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
@@ -86,7 +88,7 @@
     // API
 
     public ValueTask Focus()
-        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.focus", InputRef);
+        => FocusUI.Focus(InputRef);
 
     private async Task Cancel()
     {

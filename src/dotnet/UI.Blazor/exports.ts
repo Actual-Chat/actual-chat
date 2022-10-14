@@ -1,5 +1,4 @@
 // Please sort the imports alphabetically!
-import './Components/components.css';
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/AuthorBadge/author-badge.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
@@ -23,11 +22,12 @@ import './Components/SideNav/side-nav.css'
 import './Components/TabPanel/tab.css'
 import './Components/Tooltip/tooltip.css'
 
-export * from './Services/Settings/local-settings';
-export * from './Services/UserInteractionUI/user-interaction-ui';
+export * from './Services/FocusUI/focus-ui'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
+export * from './Services/Settings/local-settings';
+export * from './Services/ThemeUI/theme-ui'
+export * from './Services/UserInteractionUI/user-interaction-ui';
 
-export * from './Components/components';
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.js';
 export * from './Components/Dropdown/dropdown';
@@ -37,15 +37,14 @@ export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/ScreenSizeProvider/screen-size-provider';
-export * from './Components/TextBox/text-box';
-export * from './Components/VirtualList/virtual-list';
 export * from './Components/SideNav/side-nav';
+export * from './Components/TextBox/text-box';
 export * from './Components/Tooltip/tooltip';
+export * from './Components/VirtualList/virtual-list';
 
 export * from './Layouts/base-layout';
 
 export * from './messaging-init';
-export * from './theme';
 
 export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';
