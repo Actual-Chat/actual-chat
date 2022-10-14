@@ -123,11 +123,11 @@ export class OpusMediaRecorder {
             // Initialize new stream at the VAD worker
             const vadInitMessage: VadMessage = { type: 'reset', };
             this.vadWorker.postMessage(vadInitMessage);
-        });
 
-        // Start streaming
-        this.source.connect(this.vadWorklet);
-        this.source.connect(this.encoderWorklet);
+            // Start streaming
+            this.source.connect(this.vadWorklet);
+            this.source.connect(this.encoderWorklet);
+        });
     }
 
     public async stop(): Promise<void> {
@@ -282,6 +282,6 @@ export class OpusMediaRecorder {
         if (this.vadWorklet)
             this.vadWorklet.disconnect();
 
-        console.error(`${LogScope}.onWorkerError: FileName: ${error.filename} Line: ${error.lineno} Message: ${error.message}`);
+        console.error(`${LogScope}.onWorkerError: FileName: ${error.filename} Line: ${error.lineno} Message: ${error.message}`, error);
     };
 }

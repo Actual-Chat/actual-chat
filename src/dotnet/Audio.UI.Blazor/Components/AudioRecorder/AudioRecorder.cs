@@ -23,7 +23,8 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 
     public Task WhenInitialized { get; }
     public IMutableState<AudioRecorderState?> State { get; }
-    public bool IsRecordingStarted => State.ValueOrDefault != null;
+    public bool IsRecordingStarted => State.ValueOrDefault?.IsRecording ?? false;
+    public bool IsRecordingBeingStarted => State.ValueOrDefault is { IsRecording: false };
 
     public AudioRecorder(
         ILogger<AudioRecorder> log,
