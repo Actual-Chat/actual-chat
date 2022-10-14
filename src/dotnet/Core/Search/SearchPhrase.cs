@@ -109,8 +109,9 @@ public sealed class SearchPhrase
 
     private static string[] GetTerms(string text, bool addEndings)
     {
-        if (text.IsNullOrEmpty())
+        if (text.NullIfWhiteSpace() == null)
             return Array.Empty<string>();
+
         var parts = TermSplitRegex.Split(text);
         if (!addEndings)
             return parts;

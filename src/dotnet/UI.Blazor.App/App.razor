@@ -78,7 +78,7 @@
         _whenReadyToRender.ContinueWith(_ => {
             StateHasChanged();
             UILifetimeEvents.RaiseOnAppInitialized(Services);
-        });
+        }, TaskScheduler.Current);
     }
 
     public void Dispose()

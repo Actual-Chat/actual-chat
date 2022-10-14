@@ -1,5 +1,6 @@
 @page "/chat/{ChatId}"
 @using ActualChat.Notification.UI.Blazor
+@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatLayout
 @{
@@ -77,6 +78,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
@@ -117,6 +119,7 @@
             ChatUI.SelectedChatId.Value = parsedChatId.Id;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
+            _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
             UICommander.CancelUpdateDelays();
         }
 

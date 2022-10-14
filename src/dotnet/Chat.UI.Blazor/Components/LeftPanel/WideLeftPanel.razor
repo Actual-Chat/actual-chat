@@ -1,10 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Chat.UI.Blazor.Events
 
 <div class="wide-left-panel -flex-y md:flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
     <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 px-2 gap-x-1">
+        <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="OnSelectedChatChangedEvent" />
         <SearchBox
+            @ref="_searchBoxRef"
             Placeholder="Find chat..."
             TextChanged="OnSearchBoxTextChanged"/>
         <div>
@@ -32,6 +35,8 @@
 </div>
 
 @code {
+    SearchBox? _searchBoxRef = null;
+
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
@@ -56,4 +61,9 @@
 
     private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
         => InvokeAsync(StateHasChanged);
+
+    private Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        _searchBoxRef?.Cancel();
+        return Task.CompletedTask;
+    }
 }

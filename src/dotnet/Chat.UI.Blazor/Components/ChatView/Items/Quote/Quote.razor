@@ -70,6 +70,6 @@
         }
     }
 
-    private Task OnCancelClick() => UIEventHub.Publish<CancelChatMessageEditEvent>();
-
+    private Task OnCancelClick()
+        => UIEventHub.Publish<CancelChatMessageEditEvent>();
 }

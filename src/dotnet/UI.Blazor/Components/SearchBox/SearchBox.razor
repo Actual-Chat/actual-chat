@@ -90,7 +90,7 @@
     public ValueTask Focus()
         => FocusUI.Focus(InputRef);
 
-    private async Task Cancel()
+    public async Task Cancel()
     {
         Text = "";
         await Cancelled.InvokeAsync();
