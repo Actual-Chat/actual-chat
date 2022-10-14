@@ -19,18 +19,17 @@ public class NotificationNavigationHandler
         if (url.IsNullOrEmpty() || !url.StartsWith(origin, StringComparison.Ordinal))
             return Task.CompletedTask;
 
-        var chatPageRe = new Regex($"^{origin}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
+        var chatPageRe = new Regex($"^{Regex.Escape(origin)}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
         var match = chatPageRe.Match(url);
         if (!match.Success)
             return Task.CompletedTask;
 
-        // Take relative url to eliminate difference between web app and maui app.
-        var relativeUrl = url.Substring(origin.Length);
+        // Take relative URL to eliminate difference between web app and MAUI app
+        var relativeUrl = url[origin.Length..];
 
         var chatIdGroup = match.Groups["chatid"];
-        if (chatIdGroup.Success) {
+        if (chatIdGroup.Success)
             Nav.NavigateTo(relativeUrl, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
-        }
         return Task.CompletedTask;
     }
 }
