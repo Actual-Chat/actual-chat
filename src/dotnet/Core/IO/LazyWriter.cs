@@ -110,6 +110,8 @@ public class LazyWriter<T> : IAsyncDisposable
             try {
                 long flushedItemIndex;
                 lock (Lock) {
+                    if (_isDisposed)
+                        return;
                     UnsafeEndFlushDelay();
                     flushBuffer.AddRange(_buffer);
                     _buffer.Clear();
