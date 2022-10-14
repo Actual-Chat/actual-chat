@@ -69,6 +69,12 @@
 .tile-item {
     @apply flex-x h-10 w-full rounded-lg items-center gap-x-2;
 }
+.tile-item:hover {
+    @apply bg-round-focus;
+}
+.tile-item.unselected:hover {
+    @apply bg-transparent;
+}
 .tile-item-icon {
     @apply flex min-w-10 justify-center text-icons-01;
 }
@@ -76,16 +82,19 @@
     @apply flex-y max-w-full max-h-12;
 }
 .tile-item-body-content {
-    @apply overflow-y-hidden leading-5 max-h-10 text-sm;
+    @apply overflow-y-hidden leading-5 max-h-10 text-sm text-02;
 }
 .tile-item-body-caption {
-    @apply text-xs font-light text-03;
+    @apply text-xs font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x h-6 justify-end;
 }
 .tile-hidden-btn {
-    @apply btn-sm transparent;
+    @apply btn-sm transparent invisible;
+}
+.tile-item:hover .tile-hidden-btn {
+    @apply visible;
 }
 .tile-hidden-btn:hover {
     @apply transparent text-primary;
