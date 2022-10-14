@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework />
@@ -21,14 +21,6 @@
     <!-- App Identifier -->
     <ApplicationId>chat.actual.app</ApplicationId>
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
-
-    <!-- Versions -->
-    <VersionMajor Condition="'$(VersionMajor)' == ''">1</VersionMajor>
-    <VersionMinor Condition="'$(VersionMinor)' == ''">0</VersionMinor>
-    <MajorMinorVersion Condition="'$(MajorMinorVersion)' == ''">$(VersionMajor).$(VersionMinor)</MajorMinorVersion>
-
-    <ApplicationDisplayVersion>$(MajorMinorVersion)</ApplicationDisplayVersion>
-    <ApplicationVersion>3</ApplicationVersion>
 
     <!-- Required for C# Hot Reload -->
     <UseInterpreter Condition="'$(Configuration)' == 'Debug' OR '$(Configuration)'=='Debug-maui'">True</UseInterpreter>
@@ -153,5 +145,47 @@
   <ItemGroup Condition="'$(IsDevMaui)' != 'true'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
+
+  <!-- Versions -->
+  <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
+  <Target Name="FixVersionForAndroid"
+            Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
+            BeforeTargets="_GetAndroidPackageName"
+            DependsOnTargets="SetApplicationVersion" />
+
+  <Target Name="FixVersionForIOS"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'"
+          BeforeTargets="_CompileAppManifest"
+          DependsOnTargets="SetApplicationVersion" />
+
+  <Target Name="FixVersionForWindows"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"
+          BeforeTargets="MauiGeneratePackageAppxManifest"
+          DependsOnTargets="SetApplicationVersion" />
+
+  <Target Name="SetApplicationVersion" DependsOnTargets="GetBuildVersion">
+
+    <PropertyGroup>
+
+      <_MajorStr>$([System.String]::Format("{0}", $([System.Version]::Parse("$(BuildVersion)").Major)))</_MajorStr>
+      <_MinorStr>$([System.String]::Format("{0:D3}", $([System.Version]::Parse("$(BuildVersion)").Minor)))</_MinorStr>
+      <_BuildStr>$([System.String]::Format("{0:D3}", $([System.Version]::Parse("$(BuildVersion)").Build)))</_BuildStr>
+
+      <!-- Android requirement: ApplicationVersion must be a positive integer (used as an internal version number) -->
+      <!-- iOS requirement: ApplicationVersion must be a three part version number -->
+      <!-- Windows requirement: ApplicationVersion must be blank when ApplicationDisplayVersion is a four part version number -->
+      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">$(_MajorStr)$(_MinorStr)$(_BuildStr)</ApplicationVersion>
+      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">$(BuildVersionSimple)</ApplicationVersion>
+      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"></ApplicationVersion>
+
+      <!-- iOS requirement: ApplicationDisplayVersion must be a three part version number -->
+      <!-- Windows requirement: ApplicationDisplayVersion must be a four part version number -->
+      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">$(Version)</ApplicationDisplayVersion>
+      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">$(BuildVersionSimple)</ApplicationDisplayVersion>
+      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">$(BuildVersion)</ApplicationDisplayVersion>
+
+    </PropertyGroup>
+
+  </Target>
 
 </Project>
