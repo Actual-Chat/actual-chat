@@ -59,4 +59,7 @@ public class AudioHub : Hub
         await AudioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public Task<string> Ping(CancellationToken cancellationToken)
+        => Task.FromResult("Pong");
 }

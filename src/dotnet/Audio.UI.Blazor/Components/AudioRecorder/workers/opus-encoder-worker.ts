@@ -16,6 +16,7 @@ import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-me
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './opus-encoder-worker-message';
+import { PromiseSource } from 'promises';
 
 const LogScope: string = 'OpusEncoderWorker';
 
@@ -59,12 +60,13 @@ const worker = self as unknown as Worker;
 
 let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
-let state: 'inactive' | 'readyToInit' | 'encoding' | 'ended' = 'inactive';
+let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'voice';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
 let lastInitArguments: { sessionId: string, chatId: string } | null = null;
+let whenMicReady: PromiseSource<void> | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -134,10 +136,12 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     for (let i=0; i < 2; i++) {
         encoder.encode(pinkNoiseChunk.buffer);
     }
+
+    whenMicReady = new PromiseSource();
     console.log(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
-    state = 'readyToInit';
+    state = 'created';
 }
 
 async function onInit(message: InitEncoderMessage): Promise<void> {
@@ -152,6 +156,17 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
         encoder.encode(lowNoiseChunk.buffer);
     }
 
+    if (state === 'created' && whenMicReady) {
+        // wait for mic data
+        await whenMicReady;
+        whenMicReady = null;
+
+        // call Ping first time to ensure pipeline is ready for recording after receiving mic data
+        const pong = await hubConnection.invoke('Ping');
+        if (pong !== 'Pong')
+            console.warn(`${LogScope}.onInit: unexpected Ping call result`, pong);
+
+    }
     state = 'encoding';
     vadState = 'silence';
 }
@@ -178,6 +193,7 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         if (audioBuffer.byteLength === 0)
             return;
 
+        whenMicReady?.resolve(undefined);
         if (state === 'encoding') {
             queue.push(buffer);
             if (vadState === 'voice')
