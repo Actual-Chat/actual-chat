@@ -1,15 +1,110 @@
-<Tile>
-    <UserNameEditor/>
-</Tile>
+@inherits ComputedStateComponent<User?>
+
+@{
+    var user = State.LatestNonErrorValue;
+    if (user == null)
+        return;
+    var relativeUri = Links.UserPage(user.Id);
+    var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
+}
 
 <Tile>
-    <h4 class="section section-top">User page</h4>
-    <UserPageLink/>
+    @* <UserNameEditor/> *@
+    <TileItem>
+        <Icon>
+            <i class="icon-at text-xl"></i>
+        </Icon>
+        <Right>
+            <TileButtons/>
+        </Right>
+        <Content>
+            Ophelia the daughter of Polonius
+        </Content>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-at text-xl"></i>
+        </Icon>
+        <Content>
+            ophelia
+        </Content>
+        <Caption>
+            Username
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-phone text-xl"></i>
+        </Icon>
+        <Content>
+            +7 123 456 78 90
+        </Content>
+        <Caption>
+            Phone
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-info text-xl"></i>
+        </Icon>
+        <Content>
+            actual.chat developer
+        </Content>
+        <Caption>
+            Bio
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-status text-xl"></i>
+        </Icon>
+        <Content>
+            This nothings's more than matter
+        </Content>
+        <Caption>
+            Status
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-link-2 text-xl"></i>
+        </Icon>
+        <Right>
+            <CopyToClipboard InputClass="hidden" BtnClass="tile-hidden-btn" Text="@linkInfo.CopyLink" HideCopiedTag="true"/>
+        </Right>
+        <Content>
+            <div class="user-page-link flex-x justify-start items-center gap-x-1">
+                <div class="flex-none text-02">
+                    <a href="@linkInfo.NavigateLink">@linkInfo.ShortDisplayLink</a>
+                </div>
+            </div>
+        </Content>
+        <Caption>
+            Link
+        </Caption>
+    </TileItem>
 </Tile>
+
 
 <TileTopic Topic="My avatars"/>
 
-<Tile>
-    <h4 class="section">Avatars</h4>
-    <UserAvatarsEditor />
-</Tile>
+@* <Tile> *@
+@*     <UserAvatarsEditor /> *@
+@* </Tile> *@
+
+@code {
+    [Inject] public Session Session { get; init; } = null!;
+    [Inject] public IAuth Auth { get; init; } = null!;
+    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+
+    protected override ComputedState<User?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override Task<User?> ComputeState(CancellationToken cancellationToken)
+        => Auth.GetUser(Session, default);
+}

@@ -3,14 +3,14 @@
 
 <div class="@Class copy-to-clipboard">
     <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
-    <ButtonSquare Click="OnClick" ContentClass="flex-x gap-x-1">
-        <i class="fa fa-files-o py-0.5" aria-hidden="true"></i>
-        @if (OrdinalEquals(_lastCopiedText, Text)) {
+    <ButtonRound Click="OnClick" ContentClass="flex-x gap-x-1" Class="@BtnClass" Tooltip="Copy" TooltipPosition="TooltipPosition.Top">
+        <i class="icon-copy text-xl" aria-hidden="true"></i>
+        @if (OrdinalEquals(_lastCopiedText, Text) && !HideCopiedTag) {
             <div class="c-copied">
                 copied!
             </div>
         }
-    </ButtonSquare>
+    </ButtonRound>
 </div>
 
 @code {
@@ -21,9 +21,11 @@
     private ElementReference InputRef { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string BtnClass { get; set; } = "";
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string? CopyText { get; set; }
+    [Parameter] public bool HideCopiedTag { get; set; }
 
     private async Task OnClick() {
         await ClipboardUI.CopyTextFrom(InputRef, CopyText ?? Text);

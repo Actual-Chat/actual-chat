@@ -28,4 +28,6 @@ public class LinkInfoBuilder
 public record LinkInfo(string NavigateLink, string CopyLink)
 {
     public string DisplayLink => CopyLink;
+
+    public string ShortDisplayLink => $"{new Uri(CopyLink).Host}{new Uri(CopyLink).LocalPath}";
 }
