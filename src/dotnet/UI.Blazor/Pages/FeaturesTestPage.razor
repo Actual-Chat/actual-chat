@@ -1,5 +1,6 @@
 @page "/test/features"
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
 @inherits ComputedStateComponent<FeaturesTestPage.Model?>
 @{
     var m = State.ValueOrDefault ?? new();
@@ -10,15 +11,18 @@
 <p>Client user: @(m.ClientUser?.Name ?? "n/a")</p>
 <p>Server time: @(m.ServerTime)</p>
 <p>Enable incomplete UI: @(m.EnableIncompleteUI)</p>
+<p>Environment: @(m.Environment)</p>
 
 @code {
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
         => new() {
             ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),
             ServerTime = await Features.Get<TestFeatures.ServerTime, Moment>(cancellationToken),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
+            Environment = HostInfo.Environment.Value,
         };
 
     // Nested types
@@ -28,5 +32,6 @@
         public User? ClientUser { get; init; }
         public Moment ServerTime { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public Symbol Environment { get; init; }
     }
 }
