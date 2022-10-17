@@ -50,6 +50,17 @@
     @apply bg-secondary-hover border-secondary-hover;
 }
 
+/* Cancel */
+.btn.btn-cancel,
+.btn.btn-cancel:active,
+.btn.btn-cancel:focus:active {
+    @apply bg-cancel border-cancel text-cancel-title;
+}
+.btn.btn-cancel:hover,
+.btn.btn-cancel:focus {
+    @apply bg-cancel-hover border-cancel-hover;
+}
+
 /* Outline */
 .btn.btn-outline,
 .btn.btn-outline:active,

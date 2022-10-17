@@ -41,3 +41,7 @@ svg.user-avatar-card-picture {
 .user-avatar-card-add-tile .user-avatar-card-picture {
     @apply m-auto;
 }
+
+.modal-frame.edit-avatar-modal {
+    @apply max-w-90 rounded-lg p-4;
+}

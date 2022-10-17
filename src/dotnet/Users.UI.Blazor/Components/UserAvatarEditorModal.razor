@@ -3,7 +3,7 @@
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit avatar">
+    <DialogFrame Title="Edit avatar" Class="edit-avatar-modal" ButtonsClass="full-width">
         <Body>
             <DataAnnotationsValidator/>
             <ValidationSummary/>
@@ -39,7 +39,7 @@
                 @{
                     var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-secondary" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </FormButtons>
         </Buttons>
