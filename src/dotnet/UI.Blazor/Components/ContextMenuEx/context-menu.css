@@ -1,4 +1,27 @@
 .ac-menu {
-    @apply hidden absolute bg-01 top-0 left-0 text-base text-02 px-[12px] py-[7px] rounded-lg whitespace-nowrap z-menu;
-    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
+    @apply hidden absolute bg-01 rounded-xl p-1 z-menu;
+    box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
+}
+
+.ac-menu-list {
+}
+
+.ac-menu-item {
+    @apply flex min-w-[120px] p-[6px] rounded-xl h-10 whitespace-nowrap hover:bg-round-hover text-02 cursor-pointer whitespace-nowrap;
+}
+
+.ac-menu-separator {
+    @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
+}
+
+.ac-menu-content {
+    @apply flex-x gap-x-2 items-center;
+}
+
+.ac-menu-icon {
+    @apply text-icons-01 text-2xl;
+}
+
+.ac-menu-text {
+    @apply w-full text-02 text-base font-medium ml-2 mr-6;
 }

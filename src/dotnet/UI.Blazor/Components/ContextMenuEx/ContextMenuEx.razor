@@ -4,9 +4,11 @@
 
 <div class="ac-menu">
     @if (_menuType != null) {
-        <CascadingValue Value="@this" IsFixed="true">
-            <DynamicComponent Type="@_menuType" Parameters="@_parameters" />
-        </CascadingValue>
+        <ul class="ac-menu-list">
+            <CascadingValue Value="@this" IsFixed="true">
+                <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+            </CascadingValue>
+        </ul>
     }
 </div>
 
