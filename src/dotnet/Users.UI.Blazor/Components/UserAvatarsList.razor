@@ -1,0 +1,75 @@
+@using System.Text.Encodings.Web
+@inherits ComputedStateComponent<ImmutableArray<Symbol>>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<div class="flex-y gap-y-2">
+    @foreach (var avatarId in m) {
+        <Tile>
+            <TileItem Unselected="true">
+                <Icon>
+                    <UserAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
+                </Icon>
+                <Right>
+                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId))"/>
+                </Right>
+                <Content>
+                    @User.Name
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <i class="icon-at text-xl"></i>
+                </Icon>
+                <Content>
+                    Id: @avatarId
+                </Content>
+                <Caption>
+                    Avatar Id
+                </Caption>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <i class="icon-status text-xl"></i>
+                </Icon>
+                <Content>
+                    Mud is @avatarId
+                </Content>
+                <Caption>
+                    Status
+                </Caption>
+            </TileItem>
+        </Tile>
+    }
+    <UserAvatarAddTile OnClick="OnAddNewAvatar"/>
+
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public User User { get; set; } = null!;
+
+    protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
+        => new () { InitialValue = ImmutableArray<Symbol>.Empty };
+
+    protected override Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
+        => UserAvatars.ListAvatarIds(Session, cancellationToken);
+
+    private async Task OnAddNewAvatar() {
+        var command = new IUserAvatars.CreateCommand(Session);
+        await UICommander.Run(command);
+    }
+
+    private void EditAvatar(string avatarId) {
+        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
+    }
+}

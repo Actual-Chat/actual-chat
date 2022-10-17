@@ -105,12 +105,9 @@
     </TileItem>
 </Tile>
 
-
 <TileTopic Topic="My avatars"/>
 
-@* <Tile> *@
-@*     <UserAvatarsEditor /> *@
-@* </Tile> *@
+<UserAvatarsList User="@user"/>
 
 @code {
     [Inject] public Session Session { get; init; } = null!;

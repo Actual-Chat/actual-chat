@@ -132,6 +132,9 @@
     @apply h-16 md:h-12 min-h-16 md:min-h-12;
     @apply min-w-0 md:min-w-28;
 }
+.btn.btn-w-full {
+    @apply min-w-full;
+}
 
 .btn.btn-square {
     @apply inline-block overflow-hidden;

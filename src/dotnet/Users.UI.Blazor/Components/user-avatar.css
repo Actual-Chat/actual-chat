@@ -7,8 +7,7 @@
 }
 
 .user-avatar-card {
-    @apply w-40 h-32 max-w-xs p-2 pb-1.5;
-    @apply border rounded-xl shadow-inner;
+    @apply w-10 h-10;
     @apply flex flex-col items-center overflow-hidden;
     @apply bg-white font-semibold text-center;
 }

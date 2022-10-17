@@ -7,7 +7,7 @@
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
-        var tabCls = $"{tab.ButtonClass} {(isActive ? "on" : "")}";
+        var tabCls = tab.ButtonClass;
         if (!tab.IsToggle) {
             return @<Button Class="@tabCls" Click="@(_ => OnTabTitleClick(tab))" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
                        @RenderTabTitle(tab)
@@ -44,8 +44,10 @@
             </div>
             <div class="relative btn-group">
                 @foreach (var tab in Tabs) {
+                    var isActive = tab == ActiveTab;
+                    var activeCls = $"{(isActive ? "on" : "")}";
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
-                    <div class="flex-y btn-group-container @containerCls">
+                    <div class="flex-y btn-group-container @containerCls @activeCls">
                         @switch (tab.Id) {
                             case "logOut":
                                 @RenderSignOutBtn(tab);

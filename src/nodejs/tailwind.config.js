@@ -128,6 +128,7 @@ module.exports = {
         'scrollbar': 'var(--scrollbar)',
         'quote': 'var(--quote)',
         'selected': 'var(--selected)',
+        'hover': 'var(--hover)',
       },
       textColor: {
         '01': 'var(--text-01)',
