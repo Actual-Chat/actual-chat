@@ -1,0 +1,19 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<ContextMenuItem
+    Icon="icon-mic"
+    Text="Start talking">
+</ContextMenuItem>
+<ContextMenuItem
+    Icon="icon-Stop-fill"
+    Text="Stop talking"
+    StartGroup="true">
+</ContextMenuItem>
+
+@code {
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    private void Callback() {
+        throw new NotImplementedException();
+    }
+}
