@@ -1,18 +1,21 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
+@inherits ContextMenuExBase
 
-<RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
-    <ContextMenu Id="@MenuId">
-        <ChildContent>
-            @if (context.Data is Chat chat) {
-                <CascadingValue Value="@chat">
-                    <ChatMenuContent />
-                </CascadingValue>
-            }
-        </ChildContent>
-    </ContextMenu>
-</RenderIntoStack>
+@if (_chat != null) {
+    <CascadingValue Value="@_chat">
+        <ChatMenuContent />
+    </CascadingValue>
+}
 
-@code{
-    public const string MenuId = "menu-ChatMenu";
+@code {
+    private Chat? _chat;
+
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (!Argument.IsNullOrEmpty()) {
+            _chat = await Chats.Get(Session, Argument, CancellationToken.None);
+        }
+    }
 }

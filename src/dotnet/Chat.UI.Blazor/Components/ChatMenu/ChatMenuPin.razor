@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 @inherits ComputedStateComponent<bool>
 
 @{
@@ -7,27 +6,15 @@
 }
 
 @if (!isPinned) {
-    <Item OnClick="@Toggle">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-pin text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Pin
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@Toggle"
+                     Icon="icon-pin"
+                     Text="Pin">
+    </ContextMenuItem>
 } else {
-    <Item OnClick="@Toggle">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-pin text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Unpin
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@Toggle"
+              Icon="icon-pin"
+              Text="Unpin">
+    </ContextMenuItem>
 }
 
 @code {
