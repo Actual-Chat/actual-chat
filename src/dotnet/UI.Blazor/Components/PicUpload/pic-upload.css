@@ -1,10 +1,16 @@
 .pic-upload {
-    @apply relative;
-    align-self: flex-start;
+    @apply relative self-center;
+}
+.pic-upload:hover .pic-upload-picker {
+    @apply visible;
 }
 
 .pic-upload-picker {
-    @apply absolute bg-01 rounded-full right-0 bottom-0;
+    @apply invisible absolute bg-01 rounded-full right-6 bottom-6 bg-transparent;
+}
+.pic-upload-picker,
+.pic-upload-picker * {
+    @apply cursor-pointer;
 }
 
 .pic-upload-picker {

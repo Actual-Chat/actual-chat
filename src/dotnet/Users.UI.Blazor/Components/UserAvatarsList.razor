@@ -44,6 +44,7 @@
             </TileItem>
         </Tile>
     }
+
     <UserAvatarAddTile OnClick="OnAddNewAvatar"/>
 
 </div>
@@ -66,7 +67,8 @@
 
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
-        await UICommander.Run(command);
+        var avatar = await UICommander.Call(command);
+        EditAvatar(avatar.Id);
     }
 
     private void EditAvatar(string avatarId) {

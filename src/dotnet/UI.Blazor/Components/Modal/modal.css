@@ -83,6 +83,15 @@
 .dialog-buttons .btn * {
     @apply cursor-pointer;
 }
+.dialog-buttons.full-width {
+    @apply min-w-full;
+}
+.dialog-buttons.full-width .form-buttons {
+    @apply gap-x-2 justify-center;
+}
+.dialog-buttons.full-width .btn {
+    @apply min-w-1/2;
+}
 
 div.bm-content > form {
     @apply h-full;
