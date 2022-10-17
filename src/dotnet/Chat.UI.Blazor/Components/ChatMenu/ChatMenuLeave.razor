@@ -1,17 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 
-<Item OnClick="OnLeaveChatClick" Class="warning-item">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-trash02 text-2xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Leave chat
-        </div>
-    </div>
-</Item>
-
+<ContextMenuItem OnClick="OnLeaveChatClick"
+                 Class="warning-item"
+                 Icon="icon-trash02"
+                 Text="Leave chat"
+                 StartGroup="true">
+</ContextMenuItem>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;

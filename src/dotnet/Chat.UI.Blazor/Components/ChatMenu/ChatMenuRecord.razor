@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 @inherits ComputedStateComponent<bool>
 
 @{
@@ -8,27 +7,17 @@
 }
 
 @if (isRecording) {
-    <Item OnClick="@(_ => ChatUI.SetRecordingChatId(Symbol.Empty))" Class="@cls">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-Stop-fill text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Stop talking
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@(_ => ChatUI.SetRecordingChatId(Symbol.Empty))"
+                     Class="@cls"
+                     Icon="icon-Stop-fill"
+                     Text="Stop talking">
+    </ContextMenuItem>
 } else {
-    <Item OnClick="@(_ => ChatUI.SetRecordingChatId(Chat.Id))" Class="@cls">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-mic text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Start talking
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
+                     Class="@cls"
+                     Icon="icon-mic"
+                     Text="Start talking">
+    </ContextMenuItem>
 }
 
 @code {

@@ -2,26 +2,43 @@
     @apply hidden absolute bg-01 rounded-xl p-1 z-menu;
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
-
 .ac-menu-list {
 }
-
 .ac-menu-item {
     @apply flex min-w-[120px] p-[6px] rounded-xl h-10 whitespace-nowrap hover:bg-round-hover text-02 cursor-pointer whitespace-nowrap;
 }
-
 .ac-menu-separator {
     @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
 }
-
 .ac-menu-content {
     @apply flex-x gap-x-2 items-center;
 }
-
 .ac-menu-icon {
     @apply text-icons-01 text-2xl;
 }
-
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium ml-2 mr-6;
+}
+.ac-menu-item:hover .ac-menu-icon {
+    @apply text-primary;
+}
+.ac-menu-item.important-item .ac-menu-icon,
+.ac-menu-item.important-item.off .ac-menu-icon,
+.ac-menu-item.important-item .ac-menu-text,
+.ac-menu-item.important-item.off .ac-menu-text {
+    @apply text-primary;
+}
+.ac-menu-item.important-item.on .ac-menu-icon,
+.ac-menu-item.important-item.on .ac-menu-text {
+    @apply text-error;
+}
+.ac-menu-item.important-item.on:hover {
+    @apply bg-error-hover;
+}
+.ac-menu-item.warning-item:hover {
+    @apply bg-error-hover;
+}
+.ac-menu-item.warning-item:hover .ac-menu-icon,
+.ac-menu-item.warning-item:hover .ac-menu-text {
+    @apply text-error;
 }
