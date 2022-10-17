@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
+using ActualChat.Kvas;
 using ActualChat.Transcription;
 using ActualChat.Users;
 
@@ -33,6 +34,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
+    private IServerKvas ServerKvas { get; }
 
     public AudioProcessor(Options settings, IServiceProvider services)
     {
@@ -51,6 +53,7 @@ public sealed class AudioProcessor : IAudioProcessor
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
         AudioSourceLog = services.LogFor<AudioSource>();
         ChatUserSettings = services.GetService<IChatUserSettings>();
+        ServerKvas = services.GetRequiredService<IServerKvas>();
     }
 
     public async Task ProcessAudio(
@@ -68,11 +71,7 @@ public sealed class AudioProcessor : IAudioProcessor
             if (Constants.DebugMode.AudioRecordingStream)
                 recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
-            var settings = ChatUserSettings != null!
-                ? await ChatUserSettings.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false)
-                : null;
-            var language = settings.LanguageOrDefault();
-            var altLanguage = language.Next();
+            var (language, altLanguage) = await GetLanguages().ConfigureAwait(false);
             var languages = ImmutableArray.Create(language, altLanguage);
 
             var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
@@ -138,6 +137,25 @@ public sealed class AudioProcessor : IAudioProcessor
         catch (Exception e) when (e is not OperationCanceledException)  {
             Log.LogError(e, "Error processing audio stream {StreamId}", streamId);
             throw;
+        }
+
+        async Task<(LanguageId Language, LanguageId AltLanguage)> GetLanguages()
+        {
+            var settings = ChatUserSettings != null!
+                ? await ChatUserSettings.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false)
+                : null;
+            var language = settings?.Language;
+            var kvas = new KvasClient(ServerKvas, record.Session);
+            var (hasLanguageSettings, languageSettings) = await kvas
+                .Get<LanguageUserSettings>(LanguageUserSettings.KvasKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (!hasLanguageSettings)
+                throw StandardError.Constraint("No language settings found.");
+
+            language ??= languageSettings.Primary;
+            var altLanguage = languageSettings.Next(language.Value);
+
+            return (language.Value, altLanguage);
         }
     }
 
