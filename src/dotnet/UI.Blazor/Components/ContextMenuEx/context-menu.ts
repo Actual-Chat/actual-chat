@@ -163,7 +163,7 @@ export class ContextMenu implements Disposable {
     };
 
     private renderMenu(eventData: EventData): void {
-        if (this.currentData?.trigger === eventData.trigger) {
+        if (this.currentData) {
             this.hideMenu();
         }
         this.currentData = eventData;
@@ -172,7 +172,7 @@ export class ContextMenu implements Disposable {
 
     private hideMenu(): void {
         this.currentData = undefined;
-        this.menuRef.style.display = '';
+        this.menuRef.style.display = 'none';
         this.blazorRef.invokeMethodAsync('HideMenu');
     }
 
