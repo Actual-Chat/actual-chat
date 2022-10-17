@@ -22,6 +22,7 @@ import './Components/SideNav/side-nav.css'
 import './Components/TabPanel/tab.css'
 import './Components/Tooltip/tooltip.css'
 
+export * from './Services/BrowserInfo/browser-info';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Settings/local-settings';
@@ -36,7 +37,6 @@ export * from './Components/Escapist/escapist';
 export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
-export * from './Components/ScreenSizeProvider/screen-size-provider';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/Tooltip/tooltip';

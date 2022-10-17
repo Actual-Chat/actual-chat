@@ -38,9 +38,5 @@
     <TypeScriptCompile Include="Services\ThemeUI\theme-ui.ts" />
     <TypeScriptCompile Include="Services\UserInteractionUI\user-interaction-ui.ts" />
   </ItemGroup>
-
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="Components\ErrorHandling\Try.razor" />
-  </ItemGroup>
-
+  
 </Project>
