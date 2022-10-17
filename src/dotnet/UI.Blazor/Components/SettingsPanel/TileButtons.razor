@@ -3,6 +3,10 @@
 <ButtonRound Class="tile-btn" Tooltip="Set default" TooltipPosition="TooltipPosition.Top">
     <i class="icon-star text-xl"></i>
 </ButtonRound>
-<ButtonRound Class="tile-btn" Tooltip="Edit" TooltipPosition="TooltipPosition.Top">
+<ButtonRound Class="tile-btn" Tooltip="Edit" TooltipPosition="TooltipPosition.Top" Click="OnEditAvatarClick">
     <i class="icon-edit text-xl"></i>
 </ButtonRound>
+
+@code{
+    [Parameter] public EventCallback OnEditAvatarClick { get; set; }
+}

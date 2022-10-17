@@ -5,17 +5,11 @@
 
 <div class="user-avatar-card relative">
     <div class="user-avatar-card-content">
-        <Pic ContentId="@m.Picture" Title="@m.Name" Size="SquareSize.Size16">
+        <Pic ContentId="@m.Picture" Title="@m.Name" Size="SquareSize.Size9">
             <NoPicture>
                 <AnonymousIcon/>
             </NoPicture>
         </Pic>
-        <p class="user-avatar-card-bio">@(m.Bio.NullIfEmpty() ?? "No bio")</p>
-    </div>
-    <div class="absolute top-0 right-0">
-        @if (!m.Tag.IsNullOrEmpty()) {
-            <span class="user-avatar-card-tag">@m.Tag</span>
-        }
     </div>
 </div>
 
