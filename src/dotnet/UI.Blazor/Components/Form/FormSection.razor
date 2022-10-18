@@ -2,19 +2,35 @@
 @using ActualChat.UI.Blazor.Services
 
 <section data-control-id="@InputId" class="@Class">
-    @if (!Label.IsNullOrEmpty()) {
-        <div class="@LabelClass form-section-label">
-            <label for="@(InputId.NullIfEmpty() ?? "-")">
-                <span>@Label</span>
-                @if (IsRequired) {
-                    <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
-                }
-            </label>
+    @if (!IsLabelInsideInput) {
+        @if (!Label.IsNullOrEmpty()) {
+            <div class="@LabelClass form-section-label">
+                <label for="@(InputId.NullIfEmpty() ?? "-")">
+                    <span>@Label</span>
+                    @if (IsRequired) {
+                        <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
+                    }
+                </label>
+            </div>
+        }
+        <div class="@ContentClass form-section-content">
+            @ChildContent
+        </div>
+    } else {
+        <div class="@ContentClass form-section-content label-inside-input">
+            @if (!Label.IsNullOrEmpty()) {
+                <div class="@LabelClass form-section-label">
+                    <label for="@(InputId.NullIfEmpty() ?? "-")">
+                        <span>@Label</span>
+                        @if (IsRequired) {
+                            <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
+                        }
+                    </label>
+                </div>
+            }
+            @ChildContent
         </div>
     }
-    <div class="@ContentClass form-section-content">
-        @ChildContent
-    </div>
 </section>
 
 @code {
@@ -24,5 +40,6 @@
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string InputId { get; set; } = "";
     [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelInsideInput { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

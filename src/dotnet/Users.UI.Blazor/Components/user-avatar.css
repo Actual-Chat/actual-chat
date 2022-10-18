@@ -45,3 +45,28 @@ svg.user-avatar-card-picture {
 .modal-frame.edit-avatar-modal {
     @apply max-w-90 rounded-lg p-4;
 }
+
+.is-default-avatar {
+    @apply h-12 my-2;
+}
+.is-default-avatar label.checkbox {
+    @apply m-0;
+}
+.default-avatar-btn {
+    @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
+}
+.default-avatar-btn:hover {
+    @apply bg-hover;
+}
+.default-avatar-btn,
+.delete-avatar-btn,
+.delete-avatar-btn *,
+.default-avatar-btn * {
+    @apply cursor-pointer;
+}
+.delete-avatar-btn {
+    @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
+}
+.delete-avatar-btn:hover {
+    @apply bg-error-hover;
+}

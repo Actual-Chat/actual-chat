@@ -1,4 +1,5 @@
 @using System.Text.Encodings.Web
+@using UI.Blazor.Components
 @inherits ComputedStateComponent<ImmutableArray<Symbol>>
 @{
     var m = State.LatestNonErrorValue;
@@ -12,10 +13,12 @@
                     <UserAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
                 </Icon>
                 <Right>
-                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId))"/>
+                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId))"
+                                 OnSetDefaultAvatar="@(() => SetDefaultAvatar(avatarId))"
+                                 AvatarId="@avatarId"/>
                 </Right>
                 <Content>
-                    @User.Name
+                    <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" ShowOnlyName="true"/>
                 </Content>
             </TileItem>
 
@@ -33,13 +36,13 @@
 
             <TileItem>
                 <Icon>
-                    <i class="icon-status text-xl"></i>
+                    <i class="icon-info text-xl"></i>
                 </Icon>
                 <Content>
-                    Mud is @avatarId
+                    Born with id @avatarId
                 </Content>
                 <Caption>
-                    Status
+                    Bio
                 </Caption>
             </TileItem>
         </Tile>
@@ -50,6 +53,8 @@
 </div>
 
 @code {
+    private string _defaultAvatarId = "";
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
@@ -73,5 +78,13 @@
 
     private void EditAvatar(string avatarId) {
         ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
+    }
+
+    protected override async Task OnParametersSetAsync()
+        => _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
+
+    private async Task SetDefaultAvatar(string avatarId) {
+        var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
+        await UICommander.Run(command);
     }
 }

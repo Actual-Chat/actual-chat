@@ -48,3 +48,28 @@
     @apply mt-2;
     @apply flex flex-row w-full items-center gap-x-1;
 }
+
+/*Label inside input*/
+.form-section-content.label-inside-input {
+    @apply bg-02 border-b border-primary gap-y-0 px-1;
+}
+.label-inside-input input {
+    @apply bg-transparent border-none rounded-none text-02 font-normal;
+    @apply h-10 md:h-6;
+}
+
+.form .form-section-content.label-inside-input label {
+    @apply text-xs font-normal text-primary;
+}
+.form .form-section-content.label-inside-input input:not([type='checkbox']) {
+    @apply border-none rounded-none outline-none p-0;
+}
+.form .form-section-content.label-inside-input input:not([type='checkbox']).invalid {
+    @apply border-error ring-0;
+}
+.form .form-section-content.label-inside-input input:focus {
+    @apply outline-none ring-0;
+}
+.form .form-section-content.label-inside-input input:not([type='checkbox']).invalid:focus {
+    @apply border-error ring-0;
+}
