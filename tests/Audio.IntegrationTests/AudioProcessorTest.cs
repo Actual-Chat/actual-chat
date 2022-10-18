@@ -1,6 +1,7 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.App.Server;
+using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;
@@ -22,6 +23,8 @@ public class AudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
+        var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
+        await kvas.SetLanguageSettings(new () { Primary = LanguageId.Default, });
 
         var audioRecord = new AudioRecord(
             session.Id, Constants.Chat.DefaultChatId,
@@ -47,9 +50,12 @@ public class AudioProcessorTest : AppHostTestBase
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
         var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
-        var chatService = services.GetRequiredService<IChats>();
-        var chatUserSettings = services.GetRequiredService<IChatUserSettings>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
+        var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
+        await kvas.Set(LanguageUserSettings.KvasKey,
+            new LanguageUserSettings {
+                Primary = LanguageId.Default,
+            });
 
         var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
             Create = new ChatDiff() {
@@ -67,7 +73,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
 
-        var readTask = ReadAudio(audioRecord.Id, audioStreamer);
+        var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
         var readSize = await readTask;
         var transcribed = await readTranscriptTask;
@@ -86,8 +92,12 @@ public class AudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
-        var chatService = services.GetRequiredService<IChats>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
+        var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
+        await kvas.Set(LanguageUserSettings.KvasKey,
+            new LanguageUserSettings {
+                Primary = LanguageId.Default,
+            });
 
         var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
             Create = new ChatDiff() {
@@ -100,7 +110,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
-        var readSize = await ReadAudio(audioRecord.Id, audioStreamer);
+        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
         readSize.Should().BeLessThan(writtenSize);
     }
 

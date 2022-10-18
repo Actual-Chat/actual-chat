@@ -1,15 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatUserSettings?>
+@inherits ComputedStateComponent<ChatUserSettings>
 @{
-    var language = State.LatestNonErrorValue.LanguageOrDefault();
+    var language = State.ValueOrDefault?.Language;
+    var isDisabled = language == null;
+    var shortcut = language?.Shortcut ?? LanguageId.Default.Shortcut;
 }
 
 <ButtonRound
-    Class="chat-language-toggle"
-    Click="OnClick">
+    Class="chat-language-toggle" Click="OnClick" IsDisabled="@isDisabled">
     <span class="w-6 h-6 m-1 font-sans">
-        @language.Shortcut
+        @shortcut
     </span>
 </ButtonRound>
 
@@ -17,19 +18,22 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
+    protected override ComputedState<ChatUserSettings>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
-        => ChatUserSettings.Get(Session, Chat.Id, cancellationToken);
+    protected override async Task<ChatUserSettings> ComputeState(CancellationToken cancellationToken) {
+        var languages = await LanguageUI.Languages.Use(cancellationToken);
+        return await ChatUserSettings.Get(Session, Chat.Id, cancellationToken) ?? new() {
+            Language = languages.Primary,
+        };
+    }
 
-    private async Task OnClick()
-    {
-        var settings = State.Value ?? new() { Language = LanguageId.Default };
-        settings = settings with { Language = settings.LanguageOrDefault().Next() };
+    private async Task OnClick() {
+        var settings = State.Value with { Language = await LanguageUI.NextLanguage(State.Value.Language) };
         var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
         await UICommander.Run(command);
     }

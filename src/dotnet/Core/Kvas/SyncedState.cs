@@ -129,8 +129,10 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
                     if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
                         // Read sync
                         Set(readResult);
-                        if (!WhenFirstTimeRead.IsCompleted)
+                        if (!WhenFirstTimeRead.IsCompleted) {
                             WhenFirstTimeReadSource.TrySetResult(default);
+                            mustWrite = Settings.PersistInitialValue;
+                        }
                         _lastReadComputed = readComputed;
                         _lastWrittenSnapshot = Snapshot;
                     }
@@ -155,6 +157,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
         public bool ExposeReadErrors { get; init; }
+        public bool PersistInitialValue { get; set; }
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
@@ -178,12 +181,17 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
         public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
+        public Func<CancellationToken, Task<T>>? InitialValueFactory { get; init; }
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
             var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
-            if (data == null)
+            if (data == null) {
+                if (InitialValueFactory != null)
+                    return await InitialValueFactory(cancellationToken).ConfigureAwait(false);
+
                 return InitialValue;
+            }
             var value = Serializer.Read(data);
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);

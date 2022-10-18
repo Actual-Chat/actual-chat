@@ -25,6 +25,7 @@ public class ChatUIStateSync : WorkerBase
     private IServiceProvider Services { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
+    private LanguageUI LanguageUI { get; }
 
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
@@ -41,6 +42,7 @@ public class ChatUIStateSync : WorkerBase
         Services = services;
         Log = Services.LogFor(GetType());
         Clocks = services.Clocks();
+        LanguageUI = services.GetRequiredService<LanguageUI>();
     }
 
     // Protected methods
@@ -206,7 +208,8 @@ public class ChatUIStateSync : WorkerBase
         async ValueTask<bool> IsLanguageChanged()
         {
             var settings = await ChatUserSettings.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
-            var languageId = settings.LanguageOrDefault();
+            var languageUserSettings = await LanguageUI.Languages.Use(cancellationToken).ConfigureAwait(false);
+            var languageId = settings?.Language ?? languageUserSettings.Primary;
             var isLanguageChanged = _lastLanguageId.HasValue && languageId != _lastLanguageId;
             _lastLanguageId = languageId;
             return isLanguageChanged;

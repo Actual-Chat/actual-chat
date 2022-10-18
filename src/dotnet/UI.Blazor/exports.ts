@@ -16,6 +16,7 @@ import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
 import './Components/Modal/modal.css' // based on BlazoredModal
 import './Components/Pic/pic.css'
 import './Components/PicUpload/pic-upload.css'
+import './Components/Radio/radio.css'
 import './Components/SearchBox/search-box.css'
 import './Components/SettingsPanel/settings-panel.css'
 import './Components/SignIn/sign-in.css'

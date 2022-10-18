@@ -47,6 +47,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<UnreadMessagesFactory>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
+        // Settings
+        services.AddScoped<LanguageUI>();
+
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
