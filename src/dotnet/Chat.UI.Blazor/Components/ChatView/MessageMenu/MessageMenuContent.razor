@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<MessageMenuContent.Model>
 @{
@@ -7,73 +6,37 @@
     var entry = ChatMessageModel.Entry;
 }
 
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-heart-fill text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Reaction
-        </div>
-    </div>
-</Item>
+<ContextMenuItem OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })"
+                 Icon="icon-heart-fill text-xl"
+                 Text="Reaction">
+</ContextMenuItem>
 @if (m.CanReply) {
-    <Item OnClick="@(() => Reply(entry))">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-reply text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Reply
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@(() => Reply(entry))"
+                     Icon="icon-reply text-xl"
+                     Text="Reply">
+    </ContextMenuItem>
 }
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-hash-fill text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Create thread
-        </div>
-    </div>
-</Item>
-<Item OnClick="@(() => CopyLink(entry))">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-link-2 text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Copy link
-        </div>
-    </div>
-</Item>
+<ContextMenuItem OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })"
+                 Icon="icon-hash-fill text-xl"
+                 Text="Create thread">
+</ContextMenuItem>
+<ContextMenuItem OnClick="@(() => CopyLink(entry))"
+                 Icon="icon-link-2 text-xl"
+                 Text="Copy link">
+</ContextMenuItem>
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
-    <Item OnClick="@(() => Edit(entry))">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-edit text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Edit
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@(() => Edit(entry))"
+                     Icon="icon-edit text-xl"
+                     Text="Edit">
+    </ContextMenuItem>
 }
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
-    <BlazorContextMenu.Separator/>
-
-    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" Class="warning-item">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-trash text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Delete message
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))"
+                     Class="warning-item"
+                     Icon="icon-trash text-xl"
+                     Text="Delete message"
+                     StartGroup="true">
+    </ContextMenuItem>
 }
 
 @code{
@@ -90,7 +53,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new ComputedState<Model>.Options {
-            InitialValue = Model.None
+            InitialValue = Model.None,
         };
     }
 

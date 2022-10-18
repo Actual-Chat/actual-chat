@@ -20,11 +20,11 @@
         </ButtonRound>
     </Item>
 }
-<ContextMenuToggleTrigger MenuId="@MessageMenu.MenuId" Data="@Message">
-    <ButtonRound Class="more-btn">
-        <i class="icon-more-vertical text-xl text-icon-01"></i>
-    </ButtonRound>
-</ContextMenuToggleTrigger>
+<ButtonRound Class="more-btn"
+             data-menu="@(MenuTrigger.Format<MessageMenu>(Message.Entry.ChatId, Message.Key))"
+             data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())">
+    <i class="icon-more-vertical text-xl text-icon-01"></i>
+</ButtonRound>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

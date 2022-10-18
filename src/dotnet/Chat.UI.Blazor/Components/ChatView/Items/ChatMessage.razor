@@ -27,7 +27,7 @@
 }
 
 <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
-     data-menu="@(MenuTrigger.Format<ChatMessageContextMenu>(Message.Key))"
+     data-menu="@(MenuTrigger.Format<MessageMenu>(Message.Entry.ChatId, Message.Key))"
      data-menu-trigger="@(MenuTriggers.RightClick.ToTriggersString())">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">

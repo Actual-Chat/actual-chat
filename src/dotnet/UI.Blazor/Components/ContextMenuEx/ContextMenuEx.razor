@@ -22,13 +22,13 @@
 
     [JSInvokable]
     public Task RenderMenu(string trigger) {
-        var (menu, argument) = MenuTrigger.Parse(trigger);
+        var (menu, arguments) = MenuTrigger.Parse(trigger);
         _menuType = MenuUI.Get(menu);
-        _parameters = argument.IsNullOrEmpty()
-            ? null
-            : new() {
-                { "Argument", argument },
-            };
+        _parameters = arguments is { Length:> 0}
+            ? new() {
+                { nameof(ContextMenuExBase.Arguments), arguments },
+            }
+            : null;
         StateHasChanged();
         return Task.CompletedTask;
     }
