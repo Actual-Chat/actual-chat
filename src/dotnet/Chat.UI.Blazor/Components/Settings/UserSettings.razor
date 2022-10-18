@@ -1,4 +1,5 @@
 @using System.Security.Claims
+@using UserAvatar = ActualChat.Users.UserAvatar
 @inherits ComputedStateComponent<User?>
 
 @{
@@ -66,7 +67,7 @@
             <i class="icon-info text-xl"></i>
         </Icon>
         <Content>
-            actual.chat developer
+            Some bio: <UserAvatar AvatarId="@_defaultAvatarId" ChatId="@ChatId" Show="Users.UI.Blazor.Components.UserAvatar.ShowInfo.Bio"/>
         </Content>
         <Caption>
             Bio
@@ -98,13 +99,21 @@
 <UserAvatarsList User="@user"/>
 
 @code {
+    private string _defaultAvatarId = "";
+
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IAuth Auth { get; init; } = null!;
+    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
 
     protected override ComputedState<User?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<User?> ComputeState(CancellationToken cancellationToken)
-        => Auth.GetUser(Session, default);
+    protected override async Task<User?> ComputeState(CancellationToken cancellationToken) {
+        var user = await Auth.GetUser(Session, default);
+        _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
+        return user;
+    }
 }

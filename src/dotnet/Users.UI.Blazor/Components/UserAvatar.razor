@@ -3,7 +3,11 @@
     var m = State.LatestNonErrorValue;
 }
 
-@if (!ShowOnlyName) {
+@if (Show == ShowInfo.Name) {
+    @m.Name
+} else if (Show == ShowInfo.Bio) {
+    @m.Bio
+} else {
     <div class="user-avatar-card relative">
         <div class="user-avatar-card-content">
             <Pic ContentId="@m.Picture" Title="@m.Name" Size="SquareSize.Size9">
@@ -13,18 +17,21 @@
             </Pic>
         </div>
     </div>
-} else {
-    @m.Name
 }
 
 @code {
+    public enum ShowInfo {
+        Avatar,
+        Name,
+        Bio,
+    }
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
 
     [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-    [Parameter] public bool ShowOnlyName { get; set; }
+    [Parameter] public ShowInfo Show { get; set; } = ShowInfo.Avatar;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };

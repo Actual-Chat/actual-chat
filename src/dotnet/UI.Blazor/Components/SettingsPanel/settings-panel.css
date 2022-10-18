@@ -91,7 +91,7 @@
     @apply flex-y max-w-full max-h-12;
 }
 .tile-item-body-content {
-    @apply overflow-y-hidden leading-5 max-h-10 text-sm text-02;
+    @apply overflow-y-hidden leading-5 min-h-5 max-h-5 text-sm text-02;
 }
 .tile-item-body-caption {
     @apply text-xs font-normal text-03;
