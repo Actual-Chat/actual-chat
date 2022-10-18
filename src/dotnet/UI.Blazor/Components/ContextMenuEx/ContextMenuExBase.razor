@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @code {
-    [Parameter] public string Argument { get; set; } = "";
+    [Parameter] public ImmutableArray<string> Arguments { get; set; } = ImmutableArray<string>.Empty;
 
     [CascadingParameter] public ContextMenuEx ContextMenu { get; set; } = null!;
 

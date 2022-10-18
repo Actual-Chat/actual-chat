@@ -14,8 +14,8 @@
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        if (!Argument.IsNullOrEmpty()) {
-            _chat = await Chats.Get(Session, Argument, CancellationToken.None);
+        if (Arguments is {Length: > 0}) {
+            _chat = await Chats.Get(Session, Arguments[0], CancellationToken.None);
         }
     }
 }
