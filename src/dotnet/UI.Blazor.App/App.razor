@@ -78,33 +78,39 @@
             StateHasChanged();
             UILifetimeEvents.RaiseOnAppInitialized(Services);
         }), TaskScheduler.Current);
+
+        // Starting less important UI services
+        AppPresenceReporter.Start();
     }
 
     public void Dispose()
         => CircuitContext.Dispose();
 
     private async Task PrepareForTheFirstRender() {
+        // Starting to acquire browser info
         _ = BrowserInfo.Init();
+
+        // Starting to read theme
         var themeUI = Services.GetRequiredService<ThemeUI>();
         themeUI.Start();
+        await themeUI.Theme.WhenFirstTimeRead;
 
-        if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter) {
-            // Useful JS functions:
-            // Intl.DateTimeFormat().resolvedOptions().timeZone
-            // new Date().getTimezoneOffset()
+        // Starting to apply theme
+        var applyThemeTask = themeUI.ApplyTheme(themeUI.Theme.Value);
+
+        // Finishing w/ browser info
+        await BrowserInfo.WhenReady;
+
+        if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             try {
-                var utcOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
-                serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(utcOffset));
+                serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
             }
             catch (Exception ex) {
                 Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
                 serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(0));
             }
-        }
 
-        await themeUI.Theme.WhenFirstTimeRead;
-        await themeUI.ApplyTheme(themeUI.Theme.Value);
-        await BrowserInfo.WhenReady;
-        AppPresenceReporter.Start();
+        // Finishing w/ theme
+        await applyThemeTask;
     }
 }

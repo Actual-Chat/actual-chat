@@ -1,4 +1,5 @@
 import './browser-info.css'
+import { PromiseSource } from '../../../../nodejs/src/promises';
 
 const LogScope: string = 'BrowserInfo';
 const debug: boolean = true;
@@ -6,10 +7,12 @@ const debug: boolean = true;
 export class BrowserInfo {
     private static screenSizeMeasureDiv: HTMLDivElement = null;
     private static backendRef: DotNet.DotNetObject = null;
-    private static isTouchCapableCached: boolean = null;
-    private static windowId: string = "";
 
+    public static whenReady: PromiseSource<void> = new PromiseSource<void>();
     public static screenSize: string;
+    public static utcOffset: number;
+    public static isTouchCapableCached: boolean = null;
+    public static windowId: string = "";
 
     public static init(backendRef1: DotNet.DotNetObject): InitResult {
         this.backendRef = backendRef1;
@@ -24,11 +27,15 @@ export class BrowserInfo {
             <div data-size="Small"></div>
         `
         window.addEventListener('resize', this.onWindowResize);
+        this.utcOffset = new Date().getTimezoneOffset();
         this.screenSize = this.measureScreenSize();
         // @ts-ignore
         this.windowId = window.App.windowId;
+        this.whenReady.resolve(undefined);
+
         return {
             screenSizeText: this.screenSize,
+            utcOffset: this.utcOffset,
             isTouchCapable: this.isTouchCapable(),
             windowId: this.windowId,
         }
@@ -84,6 +91,7 @@ export class BrowserInfo {
 
 export interface InitResult {
     screenSizeText: string;
+    utcOffset: number;
     isTouchCapable: boolean;
     windowId: string;
 }

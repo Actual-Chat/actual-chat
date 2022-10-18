@@ -11,6 +11,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend
     private ILogger Log { get; }
 
     public IMutableState<ScreenSize> ScreenSize { get; }
+    public TimeSpan UtcOffset { get; private set; }
     public bool IsTouchCapable { get; private set; }
     public string WindowId { get; private set; } = "";
     public Task WhenReady => _whenReadySource.Task;
@@ -35,6 +36,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend
             screenSize = Blazor.Services.ScreenSize.Unknown;
         ScreenSize.Value = screenSize;
         IsTouchCapable = initResult.IsTouchCapable;
+        UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);
     }

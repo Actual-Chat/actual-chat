@@ -11,23 +11,23 @@
     }
     var error = State.Error; // AY: Add code displaying the error bar later
     var chat = m.Chat;
-    if (chat == null) {
-        <div>Loading...</div>
-        return;
-    }
-    if (!chat.IsPublic && !m.Account.IsActive()) {
-        /* We check account here to avoid excessive render */
-        <RequireAccount/>
-    }
 }
 
 @* @key=... ensures child components are recreated on navigation to another chat *@
 
+@* Left panel can be rendered w/o chat being loaded *@
 <RenderIntoSlot Name="MainLeftPanel">
-    <CascadingValue Value="chat">
-        <LeftPanel/>
-    </CascadingValue>
+    <LeftPanel/>
 </RenderIntoSlot>
+
+@if (chat == null) {
+    /* Chat isn't yet fetched, so nothing to render on the right side */
+    return;
+}
+@if (!chat.IsPublic && !m.Account.IsActive()) {
+    /* We check account here to avoid excessive render */
+    <RequireAccount/>
+}
 
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="chat">

@@ -8,6 +8,7 @@ public interface IBrowserInfoBackend
 
     public sealed record InitResult(
         string ScreenSizeText,
+        double UtcOffset,
         bool IsTouchCapable,
         string WindowId);
 }
