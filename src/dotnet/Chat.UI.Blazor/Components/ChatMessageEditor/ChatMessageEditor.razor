@@ -107,32 +107,31 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-        MarkupHub.ChatId = Chat.Id;
-        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
-        // Default scheduler is used from here
-    }
-
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        LastReadEntryState?.Dispose();
+        LastReadEntryState?.DisposeSilently();
         LastReadEntryState = null!;
     }
 
-    protected override void OnParametersSet() {
+    protected override async Task OnParametersSetAsync() {
         var oldChatId = MarkupHub.ChatId;
         if (oldChatId == Chat.Id)
             return;
 
         MarkupHub.ChatId = Chat.Id;
-        if (JSRef == null!)
-            return; // Not rendered yet
 
-        ClearAttachments();
-        MarkupEditorRef.Clear(Autofocus);
+        LastReadEntryState.DisposeSilently();
+        LastReadEntryState = null;
+        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+
+        if (JSRef != null!) {
+            // Only when rendered
+            await ClearAttachments();
+            await MarkupEditorRef.Clear(Autofocus);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
