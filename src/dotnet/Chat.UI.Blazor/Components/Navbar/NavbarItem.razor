@@ -1,3 +1,4 @@
+@using ActualChat.Notification.UI.Blazor
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var activeClass = IsSelected ? "active" : "inactive";
@@ -9,6 +10,8 @@
     <div class="navbar-item-content">
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
+        } else if (BrowserInfo.IsTouchCapable) {
+            <a class="unfocusable" href="@Url">@ChildContent</a>
         } else {
             <a class="unfocusable" href="@Url" @onmousedown="@Click">@ChildContent</a>
         }
@@ -21,6 +24,7 @@
 @code {
     [Inject] private FocusUI FocusUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool? IsOnline { get; set; }
