@@ -1,21 +1,23 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;
 
 public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 {
-    private Task Upgrade(ChatDbContext dbContext, CancellationToken cancellationToken)
+    private async Task Upgrade(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
-        // Log.LogInformation("Upgrading DB...");
-        Log.LogInformation("Upgrading DB: no upgrades");
-        return Task.CompletedTask;
+        Log.LogInformation("Upgrading DB...");
+        // Log.LogInformation("Upgrading DB: no upgrades");
+        // return Task.CompletedTask;
 
         // These steps are already executed on prod:
         // await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         // await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
         // await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
+        await FixCorruptedLastReadPositions(dbContext, cancellationToken).ConfigureAwait(false);
     }
 
     // Active upgrade steps
@@ -99,6 +101,20 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to create 'Announcements' chat!");
+            throw;
+        }
+    }
+
+    private async Task FixCorruptedLastReadPositions(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        try {
+            Log.LogInformation("starting FixCorruptedLastReadPositions");
+            var cmd = new IChatsBackend.FixCorruptedChatReadPositionsCommand();
+            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("FixCorruptedLastReadPositions complete");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to fix corrupted last read positions");
             throw;
         }
     }

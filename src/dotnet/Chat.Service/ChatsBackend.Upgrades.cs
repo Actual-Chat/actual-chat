@@ -148,7 +148,7 @@ public partial class ChatsBackend
 
         var usersTempBackend = Services.GetRequiredService<IUsersTempBackend>();
         var hostInfo = Services.GetRequiredService<HostInfo>();
-        var userIds = await usersTempBackend.GetUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await usersTempBackend.ListUserIds(cancellationToken).ConfigureAwait(false);
 
         string? creatorId = null;
 
@@ -237,5 +237,40 @@ public partial class ChatsBackend
         }
 
         return chat;
+    }
+
+    // [CommandHandler]
+    public virtual async Task FixCorruptedChatReadPositions(IChatsBackend.FixCorruptedChatReadPositionsCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var chatReadPositionsBackend = Services.GetRequiredService<IChatReadPositionsBackend>();
+        var usersTempBackend = Services.GetRequiredService<IUsersTempBackend>();
+
+        var userIds = await usersTempBackend.ListUserIds(cancellationToken).ConfigureAwait(false);
+        foreach (var userId in userIds) {
+            var chatIds = await ChatAuthorsBackend.ListUserChatIds(userId, cancellationToken).ConfigureAwait(false);
+            foreach (var chatId in chatIds) {
+                var lastReadEntryId = await chatReadPositionsBackend.Get(userId, chatId, cancellationToken).ConfigureAwait(false);
+                if (lastReadEntryId.GetValueOrDefault() == 0)
+                    continue;
+
+                var maxEntryId = await GetMaxId(chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
+                if (maxEntryId >= lastReadEntryId)
+                    continue;
+
+                // since it was corrupted for some time and user might not know that there are some new message
+                // let's show at least 1 unread message, so user could pay attention to this chat
+                Log.LogInformation(
+                    "Fixing corrupted last read position for user #{UserId} at chat #{ChatId}: {CurrentLastReadEntryId} -> {FixedLastReadEntryId}",
+                    userId,
+                    chatId,
+                    lastReadEntryId,
+                    maxEntryId - 1);
+                var setCmd = new IChatReadPositionsBackend.SetCommand(userId, chatId,  maxEntryId - 1, true);
+                await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 }

@@ -7,14 +7,10 @@ namespace ActualChat.Users;
 [SuppressMessage("Usage", "MA0006:Use String.Equals instead of equality operator")]
 public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadPositionsBackend
 {
-    private IAccountsBackend AccountsBackend { get; }
     private IDbEntityResolver<string, DbChatReadPosition> DbChatReadPositionResolver { get; }
 
     public ChatReadPositionsBackend(IServiceProvider services) : base(services)
-    {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        DbChatReadPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatReadPosition>>();
-    }
+        => DbChatReadPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatReadPosition>>();
 
     // [ComputeMethod]
     public virtual async Task<long?> Get(string userId, string chatId, CancellationToken cancellationToken)
@@ -25,11 +21,13 @@ public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadP
     }
 
     // [CommandHandler]
-    public virtual async Task Set(IChatReadPositionsBackend.SetReadPositionCommand command, CancellationToken cancellationToken)
+    public virtual async Task Set(IChatReadPositionsBackend.SetCommand command, CancellationToken cancellationToken)
     {
-        var (userId, chatId, readEntryId) = command;
+        var (userId, chatId, readEntryId, force) = command;
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            _ = Get(userId, chatId, default);
+            if (context.Operation().Items.Get<bool>())
+                _ = Get(userId, chatId, default);
             return;
         }
 
@@ -40,20 +38,22 @@ public class ChatReadPositionsBackend: DbServiceBase<UsersDbContext>, IChatReadP
         var dbPosition = await dbContext.ChatReadPositions
             .FindAsync(DbKey.Compose(compositeId), cancellationToken)
             .ConfigureAwait(false);
+        bool hasChanges = false;
         if (dbPosition == null) {
             dbPosition = new DbChatReadPosition {
                 Id = compositeId,
                 ReadEntryId = readEntryId,
             };
             dbContext.Add(dbPosition);
+            hasChanges = true;
         }
-        else {
-            if (readEntryId > dbPosition.ReadEntryId)
-                dbPosition.ReadEntryId = readEntryId;
+        else if (readEntryId > dbPosition.ReadEntryId || force) {
+            dbPosition.ReadEntryId = readEntryId;
+            hasChanges = true;
         }
-        // Log.LogInformation("Read position update: user #{UserId} chat #{ChatId} -> {ReadEntryId}",
-        //     userId, chatId, readEntryId);
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (hasChanges)
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(hasChanges);
     }
 }
