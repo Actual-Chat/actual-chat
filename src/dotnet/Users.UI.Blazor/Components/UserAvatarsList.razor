@@ -18,7 +18,7 @@
                                  AvatarId="@avatarId"/>
                 </Right>
                 <Content>
-                    <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" ShowOnlyName="true"/>
+                    <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="UserAvatar.ShowInfo.Name"/>
                 </Content>
             </TileItem>
 
@@ -39,7 +39,7 @@
                     <i class="icon-info text-xl"></i>
                 </Icon>
                 <Content>
-                    Born with id @avatarId
+                    Some bio: <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="UserAvatar.ShowInfo.Bio"/>
                 </Content>
                 <Caption>
                     Bio
@@ -67,8 +67,11 @@
     protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
         => new () { InitialValue = ImmutableArray<Symbol>.Empty };
 
-    protected override Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
-        => UserAvatars.ListAvatarIds(Session, cancellationToken);
+    protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await UserAvatars.ListAvatarIds(Session, cancellationToken);
+        _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
+        return avatarIds;
+    }
 
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
@@ -79,9 +82,6 @@
     private void EditAvatar(string avatarId) {
         ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
     }
-
-    protected override async Task OnParametersSetAsync()
-        => _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
 
     private async Task SetDefaultAvatar(string avatarId) {
         var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
