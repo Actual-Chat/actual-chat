@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public interface IChatsBackend : IComputeService
+public partial interface IChatsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);

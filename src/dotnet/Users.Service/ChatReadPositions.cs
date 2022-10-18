@@ -38,7 +38,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             return;
 
         await Commander.Call(
-            new IChatReadPositionsBackend.SetReadPositionCommand(account.Id, chatId, readEntryId),
+            new IChatReadPositionsBackend.SetCommand(account.Id, chatId, readEntryId),
             true, cancellationToken)
             .ConfigureAwait(false);
     }

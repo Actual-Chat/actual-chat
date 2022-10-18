@@ -387,7 +387,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var entryId = await GetMaxId(command.ChatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new IChatReadPositionsBackend.SetReadPositionCommand(command.UserId, command.ChatId, entryId),
+        await Commander.Call(new IChatReadPositionsBackend.SetCommand(command.UserId, command.ChatId, entryId),
             true,
             cancellationToken).ConfigureAwait(false);
     }

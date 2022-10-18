@@ -10,7 +10,7 @@ public class UsersTempBackend : DbServiceBase<UsersDbContext>,  IUsersTempBacken
     public UsersTempBackend(IServiceProvider services) : base(services)
     { }
 
-    public virtual async Task<ImmutableArray<string>> GetUserIds(CancellationToken cancellationToken)
+    public virtual async Task<ImmutableList<string>> ListUserIds(CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -19,6 +19,6 @@ public class UsersTempBackend : DbServiceBase<UsersDbContext>,  IUsersTempBacken
             .Select(c => c.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.ToImmutableArray();
+        return userIds.ToImmutableList();
     }
 }
