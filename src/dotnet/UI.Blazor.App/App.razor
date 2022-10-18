@@ -6,7 +6,6 @@
 @implements IDisposable
 
 <BrowserInfoProvider>
-<CascadingAuthState>
 <BlazoredModal ActivateFocusTrap="true" />
 
     @if (!_whenReadyToRender.IsCompletedSuccessfully) {
@@ -33,7 +32,6 @@
 
     <ContextMenuContainer />
 
-</CascadingAuthState>
 </BrowserInfoProvider>
 
 @code {
@@ -46,9 +44,10 @@
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
+    [Inject] private AppPresenceReporter AppPresenceReporter { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<App> Log { get; init; } = null!;
@@ -106,5 +105,6 @@
         await themeUI.Theme.WhenFirstTimeRead;
         await themeUI.ApplyTheme(themeUI.Theme.Value);
         await BrowserInfo.WhenReady;
+        AppPresenceReporter.Start();
     }
 }

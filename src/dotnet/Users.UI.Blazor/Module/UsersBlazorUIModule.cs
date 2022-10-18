@@ -12,10 +12,5 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
     public UsersBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
-    {
-        // Presence
-        services.AddSingleton(_ => new PresenceService.Options() {
-            UpdatePeriod = Constants.Presence.CheckInPeriod,
-        });
-    }
+    { }
 }

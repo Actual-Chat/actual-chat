@@ -1,18 +1,30 @@
 @namespace ActualChat.UI.Blazor.Components
-
-@if (User != null) {
-    <SignedInMenu/>
-} else {
-    <SignInMenu ButtonType="SignInMenu.MenuButton.Round" ContentPositionClass="bottom-14"/>
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<ActualChat.Users.Account?>
+@{
+    var account = State.LatestNonErrorValue;
+    if (account != null) {
+        <button class="account-btn btn-square" onclick="@OnSettingsClick">
+            <AccountView/>
+        </button>
+    } else {
+        <SignInMenu ButtonType="SignInMenu.MenuButton.Round" ContentPositionClass="bottom-14"/>
+    }
 }
 
 @code{
-    private User? User { get; set; }
+    [Inject] Session Session { get; init; } = null!;
+    [Inject] IAccounts Accounts { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
+    protected override ComputedState<Account?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task OnParametersSetAsync() {
-        User = (await AuthStateTask).User;
-        StateHasChanged();
-    }
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
+
+
+    private void OnSettingsClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

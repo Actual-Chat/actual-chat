@@ -1,11 +1,19 @@
 ﻿@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<ActualChat.Users.Account?>
 @{
-    var usedAuthSchemas = User.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var account = State.LatestNonErrorValue;
+    var user = account?.User;
+    if (AuthSchemas == null || user != null)
+        return;
+
+    var usedAuthSchemas = user?.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? NoAuthSchemas;
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var mainButtonClass = ButtonType == MenuButton.Default ? "btn-primary " : "btn-round ";
+    var dropdownClass = Class.NullIfEmpty()
+        ?? (ButtonType == MenuButton.Round ? "left-panel-account-menu" : "footer-account-menu");
     var btnClass = mainButtonClass + ButtonClass;
-    var dropdownClass = ButtonType == MenuButton.Round ? "left-panel-account-menu" : "footer-account-menu";
     var btnTitle = ButtonType == MenuButton.Round ? "Sign in" : "";
 }
 
@@ -35,27 +43,31 @@
         Round,
     }
 
+    private static readonly HashSet<string> NoAuthSchemas = new();
+    private (string Name, string DisplayName)[]? AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
-    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-    private User? User { get; set; }
-
-    [CascadingParameter] private Task<AuthState> AuthStateTask { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string ContentPositionClass { get; set; } = "";
     [Parameter] public MenuButton ButtonType { get; set; } = MenuButton.Default;
 
-    protected override async Task OnParametersSetAsync() {
-        User = (await AuthStateTask).User;
-        StateHasChanged();
-    }
+    protected override ComputedState<Account?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-    // GetSchemas requires JS interop for web version, so it can be called only at this point
-            AuthSchemas = await ClientAuth.GetSchemas();
-            StateHasChanged();
-        }
+        if (!firstRender)
+            return;
+
+        // GetSchemas requires JS interop for web version, so it can be called only at this point
+        AuthSchemas = await ClientAuth.GetSchemas();
+        StateHasChanged();
     }
 
     private void SignIn(string name)

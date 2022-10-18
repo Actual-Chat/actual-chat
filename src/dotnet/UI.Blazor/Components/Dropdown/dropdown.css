@@ -1,3 +1,6 @@
+.dropdown-menu {
+    @apply absolute z-50;
+}
 .dropdown-menu .menu {
     @apply rounded-xl shadow-context border border-context-border bg-01;
 }
