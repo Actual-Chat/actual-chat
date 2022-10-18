@@ -65,11 +65,11 @@
                         <NotifyCallPanel @ref="NotifyCallPanelRef" Class="flex-1"/>
                     </div>
                 </div>
-                @if (ScreenSize.IsMobile()) {
+                @if (ScreenSize.IsNarrow()) {
                     <MobileControlPanel/>
                 }
             </div>
-            @if (ScreenSize.IsDesktop()) {
+            @if (ScreenSize.IsWide()) {
                 <RecorderPanel/>
             }
         </div>
@@ -84,7 +84,7 @@
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
-    private bool Autofocus => ScreenSize.IsDesktop();
+    private bool Autofocus => ScreenSize.IsWide();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }

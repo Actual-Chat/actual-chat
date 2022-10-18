@@ -13,7 +13,7 @@
 <div class="historical-playback-sub-header">
     <div class="historical-playback-sub-header-content flex-x justify-between items-center gap-x-2">
         <div class="flex-none flex-x">
-            @if (ScreenSize.IsDesktop()) {
+            @if (ScreenSize.IsWide()) {
                 <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
                 </ButtonRound>
@@ -30,7 +30,7 @@
             <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
                 <i class="icon-Stop-fill text-2xl"></i>
             </ButtonRound>
-            @if (ScreenSize.IsDesktop()) {
+            @if (ScreenSize.IsWide()) {
                 <ButtonRound Title="Fast-forward" Click="@OnForward" Class="transparent hover-primary-icon">
                     <i class="icon-rewind-right-fill text-2xl"></i>
                 </ButtonRound>
@@ -43,7 +43,7 @@
                     <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
                 </div>
             }
-            @if (ScreenSize.IsDesktop()) {
+            @if (ScreenSize.IsWide()) {
                 <div class="c-text truncate whitespace-nowrap">
                     @if (m.PlayingAt is { } playingAt) {
                         var localTime = TimeZoneConverter.ToLocalTime(playingAt);
