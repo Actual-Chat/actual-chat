@@ -67,7 +67,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
                 .Except(existingMentions.Select(x => x.AuthorId), StringComparer.Ordinal)
                 .Select(authorId1 => new DbMention {
                     Id = DbMention.ComposeId(chatId, entryId, authorId1),
-                    AuthorId = authorId,
+                    AuthorId = authorId1,
                     ChatId = chatId,
                     EntryId = entryId,
                 }).ToList();
