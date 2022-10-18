@@ -3,15 +3,19 @@
     var m = State.LatestNonErrorValue;
 }
 
-<div class="user-avatar-card relative">
-    <div class="user-avatar-card-content">
-        <Pic ContentId="@m.Picture" Title="@m.Name" Size="SquareSize.Size9">
-            <NoPicture>
-                <AnonymousIcon/>
-            </NoPicture>
-        </Pic>
+@if (!ShowOnlyName) {
+    <div class="user-avatar-card relative">
+        <div class="user-avatar-card-content">
+            <Pic ContentId="@m.Picture" Title="@m.Name" Size="SquareSize.Size9">
+                <NoPicture>
+                    <AnonymousIcon/>
+                </NoPicture>
+            </Pic>
+        </div>
     </div>
-</div>
+} else {
+    @m.Name
+}
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -20,6 +24,7 @@
 
     [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter] public bool ShowOnlyName { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };

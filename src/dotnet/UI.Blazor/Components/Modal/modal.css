@@ -87,10 +87,10 @@
     @apply min-w-full;
 }
 .dialog-buttons.full-width .form-buttons {
-    @apply gap-x-2 justify-center;
+    @apply gap-x-4 justify-center my-1;
 }
 .dialog-buttons.full-width .btn {
-    @apply min-w-1/2;
+    @apply max-w-full grow;
 }
 
 div.bm-content > form {
