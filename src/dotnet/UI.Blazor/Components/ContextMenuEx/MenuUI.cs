@@ -4,7 +4,7 @@ public static class MenuUI
 {
     private static volatile ConcurrentDictionary<string, Type> _menus = new (StringComparer.Ordinal);
 
-    public static void Register<TMenu>()
+    public static void Register<TMenu>() where TMenu: ContextMenuExBase
     {
         if (!_menus.TryAdd(typeof(TMenu).Name, typeof(TMenu)))
             throw new ArgumentOutOfRangeException(nameof(TMenu), typeof(TMenu).Name, null);
