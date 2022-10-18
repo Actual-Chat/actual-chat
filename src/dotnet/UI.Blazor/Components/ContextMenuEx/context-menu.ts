@@ -177,12 +177,13 @@ export class ContextMenu implements Disposable {
     }
 
     private updatePosition(eventData: EventData): void {
+        this.menuRef.style.display = 'block';
+
         if (eventData.coords) {
             Object.assign(this.menuRef.style, {
                 left: `${eventData.coords.x}px`,
                 top: `${eventData.coords.y}px`,
             });
-            this.menuRef.style.display = 'block';
 
             return;
         }
@@ -200,7 +201,6 @@ export class ContextMenu implements Disposable {
                 left: `${x}px`,
                 top: `${y}px`,
             });
-            this.menuRef.style.display = 'block';
         });
     }
 
