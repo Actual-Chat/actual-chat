@@ -2,14 +2,16 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-<div class="ac-menu">
-    <CascadingValue Value="@this" IsFixed="true">
-        @if (_menuType != null) {
-            <ul class="ac-menu-list">
-                <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
-            </ul>
-        }
-    </CascadingValue>
+<div class="ac-menu-container">
+    <div class="ac-menu">
+        <CascadingValue Value="@this" IsFixed="true">
+            @if (_menuType != null) {
+                <ul class="ac-menu-list">
+                    <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+                </ul>
+            }
+        </CascadingValue>
+    </div>
 </div>
 
 @code {
