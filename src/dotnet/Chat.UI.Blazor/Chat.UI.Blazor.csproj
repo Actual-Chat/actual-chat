@@ -22,26 +22,4 @@
     <Using Include="ActualChat.Chat.UI.Blazor" />
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Components\ChatSettings\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Remove="Components\ChatSettings\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Components\ChatSettings\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="Components\ChatSettings\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="Components\SlateEditor\SlateEditor.razor" />
-    <_ContentIncludedByDefault Remove="Components\SlateEditor\SlateEditorTestPage.razor" />
-  </ItemGroup>
-
 </Project>

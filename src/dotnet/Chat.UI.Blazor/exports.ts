@@ -1,6 +1,7 @@
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MentionList/mention-list';
+export * from './Services/language-ui';
 
 import './Components/components.css';
 import './Components/ChatView/chat-view.css';

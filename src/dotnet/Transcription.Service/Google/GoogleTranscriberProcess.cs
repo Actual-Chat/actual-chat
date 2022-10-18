@@ -68,8 +68,6 @@ public class GoogleTranscriberProcess : WorkerBase
                     RecordingDeviceType = RecognitionMetadata.Types.RecordingDeviceType.Smartphone,
                 },
             };
-            foreach (var altLanguage in Options.AltLanguages)
-                config.AlternativeLanguageCodes.Add(altLanguage);
 
             var recognizeRequests = speechClient.StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
             await recognizeRequests.WriteAsync(new () {

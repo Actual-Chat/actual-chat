@@ -225,3 +225,13 @@
 .chat-header-control-panel .btn.btn-round .btn-content {
     @apply min-h-10 min-w-10;
 }
+
+.language-settings {
+    @apply flex-y mb-2;
+}
+.language-settings legend {
+    @apply text-xl;
+}
+.language-settings-item {
+    @apply flex-x items-center my-1;
+}
