@@ -19,6 +19,7 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>
     public Moment? EndsAt { get; init; }
     public Moment? ContentEndsAt { get; init; }
     public string Content { get; init; } = "";
+    public bool HasReactions { get; init; }
     public Symbol StreamId { get; init; } = "";
     public long? AudioEntryId { get; init; }
     public long? VideoEntryId { get; init; }
@@ -31,8 +32,10 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
 
-    public long? RepliedChatEntryId { get; set; }
+    public long? RepliedChatEntryId { get; init; }
     public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
+
+    public Symbol CompositeId { get; init; } = "";
 
     // This record relies on version-based equality
     public bool Equals(ChatEntry? other)

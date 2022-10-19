@@ -25,14 +25,24 @@ public static class UIFeatures
         }
     }
 
-    public class EnableChatMessageSearchUI : FeatureDef<bool>, IClientFeatureDef
+    public abstract class AdminOnlyFeature : FeatureDef<bool>, IClientFeatureDef
     {
         public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
+            var hostInfo = services.GetRequiredService<HostInfo>();
+            if (hostInfo.IsDevelopmentInstance)
+                return true;
+
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
             var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
             return account?.IsAdmin == true;
         }
     }
+
+    public class EnableChatMessageSearchUI : AdminOnlyFeature
+    { }
+
+    public class EnableMessageReactions : AdminOnlyFeature
+    { }
 }

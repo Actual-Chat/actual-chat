@@ -1,0 +1,32 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using BlazorContextMenu
+
+@if (!_areReactionsEnabled) {
+    return;
+}
+<ul class="reaction-select">
+    @foreach (var emoji in Emoji.All) {
+        <Item OnClick="@(_ => React(emoji.Code))" tooltip="@emoji.Name" Class="reaction-select-reaction">@emoji.Code</Item>
+    }
+</ul>
+
+@code {
+
+    private bool _areReactionsEnabled;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
+    }
+
+    private Task React(string emoji) {
+        var command = new IReactions.ReactCommand(Session, new Reaction {
+            ChatId = ChatEntry.ChatId, EntryId = ChatEntry.Id, Emoji = emoji,
+        });
+        return UICommander.Run(command);
+    }
+}

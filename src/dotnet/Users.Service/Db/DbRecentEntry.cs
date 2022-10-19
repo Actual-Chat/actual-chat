@@ -6,10 +6,6 @@ namespace ActualChat.Users.Db;
 public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _updatedAt;
-
-    public DbRecentEntry() { }
-    public DbRecentEntry(RecentEntry recentEntry) => UpdateFrom(recentEntry);
-
     [Key] public string Id { get; set; } = "";
     public string ShardKey { get; set; } = null!;
     public string Key { get; set; } = null!;
@@ -19,6 +15,9 @@ public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarg
         get => _updatedAt.DefaultKind(DateTimeKind.Utc);
         set => _updatedAt = value.DefaultKind(DateTimeKind.Utc);
     }
+
+    public DbRecentEntry() { }
+    public DbRecentEntry(RecentEntry recentEntry) => UpdateFrom(recentEntry);
 
     public RecentEntry ToModel()
         => new(ShardKey, Key, Enum.Parse<RecencyScope>(Scope)) {

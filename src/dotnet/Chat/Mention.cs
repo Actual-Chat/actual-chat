@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public class Mention : IHasId<Symbol>, IRequirementTarget
+public record Mention : IHasId<Symbol>, IRequirementTarget
 {
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public string AuthorId { get; init; } = "";

@@ -77,6 +77,9 @@
                             }
                         </div>
                     }
+                    @if (entry.HasReactions) {
+                        <MessageReactions ChatEntry="@entry" />
+                    }
                 </div>
             </div>
         </div>

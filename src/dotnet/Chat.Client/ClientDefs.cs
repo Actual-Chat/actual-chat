@@ -73,7 +73,6 @@ public interface IChatsClientDef
     Task<Unit> JoinChat([Body] IChats.JoinChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(LeaveChat))]
     Task LeaveChat([Body] IChats.LeaveChatCommand command, CancellationToken cancellationToken);
-
     [Post(nameof(UpsertTextEntry))]
     Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
@@ -140,4 +139,17 @@ public interface IMentionsClientDef
         Session session,
         Symbol chatId,
         CancellationToken cancellationToken);
+}
+
+[BasePath("reactions")]
+public interface IReactionsClientDef
+{
+    [Get(nameof(List))]
+    Task<ImmutableArray<ReactionSummary>> List(
+        Session session,
+        Symbol chatEntryId,
+        CancellationToken cancellationToken);
+
+    [Post(nameof(React))]
+    Task React([Body] IReactions.ReactCommand command, CancellationToken cancellationToken);
 }

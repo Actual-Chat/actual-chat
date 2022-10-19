@@ -97,6 +97,10 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IMentions, Mentions>();
         fusion.AddComputeService<IMentionsBackend, MentionsBackend>();
 
+        // Reactions
+        fusion.AddComputeService<IReactions, Reactions>();
+        fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
+
         // ChatMentionResolver
         services.AddSingleton<BackendChatMentionResolverFactory>();
 
