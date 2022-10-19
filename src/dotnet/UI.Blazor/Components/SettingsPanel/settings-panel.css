@@ -39,7 +39,7 @@
     @apply w-full;
 }
 .settings-panel-tabs .btn {
-    @apply min-w-full justify-start text-02 border-none px-2;
+    @apply min-w-0 justify-start text-02 border-none;
 }
 .settings-panel-tabs .btn .btn-content {
     @apply flex-x items-center px-2 gap-x-4 text-base;
@@ -48,8 +48,13 @@
     @apply min-h-14 w-full md:w-3/4 border-b border-bg-04 md:border-none;
 }
 .settings-header-title {
-    @apply flex-x justify-start items-center w-full gap-x-2 px-4 text-xl font-semibold;
-    @apply md:text-lg md:font-medium;
+    @apply flex-x justify-start items-center w-full px-2 gap-x-2;
+}
+.settings-header-title .title {
+    @apply text-xl md:text-lg font-semibold md:font-medium;
+}
+.settings-header-title .btn {
+    @apply md:hidden;
 }
 .settings-header-title i {
     @apply font-normal;

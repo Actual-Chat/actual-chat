@@ -55,10 +55,10 @@
     @apply bg-transparent opacity-90;
 }
 .modal-header {
-    @apply hidden flex-none md:flex-x justify-between items-center;
+    @apply hidden flex-none md:flex-x justify-between items-center max-h-10;
 }
 .modal-mobile-header {
-    @apply flex-x min-h-14 px-2 gap-x-2 items-center bg-02 border-b border-bg-04 text-lg md:hidden;
+    @apply flex-x justify-start min-h-14 px-2 gap-x-2 items-center bg-02 border-b border-bg-04 md:hidden;
 }
 .modal-close,
 .modal-close * {
