@@ -13,7 +13,7 @@
                     <UserAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
                 </Icon>
                 <Right>
-                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId))"
+                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId, "Edit avatar"))"
                                  OnSetDefaultAvatar="@(() => SetDefaultAvatar(avatarId))"
                                  AvatarId="@avatarId"/>
                 </Right>
@@ -76,11 +76,11 @@
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
         var avatar = await UICommander.Call(command);
-        EditAvatar(avatar.Id);
+        EditAvatar(avatar.Id, "Add avatar");
     }
 
-    private void EditAvatar(string avatarId) {
-        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
+    private void EditAvatar(string avatarId, string title) {
+        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId, title));
     }
 
     private async Task SetDefaultAvatar(string avatarId) {

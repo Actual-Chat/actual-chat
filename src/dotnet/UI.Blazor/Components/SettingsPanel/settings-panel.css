@@ -17,7 +17,7 @@
     @apply rounded-lg cursor-pointer;
 }
 .settings-panel-tabs .btn-group-container.on {
-    @apply bg-selected;
+    @apply md:bg-selected;
 }
 .settings-panel-tabs .btn-group-container.on i {
     @apply text-02;
