@@ -35,6 +35,9 @@
 .settings-panel-tabs .btn-group-container * {
     @apply cursor-pointer;
 }
+.settings-panel-tabs .btn-group-container .btn {
+    @apply min-w-full;
+}
 .settings-panel-tabs .btn-group-container .btn-content {
     @apply w-full;
 }

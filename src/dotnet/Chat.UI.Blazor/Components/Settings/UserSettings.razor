@@ -9,10 +9,11 @@
     var relativeUri = Links.UserPage(user.Id);
     var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
     user.Claims.TryGetValue(ClaimTypes.Email, out var email);
+    user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var mobilePhone);
+    var phone = !string.IsNullOrEmpty(mobilePhone) ? mobilePhone : "+1 234 567 89 00";
 }
 
 <Tile>
-    @* <UserNameEditor/> *@
     <TileItem Unselected="true" Class="first-tile-item">
         <Icon>
             <UserAuthorBadge
@@ -22,7 +23,7 @@
                 TextClass="hidden" />
         </Icon>
         <Right>
-            <TileButtons HideSetDefaultButton="true"/>
+            <TileButtons HideSetDefaultButton="true" OnEditClick="@(() => EditAccount(_defaultAvatarId))"/>
         </Right>
         <Content>
             @user.Name
@@ -55,7 +56,7 @@
             <CopyToClipboard InputClass="hidden" BtnClass="tile-hidden-btn" Text="+71234567890" HideCopiedTag="true"/>
         </Right>
         <Content>
-            +7 123 456 78 90
+            @phone
         </Content>
         <Caption>
             Phone
@@ -105,6 +106,7 @@
     [Inject] public IAuth Auth { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
@@ -116,4 +118,7 @@
         _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
         return user;
     }
+
+    private void EditAccount(string avatarId)
+        => ModalUI.Show(new UserAccountEditorModal.Model(avatarId, ChatId));
 }

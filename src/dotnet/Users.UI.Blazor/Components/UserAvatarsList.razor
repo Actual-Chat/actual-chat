@@ -13,8 +13,8 @@
                     <UserAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
                 </Icon>
                 <Right>
-                    <TileButtons OnEditAvatarClick="@(() => EditAvatar(avatarId, "Edit avatar"))"
-                                 OnSetDefaultAvatar="@(() => SetDefaultAvatar(avatarId))"
+                    <TileButtons OnEditClick="@(() => EditAvatar(avatarId, "Edit avatar"))"
+                                 OnSetDefaultClick="@(() => SetDefaultAvatar(avatarId))"
                                  AvatarId="@avatarId"/>
                 </Right>
                 <Content>
