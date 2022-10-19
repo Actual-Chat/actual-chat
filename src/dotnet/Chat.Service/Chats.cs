@@ -107,7 +107,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string chatId,
         CancellationToken cancellationToken)
     {
-        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        if (!canRead)
+            return null;
         return await Backend.GetSummary(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -314,8 +316,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     [ComputeMethod]
     protected virtual async Task<Chat?> GetGroupChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken)
-            .ConfigureAwait(false);
+        var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         if (!canRead)
             return null;
         return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -509,7 +510,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     // Assertions & permission checks
 
-    private async Task AssertCanUpdateTextEntry(
+    private async ValueTask AssertCanUpdateTextEntry(
         ChatEntry chatEntry,
         Session session,
         CancellationToken cancellationToken)
@@ -527,7 +528,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw StandardError.Constraint("Only text messages can be edited.");
     }
 
-    private async Task AssertCanRemoveTextEntry(
+    private async ValueTask AssertCanRemoveTextEntry(
         ChatEntry chatEntry,
         Session session,
         CancellationToken cancellationToken)
@@ -545,7 +546,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw StandardError.Constraint("This chat entry is streaming.");
     }
 
-    private async Task RequirePermissions(
+    private async ValueTask RequirePermissions(
         Session session, string chatId, ChatPermissions required,
         CancellationToken cancellationToken)
     {
@@ -553,7 +554,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             throw ChatPermissionsExt.NotEnoughPermissions(required);
     }
 
-    private async Task<bool> HasPermissions(
+    private async ValueTask<bool> HasPermissions(
         Session session, string chatId, ChatPermissions required,
         CancellationToken cancellationToken)
     {
@@ -567,7 +568,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return hasPermissions;
     }
 
-    private async Task<bool> IsInvited(
+    private async ValueTask<bool> IsInvited(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
