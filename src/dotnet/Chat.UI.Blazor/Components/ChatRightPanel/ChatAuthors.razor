@@ -75,9 +75,6 @@
 
     private void OnChatAuthorClick(string authorId)
         => ModalUI.Show(new ChatAuthorModal.Model(authorId));
-    //
-    // private void OnSelfClick()
-    //     => ModalUI.Show(new AuthorSettingsModal.Model(Chat));
 
     private void OnSelfClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
