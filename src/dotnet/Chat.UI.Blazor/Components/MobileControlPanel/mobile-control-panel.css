@@ -59,6 +59,16 @@
     @apply border-error transition-colors duration-300;
 }
 
+.mobile-control-panel .recorder-wrapper.record-init {
+    @apply border-error transition-colors duration-300;
+}
+.mobile-control-panel .recorder-wrapper.record-init .record-off-btn.btn {
+    @apply absolute animate-scale-to-5 scale-0
+}
+.mobile-control-panel .recorder-wrapper.record-init .record-on-btn.btn {
+    @apply animate-scale-cycle;
+}
+
 .mobile-control-panel .recorder-wrapper.record-off .record-on-btn.btn {
     @apply scale-0 absolute;
 }
