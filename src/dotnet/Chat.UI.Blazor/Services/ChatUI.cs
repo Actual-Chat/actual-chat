@@ -69,19 +69,19 @@ public class ChatUI
     }
 
     [ComputeMethod]
-    public virtual Task<bool> IsSelected(string chatId)
+    public virtual Task<bool> IsSelected(Symbol chatId)
         => Task.FromResult(SelectedChatId.Value == chatId);
 
     [ComputeMethod]
-    public virtual Task<bool> IsPinned(string chatId)
+    public virtual Task<bool> IsPinned(Symbol chatId)
         => Task.FromResult(PinnedChats.Value.Contains(chatId));
 
     [ComputeMethod]
-    public virtual Task<bool> IsListening(string chatId)
+    public virtual Task<bool> IsListening(Symbol chatId)
         => Task.FromResult(ActiveChats.Value.TryGetValue(chatId, out var chat) && chat.IsListening);
 
     [ComputeMethod]
-    public virtual Task<bool> IsRecording(string chatId)
+    public virtual Task<bool> IsRecording(Symbol chatId)
         => Task.FromResult(ActiveChats.Value.TryGetValue(chatId, out var chat) && chat.IsRecording);
 
     [ComputeMethod]

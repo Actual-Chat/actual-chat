@@ -60,6 +60,6 @@ public class AudioHub : Hub
             .ConfigureAwait(false);
     }
 
-    public Task<string> Ping(CancellationToken cancellationToken)
+    public Task<string> Ping()
         => Task.FromResult("Pong");
 }
