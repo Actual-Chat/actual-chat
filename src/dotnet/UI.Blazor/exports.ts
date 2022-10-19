@@ -5,8 +5,6 @@ import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 import './Components/Button/button.css';
 import './Components/Checkbox/checkbox.css'
 import './Components/Clipboard/clipboard.css';
-import './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.css';
-import './Components/ContextMenu/context-menu.css';
 import './Components/Dropdown/dropdown.css'
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
@@ -33,7 +31,6 @@ export * from './Services/ThemeUI/theme-ui'
 export * from './Services/UserInteractionUI/user-interaction-ui';
 
 export * from './Components/Clipboard/clipboard';
-export * from './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.js';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';

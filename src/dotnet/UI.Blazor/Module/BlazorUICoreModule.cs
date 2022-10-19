@@ -26,24 +26,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
         services.AddScoped<ModalService>();
-        services.AddBlazorContextMenu(options =>
-        {
-            options.ConfigureTemplate(defaultTemplate =>
-            {
-                defaultTemplate.MenuClass += " context-menu";
-                defaultTemplate.MenuItemClass += " context-menu-item";
-                defaultTemplate.MenuListClass += " context-menu-list";
-                defaultTemplate.SeparatorClass += " context-menu-separator";
-            });
-
-            options.ConfigureTemplate("horizontal",
-                template => {
-                    template.MenuClass = "blazor-context-menu--horizontal context-menu";
-                    template.MenuItemClass = "blazor-context-menu__item--horizontal";
-                    template.MenuListClass += " blazor-context-menu__list--horizontal context-menu-list";
-                    template.SeparatorClass += " context-menu-separator";
-                });
-        });
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =
