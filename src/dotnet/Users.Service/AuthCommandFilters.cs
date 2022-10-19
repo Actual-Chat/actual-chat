@@ -1,4 +1,5 @@
 using ActualChat.Commands;
+using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -30,39 +31,13 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
-    public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
-    {
-        // This command filter takes the following actions on sign-out:
-        // - Resets session options & invalidates Auth.GetOptions
-
-        var context = CommandContext.GetCurrent();
-        var session = command.Session;
-
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        if (Computed.IsInvalidating()) {
-            _ = Auth.GetOptions(session, default);
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        await ResetSessionOptions(dbContext, session, cancellationToken).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    [CommandHandler(IsFilter = true, Priority = 1)]
     public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
         // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
         // - Updates UserPresence.Get & invalidates it if it's not computed or offline
-        // - Resets session options & invalidates Auth.GetOptions
 
         var context = CommandContext.GetCurrent();
-        var session = command.Session;
-
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
@@ -71,7 +46,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var userId = sessionInfo.UserId;
 
         if (Computed.IsInvalidating()) {
-            _ = Auth.GetOptions(session, default);
             InvalidateUserPresenceIfOffline(userId);
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
@@ -92,7 +66,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             dbUser.Name = newName;
         }
 
-        await ResetSessionOptions(dbContext, session, cancellationToken).ConfigureAwait(false);
         await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -101,6 +74,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignedIn(SignInCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
+        // - moves session keys to user keys in IServerKvas
         // - publishes NewUserEvent when user was created within sign-in.
 
         var context = CommandContext.GetCurrent();
@@ -109,15 +83,18 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (Computed.IsInvalidating())
             return;
 
-        var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
-        if (!isNewUser)
-            return;
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        new NewUserEvent(userId)
-            .EnqueueOnCompletion(Queues.Users);
+
+        new IServerKvas.MoveSessionKeysCommand(command.Session)
+            .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
+
+        var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
+        if (isNewUser)
+            new NewUserEvent(userId)
+                .EnqueueOnCompletion(Queues.Users);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
@@ -195,22 +172,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             return; // Consistent + already in desirable (non-Offline) state
 
         _ = UserPresences.Get(userId, default);
-    }
-
-    private async Task ResetSessionOptions(
-        UsersDbContext dbContext,
-        Session session,
-        CancellationToken cancellationToken)
-    {
-        var dbSession = await dbContext.Sessions
-            .ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == session.Id.Value, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbSession == null)
-            return;
-
-        dbSession.Options = new ImmutableOptionSet();
-        dbSession.Version = VersionGenerator.NextVersion(dbSession.Version);
     }
 
     // Nested types

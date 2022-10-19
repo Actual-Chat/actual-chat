@@ -4,15 +4,12 @@ namespace ActualChat.Users;
 
 public static class KvasExt
 {
-    public static async ValueTask<LanguageUserSettings> GetLanguageSettings(this IKvas kvas, CancellationToken cancellationToken = default)
+    public static async ValueTask<UserLanguageSettings> GetUserLanguageSettings(this IKvas kvas, CancellationToken cancellationToken)
     {
-        var (hasValue, value) = await kvas.Get<LanguageUserSettings>(LanguageUserSettings.KvasKey, cancellationToken).ConfigureAwait(false);
-        return hasValue ? value : throw StandardError.Constraint("No language settings found.");
+        var valueOpt = await kvas.Get<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return valueOpt.IsSome(out var value) ? value : new();
     }
 
-    public static Task SetLanguageSettings(
-        this IKvas kvas,
-        LanguageUserSettings value,
-        CancellationToken cancellationToken = default)
-        => kvas.Set(LanguageUserSettings.KvasKey, value, cancellationToken);
+    public static Task SetUserLanguageSettings(this IKvas kvas, UserLanguageSettings value, CancellationToken cancellationToken)
+        => kvas.Set(UserLanguageSettings.KvasKey, value, cancellationToken);
 }

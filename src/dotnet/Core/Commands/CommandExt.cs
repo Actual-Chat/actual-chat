@@ -62,7 +62,7 @@ public static class CommandExt
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    public static ICommand EnqueueOnCompletion(this ICommand command, QueueRef queueRef)
+    public static void EnqueueOnCompletion(this ICommand command, QueueRef queueRef)
     {
         var commandContext = CommandContext.GetCurrent();
         if (Computed.IsInvalidating())
@@ -72,10 +72,9 @@ public static class CommandExt
         var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
         list = list.Add(new(command, queueRef));
         operationItems.Set(list);
-        return command;
     }
 
-    public static ICommand EnqueueOnCompletion(
+    public static void EnqueueOnCompletion(
         this ICommand command,
         QueueRef queueRef1,
         QueueRef queueRef2)
@@ -88,10 +87,9 @@ public static class CommandExt
         var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
         list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2));
         operationItems.Set(list);
-        return command;
     }
 
-    public static ICommand EnqueueOnCompletion(
+    public static void EnqueueOnCompletion(
         this ICommand command,
         QueueRef queueRef1,
         QueueRef queueRef2,
@@ -105,7 +103,6 @@ public static class CommandExt
         var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
         list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2)).Add(new(command, queueRef3));
         operationItems.Set(list);
-        return command;
     }
 
     // Private methods

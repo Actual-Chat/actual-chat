@@ -9,10 +9,6 @@ public readonly record struct QueueRef(
 {
     private static readonly char[] AnyDelimiter = { '.', '[' };
 
-    public static QueueRef Default { get; } = new("default");
-    public static QueueRef Chats { get; } = new("chats");
-    public static QueueRef Users { get; } = new("users");
-
     [DataMember(Order = 0)] public string Name { get; init; } = Name;
     [DataMember(Order = 1)] public string ShardKey { get; init; } = ShardKey ?? "";
     [DataMember(Order = 2)] public CommandPriority Priority { get; init; } = Priority;

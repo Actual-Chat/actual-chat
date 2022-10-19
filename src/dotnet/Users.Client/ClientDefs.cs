@@ -74,6 +74,8 @@ public interface IServerKvasClientDef
     Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
     [Post(nameof(SetMany))]
     Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
+    [Post(nameof(MoveSessionKeys))]
+    Task MoveSessionKeys([Body] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default);
 }
 
 [BasePath("userContacts")]

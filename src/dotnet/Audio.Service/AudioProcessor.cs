@@ -152,7 +152,7 @@ public sealed class AudioProcessor : IAudioProcessor
             return language.Value;
 
         var kvas = new KvasClient(ServerKvas, record.Session);
-        var languageSettings = await kvas.GetLanguageSettings(cancellationToken).ConfigureAwait(false);
+        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
         return languageSettings.Primary;
     }
 

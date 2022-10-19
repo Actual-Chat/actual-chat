@@ -9,7 +9,6 @@ namespace ActualChat.Chat;
 
 public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBackend
 {
-    private const string AuthorIdSuffix = "::authorId";
     private IChatAuthors? _frontend;
 
     private IAccounts Accounts { get; }
@@ -99,12 +98,12 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
         chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (account == null) // No account? Let's store the author Id in the IServerKvas
-            await Commander.Call(
-                new IServerKvas.SetCommand(session, chatId + AuthorIdSuffix, chatAuthor.Id),
-                true, cancellationToken
-            ).ConfigureAwait(false);
-
+        if (account == null) {
+            var kvas = new KvasClient(ServerKvas, session);
+            var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
+            settings = settings.WithChatAuthor(chatId, chatAuthor.Id);
+            await kvas.SetAuthorSettings(settings, cancellationToken).ConfigureAwait(false);
+        }
         return chatAuthor;
     }
 

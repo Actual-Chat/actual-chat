@@ -13,8 +13,10 @@ public class AudioProcessorTest : AppHostTestBase
 {
     public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
 
-    [Fact]
-    public async Task EmptyRecordingTest()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EmptyRecordingTest(bool mustSetUserLanguageSettings)
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
@@ -24,7 +26,8 @@ public class AudioProcessorTest : AppHostTestBase
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
         var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.SetLanguageSettings(new () { Primary = LanguageId.Default, });
+        if (mustSetUserLanguageSettings)
+            await kvas.SetUserLanguageSettings(new () { Primary = LanguageId.Default, }, CancellationToken.None);
 
         var audioRecord = new AudioRecord(
             session.Id, Constants.Chat.DefaultChatId,
@@ -52,8 +55,8 @@ public class AudioProcessorTest : AppHostTestBase
         var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
         var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(LanguageUserSettings.KvasKey,
-            new LanguageUserSettings {
+        await kvas.Set(UserLanguageSettings.KvasKey,
+            new UserLanguageSettings {
                 Primary = LanguageId.Default,
             });
 
@@ -94,8 +97,8 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
         var kvas = new KvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(LanguageUserSettings.KvasKey,
-            new LanguageUserSettings {
+        await kvas.Set(UserLanguageSettings.KvasKey,
+            new UserLanguageSettings {
                 Primary = LanguageId.Default,
             });
 

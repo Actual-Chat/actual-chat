@@ -124,8 +124,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (rules.CanJoin())
             return true;
 
-        var invited = await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
-        return invited;
+        var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
+        return hasInvite;
     }
 
     // [ComputeMethod]
@@ -501,11 +501,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, false);
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
-        var isInvited = await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (isInvited)
+        var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (hasInvite)
             // Remove the invite
             new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null)
-                .EnqueueOnCompletion(QueueRef.Users);
+                .EnqueueOnCompletion(Queues.Users);
     }
 
     // Assertions & permission checks
@@ -563,12 +563,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!hasPermissions && required == ChatPermissions.Read) {
             // NOTE(AY): Maybe makes sense to move this to UI code - i.e. process the invite there
             // in case there is not enough permissions & retry.
-            return await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
+            return await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
         }
         return hasPermissions;
     }
 
-    private async ValueTask<bool> IsInvited(
+    private async ValueTask<bool> HasInvite(
         Session session,
         string chatId,
         CancellationToken cancellationToken)

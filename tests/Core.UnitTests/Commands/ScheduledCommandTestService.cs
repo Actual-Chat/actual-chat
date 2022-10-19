@@ -36,7 +36,7 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        new TestEvent(command.Error).EnqueueOnCompletion(QueueRef.Default);
+        new TestEvent(command.Error).EnqueueOnCompletion(Queues.Default);
         return Task.CompletedTask;
     }
 
@@ -46,7 +46,7 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        new TestEvent2().EnqueueOnCompletion(QueueRef.Default);
+        new TestEvent2().EnqueueOnCompletion(Queues.Default);
         return Task.CompletedTask;
     }
 }

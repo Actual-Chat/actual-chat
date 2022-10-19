@@ -10,7 +10,7 @@
 }
 
 <fieldset class="language-settings" id="language-settings-primary">
-    <legend>Select your primary language:</legend>
+    <legend>Your primary language:</legend>
     @foreach (var language in LanguageId.All) {
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
@@ -21,7 +21,7 @@
 </fieldset>
 
 <fieldset class="language-settings" id="language-settings-secondary">
-    <legend>Select your secondary language:</legend>
+    <legend>Your secondary language:</legend>
     <div class="language-settings-item">
         <Radio Id="language-settings-secondary-none" Name="language-settings-secondary"
                Value="" IsChecked="@(languages.Secondary == null)"
@@ -61,5 +61,5 @@
         return new(languages);
     }
 
-    public sealed record Model(LanguageUserSettings Languages);
+    public sealed record Model(UserLanguageSettings Languages);
 }

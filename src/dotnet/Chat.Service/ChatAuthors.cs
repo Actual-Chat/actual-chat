@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Kvas;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
 
@@ -7,25 +8,24 @@ namespace ActualChat.Chat;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 {
-    private const string AuthorIdSuffix = "::authorId";
     private IChatAuthorsBackend? _backend;
     private IChats? _chats;
 
-    private IAuth Auth { get; }
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IUserContactsBackend UserContactsBackend { get; }
     private IUserPresences UserPresences { get; }
+    private IServerKvas ServerKvas { get; }
     private IChatAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IChatAuthorsBackend>();
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
-        Auth = Services.GetRequiredService<IAuth>();
         Accounts = Services.GetRequiredService<IAccounts>();
         AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
         UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
+        ServerKvas = services.ServerKvas();
     }
 
     // [ComputeMethod]
@@ -37,9 +37,10 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (account != null)
             return await Backend.GetByUserId(chatId, account.Id, false, cancellationToken).ConfigureAwait(false);
 
-        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        var authorId = options[chatId + AuthorIdSuffix] as string;
-        if (authorId == null)
+        var kvas = new KvasClient(ServerKvas, session);
+        var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
+        var authorId = settings.ChatAuthors.GetValueOrDefault(chatId);
+        if (authorId.IsNullOrEmpty())
             return null;
         return await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
     }
@@ -87,14 +88,13 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (account != null)
             return await Backend.ListUserChatIds(account.Id, cancellationToken).ConfigureAwait(false);
 
-        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        var chatIds = options.Items.Keys
-            .Select(c => c.Value)
-            .Where(c => c.OrdinalEndsWith(AuthorIdSuffix))
-            .Select(c => new Symbol(c.Substring(0, c.Length - AuthorIdSuffix.Length)))
-            .Union(new[] { Constants.Chat.AnnouncementsChatId })
-            .ToImmutableArray();
-        return chatIds;
+        var kvas = new KvasClient(ServerKvas, session);
+        var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
+        var chatAuthors = settings.ChatAuthors;
+        var chatIds = chatAuthors.Keys.AsEnumerable();
+        if (!chatAuthors.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
+            chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
+        return chatIds.Select(x => (Symbol) x).ToImmutableArray();
     }
 
     // [ComputeMethod]

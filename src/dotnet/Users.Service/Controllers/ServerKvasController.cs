@@ -28,4 +28,8 @@ public class ServerKvasController : ControllerBase, IServerKvas
     [HttpPost]
     public Task SetMany([FromBody] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
         => _commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task MoveSessionKeys([FromBody] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default)
+        => _commander.Call(command, cancellationToken);
 }
