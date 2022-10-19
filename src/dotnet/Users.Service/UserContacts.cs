@@ -33,6 +33,16 @@ public class UserContacts : IUserContacts
             .ToImmutableArray();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<UserContact?> Get(Session session, string contactId, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
+        var contact = await ContactsBackend.Get(contactId, cancellationToken).ConfigureAwait(false);
+        if (contact?.OwnerUserId == user.Id)
+            return contact;
+        throw StandardError.Unauthorized("Contact is missing or you don't have access to it.");
+    }
+
     // [CommandHandler]
     public virtual async Task<UserContact?> Change(IUserContacts.ChangeCommand command, CancellationToken cancellationToken)
     {
@@ -44,7 +54,7 @@ public class UserContacts : IUserContacts
         var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
         var contact = await ContactsBackend.Get(id, cancellationToken).Require().ConfigureAwait(false);
         if (contact.OwnerUserId != user.Id)
-            throw StandardError.Unauthorized("Users can change only their own contacts");
+            throw StandardError.Unauthorized("Users can change only their own contacts.");
 
         return await Commander
             .Call(new IUserContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)

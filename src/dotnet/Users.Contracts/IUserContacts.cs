@@ -5,6 +5,9 @@ public interface IUserContacts : IComputeService
     [ComputeMethod]
     public Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    public Task<UserContact?> Get(Session session, string contactId, CancellationToken cancellationToken);
+
     [CommandHandler]
     public Task<UserContact?> Change(ChangeCommand command, CancellationToken cancellationToken);
 
