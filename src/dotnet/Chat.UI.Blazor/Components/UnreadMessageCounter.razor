@@ -24,8 +24,6 @@
 </div>
 
 @code {
-    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
     [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
@@ -48,17 +46,21 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer,
+            UpdateDelayer = new UpdateDelayer(Services.UIActionTracker(), TimeSpan.FromSeconds(1)) {
+                MinDelay = TimeSpan.FromSeconds(0.3), // Prevents blinking on your own updates
+            },
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasMentionsTask = UnreadMessages.HasMentions(cancellationToken);
-        var countTask = UnreadMessages.GetCount(cancellationToken).AsTask();
+        var countTask = UnreadMessages.GetCount(cancellationToken);
         var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
-        var (hasMentions, count, notificationStatus) =
-            await hasMentionsTask.Join(countTask, notificationStatusTask).ConfigureAwait(false);
 
+        // ConfigureAwait(false) from here
+        var hasMentions = await hasMentionsTask.ConfigureAwait(false);
+        var count = await countTask.ConfigureAwait(false);
+        var notificationStatus = await notificationStatusTask.ConfigureAwait(false);
         if (!hasMentions && count == 0)
             return Model.None;
 
@@ -73,7 +75,7 @@
         public static readonly Model None = new();
 
         public bool HasMentions { get; init; }
-        public MaybeEstimate<int> Count { get; init; }
+        public MaybeTrimmed<int> Count { get; init; }
         public bool IsSubscribed { get; init; }
     }
 }

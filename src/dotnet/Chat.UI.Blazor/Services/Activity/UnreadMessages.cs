@@ -5,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class UnreadMessages : IDisposable
 {
-    private const int MaxCount = 1000;
+    public const int MaxCount = 1000;
 
     private Session Session { get; }
     private IChats Chats { get; }
@@ -27,36 +27,41 @@ public class UnreadMessages : IDisposable
     public void Dispose()
         => _lastReadEntryState?.Dispose();
 
-    public async Task<bool> HasMentions(CancellationToken cancellationToken)
+    public async ValueTask<bool> HasMentions(CancellationToken cancellationToken)
     {
-        var lastReadEntryId = await GetLastReadEntryId(cancellationToken).ConfigureAwait(false);
+        // Let's start this in parallel
+        var lastReadEntryIdTask = GetLastReadEntryId(cancellationToken);
+        var getMentionsTask = Mentions.GetLast(Session, ChatId, cancellationToken);
+
+        var lastReadEntryId = await lastReadEntryIdTask.ConfigureAwait(false);
         if (lastReadEntryId == null)
             return false; // Never opened this chat, so no unread mentions
 
-        var lastMention = await Mentions
-            .GetLast(Session, ChatId, cancellationToken)
-            .ConfigureAwait(false);
-
+        var lastMention = await getMentionsTask.ConfigureAwait(false);
         return lastMention?.EntryId > lastReadEntryId;
     }
 
-    public async ValueTask<MaybeEstimate<int>> GetCount(CancellationToken cancellationToken)
+    public async ValueTask<MaybeTrimmed<int>> GetCount(CancellationToken cancellationToken)
     {
-        var lastReadEntryId = await GetLastReadEntryId(cancellationToken);
+        // Let's start this in parallel
+        var lastReadEntryIdTask = GetLastReadEntryId(cancellationToken);
+        var getSummaryTask = Chats.GetSummary(Session, ChatId, cancellationToken);
+
+        var lastReadEntryId = await lastReadEntryIdTask.ConfigureAwait(false);
         if (lastReadEntryId == null)
             return 0; // Never opened this chat, so no unread messages
 
-        var idRange = await Chats
-            .GetIdRange(Session, ChatId, ChatEntryType.Text, cancellationToken)
-            .ConfigureAwait(false);
-        var exactCount = (int)(idRange.End - lastReadEntryId.Value - 1).Clamp(0, MaxCount);
-        if (exactCount >= 15)
-            return (exactCount, true);
-        return exactCount;
+        var summary = await getSummaryTask.ConfigureAwait(false);
+        if (summary == null)
+            return 0;
+
+        var lastId = summary.TextEntryIdRange.End - 1;
+        var count = (int)(lastId - lastReadEntryId.Value).Clamp(0, MaxCount);
+        return (count, count == MaxCount);
     }
 
     // TODO: in fact it should not nullable
-    private async Task<long?> GetLastReadEntryId(CancellationToken cancellationToken)
+    private async ValueTask<long?> GetLastReadEntryId(CancellationToken cancellationToken)
     {
         using (var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false))
             _lastReadEntryState ??= await ChatUI.LeaseLastReadEntryState(ChatId, cancellationToken).ConfigureAwait(false);

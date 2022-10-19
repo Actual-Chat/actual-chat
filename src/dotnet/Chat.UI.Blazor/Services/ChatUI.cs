@@ -13,6 +13,7 @@ public class ChatUI
 
     private ChatPlayers? _chatPlayers;
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _lastReadEntryStates;
+    private readonly IUpdateDelayer _lastReadEntryStatesUpdateDelayer;
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
     private IServiceProvider Services { get; }
@@ -60,6 +61,8 @@ public class ChatUI
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
 
+        // Read entry states from other windows / devices aren't delayed
+        _lastReadEntryStatesUpdateDelayer = FixedDelayer.Instant;
         _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateLastReadEntryState);
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
@@ -205,7 +208,7 @@ public class ChatUI
 
                     var command = new IChatReadPositions.SetReadPositionCommand(Session, chatId, entryId);
                     await UICommander.Run(command, ct);
-                })
+                }) { UpdateDelayer = _lastReadEntryStatesUpdateDelayer }
             ));
 
     // Private methods

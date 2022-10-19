@@ -20,7 +20,6 @@
 </div>
 
 @code {
-    private static readonly IUpdateDelayer UpdateDelayer = FixedDelayer.Get(1);
     private readonly List<(Symbol Chat, UnreadMessages UnreadMessages)> _chatUnreadMessages = new();
 
     [Inject] private Session Session { get; init; } = null!;
@@ -47,7 +46,9 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = UpdateDelayer,
+            // We don't want to recompute it instantly on every message in every chat,
+            // so we use fixed delayer here to make sure it happens at most once per N seconds
+            UpdateDelayer = FixedDelayer.Get(5),
         };
     }
 
@@ -56,7 +57,7 @@
             return Model.None;
 
         var isSubscribed = 0;
-        var results = new ConcurrentBag<MaybeEstimate<int>>();
+        var results = new ConcurrentBag<MaybeTrimmed<int>>();
         var countTasks = _chatUnreadMessages
             .Select(async chatUnreadMessages => {
                 var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken).AsTask();
@@ -71,7 +72,7 @@
 
         await Task.WhenAll(countTasks);
         return new() {
-            Count = results.Sum(),
+            Count = results.Sum(UnreadMessages.MaxCount),
             IsSubscribed = isSubscribed == 1,
         };
     }
@@ -79,7 +80,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public MaybeEstimate<int> Count { get; init; }
+        public MaybeTrimmed<int> Count { get; init; }
         public bool IsSubscribed { get; init; }
     }
 }

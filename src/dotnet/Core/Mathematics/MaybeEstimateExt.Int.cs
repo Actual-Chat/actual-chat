@@ -1,15 +1,19 @@
 namespace ActualChat.Mathematics;
 
-public static partial class MaybeEstimateExt
+public static partial class MaybeTrimmedExt
 {
-    public static MaybeEstimate<int> Sum(this IEnumerable<MaybeEstimate<int>> estimates)
+    public static MaybeTrimmed<int> Sum(this IEnumerable<MaybeTrimmed<int>> values, int trimAt = int.MaxValue)
     {
-        var estimateList = estimates.ToList();
-        if (estimateList.Count == 0)
-            return (0, false);
-
-        var sum = estimateList.Sum(x => x.Value);
-        var isEstimate = estimateList.Aggregate(false, (x, estimate) => x || estimate.IsEstimate);
-        return new MaybeEstimate<int>(sum, isEstimate);
+        var sum = 0;
+        var isTrimmed = false;
+        foreach (var value in values) {
+            sum += value.Value;
+            isTrimmed |= value.IsTrimmed;
+        }
+        if (sum >= trimAt) {
+            sum = trimAt;
+            isTrimmed = true;
+        }
+        return (sum, isTrimmed);
     }
 }

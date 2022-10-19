@@ -50,6 +50,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public MaybeEstimate<int> Count { get; init; }
+        public MaybeTrimmed<int> Count { get; init; }
     }
 }
