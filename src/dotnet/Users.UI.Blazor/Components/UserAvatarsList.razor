@@ -1,5 +1,4 @@
 @using System.Text.Encodings.Web
-@using UI.Blazor.Components
 @inherits ComputedStateComponent<ImmutableArray<Symbol>>
 @{
     var m = State.LatestNonErrorValue;
@@ -49,7 +48,6 @@
     }
 
     <UserAvatarAddTile OnClick="OnAddNewAvatar"/>
-
 </div>
 
 @code {
