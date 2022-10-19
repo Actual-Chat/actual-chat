@@ -1,34 +1,32 @@
-@page "/user/invite"
+@page "/user/invite/{InviteId}"
 @using ActualChat.Invite
-@inherits ComputedStateComponent<ImmutableArray<Invite>>
-@{
-    var m = State.LatestNonErrorValue;
-}
 
-<RequireAccount MustBeAdmin="true"/>
-<MainHeader>User invite codes</MainHeader>
+<RequireAccount MustBeActive="false"/>
+<MainHeader>Joining via invite link</MainHeader>
 
-<div class="-flex-x">
-    <Button Click="OnNewInviteClick" Class="btn-primary">New invite link</Button>
+<div class="text-03 ml-2 mt-1">
+    @if (_useResult is { } useResult) {
+        if (useResult.Error is { } error) {
+            <div>Failed to activate your account: @error.Message</div>
+        } else {
+            <div>Your account has been successfully activated!</div>
+        }
+    } else {
+        <div>Processing activation code...</div>
+    }
 </div>
-<InviteList Invites="@m" LinkFormat="user/activate/{0}"/>
+
 
 @code {
+    private Result<Invite>? _useResult;
+
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    protected override ComputedState<ImmutableArray<Invite>>.Options GetStateOptions()
-        => new() { InitialValue = ImmutableArray<Invite>.Empty };
+    [Parameter] public string InviteId { get; set; } = "";
 
-    protected override Task<ImmutableArray<Invite>> ComputeState(CancellationToken cancellationToken)
-        => Invites.ListUserInvites(Session, cancellationToken);
-
-    private async Task OnNewInviteClick() {
-        var invite = new Invite {
-            Remaining = 10,
-            Details = new InviteDetails { User = new() },
-        };
-        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+    protected override async Task OnParametersSetAsync() {
+        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        _useResult = await UICommander.Run(useCommand, CancellationToken.None);
     }
 }

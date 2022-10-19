@@ -36,7 +36,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
     [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
     {
-        var (chatId, entryId, authorId, content, state) = @event;
+        var (chatId, entryId, authorId, content, changeKind) = @event;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             foreach (var authorId1 in context.Operation().Items.Get<string[]>() ?? Array.Empty<string>())
@@ -55,7 +55,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
             .ConfigureAwait(false);
         string[] changes;
 
-        if (state == EntryState.Removed) {
+        if (changeKind is ChangeKind.Remove) {
             dbContext.Mentions.RemoveRange(existingMentions);
             changes = existingMentions.Select(x => x.AuthorId).ToArray();
         }

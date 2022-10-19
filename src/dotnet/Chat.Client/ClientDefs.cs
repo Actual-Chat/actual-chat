@@ -12,19 +12,23 @@ public interface IChatsClientDef
     [Get(nameof(List))]
     Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
+    [Get(nameof(GetRules))]
+    Task<ChatAuthorRules> GetRules(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
+    [Get(nameof(GetSummary))]
+    Task<ChatSummary?> GetSummary(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [Get(nameof(GetLastIdTile))]
-    Task<Range<long>> GetLastIdTile(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        int layerIndex,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetEntryCount))]
@@ -41,12 +45,6 @@ public interface IChatsClientDef
         string chatId,
         ChatEntryType entryType,
         Range<long> idTileRange,
-        CancellationToken cancellationToken);
-
-    [Get(nameof(GetRules))]
-    Task<ChatAuthorRules> GetRules(
-        Session session,
-        string chatId,
         CancellationToken cancellationToken);
 
     [Get(nameof(CanJoin))]

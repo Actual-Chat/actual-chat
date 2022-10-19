@@ -45,7 +45,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>
             ExpiresOn = ExpiresOn,
             CreatedAt = CreatedAt,
             CreatedBy = CreatedBy,
-            Details = DetailsJson.IsNullOrEmpty() ? null : DetailsSerializer.Read(DetailsJson),
+            Details = DetailsJson.IsNullOrEmpty() ? new() : DetailsSerializer.Read(DetailsJson),
         };
 
     public void UpdateFrom(Invite model)

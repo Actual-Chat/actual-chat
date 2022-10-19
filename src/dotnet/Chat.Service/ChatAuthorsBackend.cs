@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
+using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -18,6 +19,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private IDbEntityResolver<string, DbChatAuthor> DbChatAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbChatAuthor, string> DbChatAuthorLocalIdGenerator { get; }
     private IChatUserSettingsBackend ChatUserSettingsBackend { get; }
+    private IServerKvas ServerKvas { get; }
     private IChatAuthors Frontend => _frontend ??= Services.GetRequiredService<IChatAuthors>();
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
@@ -29,6 +31,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         DbChatAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatAuthor, string>>();
         UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         ChatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
+        ServerKvas = services.ServerKvas();
     }
 
     // [ComputeMethod]
@@ -96,12 +99,12 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
         chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (account == null) {
-            var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
-                session,
-                new(chatId + AuthorIdSuffix, chatAuthor.Id));
-            await Commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
-        }
+        if (account == null) // No account? Let's store the author Id in the IServerKvas
+            await Commander.Call(
+                new IServerKvas.SetCommand(session, chatId + AuthorIdSuffix, chatAuthor.Id),
+                true, cancellationToken
+            ).ConfigureAwait(false);
+
         return chatAuthor;
     }
 

@@ -105,7 +105,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Events
-        fusion.AddLocalEventScheduler();
+        fusion.AddLocalCommandScheduler();
 
         // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);

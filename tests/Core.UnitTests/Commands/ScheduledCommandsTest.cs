@@ -15,7 +15,7 @@ public class ScheduledCommandsTest: TestBase
     {
         await using var services = new ServiceCollection()
             .AddFusion()
-            .AddLocalEventScheduler()
+            .AddLocalCommandScheduler()
             .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
@@ -45,7 +45,7 @@ public class ScheduledCommandsTest: TestBase
             .Services
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddFusion()
-            .AddLocalEventScheduler()
+            .AddLocalCommandScheduler()
             .AddComputeService<ScheduledCommandTestService>()
             .AddComputeService<DedicatedEventHandler>()
             .Services

@@ -23,14 +23,6 @@ public class TranscriptSplitter : TranscriptionProcessorBase
         var cpuClock = Clocks.CpuClock;
         var chatId = audioSegment.AudioRecord.ChatId;
 
-        async Task<long> GetMaxTextId(bool delay)
-        {
-            if (delay)
-                await cpuClock.Delay(TextEntryWaitDelay, cancellationToken).ConfigureAwait(false);
-            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-            return idRange.End;
-        }
-
         var segmentTextId = 0L;
         TranscriptSegment? segment = null;
         try {
@@ -88,6 +80,14 @@ public class TranscriptSplitter : TranscriptionProcessorBase
         finally {
             // The error will be thrown anyway, but the last produced segment must be completed
             segment?.Suffixes.Writer.TryComplete();
+        }
+
+        async Task<long> GetMaxTextId(bool delay)
+        {
+            if (delay)
+                await cpuClock.Delay(TextEntryWaitDelay, cancellationToken).ConfigureAwait(false);
+            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryType.Text, true, cancellationToken).ConfigureAwait(false);
+            return idRange.End;
         }
     }
 }

@@ -1,4 +1,7 @@
 using ActualChat.Chat.Db;
+using ActualChat.Commands;
+using ActualChat.Invite;
+using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -8,8 +11,6 @@ namespace ActualChat.Chat;
 public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private const string InvitedChatIdOptionKey = "Invite::ChatId"; // comes from InvitesBackend.Use
-    private const string InvitedIdOptionKey = "Invite::Id"; // comes from InvitesBackend.Use
 
     private IAuth Auth { get; }
     private IAccounts Accounts { get; }
@@ -17,6 +18,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private IUserContactsBackend UserContactsBackend { get; }
+    private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
 
     public Chats(IServiceProvider services) : base(services)
@@ -27,6 +29,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
+        ServerKvas = Services.ServerKvas();
         Backend = Services.GetRequiredService<IChatsBackend>();
     }
 
@@ -85,19 +88,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Range<long>> GetLastIdTile(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        int layerIndex,
-        CancellationToken cancellationToken)
-    {
-        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetLastIdTile(chatId, entryType, layerIndex, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetIdRange(chatId, entryType, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -111,10 +102,20 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
+    public virtual async Task<ChatSummary?> GetSummary(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetSummary(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
     {
         var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author is { HasLeft: false})
+        if (author is { HasLeft: false })
             return false;
 
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -124,8 +125,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var invited = await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
         return invited;
     }
-
-    // [ComputeMethod]
 
     // [ComputeMethod]
     public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
@@ -501,17 +500,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, false);
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
-        if (await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false)) {
-            var updateOptionCommand1 = new ISessionOptionsBackend.UpsertCommand(
-                session,
-                new(InvitedChatIdOptionKey, Symbol.Empty));
-            await Commander.Call(updateOptionCommand1, true, cancellationToken).ConfigureAwait(false);
-
-            var updateOptionCommand2 = new ISessionOptionsBackend.UpsertCommand(
-                session,
-                new(InvitedIdOptionKey, Symbol.Empty));
-            await Commander.Call(updateOptionCommand2, true, cancellationToken).ConfigureAwait(false);
-        }
+        var isInvited = await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (isInvited)
+            // Remove the invite
+            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null)
+                .EnqueueOnCompletion(QueueRef.Users);
     }
 
     // Assertions & permission checks
@@ -579,8 +572,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string chatId,
         CancellationToken cancellationToken)
     {
-        var options = await Auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        return options.Items.TryGetValue(InvitedChatIdOptionKey, out var inviteChatId)
-            && OrdinalEquals(chatId, inviteChatId as string);
+        var value = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
+        return value.HasValue;
     }
 }

@@ -2,6 +2,7 @@ using ActualChat.Chat;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
 using ActualChat.Commands;
+using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -97,7 +98,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "", default);
                 _ = Get(invInvite.Id, default);
             }
-            return null!;
+            return default!;
         }
 
         var session = command.Session;
@@ -120,37 +121,21 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
                 throw StandardError.StateTransition("Your account is already active.");
+            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active })
+                .EnqueueOnCompletion(Queues.Users.ShardBy(account.User.Id));
         }
 
         var chatInviteDetails = invite.Details?.Chat;
-        if (chatInviteDetails != null)
+        if (chatInviteDetails != null) {
             _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
+            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId)
+                .EnqueueOnCompletion(Queues.Users.ShardBy(account.User.Id));
+        }
 
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(invite);
-
-        // This piece starts a task that performs the actual invite action once the command completes
-        if (userInviteDetails != null)
-            await new IAccountsBackend.UpdateCommand(account with {
-                    Status = AccountStatus.Active,
-                })
-                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
-                .ConfigureAwait(false);
-        else if (chatInviteDetails != null) {
-            await new ISessionOptionsBackend.UpsertCommand(
-                session,
-                new ("Invite::Id", invite.Id.Value))
-                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
-                .ConfigureAwait(false);
-            await new ISessionOptionsBackend.UpsertCommand(
-                    session,
-                    new ("Invite::ChatId", chatInviteDetails.ChatId.Value))
-                .EnqueueOnCompletion(command, Queues.Users.ShardBy(account.User.Id), cancellationToken)
-                .ConfigureAwait(false);
-        }
-
         return invite;
     }
 

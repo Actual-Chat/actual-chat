@@ -2,6 +2,7 @@ namespace ActualChat;
 
 public interface IChange : IRequirementTarget
 {
+    ChangeKind Kind { get; }
     bool IsValid();
 }
 
@@ -11,6 +12,18 @@ public record Change<TCreate, TUpdate> : IChange
     [DataMember] public Option<TCreate> Create { get; init; }
     [DataMember] public Option<TUpdate> Update { get; init; }
     [DataMember] public bool Remove { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChangeKind Kind {
+        get {
+            this.RequireValid();
+            if (Create.HasValue)
+                return ChangeKind.Create;
+            if (Update.HasValue)
+                return ChangeKind.Update;
+            return ChangeKind.Remove;
+        }
+    }
 
     public bool IsValid()
     {

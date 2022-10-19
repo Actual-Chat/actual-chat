@@ -46,27 +46,6 @@ public class UnreadMessages : IDisposable
         if (lastReadEntryId == null)
             return 0; // Never opened this chat, so no unread messages
 
-        var tile80 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 2, cancellationToken)
-            .ConfigureAwait(false);
-        var estimatedCount = RoundTo(tile80.Start - lastReadEntryId.Value, 100);
-        if (estimatedCount >= 1000)
-            return (1000, true);
-
-        var tile20 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 1, cancellationToken)
-            .ConfigureAwait(false);
-        estimatedCount = RoundTo(tile20.Start - lastReadEntryId.Value, 100);
-        if (estimatedCount >= 200)
-            return (estimatedCount, true);
-
-        var tile5 = await Chats
-            .GetLastIdTile(Session, ChatId, ChatEntryType.Text, 0, cancellationToken)
-            .ConfigureAwait(false);
-        estimatedCount = RoundTo(tile5.Start - lastReadEntryId.Value, 10);
-        if (estimatedCount >= 20)
-            return (estimatedCount, true);
-
         var idRange = await Chats
             .GetIdRange(Session, ChatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(false);

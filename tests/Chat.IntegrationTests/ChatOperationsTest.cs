@@ -116,10 +116,11 @@ public class ChatOperationsTest : AppHostTestBase
             if (!isPublicChat) {
                 canJoin.Should().BeFalse();
                 // to join private chat we need to activate invite code first
-                var joinCommand = new IInvites.UseCommand(session, inviteId);
-                await commander.Call(joinCommand);
-                await WaitInviteActivationCompleted();
-                canJoin = await chats.CanJoin(session, chatId, default);
+                await commander.Call(new IInvites.UseCommand(session, inviteId));
+
+                var c = await Computed.Capture(() => chats.CanJoin(session, chatId, default));
+                await c.When(x => x).WaitAsync(TimeSpan.FromSeconds(3));
+                canJoin = await c.Use();
             }
             canJoin.Should().BeTrue();
 
@@ -159,7 +160,7 @@ public class ChatOperationsTest : AppHostTestBase
                 // to join private chat we need to generate invite code
                 var invite = new Invite.Invite {
                     Details = new InviteDetails { Chat = new (chatId) },
-                    Remaining = 10
+                    Remaining = 10,
                 };
                 invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
                 inviteId = invite.Id;
@@ -174,13 +175,12 @@ public class ChatOperationsTest : AppHostTestBase
             var chats = tester.AppServices.GetRequiredService<IChats>();
 
             if (!isPublicChat) {
-                var joinCommand = new IInvites.UseCommand(session, inviteId);
-                await commander.Call(joinCommand);
-                await WaitInviteActivationCompleted();
+                await commander.Call(new IInvites.UseCommand(session, inviteId));
+                await Task.Delay(1000); // Let the command complete
             }
 
-            var command = new IChats.JoinChatCommand(session, chatId);
-            await commander.Call(command);
+            var joinChatCommand = new IChats.JoinChatCommand(session, chatId);
+            await commander.Call(joinChatCommand);
             await AssertUserJoined(tester.AppServices, session, chatId, user);
 
             var leaveCommand = new IChats.LeaveChatCommand(session, chatId);
@@ -200,25 +200,22 @@ public class ChatOperationsTest : AppHostTestBase
 
             // re-join again
             if (!isPublicChat) {
-                var joinCommand = new IInvites.UseCommand(session, inviteId);
-                await commander.Call(joinCommand);
-                await WaitInviteActivationCompleted();
+                await commander.Call(new IInvites.UseCommand(session, inviteId));
+                await Task.Delay(1000); // Let the command complete
             }
-            await commander.Call(command, default);
+            await commander.Call(joinChatCommand, default);
             await AssertUserJoined(tester.AppServices, session, chatId, user);
         }
     }
-
-    private static async Task WaitInviteActivationCompleted()
-        // Wait till subsequent commands that set session options are executed.
-        // TODO(AY): provide a durable way to wait for subsequent commands completion.
-        => await Task.Delay(1000);
 
     private static async Task AssertUserJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
         var chats = services.GetRequiredService<IChats>();
 
-        var rules = await chats.GetRules(session, chatId, default);
+        var cRules = await Computed.Capture(() => chats.GetRules(session, chatId, default));
+        await cRules.When(r => r.CanRead() && r.CanWrite())
+            .WaitAsync(TimeSpan.FromSeconds(3));
+        var rules = await cRules.Use();
         rules.CanRead().Should().BeTrue();
         rules.CanWrite().Should().BeTrue();
 
@@ -243,7 +240,11 @@ public class ChatOperationsTest : AppHostTestBase
     {
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
         var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
-        var author = await chatAuthors.Get(session, chatId, default);
+
+        var cAuthor = await Computed.Capture(() => chatAuthors.Get(session, chatId, default));
+        await cAuthor.When(a => a is { HasLeft: true })
+            .WaitAsync(TimeSpan.FromSeconds(3));
+        var author = await cAuthor.Use();
         author!.HasLeft.Should().BeTrue();
 
         var ownChatIds = await chatAuthors.ListChatIds(session, default);

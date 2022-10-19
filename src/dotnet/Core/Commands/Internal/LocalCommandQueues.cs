@@ -1,10 +1,10 @@
-namespace ActualChat.Commands;
+namespace ActualChat.Commands.Internal;
 
-public class LocalCommandQueueProvider : ICommandQueueProvider
+public class LocalCommandQueues : ICommandQueues
 {
     private LocalCommandQueue CommandQueue { get; }
 
-    public LocalCommandQueueProvider(LocalCommandQueue commandQueue)
+    public LocalCommandQueues(LocalCommandQueue commandQueue)
         => CommandQueue = commandQueue;
 
     public ICommandQueue Get(QueueRef queueRef)

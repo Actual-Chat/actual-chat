@@ -1,6 +1,6 @@
 namespace ActualChat.Commands;
 
-public interface ICommandQueueProvider
+public interface ICommandQueues
 {
     ICommandQueue Get(QueueRef queueRef);
 }

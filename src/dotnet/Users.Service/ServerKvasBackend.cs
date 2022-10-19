@@ -18,6 +18,27 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         return dbKvasEntry?.Value;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbKvasEntryList = await dbContext.KvasEntries
+            .Where(e => e.Key.StartsWith(prefix))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToImmutableList();
+    }
+
+    public string GetUserPrefix(string userId)
+        => $"u/{userId}/";
+
+    public string GetSessionPrefix(Session session)
+        => $"s/{session.Id.Value}/";
+
+    // Command handlers
+
     // [CommandHandler]
     public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
     {
@@ -25,6 +46,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         if (Computed.IsInvalidating()) {
             foreach (var (key, _) in command.Items)
                 _ = Get(prefix, key, default);
+            _ = List(prefix, default);
             return;
         }
 

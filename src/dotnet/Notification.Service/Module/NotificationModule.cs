@@ -69,6 +69,6 @@ public class NotificationModule : HostModule<NotificationSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
 
         // Events
-        fusion.AddLocalEventScheduler();
+        fusion.AddLocalCommandScheduler();
     }
 }

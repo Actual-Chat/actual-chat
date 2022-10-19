@@ -116,9 +116,8 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        await new NewUserEvent(userId)
-            .EnqueueOnCompletion(command, Queues.Users, cancellationToken)
-            .ConfigureAwait(false);
+        new NewUserEvent(userId)
+            .EnqueueOnCompletion(Queues.Users);
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]

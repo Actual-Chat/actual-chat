@@ -19,5 +19,5 @@ public interface IServerKvas : IComputeService
     [DataContract]
     public record SetManyCommand(
         [property: DataMember(Order = 0)] Session Session,
-        [property: DataMember(Order = 1)] (string Key, string? Value)[] Items) : ISessionCommand<Unit>;
+        [property: DataMember(Order = 1)] params (string Key, string? Value)[] Items) : ISessionCommand<Unit>;
 }

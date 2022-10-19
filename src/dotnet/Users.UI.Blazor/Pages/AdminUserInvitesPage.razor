@@ -1,0 +1,34 @@
+@page "/admin/user-invites"
+@using ActualChat.Invite
+@inherits ComputedStateComponent<ImmutableArray<Invite>>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>User invite codes</MainHeader>
+
+<div class="-flex-x">
+    <Button Click="OnNewInviteClick" Class="btn-primary">New invite link</Button>
+</div>
+<InviteList Invites="@m" LinkFormat="user/invite/{0}"/>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    protected override ComputedState<ImmutableArray<Invite>>.Options GetStateOptions()
+        => new() { InitialValue = ImmutableArray<Invite>.Empty };
+
+    protected override Task<ImmutableArray<Invite>> ComputeState(CancellationToken cancellationToken)
+        => Invites.ListUserInvites(Session, cancellationToken);
+
+    private async Task OnNewInviteClick() {
+        var invite = new Invite {
+            Remaining = 10,
+            Details = new InviteDetails { User = new() },
+        };
+        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+    }
+}

@@ -138,22 +138,16 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
         fusion.AddComputeService<IUserContacts, UserContacts>();
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
-        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
         fusion.AddComputeService<IChatReadPositionsBackend, ChatReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddComputeService<IRecentEntries, RecentEntries>();
         fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
-
-        // ChatUserSettings
-        services.AddSingleton(c => {
-            var chatRedisDb = c.GetRequiredService<RedisDb<UsersDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatUserSettings>("seq." + nameof(ChatUserSettings));
-        });
-        fusion.AddComputeService<ChatUserSettingsService>();
-        services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
-        services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
+        fusion.AddComputeService<ChatUserSettingsFrontend>();
+        services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsFrontend>());
+        fusion.AddComputeService<ChatUserSettingsBackend>();
+        services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsBackend>());
 
        // API controllers
         services.AddMvc().AddApplicationPart(GetType().Assembly);

@@ -31,15 +31,22 @@ public class ScheduledCommandTestService
     }
 
     [CommandHandler]
-    public virtual async Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
-        => await new TestEvent(command.Error)
-            .EnqueueOnCompletion(command, cancellationToken)
-            .ConfigureAwait(false);
+    public virtual Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask;
+
+        new TestEvent(command.Error).EnqueueOnCompletion(QueueRef.Default);
+        return Task.CompletedTask;
+    }
 
     [CommandHandler]
-    public virtual async Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken)
-        => await new TestEvent2()
-            .EnqueueOnCompletion(command, cancellationToken)
-            .ConfigureAwait(false);
+    public virtual Task ProcessTestCommand2(TestCommand2 command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask;
 
+        new TestEvent2().EnqueueOnCompletion(QueueRef.Default);
+        return Task.CompletedTask;
+    }
 }

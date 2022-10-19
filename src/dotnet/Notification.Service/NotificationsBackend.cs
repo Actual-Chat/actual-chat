@@ -268,8 +268,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         TextEntryChangedEvent @event,
         CancellationToken cancellationToken)
     {
-        var (chatId, entryId, authorId, content, state) = @event;
-        if (state == EntryState.Removed)
+        var (chatId, entryId, authorId, content, changeKind) = @event;
+        if (changeKind is ChangeKind.Remove)
             return;
 
         if (Computed.IsInvalidating())

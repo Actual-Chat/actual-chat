@@ -12,7 +12,7 @@ public sealed record Invite : IHasId<Symbol>, IRequirementTarget
     public Moment CreatedAt { get; init; }
     public Moment ExpiresOn { get; init; }
     public int Remaining { get; init; }
-    public InviteDetails? Details { get; init; }
+    public InviteDetails Details { get; init; } = null!;
 
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
     {
@@ -43,7 +43,7 @@ public sealed record InviteDetails
             return $"{nameof(ChatInviteDetails)}:{chat.ChatId}";
         if (User is { } user)
             return $"{nameof(UserInviteDetails)}";
-        return "";
+        return "-";
     }
 }
 

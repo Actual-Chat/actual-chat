@@ -109,10 +109,9 @@
 
     private async Task SetActiveAvatar(string avatarId)
     {
-        var chatUserSettings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default);
-        chatUserSettings ??= new();
-        chatUserSettings = chatUserSettings with { AvatarId = avatarId };
-        var command = new IChatUserSettings.SetCommand(Session, ModalModel.ChatId, chatUserSettings);
+        var settings = await ChatUserSettings.Get(Session, ModalModel.ChatId, default) ?? new();
+        settings = settings with { AvatarId = avatarId };
+        var command = new IChatUserSettings.SetCommand(Session, ModalModel.ChatId, settings);
         await UICommander.Run(command);
     }
 

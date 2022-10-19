@@ -6,6 +6,17 @@ public partial interface IChatsBackend : IComputeService
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<ChatSummary?> GetSummary(
+        string chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ChatAuthorRules> GetRules(
+        string chatId,
+        string chatPrincipalId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<long> GetEntryCount(
         string chatId,
         ChatEntryType entryType,
@@ -26,31 +37,7 @@ public partial interface IChatsBackend : IComputeService
     Task<Range<long>> GetIdRange(
         string chatId,
         ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<Range<long>> GetLastIdTile(
-        string chatId,
-        ChatEntryType entryType,
-        int layerIndex,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<long> GetMinId(
-        string chatId,
-        ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<long> GetMaxId(
-        string chatId,
-        ChatEntryType entryType,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<ChatAuthorRules> GetRules(
-        string chatId,
-        string chatPrincipalId,
+        bool includeRemoved,
         CancellationToken cancellationToken);
 
     // Commands

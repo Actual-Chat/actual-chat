@@ -11,6 +11,18 @@ public interface IChats : IComputeService
     Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
+    Task<ChatAuthorRules> GetRules(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 60)]
+    Task<ChatSummary?> GetSummary(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 60)]
     Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -19,6 +31,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!
+    // Client-side methods always skips entries with IsRemoved flag
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Range<long>> GetIdRange(
         Session session,
@@ -26,27 +39,13 @@ public interface IChats : IComputeService
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 10)]
-    Task<Range<long>> GetLastIdTile(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        int layerIndex,
-        CancellationToken cancellationToken);
-
-    // Client-side method always skips entries with IsRemoved flag
+    // Client-side methods always skips entries with IsRemoved flag
     [ComputeMethod(MinCacheDuration = 10)]
     Task<ChatTile> GetTile(
         Session session,
         string chatId,
         ChatEntryType entryType,
         Range<long> idTileRange,
-        CancellationToken cancellationToken);
-
-    [ComputeMethod(MinCacheDuration = 60)]
-    Task<ChatAuthorRules> GetRules(
-        Session session,
-        string chatId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

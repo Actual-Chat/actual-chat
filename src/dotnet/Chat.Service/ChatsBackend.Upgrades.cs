@@ -256,8 +256,9 @@ public partial class ChatsBackend
                 if (lastReadEntryId.GetValueOrDefault() == 0)
                     continue;
 
-                var maxEntryId = await GetMaxId(chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-                if (maxEntryId >= lastReadEntryId)
+                var idRange = await GetIdRange(chatId, ChatEntryType.Text, false, cancellationToken).ConfigureAwait(false);
+                var lastEntryId = idRange.End - 1;
+                if (lastEntryId >= lastReadEntryId)
                     continue;
 
                 // since it was corrupted for some time and user might not know that there are some new message
@@ -267,8 +268,8 @@ public partial class ChatsBackend
                     userId,
                     chatId,
                     lastReadEntryId,
-                    maxEntryId - 1);
-                var setCmd = new IChatReadPositionsBackend.SetCommand(userId, chatId,  maxEntryId - 1, true);
+                    lastEntryId - 1);
+                var setCmd = new IChatReadPositionsBackend.SetCommand(userId, chatId,  lastEntryId - 1, true);
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }

@@ -29,6 +29,20 @@ public class ChatsController : ControllerBase, IChats
         => _service.List(session, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<ChatAuthorRules> GetRules(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+        => _service.GetRules(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ChatSummary?> GetSummary(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+        => _service.GetSummary(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -53,22 +67,6 @@ public class ChatsController : ControllerBase, IChats
         ChatEntryType entryType,
         CancellationToken cancellationToken)
         => _service.GetIdRange(session, chatId, entryType, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<Range<long>> GetLastIdTile(
-        Session session,
-        string chatId,
-        ChatEntryType entryType,
-        int layerIndex,
-        CancellationToken cancellationToken)
-        => _service.GetLastIdTile(session, chatId, entryType, layerIndex, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<ChatAuthorRules> GetRules(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken)
-        => _service.GetRules(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
