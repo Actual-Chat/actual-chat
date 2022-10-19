@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Events
-@using BlazorContextMenu
 @inherits ComputedStateComponent<MessageHoverMenuContent.Model>
 @{
     var entry = Message.Entry;
@@ -11,14 +10,13 @@
     <MessageMenuPlay Entry="@entry"/>
 }
 @if (m.CanReply) {
-    <Item OnClick="@(() => Reply(Message.Entry))">
-        <ButtonRound
-            Class="reply-btn"
-            Tooltip="Reply"
-            FloatingPosition="FloatingPosition.Top">
-            <i class="icon-reply text-xl text-icon-01"></i>
-        </ButtonRound>
-    </Item>
+    <ButtonRound
+        Click="@(() => Reply(Message.Entry))"
+        Class="reply-btn"
+        Tooltip="Reply"
+        FloatingPosition="FloatingPosition.Top">
+        <i class="icon-reply text-xl text-icon-01"></i>
+    </ButtonRound>
 }
 <ButtonRound Class="more-btn"
              data-menu="@(MenuTrigger.Format<MessageMenu>(Message.Entry.ChatId, Message.Key))"

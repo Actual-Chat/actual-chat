@@ -3,7 +3,6 @@
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
-@using BlazorContextMenu
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var message = _lastRenderedMessage = Message;
@@ -27,67 +26,67 @@
     <ActualChat.UI.Blazor.Components.Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
-<ContextMenuTrigger Data="@Message" HoverMenuId="@MessageHoverMenu.MenuId" MenuPosition="ContextMenuPosition.Left">
-    <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
+<div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
+     data-menu="@(MenuTrigger.Format<MessageHoverMenu>(Message.Entry.ChatId, Message.Key))"
+     data-menu-trigger="@(MenuTriggers.Hover.ToTriggersString())">
+    <div class="flex-y w-full"
          data-menu="@(MenuTrigger.Format<MessageMenu>(Message.Entry.ChatId, Message.Key))"
          data-menu-trigger="@(MenuTriggers.RightClick.ToTriggersString())">
-        <div class="flex-y w-full">
-            <div class="chat-message group px-1.5 py-1 relative">
-                @if (showPicture || isReply) {
-                    <div class="m-1.5">
-                        <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
-                    </div>
-                } else {
-                    var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-                    <div class="w-10 mr-2 mt-1">
-                        <span class="chat-message-timestamp-on-hover">@timestamp</span>
+        <div class="chat-message group px-1.5 py-1 relative">
+            @if (showPicture || isReply) {
+                <div class="m-1.5">
+                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+                </div>
+            } else {
+                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                <div class="w-10 mr-2 mt-1">
+                    <span class="chat-message-timestamp-on-hover">@timestamp</span>
+                </div>
+            }
+            <div class="flex-1 overflow-hidden">
+                @if (showHeader || isReply) {
+                    <div class="header chat-message-header ml-1">
+                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
+                        @* &nbsp; *@
+                        @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
                     </div>
                 }
-                <div class="flex-1 overflow-hidden">
-                    @if (showHeader || isReply) {
-                        <div class="header chat-message-header ml-1">
-                            <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
-                            <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
-                            @* &nbsp; *@
-                            @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
-                        </div>
+                <div class="content message-content rounded-sm">
+                    @if (isReply) {
+                        <QuotedMessage Message="@m.RepliedChatMessage"/>
                     }
-                    <div class="content message-content rounded-sm">
-                        @if (isReply) {
-                            <QuotedMessage Message="@m.RepliedChatMessage"/>
-                        }
-                        @if (entry.IsStreaming) {
-                            <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryType="@Message.ShowEntryType" />
-                        } else {
-                            <p class="chat-message-markup mx-1">
-                                <CascadingValue Value="@entry" IsFixed="true">
-                                    <MarkupView Markup="@Markup"/>
-                                </CascadingValue>
-                            </p>
-                        }
-                    </div>
-                    @if (entry.Attachments.Length > 0) {
-                        <div class="message-attachments mx-1">
-                            @foreach (var attachment in entry.Attachments) {
-                                var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
-                                @if (isImage) {
-                                    <ImageAttachment Attachment="@attachment"/>
-                                } else {
-                                    <FileAttachment Attachment="@attachment"/>
-                                }
-                            }
-                        </div>
+                    @if (entry.IsStreaming) {
+                        <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryType="@Message.ShowEntryType" />
+                    } else {
+                        <p class="chat-message-markup mx-1">
+                            <CascadingValue Value="@entry" IsFixed="true">
+                                <MarkupView Markup="@Markup"/>
+                            </CascadingValue>
+                        </p>
                     }
                 </div>
+                @if (entry.Attachments.Length > 0) {
+                    <div class="message-attachments mx-1">
+                        @foreach (var attachment in entry.Attachments) {
+                            var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
+                            @if (isImage) {
+                                <ImageAttachment Attachment="@attachment"/>
+                            } else {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        }
+                    </div>
+                }
             </div>
         </div>
-
-        @if (!message.IsQuote) {
-            <div class="message-hover-menu-placement placement"></div>
-        }
-
     </div>
-</ContextMenuTrigger>
+
+    @if (!message.IsQuote) {
+        <div class="message-hover-menu-placement placement"></div>
+    }
+
+</div>
 
 @code {
     private Model? _lastRenderedModel;
