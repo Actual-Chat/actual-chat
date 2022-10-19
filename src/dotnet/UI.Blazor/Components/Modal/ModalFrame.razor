@@ -4,11 +4,19 @@
 }
 
 <ModalChrome Class="@cls">
+    @if (ShowMobileHeader) {
+        <div class="modal-mobile-header">
+            <ButtonRound Click="OnCloseClick" Class="transparent">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>
+            @Title
+        </div>
+    }
     @if (HasHeader) {
         <div class="modal-header">
             <h3 class="modal-title flex-1 text-lg font-bold">@Title</h3>
             @if (HasCloseButton) {
-                <div class="flex-none my-1">
+                <div class="flex-none my-1 invisible md:visible">
                     <ButtonRound Class="modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
                         <i class="icon-close text-2xl font-medium"></i>
                     </ButtonRound>
@@ -24,6 +32,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public bool ShowMobileHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 

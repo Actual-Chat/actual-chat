@@ -3,20 +3,20 @@
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit avatar" Class="edit-avatar-modal" ButtonsClass="full-width">
+    <DialogFrame Title="@_form.Title" Class="edit-avatar-modal" ButtonsClass="full-width" HasCloseButton="true">
         <Body>
-            <DataAnnotationsValidator/>
-            <ValidationSummary/>
-            <PicUpload
-                ImageUploadUrl="@UploadUrl"
-                ImagePicked="OnImagePicked"
-                Size="SquareSize.Size30"
-                Title="@_form.Bio"
-                ContentId="@_form.Picture">
-                <NoPicture>
-                    <AnonymousIcon Class="w-32 h-32"/>
-                </NoPicture>
-            </PicUpload>
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+        <PicUpload
+            ImageUploadUrl="@UploadUrl"
+            ImagePicked="OnImagePicked"
+            Size="SquareSize.Size30"
+            Title="@_form.Bio"
+            ContentId="@_form.Picture">
+            <NoPicture>
+                <AnonymousIcon Class="w-32 h-32"/>
+            </NoPicture>
+        </PicUpload>
 
         <FormSection InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
@@ -97,6 +97,7 @@
         _form.Bio = userAvatar?.Bio ?? "";
         _form.IsDefault = isDefault;
         _form.IsActive = isActive;
+        _form.Title = ModalModel.Title;
         _form.CopyToBase();
     }
 
@@ -154,11 +155,12 @@
         public string IsDefaultFieldId { get; set; } = "";
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
+        public string Title { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("avatar-editor", componentIdGenerator) {
         }
     }
 
-    public sealed record Model(string AvatarId, string ChatId);
+    public sealed record Model(string AvatarId, string ChatId, string Title);
 }

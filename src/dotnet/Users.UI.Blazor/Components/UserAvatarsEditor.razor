@@ -6,7 +6,7 @@
 
 <ul class="user-avatar-editor custom-scrollbar">
     @foreach (var avatarId in m) {
-        <li class="user-avatar-editor-item" @onclick="@(() => EditAvatar(avatarId))">
+        <li class="user-avatar-editor-item" @onclick="@(() => EditAvatar(avatarId, "Edit avatar"))">
             <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" />
         </li>
     }
@@ -35,7 +35,7 @@
         await UICommander.Run(command);
     }
 
-    private void EditAvatar(string avatarId) {
-        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
+    private void EditAvatar(string avatarId, string title) {
+        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId, title));
     }
 }

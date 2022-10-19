@@ -43,7 +43,7 @@ svg.user-avatar-card-picture {
 }
 
 .modal-frame.edit-avatar-modal {
-    @apply max-w-90 rounded-lg p-4;
+    @apply max-w-full md:max-w-90 rounded-none md:rounded-lg;
 }
 
 .is-default-avatar {
