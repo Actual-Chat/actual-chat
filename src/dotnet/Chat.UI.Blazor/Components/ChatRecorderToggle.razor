@@ -77,16 +77,15 @@
             return new (isRecordingRequested ? RecordingState.On : RecordingState.Off);
 
         var recordingState = await AudioRecorder.State.Use(cancellationToken);
-        if (!isRecordingRequested && lastState.RecordingState == RecordingState.On)
-            return new (RecordingState.OnToOff);
-
         if (recordingState != null && recordingState.ChatId != ChatId)
             return new (RecordingState.Off);
 
         return (lastState.RecordingState, isRecordingRequested, recordingState?.IsRecording ?? false) switch  {
             (RecordingState.OffToOn, false, false) => new (RecordingState.OnToOff),
             (RecordingState.Initializing, false, false) => new (RecordingState.OnToOff),
+            (RecordingState.On, false, _) => new (RecordingState.OnToOff),
             (RecordingState.OnToOff, false, false) => new (RecordingState.OnToOff),
+            (RecordingState.Initializing, _, true) => new (RecordingState.OffToOn),
             (_, false, false) => new (RecordingState.Off),
             (_, true, false) => new (RecordingState.Initializing),
             (_, _, true) => new (RecordingState.On),

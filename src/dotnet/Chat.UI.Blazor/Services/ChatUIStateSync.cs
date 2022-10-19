@@ -34,7 +34,7 @@ public class ChatUIStateSync : WorkerBase
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private UserInteractionUI UserInteractionUI => _userInteractionUI ??= Services.GetRequiredService<UserInteractionUI>();
+    private UserInteractionUI UserInteractionUI { get; }
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -43,6 +43,7 @@ public class ChatUIStateSync : WorkerBase
         Log = Services.LogFor(GetType());
         Clocks = services.Clocks();
         LanguageUI = services.GetRequiredService<LanguageUI>();
+        UserInteractionUI = services.GetRequiredService<UserInteractionUI>();
     }
 
     // Protected methods
