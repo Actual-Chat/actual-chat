@@ -1,17 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 
 @if (!Contact.IsFavorite) {
-    <Item OnClick="OnClick">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-heart-fill text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Add to Favorites
-            </div>
-        </div>
-    </Item>
+    <ContextMenuItem OnClick="OnClick"
+                     Icon="icon-heart-fill text-2xl"
+                     Text="Add to Favorites">
+    </ContextMenuItem>
 }
 
 @code {

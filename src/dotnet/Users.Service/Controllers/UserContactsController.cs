@@ -22,6 +22,10 @@ public class UserContactsController : ControllerBase, IUserContacts
         CancellationToken cancellationToken)
         => Service.List(session, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<UserContact?> Get(Session session, string contactId, CancellationToken cancellationToken)
+        => Service.Get(session, contactId, cancellationToken);
+
     public Task<UserContact?> Change(IUserContacts.ChangeCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 }

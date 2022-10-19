@@ -52,6 +52,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         MenuUI.Register<ChatMenu>();
         MenuUI.Register<MessageMenu>();
+        MenuUI.Register<ContactMenu>();
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }

@@ -1,19 +1,22 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
+@inherits ContextMenuExBase
 
-<RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
-    <ContextMenu Id="@MenuId">
-        <ChildContent>
-            @if (context.Data is UserContact userContact) {
-                <CascadingValue Value="@userContact">
-                    <ContactMenuAddToFavorites/>
-                    <ContactMenuPin/>
-                </CascadingValue>
-            }
-        </ChildContent>
-    </ContextMenu>
-</RenderIntoStack>
+@if (_userContact != null) {
+    <CascadingValue Value="@_userContact">
+        <ContactMenuAddToFavorites/>
+        <ContactMenuPin/>
+    </CascadingValue>
+}
 
-@code{
-    public const string MenuId = "menu-ContactMenu";
+@code {
+    private UserContact? _userContact;
+
+    [Inject] private IUserContacts UserContacts { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is {Length: > 0}) {
+            _userContact = await UserContacts.Get(Session, Arguments[0], CancellationToken.None);
+        }
+    }
 }
