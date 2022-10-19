@@ -186,19 +186,21 @@ public class ChatUIStateSync : WorkerBase
 
         if (recordingChatId == recorderChatId) {
             // The state is in sync
-            if (!recordingChatId.IsEmpty) {
-                if (await IsLanguageChanged().ConfigureAwait(false))
-                    await SyncRecorderState().ConfigureAwait(false); // We need to toggle the recording in this case
-            }
+            if (recordingChatId.IsEmpty)
+                return default;
+
+            if (await IsLanguageChanged().ConfigureAwait(false))
+                SyncRecorderState(); // We need to toggle the recording in this case
         } else if (recordingChatIdChanged) {
             // The recording was activated or deactivated
-            await SyncRecorderState().ConfigureAwait(false);
-            if (!recordingChatId.IsEmpty) {
-                // Update _lastLanguageId
-                await IsLanguageChanged().ConfigureAwait(false);
-                // Start recording = start realtime playback
-                await ChatUI.SetListeningState(recordingChatId, true).ConfigureAwait(false);
-            }
+            SyncRecorderState();
+            if (recordingChatId.IsEmpty)
+                return default;
+
+            // Update _lastLanguageId
+            await IsLanguageChanged().ConfigureAwait(false);
+            // Start recording = start realtime playback
+            await ChatUI.SetListeningState(recordingChatId, true).ConfigureAwait(false);
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
             await ChatUI.SetRecordingChatId(recorderChatId).ConfigureAwait(false);
@@ -215,7 +217,7 @@ public class ChatUIStateSync : WorkerBase
             return isLanguageChanged;
         }
 
-        Task SyncRecorderState()
+        void SyncRecorderState()
             => UpdateRecorderState(recorderState != null, recordingChatId, cancellationToken);
     }
 
@@ -226,13 +228,13 @@ public class ChatUIStateSync : WorkerBase
         => BackgroundTask.Run(async () => {
                 if (mustStop) {
                     // Recording is running - let's top it first;
-                    await AudioRecorder.StopRecording().WhenCompleted.ConfigureAwait(false);
+                    await AudioRecorder.StopRecording(cancellationToken).ConfigureAwait(false);
                 }
                 if (!chatIdToStartRecording.IsEmpty) {
                     // And start the recording if we must
                     if (!UserInteractionUI.IsInteractionHappened.Value)
                         await UserInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
-                    await AudioRecorder.StartRecording(chatIdToStartRecording, cancellationToken).WhenCompleted.ConfigureAwait(false);
+                    await AudioRecorder.StartRecording(chatIdToStartRecording, cancellationToken).ConfigureAwait(false);
                 }
             },
             Log,

@@ -329,6 +329,7 @@ module.exports = {
       'loud-hide': 'loud-hide 150ms ease-in-out',
       'loud-hide-text-mode': 'loud-hide-text-mode 150ms ease-in-out',
       'scale-to-full': 'scale-to-full 300ms ease-in-out',
+      'scale-cycle': 'scale-cycle 600ms cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'scale-to-5': 'scale-to-5 150ms ease-in-out',
       'notify-panel-opening': 'notify-panel-opening 150ms ease-in-out',
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
@@ -951,6 +952,17 @@ module.exports = {
         },
         '99%': {
           transform: 'scale(1)',
+        },
+      },
+      'scale-cycle': {
+        '0%': {
+            transform: 'scale(0)',
+        },
+        '50%': {
+            transform: 'scale(1)'
+        },
+        '100%': {
+            transform: 'scale(0)',
         },
       },
       'scale-to-5': {

@@ -156,16 +156,17 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
         encoder.encode(lowNoiseChunk.buffer);
     }
 
-    if (state === 'created' && whenMicReady) {
+    if (whenMicReady) {
         // wait for mic data
         await whenMicReady;
         whenMicReady = null;
 
-        // call Ping first time to ensure pipeline is ready for recording after receiving mic data
-        const pong = await hubConnection.invoke('Ping');
-        if (pong !== 'Pong')
-            console.warn(`${LogScope}.onInit: unexpected Ping call result`, pong);
-
+        if (state === 'created') {
+            // call Ping first time to ensure pipeline is ready for recording after receiving mic data
+            const pong = await hubConnection.invoke('Ping');
+            if (pong !== 'Pong')
+                console.warn(`${LogScope}.onInit: unexpected Ping call result`, pong);
+        }
     }
     state = 'encoding';
     vadState = 'silence';
