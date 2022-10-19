@@ -9,15 +9,17 @@
             <ButtonRound Click="OnCloseClick" Class="transparent">
                 <i class="icon-arrow-left text-2xl"></i>
             </ButtonRound>
-            @Title
+            <div>
+                @Title
+            </div>
         </div>
     }
     @if (HasHeader) {
         <div class="modal-header">
-            <h3 class="modal-title flex-1 text-lg font-bold">@Title</h3>
+            <h3 class="modal-title flex-1 text-xl md:text-lg font-semibold md:font-medium">@Title</h3>
             @if (HasCloseButton) {
                 <div class="flex-none my-1 invisible md:visible">
-                    <ButtonRound Class="modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
+                    <ButtonRound Class="modal-close btn-sm" Click="OnCloseClick" tabindex="-1" aria-label="close">
                         <i class="icon-close text-2xl font-medium"></i>
                     </ButtonRound>
                 </div>

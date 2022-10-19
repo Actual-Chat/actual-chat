@@ -2,10 +2,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="settings-header-title">
-    <button onclick="@OnArrowClick" class="md:hidden w-8 h-8">
+    <ButtonRound Click="OnArrowClick" Class="transparent">
         <i class="icon-arrow-left text-2xl text-icons-01"></i>
-    </button>
-    <span>@Title</span>
+    </ButtonRound>
+    <div class="title">
+        @Title
+    </div>
 </div>
 
 @code {
