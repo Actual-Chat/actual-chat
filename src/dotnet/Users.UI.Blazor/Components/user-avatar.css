@@ -70,3 +70,7 @@ svg.user-avatar-card-picture {
 .delete-avatar-btn:hover {
     @apply bg-error-hover;
 }
+
+.edit-account-avatar {
+    @apply w-30 h-30 self-center;
+}

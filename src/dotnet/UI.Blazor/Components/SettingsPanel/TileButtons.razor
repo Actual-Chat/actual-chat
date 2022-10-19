@@ -9,11 +9,11 @@
 
 @if (!HideSetDefaultButton) {
     <ButtonRound Class="tile-btn" Tooltip="Set default" TooltipPosition="TooltipPosition.Top"
-                 Click="@OnSetDefaultAvatar">
+                 Click="@OnSetDefaultClick">
         <i class="icon-star text-xl @cls"></i>
     </ButtonRound>
 }
-<ButtonRound Class="tile-btn" Tooltip="Edit" TooltipPosition="TooltipPosition.Top" Click="OnEditAvatarClick">
+<ButtonRound Class="tile-btn" Tooltip="Edit" TooltipPosition="TooltipPosition.Top" Click="OnEditClick">
     <i class="icon-edit text-xl"></i>
 </ButtonRound>
 
@@ -23,8 +23,8 @@
 
     [Parameter] public bool HideSetDefaultButton { get; set; }
     [Parameter] public string AvatarId { get; set; } = "";
-    [Parameter] public EventCallback OnEditAvatarClick { get; set; }
-    [Parameter] public EventCallback OnSetDefaultAvatar { get; set; }
+    [Parameter] public EventCallback OnEditClick { get; set; }
+    [Parameter] public EventCallback OnSetDefaultClick { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
