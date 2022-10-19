@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<div class="flex-y w-full bg-05 md:bg-01" oncontextmenu="return false;">
+<div class="flex-y w-full h-full bg-05 md:bg-01" oncontextmenu="return false;">
     @if (m == Model.None) {
         // render skeletons until State is computed
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
@@ -98,7 +98,7 @@
                 @if (m.IsAuthenticated) {
                     <div>
                         <span class="inline-flex">To post or talk,</span>
-                        <Button Click="@OnJoin">Join this chat</Button>
+                        <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
                     </div>
                 } else {
                     <div class="signin-footer">

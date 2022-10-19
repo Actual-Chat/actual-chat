@@ -206,7 +206,7 @@
 }
 
 .chat-footer {
-    @apply flex justify-center w-full bg-01;
+    @apply flex justify-center items-center w-full h-full bg-01;
     @apply py-0 md:py-1.5 px-2;
 }
 .signin-footer {

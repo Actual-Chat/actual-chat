@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatAuthors.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -9,11 +10,19 @@
     <div class="flex-auto flex-y gap-y-1">
         <div class="text-02">Active — @m.ActiveAuthorIds.Length</div>
         @foreach (var authorId in m.ActiveAuthorIds) {
-            <ChatAuthorBadge
-                AuthorId="@authorId"
-                ShowsPresence="true"
-                Click="() => OnChatAuthorClick(authorId)"
-                TextClass="font-medium text-02 select-none"/>
+            @if (authorId == _selfAuthor?.Id) {
+                <ChatAuthorBadge
+                    AuthorId="@authorId"
+                    ShowsPresence="true"
+                    Click="OnSelfClick"
+                    TextClass="font-medium text-02 select-none"/>
+            } else {
+                <ChatAuthorBadge
+                    AuthorId="@authorId"
+                    ShowsPresence="true"
+                    Click="() => OnChatAuthorClick(authorId)"
+                    TextClass="font-medium text-02 select-none"/>
+            }
         }
         <div class="text-02">Offline — @m.OfflineAuthorIds.Length</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
@@ -30,14 +39,18 @@
     [Inject] private IChatAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    private ChatAuthor? _selfAuthor;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        _selfAuthor = await Authors.Get(Session, Chat.Id, cancellationToken);
         var activeAuthorIds = new List<Symbol>();
         var inactiveAuthorIds = new List<Symbol>();
         var presences = await allAuthorIds
@@ -62,9 +75,12 @@
 
     private void OnChatAuthorClick(string authorId)
         => ModalUI.Show(new ChatAuthorModal.Model(authorId));
+    //
+    // private void OnSelfClick()
+    //     => ModalUI.Show(new AuthorSettingsModal.Model(Chat));
 
     private void OnSelfClick()
-        => ModalUI.Show(new AuthorSettingsModal.Model(Chat));
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 
     public sealed class Model {
         public static Model None { get; } = new();
