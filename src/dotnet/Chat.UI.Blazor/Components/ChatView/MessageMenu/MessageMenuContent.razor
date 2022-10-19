@@ -7,16 +7,7 @@
     var entry = ChatMessageModel.Entry;
 }
 
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-heart-fill text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Reaction
-        </div>
-    </div>
-</Item>
+<ReactionSelect ChatEntry="@entry"/>
 @if (m.CanReply) {
     <Item OnClick="@(() => Reply(entry))">
         <div class="context-menu-content">

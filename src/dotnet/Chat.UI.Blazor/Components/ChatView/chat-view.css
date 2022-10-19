@@ -148,3 +148,15 @@
     @apply bg-skeleton rounded-md animate-pulse;
 }
 
+.message-reactions {
+    @apply flex-x my-0.5 h-7;
+}
+.message-reactions-reaction {
+    @apply bg-secondary rounded-full px-1 m-0.5 align-middle justify-between cursor-pointer;
+}
+.message-reactions-reaction-emoji {
+    @apply text-lg text-left;
+}
+.message-reactions-reaction-count {
+    @apply text-base text-right pr-1;
+}

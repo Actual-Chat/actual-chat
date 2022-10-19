@@ -235,3 +235,10 @@
 .language-settings-item {
     @apply flex-x items-center my-1;
 }
+
+.reaction-select {
+    @apply flex-x py-1.5;
+}
+.reaction-select-reaction {
+    @apply text-2xl min-w-0 p-0 justify-center items-center;
+}

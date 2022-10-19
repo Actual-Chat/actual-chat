@@ -9,13 +9,13 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(AuthorId), nameof(EntryId))]
 public class DbMention : IHasId<string>
 {
-    public DbMention() { }
-    public DbMention(Mention model) => UpdateFrom(model);
-
     [Key] public string Id { get; set; } = null!;
     public string AuthorId { get; set; } = "";
     public string ChatId { get; set; } = "";
     public long EntryId { get; set; }
+
+    public DbMention() { }
+    public DbMention(Mention model) => UpdateFrom(model);
 
     public Mention ToModel()
         => new() {
