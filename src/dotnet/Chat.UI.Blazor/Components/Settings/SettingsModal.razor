@@ -19,19 +19,20 @@
                         <ChildContent>
                         </ChildContent>
                     </SettingsTab>
-                <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
-                    <ChildContent>
-                    </ChildContent>
-                </SettingsTab>
-                    <SettingsTab Title="Language" Id="language" IconTitle="language">
-                        <TitleContent>
-                            <LanguageShortcut/>
-                        </TitleContent>
+                    <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
                         <ChildContent>
-                            <LanguageSettings/>
                         </ChildContent>
                     </SettingsTab>
                 }
+
+                <SettingsTab Title="Language" Id="language" IconTitle="language">
+                    <TitleContent>
+                        <LanguageShortcut/>
+                    </TitleContent>
+                    <ChildContent>
+                        <LanguageSettings/>
+                    </ChildContent>
+                </SettingsTab>
 
                 <SettingsTab Title="Dark theme" Separator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                     <TitleContent>
