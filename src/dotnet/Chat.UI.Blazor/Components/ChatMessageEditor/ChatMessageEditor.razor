@@ -159,6 +159,7 @@
 
     private async Task Post(string? text = null) {
         text ??= await MarkupEditorRef.GetText();
+        text = text.Trim();
         var attachments = AttachmentListRef.Attachments;
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;

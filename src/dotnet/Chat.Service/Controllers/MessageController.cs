@@ -90,7 +90,7 @@ public class MessageController : ControllerBase
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
-        var command = new IChats.UpsertTextEntryCommand(_sessionResolver.Session, chatId, null, post.Payload!.Text)
+        var command = new IChats.UpsertTextEntryCommand(_sessionResolver.Session, chatId, null, post.Payload!.Text.Trim())
             { RepliedChatEntryId = post.Payload!.RepliedChatEntryId };
         if (post.Files.Count > 0) {
             var uploads = new List<TextEntryAttachmentUpload>();
