@@ -13,7 +13,6 @@ public interface IHistoryUIBackend
 public class HistoryUI : IHistoryUIBackend, IDisposable
 {
     private readonly Stack<HistoryItem> _history = new ();
-    private readonly List<string> _log = new ();
     private readonly Task _whenInitialized;
     private PendingHistoryItem? _pendingHistoryItem = null;
     private string _prevMarker;
@@ -27,10 +26,6 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
 
     public string InitialUri { get; }
     public bool IsInitialLocation { get; private set; }
-
-    public string Marker => _marker;
-
-    public bool IsChatLoadRedirectRequested { get; private set; }
 
     public HistoryUI(
         BrowserInfo browserInfo,
@@ -48,8 +43,7 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         _history.Push(new HistoryItem(InitialUri));
         _marker = MakeNewMarker;
         _prevMarker = "";
-        LogLocation(InitialUri);
-        Log.LogInformation("Initial location: '{Location}'", Nav.Uri);
+        Log.LogDebug("Initial location: '{Location}'", Nav.Uri);
 
         // HistoryUI is initialized upon BlazorCircuitContext is created.
         // At this moment there is no yet subscriber to Nav.LocationChanged.
@@ -66,16 +60,11 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     public void Dispose()
         => _blazorRef?.Dispose();
 
-    private void LogLocation(string location)
-        => _log.Add(_marker + " : " + location);
-
-    private string MakeNewMarker => Guid.NewGuid().ToString();
-
     [JSInvokable]
     public Task OnPopState(string state)
-    {
-        return Task.CompletedTask;
-    }
+        => Task.CompletedTask;
+
+    private string MakeNewMarker => Guid.NewGuid().ToString();
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
@@ -85,18 +74,14 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         _marker = MakeNewMarker;
 
         var location = e.Location;
-        Log.LogInformation("Location changed: '{Location}'", location);
-        LogLocation(location);
-
-        //Nav.LocationChanged -= OnLocationChanged;
+        Log.LogDebug("Location changed: '{Location}'", location);
 
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return;
 
         // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
         // rework history position tracking with it.
-
-        var move = 0;
+        var move = HistoryMove.Unknown;
         if (_pendingHistoryItem != null) {
             if (TryGetMarker(location, out var locationMarker)) {
                 if (StringComparer.Ordinal.Equals(_pendingHistoryItem.Marker, locationMarker)) {
@@ -106,13 +91,14 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
                     _pendingHistoryItem = null;
                     if (onForwardAction != null)
                         onForwardAction.Invoke();
-                    move = 1;
+                    move = HistoryMove.Forward;
                 }
             }
         }
 
-        if (move == 0) {
+        if (move == HistoryMove.Unknown) {
             if (_history.Count > 1) {
+                // backward history move detection is not durable, it may give false detections.
                 var items = _history.ToArray();
                 var lastItem = items[0];
                 var preItem = items[1];
@@ -120,37 +106,15 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
                     // on back action detected
                     // do we need to detect or better to listen on popstate in js?
                     _history.Pop();
-                    move = -1;
+                    move = HistoryMove.Backward;
                     if (lastItem.OnBackAction != null)
                         lastItem.OnBackAction();
                 }
             }
         }
 
-        if (move == 0) {
-            move = 1;
+        if (move == HistoryMove.Unknown)
             _history.Push(new HistoryItem(location));
-        }
-
-        // else {
-        //     var handled = false;
-        //     if (_history.Count > 1) {
-        //         var items = _history.ToArray();
-        //         var lastItem = items[0];
-        //         var preItem = items[1];
-        //         if (StringComparer.Ordinal.Equals(preItem.Uri, location)) {
-        //             // on back action detected
-        //             // do we need to detect or better to listen on popstate in js?
-        //             _history.Pop();
-        //             handled = true;
-        //             if (lastItem.OnBackAction != null)
-        //                 lastItem.OnBackAction();
-        //         }
-        //     }
-        //     if (!handled) {
-        //         _history.Push(new HistoryItem(location));
-        //     }
-        // }}
     }
 
     private bool TryGetMarker(string location, out string? marker)
@@ -161,25 +125,8 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         return !string.IsNullOrEmpty(marker);
     }
 
-    public async Task GoBack()
-    {
-        try {
-            await JS.InvokeVoidAsync("eval", "history.back()");
-        }
-        catch (Exception e) {
-
-        }
-    }
-
-    // public void NavigateTo(string uri, bool replace, Action? onForwardAction, Action? onBackAction)
-    // {
-    //     var historyItem = new HistoryItem(uri) {
-    //         OnForwardAction = onForwardAction,
-    //         OnBackAction = onBackAction
-    //     };
-    //     _pendingHistoryItem = new PendingHistoryItem(historyItem, _marker);
-    //     Nav.NavigateTo(uri, false, replace);
-    // }
+    public Task GoBack()
+        => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
 
     public void NavigateTo(Action? onForwardAction, Action? onBackAction)
     {
@@ -196,15 +143,12 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
 
     private string GetUriWithMarker(string uri, string marker)
     {
-        var index = uri.IndexOf("?");
+        var index = uri.IndexOf("?", StringComparison.Ordinal);
         if (index >= 0)
             uri = uri.Substring(0, index);
         uri += "?marker=" + marker.UrlEncode();
         return uri;
     }
-
-    public void DemandChatLoadRedirect(bool demand)
-        => IsChatLoadRedirectRequested = demand;
 
     private record PendingHistoryItem(HistoryItem HistoryItem, string Marker);
 
@@ -212,5 +156,7 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     {
         public Action? OnForwardAction { get; init; }
         public Action? OnBackAction { get; init; }
-    };
+    }
+
+    private enum HistoryMove { Unknown, Forward, Backward }
 }

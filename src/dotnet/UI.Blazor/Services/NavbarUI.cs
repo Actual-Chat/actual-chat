@@ -2,14 +2,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI)
-    {
-        BrowserInfo = browserInfo;
-        HistoryUI = historyUI;
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            IsVisible = true;
-    }
-
     protected HistoryUI HistoryUI { get; }
     protected BrowserInfo BrowserInfo { get; }
     public bool IsVisible { get; private set; }
@@ -18,6 +10,14 @@ public class NavbarUI
     public Dictionary<string, Action> AddButtonAction { get; } = new (StringComparer.Ordinal);
     public event EventHandler? ActiveGroupChanged;
     public event EventHandler? VisibilityChanged;
+
+    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI)
+    {
+        BrowserInfo = browserInfo;
+        HistoryUI = historyUI;
+        if (BrowserInfo.ScreenSize.Value.IsNarrow())
+            IsVisible = true;
+    }
 
     public void ActivateGroup(string id, string title)
     {

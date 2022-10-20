@@ -107,12 +107,5 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
     }
 
     private void InitializeHistoryUI(IServiceProvider services)
-    {
-        try {
-            _ = services.GetRequiredService<HistoryUI>();
-        }
-        catch (Exception e) {
-
-        }
-    }
+        => _ = services.GetRequiredService<HistoryUI>();
 }
