@@ -6,7 +6,10 @@
     </li>
 }
 
-<li @onclick="OnClick" class="ac-menu-item @Class">
+<li @onclick="OnClick"
+    class="ac-menu-item @Class"
+    data-tooltip="@Tooltip"
+    data-tooltip-position="@(FloatingPosition.ToPositionString())">
     <div class="ac-menu-content">
         <div class="ac-menu-icon">
             @if (IconContent == null ) {
@@ -33,4 +36,6 @@
     [Parameter] public bool StartGroup { get; set; }
     [Parameter] public RenderFragment? IconContent { get; set; }
     [Parameter] public RenderFragment? TextContent { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition FloatingPosition { get; set; }
 }
