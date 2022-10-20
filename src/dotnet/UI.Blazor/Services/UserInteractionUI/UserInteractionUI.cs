@@ -32,7 +32,7 @@ public class UserInteractionUI : IUserInteractionUIBackend, IDisposable
         _whenInitialized = BlazorCircuitContext.Dispatcher.InvokeAsync(() => {
             _blazorRef = DotNetObjectReference.Create<IUserInteractionUIBackend>(this);
             return JS.InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.UserInteractionUI.initialize",
+                $"{BlazorUICoreModule.ImportName}.UserInteractionUI.check",
                 _blazorRef);
         });
     }
@@ -53,6 +53,10 @@ public class UserInteractionUI : IUserInteractionUIBackend, IDisposable
         await _whenInitialized.ConfigureAwait(false);
         if (IsInteractionHappened.Value)
             return;
+
+        await BlazorCircuitContext.Dispatcher.InvokeAsync(() => JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.UserInteractionUI.check",
+            _blazorRef));
         await Clocks.UIClock.Delay(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
         if (IsInteractionHappened.Value)
             return;
@@ -63,7 +67,7 @@ public class UserInteractionUI : IUserInteractionUIBackend, IDisposable
             var model = new UserInteractionRequestModal.Model(operation.NullIfEmpty() ?? "audio playback or capture");
             var modal = ModalUI.Show(model);
             await modal.WhenClosed.ConfigureAwait(false);
+            _ = MarkInteractionHappened();
         }).ConfigureAwait(false);
-        _ = MarkInteractionHappened();
     }
 }

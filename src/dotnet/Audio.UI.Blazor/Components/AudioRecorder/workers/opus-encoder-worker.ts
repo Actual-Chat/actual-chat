@@ -122,6 +122,10 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         .configureLogging(signalR.LogLevel.Information)
         .build();
     await hubConnection.start();
+    // call Ping first time to ensure pipeline is ready for recording after receiving mic data
+    const pong = await hubConnection.invoke('Ping');
+    if (pong !== 'Pong')
+        console.warn(`${LogScope}.onCreate: unexpected Ping call result`, pong);
 
     // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -160,13 +164,6 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
         // wait for mic data
         await whenMicReady;
         whenMicReady = null;
-
-        if (state === 'created') {
-            // call Ping first time to ensure pipeline is ready for recording after receiving mic data
-            const pong = await hubConnection.invoke('Ping');
-            if (pong !== 'Pong')
-                console.warn(`${LogScope}.onInit: unexpected Ping call result`, pong);
-        }
     }
     state = 'encoding';
     vadState = 'silence';

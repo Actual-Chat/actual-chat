@@ -51,7 +51,7 @@
         Off,
         OnToOff,
         OffToOn,
-        Initializing
+        Initializing,
     }
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
@@ -70,7 +70,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         CanRecord = await AudioRecorder.CanRecord(cancellationToken);
-        var isRecordingRequested = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
+        var isRecordingRequested = await ChatUI.IsRecording(ChatId);
         // Default scheduler is used from here
         var lastState = State.LatestNonErrorValue;
         if (lastState == null)

@@ -185,13 +185,14 @@ export class OpusMediaRecorder {
     }
 
     private async init(): Promise<void> {
-        if (this.context != null)
-            return;
-
         const context = await audioContextLazy.get();
         if (context.sampleRate !== 48000)
             throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
-        this.context = context; // We want to assign it only when it's a proper AudioContext
+
+        this.context = context;
+        if (this.context['initialized'])
+            return;
+
         await this.whenLoaded;
 
         // Encoder worklet init
@@ -223,6 +224,7 @@ export class OpusMediaRecorder {
         this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
         const vadInitPortMessage: VadWorkletMessage = { type: 'init' };
         this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
+        this.context['initialized'] = true;
     }
 
     private static async GetMicrophoneStream(): Promise<MediaStream> {

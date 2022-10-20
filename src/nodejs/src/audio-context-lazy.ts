@@ -109,7 +109,18 @@ export class AudioContextLazy implements Disposable {
                 currentContextTime = audioContext.currentTime;
                 if (lastContextTime == currentContextTime) {
                     // can't do resume there - user gesture context has already been lost
-                    // return resume(audioContext, true);
+                    this.refreshAudioContextTask();
+                    return this.audioContextTask;
+                }
+            }
+            else {
+                audioContext['lastTime'] = audioContext.currentTime;
+                // probably the context is stuck after wakeup
+                await delayAsync(20);
+                lastContextTime = audioContext['lastTime'] as number;
+                currentContextTime = audioContext.currentTime;
+                if (lastContextTime == currentContextTime) {
+                    // can't do resume there - user gesture context has already been lost
                     this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
