@@ -30,7 +30,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnHideRightPanelClick()
-        => RightPanelUI.IsVisible.Value = false;
+        => RightPanelUI.ChangeVisibility(false);
 
     private void OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.ModalInput(Chat));
