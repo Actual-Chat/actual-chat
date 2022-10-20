@@ -68,7 +68,4 @@ public class UnreadMessages : IDisposable
 
         return await _lastReadEntryState.Use(cancellationToken).ConfigureAwait(false);
     }
-
-    private static int RoundTo(long value, long @base)
-        => (int)(value / @base * @base).Clamp(0, MaxCount);
 }
