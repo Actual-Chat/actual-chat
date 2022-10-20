@@ -2,9 +2,7 @@
 @inherits ContextMenuExBase
 
 @if (_chatMessageModel != null) {
-    <CascadingValue Value="@_chatMessageModel">
-        <MessageMenuContent />
-    </CascadingValue>
+    <MessageHoverMenuContent Message="@_chatMessageModel"/>
 }
 
 @code {

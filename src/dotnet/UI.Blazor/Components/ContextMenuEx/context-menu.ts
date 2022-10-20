@@ -35,6 +35,7 @@ enum MenuTriggers
     LeftClick = 1,
     RightClick = 2,
     LongClick = 4,
+    Hover = 5,
 }
 
 const LogScope = 'ContextMenu';
@@ -97,6 +98,18 @@ export class ContextMenu implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
+                switchMap((eventData: EventData | undefined) => {
+                    return eventData ? of(eventData) : empty();
+                }),
+            )
+            .subscribe((eventData: EventData) => {
+                this.renderMenu(eventData);
+            });
+
+        fromEvent(document, 'mouseover')
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event) => this.mapEvent(event, MenuTriggers.Hover, false, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
                 }),
@@ -177,6 +190,11 @@ export class ContextMenu implements Disposable {
     }
 
     private updatePosition(eventData: EventData): void {
+        if (!eventData) {
+            this.menuRef.style.display = 'none';
+            return;
+        }
+
         this.menuRef.style.display = 'block';
 
         if (eventData.coords) {
@@ -190,9 +208,9 @@ export class ContextMenu implements Disposable {
 
         const placement = this.getPlacement(eventData.element);
         const middleware: Middleware[] = [];
-        middleware.push(offset(6));
+        // middleware.push(offset(6));
         middleware.push(flip());
-        middleware.push(shift({ padding: 5 }));
+        // middleware.push(shift({ padding: 5 }));
         computePosition(eventData.element, this.menuRef, {
             placement: placement,
             middleware: middleware,
