@@ -19,7 +19,7 @@ public class LanguageUI
         Languages = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (accountSettings, UserLanguageSettings.KvasKey) {
                 InitialValueFactory = CreateLanguageSettings,
-                PersistInitialValue = true,
+                MustWriteInitialValue = true,
             });
     }
 

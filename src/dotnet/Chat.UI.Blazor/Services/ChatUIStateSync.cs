@@ -15,7 +15,6 @@ public class ChatUIStateSync : WorkerBase
     private AudioSettings? _audioSettings;
     private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
-    private UserInteractionUI? _userInteractionUI;
 
     private LanguageId? _lastLanguageId;
     private Symbol _lastRecordingChatId;
