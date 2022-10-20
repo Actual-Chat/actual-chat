@@ -21,7 +21,7 @@
         </Tab>;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupId" AddClick="OnCreateNewChatClick">
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupToggles.Ids.Chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
         <div class="-flex-y w-full h-full">
             <ActiveChatsNavbarWidget/>
@@ -39,7 +39,6 @@
 </NavbarGroup>
 
 @code {
-    public const string NavbarGroupId = "chats";
     private TabId _activeTabId;
 
     [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
