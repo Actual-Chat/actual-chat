@@ -81,6 +81,8 @@ public interface IServerKvasClientDef
 [BasePath("userContacts")]
 public interface IUserContactsClientDef
 {
+    [Get(nameof(Get))]
+    Task<UserContact?> Get(Session session, string contactId, CancellationToken cancellationToken);
     [Get(nameof(List))]
     Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
     [Post(nameof(Change))]
