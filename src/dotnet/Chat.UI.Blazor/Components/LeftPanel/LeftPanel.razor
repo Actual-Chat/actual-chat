@@ -14,9 +14,6 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     protected override void OnInitialized() {
         NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;
