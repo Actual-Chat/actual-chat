@@ -17,23 +17,10 @@
     private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
-
-    private UnreadMessages UnreadMessages { get; set; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
-
-    protected override Task OnParametersSetAsync() {
-        UnreadMessages.DisposeSilently();
-        UnreadMessages = UnreadMessagesFactory.Get(Chat.Id);
-        return base.OnParametersSetAsync();
-    }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        UnreadMessages.DisposeSilently();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -43,7 +30,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await UnreadMessages.GetCount(cancellationToken);
+        var count = await UnreadMessages.GetCount(Chat.Id, cancellationToken);
         return count == 0 ? Model.None : new() { Count = count };
     }
 

@@ -1,6 +1,6 @@
 namespace ActualChat.Mathematics;
 
-public static partial class MaybeTrimmedExt
+public static class MaybeTrimmedExt
 {
     public static MaybeTrimmed<int> Sum(this IEnumerable<MaybeTrimmed<int>> values, int trimAt = int.MaxValue)
     {

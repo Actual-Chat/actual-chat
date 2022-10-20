@@ -1,6 +1,9 @@
 .navbar-navigation-button {
     @apply p-1 justify-center !bg-white rounded-lg !w-12 !h-12;
 }
+.navbar-group-toggle-chats-badge {
+    @apply absolute  bg-counter-navgroup text-[10px] min-w-4 min-h-4 w-4 h-4 -right-0.5 -top-0.5;
+}
 
 .first-pinned.btn.btn-square .btn-content {
     @apply !bg-yellow-500;

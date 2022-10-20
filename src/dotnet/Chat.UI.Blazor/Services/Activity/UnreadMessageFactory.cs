@@ -15,6 +15,6 @@ public class UnreadMessagesFactory
         Mentions = mentions;
     }
 
-    public UnreadMessages Get(Symbol chatId)
+    public ChatUnreadMessages Get(Symbol chatId)
         => new (Session, chatId, ChatUI, Chats, Mentions);
 }

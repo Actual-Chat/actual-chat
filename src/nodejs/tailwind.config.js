@@ -64,6 +64,7 @@ module.exports = {
     extend: {
       colors: {
         'counter': 'var(--counter)',
+        'counter-navgroup': 'var(--counter-navgroup)',
         'icons-01': 'var(--icons-01)',
         'icons-02': 'var(--icons-02)',
         'icons-03': 'var(--icons-03)',
