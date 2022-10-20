@@ -7,16 +7,18 @@
 }
 
 @if (isRecording) {
-    <ContextMenuItem OnClick="@(_ => ChatUI.SetRecordingChatId(Symbol.Empty))"
-                     Class="@cls"
-                     Icon="icon-Stop-fill"
-                     Text="Stop talking">
+    <ContextMenuItem
+        OnClick="@(_ => ChatUI.SetRecordingChatId(Symbol.Empty))"
+        Class="@cls"
+        Icon="icon-Stop-fill"
+        Text="Stop talking">
     </ContextMenuItem>
 } else {
-    <ContextMenuItem OnClick="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
-                     Class="@cls"
-                     Icon="icon-mic"
-                     Text="Start talking">
+    <ContextMenuItem
+        OnClick="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
+        Class="@cls"
+        Icon="icon-mic"
+        Text="Start talking">
     </ContextMenuItem>
 }
 

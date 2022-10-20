@@ -1,21 +1,14 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<bool>
-
 @{
-    var isPinned = State.ValueOrDefault;
+    var isPinned = State.Value;
 }
 
-@if (!isPinned) {
-    <ContextMenuItem OnClick="@Toggle"
-                     Icon="icon-pin"
-                     Text="Pin">
-    </ContextMenuItem>
-} else {
-    <ContextMenuItem OnClick="@Toggle"
-              Icon="icon-pin"
-              Text="Unpin">
-    </ContextMenuItem>
-}
+<ContextMenuItem
+    OnClick="@Toggle"
+    Icon="icon-pin"
+    Text="@(isPinned ? "Unpin" : "Pin")">
+</ContextMenuItem>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -29,5 +22,5 @@
         => ChatUI.IsPinned(Chat.Id);
 
     private void Toggle()
-        => _ = ChatUI.SetPinState(Chat.Id, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(Chat.Id, !State.Value);
 }

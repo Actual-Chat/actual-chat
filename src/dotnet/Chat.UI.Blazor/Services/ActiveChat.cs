@@ -16,7 +16,6 @@ public readonly record struct ActiveChat(
 
     public bool Equals(ActiveChat other)
         => ChatId.Equals(other.ChatId);
-
     public override int GetHashCode()
         => ChatId.GetHashCode();
 }
