@@ -93,6 +93,9 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return;
 
+        // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
+        // rework history position tracking with it.
+
         var move = 0;
         if (_pendingHistoryItem != null) {
             if (TryGetMarker(location, out var locationMarker)) {
