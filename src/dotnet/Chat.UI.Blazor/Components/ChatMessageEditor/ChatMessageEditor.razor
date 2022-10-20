@@ -10,10 +10,18 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 
+@{
+    var editorCls = "";
+    if (ScreenSize.IsNarrow())
+        editorCls = "narrow";
+    if (ScreenSize.IsWide())
+        editorCls = "wide";
+}
+
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor min-h-auto">
+<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
@@ -32,18 +40,6 @@
                             </ButtonRound>
                             <input class="file-picker" type="file" hidden multiple/>
                         </div>
-                        @*
-                        <ContextMenuToggleTrigger MenuId="@AttachMenu.MenuId" CssClass="self-start">
-                            <div class="flex attach-dropdown">
-                                <ButtonRound Class="attach-btn">
-                                    <i class="icon-attach-2 text-2xl"></i>
-                                </ButtonRound>
-                                <div class="relative right-12">
-                                    <div class="placement"></div>
-                                </div>
-                            </div>
-                        </ContextMenuToggleTrigger>
-                       *@
                         <label for="message-input" class="flex-auto flex-x justify-items-stretch items-center">
                             <MarkupEditor
                                 @key="MarkupEditorKey"
@@ -66,17 +62,14 @@
                     </div>
                 </div>
                 @if (ScreenSize.IsNarrow()) {
-                    <MobileControlPanel/>
+                    <ControlPanel/>
                 }
             </div>
             @if (ScreenSize.IsWide()) {
-                <RecorderPanel/>
+                <ControlPanel/>
             }
         </div>
     </MentionListManager>
-    @*
-    <AttachMenu UploadFilesRequested="@(() => ShowFilePicker())"/>
-    *@
 </div>
 
 @code {

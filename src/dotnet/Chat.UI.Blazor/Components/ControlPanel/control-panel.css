@@ -1,0 +1,296 @@
+.narrow .control-panel {
+    @apply flex-x md:hidden gap-x-6;
+    @apply h-auto justify-center py-2;
+    @apply bg-01;
+    @apply self-stretch md:self-end;
+    @apply items-center;
+    border-bottom-right-radius: 2.5rem;
+    border-bottom-left-radius: 2.5rem;
+}
+
+.narrow .control-panel .language-button,
+.narrow .control-panel .playback-wrapper,
+.narrow .control-panel .recorder-wrapper {
+    @apply rounded-full transition-all ease-linear duration-100;
+    @apply shadow-scrollbar shadow-md;
+}
+.narrow .control-panel .language-button:active,
+.narrow .control-panel .playback-wrapper:active,
+.narrow .control-panel .recorder-wrapper:active {
+    @apply shadow-md shadow-scrollbar translate-y-0.5;
+}
+
+.narrow .control-panel .btn.btn-round .btn-content {
+    @apply bg-03 rounded-full;
+    max-width: 3rem;
+    max-height: 3rem;
+    min-width: 3rem;
+    min-height: 3rem;
+}
+
+.narrow .control-panel .btn.chat-language-toggle {
+    @apply text-primary;
+}
+
+.narrow .control-panel .recorder-wrapper {
+    @apply border justify-center flex h-20 w-20 transition-none
+}
+.narrow .control-panel .recorder-wrapper:active {
+    @apply transition-none translate-y-0;
+}
+.narrow .control-panel .recorder-wrapper .btn {
+    @apply self-center;
+}
+.narrow .control-panel .recorder-wrapper .btn .btn-content {
+    @apply text-04;
+    max-height: 4.25rem;
+    min-height: 4.25rem;
+    max-width: 4.25rem;
+    min-width: 4.25rem;
+}
+.narrow .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply bg-primary;
+}
+.narrow .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply bg-error;
+}
+.narrow .control-panel .recorder-wrapper.record-off,
+.narrow .control-panel .recorder-wrapper.record-on-to-off {
+    @apply border-primary transition-colors duration-300;
+}
+.narrow .control-panel .recorder-wrapper.record-on,
+.narrow .control-panel .recorder-wrapper.record-off-to-on {
+    @apply border-error transition-colors duration-300;
+}
+
+.narrow .control-panel .recorder-wrapper.record-init {
+    @apply border-error transition-colors duration-300;
+}
+.narrow .control-panel .recorder-wrapper.record-init .record-off-btn.btn {
+    @apply absolute animate-scale-to-5 scale-0
+}
+.narrow .control-panel .recorder-wrapper.record-init .record-on-btn.btn {
+    @apply animate-scale-cycle;
+}
+
+.narrow .control-panel .recorder-wrapper.record-off .record-on-btn.btn {
+    @apply scale-0 absolute;
+}
+.narrow .control-panel .recorder-wrapper.record-off .record-off-btn.btn {
+    @apply scale-100;
+}
+
+.narrow .control-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
+    @apply animate-scale-to-5 scale-0 absolute;
+}
+.narrow .control-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+
+.narrow .control-panel .recorder-wrapper.record-on .record-off-btn.btn {
+    @apply scale-0 absolute;
+}
+.narrow .control-panel .recorder-wrapper.record-on .record-on-btn.btn {
+    @apply scale-100;
+}
+
+.narrow .control-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
+    @apply animate-scale-to-5 scale-0 absolute;
+}
+.narrow .control-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+
+.narrow .control-panel .playback-toggle {
+    @apply w-24 -mr-12;
+}
+.narrow .control-panel .playback-toggle .playback-wrapper {
+    @apply relative h-12 flex-x bg-03;
+}
+.narrow .control-panel .playback-toggle .playback-wrapper .btn.btn-round {
+    @apply absolute;
+}
+
+.narrow .playback-wrapper .loud-btn {
+    @apply self-center;
+}
+.narrow .playback-wrapper.listen-on {
+    @apply w-24;
+}
+.narrow .playback-wrapper.listen-on .loud-btn.btn.btn-round {
+    @apply opacity-100 translate-x-12;
+}
+.narrow .playback-wrapper.listen-off {
+    @apply w-12;
+}
+.narrow .playback-wrapper.listen-off .loud-btn.btn.btn-round {
+    @apply opacity-0 translate-x-12 absolute;
+}
+.narrow .playback-wrapper.listen-on-to-off {
+    @apply animate-width-full-to-half w-12;
+}
+.narrow .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
+    @apply animate-loud-hide absolute transition duration-300 opacity-0 scale-0;
+}
+.narrow .playback-wrapper.listen-off-to-on {
+    @apply animate-width-half-to-full w-24;
+}
+.narrow .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
+    @apply animate-loud-show absolute translate-x-12;
+}
+
+/*Text mode*/
+.narrow-panel.narrow .control-panel {
+    @apply gap-x-2 py-1;
+}
+.narrow-panel.narrow .control-panel .language-button,
+.narrow-panel.narrow .control-panel .playback-wrapper,
+.narrow-panel.narrow .control-panel .recorder-wrapper {
+    @apply shadow-sm shadow-scrollbar;
+}
+.narrow-panel.narrow .control-panel .btn.btn-round .btn-content {
+    @apply bg-03 rounded-full;
+    max-width: 5rem;
+    max-height: 3rem;
+    min-width: 5rem;
+    min-height: 3rem;
+}
+.narrow-panel.narrow .control-panel .btn.btn-round svg {
+    @apply h-6 w-6;
+}
+
+.narrow-panel.narrow .control-panel .recorder-wrapper {
+    @apply border-0 h-auto w-auto;
+}
+.narrow-panel.narrow .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply bg-primary;
+}
+.narrow-panel.narrow .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply bg-error;
+}
+.narrow-panel.narrow .control-panel .playback-toggle {
+    @apply w-20 m-0;
+}
+.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper {
+    @apply h-12 bg-03;
+}
+.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper .btn {
+    @apply left-4;
+}
+.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper .btn.btn-round .btn-content {
+    @apply bg-transparent rounded-full;
+    max-width: 3rem;
+    min-width: 3rem;
+}
+.narrow-panel.narrow .playback-wrapper.listen-on {
+    @apply w-28;
+}
+.narrow-panel.narrow .playback-wrapper.listen-on .loud-btn.btn.btn-round {
+    @apply opacity-100 translate-x-10;
+}
+.narrow-panel.narrow .playback-wrapper.listen-off {
+    @apply w-20;
+}
+.narrow-panel.narrow .playback-wrapper.listen-off .loud-btn.btn.btn-round {
+    @apply absolute opacity-0 translate-x-10;
+}
+.narrow-panel.narrow .playback-wrapper.listen-on-to-off {
+    @apply animate-width-7-to-5 w-20;
+}
+.narrow-panel.narrow .playback-wrapper.listen-on-to-off .loud-btn.btn.btn-round {
+    @apply animate-loud-hide-text-mode absolute transition duration-300 opacity-0 scale-0;
+}
+.narrow-panel.narrow .playback-wrapper.listen-off-to-on {
+    @apply animate-width-5-to-7 w-28;
+}
+.narrow-panel.narrow .playback-wrapper.listen-off-to-on .loud-btn.btn.btn-round {
+    @apply animate-loud-show-text-mode absolute translate-x-10;
+}
+
+
+/* Desktop control panel */
+.wide .control-panel {
+    @apply hidden md:flex-x h-12;
+    @apply justify-center gap-x-2.5;
+    @apply bg-01 outline-none rounded-none;
+    @apply self-end;
+}
+.wide .control-panel > div {
+    @apply flex flex-1 w-fit h-fit self-end rounded-full;
+}
+.wide .control-panel .desktop-button {
+    @apply flex rounded-full;
+}
+.wide .control-panel .recorder-wrapper {
+    @apply relative flex top-1 justify-center h-14 w-14 border border-primary rounded-full;
+}
+.wide .control-panel .recorder-wrapper .btn {
+    @apply self-center m-0.5;
+}
+.wide .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply bg-primary text-04;
+}
+.wide .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply bg-error text-04;
+}
+.wide .control-panel .recorder-wrapper.record-off,
+.wide .control-panel .recorder-wrapper.record-on-to-off {
+    @apply border-primary transition-colors duration-300;
+}
+.wide .control-panel .recorder-wrapper.record-on,
+.wide .control-panel .recorder-wrapper.record-off-to-on {
+    @apply border-error transition-colors duration-300;
+}
+
+.wide .control-panel .recorder-wrapper.record-init {
+    @apply border-error transition-colors duration-300;
+}
+.wide .control-panel .recorder-wrapper.record-init .record-off-btn.btn {
+    @apply absolute animate-scale-to-5 scale-0
+}
+.wide .control-panel .recorder-wrapper.record-init .record-on-btn.btn {
+    @apply animate-scale-cycle;
+}
+
+.wide .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
+    @apply shadow-mobile-button shadow-error-hover;
+}
+.wide .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
+    @apply shadow-lg shadow-secondary;
+}
+.wide .control-panel .recorder-wrapper.record-off .record-on-btn.btn {
+    @apply absolute scale-0;
+}
+.wide .control-panel .recorder-wrapper.record-off .record-off-btn.btn {
+    @apply scale-100;
+}
+.wide .control-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
+    @apply absolute animate-scale-to-5 scale-0;
+}
+.wide .control-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+.wide .control-panel .recorder-wrapper.record-on .record-off-btn.btn {
+    @apply absolute scale-0;
+}
+.wide .control-panel .recorder-wrapper.record-on .record-on-btn.btn {
+    @apply scale-100;
+}
+.wide .control-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
+    @apply absolute animate-scale-to-5 scale-0;
+}
+.wide .control-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
+    @apply animate-scale-to-full scale-100;
+}
+
+.btn.chat-language-toggle {
+    @apply font-semibold text-lg md:text-base text-icons-01;
+}
+
+/*Desktop playback and loud buttons*/
+.wide .control-panel .playback-toggle {
+    @apply w-12 rounded-full;
+}
+.wide .playback-wrapper .loud-btn {
+    @apply hidden;
+}
