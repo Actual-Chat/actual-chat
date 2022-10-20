@@ -12,9 +12,8 @@ public readonly record struct PinnedChat(
 
     // Equality must rely on ChatId only
 
-    public bool Equals(ActiveChat other)
+    public bool Equals(PinnedChat other)
         => ChatId.Equals(other.ChatId);
-
     public override int GetHashCode()
         => ChatId.GetHashCode();
 }
