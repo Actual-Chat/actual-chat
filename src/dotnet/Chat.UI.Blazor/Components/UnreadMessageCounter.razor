@@ -10,18 +10,13 @@
         ? "bg-primary"
         : "bg-counter";
 
-    var countText = m.Count == 0 ? "" : m.Count.Format();
+    var countText = m.HasMentions ? "@" : m.Count != 0 ? m.Count.Format() : "";
+    var cls = $"{bgColor} message-counter-badge";
 }
 
-<div class="@bgColor message-counter-badge">
-    <div class="h-6 p-0.5 rounded-full">
-        @if (m.HasMentions) {
-            <span class="mr-0.5">@@</span>
-        } else {
-            <span>@countText</span>
-        }
-    </div>
-</div>
+<Badge Class="@cls">
+    @countText
+</Badge>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -55,18 +50,19 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasMentionsTask = UnreadMessages.HasMentions(cancellationToken);
         var countTask = UnreadMessages.GetCount(cancellationToken);
-        var notificationStatusTask = Notifications.GetStatus(Session, ChatId, cancellationToken);
+        var getIsSubscribedTask = Notifications.IsSubscribed(Session, ChatId, cancellationToken);
 
         // ConfigureAwait(false) from here
         var hasMentions = await hasMentionsTask.ConfigureAwait(false);
         var count = await countTask.ConfigureAwait(false);
-        var notificationStatus = await notificationStatusTask.ConfigureAwait(false);
+        var isSubscribed = await getIsSubscribedTask.ConfigureAwait(false);
+
         if (!hasMentions && count == 0)
             return Model.None;
 
         return new() {
             Count = count,
-            IsSubscribed = notificationStatus.IsSubscribed,
+            IsSubscribed = isSubscribed,
             HasMentions = hasMentions,
         };
     }

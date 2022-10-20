@@ -11,13 +11,12 @@
         : "bg-counter";
 
     var countText = m.Count == 0 ? "" : m.Count.Format();
+    var cls = $"{bgColor} message-counter-badge";
 }
 
-<div class="@bgColor message-counter-badge">
-    <div class="h-6 p-0.5 rounded-full">
-        <span>@countText</span>
-    </div>
-</div>
+<Badge Class="@cls">
+    @countText
+</Badge>
 
 @code {
     private readonly List<(Symbol Chat, UnreadMessages UnreadMessages)> _chatUnreadMessages = new();
@@ -58,19 +57,18 @@
 
         var isSubscribed = 0;
         var results = new ConcurrentBag<MaybeTrimmed<int>>();
-        var countTasks = _chatUnreadMessages
+        await _chatUnreadMessages
             .Select(async chatUnreadMessages => {
-                var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken).AsTask();
+                var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken);
                 results.Add(count);
-                if (count.Value <= 0)
+                if (count.Value <= 0 || isSubscribed == 1)
                     return;
-                var status = await Notifications.GetStatus(Session, chatUnreadMessages.Chat, CancellationToken.None);
-                if (status.IsSubscribed)
+
+                if (await Notifications.IsSubscribed(Session, chatUnreadMessages.Chat, cancellationToken))
                     Interlocked.Exchange(ref isSubscribed, 1);
             })
-            .ToList();
+            .Collect();
 
-        await Task.WhenAll(countTasks);
         return new() {
             Count = results.Sum(UnreadMessages.MaxCount),
             IsSubscribed = isSubscribed == 1,

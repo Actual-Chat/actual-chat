@@ -80,14 +80,14 @@
         var publicUrlTitle = chatAbsolutePath == null
             ? ""
             : chatAbsolutePath.Substring(1, chatAbsolutePath.Length - 1);
-        var notificationStatus = await Notifications.GetStatus(Session, Chat.Id, cancellationToken);
+        var isSubscribed = await Notifications.IsSubscribed(Session, Chat.Id, cancellationToken);
         return new Model {
             Title = Chat.Title,
             IsPublic = Chat.IsPublic,
             Picture = Chat.Picture,
             PublicUrl = publicUrl,
             PublicUrlTitle = publicUrlTitle,
-            IsSubscribed = notificationStatus.IsSubscribed,
+            IsSubscribed = isSubscribed,
         };
     }
 
