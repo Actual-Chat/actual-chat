@@ -11,36 +11,22 @@
         : "bg-counter";
 
     var countText = m.Count == 0 ? "" : m.Count.Format();
-    var cls = $"{bgColor} message-counter-badge";
 }
 
-<Badge Class="@cls">
+<Badge Class="message-counter-badge" Color="@bgColor">
     @countText
 </Badge>
 
 @code {
-    private readonly List<(Symbol Chat, UnreadMessages UnreadMessages)> _chatUnreadMessages = new();
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
-    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
 
-    [Parameter, EditorRequired] public List<Symbol> Chats { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(CollectionParameterComparer))]
+    public List<Symbol> Chats { get; set; } = null!;
 
-    protected override async Task OnParametersSetAsync() {
-        _chatUnreadMessages.ForEach(x => x.UnreadMessages.DisposeSilently());
-        _chatUnreadMessages.Clear();
-        foreach (var chat in Chats) {
-            _chatUnreadMessages.Add((chat, UnreadMessagesFactory.Get(chat)));
-        }
-        await base.OnParametersSetAsync();
-    }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        _chatUnreadMessages.ForEach(x => x.UnreadMessages.DisposeSilently());
-        _chatUnreadMessages.Clear();
-    }
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -52,33 +38,19 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (_chatUnreadMessages.Count == 0)
+        if (Chats.Count == 0)
             return Model.None;
 
-        var isSubscribed = 0;
-        var results = new ConcurrentBag<MaybeTrimmed<int>>();
-        await _chatUnreadMessages
-            .Select(async chatUnreadMessages => {
-                var count = await chatUnreadMessages.UnreadMessages.GetCount(cancellationToken);
-                results.Add(count);
-                if (count.Value <= 0 || isSubscribed == 1)
-                    return;
-
-                if (await Notifications.IsSubscribed(Session, chatUnreadMessages.Chat, cancellationToken))
-                    Interlocked.Exchange(ref isSubscribed, 1);
-            })
-            .Collect();
+        var count = await UnreadMessages.GetCount(Chats, cancellationToken);
+        var isSubscribed = (await Chats.Select(x => Notifications.IsSubscribed(Session, x, cancellationToken)).Collect()).Any();
 
         return new() {
-            Count = results.Sum(UnreadMessages.MaxCount),
-            IsSubscribed = isSubscribed == 1,
+            Count = count,
+            IsSubscribed = isSubscribed,
         };
     }
 
-    public sealed record Model {
+    public sealed record Model(MaybeTrimmed<int> Count = default, bool IsSubscribed = false) {
         public static readonly Model None = new();
-
-        public MaybeTrimmed<int> Count { get; init; }
-        public bool IsSubscribed { get; init; }
     }
 }

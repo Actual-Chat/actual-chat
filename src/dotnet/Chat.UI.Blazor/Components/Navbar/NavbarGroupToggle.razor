@@ -5,11 +5,11 @@
 @{
     var isActive = NavbarUI.ActiveGroupId == Id;
     var cls = isActive ? "on" : "";
-    var btnClass = $"navbar-group-toggle {cls} {Class}";
+    var btnClass = $"{cls} {Class}";
     var lineClass = isActive ? "bg-primary" : "bg-transparent";
 }
 
-<div class="flex-x">
+<div class="flex-x relative">
     <div class="@lineClass left-line">
     </div>
     <ButtonSquare
@@ -22,6 +22,9 @@
     </ButtonSquare>
     <div class="w-[5px]">
     </div>
+    @if (ShowBadge) {
+        <Badge Class="navbar-group-toggle-chats-badge">@BadgeContent</Badge>
+    }
 </div>
 
 @code {
@@ -35,6 +38,8 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition FloatingPosition { get; set; }
+    [Parameter] public bool ShowBadge { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
 
     protected override void OnInitialized() {
         NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;

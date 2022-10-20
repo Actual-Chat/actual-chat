@@ -11,32 +11,18 @@
         : "bg-counter";
 
     var countText = m.HasMentions ? "@" : m.Count != 0 ? m.Count.Format() : "";
-    var cls = $"{bgColor} message-counter-badge";
 }
 
-<Badge Class="@cls">
+<Badge Class="message-counter-badge" Color="@bgColor">
     @countText
 </Badge>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; init; } = null!;
-    [Inject] private UnreadMessagesFactory UnreadMessagesFactory { get; init; } = null!;
-
-    private UnreadMessages UnreadMessages { get; set; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-
-    protected override Task OnParametersSetAsync() {
-        UnreadMessages.DisposeSilently();
-        UnreadMessages = UnreadMessagesFactory.Get(ChatId);
-        return base.OnParametersSetAsync();
-    }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        UnreadMessages.DisposeSilently();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -48,8 +34,8 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var hasMentionsTask = UnreadMessages.HasMentions(cancellationToken);
-        var countTask = UnreadMessages.GetCount(cancellationToken);
+        var hasMentionsTask = UnreadMessages.HasMentions(ChatId, cancellationToken);
+        var countTask = UnreadMessages.GetCount(ChatId, cancellationToken);
         var getIsSubscribedTask = Notifications.IsSubscribed(Session, ChatId, cancellationToken);
 
         // ConfigureAwait(false) from here

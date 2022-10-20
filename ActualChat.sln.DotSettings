@@ -183,6 +183,24 @@
 	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpUseContinuousIndentInsideBracesMigration/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ESettingsUpgrade_002EAlwaysTreatStructAsNotReorderableMigration/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ESettingsUpgrade_002EMigrateBlankLinesAroundFieldToBlankLinesAroundProperty/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=NAME/Expression/@EntryValue"></s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=NAME1/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=NAME1/Expression/@EntryValue">suggestVariableName()</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=NAME1/Order/@EntryValue">3</s:Int64>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=TYPE1/@KeyIndexDefined">True</s:Boolean>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Field/=TYPE1/Order/@EntryValue">2</s:Int64>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=50C1B3A73748EC4A9E8A9C79858FCCF4/Text/@EntryValue">public $TYPE$ $NAME$ { get; init; }</s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=property/Expression/@EntryValue"></s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=property1/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=property1/Expression/@EntryValue">suggestVariableName()</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=property1/Order/@EntryValue">3</s:Int64>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=type/Expression/@EntryValue"></s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=type1/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=type1/Expression/@EntryValue">constant("int")</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Field/=type1/Order/@EntryValue">2</s:Int64>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=93F98A2471C8E14B981B66D087BF011A/Text/@EntryValue">public $type$ $property$ { get; }</s:String>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=Authz/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=ebml/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=Kvas/@EntryIndexedValue">True</s:Boolean>

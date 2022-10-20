@@ -8,20 +8,20 @@ public class RecentChatsUI : WorkerBase
     private volatile ImmutableList<Chat> _listIncludingSelectedCached = ImmutableList<Chat>.Empty;
 
     private IChats Chats { get; }
-    private UnreadMessagesFactory UnreadMessagesFactory { get; }
+    private UnreadMessages UnreadMessages { get; }
     private IRecentEntries RecentEntries { get; }
     private ChatUI ChatUI { get; }
     private Session Session { get; }
 
     public RecentChatsUI(
         IChats chats,
-        UnreadMessagesFactory unreadMessagesFactory,
+        UnreadMessages unreadMessages,
         IRecentEntries recentEntries,
         ChatUI chatUI,
         Session session)
     {
         Chats = chats;
-        UnreadMessagesFactory = unreadMessagesFactory;
+        UnreadMessages = unreadMessages;
         RecentEntries = recentEntries;
         ChatUI = chatUI;
         Session = session;
@@ -60,7 +60,7 @@ public class RecentChatsUI : WorkerBase
         var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
         var chatIdsWithMentions = (await chats
             .Select(async chat => {
-                var hasMentions = await HasMentions(chat, cancellationToken).ConfigureAwait(false);
+                var hasMentions = await UnreadMessages.HasMentions(chat.Id, cancellationToken).ConfigureAwait(false);
                 return (Chat: chat, HasMentions: hasMentions);
             })
             .Collect()
@@ -80,12 +80,6 @@ public class RecentChatsUI : WorkerBase
                 RecencyScope.ChatContact,
                 chats.Length,
                 cancellationToken);
-
-        async Task<bool> HasMentions(Chat chat, CancellationToken ct)
-        {
-            using var unreadMessages = UnreadMessagesFactory.Get(chat.Id);
-            return await unreadMessages.HasMentions(ct).ConfigureAwait(false);
-        }
     }
 
     protected override Task RunInternal(CancellationToken cancellationToken)

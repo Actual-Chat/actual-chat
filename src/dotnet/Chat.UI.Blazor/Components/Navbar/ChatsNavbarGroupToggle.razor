@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
+@{
+    var m = State.ValueOrDefault ?? new();
+    var showBadge = m.Count.Value > 0;
+}
+<NavbarGroupToggle
+    Title="Chats" Id="@NavbarGroupIds.Chats" Tooltip="Chats" FloatingPosition="FloatingPosition.Right" ShowBadge="@showBadge">
+    <ChildContent>
+        <i class="icon-message-ellipse text-2xl font-medium"></i>
+    </ChildContent>
+    <BadgeContent>
+        @m.Count
+    </BadgeContent>
+</NavbarGroupToggle>
+
+@code {
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            UpdateDelayer = FixedDelayer.Get(5),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chats = await Chats.List(Session, cancellationToken);
+        var count = await UnreadMessages.GetUnreadChatsCount(chats.Select(x => x.Id), cancellationToken);
+        return new(count);
+    }
+
+    public record Model(MaybeTrimmed<int> Count = default);
+}
