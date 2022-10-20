@@ -218,9 +218,6 @@
 .wide .control-panel > div {
     @apply flex flex-1 w-fit h-fit self-end rounded-full;
 }
-.wide .control-panel .desktop-button {
-    @apply flex rounded-full;
-}
 .wide .control-panel .recorder-wrapper {
     @apply relative flex top-1 justify-center h-14 w-14 border border-primary rounded-full;
 }
