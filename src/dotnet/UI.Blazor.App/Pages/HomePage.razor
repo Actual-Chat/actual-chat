@@ -1,5 +1,6 @@
 @page "/"
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
@@ -11,17 +12,26 @@
     if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
         <Welcome/>
     }
-    else if (!m.DefaultChatId.IsEmpty) {
-        Nav.NavigateTo(Links.ChatPage(m.DefaultChatId));
+    else if (!m.DefaultChatId.IsEmpty && !_navigated) {
+        _navigated = true;
+        // Do automatic redirect on first load.
+        if (BrowserInfo.ScreenSize.Value.IsNarrow())
+            HistoryUI.DemandChatLoadRedirect(true);
+        Nav.NavigateTo(Links.ChatPage(m.DefaultChatId), false, true);
     }
 }
 
 @code {
+    private bool _navigated;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
@@ -31,7 +41,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
+        ActualChat.Chat.Chat? chat = null;
+        if (HistoryUI.IsInitialLocation)
+            chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
         return new(account, chat?.Id ?? Symbol.Empty);
     }
 

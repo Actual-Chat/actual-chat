@@ -2,6 +2,16 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class NavbarUI
 {
+    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI)
+    {
+        BrowserInfo = browserInfo;
+        HistoryUI = historyUI;
+        if (BrowserInfo.ScreenSize.Value.IsNarrow())
+            IsVisible = true;
+    }
+
+    protected HistoryUI HistoryUI { get; }
+    protected BrowserInfo BrowserInfo { get; }
     public bool IsVisible { get; private set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
@@ -24,6 +34,24 @@ public class NavbarUI
         if (IsVisible == visible)
             return;
 
+        var screenSize = BrowserInfo.ScreenSize.Value;
+        if (screenSize.IsNarrow()) {
+            if (visible) {
+                _ = HistoryUI.GoBack();
+
+            } else {
+                HistoryUI.NavigateTo(
+                    () => InnerChangeVisibility(false),
+                    () => InnerChangeVisibility(true));
+            }
+        }
+        else {
+            InnerChangeVisibility(visible);
+        }
+    }
+
+    private void InnerChangeVisibility(bool visible)
+    {
         IsVisible = visible;
         VisibilityChanged?.Invoke(this, EventArgs.Empty);
     }

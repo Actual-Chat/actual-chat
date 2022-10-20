@@ -77,11 +77,22 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+
+        if (HistoryUI.IsChatLoadRedirectRequested) {
+            HistoryUI.DemandChatLoadRedirect(false);
+            NavbarUI.ChangeVisibility(false);
+        }
+    }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
