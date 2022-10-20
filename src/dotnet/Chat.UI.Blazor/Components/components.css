@@ -237,8 +237,8 @@
 }
 
 .reaction-select {
-    @apply flex-x py-1.5;
+    @apply flex-x;
 }
 .reaction-select-reaction {
-    @apply text-2xl min-w-0 p-0 justify-center items-center;
+    @apply min-w-0 p-0;
 }

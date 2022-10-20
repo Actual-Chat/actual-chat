@@ -20,7 +20,7 @@
     @apply text-icons-01 text-2xl;
 }
 .ac-menu-text {
-    @apply w-full text-02 text-base font-medium ml-2 mr-6;
+    @apply w-full text-02 text-base font-medium mr-2;
 }
 .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
