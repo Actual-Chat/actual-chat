@@ -7,9 +7,9 @@
     var m = State.Value;
 }
 
-@if (NavbarUI.ActiveGroupId == ChatListNavbarWidget.NavbarGroupId) {
+@if (NavbarUI.ActiveGroupId == NavbarGroupToggles.Ids.Chats) {
     <ChatListNavbarWidget />
-} else if (NavbarUI.ActiveGroupId == ContactListNavbarWidget.NavbarGroupId) {
+} else if (NavbarUI.ActiveGroupId == NavbarGroupToggles.Ids.Contacts) {
     <ContactListNavbarWidget />
 }
 

@@ -9,7 +9,7 @@
 
 <NavbarGroupToggle
     Title="Chats"
-    Id="chats"
+    Id="@Ids.Chats"
     Tooltip="Chats"
     FloatingPosition="FloatingPosition.Right">
     <i class="icon-message-ellipse text-2xl font-medium"></i>
@@ -18,7 +18,7 @@
 @if (m.Account.IsActive()) {
     <NavbarGroupToggle
         Title="Contacts"
-        Id="contacts"
+        Id="@Ids.Contacts"
         Tooltip="Contacts"
         FloatingPosition="FloatingPosition.Right">
         <i class="icon-people text-2xl font-medium"></i>
@@ -27,7 +27,7 @@
 @if (m.Account.IsAdmin) {
     <NavbarGroupToggle
         Title="Administration"
-        Id="admin"
+        Id="@Ids.Administration"
         Tooltip="Administration"
         FloatingPosition="FloatingPosition.Right">
         <i class="icon-adminx-1 text-2xl font-medium"></i>
@@ -36,9 +36,18 @@
 @if (HostInfo.IsDevelopmentInstance) {
     <NavbarGroupToggle
         Title="Test Pages"
-        Id="testPages"
+        Id="@Ids.TestPages"
         Tooltip="Test Pages"
         FloatingPosition="FloatingPosition.Right">
         <i class="icon-alert-triangle text-2xl font-medium"></i>
     </NavbarGroupToggle>
+}
+
+@code {
+    public static class Ids {
+        public const string Chats = "chats";
+        public const string Contacts = "contacts";
+        public const string Administration = "admin";
+        public const string TestPages = "testPages";
+    }
 }
