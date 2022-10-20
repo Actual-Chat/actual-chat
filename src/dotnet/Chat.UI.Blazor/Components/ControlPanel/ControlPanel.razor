@@ -1,0 +1,18 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+
+<div class="control-panel">
+    <div class="language-button flex">
+        <LanguageToggle/>
+    </div>
+    <div class="recorder-button">
+        <RecorderToggle ChatId="@Chat.Id"/>
+    </div>
+    <div class="playback-toggle">
+        <PlaybackToggle ChatId="@Chat.Id"/>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+}

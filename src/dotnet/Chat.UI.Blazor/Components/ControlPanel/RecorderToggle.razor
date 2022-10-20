@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
-@inherits ComputedStateComponent<MobileRecorderToggle.Model?>
+@inherits ComputedStateComponent<RecorderToggle.Model?>
 @{
     var m = State.LatestNonErrorValue;
     var recordState = m?.RecordingState ?? RecordingState.Off;
@@ -15,7 +15,7 @@
 }
 
 @if (CanRecord) {
-    <div class="@wrapperCls recorder-wrapper mobile-button">
+    <div class="@wrapperCls recorder-wrapper">
         <ButtonRound Class="record-off-btn"
                      Click="OnClick"
                      @ontouchend="OnLongPressStop"
@@ -34,7 +34,7 @@
         </ButtonRound>
     </div>
 } else {
-    <div class="recorder-wrapper mobile-button">
+    <div class="recorder-wrapper">
         <ButtonRound Class="w-14 h-14"
                      IsDisabled="true">
             <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

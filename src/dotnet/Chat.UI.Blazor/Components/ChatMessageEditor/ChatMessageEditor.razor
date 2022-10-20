@@ -10,10 +10,18 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 
+@{
+    var editorCls = "";
+    if (ScreenSize.IsNarrow())
+        editorCls = "narrow";
+    if (ScreenSize.IsWide())
+        editorCls = "wide";
+}
+
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor min-h-auto">
+<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@MarkupHub.ChatMentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
@@ -54,17 +62,14 @@
                     </div>
                 </div>
                 @if (ScreenSize.IsNarrow()) {
-                    <MobileControlPanel/>
+                    <ControlPanel/>
                 }
             </div>
             @if (ScreenSize.IsWide()) {
-                <RecorderPanel/>
+                <ControlPanel/>
             }
         </div>
     </MentionListManager>
-    @*
-    <AttachMenu UploadFilesRequested="@(() => ShowFilePicker())"/>
-    *@
 </div>
 
 @code {

@@ -222,7 +222,7 @@ export class ChatMessageEditor {
         this.isMobile = isMobile;
         this.lastHeight = height;
         this.lastWidth = width;
-        const buttons = this.editorDiv.querySelectorAll(':scope div.mobile-control-panel .btn');
+        const buttons = this.editorDiv.querySelectorAll(':scope div.control-panel .btn');
         if (isMobile)
             buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
         else
