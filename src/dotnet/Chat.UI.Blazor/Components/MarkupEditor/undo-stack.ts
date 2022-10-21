@@ -1,4 +1,4 @@
-import { debounce, Debounced } from '../../../../nodejs/src/debounce';
+import { debounce, Debounced } from 'debounce';
 
 const LogScope = 'UndoStack';
 

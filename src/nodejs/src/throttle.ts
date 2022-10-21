@@ -1,9 +1,9 @@
-export interface Debounced<T extends (...args: unknown[]) => unknown> {
+export interface Throttled<T extends (...args: unknown[]) => unknown> {
     (...args: Parameters<T>): void;
     cancel(): void;
 }
 
-export function debounce<T extends (...args: unknown[]) => unknown>(func: (...args: Parameters<T>) => ReturnType<T>, wait = 300, immediately = false): Debounced<T> {
+export function throttle<T extends (...args: unknown[]) => unknown>(func: (...args: Parameters<T>) => ReturnType<T>, wait = 300, immediately = true): Throttled<T> {
     let context: unknown;
     let waitTimeout: number | null = null;
     let previousTimestamp = 0;
@@ -17,31 +17,34 @@ export function debounce<T extends (...args: unknown[]) => unknown>(func: (...ar
             waitTimeout = setTimeout(later, wait - passed);
         } else {
             waitTimeout = null;
-            if (!immediately)
+            if (!immediately) {
+                previousTimestamp = Date.now();
                 func.apply(context, args);
-            // This check is needed because `func` can recursively invoke `debounced`.
+            }
+            // This check is needed because `func` can recursively invoke `throttle`.
             if (!waitTimeout)
                 args = context = null;
         }
     };
 
-    const debounced: Debounced<T> = function( ...dArgs: Parameters<T>): void {
+    const throttled: Throttled<T> = function( ...dArgs: Parameters<T>): void {
         context = this;
         args = dArgs;
-        previousTimestamp = Date.now();
         if (!waitTimeout) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             waitTimeout = setTimeout(later, wait);
-            if (immediately)
+            if (immediately) {
+                previousTimestamp = Date.now();
                 func.apply(context, args);
+            }
         }
     };
 
-    debounced.cancel = function() {
+    throttled.cancel = function() {
         clearTimeout(waitTimeout);
         waitTimeout = args = context = null;
     };
 
-    return debounced;
+    return throttled;
 }

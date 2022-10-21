@@ -1,16 +1,16 @@
 import { EventHandler, EventHandlerSet } from 'event-handling';
-import { debounce } from 'debounce';
+import { throttle } from 'throttle';
 
 const LogScope = 'NextInteraction';
 const debug = true;
 
 export class NextInteraction {
     private static readonly event: EventHandlerSet<Event> = new EventHandlerSet<Event>();
-    private static readonly onEventDebounced = debounce((e: Event) => NextInteraction.onEvent(e), 500, true);
-    private static readonly onClick = (event: Event) => NextInteraction.onEventDebounced(event);
-    private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventDebounced(event);
-    private static readonly onKeyDown = (event: Event) => NextInteraction.onEventDebounced(event);
-    private static readonly onTouchEnd = (event: Event) => NextInteraction.onEventDebounced(event);
+    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500, true);
+    private static readonly onClick = (event: Event) => NextInteraction.onEventThrottled(event);
+    private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventThrottled(event);
+    private static readonly onKeyDown = (event: Event) => NextInteraction.onEventThrottled(event);
+    private static readonly onTouchEnd = (event: Event) => NextInteraction.onEventThrottled(event);
     public static isStarted: boolean;
 
     public static start() : void {

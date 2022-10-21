@@ -1,4 +1,5 @@
 import { debounce, Debounced } from 'debounce';
+import { throttle, Throttled } from 'throttle';
 import { onceAtATime } from 'serialize';
 import './virtual-list.css';
 import { VirtualListClientSideItem, VirtualListClientSideState } from './ts/virtual-list-client-side-state';
@@ -16,7 +17,7 @@ import { delayAsync } from 'promises';
 import { whenCompleted, WhenCompleted } from 'when';
 
 const LogScope: string = 'VirtualList';
-const UpdateClientSideStateTimeout: number = 64;
+const UpdateClientSideStateTimeout: number = 120;
 const UpdateVisibleKeysTimeout: number = 320;
 const IronPantsHandleTimeout: number = 1600;
 const SizeEpsilon: number = 1;
@@ -45,7 +46,7 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
 
-    private readonly updateClientSideStateDebounced: Debounced<typeof this.updateClientSideState>;
+    private readonly updateClientSideStateThrottled: Throttled<typeof this.updateClientSideState>;
     private readonly updateClientSideStateOnce: typeof this.updateClientSideState;
     private readonly updateVisibleKeysDebounced: Debounced<typeof this.updateVisibleKeys>;
 
@@ -134,7 +135,7 @@ export class VirtualList implements VirtualListAccessor {
         this._visibleItems = new Set<string>();
         this._lastVisibleKey = null;
         this.updateClientSideStateOnce = onceAtATime(this.updateClientSideState);
-        this.updateClientSideStateDebounced = debounce(this.updateClientSideStateOnce, UpdateClientSideStateTimeout);
+        this.updateClientSideStateThrottled = throttle(this.updateClientSideStateOnce, UpdateClientSideStateTimeout);
         this.updateVisibleKeysDebounced = debounce(this.updateVisibleKeys, UpdateVisibleKeysTimeout);
 
         this._skeletonObserver.observe(this._spacerRef);
@@ -605,7 +606,7 @@ export class VirtualList implements VirtualListAccessor {
         if (this._isRendering || this._isDisposed)
             return;
 
-        this.updateClientSideStateDebounced();
+        this.updateClientSideStateThrottled();
     };
 
     private getNewItemRefs(): IterableIterator<HTMLElement> {

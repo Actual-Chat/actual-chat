@@ -1,5 +1,5 @@
 import './markup-editor.css';
-import { debounce } from '../../../../nodejs/src/debounce';
+import { debounce } from 'debounce';
 import { UndoStack } from './undo-stack';
 
 const LogScope = 'MarkupEditor';
