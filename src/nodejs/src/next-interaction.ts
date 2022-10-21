@@ -6,7 +6,7 @@ const debug = true;
 
 export class NextInteraction {
     private static readonly event: EventHandlerSet<Event> = new EventHandlerSet<Event>();
-    private static readonly onEventDebounced = debounce((e: Event) => NextInteraction.onEvent(e), 500);
+    private static readonly onEventDebounced = debounce((e: Event) => NextInteraction.onEvent(e), 500, true);
     private static readonly onClick = (event: Event) => NextInteraction.onEventDebounced(event);
     private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventDebounced(event);
     private static readonly onKeyDown = (event: Event) => NextInteraction.onEventDebounced(event);

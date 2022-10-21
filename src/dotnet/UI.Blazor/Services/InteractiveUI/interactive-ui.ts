@@ -16,6 +16,8 @@ export class InteractiveUI {
     public static isInteractiveChanged: EventHandlerSet<boolean> = new EventHandlerSet<boolean>();
 
     public static init(backendRef: DotNet.DotNetObject) {
+        if (debug)
+            console.debug(`${LogScope}: init()`);
         this.backendRef = backendRef;
         this.onAudioContextChanged = audioContextLazy.audioContextChanged.add(() => this.trySync());
         NextInteraction.start();
