@@ -1,24 +1,23 @@
 .image-viewer-modal.modal-frame {
-    @apply flex-y justify-center gap-y-0 p-2;
-    @apply w-full md:w-full h-full overflow-hidden;
-    @apply bg-01 md:bg-transparent;
+    @apply flex-y justify-center gap-y-0 p-0 md:p-10;
+    @apply w-full md:w-fit md:max-w-full h-full overflow-hidden;
+    @apply bg-transparent;
     @apply border-none rounded-none shadow-none;
 }
 
 .image-viewer-modal .dialog-body {
-    @apply p-0 pt-2;
+    @apply flex-x w-full md:w-fit max-w-full justify-center items-center p-0;
     @apply overflow-hidden;
 }
 
 .image-viewer-modal .image-viewer-content {
     @apply flex flex-y justify-center items-center;
-    @apply max-w-full max-h-full;
+    @apply max-w-full max-h-fit md:max-h-full;
 }
 
 .image-viewer-modal .image-viewer-content img {
-    @apply flex-auto;
+    @apply flex-auto w-fit;
     @apply object-contain;
-    max-width: calc(100vw - 2rem); /* screen height - 2x p-4 padding */
     max-height: calc(100vh - 7rem); /* screen height - close button height */
 }
 
@@ -26,20 +25,20 @@
     @apply bg-transparent;
 }
 
-.image-viewer-modal .modal-close  {
-    @apply text-04;
-}
-
-.image-viewer-modal .modal-close .btn-content {
-    @apply bg-06;
-}
-
-.image-viewer-modal .modal-close .btn-content:hover {
-    @apply bg-05;
-}
-
 .show-original-button {
+    @apply px-2 my-1 bg-primary border-primary rounded-md;
+    @apply text-04 text-sm font-normal;
+    @apply hover:bg-primary-hover;
+}
+.modal-frame .show-original-button {
     @apply cursor-pointer;
-    @apply text-01 md:text-04;
-    @apply underline md:no-underline hover:underline;
+}
+.image-viewer-modal .modal-header {
+    @apply justify-end;
+}
+.image-viewer-modal .modal-header .modal-title {
+    @apply hidden;
+}
+.image-viewer-modal .modal-close {
+    @apply -mr-8;
 }

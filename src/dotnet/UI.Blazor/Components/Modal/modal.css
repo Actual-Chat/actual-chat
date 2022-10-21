@@ -43,7 +43,7 @@
 }
 .modal-frame .dialog-body,
 .modal-frame .dialog-buttons {
-    @apply px-4 md:px-0;
+    @apply px-4 md:px-1 overflow-hidden;
 }
 .modal-frame * {
     @apply cursor-default;

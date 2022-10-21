@@ -4,7 +4,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame HasCloseButton="true" Class="image-viewer-modal">
+<DialogFrame
+    HasCloseButton="true"
+    Class="image-viewer-modal"
+    Title="@(ModalModel.AltText.NullIfEmpty() ?? "Image")"
+    CloseButtonCls="btn-sm">
     <Body>
         <div class="image-viewer-content">
             <img class="hidden"

@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = $"modal-frame {Class}";
+    var closeBtnCls = $"modal-close {CloseButtonCls}";
 }
 
 <ModalChrome Class="@cls">
@@ -19,7 +20,7 @@
             <h3 class="modal-title flex-1 text-xl md:text-lg font-semibold md:font-medium">@Title</h3>
             @if (HasCloseButton) {
                 <div class="flex-none my-1 invisible md:visible">
-                    <ButtonRound Class="modal-close btn-sm" Click="OnCloseClick" tabindex="-1" aria-label="close">
+                    <ButtonRound Class="@closeBtnCls" Click="OnCloseClick" tabindex="-1" aria-label="close">
                         <i class="icon-close text-2xl font-medium"></i>
                     </ButtonRound>
                 </div>
@@ -34,6 +35,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public string CloseButtonCls { get; set; } = "";
     [Parameter] public bool ShowMobileHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
