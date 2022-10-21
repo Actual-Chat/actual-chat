@@ -7,19 +7,21 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class LanguageUI
 {
-    public ISyncedState<UserLanguageSettings> Languages { get; }
+    private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
-    public LanguageUI(
-        AccountSettings accountSettings,
-        IStateFactory stateFactory,
-        IJSRuntime js)
+    public ISyncedState<UserLanguageSettings> Languages { get; }
+
+    public LanguageUI(IServiceProvider services)
     {
-        JS = js;
+        Dispatcher = services.GetRequiredService<Dispatcher>();
+        JS = services.GetRequiredService<IJSRuntime>();
+
+        var stateFactory = services.StateFactory();
+        var accountSettings = services.GetRequiredService<AccountSettings>();
         Languages = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (accountSettings, UserLanguageSettings.KvasKey) {
-                InitialValueFactory = CreateLanguageSettings,
-                MustWriteInitialValue = true,
+                MissingValueFactory = CreateLanguageSettings,
             });
     }
 
@@ -29,7 +31,7 @@ public class LanguageUI
         return languages.Next(language);
     }
 
-    private async Task<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
+    private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
     {
         var languages = await GetClientLanguages(cancellationToken);
         return new () {
@@ -40,9 +42,10 @@ public class LanguageUI
 
     private async ValueTask<List<LanguageId>> GetClientLanguages(CancellationToken cancellationToken)
     {
-        var browserLanguages = await JS
-            .InvokeAsync<string[]>($"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages", cancellationToken)
-            .ConfigureAwait(false);
+        var browserLanguages = await Dispatcher.InvokeAsync(
+            () => JS.InvokeAsync<string[]>(
+                $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
+                cancellationToken).AsTask());
         return browserLanguages
             .Select(x => LanguageId.Map.GetValueOrDefault(x))
             .Where(x => x.IsValid)

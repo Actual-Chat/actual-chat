@@ -1,7 +1,8 @@
-import { addInteractionHandler } from 'first-interaction';
 import { Disposable } from 'disposable';
-import { delayAsync } from 'promises';
+import { delayAsync, PromiseSource } from 'promises';
 import { onDeviceAwake } from 'on-device-awake';
+import { EventHandlerSet } from 'event-handling';
+import { NextInteraction } from 'next-interaction';
 
 const LogScope = 'AudioContextLazy';
 
@@ -72,26 +73,27 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
 }
 
 export class AudioContextLazy implements Disposable {
-    private audioContextTask: Promise<AudioContext> = null;
-    private audioContext: AudioContext | null = null;
-    private firstInteractionDisposable?: Disposable = null;
+    private audioContextTask?: PromiseSource<AudioContext> = null;
+    private nextInteractionHandler?: Disposable = null;
+
+    public audioContext: AudioContext | null = null;
+    public audioContextChanged: EventHandlerSet<AudioContext | null> = new EventHandlerSet<AudioContext | null>();
 
     constructor(factory: (() => Promise<AudioContext>) = null) {
         factory ??= defaultFactory;
-        this.audioContextTask = new Promise<AudioContext>(resolve => {
-            this.firstInteractionDisposable = addInteractionHandler(LogScope, async () => {
-                const audioContext = await factory();
-                audioContext['lastTime'] = audioContext.currentTime;
-                onDeviceAwake(() => this.wakeUp());
-                this.audioContext = audioContext;
-                resolve(audioContext);
-                return false;
-            });
+        this.audioContextTask = new PromiseSource<AudioContext>();
+        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+            const audioContext = await factory();
+            audioContext['lastTime'] = audioContext.currentTime;
+            onDeviceAwake(() => this.wakeUp());
+            this.audioContext = audioContext;
+            this.audioContextTask.resolve(audioContext);
+            this.audioContextChanged.triggerSilently(audioContext);
         });
     }
 
     public dispose(): void {
-        this.firstInteractionDisposable?.dispose();
+        this.nextInteractionHandler?.dispose();
     }
 
     public async get(): Promise<AudioContext> {
@@ -103,24 +105,24 @@ export class AudioContextLazy implements Disposable {
                 if (audioContext.state === 'suspended')
                     return resume(audioContext);
 
-                // probably the context is stuck after wakeup
+                // The context might stuck after wake up
                 await delayAsync(20);
                 lastContextTime = audioContext['lastTime'] as number;
                 currentContextTime = audioContext.currentTime;
                 if (lastContextTime == currentContextTime) {
-                    // can't do resume there - user gesture context has already been lost
+                    // We can't resume it - user gesture context has already been lost
                     this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
             }
             else {
                 audioContext['lastTime'] = audioContext.currentTime;
-                // probably the context is stuck after wakeup
+                // The context might stuck after wake up
                 await delayAsync(20);
                 lastContextTime = audioContext['lastTime'] as number;
                 currentContextTime = audioContext.currentTime;
                 if (lastContextTime == currentContextTime) {
-                    // can't do resume there - user gesture context has already been lost
+                    // We can't resume it - user gesture context has already been lost
                     this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
@@ -132,17 +134,17 @@ export class AudioContextLazy implements Disposable {
 
     private refreshAudioContextTask() {
         const audioContext = this.audioContext;
-        this.firstInteractionDisposable?.dispose();
-        this.firstInteractionDisposable = null;
+        this.nextInteractionHandler?.dispose();
+        this.nextInteractionHandler = null;
         this.audioContext = null;
-        this.audioContextTask = new Promise<AudioContext>(resolve => {
-            this.firstInteractionDisposable = addInteractionHandler(LogScope, async () => {
-                await resume(audioContext, true);
-                audioContext['lastTime'] = audioContext.currentTime;
-                this.audioContext = audioContext;
-                resolve(audioContext);
-                return false;
-            });
+        this.audioContextTask = new PromiseSource<AudioContext>();
+        this.audioContextChanged.triggerSilently(null);
+        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+            await resume(audioContext, true);
+            audioContext['lastTime'] = audioContext.currentTime;
+            this.audioContext = audioContext;
+            this.audioContextTask.resolve(audioContext);
+            this.audioContextChanged.triggerSilently(audioContext);
         });
     }
 

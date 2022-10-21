@@ -1,7 +1,8 @@
 import { default as NoSleep } from 'nosleep.js';
-import { addInteractionHandler } from 'first-interaction';
+import { NextInteraction } from 'next-interaction';
 
 const LogScope = 'KeepAwakeUI';
+const debug = true;
 const noSleep = new NoSleep();
 
 export class KeepAwakeUI {
@@ -16,9 +17,9 @@ export class KeepAwakeUI {
     };
 }
 
-addInteractionHandler('KeepAwakeUI', async () => {
-    console.debug(`${LogScope}.onFirstInteraction: warming up noSleep`);
+NextInteraction.addHandler(async () => {
+    if (debug)
+        console.debug(`${LogScope}: warming up noSleep`);
     await noSleep.enable();
     noSleep.disable();
-    return true;
 });

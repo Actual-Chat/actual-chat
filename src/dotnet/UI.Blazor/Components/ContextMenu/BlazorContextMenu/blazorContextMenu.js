@@ -416,7 +416,7 @@ var blazorContextMenu = function (blazorContextMenu) {
 
     blazorContextMenu.Show = function (menuId, x, y, target, triggerDotnetRef) {
         if (menuHandlerReference == null)
-            return new Promise((resolve, _) => resolve(undefined))
+            return new Promise(resolve => resolve(undefined))
 
         var targetId = null;
         if (target) {

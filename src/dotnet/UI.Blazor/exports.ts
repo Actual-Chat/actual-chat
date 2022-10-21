@@ -30,7 +30,7 @@ export * from './Services/FocusUI/focus-ui'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'
-export * from './Services/UserInteractionUI/user-interaction-ui';
+export * from './Services/InteractiveUI/interactive-ui';
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/BlazorContextMenu/blazorContextMenu.js';

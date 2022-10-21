@@ -33,7 +33,7 @@ public class ChatUIStateSync : WorkerBase
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private UserInteractionUI UserInteractionUI { get; }
+    private InteractiveUI InteractiveUI { get; }
 
     public ChatUIStateSync(Session session, IServiceProvider services)
     {
@@ -42,7 +42,7 @@ public class ChatUIStateSync : WorkerBase
         Log = Services.LogFor(GetType());
         Clocks = services.Clocks();
         LanguageUI = services.GetRequiredService<LanguageUI>();
-        UserInteractionUI = services.GetRequiredService<UserInteractionUI>();
+        InteractiveUI = services.GetRequiredService<InteractiveUI>();
     }
 
     // Protected methods
@@ -142,8 +142,8 @@ public class ChatUIStateSync : WorkerBase
                 var playbackStateValue = playbackState.Value;
                 if (playbackStateValue is null or RealtimeChatPlaybackState) {
                     if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
-                        if (playbackStateValue is not null && !UserInteractionUI.IsInteractionHappened.Value)
-                            await UserInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
+                        if (playbackStateValue is null && !InteractiveUI.IsInteractive.Value)
+                            await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
                         playbackState.Value = expectedPlaybackState;
                     }
                 }
@@ -232,8 +232,8 @@ public class ChatUIStateSync : WorkerBase
                 }
                 if (!chatIdToStartRecording.IsEmpty) {
                     // And start the recording if we must
-                    if (!UserInteractionUI.IsInteractionHappened.Value)
-                        await UserInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
+                    if (!InteractiveUI.IsInteractive.Value)
+                        await InteractiveUI.Demand("audio recording").ConfigureAwait(false);
                     await AudioRecorder.StartRecording(chatIdToStartRecording, cancellationToken).ConfigureAwait(false);
                 }
             },

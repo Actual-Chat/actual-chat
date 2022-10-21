@@ -1,4 +1,5 @@
 const LogScope = 'on-device-awake';
+const debug = true;
 
 let _worker: Worker = null;
 const _handlers = new Array<() => void>();
@@ -9,7 +10,7 @@ const onWorkerMessage = () => {
         try {
             handler();
         } catch (err) {
-            console.error(LogScope, 'onWorkerMessage', 'onDeviceAwake event handler failed with error')
+            console.error(LogScope, 'onWorkerMessage', 'onDeviceAwake event handler failed with an error')
         }
     });
 };
@@ -19,7 +20,7 @@ const onWorkerError = (error: ErrorEvent) => {
 };
 
 const createWorker = () => {
-    const worker = new Worker('/dist/onAwakeWorker.js');
+    const worker = new Worker('/dist/onDeviceAwakeWorker.js');
     worker.onmessage = onWorkerMessage;
     worker.onerror = onWorkerError;
 
@@ -28,18 +29,21 @@ const createWorker = () => {
 
 const ensureWorker = () => {
     if (_handlers.length > 0 && _worker === null) {
-        console.debug(`${LogScope}.ensureWorker`, 'creating worker')
+        if (debug)
+            console.debug(`${LogScope}.ensureWorker`, 'creating worker')
         _worker = createWorker();
     }
     if (_handlers.length === 0 && _worker !== null) {
-        console.debug(`${LogScope}.ensureWorker`, 'terminating worker')
+        if (debug)
+            console.debug(`${LogScope}.ensureWorker`, 'terminating worker')
         _worker.terminate();
         _worker = null;
     }
 };
 
 const onDeviceAwake = (handler: () => void): () => void => {
-    console.debug(`${LogScope}.onAwake`, 'adding onAwakeHandler', handler)
+    if (debug)
+        console.debug(`${LogScope}.onDeviceAwake`, 'adding handler', handler)
     _handlers.push(handler);
     ensureWorker();
     return () => {

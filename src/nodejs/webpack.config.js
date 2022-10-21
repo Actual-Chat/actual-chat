@@ -308,7 +308,7 @@ module.exports = (env, args) => {
             type: 'module',
         }
       },
-      onAwakeWorker: {
+      onDeviceAwakeWorker: {
         import: './src/on-device-awake-worker.ts',
         chunkLoading: false,
         asyncChunks: false,

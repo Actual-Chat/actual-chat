@@ -27,16 +27,4 @@
     <ServiceWorker Include="ServiceWorkers\service-worker.ts" />
   </ItemGroup>
 
-  <ItemGroup>
-    <TypeScriptCompile Include="Components\PicUpload\pic-upload.ts" />
-    <TypeScriptCompile Include="Components\VirtualList\ts\math.ts" />
-    <TypeScriptCompile Include="Components\VirtualList\ts\range-ext.ts" />
-    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-edge-ext.ts" />
-    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-statistics.ts" />
-    <TypeScriptCompile Include="Components\VirtualList\ts\virtual-list-accessor.ts" />
-    <TypeScriptCompile Include="Layouts\base-layout.ts" />
-    <TypeScriptCompile Include="Services\ThemeUI\theme-ui.ts" />
-    <TypeScriptCompile Include="Services\UserInteractionUI\user-interaction-ui.ts" />
-  </ItemGroup>
-  
 </Project>

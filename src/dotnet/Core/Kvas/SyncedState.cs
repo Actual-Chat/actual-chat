@@ -183,21 +183,25 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
         public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
-        public Func<CancellationToken, Task<T>>? InitialValueFactory { get; init; }
+        public Func<CancellationToken, ValueTask<T>>? MissingValueFactory { get; init; }
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
             var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
             if (data == null) {
-                if (InitialValueFactory != null)
-                    return await InitialValueFactory(cancellationToken).ConfigureAwait(false);
+                if (MissingValueFactory == null)
+                    return InitialValue;
 
-                return InitialValue;
+                var value = await MissingValueFactory(cancellationToken).ConfigureAwait(false);
+                await Write(value, cancellationToken).ConfigureAwait(false);
+                return value;
             }
-            var value = Serializer.Read(data);
-            if (Corrector != null)
-                value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
-            return value;
+            else {
+                var value = Serializer.Read(data);
+                if (Corrector != null)
+                    value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
+                return value;
+            }
         }
 
         internal override Task Write(T value, CancellationToken cancellationToken)

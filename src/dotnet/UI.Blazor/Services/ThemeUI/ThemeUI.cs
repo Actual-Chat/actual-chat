@@ -12,7 +12,7 @@ public class ThemeUI : WorkerBase
     private AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
 
     private ILogger Log { get; }
-    private AppBlazorCircuitContext CircuitContext { get; }
+    private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
     public ISyncedState<Theme> Theme { get; }
@@ -20,7 +20,7 @@ public class ThemeUI : WorkerBase
     public ThemeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        CircuitContext = services.GetRequiredService<AppBlazorCircuitContext>();
+        Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
@@ -44,9 +44,9 @@ public class ThemeUI : WorkerBase
         if (_lastTheme == theme)
             return;
         try {
-            await CircuitContext.Dispatcher.InvokeAsync(async () => {
-                await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
-            }).ConfigureAwait(false);
+            await Dispatcher.InvokeAsync(
+                () => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString()).AsTask()
+                ).ConfigureAwait(false);
             _lastTheme = theme;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

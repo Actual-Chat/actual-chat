@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { addInteractionHandler } from 'first-interaction';
+import { NextInteraction } from 'next-interaction';
 
 const LogScope = 'MessagingInit';
 
@@ -104,14 +104,8 @@ function hasPromiseBasedNotificationApi(): boolean {
     }
 }
 
-addInteractionHandler(LogScope, async () => {
+NextInteraction.addHandler(async () => {
     const isGranted = await requestNotificationPermission();
     if (!isGranted)
-        throw `${LogScope}: Notifications are disabled.`;
-
-    // Notification permissions are granted on touchend
-    // that follows scroll, but this isn't what considered
-    // "user interaction" w/ AudioContext
-    // we need to trigger this just once
-    return false;
+        console.error(`${LogScope}: Notifications are disabled.`);
 });

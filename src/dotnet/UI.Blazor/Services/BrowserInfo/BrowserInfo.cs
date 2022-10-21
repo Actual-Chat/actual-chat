@@ -2,9 +2,10 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BrowserInfo : IBrowserInfoBackend
+public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
     private readonly TaskSource<Unit> _whenReadySource;
+    private DotNetObjectReference<IBrowserInfoBackend>? _backendRef;
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
@@ -25,12 +26,15 @@ public sealed class BrowserInfo : IBrowserInfoBackend
         _whenReadySource = TaskSource.New<Unit>(true);
     }
 
+    public void Dispose()
+        => _backendRef.DisposeSilently();
+
     public async Task Init()
     {
-        var backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
+        _backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var initResult = await JS.InvokeAsync<IBrowserInfoBackend.InitResult>(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
-            backendRef);
+            _backendRef);
         // Log.LogInformation("Init: {InitResult}", initResult);
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;

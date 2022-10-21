@@ -67,9 +67,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
-        // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
-        services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();
-        services.AddTransient(c => (AppBlazorCircuitContext)c.GetRequiredService<BlazorCircuitContext>());
+        // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
+        services.AddScoped<AppBlazorCircuitContext>();
+        services.AddScoped(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
+        services.AddScoped(c => c.GetRequiredService<BlazorCircuitContext>().Dispatcher);
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
@@ -95,7 +96,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // General UI services
         services.AddScoped<ClipboardUI>();
-        services.AddScoped<UserInteractionUI>();
+        services.AddScoped<InteractiveUI>();
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
         services.AddScoped<FocusUI>();
