@@ -15,6 +15,7 @@
     private ElementReference _endFirst;
     private ElementReference _endSecond;
     private bool _shiftPressed;
+    private bool _skipRender;
 
     [Parameter] public RenderFragment ChildContent { get; set; } = default!;
     [Parameter] public bool IsActive { get; set; }
@@ -25,23 +26,33 @@
             await _startFirst.FocusAsync();
     }
 
+    protected override bool ShouldRender() {
+        if (_skipRender) {
+            _skipRender = false;
+            return false;
+        }
+        return base.ShouldRender();
+    }
+
     internal async Task SetFocus()
         => await _startFirst.FocusAsync();
 
-    private async Task FocusStartAsync(FocusEventArgs args)
-    {
+    private async Task FocusStartAsync(FocusEventArgs args) {
+        _skipRender = true;
         if (!_shiftPressed)
             await _startFirst.FocusAsync();
     }
 
     private async Task FocusEndAsync(FocusEventArgs args)
     {
+        _skipRender = true;
         if (_shiftPressed)
             await _endFirst.FocusAsync();
     }
 
     private void HandleKeyPresses(KeyboardEventArgs args)
     {
+        _skipRender = true;
         if (args.Key == "Tab")
             _shiftPressed = args.ShiftKey;
     }
