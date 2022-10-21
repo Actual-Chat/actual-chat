@@ -10,6 +10,7 @@
 <input @ref="Ref"
        id="@Id"
        type="text"
+       autocomplete="@(Autocomplete ? "on" : "off")"
        class="@cls"
        value="@CurrentValue"
        @attributes="@AdditionalAttributes"
@@ -23,6 +24,7 @@
 
     [Parameter] public string? Id { get; set; }
     [Parameter] public bool Autofocus { get; set; }
+    [Parameter] public bool Autocomplete { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
