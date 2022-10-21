@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 using Stl.Locking;
 
@@ -12,6 +13,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
     private MomentClockSet Clocks { get; }
+    private HostInfo HostInfo { get; }
     private ILogger Log { get; }
 
     public IMutableState<bool> IsInteractive { get; }
@@ -19,8 +21,9 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public InteractiveUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        Log = services.LogFor(GetType());
+        HostInfo = services.GetRequiredService<HostInfo>();
 
         ModalUI = services.GetRequiredService<ModalUI>();
         Dispatcher = services.GetRequiredService<Dispatcher>();
@@ -46,6 +49,10 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public async Task Demand(string operation = "")
     {
+        if (HostInfo.HostKind == HostKind.Maui)
+            // MAUI controlled browsers doesn't require user interaction to use sound
+            return;
+
         await WhenReady.ConfigureAwait(false);
         if (IsInteractive.Value)
             return;

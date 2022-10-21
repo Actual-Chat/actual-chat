@@ -7,6 +7,7 @@ const debug: boolean = true;
 export class BrowserInfo {
     private static screenSizeMeasureDiv: HTMLDivElement = null;
     private static backendRef: DotNet.DotNetObject = null;
+    private static _isMaui: boolean = null;
 
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
     public static screenSize: string;
@@ -14,7 +15,7 @@ export class BrowserInfo {
     public static isTouchCapableCached: boolean = null;
     public static windowId: string = "";
 
-    public static init(backendRef1: DotNet.DotNetObject): InitResult {
+    public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): InitResult {
         this.backendRef = backendRef1;
         this.screenSizeMeasureDiv = document.createElement("div");
         this.screenSizeMeasureDiv.className = "screen-size-measure";
@@ -32,22 +33,27 @@ export class BrowserInfo {
         // @ts-ignore
         this.windowId = window.App.windowId;
         this.whenReady.resolve(undefined);
+        this._isMaui = isMaui;
 
         return {
             screenSizeText: this.screenSize,
             utcOffset: this.utcOffset,
-            isTouchCapable: this.isTouchCapable(),
+            isTouchCapable: this.isTouchCapable,
             windowId: this.windowId,
         }
     }
 
-    public static isTouchCapable(): boolean {
+    public static get isTouchCapable(): boolean {
         this.isTouchCapableCached ??=
             ( 'ontouchstart' in window )
             || ( navigator.maxTouchPoints > 0 )
             // @ts-ignore
             || ( navigator.msMaxTouchPoints > 0 );
         return this.isTouchCapableCached;
+    }
+
+    public static get isMaui(): boolean {
+        return this._isMaui;
     }
 
     // Backend methods

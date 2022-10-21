@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -10,6 +11,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
     private ILogger Log { get; }
+    private HostInfo HostInfo { get; }
 
     public IMutableState<ScreenSize> ScreenSize { get; }
     public TimeSpan UtcOffset { get; private set; }
@@ -22,6 +24,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         Services = services;
         Log = services.LogFor(GetType());
         JS = Services.GetRequiredService<IJSRuntime>();
+        HostInfo = Services.GetRequiredService<HostInfo>();
         ScreenSize = services.StateFactory().NewMutable<ScreenSize>();
         _whenReadySource = TaskSource.New<Unit>(true);
     }
@@ -34,6 +37,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         _backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var initResult = await JS.InvokeAsync<IBrowserInfoBackend.InitResult>(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
+            HostInfo.HostKind == HostKind.Maui,
             _backendRef);
         // Log.LogInformation("Init: {InitResult}", initResult);
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
