@@ -35,6 +35,7 @@ enum MenuTriggers
     LeftClick = 1,
     RightClick = 2,
     LongClick = 4,
+    Hover = 5,
 }
 
 const LogScope = 'ContextMenu';
