@@ -261,20 +261,18 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
 
-        requestAnimationFrame(time => {
-            // make rendered items visible
-            for (const itemRef of this.getNewItemRefs()) {
-                itemRef.classList.remove('new');
-            }
+        // make rendered items visible
+        for (const itemRef of this.getNewItemRefs()) {
+            itemRef.classList.remove('new');
+        }
 
-            const rs = this.getRenderState();
-            if (rs) {
-                void this.onRenderEnd(rs);
-            }
-            else {
-                this._isRendering = false;
-            }
-        });
+        const rs = this.getRenderState();
+        if (rs) {
+            void this.onRenderEnd(rs);
+        }
+        else {
+            this._isRendering = false;
+        }
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
@@ -346,13 +344,11 @@ export class VirtualList implements VirtualListAccessor {
                     const lastVisibleKey = this._lastVisibleKey;
                     const lastVisibleItemRef = this.getItemRef(lastVisibleKey);
                     if (lastVisibleItemRef) {
-                        requestAnimationFrame(time => {
-                            const lastItemRef = this.getItemRef(lastKey);
-                            this._pivotKey = lastKey;
-                            this._pivotOffset = lastItemRef.getBoundingClientRect().top;
-                            this._top = this._ref.getBoundingClientRect().top;
-                            this._viewport = this._ref.clientHeight;
-                        });
+                        const lastItemRef = this.getItemRef(lastKey);
+                        this._pivotKey = lastKey;
+                        this._pivotOffset = lastItemRef.getBoundingClientRect().top;
+                        this._top = this._ref.getBoundingClientRect().top;
+                        this._viewport = this._ref.clientHeight;
                     }
                 } else {
                     this._pivotKey = null;
@@ -522,44 +518,31 @@ export class VirtualList implements VirtualListAccessor {
             if (this._debugMode)
                 console.log(`${LogScope}.updateClientSideState: #${rs.renderIndex}`);
 
-            const state = await new Promise<VirtualListClientSideState>(resolve => {
-                let state: VirtualListClientSideState = null;
-                requestAnimationFrame(time => {
-                    try {
-                        const viewportHeight = this._ref.clientHeight;
-                        const scrollTop = this.getVirtualScrollTop();
-                        state = {
-                            renderIndex: rs.renderIndex,
+            const viewportHeight = this._ref.clientHeight;
+            const scrollTop = this.getVirtualScrollTop();
+            const state = {
+                renderIndex: rs.renderIndex,
 
-                            scrollTop: scrollTop,
-                            viewportHeight: viewportHeight,
-                            stickyEdge: this._stickyEdge,
+                scrollTop: scrollTop,
+                viewportHeight: viewportHeight,
+                stickyEdge: this._stickyEdge,
 
-                            visibleKeys: [],
-                        } as VirtualListClientSideState;
+                visibleKeys: [],
+            } as VirtualListClientSideState;
 
-                        state.visibleKeys = [...this._visibleItems].sort();
-                    } finally {
-                        resolve(state);
-                    }
-                });
-            });
+            state.visibleKeys = [...this._visibleItems].sort();
+            if (this._debugMode)
+                console.log(`${LogScope}.updateClientSideState: state:`, state);
+            const expectedRenderIndex = this.renderState.renderIndex;
+            if (state.renderIndex != expectedRenderIndex) {
+                return;
+            }
 
-            if (state) {
-                if (this._debugMode)
-                    console.log(`${LogScope}.updateClientSideState: state:`, state);
-                const expectedRenderIndex = this.renderState.renderIndex;
-                if (state.renderIndex != expectedRenderIndex) {
-                    return;
-                }
+            this.clientSideState = state;
 
-                this.clientSideState = state;
-
-
-                const plan = this._plan = this._lastPlan.next();
-                if (!plan.isFullyLoaded) {
-                    await this.requestData();
-                }
+            const plan = this._plan = this._lastPlan.next();
+            if (!plan.isFullyLoaded) {
+                await this.requestData();
             }
         } finally {
             this._isUpdatingClientState = false;
