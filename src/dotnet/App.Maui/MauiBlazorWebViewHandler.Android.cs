@@ -1,5 +1,9 @@
+using System;
+using System.Diagnostics;
 using Android.Webkit;
 using Java.Interop;
+using Stl.Fusion.Authentication;
+using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
 
@@ -21,6 +25,7 @@ public partial class MauiBlazorWebViewHandler
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
         var jsInterface = new JavascriptInterface(this, platformView);
         platformView.AddJavascriptInterface(jsInterface, "Android");
+        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient));
     }
 
     private class JavascriptInterface : Java.Lang.Object
@@ -59,6 +64,41 @@ public partial class MauiBlazorWebViewHandler
             _webView.Post(() => {
                 MessageReceived.Invoke(data);
             });
+        }
+    }
+
+    private class WebViewClientOverride : WebViewClient
+    {
+        private WebViewClient Original { get; }
+
+        public WebViewClientOverride(WebViewClient original)
+            => Original = original;
+
+        public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
+            => Original.ShouldOverrideUrlLoading(view, request);
+
+        public override WebResourceResponse? ShouldInterceptRequest(WebView? view, IWebResourceRequest? request)
+        {
+            var resourceResponse = Original.ShouldInterceptRequest(view, request);
+            if (resourceResponse == null)
+                return null;
+
+            const string contentTypeKey = "Content-Type";
+            var contentType = resourceResponse.ResponseHeaders?[contentTypeKey];
+            if (contentType == resourceResponse.MimeType && contentType == "application/wasm")
+                resourceResponse.ResponseHeaders?.Remove(contentTypeKey);
+            return resourceResponse;
+        }
+
+        public override void OnPageFinished(WebView? view, string? url)
+            => Original.OnPageFinished(view, url);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposing)
+                return;
+
+            Original.Dispose();
         }
     }
 }
