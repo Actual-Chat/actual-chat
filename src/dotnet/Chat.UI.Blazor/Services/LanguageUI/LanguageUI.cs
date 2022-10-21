@@ -22,11 +22,13 @@ public class LanguageUI
         Languages = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (accountSettings, UserLanguageSettings.KvasKey) {
                 MissingValueFactory = CreateLanguageSettings,
+                UpdateDelayer = FixedDelayer.Instant,
             });
     }
 
     public async Task<LanguageId> NextLanguage(LanguageId language, CancellationToken cancellationToken = default)
     {
+        await Languages.WhenFirstTimeRead.ConfigureAwait(false);
         var languages = await Languages.Use(cancellationToken).ConfigureAwait(false);
         return languages.Next(language);
     }
