@@ -71,7 +71,7 @@ public class FirebaseMessagingClient
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
                 Body = content,
-                ImageUrl = absoluteIconUrl,
+                // ImageUrl = TODO(AK): add first image url if the message contains images
             },
             Android = new AndroidConfig {
                 Notification = new AndroidNotification {
