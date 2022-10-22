@@ -1,0 +1,30 @@
+@page "/test/js"
+@using ActualChat.UI.Blazor.App.Module
+
+<h2>JavaScript Test Page</h2>
+
+<p class="pt-4">Actions:</p>
+<p>
+    <Button Click="@(() => InvokeMember("serialized"))">serialized()</Button>
+    <Button Click="@(() => InvokeMember("serialized1"))">serialized1()</Button>
+    <Button Click="@(() => InvokeMember("serialized2"))">serialized2()</Button>
+</p>
+<p>
+    <Button Click="@(() => InvokeMember("throttled"))">throttled()</Button>
+</p>
+<p>
+    <Button Click="@(() => InvokeMember("debounced"))">debounced()</Button>
+    <Button Click="@(() => InvokeMember("debouncedHead"))">debounced(debounceHead = true)</Button>
+</p>
+
+<p class="pt-4">Check out the output in JS console.</p>
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.JSTestPage.init");
+
+    private void InvokeMember(string name)
+        => JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.JSTestPage.{name}");
+}

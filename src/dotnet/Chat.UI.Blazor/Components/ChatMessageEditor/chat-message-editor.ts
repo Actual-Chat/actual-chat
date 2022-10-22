@@ -1,5 +1,5 @@
 import './chat-message-editor.css';
-import { debounce } from 'debounce';
+import { throttle } from 'promises';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 
 const LogScope: string = 'MessageEditor';
@@ -40,7 +40,7 @@ export class ChatMessageEditor {
         this.updateTextMode();
 
         // Wiring up event listeners
-        window.visualViewport.addEventListener('resize', debounce(this.onWindowResize, 100));
+        window.visualViewport.addEventListener('resize', throttle(this.onWindowResize, 333));
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);

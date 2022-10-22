@@ -1,5 +1,5 @@
 import './markup-editor.css';
-import { debounce } from 'debounce';
+import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
 
 const LogScope = 'MarkupEditor';
@@ -293,7 +293,7 @@ export class MarkupEditor {
 
     private onSelectionChange = () => {
         this.fixSelection();
-        this.updateListUIDebounced();
+        this.updateListUIThrottled();
     };
 
     private onBeforeInput = (e: InputEvent) => {
@@ -316,14 +316,13 @@ export class MarkupEditor {
 
     private onInput = (e: InputEvent) => {
         this.fixContent();
-        this.undoStack.pushDebounced();
-        this.updateListUIDebounced();
+        this.undoStack.pushThrottled();
+        this.updateListUIThrottled();
     }
 
     // List UI (lists, etc.) support
 
-    private updateListUIDebounced = debounce(() => this.updateListUI(), 100);
-
+    private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
         // console.debug(`${LogScope}.updateListUI()`)
         const cursorRange = this.getCursorRange();

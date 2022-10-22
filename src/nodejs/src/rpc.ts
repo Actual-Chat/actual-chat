@@ -155,15 +155,15 @@ export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | nu
 if (selfTest) {
     void (async () => {
         let rpcResult = rpc<string>(() => undefined);
-        console.assert(!rpcResult.isResolved());
+        console.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, 'x'));
-        console.assert(rpcResult.isResolved());
+        console.assert(rpcResult.isCompleted());
         console.assert('x' == await rpcResult);
 
         rpcResult = rpc<string>(() => undefined);
-        console.assert(!rpcResult.isResolved());
+        console.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, null, 'Error'));
-        console.assert(rpcResult.isResolved());
+        console.assert(rpcResult.isCompleted());
         try {
             await rpcResult;
             console.error('rpcResult.Error is undefined.');

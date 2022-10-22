@@ -1,12 +1,12 @@
 import { EventHandler, EventHandlerSet } from 'event-handling';
-import { throttle } from 'throttle';
+import { throttle } from 'promises';
 
 const LogScope = 'NextInteraction';
 const debug = true;
 
 export class NextInteraction {
     private static readonly event: EventHandlerSet<Event> = new EventHandlerSet<Event>();
-    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500, true);
+    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500);
     private static readonly onClick = (event: Event) => NextInteraction.onEventThrottled(event);
     private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventThrottled(event);
     private static readonly onKeyDown = (event: Event) => NextInteraction.onEventThrottled(event);

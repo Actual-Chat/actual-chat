@@ -1,5 +1,6 @@
-import { NextInteraction } from 'next-interaction';
+import '../node_modules/long-press-event/dist/long-press-event.min.js'
 import SwiftClick from 'swiftclick';
+import { NextInteraction } from 'next-interaction';
 
 const swiftClick = SwiftClick.attach(document.body);
 swiftClick.useCssParser(true); // Enables swiftclick-ignore class support

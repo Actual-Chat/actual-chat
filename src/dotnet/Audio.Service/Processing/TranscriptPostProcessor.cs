@@ -14,7 +14,7 @@ public sealed class TranscriptPostProcessor : TranscriptionProcessorBase
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var transcripts = transcriptSegment.Suffixes.Reader.ReadAllAsync(cancellationToken);
-        transcripts = transcripts.Debounce(TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken);
+        transcripts = transcripts.Throttle(TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken);
         await foreach (var transcript in transcripts.ConfigureAwait(false)) {
             var text = transcript.Text;
             var contentStart = transcript.GetContentStart() - transcript.TextRange.Start;

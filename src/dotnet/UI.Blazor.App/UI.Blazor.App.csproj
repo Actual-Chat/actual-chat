@@ -13,4 +13,8 @@
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <TypeScriptCompile Include="Pages\Test\js-test-page.ts" />
+  </ItemGroup>
+
 </Project>

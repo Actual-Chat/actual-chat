@@ -7,13 +7,13 @@ public static class AsyncEnumerableExt
     public static IAsyncEnumerable<T> AsEnumerableOnce<T>(this IAsyncEnumerator<T> enumerator, bool suppressDispose)
         => new AsyncEnumerableOnce<T>(enumerator, suppressDispose);
 
-    public static IAsyncEnumerable<T> Debounce<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minUpdateDelay,
+    public static IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
+        TimeSpan minInterval,
         CancellationToken cancellationToken = default)
-        => source.Debounce(minUpdateDelay, MomentClockSet.Default.CpuClock, cancellationToken);
+        => source.Throttle(minInterval, MomentClockSet.Default.CpuClock, cancellationToken);
 
-    public static async IAsyncEnumerable<T> Debounce<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minUpdateDelay,
+    public static async IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
+        TimeSpan minInterval,
         IMomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -26,8 +26,8 @@ public static class AsyncEnumerableExt
         _ = source.CopyTo(c, ChannelCompletionMode.Full, cancellationToken);
         await foreach (var item in c.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
             yield return item;
-            if (minUpdateDelay > TimeSpan.Zero)
-                await clock.Delay(minUpdateDelay, cancellationToken).ConfigureAwait(false);
+            if (minInterval > TimeSpan.Zero)
+                await clock.Delay(minInterval, cancellationToken).ConfigureAwait(false);
         }
     }
 

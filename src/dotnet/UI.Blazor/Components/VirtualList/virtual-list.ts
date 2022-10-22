@@ -1,7 +1,5 @@
-import { debounce, Debounced } from 'debounce';
-import { throttle, Throttled } from 'throttle';
-import { onceAtATime } from 'serialize';
 import './virtual-list.css';
+import { delayAsync, throttle, serialize, PromiseSource } from 'promises';
 import { VirtualListClientSideItem, VirtualListClientSideState } from './ts/virtual-list-client-side-state';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
@@ -13,12 +11,10 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
-import { delayAsync } from 'promises';
-import { whenCompleted, WhenCompleted } from 'when';
 
 const LogScope: string = 'VirtualList';
-const UpdateClientSideStateTimeout: number = 120;
-const UpdateVisibleKeysTimeout: number = 320;
+const UpdateClientSideStateInterval: number = 125;
+const UpdateVisibleKeysInterval: number = 250;
 const IronPantsHandleTimeout: number = 1600;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
@@ -46,21 +42,16 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
 
-    private readonly updateClientSideStateThrottled: Throttled<typeof this.updateClientSideState>;
-    private readonly updateClientSideStateOnce: typeof this.updateClientSideState;
-    private readonly updateVisibleKeysDebounced: Debounced<typeof this.updateVisibleKeys>;
-
     private _isDisposed = false;
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
-    private _whenRenderCompleted: WhenCompleted | null = null;
-    private _whenUpdateCompleted: WhenCompleted | null = null;
+    private _whenRenderCompleted: PromiseSource<void> | null = null;
+    private _whenUpdateCompleted: PromiseSource<void> | null = null;
     private _lastVisibleKey: string | null = null;
     private _pivotKey: string | null = null;
     private _pivotOffset: number | null = null;
     private _top: number | null = null;
     private _viewport: number | null = null;
 
-    private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
     private _scrollTime: number | null = null;
@@ -134,9 +125,6 @@ export class VirtualList implements VirtualListAccessor {
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
         this._lastVisibleKey = null;
-        this.updateClientSideStateOnce = onceAtATime(this.updateClientSideState);
-        this.updateClientSideStateThrottled = throttle(this.updateClientSideStateOnce, UpdateClientSideStateTimeout);
-        this.updateVisibleKeysDebounced = debounce(this.updateVisibleKeys, UpdateVisibleKeysTimeout);
 
         this._skeletonObserver.observe(this._spacerRef);
         this._skeletonObserver.observe(this._endSpacerRef);
@@ -185,8 +173,8 @@ export class VirtualList implements VirtualListAccessor {
         this._skeletonObserver.disconnect();
         this._visibilityObserver.disconnect();
         this._sizeObserver.disconnect();
-        this._whenRenderCompleted?.complete();
-        this._whenUpdateCompleted?.complete();
+        this._whenRenderCompleted?.resolve(undefined);
+        this._whenUpdateCompleted?.resolve(undefined);
         clearInterval(this._ironPantsHandlerInterval);
         this._ref.removeEventListener('scroll', this.onScroll);
     }
@@ -198,8 +186,8 @@ export class VirtualList implements VirtualListAccessor {
         if (this._debugMode)
             console.log(`${LogScope}.maybeOnRenderEnd: `, mutations.length);
 
-        this._whenRenderCompleted?.complete();
-        this._whenRenderCompleted = whenCompleted();
+        this._whenRenderCompleted?.resolve(undefined);
+        this._whenRenderCompleted = new PromiseSource<void>();
 
         let isNodesAdded = mutations.length == 0; // first render
         for (const mutation of mutations) {
@@ -369,7 +357,7 @@ export class VirtualList implements VirtualListAccessor {
                 }
             }
 
-            this.updateVisibleKeysDebounced();
+            this.updateVisibleKeysThrottled();
         }
     }
 
@@ -484,19 +472,19 @@ export class VirtualList implements VirtualListAccessor {
             });
         } finally {
             this._isRendering = false;
-            this._whenRenderCompleted?.complete();
-            this._whenUpdateCompleted?.complete();
+            this._whenRenderCompleted?.resolve(undefined)
+            this._whenUpdateCompleted?.resolve(undefined)
 
             // trigger update only for first render to load data if needed
-            if (rs.renderIndex <= 1) {
-                void this.updateClientSideStateOnce();
-            }
+            if (rs.renderIndex <= 1)
+                void this.updateClientSideState();
         }
     }
 
-    private async updateClientSideState(): Promise<void> {
+    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval);
+    private updateClientSideState = serialize(async () => {
         const rs = this.renderState;
-        if (this._isDisposed || this._isUpdatingClientState || this._isRendering)
+        if (this._isDisposed || this._isRendering)
             return;
 
         // Do not update client state when we haven't completed rendering for the first time
@@ -504,52 +492,43 @@ export class VirtualList implements VirtualListAccessor {
             return;
 
         const whenRenderCompleted = this._whenRenderCompleted;
-        if (whenRenderCompleted) {
+        if (whenRenderCompleted)
             await Promise.race([whenRenderCompleted, delayAsync(RenderTimeout)]);
-        }
         const whenUpdateCompleted = this._whenUpdateCompleted;
-        if (whenUpdateCompleted) {
+        if (whenUpdateCompleted)
             await Promise.race([whenUpdateCompleted, delayAsync(UpdateTimeout)]);
-        }
 
         this._lastPlan = this._plan;
-        try {
-            this._isUpdatingClientState = true;
-            if (this._debugMode)
-                console.log(`${LogScope}.updateClientSideState: #${rs.renderIndex}`);
+        if (this._debugMode)
+            console.log(`${LogScope}.updateClientSideState: #${rs.renderIndex}`);
 
-            const viewportHeight = this._ref.clientHeight;
-            const scrollTop = this.getVirtualScrollTop();
-            const state = {
-                renderIndex: rs.renderIndex,
+        const viewportHeight = this._ref.clientHeight;
+        const scrollTop = this.getVirtualScrollTop();
+        const state = {
+            renderIndex: rs.renderIndex,
 
-                scrollTop: scrollTop,
-                viewportHeight: viewportHeight,
-                stickyEdge: this._stickyEdge,
+            scrollTop: scrollTop,
+            viewportHeight: viewportHeight,
+            stickyEdge: this._stickyEdge,
 
-                visibleKeys: [],
-            } as VirtualListClientSideState;
+            visibleKeys: [],
+        } as VirtualListClientSideState;
 
-            state.visibleKeys = [...this._visibleItems].sort();
-            if (this._debugMode)
-                console.log(`${LogScope}.updateClientSideState: state:`, state);
-            const expectedRenderIndex = this.renderState.renderIndex;
-            if (state.renderIndex != expectedRenderIndex) {
-                return;
-            }
+        state.visibleKeys = [...this._visibleItems].sort();
+        if (this._debugMode)
+            console.log(`${LogScope}.updateClientSideState: state:`, state);
+        const expectedRenderIndex = this.renderState.renderIndex;
+        if (state.renderIndex != expectedRenderIndex)
+            return;
 
-            this.clientSideState = state;
+        this.clientSideState = state;
+        const plan = this._plan = this._lastPlan.next();
+        if (!plan.isFullyLoaded)
+            await this.requestData();
+    }, 2);
 
-            const plan = this._plan = this._lastPlan.next();
-            if (!plan.isFullyLoaded) {
-                await this.requestData();
-            }
-        } finally {
-            this._isUpdatingClientState = false;
-        }
-    }
-
-    private async updateVisibleKeys(): Promise<void> {
+    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateVisibleKeysInterval);
+    private updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
 
@@ -560,7 +539,7 @@ export class VirtualList implements VirtualListAccessor {
                 visibleKeys);
 
         await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
-    }
+    }, 2);
 
     // Event handlers
 
@@ -581,7 +560,7 @@ export class VirtualList implements VirtualListAccessor {
             this.onItemVisibilityChange(intersections, this._visibilityObserver);
         }
         if (this._isNearSkeleton) {
-            void this.updateClientSideStateOnce();
+            void this.updateClientSideState();
         }
     }
 
@@ -694,7 +673,7 @@ export class VirtualList implements VirtualListAccessor {
         if (this._debugMode)
             console.warn(`${LogScope}.requestData: query:`, this._query);
 
-        this._whenUpdateCompleted = whenCompleted();
+        this._whenUpdateCompleted = new PromiseSource<void>();
 
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;

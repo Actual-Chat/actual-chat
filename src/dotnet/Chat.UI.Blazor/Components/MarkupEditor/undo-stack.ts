@@ -1,4 +1,4 @@
-import { debounce, Debounced } from 'debounce';
+import { throttle, ResettableFunc } from 'promises';
 
 const LogScope = 'UndoStack';
 
@@ -7,16 +7,16 @@ export class UndoStack<T> {
     private position: number = 0;
     private isPushEnabled: boolean = true;
     public maxSize: number = 200;
-    public pushDebounced: Debounced<() => void>
+    public pushThrottled: ResettableFunc<() => void>
 
     public constructor(
         public reader: () => T,
         public writer: (T) => void,
         public equalityComparer: (first: T, second: T) => boolean,
-        public pushDebounceDelay: number = 500,
+        public pushThrottleInterval: number,
         private debug: boolean = false,
     ) {
-        this.pushDebounced = debounce(this.push, pushDebounceDelay)
+        this.pushThrottled = throttle(this.push, pushThrottleInterval)
         this.clear();
 
         // Replacing writer so it temporary disables push.
@@ -63,7 +63,7 @@ export class UndoStack<T> {
     }
 
     public undo() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.push();
 
         try {
@@ -85,7 +85,7 @@ export class UndoStack<T> {
     }
 
     public redo() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.push();
 
         try {
@@ -116,7 +116,7 @@ export class UndoStack<T> {
     }
 
     public clear() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.items.splice(0);
         this.items.push(this.reader())
         this.position = 1;
