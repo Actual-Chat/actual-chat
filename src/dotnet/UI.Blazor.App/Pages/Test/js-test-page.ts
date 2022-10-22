@@ -7,6 +7,7 @@ export class JSTestPage {
     private static serialized1: () => Promise<void>;
     private static serialized2: () => Promise<void>;
     private static throttled: ResettableFunc<() => void>;
+    private static throttledDelayHead: ResettableFunc<() => void>;
     private static debounced: ResettableFunc<() => void>;
     private static debouncedHead: ResettableFunc<() => void>;
 
@@ -31,7 +32,8 @@ export class JSTestPage {
         this.serialized1 = serialize(asyncLoggerFactory("serialized1"), 1);
         this.serialized2 = serialize(asyncLoggerFactory("serialized2"), 2);
         this.throttled = throttle(loggerFactory("throttled"), 1000);
-        this.debounced = debounce(loggerFactory("debounced"), 1000, false);
+        this.throttledDelayHead = throttle(loggerFactory("throttled(delayHead = true)"), 1000, true);
+        this.debounced = debounce(loggerFactory("debounced"), 1000);
         this.debouncedHead = debounce(loggerFactory("debounced(debounceHead = true)"), 1000, true);
     }
 }

@@ -158,7 +158,8 @@ class Call<T extends (...args: unknown[]) => unknown> {
 
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
-    interval: number
+    interval: number,
+    delayHead = false
 ) : ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastFireTime = 0;
@@ -183,6 +184,12 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
         lastCall = new Call<T>(func, this, callArgs);
         if (timeoutHandle !== null)
             return;
+
+        if (delayHead) {
+            lastFireTime = Date.now();
+            timeoutHandle = setTimeout(fire, getFireDelay());
+            return;
+        }
 
         const fireDelay = getFireDelay();
         if (fireDelay > 0) {
