@@ -9,7 +9,7 @@ export class PromiseSource<T> implements Promise<T> {
     public reject: (any) => void;
 
     private readonly _promise: Promise<T>;
-    private _timeoutHandle?: number = null;
+    private _timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     private _isCompleted = false;
 
     constructor() {
@@ -44,7 +44,7 @@ export class PromiseSource<T> implements Promise<T> {
         if (this._timeoutHandle == null)
             return;
 
-        window.clearTimeout(this._timeoutHandle);
+        clearTimeout(this._timeoutHandle);
         this._timeoutHandle = null;
     }
 
@@ -53,7 +53,7 @@ export class PromiseSource<T> implements Promise<T> {
         if (timeout == null)
             return;
 
-        this._timeoutHandle = window.setTimeout(() => {
+        this._timeoutHandle = setTimeout(() => {
             this._timeoutHandle = null;
             if (handler != null)
                 handler();
@@ -162,7 +162,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 ) : ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastFireTime = 0;
-    let timeoutHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
     const reset = (mustClearTimeout: boolean, newLastFireTime: number) => {
         if (mustClearTimeout && timeoutHandle !== null)
@@ -186,7 +186,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 
         const fireDelay = getFireDelay();
         if (fireDelay > 0) {
-            timeoutHandle = window.setTimeout(fire, fireDelay);
+            timeoutHandle = setTimeout(fire, fireDelay);
             return;
         }
 

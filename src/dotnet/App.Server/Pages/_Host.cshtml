@@ -115,7 +115,7 @@
 
 @if (isCloseWindowRequest) {
     <script>
-    	window.setTimeout(function () {
+    	setTimeout(function () {
     		window.close();
     	}, 500)
     </script>
@@ -145,7 +145,7 @@
                         const classList = mutation.target.classList;
                         if (classList.contains('components-reconnect-rejected')) {
                             attemptReload();
-                            setInterval(attemptReload, 2000);
+                            window.setInterval(attemptReload, 2000);
                             observer.disconnect();
                         }
                     });

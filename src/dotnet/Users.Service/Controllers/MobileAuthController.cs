@@ -200,7 +200,7 @@ public class MobileAuthController : Controller
     private async Task WriteAutoClosingMessage(CancellationToken cancellationToken)
     {
         string responseString =
-            "<html><head></head><body>We are done, please, return to the app.<script>window.setTimeout(function() { window.close(); }, 1000)</script></body></html>";
+            "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
         HttpContext.Response.ContentType = "text/html; charset=utf-8";
         await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
     }

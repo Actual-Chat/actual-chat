@@ -251,7 +251,7 @@ export class ChatMessageEditor {
         const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
         const label = this.editorDiv.querySelector(':scope label');
         if (isNotifyPanelOpen) {
-            setTimeout(() => {
+            self.setTimeout(() => {
                 attach.classList.add('hidden');
                 label.classList.add('hidden');
                 this.markupEditor.isEditable(false);
@@ -263,7 +263,7 @@ export class ChatMessageEditor {
         }
 
         if (this.notifyPanel.classList.contains('panel-closing')) {
-            setTimeout(() => {
+            self.setTimeout(() => {
                 this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
             }, 150);
         }

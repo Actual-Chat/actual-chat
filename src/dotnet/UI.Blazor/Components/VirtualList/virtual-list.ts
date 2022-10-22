@@ -15,7 +15,7 @@ import { RangeExt } from './ts/range-ext';
 const LogScope: string = 'VirtualList';
 const UpdateClientSideStateInterval: number = 125;
 const UpdateVisibleKeysInterval: number = 250;
-const IronPantsHandleTimeout: number = 1600;
+const IronPantsHandlePeriod: number = 1600;
 const SizeEpsilon: number = 1;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
@@ -37,7 +37,7 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _sizeObserver: ResizeObserver;
     private readonly _visibilityObserver: IntersectionObserver;
     private readonly _skeletonObserver: IntersectionObserver;
-    private readonly _ironPantsHandlerInterval: number;
+    private readonly _ironPantsIntervalHandle: number;
     private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
@@ -119,8 +119,7 @@ export class VirtualList implements VirtualListAccessor {
                 threshold: [0, 0.1, 0.9, 1],
             });
 
-        // @ts-ignore
-        this._ironPantsHandlerInterval = setInterval(this.onIronPantsHandle, IronPantsHandleTimeout);
+        this._ironPantsIntervalHandle = self.setInterval(this.onIronPantsHandle, IronPantsHandlePeriod);
 
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
@@ -175,7 +174,7 @@ export class VirtualList implements VirtualListAccessor {
         this._sizeObserver.disconnect();
         this._whenRenderCompleted?.resolve(undefined);
         this._whenUpdateCompleted?.resolve(undefined);
-        clearInterval(this._ironPantsHandlerInterval);
+        clearInterval(this._ironPantsIntervalHandle);
         this._ref.removeEventListener('scroll', this.onScroll);
     }
 
