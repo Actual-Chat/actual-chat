@@ -2,6 +2,9 @@
     @apply relative;
     @apply bg-07 md:bg-01;
 }
+.chat-message-editor .message-input .editor-content {
+    @apply flex flex-col-reverse;
+}
 
 .post-panel {
     @apply flex-x justify-between items-center;

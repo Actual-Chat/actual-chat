@@ -1,9 +1,27 @@
+/* Control panel common styles */
+.language-button,
+.playback-wrapper,
+.recorder-wrapper {
+    @apply rounded-full transition-all ease-linear duration-100;
+}
+.control-panel {
+    @apply flex-x justify-center bg-01 rounded-none outline-none;
+}
+.control-panel .btn.btn-round .btn-content {
+    @apply bg-03 rounded-full;
+}
+.control-panel .record-off-btn.btn .btn-content,
+.control-panel .record-off-btn.btn:hover .btn-content {
+    @apply bg-primary text-04;
+}
+.control-panel .record-on-btn.btn .btn-content,
+.control-panel .record-on-btn.btn:hover .btn-content {
+    @apply bg-error text-04;
+}
+
+/* Narrow mode */
 .narrow .control-panel {
-    @apply flex-x md:hidden gap-x-6;
-    @apply h-auto justify-center py-2;
-    @apply bg-01;
-    @apply self-stretch md:self-end;
-    @apply items-center;
+    @apply self-stretch items-center gap-x-6 py-2;
     border-bottom-right-radius: 2.5rem;
     border-bottom-left-radius: 2.5rem;
 }
@@ -11,17 +29,15 @@
 .narrow .control-panel .language-button,
 .narrow .control-panel .playback-wrapper,
 .narrow .control-panel .recorder-wrapper {
-    @apply rounded-full transition-all ease-linear duration-100;
     @apply shadow-scrollbar shadow-md;
 }
 .narrow .control-panel .language-button:active,
 .narrow .control-panel .playback-wrapper:active,
 .narrow .control-panel .recorder-wrapper:active {
-    @apply shadow-md shadow-scrollbar translate-y-0.5;
+    @apply translate-y-0.5;
 }
 
 .narrow .control-panel .btn.btn-round .btn-content {
-    @apply bg-03 rounded-full;
     max-width: 3rem;
     max-height: 3rem;
     min-width: 3rem;
@@ -47,12 +63,6 @@
     min-height: 4.25rem;
     max-width: 4.25rem;
     min-width: 4.25rem;
-}
-.narrow .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
-    @apply bg-primary;
-}
-.narrow .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
-    @apply bg-error;
 }
 .narrow .control-panel .recorder-wrapper.record-off,
 .narrow .control-panel .recorder-wrapper.record-on-to-off {
@@ -101,13 +111,13 @@
     @apply animate-scale-to-full scale-100;
 }
 
-.narrow .control-panel .playback-toggle {
+.narrow .control-panel .playback-button {
     @apply w-24 -mr-12;
 }
-.narrow .control-panel .playback-toggle .playback-wrapper {
+.narrow .control-panel .playback-button .playback-wrapper {
     @apply relative h-12 flex-x bg-03;
 }
-.narrow .control-panel .playback-toggle .playback-wrapper .btn.btn-round {
+.narrow .control-panel .playback-button .playback-wrapper .btn.btn-round {
     @apply absolute;
 }
 
@@ -168,16 +178,16 @@
 .narrow-panel.narrow .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
     @apply bg-error;
 }
-.narrow-panel.narrow .control-panel .playback-toggle {
+.narrow-panel.narrow .control-panel .playback-button {
     @apply w-20 m-0;
 }
-.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper {
+.narrow-panel.narrow .control-panel .playback-button .playback-wrapper {
     @apply h-12 bg-03;
 }
-.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper .btn {
+.narrow-panel.narrow .control-panel .playback-button .playback-wrapper .btn {
     @apply left-4;
 }
-.narrow-panel.narrow .control-panel .playback-toggle .playback-wrapper .btn.btn-round .btn-content {
+.narrow-panel.narrow .control-panel .playback-button .playback-wrapper .btn.btn-round .btn-content {
     @apply bg-transparent rounded-full;
     max-width: 3rem;
     min-width: 3rem;
@@ -210,25 +220,16 @@
 
 /* Desktop control panel */
 .wide .control-panel {
-    @apply hidden md:flex-x h-12;
-    @apply justify-center gap-x-2.5;
-    @apply bg-01 outline-none rounded-none;
-    @apply self-end;
+    @apply self-end h-12 gap-x-2.5;
 }
 .wide .control-panel > div {
-    @apply flex flex-1 w-fit h-fit self-end rounded-full;
+    @apply flex self-end w-fit h-fit;
 }
 .wide .control-panel .recorder-wrapper {
     @apply relative flex top-1 justify-center h-14 w-14 border border-primary rounded-full;
 }
 .wide .control-panel .recorder-wrapper .btn {
     @apply self-center m-0.5;
-}
-.wide .control-panel .recorder-wrapper .record-off-btn.btn .btn-content {
-    @apply bg-primary text-04;
-}
-.wide .control-panel .recorder-wrapper .record-on-btn.btn .btn-content {
-    @apply bg-error text-04;
 }
 .wide .control-panel .recorder-wrapper.record-off,
 .wide .control-panel .recorder-wrapper.record-on-to-off {
@@ -285,7 +286,7 @@
 }
 
 /*Desktop playback and loud buttons*/
-.wide .control-panel .playback-toggle {
+.wide .control-panel .playback-button {
     @apply w-12 rounded-full;
 }
 .wide .playback-wrapper .loud-btn {
