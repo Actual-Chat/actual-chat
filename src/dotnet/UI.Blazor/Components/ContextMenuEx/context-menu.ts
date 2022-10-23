@@ -1,4 +1,5 @@
 import { Disposable } from 'disposable';
+import { nanoid } from 'nanoid';
 import {
     fromEvent,
     Subject,
@@ -29,6 +30,12 @@ interface EventData {
     coords?: Coords;
 }
 
+interface Menu {
+    id: string;
+    eventData: EventData;
+    menuRef?: HTMLElement;
+}
+
 enum MenuTriggers
 {
     None = 0,
@@ -42,9 +49,7 @@ const LogScope = 'ContextMenu';
 
 export class ContextMenu implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
-    private readonly menuRef: HTMLElement;
-
-    private currentData: EventData | undefined = undefined;
+    private menus: Menu[] = [];
 
     public static create(blazorRef: DotNet.DotNetObject): ContextMenu {
         return new ContextMenu(blazorRef);
@@ -54,7 +59,6 @@ export class ContextMenu implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
     ) {
         try {
-            this.menuRef = document.getElementsByClassName('ac-menu')[0] as HTMLElement;
             this.listenForEvents();
         } catch (error) {
             console.error(`${LogScope}.ctor: error:`, error);
@@ -62,12 +66,11 @@ export class ContextMenu implements Disposable {
         }
     }
 
-    private get isMenuVisible() : boolean {
-        return this.menuRef.style.display === 'block';
-    }
-
-    public showMenu() {
-        this.updatePosition(this.currentData);
+    public showMenu(id: string) {
+        const menuRef = document.getElementById(id);
+        const menu = this.menus.find(x => x.id === id);
+        menu.menuRef = menuRef;
+        ContextMenu.updatePosition(menu);
     }
 
     public dispose() {
@@ -77,8 +80,7 @@ export class ContextMenu implements Disposable {
         this.disposed$.next();
         this.disposed$.complete();
 
-        if (this.menuRef)
-            this.hideMenu();
+        this.menus = [];
     }
 
     private listenForEvents(): void {
@@ -109,7 +111,9 @@ export class ContextMenu implements Disposable {
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
-               this.hideMenu();
+                if (this.menus.length) {
+                    this.hideMenu(this.menus.pop());
+                }
             });
     }
 
@@ -121,36 +125,12 @@ export class ContextMenu implements Disposable {
         if (!(event.target instanceof HTMLElement))
             return undefined;
         const closestElement = event.target.closest('[data-menu]');
-        if (closestElement instanceof HTMLElement) {
-            const menuTrigger = closestElement.dataset['menuTrigger'];
-            if (!menuTrigger || !(this.hasTrigger(menuTrigger, triggers))) {
-                if (this.isMenuVisible)
-                    this.hideMenu();
-                return undefined;
-            }
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        if (closestElement == null) {
-            if (this.isMenuVisible)
-                this.hideMenu();
-            return undefined;
-        }
-        if (closestElement == this.currentData?.element) {
-            if (this.isMenuVisible && closeOnSecondClick) {
-                this.hideMenu();
-                return undefined;
-            } else if (!this.isMenuVisible) {
-                this.showMenu();
-                return undefined;
-            }
-        }
-        if (!closestElement && this.currentData?.element) {
-            this.hideMenu();
-            return undefined;
-        }
         if (!(closestElement instanceof HTMLElement))
             return undefined;
+        const menuTrigger = closestElement.dataset['menuTrigger'];
+        if (!menuTrigger || !(ContextMenu.hasTrigger(menuTrigger, triggers))) {
+            return undefined;
+        }
         const trigger = closestElement.dataset['menu'];
         const coords = byCoords && event instanceof PointerEvent
                        ? { x: event.clientX, y: event.clientY }
@@ -164,55 +144,59 @@ export class ContextMenu implements Disposable {
     };
 
     private renderMenu(eventData: EventData): void {
-        if (this.currentData) {
-            this.hideMenu();
-        }
-        this.currentData = eventData;
-        this.blazorRef.invokeMethodAsync('RenderMenu', eventData.trigger);
+        const menu: Menu = {
+            id: nanoid(),
+            eventData: eventData,
+        };
+        this.menus.push(menu);
+        this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.trigger, menu.id);
     }
 
-    private hideMenu(): void {
-        this.currentData = undefined;
-        this.menuRef.style.display = 'none';
-        this.blazorRef.invokeMethodAsync('HideMenu');
+    private hideMenu(menu: Menu): void {
+        menu.menuRef.style.display = 'none';
+        this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
     }
 
-    private updatePosition(eventData: EventData): void {
-        this.menuRef.style.display = 'block';
+    private static updatePosition(menu: Menu): void {
+        menu.menuRef.style.display = 'block';
 
-        if (eventData.coords) {
-            Object.assign(this.menuRef.style, {
-                left: `${eventData.coords.x}px`,
-                top: `${eventData.coords.y}px`,
+        if (menu.eventData.coords) {
+            Object.assign(menu.menuRef.style, {
+                left: `${menu.eventData.coords.x}px`,
+                top: `${menu.eventData.coords.y}px`,
             });
 
             return;
         }
 
-        const placement = this.getPlacement(eventData.element);
+        const placement = this.getPlacement(menu.eventData.element);
         const middleware: Middleware[] = [];
         middleware.push(offset(6));
         middleware.push(flip());
         middleware.push(shift({ padding: 5 }));
-        computePosition(eventData.element, this.menuRef, {
+        computePosition(menu.eventData.element, menu.menuRef, {
             placement: placement,
             middleware: middleware,
         }).then(({ x, y }) => {
-            Object.assign(this.menuRef.style, {
+            Object.assign(menu.menuRef.style, {
                 left: `${x}px`,
                 top: `${y}px`,
             });
         });
     }
 
-    private getPlacement(triggerRef: HTMLElement): Placement {
+    private static getPlacement(triggerRef: HTMLElement): Placement {
         const placement = triggerRef.dataset['menuPosition'];
         if (placement)
             return placement as Placement;
         return 'top';
     }
 
-    private hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
+    private static hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
         return (Number(trigger) & triggers) === triggers;
+    }
+
+    private static isMenuVisible(menuRef: HTMLElement) : boolean {
+        return menuRef.style.display === 'block';
     }
 }

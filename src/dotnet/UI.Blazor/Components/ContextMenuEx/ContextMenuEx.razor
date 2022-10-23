@@ -1,50 +1,50 @@
-@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
 
 <div class="ac-menu-container">
-    <div class="ac-menu">
-        <CascadingValue Value="@this" IsFixed="true">
-            @if (_menuType != null) {
+    <CascadingValue Value="@this" IsFixed="true">
+        @foreach (var menu in _menus) {
+            <div id="@menu.Id" class="ac-menu" @key="menu.Id">
                 <ul class="ac-menu-list">
-                    <DynamicComponent Type="@_menuType" Parameters="@_parameters"/>
+                    <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                 </ul>
-            }
-        </CascadingValue>
-    </div>
+            </div>
+        }
+    </CascadingValue>
 </div>
 
 @code {
-    private Type? _menuType;
-    private Dictionary<string, object>? _parameters;
+    private List<Model> _menus = new();
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<ContextMenuEx> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [JSInvokable]
-    public Task RenderMenu(string trigger) {
-        var (menu, arguments) = MenuTrigger.Parse(trigger);
-        _menuType = MenuUI.Get(menu);
-        _parameters = arguments is { Length:> 0}
-            ? new() {
-                { nameof(ContextMenuExBase.Arguments), arguments },
+    public Task RenderMenu(string trigger, string id) {
+        var parsed = MenuTrigger.Parse(trigger);
+        var menuType = MenuUI.Get(parsed.MenuType);
+        var parameters = parsed.Arguments is { Length:> 0}
+            ? new Dictionary<string, object>() {
+                { nameof(ContextMenuExBase.Id), id },
+                { nameof(ContextMenuExBase.Arguments), parsed.Arguments },
             }
             : null;
+        _menus.Add(new Model(id, menuType, parameters));
         StateHasChanged();
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task HideMenu() {
-        _menuType = null;
-        _parameters = null;
+    public Task HideMenu(string id) {
+        _menus.RemoveAll(x => x.Id == id);
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    public async Task ShowMenu() {
-        await _jsRef.InvokeVoidAsync("showMenu");
+    public async Task ShowMenu(ContextMenuExBase menu) {
+        await _jsRef.InvokeVoidAsync("showMenu", menu.Id);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -63,4 +63,6 @@
         _blazorRef.DisposeSilently();
         _blazorRef = null!;
     }
+
+    private sealed record Model(string Id, Type Type, Dictionary<string, object>? Parameters);
 }
