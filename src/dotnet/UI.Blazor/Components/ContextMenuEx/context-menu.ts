@@ -117,8 +117,6 @@ export class ContextMenu implements Disposable {
         triggers: MenuTriggers,
         byCoords: boolean,
         closeOnSecondClick: boolean): EventData | undefined {
-        event.preventDefault();
-        event.stopPropagation();
         if (!(event.target instanceof HTMLElement))
             return undefined;
         const closestElement = event.target.closest('[data-menu]');
@@ -129,6 +127,8 @@ export class ContextMenu implements Disposable {
                     this.hideMenu();
                 return undefined;
             }
+            event.preventDefault();
+            event.stopPropagation();
         }
         if (closestElement == null) {
             if (this.isMenuVisible)
