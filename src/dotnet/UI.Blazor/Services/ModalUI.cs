@@ -6,17 +6,21 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ModalUI
 {
+    private BrowserInfo BrowserInfo { get; }
+    private HistoryUI HistoryUI { get; }
     private ModalService ModalService { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
-    public ModalUI(ModalService modalService, IMatchingTypeFinder matchingTypeFinder)
+    public ModalUI(BrowserInfo browserInfo, HistoryUI historyUI, ModalService modalService, IMatchingTypeFinder matchingTypeFinder)
     {
+        BrowserInfo = browserInfo;
+        HistoryUI = historyUI;
         ModalService = modalService;
         MatchingTypeFinder = matchingTypeFinder;
     }
 
 #pragma warning disable IL2072
-    public IModalReference Show<TModel>(TModel model, bool isFullScreen = false)
+    public Task<IModalReference> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
@@ -24,7 +28,32 @@ public sealed class ModalUI
             throw StandardError.NotFound<IModalView>(
                 $"No modal view component for '{model.GetType()}' model.");
 
-        var modalOptions = new ModalOptions {
+        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
+            return Task.FromResult(InnerShow(componentType, model, isFullScreen));
+
+        IModalReference? modalReference = null;
+        var tcs = new TaskCompletionSource<IModalReference>();
+        var backActionExecuted = false;
+        HistoryUI.NavigateTo(
+            () => {
+                modalReference = InnerShow(componentType, model, isFullScreen);
+                tcs.SetResult(modalReference);
+                modalReference.WhenClosed.ContinueWith(_ => {
+                    if (!backActionExecuted)
+                        HistoryUI.GoBack();
+                }, TaskScheduler.Current);
+            },
+            () => {
+                backActionExecuted = true;
+                modalReference?.Close();
+            });
+        return tcs.Task;
+    }
+
+    private IModalReference InnerShow<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
+    {
+        var modalOptions = new ModalOptions
+        {
             Class = $"blazored-modal modal"
         };
         if (isFullScreen)
