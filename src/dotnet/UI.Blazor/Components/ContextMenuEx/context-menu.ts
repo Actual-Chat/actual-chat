@@ -131,6 +131,8 @@ export class ContextMenu implements Disposable {
         if (!menuTrigger || !(ContextMenu.hasTrigger(menuTrigger, triggers))) {
             return undefined;
         }
+        event.preventDefault();
+        event.stopPropagation();
         const trigger = closestElement.dataset['menu'];
         const coords = byCoords && event instanceof PointerEvent
                        ? { x: event.clientX, y: event.clientY }
