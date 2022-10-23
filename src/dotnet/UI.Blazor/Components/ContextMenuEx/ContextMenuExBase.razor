@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @code {
+    [Parameter] public string Id { get; set; } = "";
     [Parameter] public ImmutableArray<string> Arguments { get; set; } = ImmutableArray<string>.Empty;
 
     [CascadingParameter] public ContextMenuEx ContextMenu { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await ContextMenu.ShowMenu();
+        await ContextMenu.ShowMenu(this);
     }
 }
