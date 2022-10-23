@@ -37,8 +37,8 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         _backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var initResult = await JS.InvokeAsync<IBrowserInfoBackend.InitResult>(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
-            HostInfo.HostKind == HostKind.Maui,
-            _backendRef);
+            _backendRef,
+            HostInfo.HostKind == HostKind.Maui);
         // Log.LogInformation("Init: {InitResult}", initResult);
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
