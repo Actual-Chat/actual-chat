@@ -1,4 +1,5 @@
 @page "/chat/{ChatId}"
+@page "/chat/"
 @using ActualChat.Notification.UI.Blazor
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatPage.Model>
@@ -80,6 +81,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
@@ -103,13 +105,20 @@
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatId.IsNullOrEmpty())
-            return Model.Loading;
+        var chatId = ChatId;
+        if (chatId.IsNullOrEmpty()) {
+            var selectedChat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
+            if (selectedChat != null)
+                chatId = selectedChat.Id;
+        }
+
+        if (chatId.IsNullOrEmpty())
+            return Model.NoChat;
 
         var accountTask = Accounts.Get(Session, default);
         var account = (Account?) null;
 
-        var parsedChatId = new ParsedChatId(ChatId);
+        var parsedChatId = new ParsedChatId(chatId);
         if (parsedChatId.Kind is ChatIdKind.PeerShort) {
             account ??= await accountTask;
             parsedChatId = account != null
@@ -143,6 +152,7 @@
 
     public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, Account? Account) {
         public static Model Loading { get; } = new(default, null, null);
+        public static Model NoChat { get; } = new(default, null, null);
 
         public bool IsNone => ParsedChatId.Id.IsEmpty;
         public bool IsUnavailable => !IsNone && Chat is null;

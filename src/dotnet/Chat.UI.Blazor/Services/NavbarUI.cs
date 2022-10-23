@@ -1,9 +1,13 @@
-namespace ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    protected HistoryUI HistoryUI { get; }
     protected BrowserInfo BrowserInfo { get; }
+    protected ChatUI ChatUI { get; }
+    protected HistoryUI HistoryUI { get; }
+    protected NavigationManager Nav { get; }
     public bool IsVisible { get; private set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
@@ -11,27 +15,22 @@ public class NavbarUI
     public event EventHandler? ActiveGroupChanged;
     public event EventHandler? VisibilityChanged;
 
-    public bool PreventNavbarClose { get; set; }
-
-    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI, NavigationManager nav)
+    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI, NavigationManager nav, ChatUI chatUI)
     {
         BrowserInfo = browserInfo;
+        ChatUI = chatUI;
         HistoryUI = historyUI;
+        Nav = nav;
         historyUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            IsVisible = true;
+            IsVisible = ShouldShowNavbar();
     }
 
     private void OnAfterLocationChangedHandled(object? sender, AfterLocationChangedHandledEventsArgs e)
     {
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return;
-        if (e.IsBackward)
-            return;
-        if (PreventNavbarClose)
-            PreventNavbarClose = false;
-        else
-            ChangeVisibility(false);
+        InnerChangeVisibility(ShouldShowNavbar());
     }
 
     public void ActivateGroup(string id, string title)
@@ -50,23 +49,25 @@ public class NavbarUI
             return;
 
         var screenSize = BrowserInfo.ScreenSize.Value;
-        if (screenSize.IsNarrow()) {
-            if (visible) {
-                _ = HistoryUI.GoBack();
-            } else {
-                HistoryUI.NavigateTo(
-                    () => {
-                        InnerChangeVisibility(false);
-                    },
-                    () => {
-                        PreventNavbarClose = true;
-                        InnerChangeVisibility(true);
-                    });
-            }
-        }
-        else {
+        if (!screenSize.IsNarrow()) {
             InnerChangeVisibility(visible);
+            return;
         }
+
+        if (visible)
+            _ = HistoryUI.GoBack();
+        else {
+            var selectedChatId = ChatUI.SelectedChatId.Value;
+            if (!selectedChatId.IsEmpty)
+                Nav.NavigateTo(Links.ChatPage(selectedChatId));
+        }
+    }
+
+    private bool ShouldShowNavbar()
+    {
+        var relativeUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(""));
+        return showNavbar;
     }
 
     private void InnerChangeVisibility(bool visible)
