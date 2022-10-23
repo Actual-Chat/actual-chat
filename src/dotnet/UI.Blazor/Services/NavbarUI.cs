@@ -11,12 +11,27 @@ public class NavbarUI
     public event EventHandler? ActiveGroupChanged;
     public event EventHandler? VisibilityChanged;
 
-    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI)
+    public bool PreventNavbarClose { get; set; }
+
+    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI, NavigationManager nav)
     {
         BrowserInfo = browserInfo;
         HistoryUI = historyUI;
+        historyUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
             IsVisible = true;
+    }
+
+    private void OnAfterLocationChangedHandled(object? sender, AfterLocationChangedHandledEventsArgs e)
+    {
+        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
+            return;
+        if (e.IsBackward)
+            return;
+        if (PreventNavbarClose)
+            PreventNavbarClose = false;
+        else
+            ChangeVisibility(false);
     }
 
     public void ActivateGroup(string id, string title)
@@ -38,11 +53,15 @@ public class NavbarUI
         if (screenSize.IsNarrow()) {
             if (visible) {
                 _ = HistoryUI.GoBack();
-
             } else {
                 HistoryUI.NavigateTo(
-                    () => InnerChangeVisibility(false),
-                    () => InnerChangeVisibility(true));
+                    () => {
+                        InnerChangeVisibility(false);
+                    },
+                    () => {
+                        PreventNavbarClose = true;
+                        InnerChangeVisibility(true);
+                    });
             }
         }
         else {

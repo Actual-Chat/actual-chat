@@ -1,4 +1,3 @@
-using System.Web;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -8,24 +7,36 @@ public interface IHistoryUIBackend
     Task OnPopState(string state);
 }
 
+public class AfterLocationChangedHandledEventsArgs : EventArgs
+{
+    public string Location { get; init; } = "";
+    public bool HasLocationChanged { get; init; }
+    public bool IsBackward { get; init; }
+}
+
 // Keeps track of the initial location.
 // Service should be instantiated on app start.
 public class HistoryUI : IHistoryUIBackend, IDisposable
 {
-    private readonly Stack<HistoryItem> _history = new ();
-    private readonly Task _whenInitialized;
-    private PendingHistoryItem? _pendingHistoryItem = null;
-    private string _prevMarker;
-    private string _marker;
+    private readonly List<HistoryItem> _history = new ();
+    private readonly Task _whenJsRefInitialized;
+    private PendingHistoryItem? _pendingHistoryItem;
     private DotNetObjectReference<IHistoryUIBackend>? _blazorRef;
+    private IJSObjectReference? _jsRef;
+    private Task _whenLocationChangedHandled;
+    private State _state;
+    private int _historyIndex;
 
     private BrowserInfo BrowserInfo { get; }
     private IJSRuntime JS { get; }
     private ILogger<HistoryUI> Log { get; }
     private NavigationManager Nav { get; }
 
-    public string InitialUri { get; }
+    public string InitialLocation { get; }
     public bool IsInitialLocation { get; private set; }
+    public Task WhenInitialized { get; }
+
+    public event EventHandler<AfterLocationChangedHandledEventsArgs>? AfterLocationChangedHandled;
 
     public HistoryUI(
         BrowserInfo browserInfo,
@@ -38,23 +49,21 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         Log = log;
         Nav = nav;
 
-        InitialUri = Nav.Uri;
+        InitialLocation = Nav.Uri;
         IsInitialLocation = true;
-        _history.Push(new HistoryItem(InitialUri));
-        _marker = MakeNewMarker;
-        _prevMarker = "";
+        _historyIndex = 0;
+        _history.Add(new HistoryItem(InitialLocation));
         Log.LogDebug("Initial location: '{Location}'", Nav.Uri);
 
         // HistoryUI is initialized upon BlazorCircuitContext is created.
-        // At this moment there is no yet subscriber to Nav.LocationChanged.
-        // So HistoryUI will be notified first on location changed, even before router.
+        // At this moment there is no yet subscribers to Nav.LocationChanged.
+        // So HistoryUI will be notified the first on location changed, even before the Router.
         Nav.LocationChanged += OnLocationChanged;
 
-        _blazorRef = DotNetObjectReference.Create<IHistoryUIBackend>(this);
-        _whenInitialized = JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.HistoryUI.create",
-            _blazorRef)
-            .AsTask();
+        _whenLocationChangedHandled = Task.CompletedTask;
+        _whenJsRefInitialized = InitializeJsRef();
+        _state = new State { Index = 0 };
+        WhenInitialized = InitializeState(_state);
     }
 
     public void Dispose()
@@ -64,66 +73,11 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     public Task OnPopState(string state)
         => Task.CompletedTask;
 
-    private string MakeNewMarker => Guid.NewGuid().ToString();
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        IsInitialLocation = false;
-
-        _prevMarker = _marker;
-        _marker = MakeNewMarker;
-
-        var location = e.Location;
-        Log.LogDebug("Location changed: '{Location}'", location);
-
-        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
-            return;
-
-        // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
-        // rework history position tracking with it.
-        var move = HistoryMove.Unknown;
-        if (_pendingHistoryItem != null) {
-            if (TryGetMarker(location, out var locationMarker)) {
-                if (StringComparer.Ordinal.Equals(_pendingHistoryItem.Marker, locationMarker)) {
-                    var historyItem = _pendingHistoryItem.HistoryItem;
-                    _history.Push(historyItem);
-                    var onForwardAction = historyItem.OnForwardAction;
-                    _pendingHistoryItem = null;
-                    if (onForwardAction != null)
-                        onForwardAction.Invoke();
-                    move = HistoryMove.Forward;
-                }
-            }
-        }
-
-        if (move == HistoryMove.Unknown) {
-            if (_history.Count > 1) {
-                // backward history move detection is not durable, it may give false detections.
-                var items = _history.ToArray();
-                var lastItem = items[0];
-                var preItem = items[1];
-                if (StringComparer.Ordinal.Equals(preItem.Uri, location)) {
-                    // on back action detected
-                    // do we need to detect or better to listen on popstate in js?
-                    _history.Pop();
-                    move = HistoryMove.Backward;
-                    if (lastItem.OnBackAction != null)
-                        lastItem.OnBackAction();
-                }
-            }
-        }
-
-        if (move == HistoryMove.Unknown)
-            _history.Push(new HistoryItem(location));
-    }
-
-    private bool TryGetMarker(string location, out string? marker)
-    {
-        var uri = new Uri(location);
-        var queryParameters = HttpUtility.ParseQueryString(uri.Query);
-        marker = queryParameters.Get("marker");
-        return !string.IsNullOrEmpty(marker);
-    }
+    public async Task RouterOnNavigateAsync(NavigationContext arg)
+        // Postpone Router navigation till location changed async completed.
+        // We can get rid of this event handler
+        // after OnLocationChangedAsync is replaced with synchronous implementation in .NET 7.
+        => await _whenLocationChangedHandled;
 
     public Task GoBack()
         => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
@@ -132,25 +86,132 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     {
         if (_pendingHistoryItem != null)
             throw StandardError.Constraint("There is still pending history item");
-        var uri = GetUriWithMarker(Nav.Uri, _marker);
-        var historyItem = new HistoryItem(uri) {
+        var historyItem = new HistoryItem(Nav.Uri) {
             OnForwardAction = onForwardAction,
             OnBackAction = onBackAction
         };
-        _pendingHistoryItem = new PendingHistoryItem(historyItem, _marker);
-        Nav.NavigateTo(uri);
+        _pendingHistoryItem = new PendingHistoryItem(historyItem, _historyIndex);
+        Nav.NavigateTo(Nav.Uri);
     }
 
-    private string GetUriWithMarker(string uri, string marker)
+    private async Task<State?> GetStateAsync()
     {
-        var index = uri.IndexOf("?", StringComparison.Ordinal);
-        if (index >= 0)
-            uri = uri.Substring(0, index);
-        uri += "?marker=" + marker.UrlEncode();
-        return uri;
+        await _whenJsRefInitialized.ConfigureAwait(false);
+        var result = await _jsRef!.InvokeAsync<State?>("getState").ConfigureAwait(false);
+        return result;
     }
 
-    private record PendingHistoryItem(HistoryItem HistoryItem, string Marker);
+    private async Task InitializeJsRef()
+    {
+        _blazorRef = DotNetObjectReference.Create<IHistoryUIBackend>(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.HistoryUI.create",
+            _blazorRef).ConfigureAwait(false);
+    }
+
+    private async Task InitializeState(State state)
+    {
+        await _whenJsRefInitialized;
+        await SetStateAsync(state);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        IsInitialLocation = false;
+
+        var location = e.Location;
+        Log.LogDebug("Location changed: '{Location}'", location);
+
+        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
+            return;
+
+        var tcs = new TaskCompletionSource();
+        _whenLocationChangedHandled = tcs.Task;
+
+        _ = OnLocationChangedAsync(tcs, e.Location);
+    }
+
+    private async Task OnLocationChangedAsync(TaskCompletionSource whenCompleted, string location)
+    {
+        try {
+            var previousState = _state;
+            var previousLocation = _history[_historyIndex].Uri;
+            HistoryMove move;
+            // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
+            // Rework history position tracking with it.
+            var readState = await GetStateAsync();
+            if (readState == null) {
+                // State is null, apparently it's an internal navigation to next location happened.
+                // Lets store this in the state.
+                var state = new State { Index = previousState.Index + 1 };
+                await SetStateAsync(state);
+                _state = state;
+                move = HistoryMove.Navigate;
+            }
+            else {
+                move = readState.Index < previousState.Index
+                    ? HistoryMove.Backward
+                    : readState.Index > previousState.Index
+                        ? HistoryMove.Forward
+                        : throw StandardError.Constraint("Invalid state index for history move.");
+                _state = readState;
+            }
+
+            HistoryItem historyItem;
+            if (move == HistoryMove.Navigate) {
+                if (_pendingHistoryItem != null) {
+                    if (_pendingHistoryItem.HistoryIndex != _historyIndex)
+                        throw StandardError.Constraint("PendingHistoryItem is not consistent.");
+                    historyItem = _pendingHistoryItem.HistoryItem;
+                    _pendingHistoryItem = null;
+                }
+                else
+                    historyItem = new HistoryItem(location);
+                _historyIndex++;
+                if (_history.Count < _historyIndex)
+                    throw StandardError.Constraint("History is not consistent.");
+                if (_history.Count > _historyIndex)
+                    _history.RemoveRange(_historyIndex, _history.Count - _historyIndex);
+                _history.Add(historyItem);
+            }
+            else if (move == HistoryMove.Forward) {
+                _historyIndex = readState!.Index;
+                if (_history.Count < _historyIndex)
+                    throw StandardError.Constraint("History does not contain forward item.");
+                historyItem = _history[_historyIndex];
+            } else {
+                _historyIndex = readState!.Index;
+                if (_history.Count < _historyIndex + 1)
+                    throw StandardError.Constraint("History does not contain backward item.");
+                historyItem = _history[_historyIndex + 1];
+            }
+
+            if (move != HistoryMove.Backward)
+                historyItem.OnForwardAction?.Invoke();
+            else
+                historyItem.OnBackAction?.Invoke();
+
+            var eventsArgs = new AfterLocationChangedHandledEventsArgs {
+                Location = location,
+                HasLocationChanged = OrdinalEquals(location, previousLocation),
+                IsBackward = move == HistoryMove.Backward
+            };
+            AfterLocationChangedHandled?.Invoke(this, eventsArgs);
+
+            whenCompleted.SetResult();
+        }
+        catch(Exception e) {
+            whenCompleted.TrySetException(e);
+        }
+    }
+
+    private async Task SetStateAsync(State state)
+    {
+        await _whenJsRefInitialized;
+        await _jsRef!.InvokeVoidAsync("setState", state);
+    }
+
+    private record PendingHistoryItem(HistoryItem HistoryItem, int HistoryIndex);
 
     private record HistoryItem(string Uri)
     {
@@ -158,5 +219,10 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         public Action? OnBackAction { get; init; }
     }
 
-    private enum HistoryMove { Unknown, Forward, Backward }
+    public class State
+    {
+        public int Index { get; init; }
+    }
+
+    private enum HistoryMove { Navigate, Forward, Backward }
 }

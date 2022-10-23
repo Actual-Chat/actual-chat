@@ -14,6 +14,17 @@ export class HistoryUI {
         window.addEventListener('popstate', this.onPopState);
     }
 
+    public getState = () : any => {
+        const state = history.state;
+        console.debug('getState: ', state);
+        return state;
+    }
+
+    public setState = (state) => {
+        console.debug('setState: ', state);
+        history.replaceState(state, '');
+    }
+
     private onPopState = (async (event: PopStateEvent) => {
         console.debug(`${LogScope}: onPopState`);
         await this.blazorRef.invokeMethodAsync('OnPopState', JSON.stringify(event.state));

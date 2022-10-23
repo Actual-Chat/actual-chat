@@ -15,6 +15,7 @@
     else if (!m.DefaultChatId.IsEmpty && !_navigated) {
         _navigated = true; // prevents multiple calls
         // Do automatic redirect on first load.
+        NavbarUI.PreventNavbarClose = true;
         Nav.NavigateTo(Links.ChatPage(m.DefaultChatId), false, true);
     }
 }
@@ -28,6 +29,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 

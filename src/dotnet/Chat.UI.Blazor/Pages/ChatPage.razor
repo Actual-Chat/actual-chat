@@ -86,13 +86,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
-
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            NavbarUI.ChangeVisibility(false);
-    }
-
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
             || State.HasError

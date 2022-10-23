@@ -12,6 +12,7 @@
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
         } else if (BrowserInfo.IsTouchCapable) {
+            @* <a class="unfocusable" href="@Url" @onclick="@Click" @onclick:preventDefault>@ChildContent</a> *@
             <a class="unfocusable" href="@Url">@ChildContent</a>
         } else {
             <a class="unfocusable" href="@Url" @onmousedown="@Click" @onclick:preventDefault>@ChildContent</a>

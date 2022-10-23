@@ -17,7 +17,7 @@
         return;
     }
 
-    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies" OnNavigateAsync="HistoryUI.RouterOnNavigateAsync">
         <Found>
             <ErrorWrapper>
                 <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
@@ -45,6 +45,7 @@
     [Inject] private AppPresenceReporter AppPresenceReporter { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -110,5 +111,8 @@
 
         // Finishing w/ theme
         await applyThemeTask;
+
+        // Finishing w/ history ui
+        await HistoryUI.WhenInitialized;
     }
 }
