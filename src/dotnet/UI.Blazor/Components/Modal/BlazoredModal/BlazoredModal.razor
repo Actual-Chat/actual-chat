@@ -46,23 +46,17 @@
         _globalModalOptions.ActivateFocusTrap = ActivateFocusTrap;
     }
 
-    private async Task CloseInstance(ModalReference? modal)
-    {
-        if (modal?.ModalInstanceRef != null) {
-            // Gracefully close the modal
-            await modal.ModalInstanceRef.CloseAsync();
-            if (!_modals.Any())
-                await ClearBodyStyles();
-            OnModalClosed?.Invoke();
-        }
-        else {
-            await DismissInstance(modal);
-        }
-    }
+    private Task CloseInstance(ModalReference? modal)
+        => DismissInstance(modal);
 
     internal Task DismissInstance(Guid id)
     {
         var reference = GetModalReference(id);
+        if (reference != null) {
+            var handled = reference.RaiseModalInstanceCloseRequested();
+            if (handled)
+                return Task.CompletedTask;
+        }
         return DismissInstance(reference);
     }
 

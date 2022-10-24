@@ -33,18 +33,16 @@ public sealed class ModalUI
 
         IModalReference? modalReference = null;
         var tcs = new TaskCompletionSource<IModalReference>();
-        var backActionExecuted = false;
         HistoryUI.NavigateTo(
             () => {
                 modalReference = InnerShow(componentType, model, isFullScreen);
                 tcs.SetResult(modalReference);
-                modalReference.WhenClosed.ContinueWith(_ => {
-                    if (!backActionExecuted)
-                        HistoryUI.GoBack();
-                }, TaskScheduler.Current);
+                modalReference.ModalInstanceCloseRequested += (s, e) => {
+                    e.Handled = true;
+                    _ = HistoryUI.GoBack();
+                };
             },
             () => {
-                backActionExecuted = true;
                 modalReference?.Close();
             });
         return tcs.Task;

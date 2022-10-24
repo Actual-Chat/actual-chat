@@ -10,6 +10,7 @@ public class ModalReference : IModalReference
     internal Guid Id { get; }
     internal RenderFragment ModalInstance { get; }
     internal BlazoredModalInstance? ModalInstanceRef { get; set; }
+    public event EventHandler<ModalInstanceCloseRequestedEventArgs>? ModalInstanceCloseRequested;
 
     public ModalReference(Guid modalInstanceId, RenderFragment modalInstance, ModalService modalService)
     {
@@ -25,4 +26,16 @@ public class ModalReference : IModalReference
 
     internal void Dismiss()
         => _ = _resultCompletion.TrySetResult();
+
+    internal bool RaiseModalInstanceCloseRequested()
+    {
+        var args = new ModalInstanceCloseRequestedEventArgs();
+        ModalInstanceCloseRequested?.Invoke(this, args);
+        return args.Handled;
+    }
+}
+
+public class ModalInstanceCloseRequestedEventArgs : EventArgs
+{
+    public bool Handled { get; set; }
 }
