@@ -219,7 +219,7 @@ export class ContextMenu implements Disposable {
             eventData: eventData,
         };
         this.menus.push(menu);
-        this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.trigger, menu.id);
+        this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.trigger, menu.id, eventData.isHover);
     }
 
     private hideMenu(menu: Menu): void {
