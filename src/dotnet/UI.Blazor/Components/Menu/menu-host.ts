@@ -3,7 +3,7 @@ import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
 import { empty, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
 import { computePosition, flip, Middleware, offset, Placement, shift } from '@floating-ui/dom';
-import escapist from '../Escapist/escapist';
+import escapist from '../../Services/Escapist/escapist';
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MenuHost';
