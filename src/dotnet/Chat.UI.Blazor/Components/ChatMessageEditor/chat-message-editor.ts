@@ -40,7 +40,7 @@ export class ChatMessageEditor {
         this.updateTextMode();
 
         // Wiring up event listeners
-        window.visualViewport.addEventListener('resize', throttle(this.onWindowResize, 250, true));
+        window.visualViewport.addEventListener('resize', throttle(this.onWindowResize, 250, 'delayHead'));
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
