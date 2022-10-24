@@ -25,8 +25,10 @@ interface Coords {
 }
 
 interface EventData {
+    placement: Placement;
     trigger: string;
     closeOnSecondClick: boolean;
+    isHover: boolean;
     element: HTMLElement;
     coords?: Coords;
 }
@@ -43,7 +45,6 @@ enum MenuTriggers
     LeftClick = 1,
     RightClick = 2,
     LongClick = 4,
-    Hover = 5,
 }
 
 const LogScope = 'ContextMenu';
@@ -68,8 +69,12 @@ export class ContextMenu implements Disposable {
     }
 
     public showMenu(id: string) {
-        const menuRef = document.getElementById(id);
         const menu = this.menus.find(x => x.id === id);
+        if (!menu)
+            return;
+        const menuRef = document.getElementById(id);
+        if (!menuRef)
+            return;
         menu.menuRef = menuRef;
         ContextMenu.updatePosition(menu);
     }
@@ -109,6 +114,18 @@ export class ContextMenu implements Disposable {
                 this.renderMenu(eventData);
             });
 
+        fromEvent(document, 'mouseover')
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event) => this.mapHoverEvent(event)),
+                switchMap((eventData: EventData | undefined) => {
+                    return eventData ? of(eventData) : empty();
+                }),
+            )
+            .subscribe((eventData: EventData) => {
+                this.renderMenu(eventData);
+            });
+
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
@@ -127,33 +144,61 @@ export class ContextMenu implements Disposable {
             return undefined;
         const closestElement = event.target.closest('[data-menu]');
         if (!(closestElement instanceof HTMLElement)) {
-            if (this.isAnyMenuVisible)
-                this.hideAllMenus();
+            this.hideAllMenus();
             return undefined;
         }
         const menuTrigger = closestElement.dataset['menuTrigger'];
         if (!menuTrigger || !(ContextMenu.hasTrigger(menuTrigger, triggers))) {
-            if (this.isAnyMenuVisible)
-                this.hideAllMenus();
+            this.hideAllMenus();
             return undefined;
         }
         event.preventDefault();
         event.stopPropagation();
         const trigger = closestElement.dataset['menu'];
+        const placement = ContextMenu.getPlacement(closestElement);
         const coords = byCoords && event instanceof PointerEvent
                        ? { x: event.clientX, y: event.clientY }
                        : undefined;
         const eventData: EventData = {
+            placement,
+            isHover: false,
             trigger,
             closeOnSecondClick,
             element: closestElement,
             coords: coords,
         };
         return eventData;
-    };
+    }
+
+    private mapHoverEvent(event: Event): EventData | undefined {
+        if (!(event.target instanceof HTMLElement)) {
+            this.hideMenus(x => x.isHover);
+            return undefined;
+        }
+        const closestElement = event.target.closest('[data-hover-menu]');
+        if (!(closestElement instanceof HTMLElement)) {
+            const menu = event.target.closest('.ac-menu');
+            if (!menu) {
+                this.hideMenus(x => x.isHover);
+            }
+            return undefined;
+        }
+        const trigger = closestElement.dataset['hoverMenu'];
+        const eventData: EventData = {
+            placement: "top-end",
+            trigger,
+            isHover: true,
+            closeOnSecondClick: false,
+            element: closestElement,
+            coords: undefined,
+        };
+        return eventData;
+    }
 
     private renderMenu(eventData: EventData): void {
-        const exisingMenuIndex = this.menus.findIndex(x => x.eventData.element == eventData.element);
+        const exisingMenuIndex = this.menus.findIndex(
+            x => x.eventData.trigger == eventData.trigger
+            && x.eventData.element == eventData.element);
         if (exisingMenuIndex > -1) {
             const exisingMenu = this.menus[exisingMenuIndex];
             if (exisingMenu.eventData.closeOnSecondClick) {
@@ -167,7 +212,7 @@ export class ContextMenu implements Disposable {
             return;
         }
 
-        this.hideAllMenus();
+        this.hideMenus(x => x.isHover === eventData.isHover);
 
         const menu: Menu = {
             id: nanoid(),
@@ -178,7 +223,9 @@ export class ContextMenu implements Disposable {
     }
 
     private hideMenu(menu: Menu): void {
-        menu.menuRef.style.display = 'none';
+        if (menu.menuRef)
+            menu.menuRef.style.display = 'none';
+
         this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
     }
 
@@ -188,7 +235,18 @@ export class ContextMenu implements Disposable {
         }
     }
 
+    private hideMenus(predicate: (e: EventData) => boolean): void {
+        for (let i = 0; i < this.menus.length; i++) {
+            if (predicate(this.menus[i].eventData)) {
+                const removed = this.menus.splice(i, 1);
+                this.hideMenu(removed[0]);
+            }
+        }
+    }
+
     private static updatePosition(menu: Menu): void {
+        if (!menu.menuRef)
+            return;
         menu.menuRef.style.display = 'block';
 
         if (menu.eventData.coords) {
@@ -200,13 +258,20 @@ export class ContextMenu implements Disposable {
             return;
         }
 
-        const placement = this.getPlacement(menu.eventData.element);
         const middleware: Middleware[] = [];
-        middleware.push(offset(6));
-        middleware.push(flip());
-        middleware.push(shift({ padding: 5 }));
+        if (menu.eventData.isHover) {
+            middleware.push(offset({
+               mainAxis: -15,
+               crossAxis: -10,
+           }));
+            middleware.push(flip());
+        } else {
+            middleware.push(offset(6));
+            middleware.push(flip());
+            middleware.push(shift({ padding: 5 }));
+        }
         computePosition(menu.eventData.element, menu.menuRef, {
-            placement: placement,
+            placement: menu.eventData.placement,
             middleware: middleware,
         }).then(({ x, y }) => {
             Object.assign(menu.menuRef.style, {
@@ -225,9 +290,5 @@ export class ContextMenu implements Disposable {
 
     private static hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
         return (Number(trigger) & triggers) === triggers;
-    }
-
-    private get isAnyMenuVisible(): boolean {
-        return this.menus.length > 0;
     }
 }

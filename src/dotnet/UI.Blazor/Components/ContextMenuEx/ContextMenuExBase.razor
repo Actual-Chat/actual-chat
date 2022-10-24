@@ -7,6 +7,8 @@
     [CascadingParameter] public ContextMenuEx ContextMenu { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        await ContextMenu.ShowMenu(this);
+        if (firstRender) {
+            await ContextMenu.ShowMenu(this);
+        }
     }
 }
