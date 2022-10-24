@@ -91,7 +91,7 @@ export class OpusDecoder {
     }
 
     private processQueue(): void {
-        const { queue, workletPort, debug } = this;
+        const { queue, workletPort } = this;
 
         if (this.state === 'decoding') {
             return;
@@ -115,16 +115,14 @@ export class OpusDecoder {
                 }
 
                 const samples = this.decoder.decode(item);
-                if (debug) {
-                    if (!!samples && samples.length > 0) {
-                        debugLog?.log(
-                            `processQueue: opusDecode(${item.byteLength} bytes) `
-                            + `returned ${samples.byteLength} `
-                            + `bytes / ${samples.length} samples`);
-                    }
-                    else {
-                        errorLog?.log(`processQueue: opusDecode(${item.byteLength} bytes) returned empty/unknown result`);
-                    }
+                if (!!samples && samples.length > 0) {
+                    debugLog?.log(
+                        `processQueue: opusDecode(${item.byteLength} bytes) `
+                        + `returned ${samples.byteLength} `
+                        + `bytes / ${samples.length} samples`);
+                }
+                else {
+                    errorLog?.log(`processQueue: opusDecode(${item.byteLength} bytes) returned empty/unknown result`);
                 }
 
                 if (samples == null || samples.length === 0)
