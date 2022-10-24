@@ -3,8 +3,11 @@ import { delayAsync, PromiseSource } from 'promises';
 import { onDeviceAwake } from 'on-device-awake';
 import { EventHandlerSet } from 'event-handling';
 import { NextInteraction } from 'next-interaction';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'AudioContextLazy';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 async function defaultFactory() : Promise<AudioContext> {
     const audioContext = new AudioContext({
@@ -28,7 +31,7 @@ async function defaultFactory() : Promise<AudioContext> {
 }
 
 async function resume(audioContext: AudioContext, force = false) : Promise<AudioContext> {
-    console.debug(`${LogScope}.resume start: audioContext.state =`, audioContext.state);
+    debugLog?.log(`-> resume: audioContext.state =`, audioContext.state);
     if (force || audioContext.state !== 'running' && audioContext.state !== 'closed') {
         if (force) {
             await audioContext.suspend();
@@ -40,12 +43,12 @@ async function resume(audioContext: AudioContext, force = false) : Promise<Audio
             throw `${LogScope}: Couldn't resume AudioContext.`;
     }
 
-    console.debug(`${LogScope}.resume end: audioContext.state =`, audioContext.state);
+    debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
     return audioContext;
 }
 
 async function warmup(audioContext: AudioContext): Promise<AudioContext> {
-    console.debug(`${LogScope}.warmup: starting...`);
+    debugLog?.log(`-> warmup`);
 
     await audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
     const nodeOptions: AudioWorkletNodeOptions = {
@@ -60,7 +63,7 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
     await new Promise<void>(resolve => {
         node.port.postMessage('stop');
         node.port.onmessage = (ev: MessageEvent<string>): void => {
-            console.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
+            errorLog?.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
             resolve();
         };
     });
@@ -68,7 +71,7 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
     node.port.onmessage = null;
     node.port.close();
 
-    console.debug(`${LogScope}.warmup: done`);
+    debugLog?.log(`<- warmup`);
     return audioContext;
 }
 

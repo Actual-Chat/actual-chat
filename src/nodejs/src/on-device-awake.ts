@@ -1,5 +1,7 @@
+import { Log, LogLevel } from 'logging';
+
 const LogScope = 'on-device-awake';
-const debug = true;
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 let _worker: Worker = null;
 const _handlers = new Array<() => void>();
@@ -29,21 +31,18 @@ const createWorker = () => {
 
 const ensureWorker = () => {
     if (_handlers.length > 0 && _worker === null) {
-        if (debug)
-            console.debug(`${LogScope}.ensureWorker`, 'creating worker')
+        debugLog?.log(`ensureWorker: creating worker`)
         _worker = createWorker();
     }
     if (_handlers.length === 0 && _worker !== null) {
-        if (debug)
-            console.debug(`${LogScope}.ensureWorker`, 'terminating worker')
+        debugLog?.log(`ensureWorker: terminating worker`)
         _worker.terminate();
         _worker = null;
     }
 };
 
 const onDeviceAwake = (handler: () => void): () => void => {
-    if (debug)
-        console.debug(`${LogScope}.onDeviceAwake`, 'adding handler', handler)
+    debugLog?.log(`onDeviceAwake: adding handler:`, handler)
     _handlers.push(handler);
     ensureWorker();
     return () => {

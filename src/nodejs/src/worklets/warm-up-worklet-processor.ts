@@ -1,3 +1,8 @@
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'WarmUpAudioWorkletProcessor';
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /**
  * Produces silence. We use the worklet to warm up a browser's audio pipeline.
@@ -37,7 +42,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
 
     private onNodeMessage = (ev: MessageEvent<string>): void => {
         const msg = ev.data;
-        console.assert(msg === 'stop', `WarmUpAudioWorkletProcessor: Unsupported message: ${msg}`);
+        errorLog?.assert(msg === 'stop', `WarmUpAudioWorkletProcessor: Unsupported message: ${msg}`);
         this.isStopped = true;
     };
 }

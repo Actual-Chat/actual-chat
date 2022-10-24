@@ -1,8 +1,11 @@
 import { PromiseSource } from 'promises';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'Rpc';
-const debug = true;
-const selfTest = false;
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+const mustRunSelfTest = debugLog != null;
 
 export interface RpcCallMessage {
     rpcResultId: number;
@@ -56,21 +59,18 @@ export class RpcResult<T> extends PromiseSource<T> {
         const oldResolve = this.resolve;
         const oldReject = this.reject;
         this.resolve = (value: T) => {
-            if (debug)
-                console.debug(`${LogScope}.RpcResult.resolve[#${this.id}] =`, value)
+            debugLog?.log(`RpcResult.resolve[#${this.id}] =`, value)
             this.unregister();
             oldResolve(value);
         };
         this.reject = (reason: unknown) => {
-            if (debug)
-                console.debug(`${LogScope}.RpcResult.reject[#${this.id}] =`, reason)
+            debugLog?.log(`RpcResult.reject[#${this.id}] =`, reason)
             this.unregister();
             oldReject(reason);
         };
         this.id = id ?? ++lastResultId;
         results.set(this.id, this);
-        if (debug)
-            console.debug(`${LogScope}.RpcResult.ctor[#${this.id}]`)
+        debugLog?.log(`RpcResult.ctor[#${this.id}]`)
     }
 
     public static get<T>(id: number) : RpcResult<T> | null {
@@ -101,8 +101,7 @@ export async function handleRpcCall(
     target: object,
     errorHandler?: (error: unknown) => void
 ) : Promise<unknown> {
-    if (debug)
-        console.debug(`${LogScope}.handleRpcCall:`, rpcCallMessage)
+    debugLog?.log(`handleRpcCall:`, rpcCallMessage)
     return handleRpc<unknown>(rpcCallMessage.rpcResultId, sender, async () => {
         // eslint-disable-next-line @typescript-eslint/ban-types
         const method = target[rpcCallMessage.method] as Function;
@@ -125,8 +124,7 @@ export async function handleRpc<T>(
         error = e;
     }
     const message = rpcResultMessage(rpcResultId, value, error);
-    if (debug)
-        console.debug(`${LogScope}.handleRpc[#${rpcResultId}] =`, message)
+    debugLog?.log(`handleRpc[#${rpcResultId}] =`, message)
     await resultCallback(message);
     if (error !== undefined && errorHandler != null)
         errorHandler(error);
@@ -137,7 +135,7 @@ export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | nu
     const { rpcResultId, value, error } = message;
     const rpcResult = RpcResult.get<unknown>(rpcResultId);
     if (rpcResult == null) {
-        console.warn(`${LogScope}.completeRpc: RpcResult #${rpcResultId} is not found`);
+        warnLog?.log(`completeRpc: RpcResult #${rpcResultId} is not found`);
         return null;
     }
     try {
@@ -152,24 +150,24 @@ export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | nu
     return rpcResult;
 }
 
-if (selfTest) {
+if (mustRunSelfTest) {
     void (async () => {
         let rpcResult = rpc<string>(() => undefined);
-        console.assert(!rpcResult.isCompleted());
+        errorLog?.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, 'x'));
-        console.assert(rpcResult.isCompleted());
-        console.assert('x' == await rpcResult);
+        errorLog?.assert(rpcResult.isCompleted());
+        errorLog?.assert('x' == await rpcResult);
 
         rpcResult = rpc<string>(() => undefined);
-        console.assert(!rpcResult.isCompleted());
+        errorLog?.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, null, 'Error'));
-        console.assert(rpcResult.isCompleted());
+        errorLog?.assert(rpcResult.isCompleted());
         try {
             await rpcResult;
-            console.error('rpcResult.Error is undefined.');
+            errorLog?.log('rpcResult.Error is undefined.');
         }
         catch (error) {
-            console.assert('Error' == error);
+            errorLog.assert(error == 'Error', 'error != "Error"');
         }
     })();
 }

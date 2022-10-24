@@ -1,4 +1,7 @@
+import { Log, LogLevel } from 'logging';
+
 const LogScope = 'promises';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
@@ -156,10 +159,12 @@ class Call<T extends (...args: unknown[]) => unknown> {
     }
 }
 
+export type ThrottleMode = 'default' | 'skip' | 'delayHead';
+
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     interval: number,
-    delayHead = false
+    mode: ThrottleMode = 'default'
 ) : ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastFireTime = 0;
@@ -185,7 +190,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
         if (timeoutHandle !== null)
             return;
 
-        if (delayHead) {
+        if (mode === 'delayHead') {
             lastFireTime = Date.now();
             timeoutHandle = setTimeout(fire, getFireDelay());
             return;
@@ -193,7 +198,8 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 
         const fireDelay = getFireDelay();
         if (fireDelay > 0) {
-            timeoutHandle = setTimeout(fire, fireDelay);
+            if (mode !== 'skip')
+                timeoutHandle = setTimeout(fire, fireDelay);
             return;
         }
 

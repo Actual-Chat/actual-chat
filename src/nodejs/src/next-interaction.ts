@@ -1,12 +1,12 @@
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { throttle } from 'promises';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'NextInteraction';
-const debug = true;
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class NextInteraction {
     private static readonly event: EventHandlerSet<Event> = new EventHandlerSet<Event>();
-    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500);
     private static readonly onClick = (event: Event) => NextInteraction.onEventThrottled(event);
     private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventThrottled(event);
     private static readonly onKeyDown = (event: Event) => NextInteraction.onEventThrottled(event);
@@ -23,9 +23,7 @@ export class NextInteraction {
         document.addEventListener('onkeydown', this.onKeyDown, options);
         document.addEventListener('touchend', this.onTouchEnd, options);
         this.isStarted = true;
-
-        if (debug)
-            console.debug(`${LogScope}.start()`);
+        debugLog?.log(`start`);
     }
 
     public static stop() : void {
@@ -37,9 +35,7 @@ export class NextInteraction {
         document.removeEventListener('onkeydown', this.onKeyDown);
         document.removeEventListener('touchend', this.onTouchEnd);
         this.isStarted = false;
-
-        if (debug)
-            console.debug(`${LogScope}.stop()`);
+        debugLog?.log(`stop`);
     }
 
     public static addHandler(handler: (Event) => unknown, justOnce = true) : EventHandler<Event> {
@@ -48,9 +44,9 @@ export class NextInteraction {
 
     // Private methods
 
+    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500, 'skip');
     private static onEvent(event: Event) : void {
-        if (debug)
-            console.debug(`${LogScope}.onEvent(), event:`, event);
+        debugLog?.log(`onEvent, event:`, event);
         this.event.triggerSilently(event);
     }
 }

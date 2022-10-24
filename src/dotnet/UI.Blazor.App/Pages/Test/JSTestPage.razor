@@ -11,7 +11,8 @@
 </p>
 <p>
     <Button Click="@(() => InvokeMember("throttled"))">throttled()</Button>
-    <Button Click="@(() => InvokeMember("throttledDelayHead"))">throttled(delayHead = true)</Button>
+    <Button Click="@(() => InvokeMember("throttledSkip"))">throttled(mode = 'skip')</Button>
+    <Button Click="@(() => InvokeMember("throttledDelayHead"))">throttled(mode = 'delayHead')</Button>
 </p>
 <p>
     <Button Click="@(() => InvokeMember("debounced"))">debounced()</Button>

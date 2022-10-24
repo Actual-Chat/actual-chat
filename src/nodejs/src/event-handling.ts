@@ -1,6 +1,8 @@
 import { Disposable } from 'disposable';
+import { Log, LogLevel } from 'logging';
 
-const LogScope = 'events';
+const LogScope = 'event-handling';
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class EventHandler<T> implements Disposable {
     constructor(
@@ -28,7 +30,7 @@ export class EventHandler<T> implements Disposable {
             return this.handler(argument);
         }
         catch (error) {
-            console.error(`${LogScope}: event handler failed with an error:`, error);
+            errorLog?.log(`triggerSilently: event handler failed with an error:`, error);
             return undefined;
         }
         finally {
