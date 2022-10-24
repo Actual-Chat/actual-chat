@@ -5,7 +5,7 @@
 <div class="ac-menu-container">
     <CascadingValue Value="@this" IsFixed="true">
         @foreach (var menu in _menus) {
-            <div id="@menu.Id" @key="menu.Id" class="ac-menu @(menu.isHover ? "ac-menu-hover" : "" )">
+            <div id="@menu.Id" @key="menu.Id" class="@(menu.isHover ? "ac-menu-hover" : "ac-menu")">
                 <ul class="ac-menu-list">
                     <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                 </ul>

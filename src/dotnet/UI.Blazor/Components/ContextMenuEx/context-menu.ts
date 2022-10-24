@@ -177,7 +177,7 @@ export class ContextMenu implements Disposable {
         }
         const closestElement = event.target.closest('[data-hover-menu]');
         if (!(closestElement instanceof HTMLElement)) {
-            const menu = event.target.closest('.ac-menu');
+            const menu = event.target.closest('.ac-menu, .ac-menu-hover');
             if (!menu) {
                 this.hideMenus(x => x.isHover);
             }

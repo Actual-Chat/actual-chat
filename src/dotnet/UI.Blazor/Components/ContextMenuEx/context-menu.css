@@ -5,8 +5,14 @@
     @apply hidden absolute bg-01 rounded-xl p-1 pointer-events-auto z-menu;
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
-.ac-menu.ac-menu-hover {
-    @apply z-menu-hover;
+.ac-menu-hover {
+    @apply hidden absolute bg-01 rounded-full p-1 border border-bg-03 pointer-events-auto z-menu-hover;
+}
+.ac-menu-hover .btn.btn-round .btn-content {
+    @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
+}
+.ac-menu-hover .btn.btn-round:hover .btn-content {
+    @apply bg-round-hover;
 }
 .ac-menu-list {
 }
