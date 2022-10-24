@@ -54,7 +54,7 @@ public class ChatUI
                 Corrector = FixPinnedChats,
             });
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
-            new (accountSettings, nameof(ActiveChats)) {
+            new (localSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
             });
