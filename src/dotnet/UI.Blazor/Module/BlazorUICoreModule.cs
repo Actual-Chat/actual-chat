@@ -43,7 +43,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.RemoveAll<PresenceReporter>(); // We replace it with our own one further
         services.AddScoped<AppPresenceReporter>();
         services.AddSingleton(_ => new AppPresenceReporter.Options() {
-            UpdatePeriod = Constants.Presence.CheckInPeriod,
+            AwayTimeout = Constants.Presence.AwayTimeout,
         });
 
         // Default update delay is 0.2s
@@ -85,6 +85,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ModalUI>();
         services.AddScoped<FocusUI>();
         services.AddScoped<KeepAwakeUI>();
+        services.AddScoped<UserActivityUI>();
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);

@@ -31,6 +31,7 @@ export function initLogging(Log: unknown) : void {
     minLevels.set('OpusDecoderWorker', LogLevel.Info);
     minLevels.set('AudioPlayerController', LogLevel.Info);
     minLevels.set('AudioPlayer', LogLevel.Info);
+    minLevels.set('UserActivityUI', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);

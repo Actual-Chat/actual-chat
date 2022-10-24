@@ -27,9 +27,10 @@ public static partial class Constants
 
     public static class Presence
     {
-        public static RandomTimeSpan CheckInPeriod { get; } = TimeSpan.FromSeconds(50).ToRandom(TimeSpan.FromSeconds(1));
+        public static TimeSpan UpdatePeriod { get; } = TimeSpan.FromSeconds(35);
         public static TimeSpan SkipCheckInPeriod { get; } = TimeSpan.FromSeconds(30);
-        public static TimeSpan CheckInTimeout { get; } = TimeSpan.FromSeconds(120);
+        public static TimeSpan AwayTimeout { get; } = TimeSpan.FromSeconds(60);
+        public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
     }
 
     public static class Contact
