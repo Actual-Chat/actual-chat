@@ -9,6 +9,7 @@ public record Emoji(string Code, string Name)
         new ("❤️", "red heart"),
         new ("😁", "beaming face with smiling eyes"),
         new ("👎", "thumbs down"),
+        new ("😢", "crying face"),
         new ("😱", "face screaming in fear"),
         new ("🎃", "jack-o-lantern"),
     }.ToDictionary(x => x.Code, StringComparer.Ordinal);
