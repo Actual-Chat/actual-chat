@@ -26,6 +26,7 @@ interface Coords {
 
 interface EventData {
     trigger: string;
+    closeOnSecondClick: boolean;
     element: HTMLElement;
     coords?: Coords;
 }
@@ -125,10 +126,15 @@ export class ContextMenu implements Disposable {
         if (!(event.target instanceof HTMLElement))
             return undefined;
         const closestElement = event.target.closest('[data-menu]');
-        if (!(closestElement instanceof HTMLElement))
+        if (!(closestElement instanceof HTMLElement)) {
+            if (this.isAnyMenuVisible)
+                this.hideAllMenus();
             return undefined;
+        }
         const menuTrigger = closestElement.dataset['menuTrigger'];
         if (!menuTrigger || !(ContextMenu.hasTrigger(menuTrigger, triggers))) {
+            if (this.isAnyMenuVisible)
+                this.hideAllMenus();
             return undefined;
         }
         event.preventDefault();
@@ -139,6 +145,7 @@ export class ContextMenu implements Disposable {
                        : undefined;
         const eventData: EventData = {
             trigger,
+            closeOnSecondClick,
             element: closestElement,
             coords: coords,
         };
@@ -146,6 +153,22 @@ export class ContextMenu implements Disposable {
     };
 
     private renderMenu(eventData: EventData): void {
+        const exisingMenuIndex = this.menus.findIndex(x => x.eventData.element == eventData.element);
+        if (exisingMenuIndex > -1) {
+            const exisingMenu = this.menus[exisingMenuIndex];
+            if (exisingMenu.eventData.closeOnSecondClick) {
+                this.menus.splice(exisingMenuIndex, 1);
+                this.hideMenu(exisingMenu);
+            } else {
+                exisingMenu.eventData = eventData;
+                ContextMenu.updatePosition(exisingMenu);
+            }
+
+            return;
+        }
+
+        this.hideAllMenus();
+
         const menu: Menu = {
             id: nanoid(),
             eventData: eventData,
@@ -157,6 +180,12 @@ export class ContextMenu implements Disposable {
     private hideMenu(menu: Menu): void {
         menu.menuRef.style.display = 'none';
         this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
+    }
+
+    private hideAllMenus(): void {
+        while (this.menus.length) {
+            this.hideMenu(this.menus.pop());
+        }
     }
 
     private static updatePosition(menu: Menu): void {
@@ -198,7 +227,7 @@ export class ContextMenu implements Disposable {
         return (Number(trigger) & triggers) === triggers;
     }
 
-    private static isMenuVisible(menuRef: HTMLElement) : boolean {
-        return menuRef.style.display === 'block';
+    private get isAnyMenuVisible(): boolean {
+        return this.menus.length > 0;
     }
 }
