@@ -1,10 +1,18 @@
-import { Log, LogLevel } from 'logging';
-import { ConsoleLog } from 'logging-console';
+// Should be the same as logging.LogLevel, but local to this module
+enum LogLevel {
+    Debug = 1,
+    Info,
+    Warn,
+    Error,
+    None = 1000,
+}
 
-Log.loggerFactory = (scope, level) => new ConsoleLog(scope, level);
-Log.defaultMinLevel = LogLevel.Info;
+export function initLogging(Log: unknown) : void {
+    Log['defaultMinLevel'] = LogLevel.Info;
+    const minLevels = Log['minLevels'] as Map<string, LogLevel>;
 
-Log.minLevels.set('AudioContextLazy', LogLevel.Debug);
-Log.minLevels.set('NextInteraction', LogLevel.Debug);
-Log.minLevels.set('on-device-awake', LogLevel.Debug);
-Log.minLevels.set('Rpc', LogLevel.Debug);
+    minLevels.set('AudioContextLazy', LogLevel.Debug);
+    minLevels.set('NextInteraction', LogLevel.Debug);
+    minLevels.set('on-device-awake', LogLevel.Debug);
+    minLevels.set('Rpc', LogLevel.Debug);
+}

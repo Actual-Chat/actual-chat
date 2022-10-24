@@ -188,7 +188,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\next-interaction.ts = src\nodejs\src\next-interaction.ts
 		src\nodejs\src\event-handling.ts = src\nodejs\src\event-handling.ts
 		src\nodejs\src\logging.ts = src\nodejs\src\logging.ts
-		src\nodejs\src\logging-console.ts = src\nodejs\src\logging-console.ts
 		src\nodejs\src\logging-init.ts = src\nodejs\src\logging-init.ts
 	EndProjectSection
 EndProject
