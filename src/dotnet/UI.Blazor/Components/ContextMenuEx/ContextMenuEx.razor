@@ -5,7 +5,7 @@
 <div class="ac-menu-container">
     <CascadingValue Value="@this" IsFixed="true">
         @foreach (var menu in _menus) {
-            <div id="@menu.Id" class="ac-menu" @key="menu.Id">
+            <div id="@menu.Id" @key="menu.Id" class="ac-menu @(menu.isHover ? "ac-menu-hover" : "" )">
                 <ul class="ac-menu-list">
                     <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                 </ul>
@@ -22,7 +22,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [JSInvokable]
-    public Task RenderMenu(string trigger, string id) {
+    public Task RenderMenu(string trigger, string id, bool isHover) {
         var parsed = MenuTrigger.Parse(trigger);
         var menuType = MenuUI.Get(parsed.MenuType);
         var parameters = parsed.Arguments is { Length:> 0}
@@ -31,7 +31,7 @@
                 { nameof(ContextMenuExBase.Arguments), parsed.Arguments },
             }
             : null;
-        _menus.Add(new Model(id, menuType, parameters));
+        _menus.Add(new Model(id, menuType, parameters, isHover));
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -64,5 +64,5 @@
         _blazorRef = null!;
     }
 
-    private sealed record Model(string Id, Type Type, Dictionary<string, object>? Parameters);
+    private sealed record Model(string Id, Type Type, Dictionary<string, object>? Parameters, bool isHover);
 }
