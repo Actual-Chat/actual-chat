@@ -4,14 +4,18 @@ import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-dec
 import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
+import { Log, LogLevel } from 'logging-abstractions';
 /// #else
 /// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 
 const LogScope: string = 'OpusDecoder';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 /// #if MEM_LEAK_DETECTION
-console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
+debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
 let codecModule: Codec | null = null;
@@ -39,7 +43,6 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 export class OpusDecoder {
-    private readonly debug: boolean = false;
     private readonly queue = new Denque<ArrayBuffer | 'end'>();
     private readonly decoder: Decoder;
 
@@ -61,23 +64,22 @@ export class OpusDecoder {
     }
 
     public init(): void {
-        console.assert(this.queue.length === 0, `${LogScope}.init: queue should be empty, check stop/reset logic`);
+        errorLog?.assert(this.queue.length === 0, `init: queue should be empty, check stop/reset logic`);
         this.state = 'waiting';
     }
 
     public pushData(data: ArrayBuffer): void {
-        if (this.debug)
-            console.debug(`${LogScope}.pushData: data size: ${data.byteLength} byte(s)`);
+        debugLog?.log(`pushData: data size: ${data.byteLength} byte(s)`);
         const { state, queue } = this;
-        console.assert(state !== 'uninitialized', `${LogScope}.pushData: uninitialized but got data!`);
-        console.assert(data.byteLength, `${LogScope}.pushData: got zero length data message!`);
+        errorLog?.assert(state !== 'uninitialized', `pushData: uninitialized but got data!`);
+        errorLog?.assert(data.byteLength > 0, `pushData: got zero length data message!`);
         queue.push(data);
         this.processQueue();
     }
 
     public pushEnd(): void {
         const { state, queue } = this;
-        console.assert(state !== 'uninitialized', `${LogScope}.pushEnd: Uninitialized but got "end of data" message!`);
+        errorLog?.assert(state !== 'uninitialized', `pushEnd: Uninitialized but got "end of data" message!`);
         queue.push('end');
         this.processQueue();
     }
@@ -104,9 +106,7 @@ export class OpusDecoder {
 
                 const item = queue.shift();
                 if (item === 'end') {
-                    if (debug) {
-                        console.debug(`${LogScope}.processQueue: end is reached, sending end to worklet and stopping queue processing`);
-                    }
+                    debugLog?.log(`processQueue: end is reached, sending end to worklet and stopping queue processing`);
                     // tell the worklet, that we are at the end of playing
                     const msg: EndDecoderWorkerMessage = { type: 'end' };
                     workletPort.postMessage(msg);
@@ -117,13 +117,13 @@ export class OpusDecoder {
                 const samples = this.decoder.decode(item);
                 if (debug) {
                     if (!!samples && samples.length > 0) {
-                        console.debug(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
-                                          + `returned ${samples.byteLength} `
-                                          + `bytes / ${samples.length} samples`);
+                        debugLog?.log(
+                            `processQueue: opusDecode(${item.byteLength} bytes) `
+                            + `returned ${samples.byteLength} `
+                            + `bytes / ${samples.length} samples`);
                     }
                     else {
-                        console.error(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
-                                          + 'returned empty/unknown result');
+                        errorLog?.log(`processQueue: opusDecode(${item.byteLength} bytes) returned empty/unknown result`);
                     }
                 }
 
@@ -140,7 +140,7 @@ export class OpusDecoder {
             }
         }
         catch (error) {
-            console.error(`${LogScope}.processQueue error:`, error);
+            errorLog?.log(`processQueue error:`, error);
         }
         finally {
             if (this.state === 'decoding')

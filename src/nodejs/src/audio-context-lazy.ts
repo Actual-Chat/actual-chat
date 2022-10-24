@@ -40,7 +40,7 @@ async function resume(audioContext: AudioContext, force = false) : Promise<Audio
         const delayTask = delayAsync(250).then(() => false);
         const result = await Promise.race([resumeTask, delayTask]);
         if (!result)
-            throw `${LogScope}: Couldn't resume AudioContext.`;
+            throw new Error(`${LogScope}: Couldn't resume AudioContext.`);
     }
 
     debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);

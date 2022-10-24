@@ -21,7 +21,7 @@ export class ConsoleLog extends Log {
                 this.log = (...data: unknown[]) => console.error(prefix, ...data);
                 break;
             case LogLevel.None:
-                throw 'level == LogLevel.None';
+                throw new Error('LogLevel.None cannot be used here');
         }
     }
 }

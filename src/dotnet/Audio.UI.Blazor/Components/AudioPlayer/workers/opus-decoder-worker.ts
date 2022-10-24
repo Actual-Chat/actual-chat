@@ -5,12 +5,16 @@
 
 import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
 import { OpusDecoder } from './opus-decoder';
+import { Log, LogLevel } from 'logging-abstractions';
 
 const LogScope: string = 'OpusDecoderWorker'
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+const debug = debugLog != null;
+const debugOnData: boolean = debug && false;
+
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();
-const debug = false;
-const debugPushes: boolean = debug && false;
 
 worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {
@@ -36,7 +40,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.worker.onmessage error:`, error);
+        errorLog?.log(`worker.onmessage error:`, error);
     }
 };
 
@@ -51,8 +55,7 @@ function getDecoder(controllerId: number): OpusDecoder {
 async function onCreate(message: CreateDecoderMessage) {
     const { callbackId, workletPort, controllerId } = message;
     // decoders are pooled with the parent object, so we don't need an object pool here
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onCreate`);
+    debugLog?.log(`-> onCreate(#${controllerId})`);
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);
     const msg: OperationCompletedDecoderWorkerMessage = {
@@ -60,15 +63,13 @@ async function onCreate(message: CreateDecoderMessage) {
         callbackId: callbackId,
     };
     worker.postMessage(msg);
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onCreate completed`);
+    debugLog?.log(`<- onCreate(#${controllerId})`);
 }
 
 function onInit(message: InitDecoderMessage): void {
     const { callbackId, controllerId } = message;
     const decoder = getDecoder(controllerId);
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onInit`);
+    debugLog?.log(`-> onInit(#${controllerId})`);
     decoder.init();
 
     const msg: OperationCompletedDecoderWorkerMessage = {
@@ -76,35 +77,31 @@ function onInit(message: InitDecoderMessage): void {
         callbackId: callbackId,
     };
     worker.postMessage(msg);
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onInit completed`);
+    debugLog?.log(`<- onInit(#${controllerId})`);
 }
 
 function onData(message: DataDecoderMessage): void {
     const { controllerId, buffer, offset, length } = message;
     const decoder = getDecoder(controllerId);
     const data = buffer.slice(offset, offset + length);
-    if (debugPushes)
-        console.debug(`${LogScope}.onData(#${controllerId}): pushing ${data.byteLength} byte(s)`);
+    if (debugOnData)
+        debugLog?.log(`onData(#${controllerId}): pushing ${data.byteLength} byte(s)`);
     decoder.pushData(data);
 }
 
 function onEnd(message: EndDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onEnd`);
+    debugLog?.log(`onEnd(#${controllerId})`);
     decoder.pushEnd();
 }
 
 function onStop(message: StopDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onStop`);
+    debugLog?.log(`-> onStop(#${controllerId})`);
     decoder.stop();
-    if (debug)
-        console.debug(`${LogScope}.onCreate(#${controllerId}): onStop completed`);
+    debugLog?.log(`<- onStop(#${controllerId})`);
 }
 /// #if DEBUG
 self['getDecoder'] = getDecoder;
