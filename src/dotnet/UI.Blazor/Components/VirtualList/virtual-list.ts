@@ -56,6 +56,7 @@ export class VirtualList implements VirtualListAccessor {
     private _top: number | null = null;
     private _viewport: number | null = null;
 
+    private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
     private _scrollTime: number | null = null;
@@ -249,25 +250,27 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
 
-        // make rendered items visible
-        for (const itemRef of this.getNewItemRefs()) {
-            itemRef.classList.remove('new');
-        }
+        requestAnimationFrame(time => {
+            // make rendered items visible
+            for (const itemRef of this.getNewItemRefs()) {
+                itemRef.classList.remove('new');
+            }
 
-        const rs = this.getRenderState();
-        if (rs) {
-            void this.onRenderEnd(rs);
-        }
-        else {
-            this._isRendering = false;
-        }
+            const rs = this.getRenderState();
+            if (rs) {
+                void this.onRenderEnd(rs);
+            }
+            else {
+                this._isRendering = false;
+            }
+        });
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
         for (const entry of entries) {
             const contentBoxSize = Array.isArray(entry.contentBoxSize)
-               ? entry.contentBoxSize[0]
-               : entry.contentBoxSize;
+                ? entry.contentBoxSize[0]
+                : entry.contentBoxSize;
 
             const key = getItemKey(entry.target as HTMLElement);
             this._unmeasuredItems.delete(key);
@@ -332,11 +335,13 @@ export class VirtualList implements VirtualListAccessor {
                     const lastVisibleKey = this._lastVisibleKey;
                     const lastVisibleItemRef = this.getItemRef(lastVisibleKey);
                     if (lastVisibleItemRef) {
-                        const lastItemRef = this.getItemRef(lastKey);
-                        this._pivotKey = lastKey;
-                        this._pivotOffset = lastItemRef.getBoundingClientRect().top;
-                        this._top = this._ref.getBoundingClientRect().top;
-                        this._viewport = this._ref.clientHeight;
+                        requestAnimationFrame(time => {
+                            const lastItemRef = this.getItemRef(lastKey);
+                            this._pivotKey = lastKey;
+                            this._pivotOffset = lastItemRef.getBoundingClientRect().top;
+                            this._top = this._ref.getBoundingClientRect().top;
+                            this._viewport = this._ref.clientHeight;
+                        });
                     }
                 } else {
                     this._pivotKey = null;
@@ -421,10 +426,10 @@ export class VirtualList implements VirtualListAccessor {
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
-                        ? this.getFirstItemKey()
-                        : this._stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
-                            ? this.getLastItemKey()
-                            : null;
+                    ? this.getFirstItemKey()
+                    : this._stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
+                        ? this.getLastItemKey()
+                        : null;
                 if (itemKey == null) {
                     this.setStickyEdge(null);
                 } else {
@@ -479,7 +484,7 @@ export class VirtualList implements VirtualListAccessor {
         }
     }
 
-    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, 'delayHead');
+    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, true);
     private updateClientSideState = serialize(async () => {
         const rs = this.renderState;
         if (this._isDisposed || this._isRendering)
@@ -497,22 +502,32 @@ export class VirtualList implements VirtualListAccessor {
             await Promise.race([whenUpdateCompleted, delayAsync(UpdateTimeout)]);
 
         this._lastPlan = this._plan;
-        debugLog?.log(`updateClientSideState: #${rs.renderIndex}`);
 
-        const viewportHeight = this._ref.clientHeight;
-        const scrollTop = this.getVirtualScrollTop();
-        const state = {
-            renderIndex: rs.renderIndex,
+        const state = await new Promise<VirtualListClientSideState>(resolve => {
+            let state: VirtualListClientSideState = null;
+            requestAnimationFrame(time => {
+                try {
+                    const viewportHeight = this._ref.clientHeight;
+                    const scrollTop = this.getVirtualScrollTop();
+                    state = {
+                        renderIndex: rs.renderIndex,
 
-            scrollTop: scrollTop,
-            viewportHeight: viewportHeight,
-            stickyEdge: this._stickyEdge,
+                        scrollTop: scrollTop,
+                        viewportHeight: viewportHeight,
+                        stickyEdge: this._stickyEdge,
 
-            visibleKeys: [],
-        } as VirtualListClientSideState;
+                        visibleKeys: [],
+                    } as VirtualListClientSideState;
 
-        state.visibleKeys = [...this._visibleItems].sort();
+                    state.visibleKeys = [...this._visibleItems].sort();
+                } finally {
+                    resolve(state);
+                }
+            });
+        });
+
         debugLog?.log(`updateClientSideState: state:`, state);
+
         const expectedRenderIndex = this.renderState.renderIndex;
         if (state.renderIndex != expectedRenderIndex)
             return;
