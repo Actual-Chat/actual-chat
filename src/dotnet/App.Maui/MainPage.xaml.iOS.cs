@@ -23,5 +23,5 @@ public partial class MainPage
     }
 
     private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
-    { }
+        => PlatformWebView = e.WebView;
 }

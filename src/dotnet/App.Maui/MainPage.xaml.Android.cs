@@ -24,6 +24,8 @@ public partial class MainPage
 
     private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
+        PlatformWebView = e.WebView;
+
         if (e.WebView.Context?.GetActivity() is not ComponentActivity activity)
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
