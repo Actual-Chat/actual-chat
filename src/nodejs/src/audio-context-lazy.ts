@@ -4,6 +4,7 @@ import { onDeviceAwake } from 'on-device-awake';
 import { EventHandlerSet } from 'event-handling';
 import { NextInteraction } from 'next-interaction';
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'AudioContextLazy';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

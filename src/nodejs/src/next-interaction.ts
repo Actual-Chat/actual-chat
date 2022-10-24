@@ -1,6 +1,7 @@
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { throttle } from 'promises';
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'NextInteraction';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

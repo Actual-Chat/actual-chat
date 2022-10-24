@@ -9,6 +9,9 @@ import './styles/spinkit.css';
 import './styles/blazor.css';
 import './styles/main.css';
 
+// Logging init
+import 'logging-init';
+
 // Exports
 export * as ui from '../dotnet/UI.Blazor/exports';
 export * as audio from '../dotnet/Audio.UI.Blazor/exports';

@@ -4,11 +4,12 @@ import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-dec
 import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
-import { Log, LogLevel } from 'logging-abstractions';
 /// #else
 /// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
+import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope: string = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

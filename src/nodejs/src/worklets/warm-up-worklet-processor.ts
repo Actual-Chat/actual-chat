@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'WarmUpAudioWorkletProcessor';
 const errorLog = Log.get(LogScope, LogLevel.Error);

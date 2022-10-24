@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

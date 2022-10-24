@@ -1,4 +1,4 @@
-import { Log, LogLevel } from 'logging-abstractions';
+import { Log, LogLevel } from 'logging';
 
 export class ConsoleLog extends Log {
     constructor(

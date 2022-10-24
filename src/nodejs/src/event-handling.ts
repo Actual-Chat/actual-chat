@@ -1,5 +1,6 @@
 import { Disposable } from 'disposable';
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'event-handling';
 const errorLog = Log.get(LogScope, LogLevel.Error);

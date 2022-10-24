@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const CHECK_INTERVAL = 1000;
 const SLEEP_THRESHOLD = 20000;

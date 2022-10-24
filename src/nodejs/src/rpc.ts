@@ -1,5 +1,6 @@
 import { PromiseSource } from 'promises';
 import { Log, LogLevel } from 'logging';
+import 'logging-init';
 
 const LogScope = 'Rpc';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
