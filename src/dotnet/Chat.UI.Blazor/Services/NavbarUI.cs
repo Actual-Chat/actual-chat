@@ -4,10 +4,10 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    protected BrowserInfo BrowserInfo { get; }
-    protected ChatUI ChatUI { get; }
-    protected HistoryUI HistoryUI { get; }
-    protected NavigationManager Nav { get; }
+    private BrowserInfo BrowserInfo { get; }
+    private ChatUI ChatUI { get; }
+    private HistoryUI HistoryUI { get; }
+    private NavigationManager Nav { get; }
     public bool IsVisible { get; private set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
@@ -24,13 +24,6 @@ public class NavbarUI
         historyUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
             IsVisible = ShouldShowNavbar();
-    }
-
-    private void OnAfterLocationChangedHandled(object? sender, AfterLocationChangedHandledEventsArgs e)
-    {
-        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
-            return;
-        InnerChangeVisibility(ShouldShowNavbar());
     }
 
     public void ActivateGroup(string id, string title)
@@ -50,7 +43,7 @@ public class NavbarUI
 
         var screenSize = BrowserInfo.ScreenSize.Value;
         if (!screenSize.IsNarrow()) {
-            InnerChangeVisibility(visible);
+            ChangeVisibilityInternal(visible);
             return;
         }
 
@@ -63,6 +56,13 @@ public class NavbarUI
         }
     }
 
+    private void OnAfterLocationChangedHandled(object? sender, AfterLocationChangedHandledEventsArgs e)
+    {
+        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
+            return;
+        ChangeVisibilityInternal(ShouldShowNavbar());
+    }
+
     private bool ShouldShowNavbar()
     {
         var relativeUrl = Nav.ToBaseRelativePath(Nav.Uri);
@@ -70,7 +70,7 @@ public class NavbarUI
         return showNavbar;
     }
 
-    private void InnerChangeVisibility(bool visible)
+    private void ChangeVisibilityInternal(bool visible)
     {
         IsVisible = visible;
         VisibilityChanged?.Invoke(this, EventArgs.Empty);

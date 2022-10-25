@@ -29,13 +29,13 @@ public sealed class ModalUI
                 $"No modal view component for '{model.GetType()}' model.");
 
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
-            return Task.FromResult(InnerShow(componentType, model, isFullScreen));
+            return Task.FromResult(ShowInternal(componentType, model, isFullScreen));
 
         IModalReference? modalReference = null;
         var tcs = new TaskCompletionSource<IModalReference>();
         HistoryUI.NavigateTo(
             () => {
-                modalReference = InnerShow(componentType, model, isFullScreen);
+                modalReference = ShowInternal(componentType, model, isFullScreen);
                 tcs.SetResult(modalReference);
                 modalReference.ModalInstanceCloseRequested += (s, e) => {
                     e.Handled = true;
@@ -48,7 +48,7 @@ public sealed class ModalUI
         return tcs.Task;
     }
 
-    private IModalReference InnerShow<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
+    private IModalReference ShowInternal<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
     {
         var modalOptions = new ModalOptions
         {

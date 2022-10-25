@@ -1,14 +1,6 @@
 using Microsoft.AspNetCore.Components.WebView;
 using ActualChat.App.Maui.Services;
 using Microsoft.AspNetCore.Components.WebView.Maui;
-#if WINDOWS
-using Microsoft.Web.WebView2.Core;
-using WebView2Control = Microsoft.UI.Xaml.Controls.WebView2;
-#elif ANDROID
-using AWebView = Android.Webkit.WebView;
-#elif IOS || MACCATALYST
-using WebKit;
-#endif
 
 namespace ActualChat.App.Maui;
 
@@ -19,24 +11,6 @@ public partial class MainPage : ContentPage
 
     public BlazorWebView BlazorWebView
         => this._blazorWebView;
-
-#if WINDOWS
-		/// <summary>
-		/// Gets the <see cref="WebView2Control"/> instance that was initialized.
-		/// </summary>
-		public WebView2Control? PlatformWebView { get; private set; }
-#elif ANDROID
-		/// <summary>
-		/// Gets the <see cref="AWebView"/> instance that was initialized.
-		/// </summary>
-		public AWebView? PlatformWebView { get; private set; }
-#elif MACCATALYST || IOS
-		/// <summary>
-		/// Gets the <see cref="WKWebView"/> instance that was initialized.
-		/// the default values to allow further configuring additional options.
-		/// </summary>
-		public WKWebView? PlatformWebView { get; private set; }
-#endif
 
     public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor)
     {
