@@ -43,15 +43,15 @@ public class RightPanelUI
         if (screenSize.IsNarrow()) {
             if (visible)
                 HistoryUI.NavigateTo(
-                    () => InnerChangeVisibility(true),
-                    () => InnerChangeVisibility(false));
+                    () => ChangeVisibilityInternal(true),
+                    () => ChangeVisibilityInternal(false));
             else
                 _ = HistoryUI.GoBack();
         }
         else
-            InnerChangeVisibility(visible);
+            ChangeVisibilityInternal(visible);
     }
 
-    private void InnerChangeVisibility(bool visible)
+    private void ChangeVisibilityInternal(bool visible)
         => _isVisible.Value = visible;
 }
