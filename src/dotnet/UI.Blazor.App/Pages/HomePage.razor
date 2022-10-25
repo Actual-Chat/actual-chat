@@ -23,6 +23,7 @@
     private bool _navigated;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
@@ -49,6 +50,14 @@
             }
         }
         return new(account, link);
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        var m = State.LatestNonErrorValue;
+        var account = m.Account;
+        if (ReferenceEquals(account, Account.Guest))
+            // mark as ready to display Welcome screen
+            AppIsReadyMarker.Set();
     }
 
     public record Model(Account? Account, string Link);
