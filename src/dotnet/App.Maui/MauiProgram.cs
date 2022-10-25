@@ -141,7 +141,10 @@ public static class MauiProgram
                         return true;
                     }
                 }
-                return false;
+                // Move app to background as Home button acts.
+                // It prevents scenario when app is running, but activity is destroyed.
+                activity.MoveTaskToBack(true);
+                return true;
             });
         });
 #endif

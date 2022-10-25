@@ -80,6 +80,8 @@
 
         // Starting less important UI services
         AppPresenceReporter.Start();
+
+        _ = SetAppIsReady();
     }
 
     public void Dispose()
@@ -114,5 +116,32 @@
 
         // Finishing w/ history ui
         await HistoryUI.WhenInitialized;
+    }
+
+    private async Task SetAppIsReady()
+    {
+        await _whenReadyToRender;
+
+        var appIsReadyMarker = Services.GetRequiredService<AppIsReadyMarker>();
+        var browserInfo = Services.GetRequiredService<BrowserInfo>();
+        if (browserInfo.ScreenSize.Value.IsNarrow()) {
+            var relativeUri = Nav.ToBaseRelativePath(Nav.Uri);
+            var isHomePage = Links.Equals(relativeUri, "/");
+            var isChatPage = relativeUri.StartsWith(Links.ChatPage(""), StringComparison.Ordinal);
+            // Home page in narrow view redirects to Chat page.
+            // Chat page will set marker.
+            if (isHomePage || isChatPage) {
+                // Wait to let Chat page set marker.
+                // So far timeout is too big. I would like to put in less than 5 seconds.
+                // But tests with my phone indicate that it takes more that 5 seconds to be ready to
+                // load and display chat list.
+                // So far we definitely exceed limit considered by Android Vitals
+                // which should be less than 5 seconds for cold start.
+                // https://developer.android.com/topic/performance/vitals/launch-time#av
+                await Task.Delay(10000);
+                // After timeout set marker in case it did not happen yet.
+            }
+        }
+        appIsReadyMarker.Set();
     }
 }

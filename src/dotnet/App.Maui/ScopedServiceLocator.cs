@@ -1,3 +1,5 @@
+using Android.Util;
+
 namespace ActualChat.App.Maui;
 
 public static class ScopedServiceLocator
@@ -15,5 +17,10 @@ public static class ScopedServiceLocator
     public static bool IsInitialized => _services != null;
 
     public static void Initialize(IServiceProvider services)
-        => _services = services ?? throw new ArgumentNullException(nameof(services));
+    {
+#if ANDROID
+        Log.Debug(AndroidConstants.LogTag, $"ScopedServiceLocator.Initialize. IsInitialzied: {IsInitialized}");
+#endif
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+    }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Android.Util;
 using Android.Webkit;
 using Java.Interop;
 using Stl.Fusion.Authentication;
@@ -11,6 +12,8 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
+        Log.Debug(AndroidConstants.LogTag, $"MauiBlazorWebViewHandler.ConnectHandler");
+
         base.ConnectHandler(platformView);
         var baseUri = UrlMapper.BaseUri;
         var sessionId = AppSettings.SessionId;
