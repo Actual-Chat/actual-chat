@@ -138,18 +138,17 @@ public static class MauiProgram
     }
 
     private static Symbol GetSessionId()
-    {
-        const string sessionIdStorageKey = "Fusion.SessionId";
-        Symbol sessionId = Symbol.Empty;
-        if (Preferences.ContainsKey(sessionIdStorageKey)) {
-            var value = Preferences.Get(sessionIdStorageKey, null);
-            if (!string.IsNullOrEmpty(value))
-                sessionId = value;
-        }
-        if (sessionId.IsEmpty) {
-            sessionId = new SessionFactory().CreateSession().Id;
-            Preferences.Set(sessionIdStorageKey, sessionId.Value);
-        }
-        return sessionId;
-    }
+        => BackgroundTask.Run(async () => {
+            Symbol sessionId = Symbol.Empty;
+            const string sessionIdStorageKey = "Fusion.SessionId";
+            var storage = SecureStorage.Default;
+            var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(storedSessionId))
+                sessionId = storedSessionId;
+            if (sessionId.IsEmpty) {
+                sessionId = new SessionFactory().CreateSession().Id;
+                await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+            }
+            return sessionId;
+        }).Result;
 }
