@@ -23,15 +23,17 @@
     <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
         <NavbarContent/>
     </div>
-    <div class="flex-x md:hidden justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
-        <div class="text-02 text-lg font-medium">@NavbarUI.ActiveGroupTitle</div>
-        <div class="flex grow"></div>
-        <div class="flex">
-            <ButtonRound Click="OnHideLeftPanelClick" Class="md:!hidden transparent">
-                <i class="icon-arrow-right text-2xl"></i>
-            </ButtonRound>
+    @if (ScreenSize.IsNarrow()) {
+        <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
+            <div class="text-02 text-lg font-medium">@NavbarUI.ActiveGroupTitle</div>
+            <div class="flex grow"></div>
+            <div class="flex">
+                <ButtonRound Click="OnHideLeftPanelClick" Class="transparent">
+                    <i class="icon-arrow-right text-2xl"></i>
+                </ButtonRound>
+            </div>
         </div>
-    </div>
+    }
 </div>
 
 @code {
@@ -40,6 +42,8 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override void OnInitialized() {
         NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;

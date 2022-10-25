@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.WebView;
 using ActualChat.App.Maui.Services;
+using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
@@ -7,6 +8,9 @@ public partial class MainPage : ContentPage
 {
     private readonly ClientAppSettings _appSettings;
     private readonly NavigationInterceptor _navInterceptor;
+
+    public BlazorWebView BlazorWebView
+        => this._blazorWebView;
 
     public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor)
     {

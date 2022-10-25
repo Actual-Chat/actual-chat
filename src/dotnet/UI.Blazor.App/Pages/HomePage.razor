@@ -1,5 +1,6 @@
 @page "/"
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
@@ -11,17 +12,24 @@
     if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
         <Welcome/>
     }
-    else if (!m.DefaultChatId.IsEmpty) {
-        Nav.NavigateTo(Links.ChatPage(m.DefaultChatId));
+    else if (!string.IsNullOrEmpty(m.Link) && !_navigated) {
+        _navigated = true; // prevents multiple calls
+        // Do automatic redirect on first load.
+        Nav.NavigateTo(m.Link, false, true);
     }
 }
 
 @code {
+    private bool _navigated;
+
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
@@ -31,9 +39,18 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
-        return new(account, chat?.Id ?? Symbol.Empty);
+        string link = "";
+        if (HistoryUI.IsInitialLocation) {
+            if (BrowserInfo.ScreenSize.Value.IsNarrow())
+                link = Links.ChatPage("");
+            else {
+                var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
+                if (chat != null)
+                    link = Links.ChatPage(chat.Id);
+            }
+        }
+        return new(account, link);
     }
 
-    public record Model(Account? Account, Symbol DefaultChatId);
+    public record Model(Account? Account, string Link);
 }

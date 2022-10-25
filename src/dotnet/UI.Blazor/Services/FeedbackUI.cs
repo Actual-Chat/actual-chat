@@ -23,7 +23,7 @@ public class FeedbackUI
             return;
 
         var model = new FeatureRequestModal.Model { FeatureTitle = featureTitle };
-        _modal = _modalUI.Show(model);
+        _modal = await _modalUI.Show(model);
         await _modal.WhenClosed.ConfigureAwait(false);
         var hasSubmitted = model.HasSubmitted;
         _modal = null;

@@ -13,8 +13,7 @@
 </SideNav>
 
 @code {
-    [Inject]
-    private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override void OnInitialized() {
         NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;

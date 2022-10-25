@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -7,9 +6,9 @@ using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
+using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui;
 
@@ -24,7 +23,8 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-            });
+            })
+            .ConfigureLifecycleEvents(ConfigureLifecycleEvents);
 
         var fileProvider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
         var files = fileProvider.GetDirectoryContents("").ToArray();
@@ -121,6 +121,29 @@ public static class MauiProgram
         return "https://dev.actual.chat/";
 #else
         return "https://actual.chat/";
+#endif
+    }
+
+    private static void ConfigureLifecycleEvents(ILifecycleBuilder events)
+    {
+#if ANDROID
+        events.AddAndroid(android => {
+            android.OnBackPressed(activity => {
+                // Sometimes I observe a situation that BlazorWebView contains 2 history items and can go back,
+                // but it doesn't handle BackPressed event.
+                // This handler forces BackPressed handling on BlazorWebView and
+                // prevents the situation that app is closed on BackPressed
+                // while BlazorWebView still can go back.
+                if (Application.Current?.MainPage is MainPage mainPage) {
+                    var webView = mainPage.PlatformWebView;
+                    if (webView != null && webView.CanGoBack()) {
+                        webView.GoBack();
+                        return true;
+                    }
+                }
+                return false;
+            });
+        });
 #endif
     }
 

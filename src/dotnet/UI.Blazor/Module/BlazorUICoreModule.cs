@@ -80,6 +80,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ClipboardUI>();
         services.AddScoped<InteractiveUI>();
         services.AddScoped<ErrorUI>();
+        services.AddScoped<HistoryUI>();
         services.AddScoped<ModalUI>();
         services.AddScoped<FocusUI>();
         services.AddScoped<KeepAwakeUI>();
@@ -91,7 +92,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Actual.chat-specific UI services
         services.AddScoped<ThemeUI>();
         services.AddScoped<FeedbackUI>();
-        services.AddScoped<NavbarUI>();
         services.AddScoped<ImageViewerUI>();
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
@@ -101,5 +101,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();
+
+        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
     }
+
+    private void InitializeHistoryUI(IServiceProvider services)
+        => _ = services.GetRequiredService<HistoryUI>();
 }

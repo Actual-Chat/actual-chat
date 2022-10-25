@@ -1,5 +1,6 @@
 ﻿@using System.Collections.ObjectModel
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
 @using Microsoft.AspNetCore.Components.Routing
 @namespace Blazored.Modal
 
@@ -13,6 +14,7 @@
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ModalService ModalService { get; set; } = default!;
 
@@ -24,6 +26,7 @@
     private readonly Collection<ModalReference> _modals = new();
     private readonly ModalOptions _globalModalOptions = new();
     private bool _haveActiveModals;
+    private string _lastLocation = "";
 
     internal event Action? OnModalClosed;
 
@@ -34,7 +37,8 @@
 
         ModalService.OnModalInstanceAdded += Update;
         ModalService.OnModalCloseRequested += CloseInstance;
-        Nav.LocationChanged += CancelModals;
+        _lastLocation = Nav.Uri;
+        Nav.LocationChanged += OnLocationChanged;
 
         _globalModalOptions.Class = Class;
         _globalModalOptions.PositionCustomClass = PositionCustomClass;
@@ -42,23 +46,17 @@
         _globalModalOptions.ActivateFocusTrap = ActivateFocusTrap;
     }
 
-    private async Task CloseInstance(ModalReference? modal)
-    {
-        if (modal?.ModalInstanceRef != null) {
-            // Gracefully close the modal
-            await modal.ModalInstanceRef.CloseAsync();
-            if (!_modals.Any())
-                await ClearBodyStyles();
-            OnModalClosed?.Invoke();
-        }
-        else {
-            await DismissInstance(modal);
-        }
-    }
+    private Task CloseInstance(ModalReference? modal)
+        => DismissInstance(modal);
 
     internal Task DismissInstance(Guid id)
     {
         var reference = GetModalReference(id);
+        if (reference != null) {
+            var handled = reference.RaiseModalInstanceCloseRequested();
+            if (handled)
+                return Task.CompletedTask;
+        }
         return DismissInstance(reference);
     }
 
@@ -74,7 +72,15 @@
         }
     }
 
-    private async void CancelModals(object? sender, LocationChangedEventArgs e)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        var locationHasChanged = !OrdinalEquals(_lastLocation, e.Location);
+        _lastLocation = e.Location;
+        if (BrowserInfo.ScreenSize.Value.IsNarrow() && !locationHasChanged)
+            return;
+        _ = CancelModals();
+    }
+
+    private async Task CancelModals()
     {
         if (_modals.Count == 0 && !_haveActiveModals)
             return;

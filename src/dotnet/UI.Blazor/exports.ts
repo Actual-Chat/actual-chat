@@ -25,6 +25,7 @@ import './Components/Tooltip/tooltip.css'
 
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/FocusUI/focus-ui'
+export * from './Services/HistoryUI/history-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'
