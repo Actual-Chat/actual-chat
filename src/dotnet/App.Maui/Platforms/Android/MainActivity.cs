@@ -46,9 +46,9 @@ public class MainActivity : MauiAppCompatActivity
     {
         var appIsReady = false;
         var appIsCreated = false;
-        if (ScopedServiceLocator.IsInitialized) {
+        if (ScopedServicesAccessor.IsInitialized) {
             appIsCreated = true;
-            var marker = ScopedServiceLocator.Services.GetRequiredService<AppIsReadyMarker>();
+            var marker = ScopedServicesAccessor.ScopedServices.GetRequiredService<AppIsReadyMarker>();
             appIsReady = marker.IsReady;
             // If app is put to background with back button
             // and user brings app to foreground by launching app icon or picking app from recents,
@@ -228,8 +228,8 @@ public class MainActivity : MauiAppCompatActivity
         }
 
         data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url);
-        if (!url.IsNullOrEmpty() && ScopedServiceLocator.IsInitialized) {
-            var handler = ScopedServiceLocator.Services.GetRequiredService<NotificationNavigationHandler>();
+        if (!url.IsNullOrEmpty() && ScopedServicesAccessor.IsInitialized) {
+            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
             handler.Handle(url);
         }
     }
@@ -237,7 +237,7 @@ public class MainActivity : MauiAppCompatActivity
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
         public bool OnPreDraw()
-            => ScopedServiceLocator.IsInitialized
-                && ScopedServiceLocator.Services.GetRequiredService<AppIsReadyMarker>().IsReady;
+            => ScopedServicesAccessor.IsInitialized
+                && ScopedServicesAccessor.ScopedServices.GetRequiredService<AppIsReadyMarker>().IsReady;
     }
 }

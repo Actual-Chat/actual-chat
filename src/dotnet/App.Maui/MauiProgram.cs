@@ -2,7 +2,6 @@ using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.FileProviders;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
@@ -25,19 +24,6 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
             .ConfigureLifecycleEvents(ConfigureLifecycleEvents);
-
-        var fileProvider = new EmbeddedFileProvider(typeof(MauiProgram).Assembly);
-        var files = fileProvider.GetDirectoryContents("").ToArray();
-        builder.Configuration.AddJsonFile(
-            fileProvider,
-            "appsettings.Development.json",
-            optional: true,
-            reloadOnChange: false);
-        builder.Configuration.AddJsonFile(
-            fileProvider,
-            "appsettings.json",
-            optional: true,
-            reloadOnChange: false);
 
         var services = builder.Services;
         services.AddMauiBlazorWebView();
@@ -100,23 +86,6 @@ public static class MauiProgram
 
     private static string GetBaseUrl()
     {
-        // Host address for local debugging
-        // https://devblogs.microsoft.com/xamarin/debug-local-asp-net-core-web-apis-android-emulators/
-        // https://developer.android.com/studio/run/emulator-networking.html
-        // Unfortunately, this base address does not work in WSA.
-        // TODO(DF): find solution for WSA
-        var ipAddress = DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
-        var baseUrl = $"http://{ipAddress}:7080/";
-
-        // To use BaseUri : https://local.actual.chat
-        // We need to modify hosts file on Android emulator similarly to how we did it for Windows hosts.
-        // Using instructions from https://csimpi.medium.com/android-emulator-add-hosts-file-f4c73447453e,
-        // add line to the hosts file:
-        // 10.0.2.2		local.actual.chat
-        // Emulator has to be started with -writable-system flag every time to see hosts changes
-        // See comments to https://stackoverflow.com/questions/41117715/how-to-edit-etc-hosts-file-in-android-studio-emulator-running-in-nougat/47622017#47622017
-
-        //return "https://local.actual.chat";
 #if ISDEVMAUI
         return "https://dev.actual.chat/";
 #else
@@ -163,9 +132,9 @@ public static class MauiProgram
         services.AddTransient<MainPage>();
 
         //Firebase messaging
-        #if ANDROID
+#if ANDROID
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
-        #endif
+#endif
     }
 
     private static Symbol GetSessionId()

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework />
@@ -87,16 +87,13 @@
 
   <ItemGroup>
     <!-- App Icon -->
-    <!--<MauiIcon Include="Resources\appicon.svg" ForegroundFile="Resources\appiconfg.svg" Color="#512BD4" />-->
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
-    <!--<MauiSplashScreen Include="Resources\appiconfg.svg" Color="#512BD4" BaseSize="128,128" />-->
     <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" />
 
     <!-- Images -->
     <MauiImage Include="Resources\Images\*" />
-    <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
@@ -141,34 +138,23 @@
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="appsettings.Development.json" />
-    <EmbeddedResource Include="appsettings.json" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(IsDevMaui)' == 'true'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' != 'true'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Resources\Images\" />
+  </ItemGroup>
 
   <!-- Versions -->
   <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
-  <Target Name="FixVersionForAndroid"
-            Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
-            BeforeTargets="_GetAndroidPackageName"
-            DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForAndroid" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
 
-  <Target Name="FixVersionForIOS"
-          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'"
-          BeforeTargets="_CompileAppManifest"
-          DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForIOS" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" BeforeTargets="_CompileAppManifest" DependsOnTargets="SetApplicationVersion" />
 
-  <Target Name="FixVersionForWindows"
-          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"
-          BeforeTargets="MauiGeneratePackageAppxManifest"
-          DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForWindows" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" BeforeTargets="MauiGeneratePackageAppxManifest" DependsOnTargets="SetApplicationVersion" />
 
   <Target Name="SetApplicationVersion" DependsOnTargets="GetBuildVersion">
 

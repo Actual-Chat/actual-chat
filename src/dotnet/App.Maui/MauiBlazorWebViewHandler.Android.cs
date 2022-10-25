@@ -88,7 +88,7 @@ public partial class MauiBlazorWebViewHandler
 
             const string contentTypeKey = "Content-Type";
             var contentType = resourceResponse.ResponseHeaders?[contentTypeKey];
-            if (contentType == resourceResponse.MimeType && contentType == "application/wasm")
+            if (OrdinalEquals(contentType, resourceResponse.MimeType) && OrdinalEquals(contentType, "application/wasm"))
                 resourceResponse.ResponseHeaders?.Remove(contentTypeKey);
             return resourceResponse;
         }

@@ -8,7 +8,7 @@ public class MauiBlazorApp : UI.Blazor.App.App
 
     protected override void OnInitialized()
     {
-        ScopedServiceLocator.Initialize(Services);
+        ScopedServicesAccessor.ScopedServices = Services;
         base.OnInitialized();
     }
 }

@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Services;
 
 public record ClientAppSettings
 {

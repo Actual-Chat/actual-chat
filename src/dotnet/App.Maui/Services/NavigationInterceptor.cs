@@ -11,8 +11,8 @@ public class NavigationInterceptor
 
     internal bool TryIntercept(Uri uri)
     {
-        var nav = ScopedServiceLocator.IsInitialized
-            ? ScopedServiceLocator.Services.GetRequiredService<NavigationManager>()
+        var nav = ScopedServicesAccessor.IsInitialized
+            ? ScopedServicesAccessor.ScopedServices.GetRequiredService<NavigationManager>()
             : null;
         if (nav == null)
             return false;
