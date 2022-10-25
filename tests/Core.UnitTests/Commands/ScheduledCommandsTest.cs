@@ -25,13 +25,10 @@ public class ScheduledCommandsTest: TestBase
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        var commandTask = commander.Call(new TestCommand(null));
+        await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await commandTask.ConfigureAwait(false);
-        var testClock = new TestClock();
-        await testClock.Delay(1000).ConfigureAwait(false);
-
+        await Task.Delay(500);
         testService.ProcessedEvents.Count.Should().Be(1);
     }
 
@@ -56,13 +53,10 @@ public class ScheduledCommandsTest: TestBase
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
-        var commandTask = commander.Call(new TestCommand2());
+        await commander.Call(new TestCommand2());
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await commandTask.ConfigureAwait(false);
-        var testClock = new TestClock();
-        await testClock.Delay(2000).ConfigureAwait(false);
-
+        await Task.Delay(500);
         testService.ProcessedEvents.Count.Should().Be(2);
     }
 }

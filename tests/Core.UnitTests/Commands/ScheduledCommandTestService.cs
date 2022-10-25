@@ -7,29 +7,6 @@ public class ScheduledCommandTestService
 {
     public readonly ConcurrentQueue<IEvent> ProcessedEvents = new ();
 
-    [EventHandler]
-    public virtual Task ProcessTestEvent2(TestEvent2 @event, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return Task.CompletedTask;
-
-        ProcessedEvents.Enqueue(@event);
-        return Task.CompletedTask;
-    }
-
-    [EventHandler]
-    public virtual Task ProcessTestEvent(TestEvent @event, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return Task.CompletedTask;
-
-        if (@event.Error != null)
-            throw new InvalidOperationException(@event.Error);
-
-        ProcessedEvents.Enqueue(@event);
-        return Task.CompletedTask;
-    }
-
     [CommandHandler]
     public virtual Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
     {
@@ -48,5 +25,28 @@ public class ScheduledCommandTestService
 
         new TestEvent2().EnqueueOnCompletion(Queues.Default);
         return Task.CompletedTask;
+    }
+
+    [EventHandler]
+    public virtual async Task ProcessTestEvent(TestEvent @event, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        if (@event.Error != null)
+            throw new InvalidOperationException(@event.Error);
+
+        await Task.Delay(250, cancellationToken);
+        ProcessedEvents.Enqueue(@event);
+    }
+
+    [EventHandler]
+    public virtual async Task ProcessTestEvent2(TestEvent2 @event, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        await Task.Delay(250, cancellationToken);
+        ProcessedEvents.Enqueue(@event);
     }
 }
