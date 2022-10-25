@@ -10,6 +10,8 @@ using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
 using ActualChat.UI.Blazor.Services;
+using Android.Views;
+using ActualChat.UI.Blazor;
 
 namespace ActualChat.App.Maui;
 
@@ -42,7 +44,26 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        var appIsReady = false;
+        var appIsCreated = false;
+        if (ScopedServiceLocator.IsInitialized) {
+            appIsCreated = true;
+            var marker = ScopedServiceLocator.Services.GetRequiredService<AppIsReadyMarker>();
+            appIsReady = marker.IsReady;
+            // If app is put to background with back button
+            // and user brings app to foreground by launching app icon or picking app from recents,
+            // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
+            // MainActivity is created again, BlazorWebView and MauiBlazorApp also created also,
+            // But new instance of MauiBlazorApp uses same service provider and some services are initialized again.
+            // Which is not expected.
+            // As result, splash screen is hid very early and user sees index.html and other subsequent views.
+            // TODO: to think how we can gracefully handle this partial recreation.
+        }
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity.OnCreate. Blazor app is created: {appIsCreated}, is ready: {appIsReady}");
+
         base.OnCreate(savedInstanceState);
+
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity. base.OnCreate completed");
 
         // atempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -75,6 +96,11 @@ public class MainActivity : MauiAppCompatActivity
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
+
+        // Keep the splash screen on-screen for longer periods
+        // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
+        var content = FindViewById(Android.Resource.Id.Content);
+        content!.ViewTreeObserver!.AddOnPreDrawListener(new PreDrawListener());
     }
 
     protected override void OnStart()
@@ -87,6 +113,12 @@ public class MainActivity : MauiAppCompatActivity
     {
         Log.Debug(AndroidConstants.LogTag, "MainActivity.OnStop");
         base.OnStop();
+    }
+
+    protected override void OnDestroy()
+    {
+        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnDestroy");
+        base.OnDestroy();
     }
 
     protected override void OnNewIntent(Intent? intent)
@@ -200,5 +232,12 @@ public class MainActivity : MauiAppCompatActivity
             var handler = ScopedServiceLocator.Services.GetRequiredService<NotificationNavigationHandler>();
             handler.Handle(url);
         }
+    }
+
+    private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
+    {
+        public bool OnPreDraw()
+            => ScopedServiceLocator.IsInitialized
+                && ScopedServiceLocator.Services.GetRequiredService<AppIsReadyMarker>().IsReady;
     }
 }
