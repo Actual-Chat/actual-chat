@@ -480,7 +480,7 @@ export class VirtualList implements VirtualListAccessor {
         }
     }
 
-    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, true);
+    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, 'delayHead');
     private updateClientSideState = serialize(async () => {
         const rs = this.renderState;
         if (this._isDisposed || this._isRendering)
@@ -526,7 +526,7 @@ export class VirtualList implements VirtualListAccessor {
             await this.requestData();
     }, 2);
 
-    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateVisibleKeysInterval, true);
+    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateVisibleKeysInterval, 'delayHead');
     private updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
