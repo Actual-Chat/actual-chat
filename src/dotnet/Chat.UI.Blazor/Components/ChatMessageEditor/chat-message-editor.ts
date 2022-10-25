@@ -1,8 +1,12 @@
 import './chat-message-editor.css';
 import { throttle } from 'promises';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'MessageEditor';
+const LogScope = 'MessageEditor';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
@@ -88,7 +92,7 @@ export class ChatMessageEditor {
         const payloadJson = JSON.stringify(payload);
         formData.append('payload_json', payloadJson);
 
-        console.log(`${LogScope}: Sending post message request with ${attachments.length} attachment(s)`);
+        debugLog?.log(`post: sending request with ${attachments.length} attachment(s)`);
         let url = 'api/chats/' + chatId + '/message';
         // @ts-ignore
         const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
@@ -203,7 +207,7 @@ export class ChatMessageEditor {
             const minHeight = Math.min(height, this.lastHeight);
             const maxHeight = Math.max(height, this.lastHeight);
             const keyboardHeight = maxHeight - minHeight;
-            console.debug(`${LogScope}.updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
+            debugLog?.log(`updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
             if (keyboardHeight >= 0.2 * maxHeight) {
                 // Mobile keyboard pull-out / pull-in
                 const isNarrowMode = Math.abs(height - minHeight) < 0.01; // FP: height == minHeight

@@ -1,4 +1,9 @@
-const LogScope: string = 'ChromiumEchoCancellation';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'ChromiumEchoCancellation';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.
@@ -14,7 +19,7 @@ const offerOptions = {
 };
 
 const onChromiumAecError = (e: any) => {
-    console.error(`${LogScope}: RTCPeerConnection loopback initialization error:`, e);
+    errorLog?.log(`onChromiumAecError: RTCPeerConnection loopback initialization error:`, e);
 };
 
 let delayedReconnectTimeout: number | null = null;
@@ -131,7 +136,7 @@ function closeSilently(connection: RTCPeerConnection) {
         connection.close();
     }
     catch (error) {
-        console.error(`${LogScope}: can't close peer connection, error:`, error, ', connection:', connection);
+        errorLog?.log(`closeSilently: can't close peer connection, error:`, error, ', connection:', connection);
     }
 }
 
@@ -141,8 +146,9 @@ function delayedReconnect(cleanup: () => void, stream: MediaStream): void {
 
     delayedReconnectTimeout = self.setTimeout(() => {
         delayedReconnectTimeout = null;
-        console.warn(`${LogScope}: recreate RTCPeerConnection loopback `
-            + `because the local connection was disconnected for 10s`);
+        warnLog?.log(
+            `delayedReconnect: recreating RTCPeerConnection loopback ` +
+            `because the connection was disconnected for 10 seconds`);
         cleanup();
         void enableChromiumAec(stream);
     }, 10000);

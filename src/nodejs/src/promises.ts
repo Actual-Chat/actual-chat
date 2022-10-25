@@ -2,6 +2,7 @@ import { Log, LogLevel } from 'logging';
 
 const LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
@@ -154,7 +155,7 @@ class Call<T extends (...args: unknown[]) => unknown> {
             return this.invoke();
         }
         catch (error) {
-            console.error(`${LogScope}.Call.invokeSafely failed with an error:`, error)
+            errorLog?.log(`Call.invokeSafely: unhandled error:`, error)
         }
     }
 }

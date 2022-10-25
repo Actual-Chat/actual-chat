@@ -1,26 +1,30 @@
 import { ObjectPool } from 'object-pool';
 import { OpusMediaRecorder } from './opus-media-recorder';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'AudioRecorder';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class AudioRecorder {
-    private static recorderPool =
-        new ObjectPool<OpusMediaRecorder>((debug: boolean) => new OpusMediaRecorder(debug));
-    private readonly debug: boolean = false;
+    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
     private readonly sessionId: string;
     private readonly whenRecorderAvailable: Promise<OpusMediaRecorder>;
     private isRecording: boolean = false;
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, debug: boolean) {
+    public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
+        return new AudioRecorder(blazorRef, sessionId);
+    }
+
+    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
         this.blazorRef = blazorRef;
         this.sessionId = sessionId;
         this.isMicrophoneAvailable = false;
-        this.debug = debug;
 
-        if (blazorRef == null)
-            console.error(`${LogScope}.ctor: blazorRef == null`);
+        errorLog?.assert(blazorRef != null, `blazorRef == null`);
 
         // Temporarily
         if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
@@ -33,9 +37,9 @@ export class AudioRecorder {
             this.isMicrophoneAvailable = true;
         }
 
-        this.whenRecorderAvailable = AudioRecorder.recorderPool.get(this.debug);
-        this.whenRecorderAvailable.catch(ex => {
-            console.error(`${LogScope}.constructor: recorder initialization failed.`, ex);
+        this.whenRecorderAvailable = AudioRecorder.recorderPool.get();
+        this.whenRecorderAvailable.catch(error => {
+            errorLog?.log(`constructor: recorder initialization error:`, error);
         });
     }
 
@@ -44,18 +48,14 @@ export class AudioRecorder {
         await AudioRecorder.recorderPool.release(recorder);
     }
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string, isDebug: boolean) {
-        return new AudioRecorder(blazorRef, sessionId, isDebug);
-    }
-
     public async canRecord(): Promise<boolean> {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
             stream.getAudioTracks().forEach(t => t.stop());
             stream.getVideoTracks().forEach(t => t.stop());
             return true;
-        } catch (ex: any) {
-            console.error(`${LogScope}.isMicrophoneAvailable: microphone is unavailable.`, ex);
+        } catch (error) {
+            errorLog?.log(`canRecord: microphone is unavailable, error:`, error);
             return false;
         }
     }
@@ -66,7 +66,7 @@ export class AudioRecorder {
                 return;
 
             if (!this.isMicrophoneAvailable) {
-                console.error(`${LogScope}.startRecording: microphone is unavailable.`);
+                errorLog?.log(`startRecording: microphone is unavailable`);
                 return;
             }
 
@@ -75,8 +75,8 @@ export class AudioRecorder {
             await recorder.start(sessionId, chatId);
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
-        catch (e) {
-            console.error(e);
+        catch (error) {
+            errorLog?.log(`startRecording: unhandled error:`, error);
         }
         finally {
             this.isRecording = true;
@@ -87,21 +87,19 @@ export class AudioRecorder {
         try {
             if (!this.isRecording)
                 return;
-            if (this.debug)
-                console.log(`${LogScope}.stopRecording: started`);
+            debugLog?.log(`-> stopRecording`);
 
             const recorder = await this.whenRecorderAvailable;
             await recorder.stop();
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
-            if (this.debug)
-                console.log(`${LogScope}.stopRecording: completed`);
         }
-        catch(e) {
-            console.error(e);
+        catch (error) {
+            errorLog?.log(`stopRecording: unhandled error:`, error);
         }
         finally {
             this.isRecording = false;
+            debugLog?.log(`<- stopRecording`);
         }
     }
 }

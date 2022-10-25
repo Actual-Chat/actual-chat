@@ -1,22 +1,28 @@
 import Denque from 'denque';
 import {
-    NodeMessage,
-    StateChangedProcessorMessage,
-    StateProcessorMessage,
     GetStateNodeMessage,
     InitNodeMessage,
+    NodeMessage,
     OperationCompletedProcessorMessage,
     ProcessorState,
+    StateChangedProcessorMessage,
+    StateProcessorMessage,
 } from './feeder-audio-worklet-message';
-import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from '../workers/opus-decoder-worker-message';
+import {
+    DecoderWorkerMessage,
+    EndDecoderWorkerMessage,
+    SamplesDecoderWorkerMessage,
+} from '../workers/opus-decoder-worker-message';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'FeederProcessor';
+const LogScope = 'FeederProcessor';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 const SAMPLE_RATE = 48000;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
-
-    private readonly debug: boolean = false;
     private readonly chunks = new Denque<Float32Array | 'end'>();
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
@@ -61,7 +67,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
-        const { debug, chunks, isPlaying, isPaused, samplesLowThreshold, tooMuchBuffered } = this;
+        const { chunks, isPlaying, isPaused, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
             return true;
@@ -70,9 +76,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const output = outputs[0];
         // we only support mono output at the moment
         const channel = output[0];
-        if (debug) {
-            console.assert(channel.length === 128, `${LogScope}.process: WebAudio's render quantum size must be 128`);
-        }
+        warnLog?.assert(channel.length === 128, `process: WebAudio's render quantum size must be 128`);
 
         if (!isPlaying || isPaused) {
             // write silence, because we don't playing
@@ -85,8 +89,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             if (chunk !== undefined) {
                 if (chunk === 'end') {
                     channel.fill(0, offset);
-                    if (debug)
-                        console.debug('Feeder: reached end of stream');
+                    debugLog?.log(`process: reached end of stream`);
                     this.onStopMessage();
                     break;
                 }
@@ -180,9 +183,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private reset(): void {
-        const { debug } = this;
-        if (debug)
-            console.debug(`${LogScope}: reset`);
+        debugLog?.log(`reset`);
         this.isPlaying = false;
         this.isPaused = false;
         this.isStarving = false;
@@ -192,36 +193,30 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private onGetState(message: GetStateNodeMessage) {
-        const { debug } = this;
         const msg: StateProcessorMessage = {
             type: 'state',
             callbackId: message.callbackId,
             bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
             playbackTime: this.playbackTime,
         };
-        if (debug)
-            console.debug(`${LogScope}: onGetState, message =`, msg);
+        debugLog?.log(`onGetState, message:`, msg);
         this.port.postMessage(msg);
     }
 
     private onStopMessage() {
-        const { isPlaying: wasPlaying, debug } = this;
+        const { isPlaying: wasPlaying } = this;
         this.reset();
 
         if (wasPlaying) {
-            if (debug)
-                console.debug(`${LogScope}: onStopMessage`);
+            debugLog?.log(`onStopMessage`);
             this.postStateChangedMessage('stopped');
         }
         this.postStateChangedMessage('ended');
     }
 
     private onPauseMessage(isPause : boolean) {
-        const { isPlaying: wasPlaying, isPaused : wasPaused, debug } = this;
-
         if (this.isPaused === isPause) {
-            if (debug)
-                console.debug(`${LogScope}: already in pause state: ${this.isPaused}`);
+            debugLog?.log(`onPauseMessage: already in pause state:`, this.isPaused);
             return;
         }
         this.isPaused = isPause;
@@ -263,7 +258,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
         }
     };
 

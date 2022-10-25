@@ -3,6 +3,12 @@ import { Range } from './range';
 import { RangeExt } from './range-ext';
 import { VirtualListClientSideState } from './virtual-list-client-side-state';
 import { VirtualListAccessor } from './virtual-list-accessor';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'VirtualListRenderPlan';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class VirtualListRenderPlan {
     public viewport?: Range<number> = null;
@@ -87,7 +93,7 @@ export class VirtualListRenderPlan {
     private updateViewport(): void {
         const viewport = VirtualListRenderPlan.getClientSideViewport(this.virtualList.clientSideState);
         if (!viewport) {
-            console.warn('viewport is null');
+            warnLog?.log('updateViewport: viewport is null');
             if (this.viewport == null) {
                 return;
             }

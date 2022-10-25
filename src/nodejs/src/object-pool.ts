@@ -10,21 +10,21 @@ export function isResettable<T>(obj: T | Resettable): obj is Resettable {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['reset'] === 'function';
 }
 
-/** Usage: new ObjectPool<Foo, [number, number]>((arg1, arg2) => new Foo(arg1, arg2)); can be async. */
-export class ObjectPool<T, AllocArgs extends unknown[] = unknown[]>
+/** Usage: new ObjectPool<Foo>() => new Foo()); can be async. */
+export class ObjectPool<T>
 {
     private readonly pool = new Denque<T>();
-    private readonly factory: (...args: AllocArgs) => T | PromiseLike<T>;
+    private readonly factory: () => T | PromiseLike<T>;
 
-    constructor(factory: (...args: AllocArgs) => T | PromiseLike<T>) {
+    constructor(factory: () => T | PromiseLike<T>) {
         this.factory = factory;
     }
 
     /** Creates an object (with support of async initialization) or returns it from the pool */
-    public async get(...args: AllocArgs): Promise<T> {
+    public async get(): Promise<T> {
         let item = this.pool.pop();
         if (item === undefined)
-            item = await this.factory(...args);
+            item = await this.factory();
         return item;
     }
 

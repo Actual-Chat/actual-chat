@@ -8,7 +8,7 @@ import { OpusDecoder } from './opus-decoder';
 import { Log, LogLevel } from 'logging';
 import 'logging-init';
 
-const LogScope: string = 'OpusDecoderWorker'
+const LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 const debug = debugLog != null;
@@ -41,7 +41,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
         }
     }
     catch (error) {
-        errorLog?.log(`worker.onmessage error:`, error);
+        errorLog?.log(`worker.onmessage: unhandled error:`, error);
     }
 };
 

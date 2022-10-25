@@ -2,9 +2,12 @@ import { audioContextLazy } from 'audio-context-lazy';
 import { delayAsync } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { NextInteraction } from 'next-interaction';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'InteractiveUI';
-const debug = true;
+const LogScope = 'InteractiveUI';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class InteractiveUI {
     private static backendRef: DotNet.DotNetObject = null;
@@ -16,8 +19,7 @@ export class InteractiveUI {
     public static isInteractiveChanged: EventHandlerSet<boolean> = new EventHandlerSet<boolean>();
 
     public static init(backendRef: DotNet.DotNetObject) {
-        if (debug)
-            console.debug(`${LogScope}: init()`);
+        debugLog?.log(`init`);
         this.backendRef = backendRef;
         this.onAudioContextChanged = audioContextLazy.audioContextChanged.add(() => this.trySync());
         NextInteraction.start();
@@ -28,8 +30,7 @@ export class InteractiveUI {
         if (this.isInteractive == isInteractive)
             return;
 
-        if (debug)
-            console.debug(`${LogScope}: isInteractive():`, isInteractive);
+        debugLog?.log(`isInteractive:`, isInteractive);
         this.isInteractive = isInteractive;
         this.isInteractiveChanged.triggerSilently(isInteractive);
         if (this.isSyncing)
@@ -50,13 +51,12 @@ export class InteractiveUI {
                 if (isInteractive == this.backendIsInteractive)
                     break;
                 try {
-                    if (debug)
-                        console.debug(`${LogScope}: sync(): calling IsInteractiveChanged(${isInteractive}) on backend`);
+                    debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);
                     await this.backendRef.invokeMethodAsync("IsInteractiveChanged", isInteractive);
                     this.backendIsInteractive = isInteractive;
                 }
                 catch (error) {
-                    console.error(`${LogScope}: sync() failed to reach the backend, error:`, error);
+                    errorLog?.log(`sync: failed to reach the backend, error:`, error);
                     await delayAsync(1000);
                 }
             }

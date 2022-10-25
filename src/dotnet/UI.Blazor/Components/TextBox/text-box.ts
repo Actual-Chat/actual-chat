@@ -1,5 +1,11 @@
 import { Disposable } from 'disposable';
 import { Subject, takeUntil, debounceTime, fromEvent } from 'rxjs';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'TextBox';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class TextBox implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
@@ -15,7 +21,7 @@ export class TextBox implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .pipe(debounceTime(800))
             .subscribe(() => {
-                console.log("text-box, emit on change. value: " + input.value);
+                debugLog?.log(`input handler, value:`, input.value);
                 input.dispatchEvent(new Event('change'));
             });
     }

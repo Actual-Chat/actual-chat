@@ -6,8 +6,12 @@ import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'AudioVadWorker';
+const LogScope = 'AudioVadWorker';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const CHANNELS = 1;
 const IN_RATE = 48000;
@@ -40,7 +44,7 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
             throw new Error(`Unsupported message type: ${type as string}`);
         }
     } catch (error) {
-        console.error(`${LogScope}.onmessage error:`, error);
+        errorLog?.log(`onmessage: unhandled error:`, error);
     }
 };
 
@@ -101,7 +105,7 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
             await processQueue();
         }
     } catch (error) {
-        console.error(`${LogScope}.onWorkletMessage error:`, error);
+        errorLog?.log(`onWorkletMessage: unhandled error:`, error);
     }
 };
 
@@ -136,7 +140,7 @@ async function processQueue(): Promise<void> {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.processQueue error:`, error);
+        errorLog?.log(`processQueue: unhandled error:`, error);
     } finally {
         isVadRunning = false;
     }

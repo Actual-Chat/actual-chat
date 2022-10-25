@@ -8,8 +8,12 @@ import {
     offset,
     arrow,
 } from '@floating-ui/dom';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'Tooltip';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class Tooltip implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -28,7 +32,7 @@ export class Tooltip implements Disposable {
             this.tooltipTextRef = document.getElementsByClassName('ac-tooltip-text')[0] as HTMLElement;
             this.listenForMouseOverEvent();
         } catch (error) {
-            console.error(`${LogScope}.ctor: error:`, error);
+            errorLog?.log(`constructor: unhandled error:`, error);
             this.dispose();
         }
     }

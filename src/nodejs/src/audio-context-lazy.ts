@@ -7,6 +7,7 @@ import { Log, LogLevel } from 'logging';
 
 const LogScope = 'AudioContextLazy';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 async function defaultFactory() : Promise<AudioContext> {
@@ -63,7 +64,7 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
     await new Promise<void>(resolve => {
         node.port.postMessage('stop');
         node.port.onmessage = (ev: MessageEvent<string>): void => {
-            errorLog?.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
+            warnLog?.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
             resolve();
         };
     });

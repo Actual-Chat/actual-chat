@@ -90,8 +90,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
                 Ref,
                 BlazorRef,
                 LoadZoneSize,
-                BufferZoneSize,
-                DebugMode);
+                BufferZoneSize);
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
     }

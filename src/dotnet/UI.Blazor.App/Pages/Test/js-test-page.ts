@@ -1,4 +1,4 @@
-import { debounce, delayAsync, ResettableFunc, serialize, throttle } from '../../../../nodejs/src/promises';
+import { debounce, delayAsync, ResettableFunc, serialize, throttle } from 'promises';
 
 const LogScope = 'JSTestPage';
 

@@ -8,11 +8,33 @@ enum LogLevel {
 }
 
 export function initLogging(Log: unknown) : void {
-    Log['defaultMinLevel'] = LogLevel.Info;
+    Log['defaultMinLevel'] = LogLevel.Debug;
     const minLevels = Log['minLevels'] as Map<string, LogLevel>;
 
+    // Bumping up levels of noisy scopes
+    minLevels.set('NextInteraction', LogLevel.Info);
+    minLevels.set('InteractiveUI', LogLevel.Info);
+    minLevels.set('on-device-awake', LogLevel.Info);
+    minLevels.set('Rpc', LogLevel.Info);
+    minLevels.set('BrowserInfo', LogLevel.Info);
+    minLevels.set('LocalSettings', LogLevel.Info);
+    minLevels.set('VirtualList', LogLevel.Info);
+    minLevels.set('VirtualListPlan', LogLevel.Info);
+    minLevels.set('UndoStack', LogLevel.Info);
+    minLevels.set('MarkupEditor', LogLevel.Info);
+    minLevels.set('ChatMessageEditor', LogLevel.Info);
+    minLevels.set('WarmUpAudioWorkletProcessor', LogLevel.Info);
+    minLevels.set('FeederProcessor', LogLevel.Info);
+    minLevels.set('OpusEncoderWorker', LogLevel.Info);
+    minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Info);
+    minLevels.set('OpusDecoder', LogLevel.Info);
+    minLevels.set('OpusDecoderWorker', LogLevel.Info);
+    minLevels.set('AudioPlayerController', LogLevel.Info);
+    minLevels.set('AudioPlayer', LogLevel.Info);
+
+    // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);
-    minLevels.set('NextInteraction', LogLevel.Debug);
-    minLevels.set('on-device-awake', LogLevel.Debug);
-    minLevels.set('Rpc', LogLevel.Debug);
+    minLevels.set('AudioRecorder', LogLevel.Debug);
+
+    // minLevels.clear(); // To quickly discard any tweaks :)
 }

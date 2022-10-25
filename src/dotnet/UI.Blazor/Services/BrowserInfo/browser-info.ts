@@ -1,8 +1,11 @@
 import './browser-info.css'
-import { PromiseSource } from '../../../../nodejs/src/promises';
+import { PromiseSource } from 'promises';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'BrowserInfo';
-const debug: boolean = true;
+const LogScope = 'BrowserInfo';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class BrowserInfo {
     private static screenSizeMeasureDiv: HTMLDivElement = null;
@@ -59,8 +62,7 @@ export class BrowserInfo {
     // Backend methods
 
     private static onScreenSizeChanged(screenSize: string): void {
-        if (debug)
-            console.debug(`${LogScope}.onScreenSizeChanged(${screenSize})`);
+        debugLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize)
     };
 
@@ -85,8 +87,7 @@ export class BrowserInfo {
                 continue;
 
             const isVisible = window.getComputedStyle(itemDiv).getPropertyValue('width') !== 'auto';
-            // if (debug)
-            //     console.debug(`${LogScope}.measureScreenSize:`, itemDiv.dataset['size'], isVisible);
+            debugLog?.log(`measureScreenSize: size:`, itemDiv.dataset['size'], ', isVisible:', isVisible);
             if (isVisible)
                 return itemDiv.dataset['size'];
         }

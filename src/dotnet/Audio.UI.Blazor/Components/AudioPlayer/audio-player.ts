@@ -1,6 +1,12 @@
 import { ObjectPool } from 'object-pool';
 import { AudioPlayerController } from './audio-player-controller';
 import { PlaybackState } from './worklets/feeder-audio-worklet-node';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'AudioPlayer';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /**
  * A lightweight facade of the AudioPlayerBackend.
@@ -9,12 +15,10 @@ import { PlaybackState } from './worklets/feeder-audio-worklet-node';
 export class AudioPlayer {
 
     private static controllerPool = new ObjectPool<AudioPlayerController>(() => AudioPlayerController.create());
-    public static debug?: boolean = null;
 
     public onStartPlaying?: () => void = null;
     public onInitialized?: () => void = null;
 
-    private readonly debug: boolean;
     private readonly id: string;
     /** How often send offset update event to the blazor, in milliseconds */
     private readonly updateOffsetMs = 200;
@@ -26,55 +30,48 @@ export class AudioPlayer {
      * We can't await init() on the blazor side, because it will cause a round-trip delay (blazor server),
      * so if data comes before initialization, we will wait this promise.
      */
-    private initPromise?: Promise<void> = null;
+    private whenInitialized?: Promise<void> = null;
     /** we can do this with state, but it's clearer */
     private isBufferFull = false;
     private updateOffsetTickIntervalId?: number = null;
 
-
-    public static async create(blazorRef: DotNet.DotNetObject, debug: boolean, id: string): Promise<AudioPlayer> {
+    public static async create(blazorRef: DotNet.DotNetObject, id: string): Promise<AudioPlayer> {
         const controller = await this.controllerPool.get();
-        if (AudioPlayer.debug)
-            console.debug(`Created player with controllerId:${controller.id}`);
-        const player = new AudioPlayer(controller, blazorRef, debug, id);
+        const player = new AudioPlayer(controller, blazorRef, id);
         await player.init();
         return player;
     }
 
-    public constructor(controller: AudioPlayerController, blazorRef: DotNet.DotNetObject, debug: boolean, id: string) {
+    public constructor(controller: AudioPlayerController, blazorRef: DotNet.DotNetObject, id: string) {
         this.blazorRef = blazorRef;
-        this.debug = AudioPlayer.debug === null ? debug : AudioPlayer.debug;
         this.controller = controller;
         this.id = id;
+        debugLog?.log(`[#${this.id}/${this.controller?.id}] constructor`);
     }
 
     public init(): Promise<void> {
-        const { debug, state } = this;
+        warnLog?.assert(this.state === 'uninitialized', `[#${this.id}] init() is called more than once!`);
         this.state = 'initializing';
-        console.assert(state === 'uninitialized', `[AudioTrackPlayer #${this.id}] init: called in a wrong order`);
 
-        this.initPromise = this.controller.init({
+        this.whenInitialized = this.controller.init({
             onBufferLow: async () => {
                 if (this.isBufferFull) {
                     this.isBufferFull = false;
-                    if (debug)
-                        console.debug(`[AudioTrackPlayer #${this.id}] onBufferLow, controllerId:${this.controller.id}`);
+                    debugLog?.log(`[#${this.id}/${this.controller?.id}] onBufferLow`);
                     await this.invokeOnChangeReadiness(true);
                 }
             },
             onBufferTooMuch: async () => {
                 if (!this.isBufferFull) {
                     this.isBufferFull = true;
-                    if (debug)
-                        console.debug(`[AudioTrackPlayer #${this.id}] onBufferTooMuch, controllerId:${this.controller.id}`);
+                    debugLog?.log(`[#${this.id}/${this.controller?.id}] onBufferTooMuch`);
                     await this.invokeOnChangeReadiness(false);
                 }
             },
             onStartPlaying: () => {
-                if (debug)
-                    console.debug(`[AudioTrackPlayer #${this.id}] onStartPlaying, controllerId:${this.controller.id}`);
-                if (this.state === 'playing'){
-                    console.warn("Unexpected onStartPlaying since audio player is already in playing state");
+                debugLog?.log(`[#${this.id}/${this.controller?.id}] onStartPlaying`);
+                if (this.state === 'playing') {
+                    warnLog?.log(`[#${this.id}/${this.controller?.id}] onStartPlaying: already in playing state: ${this.state}`);
                     return;
                 }
                 this.state = 'playing';
@@ -84,20 +81,18 @@ export class AudioPlayer {
                 this.updateOffsetTickIntervalId = self.setInterval(this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onPaused: async () => {
-                if (debug)
-                    console.debug(`[AudioTrackPlayer #${this.id}] onPaused, controllerId:${this.controller.id}`);
-                if (this.state !== 'playing'){
-                    console.warn(`Unexpected onPaused since audio player is not in playing state. State: ${this.state}`);
+                debugLog?.log(`[#${this.id}/${this.controller?.id}] onPaused`);
+                if (this.state !== 'playing') {
+                    warnLog?.log(`[#${this.id}/${this.controller?.id}] onPaused: already in non-playing state: ${this.state}`);
                     return;
                 }
                 this.state = 'paused';
                 //self.clearInterval(this.updateOffsetTickIntervalId);
             },
             onResumed: async () => {
-                if (debug)
-                    console.debug(`[AudioTrackPlayer #${this.id}] onResumed, controllerId:${this.controller.id}`);
-                if (this.state !== 'paused'){
-                    console.warn(`Unexpected onPaused since audio player is not in playing state. State: ${this.state}`);
+                debugLog?.log(`[#${this.id}/${this.controller?.id}] onResumed`);
+                if (this.state !== 'paused') {
+                    warnLog?.log(`[#${this.id}/${this.controller?.id}] onResumed: already in non-paused state: ${this.state}`);
                     return;
                 }
                 this.state = 'playing';
@@ -105,32 +100,29 @@ export class AudioPlayer {
                 // this.updateOffsetTickIntervalId = self.setInterval(this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onStopped: async () => {
-                if (debug)
-                    console.debug(`[AudioTrackPlayer #${this.id}] onStopped, controllerId:${this.controller.id}`);
+                debugLog?.log(`[#${this.id}/${this.controller?.id}] onStopped`);
                 if (this.state === 'stopped')
-                    console.error('Unexpected onStopped since audio player is already in stopped state')
+                    warnLog?.log(`[#${this.id}/${this.controller?.id}] onStopped: already in stopped state: ${this.state}`);
                 // after stop we should notify about the real playback time
                 await this.onUpdateOffsetTick();
                 self.clearInterval(this.updateOffsetTickIntervalId);
                 this.state = 'stopped';
             },
             onStarving: async () => {
-                if (debug)
-                    console.warn(`[AudioTrackPlayer #${this.id}] onStarving, controllerId:${this.controller.id}`);
+                warnLog?.log(`[#${this.id}/${this.controller?.id}] onStarving`);
                 if (this.isBufferFull) {
                     this.isBufferFull = false;
-                    if (debug)
-                        console.debug(`[AudioTrackPlayer #${this.id}] onStarving, controllerId:${this.controller.id}`);
+                    debugLog?.log(`[#${this.id}/${this.controller?.id}] onStarving: buffer is full`);
                     await this.invokeOnChangeReadiness(true);
                 }
             },
             onEnded: async () => {
+                debugLog?.log(`[#${this.id}/${this.controller?.id}] onEnded`);
                 this.state = 'ended';
                 const { controller } = this;
                 if (controller !== null) {
+                    debugLog?.log(`[#${this.id}/${this.controller?.id}] onEnded: releasing controller to the pool`);
                     this.controller = null;
-                    if (debug)
-                        console.debug(`[AudioTrackPlayer #${this.id}] onEnded, release controllerId:${controller.id} to the pool`);
                     await Promise.all([AudioPlayer.controllerPool.release(controller), this.invokeOnPlayEnded()]);
                 }
             }
@@ -140,75 +132,68 @@ export class AudioPlayer {
             }
             this.state = 'initialized';
         });
-        return this.initPromise;
+        return this.whenInitialized;
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async data(bytes: Uint8Array): Promise<void> {
-        console.assert(this.controller !== null, `[AudioTrackPlayer #${this.id}] Controller must be presented. Lifetime error.`);
-        console.assert(this.initPromise !== null, `[AudioTrackPlayer #${this.id}] Player isn't initialized. controllerId:${this.controller.id}.`);
-        await this.initPromise;
+        warnLog?.assert(this.controller !== null, `[#${this.id}] no controller!`);
+        warnLog?.assert(this.whenInitialized !== null, `[#${this.id}/${this.controller?.id}] init() wasn't called!`);
+        await this.whenInitialized;
         this.controller.enqueue(bytes);
     }
 
     public async end(): Promise<void> {
-        if (this.debug)
-            console.debug(`[AudioTrackPlayer #${this.id}] Got from blazor 'end()' controllerId:${this.controller.id}`);
-        console.assert(this.controller !== null, `[AudioTrackPlayer #${this.id}] Controller must be presented. Lifetime error.`);
-        console.assert(this.initPromise !== null, `[AudioTrackPlayer #${this.id}] Player isn't initialized. controllerId:${this.controller.id}.`);
-        await this.initPromise;
+        debugLog?.log(`[#${this.id}/${this.controller?.id}] end`);
+        warnLog?.assert(this.controller !== null, `[#${this.id}] no controller!`);
+        warnLog?.assert(this.whenInitialized !== null, `[#${this.id}/${this.controller?.id}] init() wasn't called!`);
+        await this.whenInitialized;
         this.controller.enqueueEnd();
     }
 
     public async stop(): Promise<void> {
-        if (this.debug)
-            console.debug(`[AudioTrackPlayer #${this.id}] Got from blazor: stop(). controllerId:${this.controller.id} state:${this.state}`);
+        debugLog?.log(`[#${this.id}/${this.controller?.id}] end, state: ${this.state}`);
         // blazor can call stop() between create() and init() calls (if cancelled by user/server)
-        if (this.initPromise !== null) {
-            await this.initPromise;
-            console.assert(this.controller !== null, `[AudioTrackPlayer #${this.id}] Controller must be created. Lifetime error.`);
-            if (this.debug)
-                console.debug(`[AudioTrackPlayer #${this.id}] Call controller stop(). controllerId:${this.controller.id} state:${this.state}`);
+        if (this.whenInitialized !== null) {
+            await this.whenInitialized;
+            warnLog?.assert(this.controller !== null, `[#${this.id}] no controller!`);
+            debugLog?.log(`[#${this.id}/${this.controller?.id}] end: calling controller.stop(), state: ${this.state}`);
             this.controller.stop();
         }
     }
 
     public async pause(): Promise<void> {
-        if (this.debug)
-            console.debug(`[AudioTrackPlayer #${this.id}] Got from blazor: pause(). controllerId:${this.controller.id} state:${this.state}`);
+        debugLog?.log(`[#${this.id}/${this.controller?.id}] pause, state: ${this.state}`);
         // blazor can call stop() between create() and init() calls (if cancelled by user/server)
-        if (this.initPromise !== null) {
-            await this.initPromise;
-            console.assert(this.controller !== null, `[AudioTrackPlayer #${this.id}] Controller must be created. Lifetime error.`);
-            if (this.debug)
-                console.debug(`[AudioTrackPlayer #${this.id}] Call controller pause(). controllerId:${this.controller.id} state:${this.state}`);
+        if (this.whenInitialized !== null) {
+            await this.whenInitialized;
+            warnLog?.assert(this.controller !== null, `[#${this.id}] no controller!`);
+            debugLog?.log(`[#${this.id}/${this.controller?.id}] end: calling controller.pause(), state: ${this.state}`);
             this.controller.pause();
             await this.onUpdatePause();
         }
     }
 
     public async resume(): Promise<void> {
-        if (this.debug)
-            console.debug(`[AudioTrackPlayer #${this.id}] Got from blazor: resume(). controllerId:${this.controller.id} state:${this.state}`);
+        debugLog?.log(`[#${this.id}/${this.controller?.id}] resume, state: ${this.state}`);
         // blazor can call stop() between create() and init() calls (if cancelled by user/server)
-        if (this.initPromise !== null) {
-            await this.initPromise;
-            console.assert(this.controller !== null, `[AudioTrackPlayer #${this.id}] Controller must be created. Lifetime error.`);
-            if (this.debug)
-                console.debug(`[AudioTrackPlayer #${this.id}] Call controller resume(). controllerId:${this.controller.id} state:${this.state}`);
+        if (this.whenInitialized !== null) {
+            await this.whenInitialized;
+            warnLog?.assert(this.controller !== null, `[#${this.id}] no controller!`);
+            debugLog?.log(`[#${this.id}/${this.controller?.id}] end: calling controller.resume(), state: ${this.state}`);
             this.controller.resume();
         }
     }
 
     private onUpdateOffsetTick = async () => {
         try {
-            const { state, controller, debug } = this;
+            const { state, controller } = this;
             if (state === 'playing' && controller !== null) {
                 const state: PlaybackState = await controller.getState();
-                if (debug) {
-                    console.debug(`[AudioTrackPlayer #${this.id}] onUpdateOffsetTick(controllerId:${controller.id}): ` +
-                        `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
-                }
+                debugLog?.log(
+                    `[#${this.id}/${this.controller?.id}] onUpdateOffsetTick:`,
+                        `playbackTime:`, state.playbackTime,
+                        `bufferedTime:`, state.bufferedTime);
                 if (this.state !== 'playing')
                     return;
 
@@ -216,26 +201,27 @@ export class AudioPlayer {
             }
         }
         catch (error) {
-            console.error(`[AudioTrackPlayer #${this.id}] Unhandled error`, error);
+            errorLog?.log(`[#${this.id}/${this.controller?.id}] onUpdateOffsetTick: unhandled error:`, error);
         }
     };
 
     private onUpdatePause = async () => {
         try {
-            const { controller, debug } = this;
-            if (controller !== null) {
-                const state: PlaybackState = await controller.getState();
-                if (debug) {
-                    console.debug(`[AudioTrackPlayer #${this.id}] onUpdatePause(controllerId:${controller.id}): ` +
-                                      `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
-                }
+            if (this.controller !== null) {
+                const state: PlaybackState = await this.controller.getState();
+                debugLog?.log(
+                    `[#${this.id}/${this.controller?.id}] onUpdatePause:`,
+                    `playbackTime:`, state.playbackTime,
+                    `bufferedTime:`, state.bufferedTime);
                 await this.invokeOnPausedAt(state.playbackTime);
             }
         }
         catch (error) {
-            console.error(`[AudioTrackPlayer #${this.id}] Unhandled error`, error);
+            errorLog?.log(`[#${this.id}/${this.controller?.id}] onUpdatePause: unhandled error:`, error);
         }
     }
+
+    // Backend methods
 
     private invokeOnPlayTimeChanged(time: number): Promise<void> {
         return this.blazorRef.invokeMethodAsync('OnPlayTimeChanged', time);

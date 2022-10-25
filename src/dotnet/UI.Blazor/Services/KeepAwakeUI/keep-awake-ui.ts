@@ -1,25 +1,29 @@
 import { default as NoSleep } from 'nosleep.js';
 import { NextInteraction } from 'next-interaction';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'KeepAwakeUI';
-const debug = true;
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const infoLog = Log.get(LogScope, LogLevel.Info);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 const noSleep = new NoSleep();
 
 export class KeepAwakeUI {
     public static async setKeepAwake(mustKeepAwake: boolean) {
         if (mustKeepAwake && !noSleep.isEnabled) {
-            console.debug(`${LogScope}.setKeepAwake: enabling`);
+            infoLog?.log(`setKeepAwake: enabling`);
             await noSleep.enable();
         } else if (!mustKeepAwake && noSleep.isEnabled) {
-            console.debug(`${LogScope}.setKeepAwake: disabling`);
+            infoLog?.log(`setKeepAwake: disabling`);
             noSleep.disable();
         }
     };
 }
 
 NextInteraction.addHandler(async () => {
-    if (debug)
-        console.debug(`${LogScope}: warming up noSleep`);
+    debugLog?.log(`warming up noSleep`);
     await noSleep.enable();
     noSleep.disable();
 });

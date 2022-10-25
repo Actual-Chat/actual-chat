@@ -2,23 +2,25 @@ import { Log, LogLevel } from 'logging';
 
 const LogScope = 'on-device-awake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 let _worker: Worker = null;
 const _handlers = new Array<() => void>();
 
 const onWorkerMessage = () => {
-    console.debug(LogScope, 'onWorkerMessage', 'received');
+    debugLog?.log(`onWorkerMessage`);
     _handlers.forEach(handler => {
         try {
             handler();
-        } catch (err) {
-            console.error(LogScope, 'onWorkerMessage', 'onDeviceAwake event handler failed with an error')
+        } catch (error) {
+            errorLog?.log(`onWorkerMessage: unhandled error in onDeviceAwake event handler:`, error)
         }
     });
 };
 
 const onWorkerError = (error: ErrorEvent) => {
-    console.error(`FileName: ${error.filename} LineNumber: ${error.lineno} Message: ${error.message}`);
+    errorLog?.log(`onWorkerError: unhandled error:`, error)
 };
 
 const createWorker = () => {

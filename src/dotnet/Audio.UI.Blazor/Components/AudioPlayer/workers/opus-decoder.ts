@@ -11,8 +11,9 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import { Log, LogLevel } from 'logging';
 import 'logging-init';
 
-const LogScope: string = 'OpusDecoder';
+const LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /// #if MEM_LEAK_DETECTION
@@ -65,22 +66,22 @@ export class OpusDecoder {
     }
 
     public init(): void {
-        errorLog?.assert(this.queue.length === 0, `init: queue should be empty, check stop/reset logic`);
+        warnLog?.assert(this.queue.length === 0, `init: queue should be empty, check stop/reset logic`);
         this.state = 'waiting';
     }
 
     public pushData(data: ArrayBuffer): void {
         debugLog?.log(`pushData: data size: ${data.byteLength} byte(s)`);
         const { state, queue } = this;
-        errorLog?.assert(state !== 'uninitialized', `pushData: uninitialized but got data!`);
-        errorLog?.assert(data.byteLength > 0, `pushData: got zero length data message!`);
+        warnLog?.assert(state !== 'uninitialized', `pushData: uninitialized but got data!`);
+        warnLog?.assert(data.byteLength > 0, `pushData: got zero length data message!`);
         queue.push(data);
         this.processQueue();
     }
 
     public pushEnd(): void {
         const { state, queue } = this;
-        errorLog?.assert(state !== 'uninitialized', `pushEnd: Uninitialized but got "end of data" message!`);
+        warnLog?.assert(state !== 'uninitialized', `pushEnd: Uninitialized but got "end of data" message!`);
         queue.push('end');
         this.processQueue();
     }
@@ -139,7 +140,7 @@ export class OpusDecoder {
             }
         }
         catch (error) {
-            errorLog?.log(`processQueue error:`, error);
+            errorLog?.log(`processQueue: unhandled error:`, error);
         }
         finally {
             if (this.state === 'decoding')

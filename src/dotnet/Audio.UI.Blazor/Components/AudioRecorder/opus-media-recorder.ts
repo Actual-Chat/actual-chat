@@ -7,6 +7,7 @@ import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
 import { VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './workers/opus-encoder-worker-message';
+import { Log, LogLevel } from 'logging';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -33,11 +34,14 @@ import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './workers/
  */
 
 const LogScope = 'OpusMediaRecorder';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 const AUDIO_BITS_PER_SECOND = 32000;
 
 export class OpusMediaRecorder {
     public static origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
-    private readonly debug: boolean;
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
@@ -55,9 +59,7 @@ export class OpusMediaRecorder {
     // TODO: clearer states
     public state: RecordingState = 'inactive';
 
-    constructor(debug: boolean) {
-        this.debug = debug;
-
+    constructor() {
         this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
@@ -70,12 +72,8 @@ export class OpusMediaRecorder {
     }
 
     public pause(): void {
-        console.assert(
-            this.state !== 'inactive',
-            `${LogScope}.pause: Recorder isn't initialized but got an pause() call`);
-        console.assert(
-            this.source != null,
-            `${LogScope}.pause: Recorder: pause() call is invalid when source is null`);
+        warnLog?.assert(this.state !== 'inactive', `pause: state == 'inactive'`);
+        warnLog?.assert(this.source != null, `pause: source == null`);
 
         // Stop stream first
         this.source.disconnect();
@@ -85,12 +83,8 @@ export class OpusMediaRecorder {
     }
 
     public resume(): void {
-        console.assert(
-            this.state !== 'inactive',
-            `${LogScope}.resume: Recorder isn't initialized but got an resume() call`);
-        console.assert(
-            this.source != null,
-            `${LogScope}.resume: Recorder: resume() call is invalid when source is null`);
+        warnLog?.assert(this.state !== 'inactive', `resume: state == 'inactive'`);
+        warnLog?.assert(this.source != null, `resume: source == null`);
 
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
@@ -99,9 +93,8 @@ export class OpusMediaRecorder {
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
-        console.assert(
-            sessionId != '' && chatId != '',
-            `${LogScope}.start: sessionId and chatId both should have value specified`);
+        warnLog?.assert(sessionId != '', `start: sessionId is unspecified`);
+        warnLog?.assert(chatId != '', `start: chatId is unspecified`);
 
         await this.init();
 
@@ -132,9 +125,7 @@ export class OpusMediaRecorder {
 
     public async stop(): Promise<void> {
         await rpc((rpcResult) => {
-            console.assert(
-                this.state !== 'inactive',
-                `${LogScope}.stop: Recorder isn't initialized but got an stop command`);
+            warnLog?.assert(this.state !== 'inactive', `stop: state == 'inactive'`);
 
             // Stop stream first
             if (this.source)
@@ -171,7 +162,6 @@ export class OpusMediaRecorder {
                 type: 'create',
                 audioHubUrl: audioHubUrl,
                 rpcResultId: rpcResult.id,
-                debug: this.debug,
             };
 
             const crossWorkerChannel = new MessageChannel();
@@ -284,6 +274,6 @@ export class OpusMediaRecorder {
         if (this.vadWorklet)
             this.vadWorklet.disconnect();
 
-        console.error(`${LogScope}.onWorkerError: FileName: ${error.filename} Line: ${error.lineno} Message: ${error.message}`, error);
+        errorLog?.log(`${LogScope}.onWorkerError: unhandled error:`, error);
     };
 }

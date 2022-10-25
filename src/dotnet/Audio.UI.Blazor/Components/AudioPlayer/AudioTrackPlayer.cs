@@ -80,11 +80,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                                CancellationToken.None,
-                                _blazorRef,
-                                DebugLog != null,
-                                _id);
+                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                        CancellationToken.None,
+                        _blazorRef,
+                        _id);
                     break;
                 case PauseCommand:
                     if (!_isStopSent) {

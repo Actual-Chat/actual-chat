@@ -1,10 +1,14 @@
 import './markup-editor.css';
 import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MarkupEditor';
-const MentionListId = '@';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
+const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
@@ -16,8 +20,8 @@ export class MarkupEditor {
         editorDiv: HTMLDivElement,
         blazorRef: DotNet.DotNetObject,
         autofocus: boolean,
-        debug: boolean) {
-        return new MarkupEditor(editorDiv, blazorRef, autofocus, debug);
+    ) {
+        return new MarkupEditor(editorDiv, blazorRef, autofocus);
     }
 
     public readonly contentDiv: HTMLDivElement;
@@ -35,10 +39,8 @@ export class MarkupEditor {
         public readonly editorDiv: HTMLDivElement,
         public readonly blazorRef: DotNet.DotNetObject,
         private readonly autofocus: boolean,
-        private readonly debug: boolean)
-    {
-        if (debug)
-            console.debug(`${LogScope}.ctor`);
+    ) {
+        debugLog?.log(`constructor`);
 
         this.contentDiv = editorDiv.querySelector(":scope > .editor-content") as HTMLDivElement;
         this.listHandlers = [new MentionListHandler(this)]
@@ -180,7 +182,7 @@ export class MarkupEditor {
     }
 
     private async onListCommand(listId: string, command: ListCommand) : Promise<void> {
-        // console.debug(`${LogScope}.onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
+        debugLog?.log(`onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
         await this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
     }
 
@@ -201,7 +203,7 @@ export class MarkupEditor {
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
-        // console.debug(`${LogScope}.onKeyDown: code = "${e.code}"`)
+        // debugLog?.log(`onKeyDown: code = "${e.code}"`)
 
         const ok = () => e.preventDefault();
 
@@ -244,7 +246,7 @@ export class MarkupEditor {
     }
 
     private onKeyPress = (e: KeyboardEvent) => {
-        // console.debug(`${LogScope}.onKeyPress: code = "${e.code}"`)
+        // debugLog?.log(`onKeyPress: code = "${e.code}"`)
 
         const ok = () => e.preventDefault();
 
@@ -284,7 +286,7 @@ export class MarkupEditor {
         const data = e.clipboardData;
         const text = cleanPastedText(data.getData('text'));
 
-        // console.debug(`${LogScope}.onPaste: text:`, text)
+        // debugLog?.log(`onPaste: text:`, text)
         this.transaction(() => {
             document.execCommand('insertText', false, text);
         });
@@ -301,11 +303,9 @@ export class MarkupEditor {
 
         switch (e.inputType) {
             case "historyUndo":
-                console.debug(this.contentDiv.innerHTML);
                 this.undoStack.undo();
                 return ok();
             case "historyRedo": {
-                console.debug(this.contentDiv.innerHTML);
                 this.undoStack.redo();
                 return ok();
             }
@@ -324,7 +324,7 @@ export class MarkupEditor {
 
     private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
-        // console.debug(`${LogScope}.updateListUI()`)
+        // debugLog?.log(`updateListUI`)
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             void this.closeListUI();
@@ -396,7 +396,7 @@ export class MarkupEditor {
             selection.addRange(this.lastSelectedRange);
         }
         catch (e) {
-            console.error(`${LogScope}.restoreSelection: error`, e);
+            errorLog?.log(`restoreSelection: unhandled error:`, e);
         }
     }
 

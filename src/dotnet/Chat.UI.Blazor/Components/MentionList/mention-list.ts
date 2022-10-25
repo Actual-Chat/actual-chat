@@ -1,6 +1,6 @@
 import './mention-list.css';
 
-const LogScope: string = 'MentionList';
+const LogScope = 'MentionList';
 
 export class MentionList {
     private blazorRef: DotNet.DotNetObject;

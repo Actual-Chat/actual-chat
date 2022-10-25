@@ -151,23 +151,24 @@ export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | nu
 }
 
 if (mustRunSelfTest) {
+    const testLog = errorLog;
     void (async () => {
         let rpcResult = rpc<string>(() => undefined);
-        errorLog?.assert(!rpcResult.isCompleted());
+        testLog?.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, 'x'));
-        errorLog?.assert(rpcResult.isCompleted());
-        errorLog?.assert('x' == await rpcResult);
+        testLog?.assert(rpcResult.isCompleted());
+        testLog?.assert('x' == await rpcResult);
 
         rpcResult = rpc<string>(() => undefined);
-        errorLog?.assert(!rpcResult.isCompleted());
+        testLog?.assert(!rpcResult.isCompleted());
         void completeRpc(rpcResultMessage(rpcResult.id, null, 'Error'));
-        errorLog?.assert(rpcResult.isCompleted());
+        testLog?.assert(rpcResult.isCompleted());
         try {
             await rpcResult;
-            errorLog?.log('rpcResult.Error is undefined.');
+            testLog?.log('rpcResult.Error is undefined.');
         }
         catch (error) {
-            errorLog.assert(error == 'Error', 'error != "Error"');
+            testLog.assert(error == 'Error', 'error != "Error"');
         }
     })();
 }

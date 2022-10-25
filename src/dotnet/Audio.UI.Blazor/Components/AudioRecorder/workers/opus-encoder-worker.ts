@@ -17,11 +17,15 @@ import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './opus-encoder-worker-message';
 import { PromiseSource } from 'promises';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'OpusEncoderWorker';
+const LogScope = 'OpusEncoderWorker';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /// #if MEM_LEAK_DETECTION
-console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
+debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
 // TODO: create wrapper around module for all workers
@@ -89,7 +93,7 @@ worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMes
                 throw new Error(`Unsupported message type: ${request['type'] as string}`);
         }
     },
-    error => console.error(`${LogScope}.worker.onmessage error:`, error),
+    error => errorLog?.log(`worker.onmessage: unhandled error:`, error),
 );
 
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
@@ -112,7 +116,6 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
     vadPort.onmessage = onVadMessage;
-    debug = message.debug;
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
@@ -125,7 +128,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     // call Ping first time to ensure pipeline is ready for recording after receiving mic data
     const pong = await hubConnection.invoke('Ping');
     if (pong !== 'Pong')
-        console.warn(`${LogScope}.onCreate: unexpected Ping call result`, pong);
+        warnLog?.log(`onCreate: unexpected Ping call result:`, pong);
 
     // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -142,7 +145,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     }
 
     whenMicReady = new PromiseSource();
-    console.log(`${LogScope}.onCreate, encoder:`, encoder);
+    debugLog?.log(`onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
     state = 'created';
@@ -152,8 +155,7 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     const { sessionId, chatId } = message;
     lastInitArguments = { sessionId, chatId };
 
-    if (debug)
-        console.log(`${LogScope}.onInit`);
+    debugLog?.log(`onInit`);
 
     // cleanup encoder state
     for (let i=0; i < 2; i++) {
@@ -201,16 +203,14 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.onWorkletMessage error:`, error);
+        errorLog?.log(`onWorkletMessage: unhandled error:`, error);
     }
 };
 
 const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     try {
         const vadEvent = ev.data;
-        if (debug) {
-            console.log(`${LogScope}.onVadMessage, data:`, vadEvent);
-        }
+        debugLog?.log(`onVadMessage, data:`, vadEvent);
 
         const newVadState = vadEvent.kind === 'end'
             ? 'silence'
@@ -239,7 +239,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.onVadMessage error:`, error);
+        errorLog?.log(`onVadMessage: unhandled error:`, error);
     }
 };
 
@@ -272,7 +272,7 @@ function processQueue(fade: 'in' | 'none' = 'none'): void {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.processQueue error:`, error);
+        errorLog?.log(`processQueue: unhandled error:`, error);
     }
     finally {
         isEncoding = false;

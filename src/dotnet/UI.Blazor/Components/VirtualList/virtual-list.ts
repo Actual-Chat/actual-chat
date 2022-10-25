@@ -11,8 +11,13 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'VirtualList';
+const LogScope = 'VirtualList';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 const UpdateClientSideStateInterval: number = 125;
 const UpdateVisibleKeysInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
@@ -23,7 +28,6 @@ const RenderTimeout: number = 640;
 const UpdateTimeout: number = 1200;
 
 export class VirtualList implements VirtualListAccessor {
-    private readonly _debugMode: boolean = false;
     /** ref to div.virtual-list */
     private readonly _ref: HTMLElement;
     private readonly _containerRef: HTMLElement;
@@ -67,18 +71,26 @@ export class VirtualList implements VirtualListAccessor {
     public readonly loadZoneSize;
     public readonly items: Record<string, VirtualListClientSideItem>;
 
-    public constructor(
+    public static create(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
         loadZoneSize: number,
         bufferZoneSize: number,
-        debugMode: boolean) {
-        if (debugMode) {
-            console.log(`${LogScope}.ctor`);
+    ) {
+        return new VirtualList(ref, backendRef, loadZoneSize, bufferZoneSize);
+    }
+
+    public constructor(
+        ref: HTMLElement,
+        backendRef: DotNet.DotNetObject,
+        loadZoneSize: number,
+        bufferZoneSize: number
+    ) {
+        if (debugLog) {
+            debugLog.log(`constructor`);
             window['virtualList'] = this;
         }
 
-        this._debugMode = debugMode;
         this.loadZoneSize = loadZoneSize;
         this._bufferZoneSize = bufferZoneSize;
         this._ref = ref;
@@ -156,15 +168,6 @@ export class VirtualList implements VirtualListAccessor {
         this.maybeOnRenderEnd([], this._renderEndObserver);
     };
 
-    public static create(
-        ref: HTMLElement,
-        backendRef: DotNet.DotNetObject,
-        loadZoneSize: number,
-        bufferZoneSize: number,
-        debugMode: boolean) {
-        return new VirtualList(ref, backendRef, loadZoneSize, bufferZoneSize, debugMode);
-    }
-
     public dispose() {
         this._isDisposed = true;
         this._abortController.abort();
@@ -181,9 +184,7 @@ export class VirtualList implements VirtualListAccessor {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private maybeOnRenderEnd = (mutations: MutationRecord[], observer: MutationObserver): void => {
         this._isRendering = true;
-
-        if (this._debugMode)
-            console.log(`${LogScope}.maybeOnRenderEnd: `, mutations.length);
+        debugLog?.log(`maybeOnRenderEnd: `, mutations.length);
 
         this._whenRenderCompleted?.resolve(undefined);
         this._whenRenderCompleted = new PromiseSource<void>();
@@ -391,8 +392,7 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private async onRenderEnd(rs: VirtualListRenderState): Promise<void> {
-        if (this._debugMode)
-            console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
+        debugLog?.log(`onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
 
         try {
             this.renderState = rs;
@@ -446,13 +446,12 @@ export class VirtualList implements VirtualListAccessor {
                     const scrollTop = this._ref.scrollTop;
                     const dScrollTop = newScrollTop - scrollTop;
                     if (Math.abs(dScrollTop) > SizeEpsilon) {
-                        if (this._debugMode)
-                            console.warn(`${LogScope}.onRenderEnd: resync [${this._pivotKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                        debugLog?.log(`onRenderEnd: resync [${this._pivotKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
                         this._ref.scrollTop = newScrollTop;
                     } else {
-                        if (this._debugMode) {
+                        if (debugLog) {
                             const itemRect = pivotRef.getBoundingClientRect();
-                            console.warn(`${LogScope}.onRenderEnd: resync skipped [${this._pivotKey}]: ${pivotOffset} ~ ${itemRect.top}`);
+                            debugLog.log(`onRenderEnd: resync skipped [${this._pivotKey}]: ${pivotOffset} ~ ${itemRect.top}`);
                         }
                     }
                 }
@@ -498,8 +497,7 @@ export class VirtualList implements VirtualListAccessor {
             await Promise.race([whenUpdateCompleted, delayAsync(UpdateTimeout)]);
 
         this._lastPlan = this._plan;
-        if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideState: #${rs.renderIndex}`);
+        debugLog?.log(`updateClientSideState: #${rs.renderIndex}`);
 
         const viewportHeight = this._ref.clientHeight;
         const scrollTop = this.getVirtualScrollTop();
@@ -514,8 +512,7 @@ export class VirtualList implements VirtualListAccessor {
         } as VirtualListClientSideState;
 
         state.visibleKeys = [...this._visibleItems].sort();
-        if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideState: state:`, state);
+        debugLog?.log(`updateClientSideState: state:`, state);
         const expectedRenderIndex = this.renderState.renderIndex;
         if (state.renderIndex != expectedRenderIndex)
             return;
@@ -532,10 +529,7 @@ export class VirtualList implements VirtualListAccessor {
             return;
 
         const visibleKeys = [...this._visibleItems].sort();
-        if (this._debugMode)
-            console.log(
-                `${LogScope}.updateVisibleKeys: server call UpdateVisibleKeys:`,
-                visibleKeys);
+        debugLog?.log(`updateVisibleKeys: calling UpdateVisibleKeys:`, visibleKeys);
 
         await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
     }, 2);
@@ -546,8 +540,7 @@ export class VirtualList implements VirtualListAccessor {
         // check if mutationObserver is stuck
         const mutations = this._renderEndObserver.takeRecords();
         if (mutations.length > 0) {
-            if (this._debugMode)
-                console.warn(`${LogScope}: Iron pants rock!`);
+            debugLog?.log(`onIronPantsHandle: iron pants rock!`);
             this.maybeOnRenderEnd(mutations, this._renderEndObserver);
         }
         // else if (this._unmeasuredItems.size > 0) {
@@ -637,22 +630,19 @@ export class VirtualList implements VirtualListAccessor {
         itemRef?: HTMLElement,
         useSmoothScroll: boolean = false,
         blockPosition: ScrollLogicalPosition = 'nearest') {
-        if (this._debugMode)
-            console.warn(`${LogScope}.scrollTo, item key =`, getItemKey(itemRef));
+        debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
         this._scrollTime = Date.now();
-        itemRef?.scrollIntoView(
-            {
-                behavior: useSmoothScroll ? 'smooth' : 'auto',
-                block: blockPosition,
-                inline: 'nearest',
-            });
+        itemRef?.scrollIntoView({
+            behavior: useSmoothScroll ? 'smooth' : 'auto',
+            block: blockPosition,
+            inline: 'nearest',
+        });
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState): boolean {
         const old = this._stickyEdge;
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
-            if (this._debugMode)
-                console.warn(`${LogScope}.setStickyEdge:`, stickyEdge);
+            debugLog?.log(`setStickyEdge:`, stickyEdge);
             this._stickyEdge = stickyEdge;
             return true;
         }
@@ -669,8 +659,7 @@ export class VirtualList implements VirtualListAccessor {
         if(this._query.isNone)
             return;
 
-        if (this._debugMode)
-            console.warn(`${LogScope}.requestData: query:`, this._query);
+        debugLog?.log(`requestData: query:`, this._query);
 
         this._whenUpdateCompleted = new PromiseSource<void>();
 

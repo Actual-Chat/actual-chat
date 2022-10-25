@@ -42,7 +42,8 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                BlazorRef, _session.Id, DebugMode);
+                BlazorRef,
+                _session.Id);
         }
     }
 

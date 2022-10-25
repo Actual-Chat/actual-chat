@@ -18,6 +18,12 @@ import {
     offset,
 } from '@floating-ui/dom';
 import escapist from '../Escapist/escapist';
+import { Log, LogLevel } from '../../../../nodejs/src/logging';
+
+const LogScope = 'ContextMenu';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 interface Coords {
     x: number;
@@ -47,8 +53,6 @@ enum MenuTriggers
     LongClick = 4,
 }
 
-const LogScope = 'ContextMenu';
-
 export class ContextMenu implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menus: Menu[] = [];
@@ -63,7 +67,7 @@ export class ContextMenu implements Disposable {
         try {
             this.listenForEvents();
         } catch (error) {
-            console.error(`${LogScope}.ctor: error:`, error);
+            errorLog?.log(`constructor: unhandled error:`, error);
             this.dispose();
         }
     }

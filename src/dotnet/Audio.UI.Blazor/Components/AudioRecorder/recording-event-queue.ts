@@ -1,6 +1,10 @@
 import Denque from "denque";
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'RecordingEventQueue';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export enum RecordingEventType {
     Data = 1,
@@ -93,7 +97,6 @@ export interface IRecordingEventQueueOptions {
     minChunkSize: number;
     maxFillBufferTimeMs: number;
     sendAsync: (data: Uint8Array) => Promise<void>;
-    debugMode: boolean;
 }
 
 type QueueState = 'inactive' | 'running' | 'paused';
@@ -124,9 +127,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
     }
 
     append(event: RecordingEvent): void {
-        if (this.options.debugMode) {
-            this.log(`append: ${event.type}`);
-        }
+        debugLog?.log(`append: ${event.type}`);
 
         let sendImmediately = false;
         switch (event.type) {
@@ -188,9 +189,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         const origState = this.state;
         this.state = 'inactive';
 
-        if (this.options.debugMode) {
-            this.log(`flushAsync is called`);
-        }
+        debugLog?.log(`flushAsync`);
 
         this.lastEvents.clear();
 
@@ -226,18 +225,8 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         if (this.bufferOffset >= this.options.minChunkSize) {
             (async () => await this.sendTopmostBuffer())();
         } else {
-            if (this.options.debugMode) {
-                this.log(`enqueue: ${this.bufferOffset} byte(s) were left in buffer`);
-            }
+            debugLog?.log(`enqueue: ${this.bufferOffset} byte(s) were left in buffer`);
         }
-    }
-
-    private log(message: string) {
-        console.debug(`${LogScope}: ${message}`);
-    }
-
-    private logError(message: string) {
-        console.error(`${LogScope}: ${message}`);
     }
 
     private ensureSentByTimeout() {
@@ -250,9 +239,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
                 if (currentDataLength == 0)
                     return;
 
-                if (this.options.debugMode) {
-                    this.log(`Send timeout is fired, sending buffer with ${this.bufferOffset} data bytes.`);
-                }
+                debugLog?.log(`ensureSentByTimeout: send timeout is fired, sending buffer with ${this.bufferOffset} data bytes`);
                 const _ = this.sendTopmostBuffer();
             }, this.options.maxFillBufferTimeMs);
         }
@@ -270,24 +257,17 @@ export class RecordingEventQueue implements IRecordingEventQueue {
 
     private async sendBufferAsync(buffer: Uint8Array, length: number): Promise<Uint8Array> {
         if (length === 0) {
-            if (this.options.debugMode) {
-                this.log(`Buffer is empty.`);
-            }
+            debugLog?.log(`sendBufferAsync: buffer is empty`);
             return buffer;
         }
         const packetBytes = buffer.subarray(0, length);
         try {
             await this.options.sendAsync(packetBytes);
-            if (this.options.debugMode) {
-                this.log(`Sent ${length} data bytes`);
-            }
+            debugLog?.log(`sendBufferAsync: ${length} bytes sent`);
         }
         catch (error) {
-            if (this.options.debugMode) {
-                this.logError(`Couldn't send ${length} data bytes, error: ${error}`);
-            }
+            errorLog?.log(`sendBufferAsync: unhandled error:`, error);
         }
         return buffer;
     }
-
 }
