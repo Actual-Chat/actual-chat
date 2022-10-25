@@ -26,7 +26,7 @@
     private readonly Collection<ModalReference> _modals = new();
     private readonly ModalOptions _globalModalOptions = new();
     private bool _haveActiveModals;
-    private string _lastLocation;
+    private string _lastLocation = "";
 
     internal event Action? OnModalClosed;
 

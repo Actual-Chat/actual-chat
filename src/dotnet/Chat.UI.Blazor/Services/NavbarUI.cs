@@ -56,7 +56,7 @@ public class NavbarUI
         }
     }
 
-    private void OnAfterLocationChangedHandled(object? sender, AfterLocationChangedHandledEventsArgs e)
+    private void OnAfterLocationChangedHandled(object? sender, EventArgs e)
     {
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return;

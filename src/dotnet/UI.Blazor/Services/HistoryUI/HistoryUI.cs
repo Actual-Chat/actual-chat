@@ -2,26 +2,13 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public interface IHistoryUIBackend
-{
-    Task OnPopState(string state);
-}
-
-public class AfterLocationChangedHandledEventsArgs : EventArgs
-{
-    public string Location { get; init; } = "";
-    public bool HasLocationChanged { get; init; }
-    public bool IsBackward { get; init; }
-}
-
 // Keeps track of the initial location.
 // Service should be instantiated on app start.
-public class HistoryUI : IHistoryUIBackend, IDisposable
+public class HistoryUI
 {
     private readonly List<HistoryItem> _history = new ();
     private readonly Task _whenJsRefInitialized;
     private PendingHistoryItem? _pendingHistoryItem;
-    private DotNetObjectReference<IHistoryUIBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task _whenLocationChangedHandled;
     private State _state;
@@ -36,7 +23,7 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     public bool IsInitialLocation { get; private set; }
     public Task WhenInitialized { get; }
 
-    public event EventHandler<AfterLocationChangedHandledEventsArgs>? AfterLocationChangedHandled;
+    public event EventHandler<EventArgs>? AfterLocationChangedHandled;
 
     public HistoryUI(
         BrowserInfo browserInfo,
@@ -65,13 +52,6 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
         _state = new State { Index = 0 };
         WhenInitialized = InitializeState(_state);
     }
-
-    public void Dispose()
-        => _blazorRef?.Dispose();
-
-    [JSInvokable]
-    public Task OnPopState(string state)
-        => Task.CompletedTask;
 
     public async Task RouterOnNavigateAsync(NavigationContext arg)
         // Postpone Router navigation till location changed async completed.
@@ -102,12 +82,9 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     }
 
     private async Task InitializeJsRef()
-    {
-        _blazorRef = DotNetObjectReference.Create<IHistoryUIBackend>(this);
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.HistoryUI.create",
-            _blazorRef).ConfigureAwait(false);
-    }
+        => _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.HistoryUI.create")
+            .ConfigureAwait(false);
 
     private async Task InitializeState(State state)
     {
@@ -135,7 +112,6 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
     {
         try {
             var previousState = _state;
-            var previousLocation = _history[_historyIndex].Uri;
             HistoryMove move;
             // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
             // Rework history position tracking with it.
@@ -191,12 +167,7 @@ public class HistoryUI : IHistoryUIBackend, IDisposable
             else
                 historyItem.OnBackAction?.Invoke();
 
-            var eventsArgs = new AfterLocationChangedHandledEventsArgs {
-                Location = location,
-                HasLocationChanged = OrdinalEquals(location, previousLocation),
-                IsBackward = move == HistoryMove.Backward
-            };
-            AfterLocationChangedHandled?.Invoke(this, eventsArgs);
+            AfterLocationChangedHandled?.Invoke(this, EventArgs.Empty);
 
             whenCompleted.SetResult();
         }

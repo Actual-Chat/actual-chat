@@ -1,17 +1,9 @@
 const LogScope: string = 'HistoryUI';
 
 export class HistoryUI {
-    private blazorRef: DotNet.DotNetObject;
-
-    static create(blazorRef: DotNet.DotNetObject): HistoryUI {
+    static create(): HistoryUI {
         console.debug(`${LogScope}: create`);
-        return new HistoryUI(blazorRef);
-    }
-
-    constructor(blazorRef: DotNet.DotNetObject) {
-        this.blazorRef = blazorRef;
-        // Wiring up event listeners
-        window.addEventListener('popstate', this.onPopState);
+        return new HistoryUI();
     }
 
     public getState = () : any => {
@@ -24,9 +16,4 @@ export class HistoryUI {
         console.debug('setState: ', state);
         history.replaceState(state, '');
     }
-
-    private onPopState = (async (event: PopStateEvent) => {
-        console.debug(`${LogScope}: onPopState`);
-        await this.blazorRef.invokeMethodAsync('OnPopState', JSON.stringify(event.state));
-    });
 }
