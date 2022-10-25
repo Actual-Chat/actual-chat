@@ -57,7 +57,7 @@ public class HistoryUI
         // Postpone Router navigation till location changed async completed.
         // We can get rid of this event handler
         // after OnLocationChangedAsync is replaced with synchronous implementation in .NET 7.
-        => await _whenLocationChangedHandled;
+        => await _whenLocationChangedHandled.ConfigureAwait(true);
 
     public Task GoBack()
         => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
@@ -74,13 +74,6 @@ public class HistoryUI
         Nav.NavigateTo(Nav.Uri);
     }
 
-    private async Task<State?> GetStateAsync()
-    {
-        await _whenJsRefInitialized.ConfigureAwait(false);
-        var result = await _jsRef!.InvokeAsync<State?>("getState").ConfigureAwait(false);
-        return result;
-    }
-
     private async Task InitializeJsRef()
         => _jsRef = await JS.InvokeAsync<IJSObjectReference>(
             $"{BlazorUICoreModule.ImportName}.HistoryUI.create")
@@ -88,8 +81,8 @@ public class HistoryUI
 
     private async Task InitializeState(State state)
     {
-        await _whenJsRefInitialized;
-        await SetStateAsync(state);
+        await _whenJsRefInitialized.ConfigureAwait(false);
+        await SetStateAsync(state).ConfigureAwait(false);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -115,12 +108,12 @@ public class HistoryUI
             HistoryMove move;
             // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
             // Rework history position tracking with it.
-            var readState = await GetStateAsync();
+            var readState = await GetStateAsync().ConfigureAwait(false);
             if (readState == null) {
                 // State is null, apparently it's an internal navigation to next location happened.
                 // Lets store this in the state.
                 var state = new State { Index = previousState.Index + 1 };
-                await SetStateAsync(state);
+                await SetStateAsync(state).ConfigureAwait(false);
                 _state = state;
                 move = HistoryMove.Navigate;
             }
@@ -176,10 +169,17 @@ public class HistoryUI
         }
     }
 
+    private async Task<State?> GetStateAsync()
+    {
+        await _whenJsRefInitialized.ConfigureAwait(false);
+        var result = await _jsRef!.InvokeAsync<State?>("getState").ConfigureAwait(false);
+        return result;
+    }
+
     private async Task SetStateAsync(State state)
     {
-        await _whenJsRefInitialized;
-        await _jsRef!.InvokeVoidAsync("setState", state);
+        await _whenJsRefInitialized.ConfigureAwait(false);
+        await _jsRef!.InvokeVoidAsync("setState", state).ConfigureAwait(false);
     }
 
     private record PendingHistoryItem(HistoryItem HistoryItem, int HistoryIndex);

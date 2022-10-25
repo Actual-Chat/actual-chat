@@ -74,17 +74,13 @@
     private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
