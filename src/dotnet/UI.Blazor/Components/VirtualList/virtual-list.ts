@@ -448,7 +448,7 @@ export class VirtualList implements VirtualListAccessor {
                     const newScrollTop = pivotRef.offsetTop - pivotOffset + pivotOffsetScrollDiff;
                     const scrollTop = this._ref.scrollTop;
                     const dScrollTop = newScrollTop - scrollTop;
-                    if (Math.abs(dScrollTop) > SizeEpsilon) {
+                    if (Math.abs(dScrollTop) > PivotSyncEpsilon) {
                         debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
                         this._ref.scrollTop = newScrollTop;
                     } else {
@@ -479,7 +479,7 @@ export class VirtualList implements VirtualListAccessor {
         }
     }
 
-    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, true);
+    private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, 'delayHead');
     private updateClientSideState = serialize(async () => {
         const rs = this.renderState;
         if (this._isDisposed || this._isRendering)
