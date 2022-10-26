@@ -6,9 +6,11 @@
     var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
 }
 
-<NavbarItem Url="@($"/chat/{Chat.Id}")" IsSelected="@m.IsSelected"
-            data-menu="@(MenuRef.New<ChatMenu>(Chat.Id).ToString())"
-            data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
+<NavbarItem
+    Url="@($"/chat/{Chat.Id}")"
+    IsSelected="@m.IsSelected"
+    data-menu="@(MenuRef.New<ChatMenu>(Chat.Id).ToString())"
+    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <ChatIcon Chat="Chat"/>

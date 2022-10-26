@@ -1,9 +1,10 @@
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-
-@if (Chats == null || Chats.Count == 0) {
-    return;
+@{
+    if (Chats == null || Chats.Count == 0)
+        return;
 }
+
 <div class="@GetCss(Kind)">
     @foreach (var chat in Chats) {
         <ChatListItem @key="chat" Chat="@chat" ListKind="@Kind" />

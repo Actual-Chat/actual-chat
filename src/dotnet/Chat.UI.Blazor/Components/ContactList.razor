@@ -1,8 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-
-@if (Contacts == null || Contacts.Count == 0) {
-    return;
+@{
+    if (Contacts == null || Contacts.Count == 0)
+        return;
 }
+
 <div class="@GetCss(Kind)">
     @foreach (var contact in Contacts) {
         <ContactListItem @key="contact" Contact="@contact" />
