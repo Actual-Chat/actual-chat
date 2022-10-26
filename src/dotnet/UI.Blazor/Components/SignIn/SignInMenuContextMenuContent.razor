@@ -1,0 +1,52 @@
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<ActualChat.Users.Account?>
+@{
+    var account = State.LatestNonErrorValue;
+    var user = account?.User;
+    if (AuthSchemas == null || user != null)
+        return;
+
+    var usedAuthSchemas = user?.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? NoAuthSchemas;
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+}
+
+@foreach (var (name, displayName) in unusedAuthSchemas) {
+    var title = "Sign in with " + displayName;
+    <MenuEntry Text="@title" OnClick="(() => SignIn(name))"/>
+}
+
+@code {
+    public enum MenuButton {
+        Default,
+        Round,
+    }
+
+    private static readonly HashSet<string> NoAuthSchemas = new();
+    private (string Name, string DisplayName)[]? AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+
+    protected override ComputedState<Account?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.Get(Session, cancellationToken);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        // GetSchemas requires JS interop for web version, so it can be called only at this point
+        AuthSchemas = await ClientAuth.GetSchemas();
+        StateHasChanged();
+    }
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+}
