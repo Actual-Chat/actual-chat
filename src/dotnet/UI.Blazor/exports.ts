@@ -35,7 +35,7 @@ export * from './Components/Feedback/feedback';
 export * from './Components/Escapist/escapist';
 export * from './Components/Escapist/escapist-subscription';
 export * from './Components/Escapist/keyboard-dispatcher';
-export * from './Components/Menu2/menu-host';
+export * from './Components/Menu/menu-host';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
