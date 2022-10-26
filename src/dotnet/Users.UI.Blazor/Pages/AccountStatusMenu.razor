@@ -1,0 +1,21 @@
+@using ActualChat.Users
+@inherits MenuBase
+
+@foreach (var value in Enum.GetValues<AccountStatus>()) {
+    <MenuEntry
+        Text="@value.ToString()"
+        OnClick="_ => OnStatusSelected(value)">
+    </MenuEntry>
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private async Task OnStatusSelected(AccountStatus newStatus) {
+        var account = await Accounts.Get(Session, default).Require();
+        var updatedAccount = account with { Status = newStatus };
+        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
+    }
+}
