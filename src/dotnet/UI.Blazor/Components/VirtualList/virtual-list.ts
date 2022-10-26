@@ -11,6 +11,8 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { VirtualListAccessor } from './ts/virtual-list-accessor';
 import { clamp } from './ts/math';
 import { RangeExt } from './ts/range-ext';
+import { Pivot } from './ts/pivot';
+
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'VirtualList';
@@ -21,7 +23,8 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 const UpdateClientSideStateInterval: number = 125;
 const UpdateVisibleKeysInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
-const SizeEpsilon: number = 1;
+const PivotSyncEpsilon: number = 16;
+const VisibilityEpsilon: number = 5;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 256;
 const RenderTimeout: number = 640;
@@ -40,6 +43,7 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
     private readonly _visibilityObserver: IntersectionObserver;
+    private readonly _scrollPivotObserver: IntersectionObserver;
     private readonly _skeletonObserver: IntersectionObserver;
     private readonly _ironPantsIntervalHandle: number;
     private readonly _bufferZoneSize;
@@ -50,13 +54,9 @@ export class VirtualList implements VirtualListAccessor {
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private _whenRenderCompleted: PromiseSource<void> | null = null;
     private _whenUpdateCompleted: PromiseSource<void> | null = null;
-    private _lastVisibleKey: string | null = null;
-    private _pivotKey: string | null = null;
-    private _pivotOffset: number | null = null;
-    private _top: number | null = null;
-    private _viewport: number | null = null;
+    private _pivots: Pivot[] = [];
+    private _top: number;
 
-    private _isUpdatingClientState: boolean = false;
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
     private _scrollTime: number | null = null;
@@ -117,12 +117,20 @@ export class VirtualList implements VirtualListAccessor {
             this.onItemVisibilityChange,
             {
                 root: this._ref,
+                rootMargin: `${VisibilityEpsilon}px`,
                 threshold: [0, 0.1, 0.9, 1],
 
                 /* required options for IntersectionObserver v2*/
                 // @ts-ignore
                 trackVisibility: true,
-                delay: 100  // minimum 100
+                delay: 250  // minimum 100
+            });
+        this._scrollPivotObserver = new IntersectionObserver(
+            this.onScrollPivotVisibilityChange,
+            {
+                root: this._ref,
+                rootMargin: '-30%',
+                threshold: [ ...Array(100).keys() ].map( i => i / 100),
             });
         this._skeletonObserver = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
@@ -136,7 +144,6 @@ export class VirtualList implements VirtualListAccessor {
 
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
-        this._lastVisibleKey = null;
 
         this._skeletonObserver.observe(this._spacerRef);
         this._skeletonObserver.observe(this._endSpacerRef);
@@ -175,6 +182,7 @@ export class VirtualList implements VirtualListAccessor {
         this._renderEndObserver.disconnect();
         this._skeletonObserver.disconnect();
         this._visibilityObserver.disconnect();
+        this._scrollPivotObserver.disconnect();
         this._sizeObserver.disconnect();
         this._whenRenderCompleted?.resolve(undefined);
         this._whenUpdateCompleted?.resolve(undefined);
@@ -204,6 +212,7 @@ export class VirtualList implements VirtualListAccessor {
                     this._visibleItems.delete(key);
                     this._sizeObserver.unobserve(itemRef);
                     this._visibilityObserver.unobserve(itemRef);
+                    this._scrollPivotObserver.unobserve(itemRef);
                 }
 
                 // iterating over all mutations addedNodes is slow
@@ -228,6 +237,7 @@ export class VirtualList implements VirtualListAccessor {
                 this._unmeasuredItems.add(key);
                 this._sizeObserver.observe(itemRef, { box: 'border-box' });
                 this._visibilityObserver.observe(itemRef);
+                this._scrollPivotObserver.observe(itemRef);
             }
         }
 
@@ -247,6 +257,7 @@ export class VirtualList implements VirtualListAccessor {
                 this._unmeasuredItems.add(key);
                 this._sizeObserver.observe(itemRef, { box: 'border-box' });
                 this._visibilityObserver.observe(itemRef);
+                this._scrollPivotObserver.observe(itemRef);
             }
         }
 
@@ -284,19 +295,19 @@ export class VirtualList implements VirtualListAccessor {
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
         let hasChanged = false;
-        let lastKey: string = null;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
             const key = getItemKey(itemRef);
             if (entry.intersectionRatio <= 0.2 && !entry.isIntersecting) {
                 hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
-                lastKey = key;
             }
             else if (entry.intersectionRatio >= 0.4 && entry.isIntersecting) {
                 hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
             }
+
+            this._top = entry.rootBounds.top + VisibilityEpsilon;
         }
         if (hasChanged) {
             const rs = this.renderState;
@@ -319,37 +330,7 @@ export class VirtualList implements VirtualListAccessor {
                 this.setStickyEdge(null);
             }
 
-            if (lastKey) {
-                this._lastVisibleKey = lastKey;
-            }
-
             if (!this._isRendering) {
-                // some visible item
-                const pivotEntity = entries.filter(e => e.isIntersecting ?? e.intersectionRatio == 1).shift();
-                if (pivotEntity) {
-                    this._pivotKey = getItemKey(pivotEntity.target as HTMLElement);
-                    this._pivotOffset = pivotEntity.boundingClientRect.top;
-                    this._top = pivotEntity.rootBounds.top;
-                    this._viewport = pivotEntity.rootBounds.height;
-                } else if (this._lastVisibleKey) {
-                    const lastVisibleKey = this._lastVisibleKey;
-                    const lastVisibleItemRef = this.getItemRef(lastVisibleKey);
-                    if (lastVisibleItemRef) {
-                        requestAnimationFrame(time => {
-                            const lastItemRef = this.getItemRef(lastKey);
-                            this._pivotKey = lastKey;
-                            this._pivotOffset = lastItemRef.getBoundingClientRect().top;
-                            this._top = this._ref.getBoundingClientRect().top;
-                            this._viewport = this._ref.clientHeight;
-                        });
-                    }
-                } else {
-                    this._pivotKey = null;
-                    this._pivotOffset = null;
-                    this._top = null;
-                    this._viewport = null;
-                }
-
                 const location = window.location;
                 const now = Date.now();
                 const timeSinceLastScroll = now - this._scrollTime ?? 0;
@@ -364,6 +345,20 @@ export class VirtualList implements VirtualListAccessor {
 
             this.updateVisibleKeysThrottled();
         }
+    }
+
+    private onScrollPivotVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+        if (this._isRendering)
+            return;
+
+        this._pivots = entries
+            .map(entry => {
+                const pivot: Pivot = {
+                    itemKey: getItemKey(entry.target as HTMLElement),
+                    offset: entry.boundingClientRect.top,
+                };
+                return pivot;
+            });
     }
 
     private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
@@ -441,37 +436,37 @@ export class VirtualList implements VirtualListAccessor {
                     }
                 }
             }
-            else if (this._pivotKey != null) {
-                // resync scroll to make pivot ref position the same within viewport
-                const pivotRef = this.getItemRef(this._pivotKey);
-                if (pivotRef) {
-                    const pivotOffset = this._pivotOffset;
+            else if (this._pivots?.length) {
+                for (const pivot of this._pivots) {
+                    // resync scroll to make pivot ref position the same within viewport
+                    const pivotRef = this.getItemRef(pivot.itemKey);
+                    if (!pivotRef)
+                        continue;
+
+                    const pivotOffset = pivot.offset;
                     const pivotOffsetScrollDiff = this._top;
                     const newScrollTop = pivotRef.offsetTop - pivotOffset + pivotOffsetScrollDiff;
                     const scrollTop = this._ref.scrollTop;
                     const dScrollTop = newScrollTop - scrollTop;
                     if (Math.abs(dScrollTop) > SizeEpsilon) {
-                        debugLog?.log(`onRenderEnd: resync [${this._pivotKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+                        debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} = ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
                         this._ref.scrollTop = newScrollTop;
                     } else {
                         if (debugLog) {
                             const itemRect = pivotRef.getBoundingClientRect();
-                            debugLog.log(`onRenderEnd: resync skipped [${this._pivotKey}]: ${pivotOffset} ~ ${itemRect.top}`);
+                            debugLog.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ${pivotOffset} ~ ${itemRect.top}`);
                         }
                     }
+                    break;
                 }
             }
 
-            // wait for render
-            await new Promise<void>(resolve => {
-                requestAnimationFrame(time => {
-                    // skeleton time to time become visible after render and scroll
-                    this._isNearSkeleton =
-                        this.isItemVisible(this._spacerRef)
-                        || this.isItemVisible(this._endSpacerRef);
+            requestAnimationFrame(_ => {
+                // skeleton time to time become visible after render and scroll
+                this._isNearSkeleton =
+                    this.isItemVisible(this._spacerRef)
+                    || this.isItemVisible(this._endSpacerRef);
 
-                    resolve();
-                });
             });
         } finally {
             this._isRendering = false;
@@ -502,7 +497,6 @@ export class VirtualList implements VirtualListAccessor {
             await Promise.race([whenUpdateCompleted, delayAsync(UpdateTimeout)]);
 
         this._lastPlan = this._plan;
-
         const state = await new Promise<VirtualListClientSideState>(resolve => {
             let state: VirtualListClientSideState = null;
             requestAnimationFrame(time => {
@@ -572,9 +566,9 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private onScroll = (): void => {
-        if (this._isRendering || this._isDisposed)
+        if (this._isRendering || this._isDisposed) {
             return;
-
+        }
         this.updateClientSideStateThrottled();
     };
 
@@ -691,7 +685,6 @@ export class VirtualList implements VirtualListAccessor {
         if (!viewport) {
             return this._lastQuery;
         }
-        const viewportSize = RangeExt.size(viewport);
         const alreadyLoaded = plan.itemRange;
         let loadStart = viewport.Start - this.loadZoneSize;
         if (loadStart < alreadyLoaded.Start && rs.hasVeryFirstItem)
@@ -709,10 +702,6 @@ export class VirtualList implements VirtualListAccessor {
         if (plan.items.length == 0) // No entries -> nothing to "align" the query to
             return this._lastQuery;
         if (RangeExt.contains(alreadyLoaded, loadZone))
-            return this._lastQuery;
-        if (loadZone.Start < alreadyLoaded.Start && (viewport.Start - alreadyLoaded.Start > viewportSize * 2) && !this._isNearSkeleton)
-            return this._lastQuery;
-        if (loadZone.End > alreadyLoaded.End && (alreadyLoaded.End - viewport.End > viewportSize * 2) && !this._isNearSkeleton)
             return this._lastQuery;
 
         let startIndex = -1;
