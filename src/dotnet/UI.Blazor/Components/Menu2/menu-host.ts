@@ -181,7 +181,7 @@ export class MenuHost implements Disposable {
         byCoords: boolean,
         closeOnSecondClick: boolean
     ): EventData | undefined {
-        if (!(event.target instanceof HTMLElement))
+        if (!(event.target instanceof Element))
             return undefined;
         debugLog?.log(
             `mapEvent: event:`, event,
