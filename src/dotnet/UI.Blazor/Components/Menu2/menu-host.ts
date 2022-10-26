@@ -242,8 +242,7 @@ export class MenuHost implements Disposable {
 }
 
 function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
-    let intTrigger = Number(trigger);
-    return (intTrigger & triggers) === intTrigger;
+    return (Number(trigger) & triggers) === triggers;
 }
 
 function getPlacement(triggerRef: HTMLElement): Placement {
