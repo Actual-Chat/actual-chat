@@ -1,19 +1,24 @@
+import { Log, LogLevel } from 'logging';
+
 const LogScope: string = 'HistoryUI';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class HistoryUI {
     static create(): HistoryUI {
-        console.debug(`${LogScope}: create`);
+        debugLog?.log(`create`);
         return new HistoryUI();
     }
 
-    public getState = () : any => {
+    public getState = (): unknown => {
         const state = history.state;
-        console.debug('getState: ', state);
+        debugLog?.log(`getState:`, state);
         return state;
     }
 
-    public setState = (state) => {
-        console.debug('setState: ', state);
+    public setState = (state: unknown): void => {
+        debugLog?.log(`setState:`, state);
         history.replaceState(state, '');
     }
 }

@@ -7,8 +7,8 @@
 }
 
 <NavbarItem Url="@($"/chat/{Chat.Id}")" IsSelected="@m.IsSelected"
-            data-menu="@(MenuTrigger.Format<ChatMenu>(Chat.Id))"
-            data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).ToTriggersString())">
+            data-menu="@(MenuRef.Format<ChatMenu>(Chat.Id))"
+            data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <ChatIcon Chat="Chat"/>
@@ -31,8 +31,8 @@
                 }
                 <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
                 <div class="flex"
-                     data-menu="@(MenuTrigger.Format<ChatMenu>(Chat.Id))"
-                     data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())"
+                     data-menu="@(MenuRef.Format<ChatMenu>(Chat.Id))"
+                     data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                      data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound
                         ContentClass="!bg-transparent"

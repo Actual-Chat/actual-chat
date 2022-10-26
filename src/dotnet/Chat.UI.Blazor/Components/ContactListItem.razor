@@ -11,8 +11,8 @@
     Url="@($"/chat/{m.ShortChatId.UrlEncode()}")"
     IsOnline="@m.IsOnline"
     IsSelected="@m.IsSelected"
-    data-menu="@(MenuTrigger.Format<ContactMenu>(Contact.Id))"
-    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).ToTriggersString())">
+    data-menu="@(MenuRef.Format<ContactMenu>(Contact.Id))"
+    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <UserAuthorCircle UserId="@Contact.TargetUserId" ShowPresence="true"/>
@@ -26,8 +26,8 @@
             <ChatListListenToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
             <ChatListRecordingToggle ChatId="@m.FullChatId" Class="chat-menu-btn blackout"/>
             <div class="flex"
-                 data-menu="@(MenuTrigger.Format<ContactMenu>(Contact.Id))"
-                 data-menu-trigger="@(MenuTriggers.LeftClick.ToTriggersString())"
+                 data-menu="@(MenuRef.Format<ContactMenu>(Contact.Id))"
+                 data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                  data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
                 <ButtonRound
                     ContentClass="!bg-transparent"

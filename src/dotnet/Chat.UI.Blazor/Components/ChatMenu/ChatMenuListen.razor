@@ -8,14 +8,14 @@
 }
 
 @if (!m.IsListening) {
-    <ContextMenuItem
+    <MenuItem2
         OnClick="@OnListenClick"
         Class="@cls"
         Icon="icon-listen"
         Text="Listen">
-    </ContextMenuItem>
+    </MenuItem2>
 } else {
-    <ContextMenuItem
+    <MenuItem2
         OnClick="@OnListenClick"
         Class="@cls"
         Text="Stop listening">
@@ -25,7 +25,7 @@
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M20.707 19.293L4.70701 3.29301C4.31601 2.90201 3.68401 2.90201 3.29301 3.29301C2.90201 3.68401 2.90201 4.31601 3.29301 4.70701L19.293 20.707C19.488 20.902 19.744 21 20 21C20.256 21 20.512 20.902 20.707 20.707C21.098 20.316 21.098 19.684 20.707 19.293Z"/>
             </svg>
         </IconContent>
-    </ContextMenuItem>
+    </MenuItem2>
 }
 
 @code {

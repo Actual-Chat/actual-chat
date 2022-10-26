@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<ContextMenuItem
+<MenuItem2
     OnClick="OnLeaveChatClick"
     Class="warning-item"
     Icon="icon-trash02"
     Text="Leave chat"
     StartGroup="true">
-</ContextMenuItem>
+</MenuItem2>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;

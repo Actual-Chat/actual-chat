@@ -7,10 +7,9 @@ namespace ActualChat.UI.Blazor.Services;
 public class HistoryUI
 {
     private readonly List<HistoryItem> _history = new ();
-    private readonly Task _whenJsRefInitialized;
     private PendingHistoryItem? _pendingHistoryItem;
     private IJSObjectReference? _jsRef;
-    private Task _whenLocationChangedHandled;
+    private Task _whenLocationChangedHandled = Task.CompletedTask;
     private State _state;
     private int _historyIndex;
 
@@ -47,17 +46,21 @@ public class HistoryUI
         // So HistoryUI will be notified the first on location changed, even before the Router.
         Nav.LocationChanged += OnLocationChanged;
 
-        _whenLocationChangedHandled = Task.CompletedTask;
-        _whenJsRefInitialized = InitializeJsRef();
-        _state = new State { Index = 0 };
-        WhenInitialized = InitializeState(_state);
+        _state = new State();
+        WhenInitialized = Initialize(_state);
+    }
+
+    private async Task Initialize(State state)
+    {
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
+        await SetStateAsync(state);
     }
 
     public async Task RouterOnNavigateAsync(NavigationContext arg)
         // Postpone Router navigation till location changed async completed.
         // We can get rid of this event handler
         // after OnLocationChangedAsync is replaced with synchronous implementation in .NET 7.
-        => await _whenLocationChangedHandled.ConfigureAwait(true);
+        => await _whenLocationChangedHandled;
 
     public Task GoBack()
         => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
@@ -72,17 +75,6 @@ public class HistoryUI
         };
         _pendingHistoryItem = new PendingHistoryItem(historyItem, _historyIndex);
         Nav.NavigateTo(Nav.Uri);
-    }
-
-    private async Task InitializeJsRef()
-        => _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.HistoryUI.create")
-            .ConfigureAwait(false);
-
-    private async Task InitializeState(State state)
-    {
-        await _whenJsRefInitialized.ConfigureAwait(false);
-        await SetStateAsync(state).ConfigureAwait(false);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -108,12 +100,12 @@ public class HistoryUI
             HistoryMove move;
             // TODO: in .NET 7 NavigationManager provides access to state property of the history API.
             // Rework history position tracking with it.
-            var readState = await GetStateAsync().ConfigureAwait(false);
+            var readState = await GetStateAsync();
             if (readState == null) {
                 // State is null, apparently it's an internal navigation to next location happened.
                 // Lets store this in the state.
                 var state = new State { Index = previousState.Index + 1 };
-                await SetStateAsync(state).ConfigureAwait(false);
+                await SetStateAsync(state);
                 _state = state;
                 move = HistoryMove.Navigate;
             }
@@ -164,22 +156,23 @@ public class HistoryUI
 
             whenCompleted.SetResult();
         }
-        catch(Exception e) {
+        catch (Exception e) {
             whenCompleted.TrySetException(e);
         }
     }
 
     private async Task<State?> GetStateAsync()
     {
-        await _whenJsRefInitialized.ConfigureAwait(false);
-        var result = await _jsRef!.InvokeAsync<State?>("getState").ConfigureAwait(false);
+        await WhenInitialized;
+        var result = await _jsRef!.InvokeAsync<State?>("getState");
         return result;
     }
 
     private async Task SetStateAsync(State state)
     {
-        await _whenJsRefInitialized.ConfigureAwait(false);
-        await _jsRef!.InvokeVoidAsync("setState", state).ConfigureAwait(false);
+        if (_jsRef == null)
+            await WhenInitialized;
+        await _jsRef!.InvokeVoidAsync("setState", state);
     }
 
     private record PendingHistoryItem(HistoryItem HistoryItem, int HistoryIndex);
@@ -190,10 +183,7 @@ public class HistoryUI
         public Action? OnBackAction { get; init; }
     }
 
-    public class State
-    {
-        public int Index { get; init; }
-    }
+    public sealed record State(int Index = 0);
 
     private enum HistoryMove { Navigate, Forward, Backward }
 }

@@ -1,3 +1,4 @@
+import './tooltip.css';
 import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
 import {
@@ -10,19 +11,19 @@ import {
 } from '@floating-ui/dom';
 import { Log, LogLevel } from 'logging';
 
-const LogScope = 'Tooltip';
+const LogScope = 'TooltipHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-export class Tooltip implements Disposable {
+export class TooltipHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly arrowRef: HTMLElement;
     private readonly tooltipRef: HTMLElement;
     private readonly tooltipTextRef: HTMLElement;
 
-    public static create(): Tooltip {
-        return new Tooltip();
+    public static create(): TooltipHost {
+        return new TooltipHost();
     }
 
     constructor() {

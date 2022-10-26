@@ -1,4 +1,4 @@
-.ac-menu-container {
+.ac-menu-host {
     @apply fixed w-screen h-screen overflow-hidden pointer-events-none z-menu-container;
 }
 .ac-menu {

@@ -2,10 +2,10 @@
 @using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
 
-<div class="ac-menu-container">
+<div class="ac-menu-host">
     <CascadingValue Value="@this" IsFixed="true">
         @foreach (var menu in _menus) {
-            <div id="@menu.Id" @key="menu.Id" class="@(menu.isHover ? "ac-menu-hover" : "ac-menu")">
+            <div id="@menu.Id" @key="menu.Id" class="@(menu.IsHoverMenu ? "ac-menu-hover" : "ac-menu")">
                 <ul class="ac-menu-list">
                     <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                 </ul>
@@ -15,23 +15,24 @@
 </div>
 
 @code {
-    private List<Model> _menus = new();
+    private readonly List<Model> _menus = new();
     private IJSObjectReference _jsRef = null!;
-    private DotNetObjectReference<ContextMenuEx> _blazorRef = null!;
+    private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [JSInvokable]
-    public Task RenderMenu(string trigger, string id, bool isHover) {
-        var parsed = MenuTrigger.Parse(trigger);
-        var menuType = MenuUI.Get(parsed.MenuType);
-        var parameters = parsed.Arguments is { Length:> 0}
-            ? new Dictionary<string, object>() {
-                { nameof(ContextMenuExBase.Id), id },
-                { nameof(ContextMenuExBase.Arguments), parsed.Arguments },
-            }
-            : null;
-        _menus.Add(new Model(id, menuType, parameters, isHover));
+    public Task RenderMenu(string menuRef, string id, bool isHoverMenu) {
+        var (menuTypeName, arguments) = MenuRef.Parse(menuRef);
+        var model = new Model(
+            id,
+            MenuRegistry.GetType(menuTypeName),
+            new Dictionary<string, object>() {
+                { nameof(MenuBase.Id), id },
+                { nameof(MenuBase.Arguments), arguments },
+            },
+            isHoverMenu);
+        _menus.Add(model);
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -43,17 +44,15 @@
         return Task.CompletedTask;
     }
 
-    public async Task ShowMenu(ContextMenuExBase menu) {
+    public async Task ShowMenu(MenuBase menu) {
         await _jsRef.InvokeVoidAsync("showMenu", menu.Id);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var identifier = $"{BlazorUICoreModule.ImportName}.ContextMenu.create";
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                identifier,
-                _blazorRef);
+            var identifier = $"{BlazorUICoreModule.ImportName}.MenuHost.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
         }
     }
 
@@ -64,5 +63,9 @@
         _blazorRef = null!;
     }
 
-    private sealed record Model(string Id, Type Type, Dictionary<string, object>? Parameters, bool isHover);
+    private sealed record Model(
+        string Id,
+        Type Type,
+        Dictionary<string, object> Parameters,
+        bool IsHoverMenu);
 }

@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel } from '../../nodejs/src/logging';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MessagingInit';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

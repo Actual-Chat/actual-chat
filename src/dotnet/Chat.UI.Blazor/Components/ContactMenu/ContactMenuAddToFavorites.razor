@@ -1,10 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @if (!Contact.IsFavorite) {
-    <ContextMenuItem OnClick="OnClick"
+    <MenuItem2 OnClick="OnClick"
                      Icon="icon-heart-fill text-2xl"
                      Text="Add to Favorites">
-    </ContextMenuItem>
+    </MenuItem2>
 }
 
 @code {

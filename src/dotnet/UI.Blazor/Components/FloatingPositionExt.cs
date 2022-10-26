@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public static class FloatingPositionExtensions
+public static class FloatingPositionExt
 {
     public static string ToPositionString(this FloatingPosition position)
         => position switch {

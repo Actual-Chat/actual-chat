@@ -9,17 +9,15 @@
 
 @code {
     private IJSObjectReference _jsRef = null!;
-    private DotNetObjectReference<Tooltip> _blazorRef = null!;
+    private DotNetObjectReference<TooltipHost> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var identifier = $"{BlazorUICoreModule.ImportName}.Tooltip.create";
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                identifier,
-                _blazorRef);
+            var identifier = $"{BlazorUICoreModule.ImportName}.TooltipHost.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
         }
     }
 

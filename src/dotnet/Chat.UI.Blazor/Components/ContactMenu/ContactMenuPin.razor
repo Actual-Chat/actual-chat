@@ -6,12 +6,12 @@
 }
 
 @if (!isPinned) {
-    <ContextMenuItem OnClick="@Toggle"
+    <MenuItem2 OnClick="@Toggle"
                      Icon="icon-pin text-2xl"
                      Text="Pin">
-    </ContextMenuItem>
+    </MenuItem2>
 } else {
-    <ContextMenuItem OnClick="@Toggle"
+    <MenuItem2 OnClick="@Toggle"
                      Text="Unpin">
         <IconContent>
             <svg class="w-6 h-6 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -19,7 +19,7 @@
                 <rect x="3.12622" y="19.6825" width="9" height="2" transform="rotate(-45 3.12622 19.6825)"/>
             </svg>
         </IconContent>
-    </ContextMenuItem>
+    </MenuItem2>
 }
 
 @code {

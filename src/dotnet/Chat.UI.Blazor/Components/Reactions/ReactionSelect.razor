@@ -5,12 +5,12 @@
 }
 <ul class="reaction-select">
     @foreach (var emoji in Emoji.All) {
-        <ContextMenuItem
+        <MenuItem2
             OnClick="_ => React(emoji.Code)"
             Class="reaction-select-reaction"
             Tooltip="@emoji.Name">
             <TextContent>@emoji.Code</TextContent>
-        </ContextMenuItem>
+        </MenuItem2>
     }
 </ul>
 

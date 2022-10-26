@@ -51,11 +51,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Settings
         services.AddScoped<LanguageUI>();
 
-        MenuUI.Register<ChatMenu>();
-        MenuUI.Register<MessageMenu>();
-        MenuUI.Register<MessageHoverMenu>();
-        MenuUI.Register<ContactMenu>();
-
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
