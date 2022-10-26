@@ -30,8 +30,6 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
-    [Parameter] public string Class { get; set; } = "";
-
     [CascadingParameter] public MenuHost Host { get; set; } = null!;
     [CascadingParameter] public SignInMenuContextMenu Menu { get; set; } = null!;
 
