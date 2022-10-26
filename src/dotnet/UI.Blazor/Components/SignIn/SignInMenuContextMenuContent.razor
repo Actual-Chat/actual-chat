@@ -32,6 +32,9 @@
 
     [Parameter] public string Class { get; set; } = "";
 
+    [CascadingParameter] public MenuHost Host { get; set; } = null!;
+    [CascadingParameter] public SignInMenuContextMenu Menu { get; set; } = null!;
+
     protected override ComputedState<Account?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
@@ -42,9 +45,9 @@
         if (!firstRender)
             return;
 
-        // GetSchemas requires JS interop for web version, so it can be called only at this point
         AuthSchemas = await ClientAuth.GetSchemas();
         StateHasChanged();
+        await Host.ShowMenu(Menu);
     }
 
     private void SignIn(string name)

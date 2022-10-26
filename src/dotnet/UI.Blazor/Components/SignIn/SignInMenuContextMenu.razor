@@ -1,4 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits MenuBase
 
-<SignInMenuContextMenuContent />
+<CascadingValue Value="@this" IsFixed="true">
+    <SignInMenuContextMenuContent />
+</CascadingValue>
