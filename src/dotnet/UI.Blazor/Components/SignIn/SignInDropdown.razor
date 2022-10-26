@@ -1,11 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var cls = $"sign-in-dropdown {Class}";
-}
 
-<SignInMenu Class="@cls" ButtonClass="@ButtonClass"/>
+<SignInMenu ButtonClass="@ButtonClass"/>
 
 @code {
-    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "btn-outline";
 }

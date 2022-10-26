@@ -45,7 +45,7 @@
                     @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
                         @if (account == null) {
                             <span>
-                                You can try to <SignInDropdown Class="inline-block mx-1"/> to resolve it.
+                                You can try to <SignInDropdown /> to resolve it.
                             </span>
                         } else {
                             <span>
