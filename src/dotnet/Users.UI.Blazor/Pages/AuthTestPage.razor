@@ -47,20 +47,16 @@
 @if (m.Account.IsAdmin) {
     <div class="flex-x">
         <span>Status:</span>
-        <Dropdown>
-            <ButtonTemplate>
-                <div class="px-2 inline-flex">
-                    <span class="float-left text-secondary font-semibold chat-header-title">@m.Account.Status</span>
-                </div>
-            </ButtonTemplate>
-            <MenuTemplate>
-                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left">
-                    @foreach (var value in Enum.GetValues<AccountStatus>()) {
-                        <MenuItem Title="@value.ToString()" Click="_ => OnStatusSelected(value)"></MenuItem>
-                    }
-                </Menu>
-            </MenuTemplate>
-        </Dropdown>
+        <Button
+            data-menu="@(MenuRef.New<AccountStatusMenu>().ToString())"
+            data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
+            data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="px-2 inline-flex">
+                <span class="float-left text-secondary font-semibold chat-header-title">
+                    @m.Account.Status
+                </span>
+            </div>
+        </Button>
     </div>
 }
 
@@ -125,9 +121,7 @@
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -165,12 +159,6 @@
             Account = account,
             Sessions = sessionList.ToImmutableList(),
         };
-    }
-
-    private async Task OnStatusSelected(AccountStatus newStatus) {
-        var account = await Accounts.Get(Session, default).Require();
-        var updatedAccount = account with { Status = newStatus };
-        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }
 
     public sealed record SessionModel
