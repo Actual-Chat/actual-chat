@@ -1,4 +1,4 @@
-import { Log, LogLevel } from '../../../../nodejs/src/logging';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'LanguageUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

@@ -13,7 +13,7 @@ namespace ActualChat.Users.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
     [Migration("20221026091152_AddKvas_AddRecentEntries_UpdateUserContact_RemoveChatUserSettings")]
-    partial class AddKvas_AddRecentEntries_UpdateUserContact_RemoveChatUserSettings
+    partial class RemoveChatUserSettings
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
