@@ -53,7 +53,6 @@ public class ScheduledCommandsTest: TestBase
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
-        testService.ProcessedEvents.Count.Should().Be(0);
 
         await Awaiter.WaitFor(() => testService.ProcessedEvents.Count == 2);
         testService.ProcessedEvents.Count.Should().Be(2);
