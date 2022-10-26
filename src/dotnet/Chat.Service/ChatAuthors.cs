@@ -169,6 +169,34 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
             await Backend.GetOrCreate(command.ChatId, userId, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task<ChatAuthor> Create(
+        IChatAuthors.CreateCommand command,
+        CancellationToken cancellationToken)
+    {
+        var (session, chatId) = command;
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        if (!await Chats.CanJoin(session, chatId, cancellationToken).ConfigureAwait(false))
+            throw ChatPermissionsExt.NotEnoughPermissions();
+
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var userId = account?.Id ?? Symbol.Empty;
+
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
+        var chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+
+        if (account == null) {
+            var kvas = new KvasClient(ServerKvas, session);
+            var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
+            settings = settings.WithChatAuthor(chatId, chatAuthor.Id);
+            await kvas.SetAuthorSettings(settings, cancellationToken).ConfigureAwait(false);
+        }
+
+        return chatAuthor;
+    }
+
     // Private methods
 
     private async Task<(Symbol UserId, Symbol OtherUserId)> GetPeerChatUserIds(

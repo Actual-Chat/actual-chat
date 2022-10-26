@@ -31,6 +31,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private TranscriptPostProcessor TranscriptPostProcessor { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
     private IChats Chats { get; }
+    private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -47,6 +48,7 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
         Chats = services.GetRequiredService<IChats>();
+        ChatAuthors = services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
@@ -74,7 +76,7 @@ public sealed class AudioProcessor : IAudioProcessor
             var language = await GetLanguageForTranscription(record, cancellationToken).ConfigureAwait(false);
             var languages = ImmutableArray.Create(language);
 
-            var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+            var author = await ChatAuthors.Get(record.Session, record.ChatId, cancellationToken).Require().ConfigureAwait(false);
             var audio = new AudioSource(
                 Task.FromResult(AudioSource.DefaultFormat),
                 recordingStream,

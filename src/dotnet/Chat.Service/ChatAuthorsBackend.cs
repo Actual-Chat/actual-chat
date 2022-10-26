@@ -9,9 +9,6 @@ namespace ActualChat.Chat;
 
 public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBackend
 {
-    private IChatAuthors? _frontend;
-
-    private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IUserAvatarsBackend UserAvatarsBackend { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
@@ -19,11 +16,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private IDbShardLocalIdGenerator<DbChatAuthor, string> DbChatAuthorLocalIdGenerator { get; }
     private IChatUserSettingsBackend ChatUserSettingsBackend { get; }
     private IServerKvas ServerKvas { get; }
-    private IChatAuthors Frontend => _frontend ??= Services.GetRequiredService<IChatAuthors>();
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
-        Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
@@ -83,28 +78,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return chatIds.Select(x => new Symbol(x)).ToImmutableArray();
-    }
-
-    // Not a [ComputeMethod]!
-    public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var chatAuthor = await Frontend.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor != null)
-            return chatAuthor;
-
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        var userId = account?.Id ?? Symbol.Empty;
-
-        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, false);
-        chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
-
-        if (account == null) {
-            var kvas = new KvasClient(ServerKvas, session);
-            var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
-            settings = settings.WithChatAuthor(chatId, chatAuthor.Id);
-            await kvas.SetAuthorSettings(settings, cancellationToken).ConfigureAwait(false);
-        }
-        return chatAuthor;
     }
 
     // Not a [ComputeMethod]!

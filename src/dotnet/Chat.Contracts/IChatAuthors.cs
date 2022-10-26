@@ -34,6 +34,9 @@ public interface IChatAuthors : IComputeService
     [CommandHandler]
     Task CreateChatAuthors(CreateChatAuthorsCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public sealed record AddToContactsCommand(
         [property: DataMember] Session Session,
@@ -46,4 +49,10 @@ public interface IChatAuthors : IComputeService
         [property: DataMember] string ChatId,
         [property: DataMember] string[] UserIds
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record CreateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+        ) : ISessionCommand<ChatAuthor>;
 }

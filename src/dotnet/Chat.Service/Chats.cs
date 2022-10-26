@@ -422,7 +422,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         await RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
-        var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         var chatEntry = new ChatEntry {
             ChatId = chatId,
             AuthorId = author.Id,
@@ -484,7 +484,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var chatEntry = await GetChatEntry(session, chatId, entryId, type, cancellationToken).ConfigureAwait(false);
 
-        var author = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("You can delete only your own messages.");
 
@@ -496,11 +496,19 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     private async Task JoinChat(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor.HasLeft) {
-            var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, false);
-            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null) {
+            await Commander
+                .Call(new IChatAuthors.CreateCommand(session, chatId), cancellationToken)
+                .ConfigureAwait(false);
         }
+        else {
+            if (chatAuthor.HasLeft) {
+                var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, false);
+                await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
         if (hasInvite)
             // Remove the invite

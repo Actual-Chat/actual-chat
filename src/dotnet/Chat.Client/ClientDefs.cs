@@ -104,6 +104,8 @@ public interface IChatAuthorsClientDef
     Task AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateChatAuthors))]
     Task CreateChatAuthors([Body] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Create))]
+    Task<ChatAuthor> Create([Body] IChatAuthors.CreateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatRoles")]

@@ -15,8 +15,6 @@ public interface IChatAuthorsBackend : IComputeService
     Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken);
 
     // Non-compute methods
-
-    Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
     Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
 
     // Commands

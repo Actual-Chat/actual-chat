@@ -39,7 +39,7 @@ public class ChatActivityTest : AppHostTestBase
             cActiveChatEntries.Value.Count.Should().Be(0);
 
             // 2s pause, create entry, 2s pause, complete it
-            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
+            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, user.Id, ct), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
@@ -62,12 +62,12 @@ public class ChatActivityTest : AppHostTestBase
     private async Task AddChatEntries(
         ICommander commander,
         IChatAuthorsBackend chatAuthorsBackend,
-        Session session,
+        string userId,
         CancellationToken cancellationToken)
     {
         var testClock = new TestClock();
         await testClock.Delay(2000, cancellationToken);
-        var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
+        var author = await chatAuthorsBackend.GetOrCreate(ChatId, userId, true, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
             ChatId = ChatId,

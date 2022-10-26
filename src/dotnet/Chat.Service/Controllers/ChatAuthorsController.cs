@@ -62,4 +62,8 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     [HttpPost]
     public Task CreateChatAuthors([FromBody] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task<ChatAuthor> Create(IChatAuthors.CreateCommand command, CancellationToken cancellationToken)
+        => _commander.Call(command, cancellationToken);
 }
