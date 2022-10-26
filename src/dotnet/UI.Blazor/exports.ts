@@ -10,7 +10,6 @@ import './Components/Dropdown/dropdown.css'
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
 import './Components/ImageViewerModal/image-viewer-modal.css'
-import './Components/Menu/menu.css'
 import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
 import './Components/Modal/modal.css' // based on BlazoredModal
 import './Components/Pic/pic.css'
