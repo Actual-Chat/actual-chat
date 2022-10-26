@@ -9,13 +9,18 @@ public static class MenuRegistry
 
     public static string GetTypeId<TMenu>()
         where TMenu: MenuBase
-        => TypeToTypeId.GetOrAdd(typeof(TMenu), type1 => {
+        => GetTypeId(typeof(TMenu));
+
+    public static Symbol GetTypeId(Type type)
+        => TypeToTypeId.GetOrAdd(type, type1 => {
+            if (!type1.IsAssignableTo(typeof(MenuBase)))
+                throw new ArgumentOutOfRangeException(nameof(type));
             var typeId = type1.ToSymbol(false);
             TypeIdToType.GetOrAdd(typeId, type1);
             return typeId;
         });
 
-    public static Type GetType(string typeId)
+    public static Type GetType(Symbol typeId)
         => TypeIdToType.GetValueOrDefault(typeId)
             ?? throw new KeyNotFoundException(typeId);
 }

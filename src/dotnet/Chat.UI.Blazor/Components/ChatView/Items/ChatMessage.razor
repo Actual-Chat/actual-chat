@@ -27,8 +27,8 @@
 }
 
 <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
-     data-hover-menu="@(MenuRef.Format<MessageHoverMenu>(Message.Entry.ChatId, Message.Key))"
-     data-menu="@(MenuRef.Format<MessageMenu>(Message.Entry.ChatId, Message.Key))"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key).ToString())"
      data-menu-trigger="@(MenuTriggers.RightClick.Format())">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">

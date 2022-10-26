@@ -23,13 +23,13 @@
 
     [JSInvokable]
     public Task RenderMenu(string menuRef, string id, bool isHoverMenu) {
-        var (menuTypeName, arguments) = MenuRef.Parse(menuRef);
+        var parsedMenuRef = MenuRef.Parse(menuRef);
         var model = new Model(
             id,
-            MenuRegistry.GetType(menuTypeName),
+            parsedMenuRef.MenuType,
             new Dictionary<string, object>() {
                 { nameof(MenuBase.Id), id },
-                { nameof(MenuBase.Arguments), arguments },
+                { nameof(MenuBase.Arguments), parsedMenuRef.Arguments },
             },
             isHoverMenu);
         _menus.Add(model);
