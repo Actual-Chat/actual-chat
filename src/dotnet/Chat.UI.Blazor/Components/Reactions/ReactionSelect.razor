@@ -1,21 +1,20 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-
-@if (!_areReactionsEnabled) {
-    return;
+@{
+    if (!_areReactionsEnabled)
+        return;
 }
 <ul class="reaction-select">
     @foreach (var emoji in Emoji.All) {
-        <MenuItem2
+        <MenuEntry
             OnClick="_ => React(emoji.Code)"
             Class="reaction-select-reaction"
             Tooltip="@emoji.Name">
             <TextContent>@emoji.Code</TextContent>
-        </MenuItem2>
+        </MenuEntry>
     }
 </ul>
 
 @code {
-
     private bool _areReactionsEnabled;
 
     [Inject] private Session Session { get; init; } = null!;

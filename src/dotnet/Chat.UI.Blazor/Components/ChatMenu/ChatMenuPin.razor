@@ -4,11 +4,11 @@
     var isPinned = State.Value;
 }
 
-<MenuItem2
+<MenuEntry
     OnClick="@Toggle"
     Icon="icon-pin"
     Text="@(isPinned ? "Unpin" : "Pin")">
-</MenuItem2>
+</MenuEntry>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
