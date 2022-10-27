@@ -12,7 +12,7 @@
     if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
         <Welcome/>
     }
-    else if (!string.IsNullOrEmpty(m.Link) && !_navigated) {
+    else if (!m.Link.IsNullOrEmpty() && !_navigated) {
         _navigated = true; // prevents multiple calls
         // Do automatic redirect on first load.
         Nav.NavigateTo(m.Link, false, true);

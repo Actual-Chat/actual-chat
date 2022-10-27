@@ -2,7 +2,7 @@
 
 namespace Blazored.Modal;
 
-public class ModalReference : IModalReference
+public class ModalRef : IModalRef
 {
     private readonly TaskCompletionSource _resultCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ModalService _modalService;
@@ -10,9 +10,9 @@ public class ModalReference : IModalReference
     internal Guid Id { get; }
     internal RenderFragment ModalInstance { get; }
     internal BlazoredModalInstance? ModalInstanceRef { get; set; }
-    public event EventHandler<ModalInstanceCloseRequestedEventArgs>? ModalInstanceCloseRequested;
+    public event EventHandler<ModalCloseRequestEventArgs>? ModalCloseRequest;
 
-    public ModalReference(Guid modalInstanceId, RenderFragment modalInstance, ModalService modalService)
+    public ModalRef(Guid modalInstanceId, RenderFragment modalInstance, ModalService modalService)
     {
         Id = modalInstanceId;
         ModalInstance = modalInstance;
@@ -27,15 +27,15 @@ public class ModalReference : IModalReference
     internal void Dismiss()
         => _ = _resultCompletion.TrySetResult();
 
-    internal bool RaiseModalInstanceCloseRequested()
+    internal bool RaiseModalCloseRequest()
     {
-        var args = new ModalInstanceCloseRequestedEventArgs();
-        ModalInstanceCloseRequested?.Invoke(this, args);
+        var args = new ModalCloseRequestEventArgs();
+        ModalCloseRequest?.Invoke(this, args);
         return args.Handled;
     }
 }
 
-public class ModalInstanceCloseRequestedEventArgs : EventArgs
+public class ModalCloseRequestEventArgs : EventArgs
 {
     public bool Handled { get; set; }
 }

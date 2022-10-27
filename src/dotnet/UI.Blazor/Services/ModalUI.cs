@@ -20,7 +20,7 @@ public sealed class ModalUI
     }
 
 #pragma warning disable IL2072
-    public Task<IModalReference> Show<TModel>(TModel model, bool isFullScreen = false)
+    public Task<IModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
@@ -31,13 +31,13 @@ public sealed class ModalUI
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return Task.FromResult(ShowInternal(componentType, model, isFullScreen));
 
-        IModalReference? modalReference = null;
-        var tcs = new TaskCompletionSource<IModalReference>();
+        IModalRef? modalReference = null;
+        var tcs = new TaskCompletionSource<IModalRef>();
         HistoryUI.NavigateTo(
             () => {
                 modalReference = ShowInternal(componentType, model, isFullScreen);
                 tcs.SetResult(modalReference);
-                modalReference.ModalInstanceCloseRequested += (s, e) => {
+                modalReference.ModalCloseRequest += (s, e) => {
                     e.Handled = true;
                     _ = HistoryUI.GoBack();
                 };
@@ -48,7 +48,7 @@ public sealed class ModalUI
         return tcs.Task;
     }
 
-    private IModalReference ShowInternal<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
+    private IModalRef ShowInternal<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
     {
         var modalOptions = new ModalOptions
         {
