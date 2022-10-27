@@ -16,7 +16,7 @@
 
 <div class="message-attachment-image mt-1">
     <a class="cursor-pointer" href="@url"
-       role="button" @onclick="_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height)" @onclick:preventDefault="true">
+       role="button" @onclick="_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height, ChatEntry)" @onclick:preventDefault="true">
         <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>
 </div>
@@ -33,4 +33,5 @@
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
 }

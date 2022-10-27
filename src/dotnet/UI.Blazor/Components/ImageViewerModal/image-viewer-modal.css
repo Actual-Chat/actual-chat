@@ -1,12 +1,26 @@
 .image-viewer-modal.modal-frame {
-    @apply flex-y justify-center gap-y-0 p-0 md:p-10;
+    @apply flex-y justify-center gap-y-0 p-0;
     @apply w-full md:w-fit md:max-w-full h-full overflow-hidden;
     @apply bg-transparent;
     @apply border-none rounded-none shadow-none;
 }
 
-.image-viewer-modal .dialog-body {
-    @apply flex-x w-full md:w-fit max-w-full justify-center items-center p-0;
+.image-viewer-header {
+    @apply absolute top-0 flex-x min-h-12 justify-between w-full bg-transparent px-2;
+}
+.image-viewer-header .image-header-btn,
+.image-viewer-header .image-header-btn * {
+    @apply cursor-pointer;
+}
+.image-viewer-header .image-header-btn .btn-content {
+    @apply bg-transparent text-05 min-h-10 max-h-10 min-w-10 max-w-10;
+}
+.image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
+    @apply bg-06 text-04;
+}
+
+.image-viewer-modal.modal-frame .dialog-body {
+    @apply flex-x w-full md:w-fit max-w-full justify-center items-center p-0 md:p-10;
     @apply overflow-hidden;
 }
 
