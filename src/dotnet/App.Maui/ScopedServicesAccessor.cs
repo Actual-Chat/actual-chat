@@ -6,8 +6,13 @@ public static class ScopedServicesAccessor
 {
     private static readonly object _lock = new();
     private static IServiceProvider? _scopedServices;
+    private static readonly TaskCompletionSource _whenInitializedSource = new ();
 
-    public static bool IsInitialized => _scopedServices != null;
+    public static bool IsInitialized
+        => _scopedServices != null;
+
+    public static Task WhenInitialized
+        => _whenInitializedSource.Task;
 
     public static IServiceProvider ScopedServices {
         get {
@@ -25,6 +30,7 @@ public static class ScopedServicesAccessor
                 Android.Util.Log.Debug(AndroidConstants.LogTag, $"ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}");
 #endif
                 _scopedServices = value;
+                _whenInitializedSource.TrySetResult();
             }
         }
     }

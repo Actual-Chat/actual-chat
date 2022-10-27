@@ -1,10 +1,10 @@
-using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification;
+using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
+using Android.Util;
 using AndroidX.Core.App;
 using Firebase.Messaging;
-using NetBox.Extensions;
 
 namespace ActualChat.App.Maui;
 
@@ -12,16 +12,16 @@ namespace ActualChat.App.Maui;
 [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
-    //public override void OnNewToken(string token)
-    //{
-    //    base.OnNewToken(token);
-    //    if (Preferences.ContainsKey("DeviceToken"))
-    //        Preferences.Remove("DeviceToken");
-    //    Preferences.Set("DeviceToken", token);
-    //}
+    public override void OnNewToken(string token)
+    {
+        Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnNewToken: '{token}'");
+        base.OnNewToken(token);
+    }
 
     public override void OnMessageReceived(RemoteMessage message)
     {
+        Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnMessageReceived. MessageId={message.MessageId}");
+
         base.OnMessageReceived(message);
 
         // There are 2 types of messages:
@@ -38,9 +38,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var data = message.Data;
         data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var chatId);
         if (!chatId.IsNullOrEmpty() && ScopedServicesAccessor.IsInitialized) {
-            var chatUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<ChatUI>();
-            if (!chatId.IsNullOrEmpty() && OrdinalEquals(chatUI.SelectedChatId.Value, chatId))
-                return; // Do nothing if notification came for the active chat.
+            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
+            if (handler.IsActiveChat(chatId)) {
+                // Do nothing if notification leads to the active chat.
+                Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: '{chatId}'.");
+                return;
+            }
         }
 
         SendNotification(notification.Body, notification.Title, message.Data);

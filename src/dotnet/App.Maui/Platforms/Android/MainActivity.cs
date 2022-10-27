@@ -63,7 +63,7 @@ public class MainActivity : MauiAppCompatActivity
 
         base.OnCreate(savedInstanceState);
 
-        Log.Debug(AndroidConstants.LogTag, $"MainActivity. base.OnCreate completed");
+        Log.Debug(AndroidConstants.LogTag, "MainActivity. base.OnCreate completed");
 
         // atempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -123,6 +123,7 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnNewIntent(Intent? intent)
     {
+        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnNewIntent");
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
@@ -168,6 +169,7 @@ public class MainActivity : MauiAppCompatActivity
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
             else {
+                Log.Debug(AndroidConstants.LogTag, $"Google SignIn. SignInIntent result is NOK. Actual result: {resultCode}.");
                 new AlertDialog.Builder(this)
                     .SetTitle("Google SignIn")
                     .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")
@@ -215,6 +217,8 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap");
+
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach(var key in keySet) {
@@ -228,10 +232,20 @@ public class MainActivity : MauiAppCompatActivity
         }
 
         data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url);
-        if (!url.IsNullOrEmpty() && ScopedServicesAccessor.IsInitialized) {
-            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
-            handler.Handle(url);
+        if (url.IsNullOrEmpty())
+            return;
+
+        async Task Handle()
+        {
+            await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
+            var serviceProvider = ScopedServicesAccessor.ScopedServices;
+            var appIsReadyMarker = serviceProvider.GetRequiredService<AppIsReadyMarker>();
+            await appIsReadyMarker.WhenReady.ConfigureAwait(true);
+            var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
+            Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap navigates to '{url}'");
+            _ = handler.Handle(url);
         }
+        _ = Handle();
     }
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener

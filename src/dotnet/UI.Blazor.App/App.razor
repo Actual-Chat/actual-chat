@@ -125,7 +125,7 @@
         var appIsReadyMarker = Services.GetRequiredService<AppIsReadyMarker>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
         if (browserInfo.ScreenSize.Value.IsNarrow()) {
-            var relativeUri = Nav.ToBaseRelativePath(Nav.Uri);
+            var relativeUri = Nav.GetRelativePath();
             var isHomePage = Links.Equals(relativeUri, "/");
             var isChatPage = relativeUri.StartsWith(Links.ChatPage(""), StringComparison.Ordinal);
             // Home page in narrow view redirects to Chat page.

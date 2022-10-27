@@ -1,9 +1,6 @@
-using System;
-using System.Diagnostics;
 using Android.Util;
 using Android.Webkit;
 using Java.Interop;
-using Stl.Fusion.Authentication;
 using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
@@ -95,6 +92,14 @@ public partial class MauiBlazorWebViewHandler
 
         public override void OnPageFinished(WebView? view, string? url)
             => Original.OnPageFinished(view, url);
+
+        public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)
+        {
+            base.DoUpdateVisitedHistory(view, url, isReload);
+            var canGoBack = view.CanGoBack();
+            // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.
+            Log.Debug(AndroidConstants.LogTag, $"WebViewClientOverride.DoUpdateVisitedHistory. Url: '{url}'. IsReload: '{isReload}'. CanGoBack: '{canGoBack}'.");
+        }
 
         protected override void Dispose(bool disposing)
         {
