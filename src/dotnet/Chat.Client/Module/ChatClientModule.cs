@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Users;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
@@ -21,7 +20,6 @@ public class ChatClientModule : HostModule
         fusionClient.AddReplicaService<IChats, IChatsClientDef>();
         fusionClient.AddReplicaService<IChatAuthors, IChatAuthorsClientDef>();
         fusionClient.AddReplicaService<IChatRoles, IChatRolesClientDef>();
-        fusionClient.AddReplicaService<IChatUserSettings, IChatUserSettingsClientDef>();
         fusionClient.AddReplicaService<IMentions, IMentionsClientDef>();
         fusionClient.AddReplicaService<IReactions, IReactionsClientDef>();
     }

@@ -137,7 +137,7 @@
         var entry = Message.Entry;
         var chatId = entry.ChatId;
         var principalId = await ChatAuthors.GetPrincipalId(Session, chatId, cancellationToken);
-        var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
+        var parsedPrincipalId = new ChatPrincipalId(principalId);
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
@@ -199,13 +199,13 @@
 
     private bool IsMentioned(Markup markup,
         ChatMessageModel? repliedChatMessage,
-        ParsedChatPrincipalId parsedPrincipalId,
+        ChatPrincipalId principalId,
         bool hasAnyMentions)
     {
-        if (!parsedPrincipalId.IsValid || parsedPrincipalId.Kind == ChatPrincipalKind.User)
+        if (!principalId.IsValid || principalId.Kind == ChatPrincipalKind.User)
             return false;
 
-        var authorId = parsedPrincipalId.AuthorId;
+        var authorId = principalId.AuthorId;
         if (repliedChatMessage?.Entry.AuthorId == authorId)
             return true;
 

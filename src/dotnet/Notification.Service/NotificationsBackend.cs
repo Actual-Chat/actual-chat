@@ -301,14 +301,14 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     // Private methods
 
-    private string GetIconUrl(Chat.Chat chat, ChatAuthor chatAuthor)
+    private string GetIconUrl(Chat.Chat chat, ChatAuthorFull chatAuthor)
          => chat.ChatType switch {
              ChatType.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
              ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
          };
 
-    private static string GetTitle(Chat.Chat chat, ChatAuthor chatAuthor)
+    private static string GetTitle(Chat.Chat chat, ChatAuthorFull chatAuthor)
          => chat.ChatType switch {
              ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
              ChatType.Peer => $"{chatAuthor.Name}",

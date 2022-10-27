@@ -13,7 +13,7 @@ public class ServerFeaturesClient : IServerFeatures
     public ServerFeaturesClient(IServiceProvider services)
     {
         Services = services;
-        Client = Services.GetRequiredService<IClient>();
+        Client = services.GetRequiredService<IClient>();
     }
 
     public virtual async Task<object?> Get(Type featureType, CancellationToken cancellationToken)

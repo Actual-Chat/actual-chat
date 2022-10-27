@@ -7,7 +7,7 @@ public sealed record Chat : IHasId<Symbol>, IRequirementTarget
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
-        (Chat? p) => p != null);
+        (Chat? c) => c != null);
 
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public long Version { get; init; }

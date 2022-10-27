@@ -39,7 +39,7 @@ public class ChatUIStateSync : WorkerBase
     {
         Session = session;
         Services = services;
-        Log = Services.LogFor(GetType());
+        Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();

@@ -1,4 +1,5 @@
 
+using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Audio.Processing;
@@ -12,7 +13,7 @@ public sealed class OpenAudioSegment
     public string StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
-    public Author Author { get; }
+    public ChatAuthor Author { get; }
     public ImmutableArray<LanguageId> Languages { get; }
     public Task<Moment?> RecordedAtTask { get; }
     public Task<TimeSpan> AudibleDurationTask { get; }
@@ -23,7 +24,7 @@ public sealed class OpenAudioSegment
         int index,
         AudioRecord audioRecord,
         AudioSource audio,
-        Author author,
+        ChatAuthor author,
         ImmutableArray<LanguageId> languages,
         ILogger log)
     {

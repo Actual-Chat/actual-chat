@@ -9,15 +9,16 @@ public sealed record HostInfo
     private bool? _isStagingInstance;
     private bool? _isDevelopmentInstance;
     private readonly string _baseUrl = "";
+    private ImmutableHashSet<Symbol>? _requiredServiceScopes;
 
     public static Symbol ProductionEnvironment { get; } = Environments.Production;
     public static Symbol StagingEnvironment { get; } = Environments.Staging;
     public static Symbol DevelopmentEnvironment { get; } = Environments.Development;
 
-    public Symbol HostKind { get; init; } = Symbol.Empty;
+    public AppKind AppKind { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
-    public ImmutableHashSet<Symbol> RequiredServiceScopes { get; init; } = ImmutableHashSet<Symbol>.Empty;
+    public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes();
 
     public string BaseUrl {
         get {

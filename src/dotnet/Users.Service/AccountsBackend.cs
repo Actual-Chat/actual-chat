@@ -13,14 +13,16 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     private UsersSettings UsersSettings { get; }
     private IAuthBackend AuthBackend { get; }
-    private IUserAvatarsBackend UserAvatarsBackend { get; }
+    private IAvatarsBackend AvatarsBackend { get; }
+    private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbAccount> DbAccountResolver { get; }
 
     public AccountsBackend(IServiceProvider services) : base(services)
     {
         UsersSettings = services.GetRequiredService<UsersSettings>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
-        UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
+        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
+        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
         DbAccountResolver = services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
     }
 
@@ -35,34 +37,25 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         var dbAccount = await DbAccountResolver.Get(id, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var account =  new Account(user.Id, user) { IsAdmin = IsAdmin(user) };
-        return dbAccount.ToModel(account);
-    }
+        var account = new Account(user.Id, user) {
+            IsAdmin = IsAdmin(user),
+        };
+        account = dbAccount.ToModel(account);
 
-    public virtual async Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
-    {
-        if (userId.IsNullOrEmpty())
-            return null;
+        // Adding Avatar
+        var kvas = ServerKvasBackend.GetClient(ServerKvasBackend.GetUserPrefix(account.Id));
+        var userAvatarSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var avatarId = userAvatarSettings.DefaultAvatarId;
+        if (avatarId.IsEmpty) // Default avatar isn't selected - let's pick the first one
+            avatarId = userAvatarSettings.AvatarIds.FirstOrDefault();
 
-        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return null;
+        var avatar = avatarId.IsEmpty
+            ? GetDefaultAvatar(account)
+            : await AvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false) // No avatars at all
+                ?? GetDefaultAvatar(account);
+        account = account with { Avatar = avatar };
 
-        var userAuthor = new UserAuthor { Id = user.Id, Name = user.Name };
-
-        var account = await Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return userAuthor;
-
-        if (!account.AvatarId.IsEmpty) {
-            var avatar = await UserAvatarsBackend.Get(account.AvatarId, cancellationToken).ConfigureAwait(false);
-            if (avatar != null) {
-                userAuthor = userAuthor with { Picture = avatar.Picture };
-            }
-        }
-        if (userAuthor.Picture.IsNullOrEmpty())
-            userAuthor = userAuthor with { Picture = GetDefaultPicture(user) };
-        return userAuthor;
+        return account;
     }
 
     // [CommandHandler]
@@ -89,19 +82,6 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     // Private methods
 
-    private string GetDefaultPicture(User? user, int size = 80)
-    {
-        if (user == null) return "";
-
-        var email = (user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "")
-            .Trim().ToLowerInvariant();
-        if (!email.IsNullOrEmpty()) {
-            var emailHash = email.GetMD5HashCode().ToLowerInvariant();
-            return $"https://www.gravatar.com/avatar/{emailHash}?s={size}";
-        }
-        return "";
-    }
-
     internal static bool IsAdmin(User user)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
@@ -124,4 +104,13 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     private static bool HasIdentity(User user, string provider)
         => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
+
+    private AvatarFull GetDefaultAvatar(Account account)
+        => new() {
+            Id = default,
+            ChatPrincipalId = account.Id,
+            Name = account.User.Name,
+            Picture = DefaultPicture.Get(account),
+            Bio = "",
+        };
 }

@@ -64,7 +64,7 @@ public class ChatUI
         // Read entry states from other windows / devices aren't delayed
         _lastReadEntryStatesUpdateDelayer = FixedDelayer.Instant;
         _lastReadEntryStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateLastReadEntryState);
-        var stateSync = Services.GetRequiredService<ChatUIStateSync>();
+        var stateSync = services.GetRequiredService<ChatUIStateSync>();
         stateSync.Start();
     }
 

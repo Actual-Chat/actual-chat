@@ -63,7 +63,7 @@ public interface IChatsClientDef
     Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
 
     [Get(nameof(ListMentionableAuthors))]
-    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<ChatAuthor>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(FindNext))]
     Task<ChatEntry?> FindNext(Session session, string chatId, long? startEntryId, string text, CancellationToken cancellationToken);
 
@@ -84,6 +84,8 @@ public interface IChatAuthorsClientDef
 {
     [Get(nameof(Get))]
     Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetFull))]
+    Task<ChatAuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(GetPrincipalId))]
     Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListChatIds))]
@@ -94,7 +96,7 @@ public interface IChatAuthorsClientDef
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetAuthor))]
-    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthor?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetAuthorPresence))]
     Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(CanAddToContacts))]
@@ -119,16 +121,6 @@ public interface IChatRolesClientDef
 
     [Post(nameof(Change))]
     Task<ChatRole?> Change([Body] IChatRoles.ChangeCommand command, CancellationToken cancellationToken);
-}
-
-[BasePath("chatUserSettings")]
-public interface IChatUserSettingsClientDef
-{
-    [Get(nameof(Get))]
-    Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken);
-
-    [Post(nameof(Set))]
-    Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("mentions")]

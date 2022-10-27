@@ -39,7 +39,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
@@ -49,7 +49,7 @@
     protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var account = await Accounts.Get(Session, default);
-        var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
+        var userAvatar = await Avatars.Get(Session, ModalModel.AvatarId, default);
         _form.Picture = userAvatar?.Picture ?? "";
         _form.Name = account?.User.Name ?? "";
         _form.CopyToBase();

@@ -5,7 +5,7 @@ public sealed class AudioSegmentSaver : AudioProcessorBase
     private IBlobStorageProvider Blobs { get; }
 
     public AudioSegmentSaver(IServiceProvider services) : base(services)
-        => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
+        => Blobs = services.GetRequiredService<IBlobStorageProvider>();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,

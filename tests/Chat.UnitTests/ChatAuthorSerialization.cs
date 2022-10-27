@@ -5,7 +5,7 @@ public class ChatAuthorSerialization
     [Fact]
     public void BasicTest()
     {
-        var ca = new ChatAuthor() {
+        var ca = new ChatAuthorFull() {
             Name = "Alex",
         };
         ca.PassThroughSystemJsonSerializer().Should().Be(ca);

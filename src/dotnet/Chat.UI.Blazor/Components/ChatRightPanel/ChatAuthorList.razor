@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ChatAuthors.Model>
+@inherits ComputedStateComponent<ChatAuthorList.Model>
 @{
     var m = State.LatestNonErrorValue;
 }
@@ -10,7 +10,7 @@
     <div class="flex-auto flex-y gap-y-1">
         <div class="text-02">Active — @m.ActiveAuthorIds.Length</div>
         @foreach (var authorId in m.ActiveAuthorIds) {
-            @if (authorId == _selfAuthor?.Id) {
+            @if (authorId == _ownAuthor?.Id) {
                 <ChatAuthorBadge
                     AuthorId="@authorId"
                     ShowsPresence="true"
@@ -36,26 +36,26 @@
 </div>
 
 @code {
-    [Inject] private IChatAuthors Authors { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private ChatAuthor? _selfAuthor;
+    private ChatAuthorFull? _ownAuthor;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        _selfAuthor = await Authors.Get(Session, Chat.Id, cancellationToken);
+        var allAuthorIds = await ChatAuthors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        _ownAuthor = await ChatAuthors.Get(Session, Chat.Id, cancellationToken);
         var activeAuthorIds = new List<Symbol>();
         var inactiveAuthorIds = new List<Symbol>();
         var presences = await allAuthorIds
             .Select(async authorId => {
-                var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+                var presence = await ChatAuthors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
                 return (authorId, presence);
             })
             .Collect();

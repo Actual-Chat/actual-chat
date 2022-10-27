@@ -84,9 +84,9 @@ public class DbChatRole : IHasId<string>
         CanEditRoles = model.Permissions.Has(ChatPermissions.EditRoles);
     }
 
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatRole>
     {
-        public void Configure(EntityTypeBuilder<DbChatAuthor> builder)
+        public void Configure(EntityTypeBuilder<DbChatRole> builder)
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();

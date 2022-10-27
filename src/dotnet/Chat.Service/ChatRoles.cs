@@ -14,11 +14,11 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
 
     public ChatRoles(IServiceProvider services) : base(services)
     {
-        Accounts = Services.GetRequiredService<IAccounts>();
-        Chats = Services.GetRequiredService<IChats>();
-        ChatsBackend = Services.GetRequiredService<IChatsBackend>();
-        ChatAuthors = Services.GetRequiredService<IChatAuthors>();
-        Backend = Services.GetRequiredService<IChatRolesBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        Chats = services.GetRequiredService<IChats>();
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        ChatAuthors = services.GetRequiredService<IChatAuthors>();
+        Backend = services.GetRequiredService<IChatRolesBackend>();
     }
 
     // [ComputeMethod]

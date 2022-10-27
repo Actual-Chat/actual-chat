@@ -12,7 +12,6 @@ namespace ActualChat.Users;
 
 public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 {
-    protected IAuth Auth { get; }
     protected IAuthBackend AuthBackend { get; }
     protected IAccountsBackend AccountsBackend { get; }
     protected UserNamer UserNamer { get; }
@@ -22,7 +21,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     public AuthCommandFilters(IServiceProvider services)
         : base(services)
     {
-        Auth = services.GetRequiredService<IAuth>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         UserNamer = services.GetRequiredService<UserNamer>();

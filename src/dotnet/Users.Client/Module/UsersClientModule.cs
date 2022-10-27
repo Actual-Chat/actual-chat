@@ -23,7 +23,7 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IUserContacts, IUserContactsClientDef>();
         fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IUserAvatars, IUserAvatarsClientDef>();
+        fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
         fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
         fusionClient.AddReplicaService<IRecentEntries, IRecentEntriesClientDef>();

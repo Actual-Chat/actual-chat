@@ -10,7 +10,7 @@ public interface IUserContactsBackend : IComputeService
     [ComputeMethod]
     public Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken);
+    public Task<string> GetPeerChatName(string targetUserId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task<UserContact?> Change(ChangeCommand command, CancellationToken cancellationToken);

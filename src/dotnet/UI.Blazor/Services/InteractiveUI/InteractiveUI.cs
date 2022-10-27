@@ -49,7 +49,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public async Task Demand(string operation = "")
     {
-        if (HostInfo.HostKind == HostKind.Maui)
+        if (HostInfo.AppKind == AppKind.Maui)
             // MAUI controlled browsers doesn't require user interaction to use sound
             return;
 

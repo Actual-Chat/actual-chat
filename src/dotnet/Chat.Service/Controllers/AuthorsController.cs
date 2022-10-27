@@ -6,12 +6,12 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ChatAuthorsController : ControllerBase, IChatAuthors
+public class AuthorsController : ControllerBase, IChatAuthors
 {
     private readonly IChatAuthors _service;
     private readonly ICommander _commander;
 
-    public ChatAuthorsController(IChatAuthors service, ICommander commander)
+    public AuthorsController(IChatAuthors service, ICommander commander)
     {
         _service = service;
         _commander = commander;
@@ -20,6 +20,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     [HttpGet, Publish]
     public Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken)
         => _service.Get(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ChatAuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+        => _service.GetFull(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
@@ -38,7 +42,7 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service.ListUserIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
+    public Task<ChatAuthor?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(session, chatId, authorId, inherit, cancellationToken);
 
     [HttpGet, Publish]

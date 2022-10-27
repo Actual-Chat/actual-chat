@@ -18,7 +18,7 @@ public class LinkInfoBuilder
     public LinkInfo GetFrom(string relativeUri)
     {
         var navigateLink = Nav.ToAbsoluteUri(relativeUri).ToString();
-        var copyLink = HostInfo.HostKind == HostKind.Maui
+        var copyLink = HostInfo.AppKind == AppKind.Maui
             ? UrlMapper.ToAbsolute(relativeUri)
             : navigateLink;
         return new LinkInfo(navigateLink, copyLink);

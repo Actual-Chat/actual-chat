@@ -4,8 +4,6 @@ public interface IAccountsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Account?> Get(string id, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);

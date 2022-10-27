@@ -12,7 +12,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    private IAuth Auth { get; }
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChatAuthors ChatAuthors { get; }
@@ -23,14 +22,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     public Chats(IServiceProvider services) : base(services)
     {
-        Auth = Services.GetRequiredService<IAuth>();
-        Accounts = Services.GetRequiredService<IAccounts>();
-        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        ChatAuthors = Services.GetRequiredService<IChatAuthors>();
-        ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
-        ServerKvas = Services.ServerKvas();
-        Backend = Services.GetRequiredService<IChatsBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        ChatAuthors = services.GetRequiredService<IChatAuthors>();
+        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        ServerKvas = services.ServerKvas();
+        Backend = services.GetRequiredService<IChatsBackend>();
     }
 
     // [ComputeMethod]
@@ -135,7 +133,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (account == null)
             return false;
 
-        var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
+        var parsedChatPrincipalId = new ChatPrincipalId(chatPrincipalId);
         if (!parsedChatPrincipalId.IsValid)
             return false;
 
@@ -186,7 +184,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<ChatAuthor>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
     {
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -356,7 +354,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (contactUserId.IsNullOrEmpty())
             return null;
 
-        var title = contact?.Name ?? await UserContactsBackend.SuggestContactName(contactUserId, cancellationToken).ConfigureAwait(false);
+        var title = await UserContactsBackend.GetPeerChatName(contactUserId, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = title };
         return chat;
     }

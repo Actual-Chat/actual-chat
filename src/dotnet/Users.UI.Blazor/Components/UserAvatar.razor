@@ -26,7 +26,7 @@
         Bio,
     }
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
 
     [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
@@ -39,11 +39,11 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken);
+        var userAvatar = await Avatars.Get(Session, AvatarId, cancellationToken);
         if (userAvatar == null)
             return new Model();
 
-        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken);
+        var defaultAvatarId = await Avatars.GetDefaultAvatarId(Session, cancellationToken);
         var activeAvatarId = "";
         if (!ChatId.IsNullOrEmpty()) {
             var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken);

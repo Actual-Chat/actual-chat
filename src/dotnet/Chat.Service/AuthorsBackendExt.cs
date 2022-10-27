@@ -1,21 +1,23 @@
 namespace ActualChat.Chat;
 
-public static class ChatAuthorsBackendExt
+public static class AuthorsBackendExt
 {
     internal static async Task<Symbol> GetUserId(
         this IChatAuthorsBackend chatAuthorsBackend,
-        ParsedChatPrincipalId chatPrincipalId,
+        ChatPrincipalId chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        if (!chatPrincipalId.IsValid)
-            return Symbol.Empty;
         if (chatPrincipalId.Kind == ChatPrincipalKind.User)
             return chatPrincipalId.UserId;
 
-        var chatAuthorId = chatPrincipalId.AuthorId;
-        var chatId = chatAuthorId.ChatId;
+        var authorId = chatPrincipalId.AuthorId;
+        var parsedAuthorId = new ParsedAuthorId(authorId);
+        if (!parsedAuthorId.IsValid)
+            return default;
+
+        var chatId = parsedAuthorId.ChatId;
         var chatAuthor = await chatAuthorsBackend
-            .Get(chatId, chatAuthorId, false, cancellationToken)
+            .Get(chatId, authorId, false, cancellationToken)
             .ConfigureAwait(false);
         return chatAuthor?.UserId ?? Symbol.Empty;
     }

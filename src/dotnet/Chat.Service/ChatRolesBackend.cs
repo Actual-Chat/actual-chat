@@ -21,10 +21,10 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
 
     public ChatRolesBackend(IServiceProvider services) : base(services)
     {
-        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        DbChatRoleResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChatRole>>();
-        DbChatRoleIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatRole, string>>();
-        DiffEngine = Services.GetRequiredService<DiffEngine>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        DbChatRoleResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatRole>>();
+        DbChatRoleIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatRole, string>>();
+        DiffEngine = services.GetRequiredService<DiffEngine>();
     }
 
     // [ComputeMethod]

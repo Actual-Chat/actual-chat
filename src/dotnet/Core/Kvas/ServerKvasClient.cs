@@ -1,11 +1,11 @@
 namespace ActualChat.Kvas;
 
-public class KvasClient : IKvas
+public class ServerKvasClient : IKvas
 {
     public IServerKvas ServerKvas { get; }
     public Session Session { get; }
 
-    public KvasClient(IServerKvas serverKvas, Session session)
+    public ServerKvasClient(IServerKvas serverKvas, Session session)
     {
         ServerKvas = serverKvas;
         Session = session;

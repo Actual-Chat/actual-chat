@@ -1,12 +1,14 @@
 @using System.Security.Claims
-@using UserAvatar = ActualChat.Users.UserAvatar
-@inherits ComputedStateComponent<User?>
+@using UserAvatar = ActualChat.Users.Avatar
+@inherits ComputedStateComponent<Account?>
 
 @{
-    var user = State.LatestNonErrorValue;
-    if (user == null)
+    var account = State.LatestNonErrorValue;
+    if (account == null)
         return;
-    var relativeUri = Links.UserPage(user.Id);
+
+    var user = account.User;
+    var relativeUri = Links.UserPage(account.Id);
     var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
     user.Claims.TryGetValue(ClaimTypes.Email, out var email);
     user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var mobilePhone);
@@ -17,7 +19,7 @@
     <TileItem Unselected="true" Class="first-tile-item">
         <Icon>
             <UserAuthorBadge
-                UserId="@(user?.Id ?? "")"
+                UserId="@(account?.Id ?? "")"
                 Size="SquareSize.Size9"
                 ShowPresence="false"
                 TextClass="hidden" />
@@ -26,7 +28,7 @@
             <TileButtons HideSetDefaultButton="true" OnEditClick="@(() => EditAccount(_defaultAvatarId))"/>
         </Right>
         <Content>
-            @user.Name
+            @account.User.Name
         </Content>
         <Caption>
             Username
@@ -97,26 +99,26 @@
 
 <TileTopic Topic="My avatars"/>
 
-<UserAvatarsList User="@user"/>
+<UserAvatarsList User="@account"/>
 
 @code {
     private string _defaultAvatarId = "";
 
     [Inject] public Session Session { get; init; } = null!;
-    [Inject] public IAuth Auth { get; init; } = null!;
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] public IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override ComputedState<User?>.Options GetStateOptions()
+    protected override ComputedState<Account?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task<User?> ComputeState(CancellationToken cancellationToken) {
-        var user = await Auth.GetUser(Session, default);
-        _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
-        return user;
+    protected override async Task<Account?> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.Get(Session, default);
+        _defaultAvatarId = await Avatars.GetDefaultAvatarId(Session, default);
+        return account;
     }
 
     private void EditAccount(string avatarId)

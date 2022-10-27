@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 [DataContract]
 public record ChatAuthorRules(
     [property: DataMember] Symbol ChatId,
-    [property: DataMember] ChatAuthor? Author,
+    [property: DataMember] ChatAuthorFull? Author,
     [property: DataMember] Account? Account,
     [property: DataMember] ChatPermissions Permissions = 0)
 {

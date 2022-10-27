@@ -17,9 +17,9 @@ public class FrontendChatMentionResolver : IChatMentionResolver
         ChatAuthors = services.GetRequiredService<IChatAuthors>();
     }
 
-    ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
+    ValueTask<ChatAuthor?> IMentionResolver<ChatAuthor>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);
-    public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
+    public async ValueTask<ChatAuthor?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
         var targetId = mention.Id;
         if (targetId.OrdinalHasPrefix("u:", out var userId))

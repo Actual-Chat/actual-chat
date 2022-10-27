@@ -32,16 +32,16 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
-        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        ChatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        ChatRolesBackend = Services.GetRequiredService<IChatRolesBackend>();
-        MarkupParser = Services.GetRequiredService<IMarkupParser>();
-        ChatMentionResolverFactory = Services.GetRequiredService<BackendChatMentionResolverFactory>();
-        UserContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
-        DbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-        DbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        DiffEngine = Services.GetRequiredService<DiffEngine>();
-        HostInfo = Services.GetRequiredService<HostInfo>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        ChatRolesBackend = services.GetRequiredService<IChatRolesBackend>();
+        MarkupParser = services.GetRequiredService<IMarkupParser>();
+        ChatMentionResolverFactory = services.GetRequiredService<BackendChatMentionResolverFactory>();
+        UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+        DiffEngine = services.GetRequiredService<DiffEngine>();
+        HostInfo = services.GetRequiredService<HostInfo>();
     }
 
     // [ComputeMethod]
@@ -62,6 +62,9 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var parsedChatId = new ParsedChatId(chatId);
         if (!parsedChatId.IsValid)
             return ChatAuthorRules.None(chatId);
+        var chatPrincipalId = new ChatPrincipalId(chatPrincipalId);
+        if (!chatPrincipalId.IsValid)
+            return ChatAuthorRules.None(chatId);
 
         // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
@@ -73,14 +76,13 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat == null)
             return ChatAuthorRules.None(chatId);
 
-        ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
-
-        ChatAuthor? author = null;
-        if (!authorId.IsNullOrEmpty()) {
+        var (userId, authorId) = chatPrincipalId;
+        ChatAuthorFull? author = null;
+        if (!authorId.IsEmpty) {
             author = await ChatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
-            userId = author?.UserId;
+            userId = author?.UserId ?? Symbol.Empty;
         }
-        var account = userId.IsNullOrEmpty() ? null
+        var account = userId.IsEmpty ? null
             : await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
 
         var roles = ImmutableArray<ChatRole>.Empty;
@@ -617,7 +619,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await AddOwner(chatId, chatAuthor, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AddOwner(string chatId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
+    private async Task AddOwner(string chatId, ChatAuthorFull chatAuthor, CancellationToken cancellationToken)
     {
         var ownerRole = await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
             .ConfigureAwait(false);
@@ -644,18 +646,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
         => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryType), cancellationToken);
 
-    private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
-    {
-        if (chatPrincipalId.OrdinalContains(":")) {
-            authorId = chatPrincipalId;
-            userId = null;
-        }
-        else {
-            authorId = null;
-            userId = chatPrincipalId;
-        }
-    }
-
     private async Task<ChatAuthorRules> GetPeerChatRules(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
@@ -665,12 +655,12 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return ChatAuthorRules.None(chatId);
 
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-        var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
+        var parsedChatPrincipalId = new ChatPrincipalId(chatPrincipalId);
         if (!parsedChatPrincipalId.IsValid)
             return ChatAuthorRules.None(chatId);
 
         var userId = parsedChatPrincipalId.UserId.Id;
-        var chatAuthor = (ChatAuthor)null!;
+        var chatAuthor = (ChatAuthorFull)null!;
         if (userId.IsEmpty) {
             var chatAuthorId = parsedChatPrincipalId.AuthorId.Id;
             if (!chatAuthorId.IsEmpty)

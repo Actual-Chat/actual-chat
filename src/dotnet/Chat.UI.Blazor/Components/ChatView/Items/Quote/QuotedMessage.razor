@@ -28,7 +28,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -55,7 +55,7 @@
         var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
+        var principalId = await ChatAuthors.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
         return new (Message, _quoteText, principalId);
     }
 

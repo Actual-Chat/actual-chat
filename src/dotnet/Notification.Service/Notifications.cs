@@ -1,5 +1,6 @@
 ﻿using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -7,26 +8,27 @@ namespace ActualChat.Notification;
 
 public class Notifications : DbServiceBase<NotificationDbContext>, INotifications
 {
-    private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
     private INotificationsBackend Backend { get; }
 
-    public Notifications(IAuth auth, INotificationsBackend backend, IServiceProvider serviceProvider) : base(serviceProvider)
+    public Notifications(IServiceProvider services)
+        : base(services)
     {
-        Auth = auth;
-        Backend = backend;
+        Accounts = services.GetRequiredService<IAccounts>();
+        Backend = services.GetRequiredService<INotificationsBackend>();
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return ChatNotificationStatus.NotSubscribed;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        string userId = user.Id;
+        string userId = account.Id;
         var isDisabledSubscription = await dbContext.MutedChatSubscriptions
             .AnyAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
@@ -37,16 +39,16 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(
         Session session, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.ListRecentNotificationIds(user.Id, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<NotificationEntry> GetNotification(
         Session session, string notificationId, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.GetNotification(user.Id, notificationId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        return await Backend.GetNotification(account.Id, notificationId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -87,8 +89,8 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         }
 
         var (session, deviceId, deviceType) = command;
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -103,7 +105,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = user.Id,
+                UserId = account.Id,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -131,11 +133,11 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             return;
         }
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
             return;
 
-        string userId = user.Id;
+        string userId = account.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

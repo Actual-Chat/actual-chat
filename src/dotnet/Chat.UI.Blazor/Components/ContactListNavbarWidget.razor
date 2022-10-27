@@ -61,7 +61,7 @@
             var activeContactId = GetContactId(selectedChatId);
             contacts = (
                 from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Name)
+                let rank = searchPhrase.GetMatchRank(contact.Title)
                 where rank > 0 || contact.TargetUserId == activeContactId
                 orderby rank descending
                 select contact

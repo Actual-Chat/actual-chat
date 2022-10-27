@@ -207,7 +207,7 @@ public partial class ChatsBackend
         });
         await Commander.Call(changeAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
 
-        var authorsByUserId = new Dictionary<string, ChatAuthor>(StringComparer.OrdinalIgnoreCase);
+        var authorsByUserId = new Dictionary<string, ChatAuthorFull>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
             // join existent users to the chat
            var chatAuthor = await ChatAuthorsBackend.GetOrCreate(chatId, userId, false, cancellationToken).ConfigureAwait(false);

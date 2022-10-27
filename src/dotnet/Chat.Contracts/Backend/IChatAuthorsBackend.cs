@@ -3,9 +3,9 @@ namespace ActualChat.Chat;
 public interface IChatAuthorsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<ChatAuthor?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthorFull?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatAuthor?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthorFull?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -22,20 +22,20 @@ public interface IChatAuthorsBackend : IComputeService
     // Commands
 
     [CommandHandler]
-    Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
+    Task<ChatAuthorFull> Create(CreateCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ChatAuthor> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
+    Task<ChatAuthorFull> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record CreateCommand(
         [property: DataMember] string ChatId,
         [property: DataMember] string UserId,
-        [property: DataMember] bool RequireAuthenticated = true
-        ) : ICommand<ChatAuthor>, IBackendCommand;
+        [property: DataMember] bool RequireAccount
+        ) : ICommand<ChatAuthorFull>, IBackendCommand;
 
     [DataContract]
     public sealed record ChangeHasLeftCommand(
         [property: DataMember] string AuthorId,
         [property: DataMember] bool HasLeft
-    ) : ICommand<ChatAuthor>, IBackendCommand;
+    ) : ICommand<ChatAuthorFull>, IBackendCommand;
 }

@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<ChatAuthorModal.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
-    var title = $"User: {m.Author.Name}";
+    var title = $"User: {m.ChatAuthor.Name}";
 }
 
 <DialogFrame Title="@title">
@@ -43,7 +43,7 @@
         => new() { InitialValue = ComputedModel.None };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var parsedAuthorId = new ParsedChatAuthorId(AuthorId);
+        var parsedAuthorId = new ParsedAuthorId(AuthorId);
         if (!parsedAuthorId.IsValid)
             return ComputedModel.None;
 
@@ -55,7 +55,7 @@
         var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, AuthorId, default);
         var canSendPeerChatMessageTask = Chats.CanSendPeerChatMessage(Session, AuthorId, default);
         return new ComputedModel() {
-            Author = author,
+            ChatAuthor = author,
             CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
             CanSendMessage = await canSendPeerChatMessageTask.ConfigureAwait(false),
         };
@@ -84,7 +84,7 @@
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new();
 
-        public Author Author { get; init; } = Author.None;
+        public ChatAuthor ChatAuthor { get; init; } = ChatAuthor.None;
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }

@@ -24,10 +24,6 @@ public class AccountsController : ControllerBase, IAccounts
     public Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
         => _service.GetByUserId(session, userId, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
-        => _service.GetUserAuthor(userId, cancellationToken);
-
     [HttpPost]
     public Task Update([FromBody] IAccounts.UpdateCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);

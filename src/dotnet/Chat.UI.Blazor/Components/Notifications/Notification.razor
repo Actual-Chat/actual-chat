@@ -73,7 +73,7 @@
         var chatId = notification.Message?.ChatId ?? notification.Chat?.ChatId;
         var entryId = notification.Message?.EntryId;
         var authorId = notification.Message?.AuthorId;
-        var author = null as Author;
+        var author = null as ChatAuthor;
         if (chatId != null) {
             // TODO(AK): Unread message counter
         }

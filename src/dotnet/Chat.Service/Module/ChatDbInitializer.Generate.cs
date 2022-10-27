@@ -31,16 +31,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         };
         dbContext.Chats.Add(dbChat);
 
-        var dbAuthor = new DbChatAuthor {
+        var dbChatAuthor = new DbChatAuthor {
             Id = DbChatAuthor.ComposeId(defaultChatId, 1),
             ChatId = defaultChatId,
             LocalId = 1,
             Version = VersionGenerator.NextVersion(),
-            Name = UserConstants.Admin.Name,
             IsAnonymous = false,
             UserId = adminUserId,
         };
-        dbContext.ChatAuthors.Add(dbAuthor);
+        dbContext.ChatAuthors.Add(dbChatAuthor);
 
         try {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -60,7 +59,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         var now = Clocks.SystemClock.Now;
         await AddRandomEntries(dbContext,
                 dbChat,
-                dbAuthor,
+                dbChatAuthor,
                 0.1,
                 2000,
                 null,
@@ -83,7 +82,6 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 ChatId = defaultChatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
-                Name = $"User_{i}",
                 IsAnonymous = false,
                 UserId = $"user{i}",
             };
@@ -101,7 +99,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     private async Task AddRandomEntries(
         ChatDbContext dbContext,
         DbChat dbChat,
-        DbChatAuthor dbAuthor,
+        DbChatAuthor dbChatAuthor,
         double audioRecordProbability,
         int count,
         Moment? beginsAt,
@@ -152,7 +150,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content = $"{id} {content ?? GetRandomSentence(rnd, 30)}",
-                AuthorId = dbAuthor.Id,
+                AuthorId = dbChatAuthor.Id,
             };
             dbContext.Add(textEntry);
         }
@@ -181,7 +179,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
-                AuthorId = dbAuthor.Id,
+                AuthorId = dbChatAuthor.Id,
             };
             dbContext.Add(audioEntry);
 
@@ -201,7 +199,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                     + "открыв мне чудо на Земле",
                 TextToTimeMap = textToTimeMap,
                 AudioEntryId = audioEntry.Id,
-                AuthorId = dbAuthor.Id,
+                AuthorId = dbChatAuthor.Id,
             };
             dbContext.Add(textEntry);
         }
@@ -230,7 +228,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
-                AuthorId = dbAuthor.Id,
+                AuthorId = dbChatAuthor.Id,
             };
             dbContext.Add(audioEntry);
 
@@ -250,7 +248,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                     + "шаг и холоду лютому слишком просто сладить с тобой",
                 TextToTimeMap = textToTimeMap,
                 AudioEntryId = audioEntry.Id,
-                AuthorId = dbAuthor.Id,
+                AuthorId = dbChatAuthor.Id,
             };
             dbContext.Add(textEntry);
         }

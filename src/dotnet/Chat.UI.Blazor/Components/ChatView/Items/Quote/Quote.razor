@@ -38,7 +38,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -60,7 +60,7 @@
         MarkupHub.ChatId = Message.Entry.ChatId;
         var markup = await MarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
         Text = MarkupFormatter.ReadableUnstyled.Format(markup);
-        _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None);
+        _principalId = await ChatAuthors.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None);
     }
 
     private async Task OnQuoteClick() {

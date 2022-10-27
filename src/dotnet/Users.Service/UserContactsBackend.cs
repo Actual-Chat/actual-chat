@@ -7,15 +7,17 @@ namespace ActualChat.Users;
 
 public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsBackend
 {
-    private IDbEntityResolver<string, DbUserContact> DbUserContactResolver { get; }
     private IAccountsBackend AccountsBackend { get; }
+    private IAvatarsBackend AvatarsBackend { get; }
+    private IDbEntityResolver<string, DbUserContact> DbUserContactResolver { get; }
     private DiffEngine DiffEngine { get; }
 
     public UserContactsBackend(IServiceProvider services) : base(services)
     {
-        DbUserContactResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserContact>>();
-        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        DiffEngine = Services.GetRequiredService<DiffEngine>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
+        DbUserContactResolver = services.GetRequiredService<IDbEntityResolver<string, DbUserContact>>();
+        DiffEngine = services.GetRequiredService<DiffEngine>();
     }
 
     public async Task<UserContact> GetOrCreate(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
@@ -23,10 +25,8 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         var contact = await Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
         if (contact != null)
             return contact;
-        var contactName = await SuggestContactName(targetUserId, cancellationToken).ConfigureAwait(false);
         var command = new IUserContactsBackend.ChangeCommand(Symbol.Empty, null, new Change<UserContactDiff> {
             Create = new UserContactDiff {
-                Name = contactName,
                 OwnerUserId = ownerUserId,
                 TargetUserId = targetUserId,
             },
@@ -39,21 +39,38 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
     public virtual async Task<UserContact?> Get(string contactId, CancellationToken cancellationToken)
     {
         var dbContact = await DbUserContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
-        return dbContact?.ToModel();
+        var contact = dbContact?.ToModel();
+        if (contact == null)
+            return null;
+
+        var account = await AccountsBackend.Get(contact.Id, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return null;
+
+        var avatar = await AvatarsBackend.Get(account.AvatarId, cancellationToken).ConfigureAwait(false);
+        contact = contact with { Avatar = avatar };
+        return contact;
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserContact?> Get(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<UserContact?> Get(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
     {
-        if (ownerUserId.IsNullOrEmpty() || targetPrincipalId.IsNullOrEmpty())
+        if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
             return null;
+
+        var contactId = DbUserContact.ComposeId(ownerUserId, targetUserId);
+        return await Get(contactId, cancellationToken).ConfigureAwait(false);
+
+        // Old code:
+        /*
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbContact = await dbContext.UserContacts
-            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetPrincipalId)
+            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetUserId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbContact?.ToModel();
+        */
     }
 
     // [ComputeMethod]
@@ -64,21 +81,21 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
-        var chatIds = await dbContext.UserContacts
+        var contactIds = await dbContext.UserContacts
             .Where(a => a.OwnerUserId == userId)
             .Select(a => a.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        return chatIds;
+        return contactIds;
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken)
+    public virtual async Task<string> GetPeerChatName(string targetUserId, CancellationToken cancellationToken)
     {
-        var userAuthor = await AccountsBackend.GetUserAuthor(targetUserId, cancellationToken).ConfigureAwait(false);
-        if (userAuthor != null)
-            return userAuthor.Name;
-        return "user:" + targetUserId;
+        var userAuthor = await AccountsBackend.GetUserAuthor(targetUserId, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        return userAuthor.Name;
     }
 
     // [CommandHandler]

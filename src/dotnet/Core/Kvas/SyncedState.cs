@@ -37,7 +37,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
         WhenFirstTimeReadSource = TaskSource.New<Unit>(true);
-        _updateDelayer = options.UpdateDelayer ?? Services.GetRequiredService<IUpdateDelayer>();
+        _updateDelayer = options.UpdateDelayer ?? services.GetRequiredService<IUpdateDelayer>();
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);

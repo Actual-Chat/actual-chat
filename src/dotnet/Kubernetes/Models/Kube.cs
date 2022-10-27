@@ -6,7 +6,7 @@ public sealed record Kube : IRequirementTarget
 {
     public static Requirement<Kube> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotSupported("This code can execute only within Kubernetes cluster.")),
-        (Kube? p) => p != null);
+        (Kube? k) => k != null);
 
     public static string HttpClientName { get; set; } = "Kube";
 

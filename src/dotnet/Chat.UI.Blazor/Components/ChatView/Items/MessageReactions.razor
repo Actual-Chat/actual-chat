@@ -51,7 +51,7 @@
         }));
     }
 
-    private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, Author> authorMap)
+    private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, ChatAuthor> authorMap)
         => string.Join(Environment.NewLine, reactionSummary.FirstAuthorIds.Select(x => $"{authorMap[x].Name} {reactionSummary.Emoji}"));
 
     public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions, Dictionary<string, string> Tooltips);

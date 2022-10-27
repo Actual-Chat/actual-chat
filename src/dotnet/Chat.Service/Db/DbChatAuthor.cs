@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,27 +18,30 @@ public class DbChatAuthor : IHasId<string>
     public long LocalId { get; set; }
 
     [ConcurrencyCheck] public long Version { get; set; }
-    public string Name { get; set; } = "";
     public bool IsAnonymous { get; set; }
     public string? UserId { get; set; }
+    public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
 
     public List<DbChatAuthorRole> Roles { get; } = new();
 
     public static string ComposeId(string chatId, long localId)
-        => new ParsedChatAuthorId(chatId, localId).Id;
+        => new ParsedAuthorId(chatId, localId).Id;
 
-    public ChatAuthor ToModel()
-        => new() {
+    public ChatAuthorFull ToModel()
+    {
+        var result = new ChatAuthorFull() {
             Id = Id,
             ChatId = ChatId,
             Version = Version,
-            Name = Name,
             IsAnonymous = IsAnonymous,
             UserId = UserId ?? "",
             HasLeft = HasLeft,
             RoleIds = Roles.Select(ar => (Symbol)ar.DbChatRoleId).ToImmutableArray(),
+            AvatarId = AvatarId ?? "",
         };
+        return result;
+    }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatAuthor>
     {

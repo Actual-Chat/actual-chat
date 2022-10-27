@@ -75,12 +75,10 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbUserPresence>();
-            db.AddEntityResolver<string, DbUserAvatar>();
             db.AddEntityResolver<string, DbUserContact>();
             db.AddEntityResolver<string, DbChatReadPosition>();
             db.AddEntityResolver<string, DbKvasEntry>();
-            db.AddShardLocalIdGenerator(dbContext => dbContext.UserAvatars,
-                (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
+            db.AddEntityResolver<string, DbAvatar>();
 
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
@@ -134,8 +132,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
-        fusion.AddComputeService<IUserAvatars, UserAvatars>();
-        fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
+        fusion.AddComputeService<IAvatars, Avatars>();
+        fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddComputeService<IUserContacts, UserContacts>();
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
@@ -144,12 +142,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddComputeService<IRecentEntries, RecentEntries>();
         fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
-        fusion.AddComputeService<ChatUserSettingsFrontend>();
-        services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsFrontend>());
-        fusion.AddComputeService<ChatUserSettingsBackend>();
-        services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsBackend>());
 
-       // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

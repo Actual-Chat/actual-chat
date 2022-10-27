@@ -2,13 +2,15 @@ using Stl.Versioning;
 
 namespace ActualChat.Users;
 
+[DataContract]
 public record UserContact : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    public Symbol Id { get; init; } = Symbol.Empty;
-    public long Version { get; init; }
-    public Symbol OwnerUserId { get; init; } = Symbol.Empty;
-    public Symbol TargetUserId { get; init; } = Symbol.Empty;
-    public string Name { get; init; } = "";
+    [DataMember] public Symbol Id { get; init; } = Symbol.Empty;
+    [DataMember] public long Version { get; init; }
+    [DataMember] public Symbol OwnerUserId { get; init; } = Symbol.Empty;
+    [DataMember] public Symbol TargetUserId { get; init; } = Symbol.Empty;
+    [DataMember] public string Title { get; init; } = "";
+    [DataMember] public Avatar? Avatar { get; init; }
 }
 
 [DataContract]
@@ -16,6 +18,4 @@ public sealed record UserContactDiff : RecordDiff
 {
     [DataMember] public Symbol OwnerUserId { get; init; }
     [DataMember] public Symbol TargetUserId { get; init; }
-    [DataMember] public string? Name { get; init; } = "";
-    [DataMember] public bool IsFavorite { get; init; }
 }

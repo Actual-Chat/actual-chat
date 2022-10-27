@@ -10,7 +10,7 @@ public class UsersDbContext : DbContextBase
 {
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
-    public DbSet<DbUserAvatar> UserAvatars { get; protected set; } = null!;
+    public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserContact> UserContacts { get; protected set; } = null!;
     public DbSet<DbChatReadPosition> ChatReadPositions { get; protected set; } = null!;
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;

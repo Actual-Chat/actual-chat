@@ -10,10 +10,12 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 {
     private IChatAuthorsBackend? _backend;
     private IChats? _chats;
+    private IChatsBackend? _chatsBackend;
 
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IUserContactsBackend UserContactsBackend { get; }
     private IUserPresences UserPresences { get; }
     private IServerKvas ServerKvas { get; }
@@ -21,8 +23,8 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
-        Accounts = Services.GetRequiredService<IAccounts>();
-        AccountsBackend = Services.GetRequiredService<IAccountsBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         ServerKvas = services.ServerKvas();
@@ -37,11 +39,24 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (account != null)
             return await Backend.GetByUserId(chatId, account.Id, false, cancellationToken).ConfigureAwait(false);
 
-        var kvas = new KvasClient(ServerKvas, session);
-        var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
+        var kvas = ServerKvas.GetClient(session);
+        var settings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
         var authorId = settings.ChatAuthors.GetValueOrDefault(chatId);
         if (authorId.IsNullOrEmpty())
             return null;
+
+        return await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatAuthorFull?> GetFull(
+        Session session, string chatId, string authorId,
+        CancellationToken cancellationToken)
+    {
+        var author = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(chatId, author.Id, cancellationToken).ConfigureAwait(false);
+        rules.Require(ChatPermissions.EditRoles);
+
         return await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -88,9 +103,9 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (account != null)
             return await Backend.ListUserChatIds(account.Id, cancellationToken).ConfigureAwait(false);
 
-        var kvas = new KvasClient(ServerKvas, session);
-        var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
-        var chatAuthors = settings.ChatAuthors;
+        var kvas = ServerKvas.GetClient(session);
+        var unregisteredAuthorSettings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
+        var chatAuthors = unregisteredAuthorSettings.ChatAuthors;
         var chatIds = chatAuthors.Keys.AsEnumerable();
         if (!chatAuthors.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
             chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
@@ -98,7 +113,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<Author?> GetAuthor(
+    public virtual async Task<ChatAuthor?> GetAuthor(
         Session session,
         string chatId,
         string authorId,
@@ -110,8 +125,8 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (chat == null)
             return null;
 
-        var chatAuthor = await Backend.Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
-        return chatAuthor.ToAuthor();
+        var author = await Backend.Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
+        return author;
     }
 
     // [ComputeMethod]
@@ -125,12 +140,12 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (chat == null)
             return Presence.Unknown;
 
-        var chatAuthor = await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor == null)
+        var author = await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+        if (author == null)
             return Presence.Offline;
-        if (chatAuthor.UserId.IsEmpty || chatAuthor.IsAnonymous)
+        if (author.UserId.IsEmpty || author.IsAnonymous)
             return Presence.Unknown; // Important: we shouldn't report anonymous author presence
-        return await UserPresences.Get(chatAuthor.UserId.Value, cancellationToken).ConfigureAwait(false);
+        return await UserPresences.Get(author.UserId.Value, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

@@ -14,7 +14,7 @@ public class AudioClient : HubClientBase,
 
     public AudioClient(IServiceProvider services)
         : base("api/hub/audio", services)
-        => AudioSourceLog = Services.LogFor<AudioSource>();
+        => AudioSourceLog = services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
         Symbol streamId,

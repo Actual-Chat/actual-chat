@@ -18,7 +18,7 @@
 </ButtonRound>
 
 @code{
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     [Parameter] public bool HideSetDefaultButton { get; set; }
@@ -30,6 +30,6 @@
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => AvatarId == await UserAvatars.GetDefaultAvatarId(Session, default);
+        => AvatarId == await Avatars.GetDefaultAvatarId(Session, default);
 
 }

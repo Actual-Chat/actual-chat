@@ -13,11 +13,10 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
-    private IUserAvatarsBackend UserAvatarsBackend { get; }
+    private IAvatarsBackend AvatarsBackend { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
-    private IDbEntityResolver<string, DbChatAuthor> DbChatAuthorResolver { get; }
-    private IDbShardLocalIdGenerator<DbChatAuthor, string> DbChatAuthorLocalIdGenerator { get; }
-    private IChatUserSettingsBackend ChatUserSettingsBackend { get; }
+    private IDbEntityResolver<string, DbChatAuthor> DbAuthorResolver { get; }
+    private IDbShardLocalIdGenerator<DbChatAuthor, string> DbAuthorLocalIdGenerator { get; }
     private IServerKvas ServerKvas { get; }
     private IChatAuthors Frontend => _frontend ??= Services.GetRequiredService<IChatAuthors>();
 
@@ -26,34 +25,33 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
-        DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
-        DbChatAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatAuthor, string>>();
-        UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
-        ChatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
+        DbAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatAuthor, string>>();
+        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
         ServerKvas = services.ServerKvas();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> Get(
+    public virtual async Task<ChatAuthorFull?> Get(
         string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
-        var dbChatAuthor = await DbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        var dbChatAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         if (!OrdinalEquals(dbChatAuthor?.ChatId, chatId))
             return null;
-        var chatAuthor = dbChatAuthor!.ToModel();
-        return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
+        var author = dbChatAuthor!.ToModel();
+        return await InheritFromUserAuthor(author, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> GetByUserId(
+    public virtual async Task<ChatAuthorFull?> GetByUserId(
         string chatId, string userId, bool inherit,
         CancellationToken cancellationToken)
     {
         if (userId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
             return null;
 
-        ChatAuthor? chatAuthor;
+        ChatAuthorFull? chatAuthor;
         { // Closes "using" block earlier
             var dbContext = CreateDbContext();
             await using var _ = dbContext.ConfigureAwait(false);
@@ -99,10 +97,10 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
-            var kvas = new KvasClient(ServerKvas, session);
-            var settings = await kvas.GetAuthorSettings(cancellationToken).ConfigureAwait(false);
-            settings = settings.WithChatAuthor(chatId, chatAuthor.Id);
-            await kvas.SetAuthorSettings(settings, cancellationToken).ConfigureAwait(false);
+            var kvas = ServerKvas.GetClient(session);
+            var settings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
+            settings = settings.WithChat(chatId, chatAuthor.Id);
+            await kvas.SetUnregisteredUserSettings(settings, cancellationToken).ConfigureAwait(false);
         }
         return chatAuthor;
     }
@@ -114,7 +112,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         if (chatAuthor != null)
             return chatAuthor;
 
-        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId);
+        var cmd = new IChatAuthorsBackend.CreateCommand(chatId, userId, true);
         chatAuthor = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return chatAuthor;
     }
@@ -154,9 +152,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatAuthorFull> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, userId, requireAuthenticated) = command;
+        var (chatId, userId, requireAccount) = command;
         if (Computed.IsInvalidating()) {
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
@@ -168,41 +166,46 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return default!;
         }
 
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         DbChatAuthor? dbChatAuthor;
-        if (userId.IsNullOrEmpty()) {
-            if (requireAuthenticated)
+        if (account == null) {
+            if (requireAccount)
                 throw StandardError.Constraint("Can't create unauthenticated author here.");
 
-            var name = RandomNameGenerator.Generate('_');
-            dbChatAuthor = new DbChatAuthor() {
-                Name = name,
+            dbChatAuthor = new() {
+                Name = RandomNameGenerator.Generate(),
+                Bio = "Unregistered user",
+                Picture = "", // NOTE(AY): Add a random one?
                 IsAnonymous = true,
             };
+            dbContext.Add(dbChatAuthor);
         }
         else {
+            // Let's check if the author already exists first
             dbChatAuthor = await dbContext.ChatAuthors
                 .Include(a => a.Roles)
                 .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             if (dbChatAuthor != null)
-                return dbChatAuthor.ToModel(); // Author already exists
+                return dbChatAuthor.ToModel(); // Author already exist, so we don't recreate one
 
-            var userAuthor = await AccountsBackend.GetUserAuthor(userId, cancellationToken).Require().ConfigureAwait(false);
             dbChatAuthor = new DbChatAuthor() {
-                IsAnonymous = userAuthor.IsAnonymous,
+                IsAnonymous = false,
+                AvatarId = account.Avatar.Id.Value.NullIfEmpty(),
             };
         }
 
         dbChatAuthor.ChatId = chatId;
-        dbChatAuthor.LocalId = await DbChatAuthorLocalIdGenerator
+        dbChatAuthor.LocalId = await DbAuthorLocalIdGenerator
             .Next(dbContext, chatId, cancellationToken)
             .ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
-        dbChatAuthor.UserId = userId.NullIfEmpty();
-        dbContext.Add(dbChatAuthor);
+        dbChatAuthor.UserId = account?.Id;
+
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var chatAuthor = dbChatAuthor.ToModel();
@@ -210,12 +213,12 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         return chatAuthor;
     }
 
-    public virtual async Task<ChatAuthor> ChangeHasLeft(IChatAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatAuthorFull> ChangeHasLeft(IChatAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         var (authorId, hasLeft) = command;
         if (Computed.IsInvalidating()) {
-            var invChatAuthor = context.Operation().Items.Get<ChatAuthor>()!;
+            var invChatAuthor = context.Operation().Items.Get<ChatAuthorFull>()!;
             var userId = (string)invChatAuthor.UserId;
             var chatId = (string)invChatAuthor.ChatId;
             if (!userId.IsNullOrEmpty()) {
@@ -261,16 +264,16 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        var chatAuthor = context.Items.Get<ChatAuthor>();
+        var chatAuthor = context.Items.Get<ChatAuthorFull>();
         if (chatAuthor is not { UserId.IsEmpty: true })
             return;
-        await UserAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, chatAuthor.Name, cancellationToken)
+        await AvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, chatAuthor.Name, cancellationToken)
             .ConfigureAwait(false);
     }
 
     // Private / internal methods
 
-    private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
+    private async Task<ChatAuthorFull?> InheritFromUserAuthor(ChatAuthorFull? chatAuthor, bool inherit, CancellationToken cancellationToken)
     {
         if (!inherit || chatAuthor == null)
             return chatAuthor;
@@ -281,7 +284,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
                 .ConfigureAwait(false);
             var avatarId = chatUserSettings?.AvatarId ?? Symbol.Empty;
             if (!avatarId.IsEmpty) {
-                var avatar = await UserAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+                var avatar = await AvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
                 return chatAuthor.InheritFrom(avatar);
             }
 
@@ -290,9 +293,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return chatAuthor.InheritFrom(userAuthor);
         }
         else {
-            var avatarId = await UserAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
+            var avatarId = await AvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
                 .ConfigureAwait(false);
-            var avatar = await UserAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+            var avatar = await AvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
             return chatAuthor.InheritFrom(avatar);
         }
     }

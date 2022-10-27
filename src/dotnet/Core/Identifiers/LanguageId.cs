@@ -18,7 +18,7 @@ public partial struct LanguageId
         Spanish,
         Ukrainian,
     };
-    public static ImmutableDictionary<string, LanguageId> Map =
+    public static readonly ImmutableDictionary<string, LanguageId> Map =
             ImmutableDictionary<string, LanguageId>.Empty
                 .WithComparers(StringComparer.OrdinalIgnoreCase)
                 .SetItems(All.Select(x => KeyValuePair.Create(x.Shortcut, x)))
@@ -57,10 +57,7 @@ public partial struct LanguageId
             _ => "?",
         };
 
-    public LanguageId ValidOrDefault()
-        => IsValid ? this : Default;
-
-    public LanguageId Validate()
+    public LanguageId RequireValid()
         => IsValid ? this : throw InvalidLanguageIdError();
 
     private Exception InvalidLanguageIdError()

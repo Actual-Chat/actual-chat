@@ -1,17 +1,29 @@
-using System.Security;
+using ActualChat.Comparison;
 using ActualChat.Users;
+using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record ChatAuthor : Author, IRequirementTarget
+public record ChatAuthor : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
+    private static IEqualityComparer<ChatAuthor> EqualityComparer { get; } =
+        VersionBasedEqualityComparer<ChatAuthor, Symbol>.Instance;
     public static Requirement<ChatAuthor> MustExist { get; } = Requirement.New(
-        new(() => new SecurityException("You are not a participant of this chat.")),
-        (ChatAuthor? p) => p != null);
+        new(() => StandardError.ChatAuthor.Unavailable()),
+        (ChatAuthor? a) => !ReferenceEquals(a, null));
 
+    [DataMember] public Symbol Id { get; init; }
+    [DataMember] public long Version { get; init; }
     [DataMember] public Symbol ChatId { get; init; }
-    [DataMember] public Symbol UserId { get; init; }
+    [DataMember] public Symbol AvatarId { get; init; }
+    [DataMember] public Avatar Avatar { get; init; } = null!; // Auto-populated
+    [DataMember] public bool IsAnonymous { get; init; }
     [DataMember] public bool HasLeft { get; init; }
-    [DataMember] public ImmutableArray<Symbol> RoleIds { get; init; } = ImmutableArray<Symbol>.Empty;
+
+    // This record relies on version-based equality
+    public virtual bool Equals(ChatAuthor? other)
+        => EqualityComparer.Equals(this, other);
+    public override int GetHashCode()
+        => EqualityComparer.GetHashCode(this);
 }

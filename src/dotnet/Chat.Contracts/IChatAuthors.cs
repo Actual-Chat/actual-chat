@@ -7,6 +7,8 @@ public interface IChatAuthors : IComputeService
     [ComputeMethod]
     Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ChatAuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
@@ -16,7 +18,7 @@ public interface IChatAuthors : IComputeService
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Author?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthor?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Presence> GetAuthorPresence(
         Session session,

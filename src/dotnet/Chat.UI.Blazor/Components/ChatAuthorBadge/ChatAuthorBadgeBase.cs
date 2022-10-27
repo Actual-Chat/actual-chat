@@ -10,9 +10,9 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     [Inject] protected IUserPresences UserPresences { get; init; } = null!;
     [Inject] protected Session Session { get; init; } = null!;
 
-    protected ParsedChatAuthorId ParsedChatAuthorId { get; private set; }
-    protected Symbol ChatId => ParsedChatAuthorId.ChatId;
-    protected bool IsValid => ParsedChatAuthorId.IsValid;
+    protected ParsedAuthorId ParsedAuthorId { get; private set; }
+    protected Symbol ChatId => ParsedAuthorId.ChatId;
+    protected bool IsValid => ParsedAuthorId.IsValid;
     protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
@@ -25,7 +25,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     }
 
     protected override async Task OnParametersSetAsync() {
-        ParsedChatAuthorId = new ParsedChatAuthorId(AuthorId);
+        ParsedAuthorId = new ParsedAuthorId(AuthorId);
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
@@ -35,7 +35,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        ParsedChatAuthorId = new ParsedChatAuthorId(AuthorId);
+        ParsedAuthorId = new ParsedAuthorId(AuthorId);
         if (!IsValid)
             return new () { InitialValue = Model.None };
 
@@ -73,7 +73,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         return new(author, presence, isOwn);
     }
 
-    private async ValueTask<Author?> GetChatAuthor(
+    private async ValueTask<ChatAuthor?> GetChatAuthor(
         Session session,
         string chatId,
         string authorId,
@@ -113,10 +113,10 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     }
 
     public sealed record Model(
-        Author Author,
+        ChatAuthor ChatAuthor,
         Presence Presence = Presence.Unknown,
         bool IsOwn = false)
     {
-        public static Model None { get; } = new(Author.None);
+        public static Model None { get; } = new(ChatAuthor.None);
     }
 }

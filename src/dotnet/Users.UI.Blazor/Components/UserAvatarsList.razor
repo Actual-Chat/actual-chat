@@ -54,7 +54,7 @@
     private string _defaultAvatarId = "";
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -66,13 +66,13 @@
         => new () { InitialValue = ImmutableArray<Symbol>.Empty };
 
     protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken) {
-        var avatarIds = await UserAvatars.ListAvatarIds(Session, cancellationToken);
-        _defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, default);
+        var avatarIds = await Avatars.ListAvatarIds(Session, cancellationToken);
+        _defaultAvatarId = await Avatars.GetDefaultAvatarId(Session, default);
         return avatarIds;
     }
 
     private async Task OnAddNewAvatar() {
-        var command = new IUserAvatars.CreateCommand(Session);
+        var command = new IAvatars.CreateCommand(Session);
         var avatar = await UICommander.Call(command);
         EditAvatar(avatar.Id, "Add avatar");
     }
@@ -82,7 +82,7 @@
     }
 
     private async Task SetDefaultAvatar(string avatarId) {
-        var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
+        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
         await UICommander.Run(command);
     }
 }

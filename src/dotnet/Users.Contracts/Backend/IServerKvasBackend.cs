@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IServerKvasBackend
+public interface IServerKvasBackend : IComputeService
 {
     [ComputeMethod]
     Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default);

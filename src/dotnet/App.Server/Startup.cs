@@ -63,10 +63,7 @@ public class Startup
             }
 
             return new HostInfo() {
-                HostKind = HostKind.WebServer,
-                RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                    .Add(ServiceScope.Server)
-                    .Add(ServiceScope.BlazorUI),
+                AppKind = AppKind.WebServer,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
                 BaseUrl = baseUrl ?? "",

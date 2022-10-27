@@ -3,7 +3,7 @@
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
 <ChatAuthorBadgeTemplate AuthorId="@_authorId">
-    @if (context.Author.Id.IsEmpty) {
+    @if (context.ChatAuthor.Id.IsEmpty) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
@@ -12,7 +12,7 @@
          @onclick="OnChatAuthorClick">
         <div class="flex-x items-center">
             <i class="icon-at text-md"></i>
-            @context.Author.Name
+            @context.ChatAuthor.Name
         </div>
     </div>
 </ChatAuthorBadgeTemplate>

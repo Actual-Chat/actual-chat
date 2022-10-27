@@ -21,7 +21,6 @@ public sealed class AudioProcessor : IAudioProcessor
     private ILogger AudioSourceLog { get; }
     private bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private IChatUserSettings? ChatUserSettings { get; }
 
     private Options Settings { get; }
     private ITranscriber Transcriber { get; }
@@ -52,7 +51,6 @@ public sealed class AudioProcessor : IAudioProcessor
         Clocks = services.Clocks();
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
         AudioSourceLog = services.LogFor<AudioSource>();
-        ChatUserSettings = services.GetService<IChatUserSettings>();
         ServerKvas = services.GetRequiredService<IServerKvas>();
     }
 
@@ -144,14 +142,12 @@ public sealed class AudioProcessor : IAudioProcessor
 
     private async Task<LanguageId> GetLanguageForTranscription(AudioRecord record, CancellationToken cancellationToken)
     {
-        var settings = ChatUserSettings != null!
-            ? await ChatUserSettings.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false)
-            : null;
-        var language = settings?.Language;
-        if (language != null)
+        var kvas = ServerKvas.GetClient(record.Session);
+        var chatUserSettings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
+        var language = chatUserSettings.Language;
+        if (language.IsValid)
             return language.Value;
 
-        var kvas = new KvasClient(ServerKvas, record.Session);
         var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
         return languageSettings.Primary;
     }

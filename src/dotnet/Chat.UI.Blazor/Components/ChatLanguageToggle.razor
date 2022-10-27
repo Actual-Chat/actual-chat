@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<ChatUserSettings>
+@inherits ComputedStateComponent<UserChatSettings>
 
 @{
     var language = State.ValueOrDefault?.Language;
@@ -21,10 +21,10 @@
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<ChatUserSettings>.Options GetStateOptions()
+    protected override ComputedState<UserChatSettings>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task<ChatUserSettings> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<UserChatSettings> ComputeState(CancellationToken cancellationToken) {
         var languages = await LanguageUI.Languages.Use(cancellationToken);
         return await ChatUserSettings.Get(Session, Chat.Id, cancellationToken) ?? new() {
             Language = languages.Primary,

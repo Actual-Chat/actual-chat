@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
+using ActualChat.Commands;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
@@ -138,6 +139,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication();
+        fusion.AddLocalCommandScheduler();
 
         // Web
         var dataProtection = Settings.DataProtection.NullIfEmpty()

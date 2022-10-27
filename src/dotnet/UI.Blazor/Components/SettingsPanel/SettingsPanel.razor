@@ -66,7 +66,7 @@
             <div class="flex-y w-full bg-03 border-t border-bg-04">
                 <div class="flex-x items-center justify-between px-4 gap-x-2 text-xxs">
                     <div class="flex-initial text-03 font-medium truncate">@Version</div>
-                    @if (HostInfo.HostKind != HostKind.Maui) {
+                    @if (HostInfo.AppKind != AppKind.Maui) {
                         <div class="flex-none">
                             <BlazorModeToggle/>
                         </div>
