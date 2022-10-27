@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Notification
-@inherits ComputedStateComponent<UnreadMessageCounter.Model>
+@inherits ComputedStateComponent<ChatUnreadMessagesCounter.Model>
 @{
     var m = State.LatestNonErrorValue ?? Model.None;
     if (m.Count == 0)

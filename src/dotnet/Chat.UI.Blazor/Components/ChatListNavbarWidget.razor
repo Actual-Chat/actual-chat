@@ -1,3 +1,4 @@
+@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -9,8 +10,7 @@
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
-                <UnreadMessagesCounter Chats="chats">
-                </UnreadMessagesCounter>
+                <UnreadMessagesCounter Chats="chats" Click="@OnTabUnreadBadgeClick"/>
             </TitleContent>
             <ChildContent>
                 <div class="h-full flex-y my-2">
@@ -47,6 +47,8 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -104,6 +106,18 @@
         _ = State.Recompute();
     }
 
+    private async Task OnTabUnreadBadgeClick() {
+        var allChatIds = State.Value.PinnedChats.Concat(State.Value.UnpinnedChats).Select(x => x.Id).ToList();
+        var firstUnreadChatId = await UnreadMessages.GetFirstUnreadChat(allChatIds, CancellationToken.None);
+        if (firstUnreadChatId.IsEmpty)
+            return;
+
+        if (firstUnreadChatId == ChatUI.SelectedChatId.Value)
+            return;
+
+        Nav.NavigateTo(Links.ChatPage(firstUnreadChatId));
+    }
+
     public enum TabId {
         Recent,
     }
@@ -114,4 +128,5 @@
         public List<Chat> PinnedChats { get; init; } = new ();
         public List<Chat> UnpinnedChats { get; init; } = new ();
     }
+
 }
