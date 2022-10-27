@@ -11,9 +11,11 @@
         : "bg-counter";
 
     var countText = m.Count == 0 ? "" : m.Count.Format();
+    var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
+    var cssClass = $"message-counter-badge {cursorClass}";
 }
 
-<Badge Class="message-counter-badge" Color="@bgColor">
+<Badge Class="@cssClass" Color="@bgColor" Click="@Click">
     @countText
 </Badge>
 
@@ -24,6 +26,7 @@
 
     [Parameter, EditorRequired, ParameterComparer(typeof(CollectionParameterComparer))]
     public List<Symbol> Chats { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;

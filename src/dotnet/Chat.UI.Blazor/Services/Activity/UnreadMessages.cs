@@ -1,3 +1,4 @@
+using ActualChat.Notification;
 using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -9,15 +10,31 @@ public class UnreadMessages : WorkerBase
     private readonly SharedResourcePool<Symbol, ChatUnreadMessages> _pool;
 
     private IChats Chats { get; }
+    private INotifications Notifications { get; }
     private UnreadMessagesFactory UnreadMessagesFactory { get; }
     private Session Session { get; }
 
-    public UnreadMessages(IChats chats, UnreadMessagesFactory unreadMessagesFactory, Session session)
+    public UnreadMessages(IChats chats, INotifications notifications, UnreadMessagesFactory unreadMessagesFactory, Session session)
     {
         Chats = chats;
+        Notifications = notifications;
         UnreadMessagesFactory = unreadMessagesFactory;
         Session = session;
         _pool = new (CreateUnreadMessages, DisposeUnreadMessages);
+    }
+
+    public async Task<Symbol> GetFirstUnreadChat(IReadOnlyCollection<Symbol> chatIds, CancellationToken cancellationToken)
+    {
+        foreach (var chatId in chatIds) {
+            if (!await Notifications.IsSubscribed(Session, chatId, cancellationToken).ConfigureAwait(false))
+                continue;
+
+            var unreadCount = await GetCount(chatId, cancellationToken).ConfigureAwait(false);
+            if (unreadCount.Value > 0)
+                return chatId;
+        }
+
+        return Symbol.Empty;
     }
 
     public async Task<MaybeTrimmed<int>> GetUnreadChatsCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
