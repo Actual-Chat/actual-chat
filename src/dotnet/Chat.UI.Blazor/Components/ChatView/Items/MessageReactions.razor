@@ -8,7 +8,9 @@
 }
 <ul class="message-reactions">
     @foreach (var reaction in m.Reactions) {
-        <li class="message-reactions-reaction" @onclick="_ => ToggleReaction(reaction.Emoji)"  data-tooltip="@m.Tooltips[reaction.Emoji]">
+        <li class="message-reactions-reaction" @onclick="_ => ToggleReaction(reaction.Emoji)"
+            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.CompositeId, reaction.Emoji))"
+            data-menu-trigger="@MenuTriggers.RightClick.Format()">
             <span class="message-reactions-reaction-emoji">@reaction.Emoji</span>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
@@ -29,18 +31,14 @@
         => _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new Model(ChatEntry.HasReactions, ImmutableArray<ReactionSummary>.Empty, new Dictionary<string, string>()), };
+        => new() { InitialValue = new Model(ChatEntry.HasReactions, ImmutableArray<ReactionSummary>.Empty), };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var summaries = await Reactions.List(Session, ChatEntry.CompositeId, cancellationToken);
         if (summaries.Length == 0)
-            return new Model(false, summaries, new Dictionary<string, string>());
+            return new Model(false, summaries);
 
-        var authors = await summaries.SelectMany(x => x.FirstAuthorIds).Distinct().Select(x => ChatAuthors.GetAuthor(Session, ChatEntry.ChatId, x, true, cancellationToken)).Collect().ConfigureAwait(false);
-        var authorMap = authors.SkipNullItems().ToDictionary(x => x.Id);
-        var tooltips = summaries.ToDictionary(x => x.Emoji, x => GenerateTooltip(x, authorMap));
-        // TODO: use popup with <AuthorCircle/>  instead of tooltip
-        return new Model(true, summaries, tooltips);
+        return new Model(true, summaries);
     }
 
     private Task ToggleReaction(string emoji) {
@@ -51,8 +49,5 @@
         }));
     }
 
-    private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, Author> authorMap)
-        => string.Join(Environment.NewLine, reactionSummary.FirstAuthorIds.Select(x => $"{authorMap[x].Name} {reactionSummary.Emoji}"));
-
-    public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions, Dictionary<string, string> Tooltips);
+    public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions);
 }

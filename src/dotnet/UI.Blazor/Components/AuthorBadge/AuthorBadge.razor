@@ -3,7 +3,7 @@
 
 <div class="author-badge" onclick="@Click">
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="@_contentClass flex-y">
+    <div class="ml-2 flex-y">
         <div class="author-badge-name">
             <AuthorName Author="@Author" Size="@Size" Class="@TextClass"/>
         </div>
@@ -16,7 +16,6 @@
 </div>
 
 @code {
-    private string _contentClass = "";
     private string _statusTextClass = "";
     private string _statusText = "";
 
@@ -29,7 +28,6 @@
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        _contentClass = GetContentClass();
         _statusText = GetStatusText();
         _statusTextClass = GetStatusTextClass();
     }
@@ -43,7 +41,4 @@
 
     private string GetStatusTextClass()
         => (int)Size < 12 ? "text-xxs leading-4" : "";
-
-    private string GetContentClass()
-        => "ml-3";
 }
