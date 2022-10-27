@@ -1,0 +1,44 @@
+@using ActualChat.Chat
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="image-viewer-header">
+    @if (ChatEntry != null && _author != null) {
+        <div class="flex-x items-center gap-x-2">
+            <AuthorCircle Author="@_author" Size="SquareSize.Size10"/>
+            <div class="flex-y">
+                <AuthorName Author="@_author" Size="SquareSize.Size8" Class="text-sm text-icons-02"/>
+                <LiveTimeDeltaText Class="text-xxs text-icons-02" Moment="@ChatEntry.BeginsAt"/>
+            </div>
+        </div>
+    }
+    <div class="flex-x gap-x-2">
+        <ButtonRound Class="image-header-btn">
+            <i class="icon-share text-xl"></i>
+        </ButtonRound>
+        <ButtonRound Class="image-header-btn">
+            <i class="icon-download text-xl"></i>
+        </ButtonRound>
+        <ButtonRound Class="image-header-btn" Click="OnCloseClick">
+            <i class="icon-close text-xl"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private Author? _author;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public EventCallback OnCloseClick { set; get; }
+
+    protected override async Task OnParametersSetAsync() {
+        if (ChatEntry != null) {
+            _author = await ChatAuthors.GetAuthor(Session, ChatEntry.ChatId, ChatEntry.AuthorId, true, CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+}
