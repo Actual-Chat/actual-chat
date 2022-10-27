@@ -19,10 +19,17 @@
     Icon="icon-hash-fill text-xl"
     Text="Create thread">
 </MenuEntry>
+@if (!ClickedLinkUrl.IsNullOrEmpty()) {
+    <MenuEntry
+        OnClick="@OnCopyLinkClick"
+        Icon="icon-link-2 text-xl"
+        Text="Copy link">
+    </MenuEntry>
+}
 <MenuEntry
-    OnClick="@(() => CopyLink(entry))"
+    OnClick="@(() => CopyMessageLink(entry))"
     Icon="icon-link-2 text-xl"
-    Text="Copy link">
+    Text="Copy message link">
 </MenuEntry>
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
     <MenuEntry
@@ -52,6 +59,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ChatMessageModel ChatMessageModel { get; set; } = null!;
+    [Parameter] public string? ClickedLinkUrl { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new ComputedState<Model>.Options {
@@ -80,9 +88,13 @@
         await UIEventHub.Publish<FocusChatMessageEditorEvent>();
     }
 
-    private async Task CopyLink(ChatEntry chatEntry) {
+    private async Task CopyMessageLink(ChatEntry chatEntry) {
         var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId.Value}#{chatEntry.Id}";
         await ClipboardUI.WriteText(url);
+    }
+
+    private async Task OnCopyLinkClick() {
+        await ClipboardUI.WriteText(ClickedLinkUrl!);
     }
 
     private Task Edit(ChatEntry chatEntry) {

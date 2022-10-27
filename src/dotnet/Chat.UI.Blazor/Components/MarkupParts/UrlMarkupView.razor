@@ -17,7 +17,9 @@ case MarkupUrlKind.Image:
     </a>
     break;
 default:
-    <a class="@cls" href="@Markup.Url" target="_blank">
+    <a class="@cls" href="@Markup.Url" target="_blank"
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.ChatId, _message.Key, Markup.Url))"
+       data-menu-trigger="@MenuTriggers.RightClick.Format()">
         @Markup.Url
     </a>
     break;
@@ -25,19 +27,21 @@ default:
 
 @code {
     private MarkupUrlKind _kind;
+    private ChatMessageModel _message = null!;
 
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override void OnParametersSet() {
+        _message = new ChatMessageModel(Entry);
         _kind = Markup.IsImage
             ? MarkupUrlKind.Image
             : Markup.Url.StartsWith(Nav.BaseUri) ? MarkupUrlKind.Chat : MarkupUrlKind.Other;
     }
 
-    private void OnClick() {
+    private async Task OnClick() {
         if (_kind == MarkupUrlKind.Image)
-            ImageViewerUI.Show(Markup.Url);
+            await ImageViewerUI.Show(Markup.Url);
         else
             Nav.NavigateTo(Markup.Url);
     }
