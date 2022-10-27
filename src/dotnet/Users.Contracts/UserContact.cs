@@ -9,7 +9,6 @@ public record UserContact : IHasId<Symbol>, IHasVersion<long>, IRequirementTarge
     public Symbol OwnerUserId { get; init; } = Symbol.Empty;
     public Symbol TargetUserId { get; init; } = Symbol.Empty;
     public string Name { get; init; } = "";
-    public bool IsFavorite { get; init; }
 }
 
 [DataContract]

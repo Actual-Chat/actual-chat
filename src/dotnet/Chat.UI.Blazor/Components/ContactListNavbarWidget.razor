@@ -96,7 +96,6 @@
         var contacts = await Contacts.List(Session, cancellationToken);
         return tabId switch {
             TabId.All => contacts.ToList(),
-            TabId.Favorites => contacts.Where(x => x.IsFavorite).ToList(),
             TabId.Recent => await RecentEntries
                 .OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken)
                 .ConfigureAwait(false), // Ok here
@@ -113,7 +112,6 @@
     public enum TabId {
         Recent,
         All,
-        Favorites,
     }
 
     public sealed record Model {

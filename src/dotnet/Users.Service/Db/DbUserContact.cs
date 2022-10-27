@@ -9,8 +9,7 @@ namespace ActualChat.Users.Db;
 [Index(nameof(OwnerUserId))]
 public class DbUserContact : IHasId<string>, IRequirementTarget
 {
-    public DbUserContact()
-    { }
+    public DbUserContact() { }
     public DbUserContact(UserContact contact)
         => UpdateFrom(contact);
 
@@ -21,7 +20,6 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
     public string OwnerUserId { get; set; } = null!;
     public string TargetUserId { get; set; } = null!;
     public string Name { get; set; } = null!;
-    public bool IsFavorite { get; set; }
 
     public static string ComposeId(string ownerUserId, string contactUserId)
         => $"{ownerUserId}:{contactUserId}";
@@ -30,7 +28,6 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
         => new UserContact {
             Id = Id,
             Name = Name,
-            IsFavorite = IsFavorite,
             OwnerUserId = OwnerUserId,
             TargetUserId = TargetUserId,
             Version = Version,
@@ -40,7 +37,6 @@ public class DbUserContact : IHasId<string>, IRequirementTarget
     {
         Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerUserId, model.TargetUserId);
         Name = model.Name;
-        IsFavorite = model.IsFavorite;
         OwnerUserId = model.OwnerUserId;
         TargetUserId = model.TargetUserId;
         Version = model.Version;
