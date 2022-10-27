@@ -124,6 +124,10 @@ public static class MauiProgram
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        // HttpClient
+        services.RemoveAll<IHttpClientFactory>();
+        services.AddSingleton<IHttpClientFactory, NativeHttpClientFactory>();
+
         AppConfigurator.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
