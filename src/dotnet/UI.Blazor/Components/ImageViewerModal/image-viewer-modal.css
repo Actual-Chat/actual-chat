@@ -1,26 +1,53 @@
 .image-viewer-modal.modal-frame {
-    @apply flex-y justify-center gap-y-0 p-0;
+    @apply flex-y justify-center gap-y-0 p-0 md:mt-14;
     @apply w-full md:w-fit md:max-w-full h-full overflow-hidden;
     @apply bg-transparent;
     @apply border-none rounded-none shadow-none;
 }
 
+/*Image viewer header*/
 .image-viewer-header {
-    @apply absolute top-0 flex-x min-h-12 justify-between w-full bg-transparent px-2;
+    @apply absolute top-0 flex-x min-h-14 w-full px-3 md:px-2 bg-black md:bg-transparent;
+    @apply backdrop-blur-none md:backdrop-blur-sm;
 }
 .image-viewer-header .image-header-btn,
 .image-viewer-header .image-header-btn * {
     @apply cursor-pointer;
 }
+.image-viewer-header .image-header-btn.btn.btn-round.mobile {
+    @apply flex md:hidden;
+    @apply min-h-10 max-h-10 min-w-10 max-w-10;
+}
+.image-viewer-header .image-header-btn.btn.btn-round.desktop {
+    @apply hidden md:flex;
+}
 .image-viewer-header .image-header-btn .btn-content {
     @apply bg-transparent text-05 min-h-10 max-h-10 min-w-10 max-w-10;
+}
+.image-viewer-header .image-header-btn .btn-content i {
+    @apply text-3xl md:text-2xl;
 }
 .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
     @apply bg-06 text-04;
 }
 
+/*Image viewer footer*/
+.image-viewer-footer {
+    @apply absolute flex-x bottom-0 min-h-14 w-full justify-center items-center bg-black;
+    @apply md:relative md:bottom-auto md:bg-transparent;
+    @apply backdrop-blur-none md:backdrop-blur-sm;
+}
+.image-viewer-footer .show-original-button {
+    @apply -mt-4 underline underline-offset-2;
+    @apply text-icons-02 text-sm font-normal;
+    @apply hover:text-04;
+}
+.image-viewer-footer .show-original-button {
+    @apply cursor-pointer;
+}
+
 .image-viewer-modal.modal-frame .dialog-body {
-    @apply flex-x w-full md:w-fit max-w-full justify-center items-center p-0 md:p-10;
+    @apply flex-y w-full md:w-fit max-w-full justify-center items-center p-0 md:p-10;
     @apply overflow-hidden;
 }
 
@@ -39,14 +66,6 @@
     @apply bg-transparent;
 }
 
-.show-original-button {
-    @apply px-2 my-1 bg-primary border-primary rounded-md;
-    @apply text-04 text-sm font-normal;
-    @apply hover:bg-primary-hover;
-}
-.modal-frame .show-original-button {
-    @apply cursor-pointer;
-}
 .image-viewer-modal .modal-header {
     @apply justify-end;
 }
