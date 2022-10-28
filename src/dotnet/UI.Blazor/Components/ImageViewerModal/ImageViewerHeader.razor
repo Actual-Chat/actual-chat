@@ -5,23 +5,26 @@
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
-        <div class="flex-x items-center gap-x-2">
+        <ButtonRound Class="image-header-btn mobile" Click="OnCloseClick">
+            <i class="icon-close text-xl"></i>
+        </ButtonRound>
+        <div class="flex-x w-full mx-4 items-center gap-x-2">
             <AuthorCircle Author="@_author" Size="SquareSize.Size10"/>
-            <div class="flex-y">
-                <AuthorName Author="@_author" Size="SquareSize.Size8" Class="text-sm text-icons-02"/>
-                <LiveTimeDeltaText Class="text-xxs text-icons-02" Moment="@ChatEntry.BeginsAt"/>
+            <div class="grid">
+                <AuthorName Author="@_author" Size="SquareSize.Size8" Class="text-base md:text-sm text-icons-02 max-h-6 overflow-y-hidden truncate"/>
+                <LiveTimeDeltaText Class="text-xs md:text-xxs text-icons-02" Moment="@ChatEntry.BeginsAt"/>
             </div>
         </div>
     }
-    <div class="flex-x gap-x-2">
+    <div class="flex-x md:gap-x-2">
         <ButtonRound Class="image-header-btn">
-            <i class="icon-share text-xl"></i>
+            <i class="icon-share"></i>
         </ButtonRound>
         <ButtonRound Class="image-header-btn">
-            <i class="icon-download text-xl"></i>
+            <i class="icon-download"></i>
         </ButtonRound>
-        <ButtonRound Class="image-header-btn" Click="OnCloseClick">
-            <i class="icon-close text-xl"></i>
+        <ButtonRound Class="image-header-btn desktop" Click="OnCloseClick">
+            <i class="icon-close"></i>
         </ButtonRound>
     </div>
 </div>
