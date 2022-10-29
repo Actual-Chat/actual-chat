@@ -25,7 +25,7 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
         fusionClient.AddReplicaService<IContacts, IContactsClientDef>();
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
+        fusionClient.AddReplicaService<IReadPositions, IReadPositionsClientDef>();
         fusionClient.AddReplicaService<IRecentEntries, IRecentEntriesClientDef>();
     }
 }

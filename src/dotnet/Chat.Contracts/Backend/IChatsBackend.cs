@@ -11,7 +11,7 @@ public partial interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatAuthorRules> GetRules(
+    Task<AuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken);

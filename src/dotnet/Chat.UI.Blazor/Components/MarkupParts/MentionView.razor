@@ -2,27 +2,27 @@
 @inherits MarkupViewBase<MentionMarkup>
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
-<ChatAuthorBadgeTemplate AuthorId="@_authorId">
-    @if (context.ChatAuthor.Id.IsEmpty) {
+<AuthorBadgeTemplate AuthorId="@_authorId">
+    @if (context.Author.Id.IsEmpty) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
 
     <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
-         @onclick="OnChatAuthorClick">
+         @onclick="OnAuthorClick">
         <div class="flex-x items-center">
             <i class="icon-at text-md"></i>
-            @context.ChatAuthor.Avatar.Name
+            @context.Author.Avatar.Name
         </div>
     </div>
-</ChatAuthorBadgeTemplate>
+</AuthorBadgeTemplate>
 
 @code {
     private string _authorId = "";
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     protected override void OnParametersSet() {
@@ -32,6 +32,6 @@
             _authorId = id;
     }
 
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(_authorId);
+    private void OnAuthorClick()
+        => ChatUI.ShowAuthorModal(_authorId);
 }

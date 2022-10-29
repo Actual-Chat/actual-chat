@@ -188,7 +188,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat?.Title.Should().Be("The Actual One");
 
         await CreateChatEntries(chats, session, ChatId, 3);
-        var author = await services.GetRequiredService<IChatAuthors>()
+        var author = await services.GetRequiredService<IAuthors>()
             .GetOwn(session, ChatId, CancellationToken.None)
             .Require();
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);

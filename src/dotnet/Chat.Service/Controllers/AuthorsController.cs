@@ -6,27 +6,27 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class AuthorsController : ControllerBase, IChatAuthors
+public class AuthorsController : ControllerBase, IAuthors
 {
-    private readonly IChatAuthors _service;
+    private readonly IAuthors _service;
     private readonly ICommander _commander;
 
-    public AuthorsController(IChatAuthors service, ICommander commander)
+    public AuthorsController(IAuthors service, ICommander commander)
     {
         _service = service;
         _commander = commander;
     }
 
     [HttpGet, Publish]
-    public Task<ChatAuthor?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<Author?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken)
         => _service.Get(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatAuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
         => _service.GetOwn(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatAuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken)
         => _service.GetFull(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
@@ -52,14 +52,14 @@ public class AuthorsController : ControllerBase, IChatAuthors
     // Commands
 
     [HttpPost]
-    public Task AddToContacts([FromBody] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    public Task AddToContacts([FromBody] IAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task CreateChatAuthors([FromBody] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
+    public Task CreateAuthors([FromBody] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task SetAvatar([FromBody] IChatAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
+    public Task SetAvatar([FromBody] IAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 }

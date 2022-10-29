@@ -7,14 +7,14 @@ public class PaletteColorLease
     private bool _isReleased;
 
     public PlayableTextColor Color { get; }
-    public Symbol ChatAuthorId { get; }
+    public Symbol AuthorId { get; }
 
-    public PaletteColorLease(PlayableTextPalette? palette, PlayableTextColor color, Symbol chatAuthorId)
+    public PaletteColorLease(PlayableTextPalette? palette, PlayableTextColor color, Symbol authorId)
     {
         _palette = palette;
         _activeLeases = new List<PlayableTextColorLease>();
         Color = color;
-        ChatAuthorId = chatAuthorId;
+        AuthorId = authorId;
     }
 
     public PlayableTextColorLease ActivateLease(long chatEntryId)

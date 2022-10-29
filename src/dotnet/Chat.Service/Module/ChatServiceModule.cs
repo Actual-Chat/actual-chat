@@ -44,17 +44,17 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
                 e => e.Id);
 
-            // DbChatAuthor
-            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
+            // DbAuthor
+            db.AddShardLocalIdGenerator(dbContext => dbContext.Authors,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddEntityResolver<string, DbAuthor>(_ => new() {
                 QueryTransformer = query => query.Include(a => a.Roles),
             });
 
-            // DbChatRole
-            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatRoles,
+            // DbRole
+            db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            db.AddEntityResolver<string, DbChatRole>();
+            db.AddEntityResolver<string, DbRole>();
         });
 
         // Commander & Fusion
@@ -70,8 +70,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
             // 2. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
-                || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
-                || commandAssembly == typeof(ChatAuthors).Assembly // Chat.Service assembly
+                || commandAssembly == typeof(IAuthors).Assembly // Chat.Contracts assembly
+                || commandAssembly == typeof(Authors).Assembly // Chat.Service assembly
                 || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
         });
         var fusion = services.AddFusion();
@@ -80,13 +80,13 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IChats, Chats>();
         fusion.AddComputeService<IChatsBackend, ChatsBackend>();
 
-        // ChatAuthors
-        fusion.AddComputeService<IChatAuthors, ChatAuthors>();
-        fusion.AddComputeService<IChatAuthorsBackend, ChatAuthorsBackend>();
+        // Authors
+        fusion.AddComputeService<IAuthors, Authors>();
+        fusion.AddComputeService<IAuthorsBackend, AuthorsBackend>();
 
-        // ChatRoles
-        fusion.AddComputeService<IChatRoles, ChatRoles>();
-        fusion.AddComputeService<IChatRolesBackend, ChatRolesBackend>();
+        // Roles
+        fusion.AddComputeService<IRoles, Roles>();
+        fusion.AddComputeService<IRolesBackend, RolesBackend>();
 
         // Mentions
         fusion.AddComputeService<IMentions, Mentions>();

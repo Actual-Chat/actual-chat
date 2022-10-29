@@ -2,17 +2,17 @@ namespace ActualChat;
 
 public static partial class StandardError
 {
-    public static class ChatAuthor
+    public static class Author
     {
         // ReSharper disable once MemberHidesStaticFromOuterClass
         public static Exception Unavailable(string? message = null)
-            => new UnavailableChatAuthorException(message);
+            => new UnavailableAuthorException(message);
     }
 }
 
-public class UnavailableChatAuthorException : KeyNotFoundException, IContentUnavailableException
+public class UnavailableAuthorException : KeyNotFoundException, IContentUnavailableException
 {
-    public UnavailableChatAuthorException() : this(null) { }
-    public UnavailableChatAuthorException(string? message) : base(message ?? "You are not a member of this chat.") { }
-    public UnavailableChatAuthorException(string? message, Exception? inner) : base(message, inner) { }
+    public UnavailableAuthorException() : this(null) { }
+    public UnavailableAuthorException(string? message) : base(message ?? "You are not a member of this chat.") { }
+    public UnavailableAuthorException(string? message, Exception? inner) : base(message, inner) { }
 }

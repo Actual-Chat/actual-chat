@@ -19,8 +19,8 @@ public class ChatOperationsTest : AppHostTestBase
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
-        var chatRoles = services.GetRequiredService<IChatRoles>();
-        var chatAuthors = services.GetRequiredService<IChatAuthors>();
+        var roles = services.GetRequiredService<IRoles>();
+        var authors = services.GetRequiredService<IAuthors>();
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
@@ -39,15 +39,15 @@ public class ChatOperationsTest : AppHostTestBase
         chat.Title.Should().Be(chatTitle);
         chat.IsPublic.Should().Be(isPublicChat);
 
-        var roles = await chatRoles.List(session, chat.Id, default);
-        roles.Length.Should().Be(2);
+        var chatRoles = await roles.List(session, chat.Id, default);
+        chatRoles.Length.Should().Be(2);
 
-        var owners = roles.Single(r => r.SystemRole is SystemChatRole.Owner);
-        owners.Name.Should().Be(SystemChatRole.Owner.ToString());
+        var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
+        owners.Name.Should().Be(SystemRole.Owner.ToString());
         owners.Permissions.Has(ChatPermissions.Owner).Should().BeTrue();
 
-        var joined = roles.Single(r => r.SystemRole is SystemChatRole.Anyone);
-        joined.Name.Should().Be(SystemChatRole.Anyone.ToString());
+        var joined = chatRoles.Single(r => r.SystemRole is SystemRole.Anyone);
+        joined.Name.Should().Be(SystemRole.Anyone.ToString());
         joined.Permissions.Has(ChatPermissions.Read).Should().BeTrue();
         joined.Permissions.Has(ChatPermissions.Write).Should().BeTrue();
         joined.Permissions.Has(ChatPermissions.Join).Should().BeTrue();
@@ -64,7 +64,7 @@ public class ChatOperationsTest : AppHostTestBase
         rules.CanEditRoles().Should().BeTrue();
         rules.IsOwner().Should().BeTrue();
 
-        var author = await chatAuthors.GetOwn(session, chat.Id, default);
+        var author = await authors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
     }
@@ -221,39 +221,39 @@ public class ChatOperationsTest : AppHostTestBase
 
         var chat = await chats.Get(session, chatId, default);
         chat.Should().NotBeNull();
-        var chatAuthors = services.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.GetOwn(session, chatId, default);
+        var authors = services.GetRequiredService<IAuthors>();
+        var author = await authors.GetOwn(session, chatId, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
         author.HasLeft.Should().BeFalse();
 
-        var ownChatIds = await chatAuthors.ListChatIds(session, default);
+        var ownChatIds = await authors.ListChatIds(session, default);
         ownChatIds.Should().Contain(chatId);
 
-        var userIds = await chatAuthors.ListUserIds(session, chatId, default);
+        var userIds = await authors.ListUserIds(session, chatId, default);
         userIds.Should().Contain(user.Id);
-        var authorIds = await chatAuthors.ListAuthorIds(session, chatId, default);
+        var authorIds = await authors.ListAuthorIds(session, chatId, default);
         authorIds.Should().Contain(author.Id);
     }
 
     private static async Task AssertUserNotJoined(IServiceProvider services, Session session, Symbol chatId, User user)
     {
-        var chatAuthors = services.GetRequiredService<IChatAuthors>();
-        var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
+        var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
 
-        var cAuthor = await Computed.Capture(() => chatAuthors.GetOwn(session, chatId, default));
+        var cAuthor = await Computed.Capture(() => authors.GetOwn(session, chatId, default));
         await cAuthor.When(a => a is { HasLeft: true })
             .WaitAsync(TimeSpan.FromSeconds(3));
         var author = await cAuthor.Use();
         author!.HasLeft.Should().BeTrue();
 
-        var ownChatIds = await chatAuthors.ListChatIds(session, default);
+        var ownChatIds = await authors.ListChatIds(session, default);
         ownChatIds.Should().NotContain(chatId);
 
-        var userIds = await chatAuthors.ListUserIds(session, chatId, default);
+        var userIds = await authors.ListUserIds(session, chatId, default);
         userIds.Should().NotContain(user.Id);
         // use backend service to avoid permissions check
-        var authorIds = await chatAuthorsBackend.ListAuthorIds(chatId, default);
+        var authorIds = await authorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);
     }
 }

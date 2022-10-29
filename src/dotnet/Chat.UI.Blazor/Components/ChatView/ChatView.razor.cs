@@ -24,8 +24,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private IChatReadPositions ChatReadPositions { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IReadPositions ReadPositions { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -115,7 +115,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var chat = Chat;
         var chatId = chat.Id.Value;
-        var author = await ChatAuthors.GetOwn(Session, chatId, cancellationToken);
+        var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryState?.Value ?? 0;

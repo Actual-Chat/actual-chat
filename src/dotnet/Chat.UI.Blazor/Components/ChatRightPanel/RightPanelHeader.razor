@@ -1,5 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatAuthorRules>
+@inherits ComputedStateComponent<AuthorRules>
 @{
     var m = State.LatestNonErrorValue;
 }
@@ -35,12 +35,12 @@
     private void OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.ModalInput(Chat));
 
-    protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
+    protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
-            InitialValue = ChatAuthorRules.None(Chat.Id),
+            InitialValue = AuthorRules.None(Chat.Id),
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override Task<ChatAuthorRules> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
         => Chats.GetRules(Session, Chat.Id, default);
 }

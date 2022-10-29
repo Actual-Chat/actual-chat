@@ -175,7 +175,7 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public ChatAuthorRules? Rules { get; init; }
+        public AuthorRules? Rules { get; init; }
         public LinkInfo? PublicUrl { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }

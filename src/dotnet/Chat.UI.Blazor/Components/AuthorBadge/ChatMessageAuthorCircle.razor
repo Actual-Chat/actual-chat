@@ -1,0 +1,20 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits AuthorBadgeBase
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<div class="avatar-badge">
+    <AvatarCircle
+        Avatar="@m.Author.Avatar" Size="SquareSize.Size9" Presence="@m.Presence"
+        Click="@Click"/>
+</div>
+
+@code {
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    public ChatMessageAuthorCircle() {
+        ShowsPresence = true;
+        ShowsRecording = true;
+    }
+}

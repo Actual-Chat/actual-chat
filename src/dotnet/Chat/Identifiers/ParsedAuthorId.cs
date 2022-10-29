@@ -50,7 +50,7 @@ public readonly struct ParsedAuthorId : IEquatable<ParsedAuthorId>, IHasId<Symbo
     }
 
     public ParsedAuthorId RequireValid()
-        => IsValid ? this : throw StandardError.Format("Invalid chat author Id format.");
+        => IsValid ? this : throw StandardError.Format("Invalid author Id format.");
 
     // Conversion
 

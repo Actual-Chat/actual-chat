@@ -74,7 +74,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -90,7 +90,7 @@
         var isDefault = ModalModel.AvatarId == (account?.Avatar.Id ?? Symbol.Empty);
         var isActive = false;
         if (!ModalModel.ChatId.IsEmpty) {
-            var author = await ChatAuthors.GetOwn(Session, ModalModel.ChatId, default);
+            var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
@@ -147,12 +147,12 @@
 
     private async Task SetActiveAvatar(Symbol avatarId)
     {
-        var author = await ChatAuthors.GetOwn(Session, ModalModel.ChatId, default);
+        var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
         if (author == null)
             return;
 
         author = author with { AvatarId = avatarId };
-        var command = new IChatAuthors.SetAvatarCommand(Session, ModalModel.ChatId, author.Id, avatarId);
+        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, author.Id, avatarId);
         await UICommander.Run(command);
     }
 

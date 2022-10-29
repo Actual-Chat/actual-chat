@@ -20,7 +20,7 @@ public class ChatUI
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IChats Chats { get; }
-    private IChatReadPositions ChatReadPositions { get; }
+    private IReadPositions ReadPositions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     private ModalUI ModalUI { get; }
     private MomentClockSet Clocks { get; }
@@ -40,7 +40,7 @@ public class ChatUI
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
-        ChatReadPositions = services.GetRequiredService<IChatReadPositions>();
+        ReadPositions = services.GetRequiredService<IReadPositions>();
         ModalUI = services.GetRequiredService<ModalUI>();
         Clocks = services.Clocks();
         UICommander = services.UICommander();
@@ -180,10 +180,10 @@ public class ChatUI
         return UpdateActiveChats(activeChats => activeChats.Remove(chatId));
     }
 
-    public void ShowChatAuthorModal(string authorId)
+    public void ShowAuthorModal(string authorId)
     {
         var parsedAuthorId = new ParsedAuthorId(authorId).RequireValid();
-        ModalUI.Show(new ChatAuthorModal.Model(parsedAuthorId.ChatId, parsedAuthorId.Id));
+        ModalUI.Show(new AuthorModal.Model(parsedAuthorId.ChatId, parsedAuthorId.Id));
     }
 
     public void ShowDeleteMessageModal(ChatMessageModel model)
@@ -203,13 +203,13 @@ public class ChatUI
         => Task.FromResult(StateFactory.NewCustomSynced<long?>(
             new(
                 // Reader
-                async ct => await ChatReadPositions.Get(Session, chatId, ct).ConfigureAwait(false),
+                async ct => await ReadPositions.Get(Session, chatId, ct).ConfigureAwait(false),
                 // Writer
                 async (lastReadEntryId, ct) => {
                     if (lastReadEntryId is not { } entryId)
                         return;
 
-                    var command = new IChatReadPositions.SetReadPositionCommand(Session, chatId, entryId);
+                    var command = new IReadPositions.SetCommand(Session, chatId, entryId);
                     await UICommander.Run(command, ct);
                 }) { UpdateDelayer = _lastReadEntryStatesUpdateDelayer }
             ));

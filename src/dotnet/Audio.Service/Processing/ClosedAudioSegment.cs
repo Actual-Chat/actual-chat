@@ -11,7 +11,7 @@ public sealed class ClosedAudioSegment
     public Moment? RecordedAt { get; init; }
     public TimeSpan Duration { get; init; }
     public TimeSpan AudibleDuration { get; init; }
-    public ChatAuthor Author { get; init; }
+    public Author Author { get; init; }
     public ImmutableArray<LanguageId> Languages { get; init; }
 
     public ClosedAudioSegment(OpenAudioSegment openAudioSegment, Moment? recordedAt, TimeSpan duration, TimeSpan audibleDuration)

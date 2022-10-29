@@ -5,12 +5,12 @@ namespace ActualChat.Chat;
 
 internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
     private IMentionsBackend Backend { get; }
-    private IChatAuthors ChatAuthors { get; }
+    private IAuthors Authors { get; }
 
-    public Mentions(IServiceProvider services, IMentionsBackend backend, IChatAuthors chatAuthors) : base(services)
+    public Mentions(IServiceProvider services, IMentionsBackend backend, IAuthors authors) : base(services)
     {
         Backend = backend;
-        ChatAuthors = chatAuthors;
+        Authors = authors;
     }
 
     // [ComputeMethod]
@@ -19,7 +19,7 @@ internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
         Symbol chatId,
         CancellationToken cancellationToken)
     {
-        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 

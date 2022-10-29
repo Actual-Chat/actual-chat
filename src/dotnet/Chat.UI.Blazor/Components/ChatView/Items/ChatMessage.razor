@@ -34,7 +34,7 @@
         <div class="chat-message group px-1.5 py-1 relative">
             @if (showPicture || isReply) {
                 <div class="m-1.5">
-                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnAuthorClick"/>
                 </div>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -45,7 +45,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="header chat-message-header ml-1">
-                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
+                        <AuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
@@ -96,7 +96,7 @@
     private Markup? _cachedMarkup;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -125,7 +125,7 @@
         var initialValue = Model.None;
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var ownAuthorTask = ChatAuthors.GetOwn(Session, chatId, default);
+        var ownAuthorTask = Authors.GetOwn(Session, chatId, default);
         if (ownAuthorTask.IsCompletedSuccessfully) {
             var ownAuthorId = ownAuthorTask.Result?.Id ?? Symbol.Empty;
             initialValue = new Model { OwnAuthorId = ownAuthorId };
@@ -138,7 +138,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var ownAuthor = await ChatAuthors.GetOwn(Session, chatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
         var ownAuthorId = ownAuthor?.Id ?? Symbol.Empty;
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
@@ -186,8 +186,8 @@
         };
     }
 
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(Message.Entry.AuthorId);
+    private void OnAuthorClick()
+        => ChatUI.ShowAuthorModal(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {

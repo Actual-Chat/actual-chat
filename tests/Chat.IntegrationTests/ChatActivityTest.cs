@@ -18,7 +18,7 @@ public class ChatActivityTest : AppHostTestBase
         var services = tester.AppServices;
         var clientServices = tester.ClientServices;
         var commander = services.GetRequiredService<ICommander>();
-        var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
         var user = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var sessionProvider = clientServices.GetRequiredService<ISessionProvider>();
@@ -39,7 +39,7 @@ public class ChatActivityTest : AppHostTestBase
             cActiveChatEntries.Value.Count.Should().Be(0);
 
             // 2s pause, create entry, 2s pause, complete it
-            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
+            _ = Task.Run(() => AddChatEntries(commander, authorsBackend, session, ct), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
@@ -61,13 +61,13 @@ public class ChatActivityTest : AppHostTestBase
 
     private async Task AddChatEntries(
         ICommander commander,
-        IChatAuthorsBackend chatAuthorsBackend,
+        IAuthorsBackend authorsBackend,
         Session session,
         CancellationToken cancellationToken)
     {
         var testClock = new TestClock();
         await testClock.Delay(2000, cancellationToken);
-        var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
+        var author = await authorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
             ChatId = ChatId,

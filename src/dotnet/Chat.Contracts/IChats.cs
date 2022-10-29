@@ -11,7 +11,7 @@ public interface IChats : IComputeService
     Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<ChatAuthorRules> GetRules(
+    Task<AuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
@@ -62,7 +62,7 @@ public interface IChats : IComputeService
     Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ChatAuthor>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
 

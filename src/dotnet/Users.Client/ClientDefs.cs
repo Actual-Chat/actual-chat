@@ -52,14 +52,14 @@ public interface IRecentEntriesClientDef
     Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("chatReadPositions")]
-public interface IChatReadPositionsClientDef
+[BasePath("readPositions")]
+public interface IReadPositionsClientDef
 {
     [Get(nameof(Get))]
     public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
-    public Task Set([Body] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken);
+    public Task Set([Body] IReadPositions.SetCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]

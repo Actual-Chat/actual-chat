@@ -18,8 +18,8 @@ public class ChatClientModule : HostModule
 
         var fusionClient = services.AddFusion().AddRestEaseClient();
         fusionClient.AddReplicaService<IChats, IChatsClientDef>();
-        fusionClient.AddReplicaService<IChatAuthors, IChatAuthorsClientDef>();
-        fusionClient.AddReplicaService<IChatRoles, IChatRolesClientDef>();
+        fusionClient.AddReplicaService<IAuthors, IAuthorsClientDef>();
+        fusionClient.AddReplicaService<IRoles, IRolesClientDef>();
         fusionClient.AddReplicaService<IMentions, IMentionsClientDef>();
         fusionClient.AddReplicaService<IReactions, IReactionsClientDef>();
     }

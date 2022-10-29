@@ -23,7 +23,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
@@ -40,7 +40,7 @@
         var authors = await summaries
             .SelectMany(x => x.FirstAuthorIds)
             .Distinct()
-            .Select(x => ChatAuthors.Get(Session, ChatEntry.ChatId, x, cancellationToken))
+            .Select(x => Authors.Get(Session, ChatEntry.ChatId, x, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
         var authorMap = authors.SkipNullItems().ToDictionary(x => x.Id);
@@ -57,7 +57,7 @@
         }));
     }
 
-    private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, ChatAuthor> authorMap)
+    private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, Author> authorMap)
         => ZString.Join(
             Environment.NewLine,
             reactionSummary.FirstAuthorIds.Select(x => $"{authorMap[x].Avatar.Name} {reactionSummary.Emoji}"));

@@ -20,7 +20,7 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger Log { get; }
     protected MomentClockSet Clocks { get; }
     protected IServiceProvider Services { get; }
-    protected IChatAuthors ChatAuthors { get; }
+    protected IAuthors Authors { get; }
     protected IChats Chats { get; }
 
     public Session Session { get; }
@@ -39,7 +39,7 @@ public abstract class ChatPlayer : ProcessorBase
         Session = session;
 
         Playback = services.GetRequiredService<IPlaybackFactory>().Create();
-        ChatAuthors = services.GetRequiredService<IChatAuthors>();
+        Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
     }
 

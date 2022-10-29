@@ -5,14 +5,14 @@ internal class Reactions : IReactions
     private IReactionsBackend Backend { get; }
     private ICommander Commander { get; }
     private IChats Chats { get; }
-    private IChatAuthors ChatAuthors { get; }
+    private IAuthors Authors { get; }
 
-    public Reactions(IReactionsBackend backend, ICommander commander, IChats chats, IChatAuthors chatAuthors)
+    public Reactions(IReactionsBackend backend, ICommander commander, IChats chats, IAuthors authors)
     {
         Backend = backend;
         Commander = commander;
         Chats = chats;
-        ChatAuthors = chatAuthors;
+        Authors = authors;
     }
 
     // [ComputeMethod]
@@ -37,7 +37,7 @@ internal class Reactions : IReactions
         var chatRules = await Chats.GetRules(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 
-        var author = await ChatAuthors.GetOwn(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.GetOwn(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return;
 

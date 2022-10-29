@@ -1,10 +1,10 @@
 namespace ActualChat.Chat;
 
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
-public interface IChatMentionResolver : IMentionResolver<ChatAuthor>, IMentionResolver<string>
+public interface IChatMentionResolver : IMentionResolver<Author>, IMentionResolver<string>
 {
     Symbol ChatId { get; set; }
 
-    ValueTask<ChatAuthor?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken);
+    ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken);
     ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken);
 }

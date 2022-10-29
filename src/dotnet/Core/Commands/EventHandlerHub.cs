@@ -1,5 +1,6 @@
 namespace ActualChat.Commands;
 
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class EventHandlerHub : ICommandHandler<IEvent>
 {
     [CommandHandler(Priority = 1, IsFilter = true)]

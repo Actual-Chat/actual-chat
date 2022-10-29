@@ -22,14 +22,14 @@ public class DbAuthor : IHasId<string>
     public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
 
-    public List<DbChatAuthorRole> Roles { get; } = new();
+    public List<DbAuthorRole> Roles { get; } = new();
 
     public static string ComposeId(string chatId, long localId)
         => new ParsedAuthorId(chatId, localId).Id;
 
-    public ChatAuthorFull ToModel()
+    public AuthorFull ToModel()
     {
-        var result = new ChatAuthorFull() {
+        var result = new AuthorFull() {
             Id = Id,
             ChatId = ChatId,
             Version = Version,
@@ -37,7 +37,7 @@ public class DbAuthor : IHasId<string>
             UserId = UserId ?? "",
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
-            RoleIds = Roles.Select(ar => (Symbol)ar.DbChatRoleId).ToImmutableArray(),
+            RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToImmutableArray(),
         };
         return result;
     }

@@ -20,8 +20,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private static readonly RandomStringGenerator ChatIdGenerator = new(10, ChatIdAlphabet);
 
     private IAccountsBackend AccountsBackend { get; }
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private IChatRolesBackend ChatRolesBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
+    private IRolesBackend RolesBackend { get; }
     private IMarkupParser MarkupParser { get; }
     private IChatMentionResolverFactory ChatMentionResolverFactory { get; }
     private IContactsBackend ContactsBackend { get; }
@@ -33,8 +33,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     public ChatsBackend(IServiceProvider services) : base(services)
     {
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
-        ChatRolesBackend = services.GetRequiredService<IChatRolesBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        RolesBackend = services.GetRequiredService<IRolesBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMentionResolverFactory = services.GetRequiredService<BackendChatMentionResolverFactory>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
@@ -54,15 +54,15 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthorRules> GetRules(
+    public virtual async Task<AuthorRules> GetRules(
         string chatId,
         string chatPrincipalId,
         CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
-        var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
+        var parsedChatPrincipalId = new ParsedPrincipalId(chatPrincipalId);
         if (!parsedChatId.IsValid || !parsedChatPrincipalId.IsValidOrEmpty)
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
         var (parsedAuthorId, parsedUserId) = parsedChatPrincipalId;
 
         // Peer chat: we don't use actual roles to determine rules here
@@ -73,22 +73,22 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         // Group chat
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
 
-        ChatAuthorFull? author = null;
-        if (parsedChatPrincipalId.Kind == ChatPrincipalKind.Author) {
-            author = await ChatAuthorsBackend.Get(chatId, parsedAuthorId, cancellationToken).ConfigureAwait(false);
+        AuthorFull? author = null;
+        if (parsedChatPrincipalId.Kind == PrincipalKind.Author) {
+            author = await AuthorsBackend.Get(chatId, parsedAuthorId, cancellationToken).ConfigureAwait(false);
             parsedUserId = author?.UserId ?? Symbol.Empty;
         } // Otherwise parsedUserId is either valid or empty
         var account = parsedUserId.IsValid ? null
             : await AccountsBackend.Get(parsedUserId, cancellationToken).ConfigureAwait(false);
 
-        var roles = ImmutableArray<ChatRole>.Empty;
+        var roles = ImmutableArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
             var isAuthenticated = account != null;
             var isAnonymous = author is { IsAnonymous: true };
-            roles = await ChatRolesBackend
+            roles = await RolesBackend
                 .List(chatId, author!.Id, isAuthenticated, isAnonymous, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -96,14 +96,14 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat.IsPublic) {
             permissions |= ChatPermissions.Join;
             if (!isJoined) {
-                var anyoneSystemRole = await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Anyone, cancellationToken).ConfigureAwait(false);
+                var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
                 if (anyoneSystemRole != null && anyoneSystemRole.Permissions.Has(ChatPermissions.SeeMembers))
                     permissions |= ChatPermissions.SeeMembers;
             }
         }
         permissions = permissions.AddImplied();
 
-        var rules = new ChatAuthorRules(chatId, author, account, permissions);
+        var rules = new AuthorRules(chatId, author, account, permissions);
         return rules;
     }
 
@@ -283,7 +283,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
                 var ownerUserIds = new[] { userId1.Value, userId2.Value };
                 await ownerUserIds
-                    .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
+                    .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
                 var contact1Task = ContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
@@ -293,24 +293,24 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             else {
                 // Group chat
                 creatorUserId = creatorUserId.RequireNonEmpty("Command.CreatorUserId");
-                var chatAuthor = await ChatAuthorsBackend
+                var author = await AuthorsBackend
                     .GetOrCreate(chatId, creatorUserId, cancellationToken)
                     .ConfigureAwait(false);
 
-                var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
-                    Create = new ChatRoleDiff() {
-                        SystemRole = SystemChatRole.Owner,
+                var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                    Create = new RoleDiff() {
+                        SystemRole = SystemRole.Owner,
                         Permissions = ChatPermissions.Owner,
                         AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
-                            AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
+                            AddedItems = ImmutableArray<Symbol>.Empty.Add(author.Id),
                         },
                     },
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createJoinedRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, "", null, new() {
-                    Create = new ChatRoleDiff() {
-                        SystemRole = SystemChatRole.Anyone,
+                var createJoinedRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                    Create = new RoleDiff() {
+                        SystemRole = SystemRole.Anyone,
                         Permissions =
                             ChatPermissions.Write
                             | ChatPermissions.Invite
@@ -345,28 +345,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
-    }
-
-    [CommandHandler(IsFilter = true, Priority = 1001)] // 1000 = DbOperationScopeProvider, we must "wrap" it
-    protected virtual async Task OnChatAuthorCreated(
-        IChatAuthorsBackend.CreateCommand command,
-        CancellationToken cancellationToken)
-    {
-        // This filter sets initial chat read positions
-        var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        var idRange = await GetIdRange(command.ChatId, ChatEntryType.Text, false, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(
-            new IChatReadPositionsBackend.SetCommand(command.UserId, command.ChatId, idRange.End - 1),
-            true,
-            cancellationToken
-            ).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -424,8 +402,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
-        var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        var userId = chatAuthor!.UserId;
+        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        var userId = author!.UserId;
         new TextEntryChangedEvent(chatId, entry.Id, authorId, entry.Content, changeKind)
             .EnqueueOnCompletion(Queues.Chats.ShardBy(chatId), Queues.Users.ShardBy(userId));
         return entry;
@@ -578,7 +556,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private async Task JoinAnnouncementsChat(string userId, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
-        var author = await ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         if (!HostInfo.IsDevelopmentInstance)
             return;
@@ -597,25 +575,25 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
-        var author = await ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AddOwner(string chatId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
+    private async Task AddOwner(string chatId, Author author, CancellationToken cancellationToken)
     {
-        var ownerRole = await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
+        var ownerRole = await RolesBackend.GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .ConfigureAwait(false);
         if (ownerRole == null)
             return;
 
-        var createOwnersRoleCmd = new IChatRolesBackend.ChangeCommand(chatId,
+        var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId,
             ownerRole.Id,
             null,
-            new Change<ChatRoleDiff> {
-                Update = new ChatRoleDiff {
+            new Change<RoleDiff> {
+                Update = new RoleDiff {
                     AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol> {
-                        AddedItems = ImmutableArray<Symbol>.Empty.Add(chatAuthor.Id),
+                        AddedItems = ImmutableArray<Symbol>.Empty.Add(author.Id),
                     },
                 },
             });
@@ -629,38 +607,38 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
         => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryType), cancellationToken);
 
-    private async Task<ChatAuthorRules> GetPeerChatRules(
+    private async Task<AuthorRules> GetPeerChatRules(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
-        var parsedChatPrincipalId = new ParsedChatPrincipalId(chatPrincipalId);
+        var parsedChatPrincipalId = new ParsedPrincipalId(chatPrincipalId);
         if (parsedChatId.Kind != ChatIdKind.PeerFull || !parsedChatPrincipalId.IsValid)
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
 
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
         var userId = parsedChatPrincipalId.UserId.Id;
-        var author = (ChatAuthorFull)null!;
+        var author = (AuthorFull)null!;
         if (userId.IsEmpty) {
-            var chatAuthorId = parsedChatPrincipalId.AuthorId.Id;
-            if (!chatAuthorId.IsEmpty)
-                author = await ChatAuthorsBackend
-                    .Get(chatId, chatAuthorId, cancellationToken)
+            var authorId = parsedChatPrincipalId.AuthorId.Id;
+            if (!authorId.IsEmpty)
+                author = await AuthorsBackend
+                    .Get(chatId, authorId, cancellationToken)
                     .ConfigureAwait(false);
             userId = author?.UserId ?? default;
         }
 
         var otherUserId = (userId1, userId2).OtherThan(userId);
         if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be chatPrincipalId
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
 
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account == null)
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
 
         var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
         if (otherAccount == null)
-            return ChatAuthorRules.None(chatId);
+            return AuthorRules.None(chatId);
 
         return new(chatId, author, account, ChatPermissions.Write.AddImplied());
     }

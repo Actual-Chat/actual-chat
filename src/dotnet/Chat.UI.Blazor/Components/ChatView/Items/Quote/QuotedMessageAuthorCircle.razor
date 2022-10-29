@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ChatAuthorBadgeBase
+@inherits AuthorBadgeBase
 @{
     var m = State.LatestNonErrorValue;
 }
 
 <div class="min-w-fit">
     <AvatarCircle
-        Avatar="@m.ChatAuthor.Avatar" Size="SquareSize.Size4" Presence="@m.Presence"
+        Avatar="@m.Author.Avatar" Size="SquareSize.Size4" Presence="@m.Presence"
         Click="@Click"/>
 </div>
 
