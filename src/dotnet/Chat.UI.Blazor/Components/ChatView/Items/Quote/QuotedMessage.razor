@@ -8,13 +8,13 @@
     var message = model.Message;
     var entry = message.Entry;
     var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
-    authorNameCls += "font-bold text-base min-w-fit";
+    authorNameCls += "font-bold text-base";
 }
 
 <div class="quoted-message" @onclick="OnQuoteClick">
     <div class="block bg-primary left-line min-h-10"></div>
     <div class="flex-y w-full px-2 opacity-90">
-        <div class="flex pl-0.5">
+        <div class="grid pl-0.5">
             <ChatAuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
         </div>
         <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
