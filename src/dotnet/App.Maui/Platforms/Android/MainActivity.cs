@@ -46,8 +46,8 @@ public class MainActivity : MauiAppCompatActivity
     {
         var isLoaded = false;
         if (ScopedServicesAccessor.IsInitialized) {
-            var appLoadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<AppLoadingUI>();
-            isLoaded = appLoadingUI.WhenLoaded.IsCompleted;
+            var loadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>();
+            isLoaded = loadingUI.WhenLoaded.IsCompleted;
             // If app is put to background with back button
             // and user brings app to foreground by launching app icon or picking app from recents,
             // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
@@ -121,6 +121,7 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnNewIntent(Intent? intent)
     {
+        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnNewIntent");
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
@@ -166,9 +167,10 @@ public class MainActivity : MauiAppCompatActivity
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
             else {
+                Log.Debug(AndroidConstants.LogTag, $"Google SignIn. SignInIntent result is NOK. Actual result: {resultCode}.");
                 new AlertDialog.Builder(this)
-                    .SetTitle("Google SignIn")
-                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")
+                    .SetTitle("Google SignIn")!
+                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")!
                     .Show();
             }
         }
@@ -213,6 +215,8 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap");
+
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach(var key in keySet) {
@@ -226,16 +230,26 @@ public class MainActivity : MauiAppCompatActivity
         }
 
         data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url);
-        if (!url.IsNullOrEmpty() && ScopedServicesAccessor.IsInitialized) {
-            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
-            handler.Handle(url);
+        if (url.IsNullOrEmpty())
+            return;
+
+        async Task Handle()
+        {
+            await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
+            var serviceProvider = ScopedServicesAccessor.ScopedServices;
+            var appLoadingUI = serviceProvider.GetRequiredService<LoadingUI>();
+            await appLoadingUI.WhenLoaded.ConfigureAwait(true);
+            var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
+            Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap navigates to '{url}'");
+            _ = handler.Handle(url);
         }
+        _ = Handle();
     }
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
         public bool OnPreDraw()
             => ScopedServicesAccessor.IsInitialized
-                && ScopedServicesAccessor.ScopedServices.GetRequiredService<AppLoadingUI>().WhenLoaded.IsCompleted;
+                && ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>().WhenLoaded.IsCompleted;
     }
 }

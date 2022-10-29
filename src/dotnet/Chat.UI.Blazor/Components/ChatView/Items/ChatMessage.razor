@@ -28,7 +28,7 @@
 
 <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key).ToString())"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
      data-menu-trigger="@(MenuTriggers.RightClick.Format())">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">
@@ -44,7 +44,7 @@
             }
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
-                    <div class="header chat-message-header ml-1">
+                    <div class="grid header chat-message-header ml-1">
                         <AuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
@@ -67,13 +67,13 @@
                     </div>
                     @if (entry.Attachments.Length > 0) {
                         <div class="message-attachments mx-1">
-                        @foreach (var attachment in entry.Attachments) {
-                            var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
-                            @if (isImage) {
-                                <ImageAttachment Attachment="@attachment"/>
-                            } else {
-                                <FileAttachment Attachment="@attachment"/>
-                            }
+                            @foreach (var attachment in entry.Attachments) {
+                                var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
+                                @if (isImage) {
+                                    <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                                } else {
+                                    <FileAttachment Attachment="@attachment"/>
+                                }
                             }
                         </div>
                     }

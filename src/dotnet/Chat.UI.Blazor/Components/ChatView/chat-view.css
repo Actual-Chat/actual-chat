@@ -17,6 +17,7 @@
 
 .author-name {
     @apply font-bold text-03 cursor-pointer hover:opacity-80;
+    @apply overflow-y-hidden truncate max-h-6;
 }
 .message-wrapper.own-message .author-name {
     @apply text-06;

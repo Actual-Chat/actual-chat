@@ -1,11 +1,12 @@
+using ActualChat.Users;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public class AppPresenceReporter : WorkerBase
 {
     public record Options
     {
-        public RandomTimeSpan UpdatePeriod { get; init; } = TimeSpan.FromMinutes(3).ToRandom(0.05);
-        public RetryDelaySeq RetryDelays { get; init; } = new(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+        public TimeSpan AwayTimeout { get; init; } = TimeSpan.FromMinutes(3.5);
         public MomentClockSet? Clocks { get; init; }
     }
 
@@ -15,6 +16,8 @@ public class AppPresenceReporter : WorkerBase
     protected IAuth Auth { get; }
     protected ISessionResolver SessionResolver { get; }
     protected MomentClockSet Clocks { get; }
+    protected UserActivityUI UserActivityUI { get; }
+    protected IUserPresences UserPresences { get; }
 
     public AppPresenceReporter(Options settings, IServiceProvider services)
     {
@@ -24,33 +27,45 @@ public class AppPresenceReporter : WorkerBase
         Auth = services.GetRequiredService<IAuth>();
         SessionResolver = services.GetRequiredService<ISessionResolver>();
         Clocks = Settings.Clocks ?? services.Clocks();
+        UserActivityUI = services.GetRequiredService<UserActivityUI>();
+        UserPresences = services.GetRequiredService<IUserPresences>();
     }
+
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
-        var retryCount = 0;
-        while (!cancellationToken.IsCancellationRequested) {
-            var updatePeriod = retryCount == 0
-                ? Settings.UpdatePeriod.Next()
-                : Settings.RetryDelays[retryCount];
-            await Clocks.CpuClock.Delay(updatePeriod, cancellationToken).ConfigureAwait(false);
-            var success = await UpdatePresence(session, cancellationToken).ConfigureAwait(false);
-            retryCount = success ? 0 : 1 + retryCount;
+        await foreach (var change in UserActivityUI.LastActiveAt.Changes(cancellationToken)) {
+            var lastActiveAt = change.Value;
+            if (Clocks.SystemClock.Now - lastActiveAt < Settings.AwayTimeout)
+                await UpdatePresence(session, cancellationToken).ConfigureAwait(false);
+            else {
+                await InvalidatePresence(session, cancellationToken);
+                await UserActivityUI.SubscribeForNext(cancellationToken);
+            }
         }
     }
 
     // Private methods
 
-    private async Task<bool> UpdatePresence(Session session, CancellationToken cancellationToken)
+    private async Task UpdatePresence(Session session, CancellationToken cancellationToken)
     {
         try {
             await Auth.UpdatePresence(session, cancellationToken).ConfigureAwait(false);
-            return true;
+            await InvalidatePresence(session, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "UpdatePresence failed");
-            return false;
         }
+    }
+
+    private async Task InvalidatePresence(Session session, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken);
+        if (user == null)
+            return;
+
+        using (Computed.Invalidate())
+            _ = UserPresences.Get(user.Id, cancellationToken);
     }
 }

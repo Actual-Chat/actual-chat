@@ -23,7 +23,7 @@
     [Parameter] public string? Class { get; set; }
     [Parameter] public bool? ActivateFocusTrap { get; set; }
 
-    private readonly Collection<ModalReference> _modals = new();
+    private readonly Collection<ModalRef> _modals = new();
     private readonly ModalOptions _globalModalOptions = new();
     private bool _haveActiveModals;
     private string _lastLocation = "";
@@ -46,21 +46,21 @@
         _globalModalOptions.ActivateFocusTrap = ActivateFocusTrap;
     }
 
-    private Task CloseInstance(ModalReference? modal)
+    private Task CloseInstance(ModalRef? modal)
         => DismissInstance(modal);
 
     internal Task DismissInstance(Guid id)
     {
         var reference = GetModalReference(id);
         if (reference != null) {
-            var handled = reference.RaiseModalInstanceCloseRequested();
+            var handled = reference.RaiseModalCloseRequest();
             if (handled)
                 return Task.CompletedTask;
         }
         return DismissInstance(reference);
     }
 
-    private async Task DismissInstance(ModalReference? modal)
+    private async Task DismissInstance(ModalRef? modal)
     {
         if (modal != null) {
             modal.Dismiss();
@@ -93,7 +93,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task Update(ModalReference modalReference)
+    private async Task Update(ModalRef modalReference)
     {
         _modals.Add(modalReference);
 
@@ -105,7 +105,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private ModalReference? GetModalReference(Guid id)
+    private ModalRef? GetModalReference(Guid id)
         => _modals.SingleOrDefault(x => x.Id == id);
 
     private async Task ClearBodyStyles()

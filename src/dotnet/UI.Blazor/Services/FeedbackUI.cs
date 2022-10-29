@@ -8,7 +8,7 @@ public class FeedbackUI
     private readonly Session _session;
     private readonly ModalUI _modalUI;
     private readonly UICommander _uiCommander;
-    private IModalReference? _modal;
+    private IModalRef? _modal;
 
     public FeedbackUI(Session session, ModalUI modalUI, UICommander uiCommander)
     {

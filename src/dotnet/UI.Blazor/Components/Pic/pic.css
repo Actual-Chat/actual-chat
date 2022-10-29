@@ -26,6 +26,10 @@
     @apply w-6 h-6 min-w-6 min-h-6 max-w-6 max-h-6;
 }
 
+.pic-size-7 {
+    @apply w-7 h-7 min-w-7 min-h-7 max-w-7 max-h-7;
+}
+
 .pic-size-8 {
     @apply w-8 h-8 min-w-8 min-h-8 max-w-8 max-h-8;
 }

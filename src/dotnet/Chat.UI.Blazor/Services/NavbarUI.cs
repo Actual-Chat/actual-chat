@@ -65,7 +65,7 @@ public class NavbarUI
 
     private bool ShouldShowNavbar()
     {
-        var relativeUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        var relativeUrl = Nav.GetRelativePath();
         var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(""));
         return showNavbar;
     }

@@ -1,28 +1,36 @@
 @using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Chat
 @implements IModalView<ImageViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame
     HasCloseButton="true"
+    ShowMobileHeader="false"
+    HasHeader="false"
+    ImageViewer="true"
     Class="image-viewer-modal"
     Title="@(ModalModel.AltText.NullIfEmpty() ?? "Image")"
     CloseButtonCls="btn-sm">
     <Body>
-        <div class="image-viewer-content">
-            <img class="hidden"
-                 width="@ModalModel.Width"
-                 height="@ModalModel.Height"
-                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
-                 onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
-            <img id="@_cachedImgElementId"
-                 width="@ModalModel.Width"
-                 height="@ModalModel.Height"
-                 src="@ModalModel.CachedImageUrl"
-                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
-            <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
-        </div>
+    <ImageViewerHeader OnCloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
+
+    <div class="image-viewer-content">
+        <img class="hidden"
+             width="@ModalModel.Width"
+             height="@ModalModel.Height"
+             src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
+             onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
+        <img id="@_cachedImgElementId"
+             width="@ModalModel.Width"
+             height="@ModalModel.Height"
+             src="@ModalModel.CachedImageUrl"
+             alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+    </div>
+    <div class="image-viewer-footer">
+        <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
+    </div>
     </Body>
 </DialogFrame>
 
@@ -31,15 +39,20 @@
 
     [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
 
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
         => _cachedImgElementId = IdGenerator.Next("image-viewer-modal-cached-image");
+
+    private void CloseModal()
+        => _ = ModalInstance.CloseAsync();
 
     public sealed record Model(
         string Url,
         string? CachedImageUrl,
         string? AltText,
         int? Width = null,
-        int? Height = null);
+        int? Height = null,
+        ChatEntry? ChatEntry = default);
 }

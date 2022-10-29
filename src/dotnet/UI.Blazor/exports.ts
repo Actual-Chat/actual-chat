@@ -28,13 +28,14 @@ export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'
 export * from './Services/InteractiveUI/interactive-ui';
+export * from './Services/UserActivityUI/user-activity-ui';
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
-export * from './Components/Escapist/escapist';
-export * from './Components/Escapist/escapist-subscription';
-export * from './Components/Escapist/keyboard-dispatcher';
+export * from './Services/Escapist/escapist';
+export * from './Services/Escapist/escapist-subscription';
+export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/SideNav/side-nav';

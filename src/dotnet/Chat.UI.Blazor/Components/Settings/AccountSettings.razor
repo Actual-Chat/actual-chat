@@ -70,7 +70,7 @@
             <i class="icon-info text-xl"></i>
         </Icon>
         <Content>
-            Some bio: <UserAvatar AvatarId="@_defaultAvatarId" ChatId="@ChatId" Show="Users.UI.Blazor.Components.OwnAvatar.ShowInfo.Bio"/>
+            Some bio: <OwnAvatar AvatarId="@_defaultAvatarId" ChatId="@ChatId" Show="@OwnAvatar.ShowInfo.Bio"/>
         </Content>
         <Caption>
             Bio
@@ -99,7 +99,7 @@
 
 <TileTopic Topic="My avatars"/>
 
-<OwnAvatarList User="@account"/>
+<OwnAvatarList Account="@account"/>
 
 @code {
     private string _defaultAvatarId = "";

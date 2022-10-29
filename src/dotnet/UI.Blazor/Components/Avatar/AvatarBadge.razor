@@ -4,11 +4,11 @@
 
 <div class="avatar-badge" onclick="@Click">
     <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="@_contentClass flex-y">
+    <div class="ml-2 flex-y">
         <div class="avatar-badge-name">
             <AvatarName Avatar="@Avatar" Size="@Size" Class="@TextClass"/>
         </div>
-        @if (ShowPresenceText && !_statusText.IsNullOrEmpty()) {
+        @if (ShowStatusText && !_statusText.IsNullOrEmpty()) {
             <div>
                 <span class="@_statusTextClass">@_statusText</span>
             </div>
@@ -17,7 +17,6 @@
 </div>
 
 @code {
-    private string _contentClass = "";
     private string _statusTextClass = "";
     private string _statusText = "";
 
@@ -25,26 +24,25 @@
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string TextClass { get; set; } = "";
-    [Parameter] public bool ShowPresenceText { get; set; }
+    [Parameter] public bool ShowStatusText { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _contentClass = GetContentClass();
-        _statusText = GetPresenceText();
-        _statusTextClass = GetPresenceTextClass();
+        base.OnParametersSet();
+        _statusText = GetStatusText();
+        _statusTextClass = GetStatusTextClass();
     }
 
     private string GetContentClass()
         => "ml-3";
 
-    private string GetPresenceText()
+    private string GetStatusText()
         => Presence switch {
             Presence.Recording => "recording",
             Presence.Online => "online",
             _ => "",
         };
 
-    private string GetPresenceTextClass()
+    private string GetStatusTextClass()
         => (int)Size < 12 ? "text-xxs leading-4" : "";
-
 }

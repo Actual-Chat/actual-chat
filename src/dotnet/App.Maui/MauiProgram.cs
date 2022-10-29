@@ -102,9 +102,12 @@ public static class MauiProgram
                 // while BlazorWebView still can go back.
                 if (Application.Current?.MainPage is MainPage mainPage) {
                     var webView = mainPage.PlatformWebView;
-                    if (webView != null && webView.CanGoBack()) {
-                        webView.GoBack();
-                        return true;
+                    if (webView != null) {
+                        if (webView.CanGoBack()) {
+                            webView.GoBack();
+                            return true;
+                        }
+                        Android.Util.Log.Debug(AndroidConstants.LogTag, $"MauiProgram.OnBackPressed. Can not go back. Current url is '{webView.Url}'");
                     }
                 }
                 // Move app to background as Home button acts.
@@ -132,6 +135,9 @@ public static class MauiProgram
 #if ANDROID
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
 #endif
+
+        // Misc.
+        services.AddScoped<DisposeTracer>();
     }
 
     private static Symbol GetSessionId()

@@ -16,7 +16,7 @@ internal class AndroidDeviceTokenRetriever : IDeviceTokenRetriever
             return token;
         }
         catch(Exception e) {
-            Log.Warn(AndroidConstants.LogTag, "Failed to get FCM token: " + e);
+            Log.Warn(AndroidConstants.LogTag, Java.Lang.Throwable.FromException(e), "Failed to get FCM token");
             return null;
         }
     }

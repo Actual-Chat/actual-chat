@@ -81,7 +81,7 @@
         // Starting less important UI services
         AppPresenceReporter.Start();
 
-        _ = SetAppIsReady();
+        _ = Loaded();
     }
 
     public void Dispose()
@@ -118,14 +118,14 @@
         await HistoryUI.WhenInitialized;
     }
 
-    private async Task SetAppIsReady()
+    private async Task Loaded()
     {
         await _whenReadyToRender;
 
-        var appIsReadyMarker = Services.GetRequiredService<AppLoadingUI>();
+        var loadingUI = Services.GetRequiredService<LoadingUI>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
         if (browserInfo.ScreenSize.Value.IsNarrow()) {
-            var relativeUri = Nav.ToBaseRelativePath(Nav.Uri);
+            var relativeUri = Nav.GetRelativePath();
             var isHomePage = Links.Equals(relativeUri, "/");
             var isChatPage = relativeUri.StartsWith(Links.ChatPage(""), StringComparison.Ordinal);
             // Home page in narrow view redirects to Chat page.
@@ -142,6 +142,6 @@
                 // After timeout set marker in case it did not happen yet.
             }
         }
-        appIsReadyMarker.Loaded();
+        loadingUI.MarkLoaded();
     }
 }

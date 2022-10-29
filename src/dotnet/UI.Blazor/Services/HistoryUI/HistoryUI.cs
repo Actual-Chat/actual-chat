@@ -87,13 +87,13 @@ public class HistoryUI
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return;
 
-        var tcs = new TaskCompletionSource();
-        _whenLocationChangedHandled = tcs.Task;
+        var whenHandledSource = TaskSource.New<Unit>(true);
+        _whenLocationChangedHandled = whenHandledSource.Task;
 
-        _ = OnLocationChangedAsync(tcs, e.Location);
+        _ = OnLocationChangedAsync(whenHandledSource, e.Location);
     }
 
-    private async Task OnLocationChangedAsync(TaskCompletionSource whenCompleted, string location)
+    private async Task OnLocationChangedAsync(TaskSource<Unit> whenHandledSource, string location)
     {
         try {
             var previousState = _state;
@@ -154,10 +154,10 @@ public class HistoryUI
 
             AfterLocationChangedHandled?.Invoke(this, EventArgs.Empty);
 
-            whenCompleted.SetResult();
+            whenHandledSource.SetResult(default);
         }
         catch (Exception e) {
-            whenCompleted.TrySetException(e);
+            whenHandledSource.TrySetException(e);
         }
     }
 

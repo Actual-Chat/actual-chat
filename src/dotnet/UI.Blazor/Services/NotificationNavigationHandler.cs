@@ -29,7 +29,10 @@ public class NotificationNavigationHandler
 
         var chatIdGroup = match.Groups["chatid"];
         if (chatIdGroup.Success)
-            Nav.NavigateTo(relativeUrl, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
+            Nav.NavigateTo(relativeUrl);
         return Task.CompletedTask;
     }
+
+    public bool IsActiveChat(string chatId)
+        => Links.Equals(Nav.GetRelativePath(), Links.ChatPage(chatId));
 }

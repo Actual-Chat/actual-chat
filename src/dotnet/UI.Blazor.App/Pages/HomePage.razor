@@ -7,13 +7,14 @@
 @{
     var m = State.LatestNonErrorValue;
     var account = m.Account;
-    if (!AccountFull.MustExist.IsSatisfied(account))
+    if (!AccountFull.MustExist.IsSatisfied(account)) {
+        if (ReferenceEquals(account, AccountFull.None)) {
+            // Loaded, but user doesn't have an account
+            <Welcome/>
+        }
         return; // Not yet loaded
-    if (ReferenceEquals(account, AccountFull.None)) {
-        // Loaded, but user doesn't have an account
-        <Welcome/>
     }
-    else if (!string.IsNullOrEmpty(m.Link) && !_navigated) {
+    if (!m.Link.IsNullOrEmpty() && !_navigated) {
         _navigated = true; // prevents multiple calls
         // Do automatic redirect on first load.
         Nav.NavigateTo(m.Link, false, true);
@@ -24,7 +25,7 @@
     private bool _navigated;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AppLoadingUI AppLoadingUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
@@ -35,12 +36,12 @@
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() { InitialValue = new Model(null, Symbol.Empty) };
+        return new() { InitialValue = Model.Loading };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
-        string link = "";
+        var link = "";
         if (HistoryUI.IsInitialLocation) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
                 link = Links.ChatPage("");
@@ -57,11 +58,11 @@
         var m = State.LatestNonErrorValue;
         var account = m.Account;
         if (!ReferenceEquals(account, AccountFull.Loading))
-            AppLoadingUI.Loaded();
+            LoadingUI.MarkLoaded();
     }
 
     public record Model(AccountFull Account, string Link) {
-        public static Model None = new(AccountFull.None, "");
-        public static Model Loading = new(AccountFull.Loading, ""); // Should differ by ref. from None
+        public static Model None { get; } = new(AccountFull.None, "");
+        public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
     }
 }
