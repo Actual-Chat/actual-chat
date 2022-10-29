@@ -10,9 +10,11 @@
 
     <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
          @onclick="OnAuthorClick">
-        <div class="flex-x items-center">
-            <i class="icon-at text-md"></i>
-            @context.Author.Avatar.Name
+        <div class="overflow-hidden truncate">
+            <i class="absolute icon-at text-lg"></i>
+            <span class="ml-5">
+                @context.Author.Avatar.Name
+            </span>
         </div>
     </div>
 </AuthorBadgeTemplate>

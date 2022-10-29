@@ -5,6 +5,7 @@
 .mention-markup {
     @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full select-none cursor-pointer;
     @apply bg-mention-other text-mention-other-text font-medium;
+    max-width: 12rem;
 }
 .mention-markup.mention-markup-invalid {
     @apply bg-mention-invalid text-mention-invalid-text;

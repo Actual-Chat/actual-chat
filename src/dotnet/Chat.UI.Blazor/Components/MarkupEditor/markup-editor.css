@@ -9,10 +9,12 @@
     word-wrap: break-word;
 }
 .markup-editor .editor-content .editor-mention {
-    @apply inline;
-    @apply px-1.5 py-0.25 mx-[1px];
+    @apply inline-block;
+    @apply px-1.5 py-0.25 mx-[1px] -mb-1.5;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;
+    @apply overflow-hidden truncate;
+    max-width: 12rem;
 }
 .markup-editor .editor-hidden {
     @apply inline-block overflow-hidden w-[1px] h-[1px];
