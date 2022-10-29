@@ -24,10 +24,10 @@ public class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
 
         var mentions = (
             from author in authors
-            let searchMatch = searchPhrase.GetMatch(author.Name)
+            let searchMatch = searchPhrase.GetMatch(author.Avatar.Name)
             where searchMatch.Rank > 0 || searchPhrase.IsEmpty
-            orderby searchMatch.Rank descending, author.Name
-            select new MentionSearchResult($"a:{author.Id}", searchMatch, author.Picture)
+            orderby searchMatch.Rank descending, author.Avatar.Name
+            select new MentionSearchResult($"a:{author.Id}", searchMatch, author.Avatar.Picture)
             ).Take(limit)
             .ToArray();
         return mentions;

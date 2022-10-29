@@ -19,7 +19,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
     // [ComputeMethod]
     public virtual async Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
@@ -33,7 +33,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, readEntryId) = command;
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return;
 

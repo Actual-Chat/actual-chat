@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Chat.Internal;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -48,7 +47,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
             // DbChatAuthor
             db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            db.AddEntityResolver<string, DbChatAuthor>(_ => new() {
+            db.AddEntityResolver<string, DbAuthor>(_ => new() {
                 QueryTransformer = query => query.Include(a => a.Roles),
             });
 
@@ -105,9 +104,6 @@ public class ChatServiceModule : HostModule<ChatSettings>
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // Controllers, etc.
-        var mvc = services.AddMvcCore(options => {
-            options.ModelBinderProviders.Add(new ChatPrincipalIdModelBinderProvider());
-        });
-        mvc.AddApplicationPart(GetType().Assembly);
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

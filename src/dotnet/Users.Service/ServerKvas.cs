@@ -5,14 +5,14 @@ namespace ActualChat.Users;
 public class ServerKvas : IServerKvas
 {
     private IAuth Auth { get; }
-    private ICommander Commander { get; }
     private IServerKvasBackend Backend { get; }
+    private ICommander Commander { get; }
 
     public ServerKvas(IServiceProvider services)
     {
         Auth = services.GetRequiredService<IAuth>();
-        Commander = services.Commander();
         Backend = services.GetRequiredService<IServerKvasBackend>();
+        Commander = services.Commander();
     }
 
     // [ComputeMethod]
@@ -53,8 +53,8 @@ public class ServerKvas : IServerKvas
 
         var (session, key, value) = command;
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        var cmd = new IServerKvasBackend.SetManyCommand(prefix, (key, value));
-        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var setManyCommand = new IServerKvasBackend.SetManyCommand(prefix, (key, value));
+        await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
 
         // More complex logic that moves session keys on demand
         /*
@@ -81,8 +81,8 @@ public class ServerKvas : IServerKvas
         var (session, items) = command;
         var backendItems = items.Select(i => (i.Key, i.Value)).ToArray();
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        var cmd = new IServerKvasBackend.SetManyCommand(prefix, backendItems);
-        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var setManyCommand = new IServerKvasBackend.SetManyCommand(prefix, backendItems);
+        await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
 
         // More complex logic that moves session keys on demand
         /*

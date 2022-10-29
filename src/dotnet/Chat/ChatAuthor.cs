@@ -11,7 +11,10 @@ public record ChatAuthor : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
         VersionBasedEqualityComparer<ChatAuthor, Symbol>.Instance;
     public static Requirement<ChatAuthor> MustExist { get; } = Requirement.New(
         new(() => StandardError.ChatAuthor.Unavailable()),
-        (ChatAuthor? a) => !ReferenceEquals(a, null));
+        (ChatAuthor? a) => a is { Id.IsEmpty : false });
+
+    public static ChatAuthor None { get; } = new() { Avatar = Avatar.None };
+    public static ChatAuthor Loading { get; } = new() { Avatar = Avatar.Loading }; // Should differ by ref. from None
 
     [DataMember] public Symbol Id { get; init; }
     [DataMember] public long Version { get; init; }

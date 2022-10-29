@@ -10,13 +10,13 @@ public class ChatUIStateSync : WorkerBase
     // All properties are resolved in lazy fashion because otherwise we'll get a dependency cycle
     private IChats? _chats;
     private ChatPlayers? _chatPlayers;
-    private IChatUserSettings? _chatUserSettings;
     private AudioRecorder? _audioRecorder;
     private AudioSettings? _audioSettings;
+    private AccountSettings? _accountSettings;
     private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
 
-    private LanguageId? _lastLanguageId;
+    private LanguageId? _lastRecordingLanguage;
     private Symbol _lastRecordingChatId;
     private Symbol _lastRecorderChatId;
 
@@ -28,9 +28,9 @@ public class ChatUIStateSync : WorkerBase
 
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private IChatUserSettings ChatUserSettings => _chatUserSettings ??= Services.GetRequiredService<IChatUserSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private InteractiveUI InteractiveUI { get; }
@@ -189,7 +189,7 @@ public class ChatUIStateSync : WorkerBase
             if (recordingChatId.IsEmpty)
                 return default;
 
-            if (await IsLanguageChanged().ConfigureAwait(false))
+            if (await IsRecordingLanguageChanged().ConfigureAwait(false))
                 SyncRecorderState(); // We need to toggle the recording in this case
         } else if (recordingChatIdChanged) {
             // The recording was activated or deactivated
@@ -198,7 +198,7 @@ public class ChatUIStateSync : WorkerBase
                 return default;
 
             // Update _lastLanguageId
-            await IsLanguageChanged().ConfigureAwait(false);
+            await IsRecordingLanguageChanged().ConfigureAwait(false);
             // Start recording = start realtime playback
             await ChatUI.SetListeningState(recordingChatId, true).ConfigureAwait(false);
         } else if (recorderChatIdChanged) {
@@ -207,13 +207,11 @@ public class ChatUIStateSync : WorkerBase
         }
         return default;
 
-        async ValueTask<bool> IsLanguageChanged()
+        async ValueTask<bool> IsRecordingLanguageChanged()
         {
-            var settings = await ChatUserSettings.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
-            var languageUserSettings = await LanguageUI.Languages.Use(cancellationToken).ConfigureAwait(false);
-            var languageId = settings?.Language ?? languageUserSettings.Primary;
-            var isLanguageChanged = _lastLanguageId.HasValue && languageId != _lastLanguageId;
-            _lastLanguageId = languageId;
+            var language = await LanguageUI.GetChatLanguage(recorderChatId, cancellationToken).ConfigureAwait(false);
+            var isLanguageChanged = _lastRecordingLanguage.HasValue && language != _lastRecordingLanguage;
+            _lastRecordingLanguage = language;
             return isLanguageChanged;
         }
 

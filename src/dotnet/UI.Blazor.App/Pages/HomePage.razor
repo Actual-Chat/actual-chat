@@ -7,9 +7,10 @@
 @{
     var m = State.LatestNonErrorValue;
     var account = m.Account;
-    if (account == null)
-        return; // Not yet computed
-    if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
+    if (!AccountFull.MustExist.IsSatisfied(account))
+        return; // Not yet loaded
+    if (ReferenceEquals(account, AccountFull.None)) {
+        // Loaded, but user doesn't have an account
         <Welcome/>
     }
     else if (!string.IsNullOrEmpty(m.Link) && !_navigated) {
@@ -23,7 +24,7 @@
     private bool _navigated;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
+    [Inject] private AppLoadingUI AppLoadingUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
@@ -38,7 +39,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
         string link = "";
         if (HistoryUI.IsInitialLocation) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
@@ -55,10 +56,12 @@
     protected override void OnAfterRender(bool firstRender) {
         var m = State.LatestNonErrorValue;
         var account = m.Account;
-        if (ReferenceEquals(account, Account.Guest))
-            // mark as ready to display Welcome screen
-            AppIsReadyMarker.Set();
+        if (!ReferenceEquals(account, AccountFull.Loading))
+            AppLoadingUI.Loaded();
     }
 
-    public record Model(Account? Account, string Link);
+    public record Model(AccountFull Account, string Link) {
+        public static Model None = new(AccountFull.None, "");
+        public static Model Loading = new(AccountFull.Loading, ""); // Should differ by ref. from None
+    }
 }

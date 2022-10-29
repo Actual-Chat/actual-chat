@@ -20,12 +20,12 @@ public class UsersClientModule : HostModule
         var fusionClient = services.AddFusion().AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
 
-        fusionClient.AddReplicaService<IUserContacts, IUserContactsClientDef>();
-        fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
-        fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
-        fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
+        fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
+        fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
+        fusionClient.AddReplicaService<IContacts, IContactsClientDef>();
+        fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
+        fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
         fusionClient.AddReplicaService<IRecentEntries, IRecentEntriesClientDef>();
     }
 }

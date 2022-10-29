@@ -23,7 +23,7 @@ public static class KvasExt
     public static Task Set<T>(this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)
         => value.IsSome(out var v)
             ? kvas.Set(key, v, cancellationToken)
-            : kvas.Remove(key);
+            : kvas.Remove(key, cancellationToken);
 
     public static Task Remove(this IKvas kvas, string key, CancellationToken cancellationToken = default)
         => kvas.Set(key, null, cancellationToken);

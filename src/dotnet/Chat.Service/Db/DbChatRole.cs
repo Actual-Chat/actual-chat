@@ -2,13 +2,14 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("ChatRoles")]
 [Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(Name))]
-public class DbChatRole : IHasId<string>
+public class DbChatRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
@@ -66,7 +67,7 @@ public class DbChatRole : IHasId<string>
 
     public void UpdateFrom(ChatRole model)
     {
-        var parsedRoleId = new ParsedChatRoleId(model.Id).AssertValid();
+        var parsedRoleId = new ParsedChatRoleId(model.Id).RequireValid();
         Id = model.Id;
         ChatId = parsedRoleId.ChatId;
         LocalId = parsedRoleId.LocalId;

@@ -63,6 +63,6 @@ public class UserStatusTest : AppHostTestBase
         }
     }
 
-    private Task<Account> RequireAccount()
-        => _accounts.Get(_tester.Session, default).Require();
+    private Task<AccountFull> RequireAccount()
+        => _accounts.GetOwn(_tester.Session, default).Require();
 }

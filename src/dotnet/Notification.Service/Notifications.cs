@@ -21,7 +21,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     // [ComputeMethod]
     public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return ChatNotificationStatus.NotSubscribed;
 
@@ -39,7 +39,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(
         Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -47,7 +47,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task<NotificationEntry> GetNotification(
         Session session, string notificationId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.GetNotification(account.Id, notificationId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -89,7 +89,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         }
 
         var (session, deviceId, deviceType) = command;
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return;
 
@@ -133,7 +133,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             return;
         }
 
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return;
 

@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using Cysharp.Text
 @inherits ComputedStateComponent<MessageReactions.Model>
 @{
     var m = State.Value;
@@ -36,7 +37,12 @@
         if (summaries.Length == 0)
             return new Model(false, summaries, new Dictionary<string, string>());
 
-        var authors = await summaries.SelectMany(x => x.FirstAuthorIds).Distinct().Select(x => ChatAuthors.GetAuthor(Session, ChatEntry.ChatId, x, true, cancellationToken)).Collect().ConfigureAwait(false);
+        var authors = await summaries
+            .SelectMany(x => x.FirstAuthorIds)
+            .Distinct()
+            .Select(x => ChatAuthors.Get(Session, ChatEntry.ChatId, x, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
         var authorMap = authors.SkipNullItems().ToDictionary(x => x.Id);
         var tooltips = summaries.ToDictionary(x => x.Emoji, x => GenerateTooltip(x, authorMap));
         // TODO: use popup with <AuthorCircle/>  instead of tooltip
@@ -52,7 +58,9 @@
     }
 
     private string GenerateTooltip(ReactionSummary reactionSummary, Dictionary<Symbol, ChatAuthor> authorMap)
-        => string.Join(Environment.NewLine, reactionSummary.FirstAuthorIds.Select(x => $"{authorMap[x].Name} {reactionSummary.Emoji}"));
+        => ZString.Join(
+            Environment.NewLine,
+            reactionSummary.FirstAuthorIds.Select(x => $"{authorMap[x].Avatar.Name} {reactionSummary.Emoji}"));
 
     public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions, Dictionary<string, string> Tooltips);
 }

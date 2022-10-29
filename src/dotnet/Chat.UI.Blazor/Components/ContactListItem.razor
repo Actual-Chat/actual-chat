@@ -15,9 +15,9 @@
     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
-            <UserAuthorCircle UserId="@Contact.TargetUserId" ShowPresence="true"/>
+            <AccountCircle UserId="@Contact.TargetUserId" ShowPresence="true"/>
             <span class="text-ellipsis whitespace-nowrap overflow-hidden">
-                <SearchUIHighlighter Text="@Contact.Title"/>
+                <SearchUIHighlighter Text="@Contact.Avatar.Name"/>
             </span>
         </div>
     </ChildContent>
@@ -47,7 +47,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
-    [Parameter, EditorRequired] public UserContact Contact { get; set; } = null!;
+    [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var presence = await UserPresences.Get(Contact.TargetUserId, cancellationToken);

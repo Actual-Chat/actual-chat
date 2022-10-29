@@ -1,6 +1,5 @@
 using System.Net.Mail;
 using ActualChat.Users.Db;
-using ActualChat.Users.Module;
 using Microsoft.AspNetCore.Authentication.Google;
 using Stl.Fusion.EntityFramework;
 
@@ -11,7 +10,6 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
-    private UsersSettings UsersSettings { get; }
     private IAuthBackend AuthBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
@@ -19,7 +17,6 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     public AccountsBackend(IServiceProvider services) : base(services)
     {
-        UsersSettings = services.GetRequiredService<UsersSettings>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
@@ -27,17 +24,18 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Account?> Get(string id, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull?> Get(string id, CancellationToken cancellationToken)
     {
+        if (id.IsNullOrEmpty())
+            return null;
+
         // We _must_ have a dependency on AuthBackend.GetUser here
         var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return null;
 
-        var dbAccount = await DbAccountResolver.Get(id, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-        var account = new Account(user.Id, user) {
+        var dbAccount = await DbAccountResolver.Get(id, cancellationToken).Require().ConfigureAwait(false);
+        var account = new AccountFull(user.Id, user) {
             IsAdmin = IsAdmin(user),
         };
         account = dbAccount.ToModel(account);
@@ -73,7 +71,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccount = await dbContext.Accounts
-            .FindAsync(DbKey.Compose((string)account.Id), cancellationToken)
+            .Get(account.Id, cancellationToken)
             .ConfigureAwait(false)
             ?? new DbAccount();
         dbAccount.UpdateFrom(account);
@@ -105,7 +103,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private static bool HasIdentity(User user, string provider)
         => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
 
-    private AvatarFull GetDefaultAvatar(Account account)
+    private AvatarFull GetDefaultAvatar(AccountFull account)
         => new() {
             Id = default,
             ChatPrincipalId = account.Id,

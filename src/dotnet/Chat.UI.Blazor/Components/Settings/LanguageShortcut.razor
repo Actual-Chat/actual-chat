@@ -8,5 +8,5 @@
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
     protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
-        => LanguageUI.Languages.Use(cancellationToken).AsTask();
+        => LanguageUI.Settings.Use(cancellationToken).AsTask();
 }

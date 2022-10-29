@@ -18,13 +18,9 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<Avatar?> Get(string avatarId, CancellationToken cancellationToken)
-        => await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
-
-    // [ComputeMethod]
     public virtual async Task<AvatarFull?> GetOwn(Session session, string avatarId, CancellationToken cancellationToken)
     {
-        var avatarIds = await ListAvatarIds(session, cancellationToken).ConfigureAwait(false);
+        var avatarIds = await ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
         if (!avatarIds.Contains(avatarId))
             return null;
 
@@ -33,7 +29,11 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
+    public virtual async Task<Avatar?> Get(Session session, string avatarId, CancellationToken cancellationToken)
+        => await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
         var kvasClient = ServerKvas.GetClient(session);
         var settings = await kvasClient.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
@@ -46,14 +46,23 @@ public class Avatars : IAvatars
         if (Computed.IsInvalidating())
             return default!;
 
-        var (session, avatarId, change) = command;
+        var (session, avatarId, expectedVersion, change) = command;
         command.Change.RequireValid();
 
-        if (!change.Create.HasValue)
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (change.IsCreate(out var avatar)) {
+            // Create: fill in all missing properties
+            change = new Change<AvatarFull>() {
+                Create = avatar.WithMissingPropertiesFrom(account?.Avatar),
+            };
+        }
+        else {
+            // Update or remove: ensure the avatar exists & belongs to the current user
             await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
+        }
 
-        var cmd = new IAvatarsBackend.ChangeCommand(avatarId, change);
-        var avatar = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var changeCommand = new IAvatarsBackend.ChangeCommand(avatarId, expectedVersion, change);
+        avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
         cancellationToken = default; // We don't cancel anything from here
         var kvas = ServerKvas.GetClient(session);

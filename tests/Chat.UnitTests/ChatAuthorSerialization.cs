@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Chat.UnitTests;
+﻿using ActualChat.Users;
+
+namespace ActualChat.Chat.UnitTests;
 
 public class ChatAuthorSerialization
 {
@@ -6,7 +8,9 @@ public class ChatAuthorSerialization
     public void BasicTest()
     {
         var ca = new ChatAuthorFull() {
-            Name = "Alex",
+            Avatar = new Avatar() {
+                Name = "Alex",
+            },
         };
         ca.PassThroughSystemJsonSerializer().Should().Be(ca);
     }

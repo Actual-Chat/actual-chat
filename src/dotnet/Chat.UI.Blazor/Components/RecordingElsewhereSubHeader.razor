@@ -53,7 +53,7 @@
                 RecordingChatUrl = Links.ChatPage(recordingChat.Id),
             };
 
-        var account = await Accounts.Get(Session, cancellationToken);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
         if (account == null)
             return Model.None;
 

@@ -11,7 +11,7 @@
     var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
-    var ownMessageClass = m.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
+    var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplied ? "replied-message" : "";
     var isReply = entry.RepliedChatEntryId != null;
@@ -125,9 +125,11 @@
         var initialValue = Model.None;
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var principalIdTask = ChatAuthors.GetPrincipalId(Session, chatId, default);
-        if (principalIdTask.IsCompletedSuccessfully)
-            initialValue = new Model { PrincipalId = principalIdTask.Result };
+        var ownAuthorTask = ChatAuthors.GetOwn(Session, chatId, default);
+        if (ownAuthorTask.IsCompletedSuccessfully) {
+            var ownAuthorId = ownAuthorTask.Result?.Id ?? Symbol.Empty;
+            initialValue = new Model { OwnAuthorId = ownAuthorId };
+        }
         return new ComputedState<Model>.Options {
             InitialValue = initialValue,
         };
@@ -136,16 +138,16 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var principalId = await ChatAuthors.GetPrincipalId(Session, chatId, cancellationToken);
-        var parsedPrincipalId = new ChatPrincipalId(principalId);
+        var ownAuthor = await ChatAuthors.GetOwn(Session, chatId, cancellationToken);
+        var ownAuthorId = ownAuthor?.Id ?? Symbol.Empty;
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
-        var isMentioned = IsMentioned(Markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
+        var isMentioned = IsMentioned(Markup, repliedChatMessage, ownAuthorId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
-            PrincipalId = principalId,
+            OwnAuthorId = ownAuthorId,
             RepliedChatMessage = repliedChatMessage,
             IsMentioned = isMentioned,
             IsHighlighted = isHighlighted,
@@ -199,13 +201,12 @@
 
     private bool IsMentioned(Markup markup,
         ChatMessageModel? repliedChatMessage,
-        ChatPrincipalId principalId,
+        Symbol authorId,
         bool hasAnyMentions)
     {
-        if (!principalId.IsValid || principalId.Kind == ChatPrincipalKind.User)
+        if (authorId.IsEmpty)
             return false;
 
-        var authorId = principalId.AuthorId;
         if (repliedChatMessage?.Entry.AuthorId == authorId)
             return true;
 
@@ -217,7 +218,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public Symbol PrincipalId { get; init; }
+        public Symbol OwnAuthorId { get; init; }
         public ChatMessageModel? RepliedChatMessage { get; init; }
         public bool IsMentioned { get; init; }
         public bool IsHighlighted { get; init; }

@@ -2,6 +2,7 @@ namespace ActualChat.Chat;
 
 public enum ChatPrincipalKind
 {
-    Author = 0,
-    User = 1,
+    Invalid = 0,
+    Author,
+    User,
 }

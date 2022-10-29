@@ -109,10 +109,10 @@
         }
 
         if (chatId.IsNullOrEmpty())
-            return Model.NoChat;
+            return Model.None;
 
-        var accountTask = Accounts.Get(Session, default);
-        var account = (Account?) null;
+        var accountTask = Accounts.GetOwn(Session, default);
+        var account = (AccountFull?) null;
 
         var parsedChatId = new ParsedChatId(chatId);
         if (parsedChatId.Kind is ChatIdKind.PeerShort) {
@@ -146,9 +146,9 @@
     private void OnUnreadMessagesClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, Account? Account) {
-        public static Model Loading { get; } = new(default, null, null);
-        public static Model NoChat { get; } = new(default, null, null);
+    public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, AccountFull? Account) {
+        public static Model None { get; } = new(default, null, null);
+        public static Model Loading { get; } = new(default, null, null); // Should differ by ref. from None
 
         public bool IsNone => ParsedChatId.Id.IsEmpty;
         public bool IsUnavailable => !IsNone && Chat is null;

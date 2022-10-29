@@ -67,14 +67,13 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         newMoment.Should().Be(yesterday.AddSeconds(5).ToMoment());
     }
 
-    private static DbChatAuthor AddChatAuthor(ChatDbContext dbContext,  string chatId, string userId)
+    private static DbAuthor AddChatAuthor(ChatDbContext dbContext,  string chatId, string userId)
     {
-        var dbAuthor = new DbChatAuthor {
-            Id = DbChatAuthor.ComposeId(chatId, 1),
+        var dbAuthor = new DbAuthor {
+            Id = DbAuthor.ComposeId(chatId, 1),
             ChatId = chatId,
             LocalId = 1,
             Version = 1,
-            Name = "User1",
             IsAnonymous = false,
             UserId = userId,
         };

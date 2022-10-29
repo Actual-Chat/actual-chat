@@ -7,7 +7,7 @@
 
     var message = model.Message;
     var entry = message.Entry;
-    var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
+    var authorNameCls = Message.Entry.AuthorId == model.OwnAuthor?.Id ? "text-06 " : "text-02 ";
     authorNameCls += "font-bold text-base min-w-fit";
 }
 
@@ -52,11 +52,11 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
         var hasAttachments = chatEntry.Attachments.Length > 0;
-        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
+        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, cancellationToken);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var principalId = await ChatAuthors.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
-        return new (Message, _quoteText, principalId);
+        var ownAuthor = await ChatAuthors.GetOwn(Session, chatEntry.ChatId, cancellationToken);
+        return new (Message, _quoteText, ownAuthor);
     }
 
     private void OnChatAuthorClick()
@@ -69,6 +69,9 @@
         }
     }
 
-    public record Model(ChatMessageModel Message, string Quote, Symbol PrincipalId);
+    public record Model(
+        ChatMessageModel Message,
+        string Quote,
+        ChatAuthor? OwnAuthor);
 
 }

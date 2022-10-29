@@ -37,8 +37,8 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
     public virtual async Task<ImmutableArray<ChatRole>> List(
         Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null or { HasLeft: true })
             return ImmutableArray<ChatRole>.Empty;
 
@@ -62,7 +62,7 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatRole?> Change(IChatRoles.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatRole> Change(IChatRoles.ChangeCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -70,19 +70,19 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
         var (session, chatId, roleId, expectedVersion, change) = command;
         await RequireOwner(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var cmd = new IChatRolesBackend.ChangeCommand(chatId, roleId, expectedVersion, change);
-        return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var changeCommand = new IChatRolesBackend.ChangeCommand(chatId, roleId, expectedVersion, change);
+        return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
     private async Task<bool> IsOwner(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })
             return true;
 
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return false;
 
@@ -95,11 +95,11 @@ public class ChatRoles : DbServiceBase<ChatDbContext>, IChatRoles
 
     private async Task RequireOwner(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })
             return;
 
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
         var ownerRole = await Backend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken).ConfigureAwait(false);
         if (ownerRole == null || !author.RoleIds.Contains(ownerRole.Id))

@@ -35,17 +35,17 @@ public partial class ChatsBackend
         var chat = dbChat.ToModel();
         var isPeer = chat.ChatType is ChatType.Peer;
         var parsedChatId = new ParsedChatId(chatId);
-        parsedChatId = isPeer ? parsedChatId.AssertPeerFull() : parsedChatId.AssertGroup();
+        parsedChatId = isPeer ? parsedChatId.RequirePeerFullChatId() : parsedChatId.RequireGroupChatId();
         if (chat.ChatType is ChatType.Peer) {
             // Peer chat
             var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
             var ownerUserIds = new[] { userId1.Value, userId2.Value };
             await ownerUserIds
-                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
+                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect(0)
                 .ConfigureAwait(false);
-            var tContact1 = UserContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
-            var tContact2 = UserContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+            var tContact1 = ContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
+            var tContact2 = ContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
             var (contact1, contact2) = await tContact1.Join(tContact2).ConfigureAwait(false);
         }
         else {
@@ -71,7 +71,7 @@ public partial class ChatsBackend
 
             var ownerUserIds = dbChat.Owners.Select(o => o.DbUserId).ToArray();
             var ownerAuthors = await ownerUserIds
-                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, true, cancellationToken))
+                .Select(userId => ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
 
@@ -188,17 +188,19 @@ public partial class ChatsBackend
         if (creatorId == null)
             throw StandardError.Constraint("Creator user not found");
 
-        var cmd = new IChatsBackend.ChangeChatCommand(chatId, null, new() {
+        var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
             Create = new ChatDiff {
                 ChatType = ChatType.Group,
                 Title = "Actual.chat Announcements",
                 IsPublic = true,
             },
         }, creatorId);
-        var chat = (await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false))!;
+        var chat = (await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false))!;
 
-        var anyoneRole = (await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Anyone, cancellationToken)
-            .ConfigureAwait(false)).Require();
+        var anyoneRole = await ChatRolesBackend
+            .GetSystem(chatId, SystemChatRole.Anyone, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
 
         var changeAnyoneRoleCmd = new IChatRolesBackend.ChangeCommand(chatId, anyoneRole.Id, null, new() {
             Update = new ChatRoleDiff() {
@@ -210,12 +212,14 @@ public partial class ChatsBackend
         var authorsByUserId = new Dictionary<string, ChatAuthorFull>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
             // join existent users to the chat
-           var chatAuthor = await ChatAuthorsBackend.GetOrCreate(chatId, userId, false, cancellationToken).ConfigureAwait(false);
+           var chatAuthor = await ChatAuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
            authorsByUserId.Add(userId, chatAuthor);
         }
 
-        var ownerRole = (await ChatRolesBackend.GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
-            .ConfigureAwait(false)).Require();
+        var ownerRole = await ChatRolesBackend
+            .GetSystem(chatId, SystemChatRole.Owner, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         var ownerAuthorIds = ImmutableArray<Symbol>.Empty;
         foreach (var userId in owners.Values) {
             if (OrdinalEquals(userId, creatorId))

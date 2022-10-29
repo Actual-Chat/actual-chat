@@ -1,1 +1,1 @@
-import './Components/user-avatar.css';
+import './Components/own-avatar.css';

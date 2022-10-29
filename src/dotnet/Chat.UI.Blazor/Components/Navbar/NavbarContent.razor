@@ -13,7 +13,7 @@
     <ContactListNavbarWidget />
 }
 
-@if (m.Account.IsAdmin) {
+@if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/admin/user-invites">Invite Users</NavbarItem>
     </NavbarGroup>

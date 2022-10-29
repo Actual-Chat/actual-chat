@@ -41,7 +41,7 @@
 @code {
     private TabId _activeTabId;
 
-    [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
+    [Inject] private AppLoadingUI AppLoadingUI { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -86,7 +86,7 @@
 
     protected override void OnAfterRender(bool firstRender) {
         if (State.LatestNonErrorValue != Model.None)
-            AppIsReadyMarker.Set();
+            AppLoadingUI.Loaded();
     }
 
     private Task<ImmutableList<Chat>> ListChats(TabId tabId)

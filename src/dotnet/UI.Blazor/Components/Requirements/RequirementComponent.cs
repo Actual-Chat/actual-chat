@@ -11,7 +11,7 @@ public abstract class RequirementComponent : ComputedStateComponent<Unit>
     protected override ComputedState<Unit>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
+    protected sealed override Task<Unit> ComputeState(CancellationToken cancellationToken)
         => Require(cancellationToken);
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)

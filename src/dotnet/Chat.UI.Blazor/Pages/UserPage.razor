@@ -2,10 +2,10 @@
 @inherits ComputedStateComponent<UserPage.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var userAuthor = m.UserAuthor;
-    if (userAuthor == null) {
-        if (ReferenceEquals(m, Model.Unavailable)) {
-            <RequireUserAuthor/>
+    var account = m.Account;
+    if (!Account.MustExist.IsSatisfied(account)) {
+        if (ReferenceEquals(m, Model.None)) {
+            <RequireOtherAccount UserId="@UserId" />
             return;
         }
         // Model isn't loaded yet
@@ -16,21 +16,21 @@
 <RequireAccount/>
 <MainHeader>
     <span>User:&nbsp;</span>
-    <span class="text-01">@userAuthor.Name</span>
+    <span class="text-01">@account.Avatar.Name</span>
 </MainHeader>
 
 <div class="user-info_badge">
-    <UserAuthorCircle UserId="@UserId" Size="SquareSize.Size12" ShowPresence="true" />
-    <UserAuthorName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
+    <AccountCircle UserId="@UserId" Size="SquareSize.Size12" ShowPresence="true" />
+    <AccountName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
 </div>
 
-@if (m.CanAddContact || m.CanSendMessage) {
+@if (m.CanAddContact || m.CanPeerChat) {
     <div class="user-info_buttons">
         <div class="btn-group btn-group-font-normal">
             @if (m.CanAddContact) {
                 <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
-            @if (m.CanSendMessage) {
+            @if (m.CanPeerChat) {
                 <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
             }
         </div>
@@ -44,7 +44,7 @@
     [Inject] public Session Session { get; init; } = null!;
     [Inject] public IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
@@ -54,31 +54,40 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userAuthor = await Accounts.GetUserAuthor(UserId, cancellationToken);
-        if (userAuthor == null)
-            return Model.Unavailable;
+        var account = await Accounts.Get(Session, UserId, cancellationToken);
+        if (account == null)
+            return Model.None;
 
-        var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, UserId, default);
-        var canSendPeerChatMessageTask = Chats.CanSendPeerChatMessage(Session, UserId, default);
+        var contacts = await Contacts.List(Session, cancellationToken).ConfigureAwait(false);
+        var canAddToContacts = !contacts.Any(c => c.TargetUserId == account.Id);
         return new Model {
-            UserAuthor = userAuthor,
-            CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
-            CanSendMessage = await canSendPeerChatMessageTask.ConfigureAwait(false),
+            Account = account,
+            CanAddContact = canAddToContacts,
+            CanPeerChat = true,
         };
     }
 
     private async Task OnAddContactClick() {
         if (IsAddingContact)
             return;
+
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var (_, e) = await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, UserId));
+            var ownAccount = await Accounts.GetOwn(Session, default).Require();
+            var account = await Accounts.Get(Session, UserId, default).Require();
+            var change = new Change<ContactDiff>() {
+                Create = new ContactDiff() {
+                    OwnerUserId = ownAccount.Id,
+                    TargetUserId = account.Id,
+                },
+            };
+            await UICommander.Run(new IContacts.ChangeCommand(Session, default, default, change));
         }
         finally {
             IsAddingContact = false;
@@ -86,10 +95,8 @@
         }
     }
 
-    private async Task OnSendMessageClick() {
-        var peerChatId = await Chats.GetPeerChatId(Session, UserId, default);
-        if (peerChatId.IsNullOrEmpty())
-            return;
+    private void OnSendMessageClick() {
+        var peerChatId = ParsedChatId.FormatShortPeerChatId(UserId);
         Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 
@@ -97,10 +104,10 @@
 
     public sealed record Model {
         public static Model None { get; } = new();
-        public static Model Unavailable { get; } = new();
+        public static Model Loading { get; } = new() { Account = Account.Loading }; // Should differ by ref. from None
 
-        public UserAuthor? UserAuthor { get; init; }
+        public Account Account { get; init; } = Account.None;
         public bool CanAddContact { get; init; }
-        public bool CanSendMessage { get; init; }
+        public bool CanPeerChat { get; init; }
     }
 }

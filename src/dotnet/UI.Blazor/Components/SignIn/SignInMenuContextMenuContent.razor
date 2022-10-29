@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<ActualChat.Users.Account?>
+@inherits ComputedStateComponent<ActualChat.Users.AccountFull?>
 @{
     var account = State.LatestNonErrorValue;
     var user = account?.User;
@@ -33,11 +33,11 @@
     [CascadingParameter] public MenuHost Host { get; set; } = null!;
     [CascadingParameter] public SignInMenuContextMenu Menu { get; set; } = null!;
 
-    protected override ComputedState<Account?>.Options GetStateOptions()
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
-        => Accounts.Get(Session, cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)

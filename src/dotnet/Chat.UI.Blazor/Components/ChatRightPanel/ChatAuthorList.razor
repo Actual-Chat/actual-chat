@@ -20,7 +20,7 @@
                 <ChatAuthorBadge
                     AuthorId="@authorId"
                     ShowsPresence="true"
-                    Click="() => OnChatAuthorClick(authorId)"
+                    Click="() => OnChatAuthorClick(Chat.Id, authorId)"
                     TextClass="font-medium text-02 select-none"/>
             }
         }
@@ -29,7 +29,7 @@
             <ChatAuthorBadge
                 AuthorId="@authorId"
                 ShowsPresence="true"
-                Click="() => OnChatAuthorClick(authorId)"
+                Click="() => OnChatAuthorClick(Chat.Id, authorId)"
                 TextClass="font-medium text-02 select-none"/>
         }
     </div>
@@ -50,7 +50,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await ChatAuthors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        _ownAuthor = await ChatAuthors.Get(Session, Chat.Id, cancellationToken);
+        _ownAuthor = await ChatAuthors.GetOwn(Session, Chat.Id, cancellationToken);
         var activeAuthorIds = new List<Symbol>();
         var inactiveAuthorIds = new List<Symbol>();
         var presences = await allAuthorIds
@@ -73,8 +73,8 @@
         };
     }
 
-    private void OnChatAuthorClick(string authorId)
-        => ModalUI.Show(new ChatAuthorModal.Model(authorId));
+    private void OnChatAuthorClick(Symbol chatId, Symbol authorId)
+        => ModalUI.Show(new ChatAuthorModal.Model(chatId, authorId));
 
     private void OnSelfClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());

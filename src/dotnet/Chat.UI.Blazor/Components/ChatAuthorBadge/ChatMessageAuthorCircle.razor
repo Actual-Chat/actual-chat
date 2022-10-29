@@ -4,9 +4,9 @@
     var m = State.LatestNonErrorValue;
 }
 
-<div class="author-badge">
-    <AuthorCircle
-        Author="@m.ChatAuthor" Size="SquareSize.Size9" Presence="@m.Presence"
+<div class="avatar-badge">
+    <AvatarCircle
+        Avatar="@m.ChatAuthor.Avatar" Size="SquareSize.Size9" Presence="@m.Presence"
         Click="@Click"/>
 </div>
 

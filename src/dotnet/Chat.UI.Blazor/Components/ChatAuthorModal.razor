@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<ChatAuthorModal.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
-    var title = $"User: {m.ChatAuthor.Name}";
+    var title = $"User: {m.ChatAuthor.Avatar.Name}";
 }
 
 <DialogFrame Title="@title">
@@ -34,13 +34,14 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
-    private string AuthorId => ModalModel.AuthorId;
+    private string ChatId => ModalModel.ChatId; // Shortcut
+    private string AuthorId => ModalModel.AuthorId;  // Shortcut
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() { InitialValue = ComputedModel.None };
+        => new() { InitialValue = ComputedModel.Loading };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var parsedAuthorId = new ParsedAuthorId(AuthorId);
@@ -48,12 +49,12 @@
             return ComputedModel.None;
 
         var chatId = parsedAuthorId.ChatId.Id;
-        var author = await ChatAuthors.GetAuthor(Session, chatId, AuthorId, true, cancellationToken);
+        var author = await ChatAuthors.Get(Session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return ComputedModel.None;
 
-        var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, AuthorId, default);
-        var canSendPeerChatMessageTask = Chats.CanSendPeerChatMessage(Session, AuthorId, default);
+        var canAddToContactsTask = ChatAuthors.CanAddToContacts(Session, ChatId, AuthorId, default);
+        var canSendPeerChatMessageTask = Chats.CanPeerChat(Session, ChatId, AuthorId, default);
         return new ComputedModel() {
             ChatAuthor = author,
             CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
@@ -67,7 +68,7 @@
         IsAddingContact = true;
         StateHasChanged();
 
-        await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
+        await UICommander.Run(new IChatAuthors.AddToContactsCommand(Session, ChatId, AuthorId));
 
         IsAddingContact = false;
         await ModalInstance.CloseAsync();
@@ -75,19 +76,20 @@
     }
 
     private async Task OnSendMessageClick() {
-        var peerChatId = await Chats.GetPeerChatId(Session, AuthorId, default);
+        var peerChatId = await Chats.GetPeerChatId(Session, ChatId, AuthorId, default);
         if (peerChatId.IsNullOrEmpty())
             return;
         Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 
     public sealed record ComputedModel {
-        public static ComputedModel None { get; } = new();
+        public static ComputedModel None { get; } = new() { ChatAuthor = ChatAuthor.None };
+        public static ComputedModel Loading { get; } = new() { ChatAuthor = ChatAuthor.Loading }; // Should differ by ref. from None
 
-        public ChatAuthor ChatAuthor { get; init; } = ChatAuthor.None;
+        public ChatAuthor ChatAuthor { get; init; } = null!;
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }
 
-    public sealed record Model(string AuthorId);
+    public sealed record Model(Symbol ChatId, Symbol AuthorId);
 }

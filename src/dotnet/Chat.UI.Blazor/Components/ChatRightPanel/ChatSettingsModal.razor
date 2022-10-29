@@ -129,10 +129,10 @@
             IsPublic = _form.IsPublic,
             Picture = _form.Picture,
         };
-        var cmd = new IChats.ChangeChatCommand(Session, chat.Id, chat.Version, new() {
+        var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await UICommander.Run(cmd);
+        await UICommander.Run(command);
         await ModalInstance.CloseAsync();
     }
 

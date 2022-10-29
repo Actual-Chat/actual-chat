@@ -16,7 +16,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IAccountsBackend AccountsBackend { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
-    private IUserContactsBackend UserContactsBackend { get; }
+    private IContactsBackend ContactsBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
 
@@ -26,7 +26,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ChatAuthors = services.GetRequiredService<IChatAuthors>();
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
-        UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
     }
@@ -95,7 +95,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string chatId,
         CancellationToken cancellationToken)
     {
-        var chatPrincipalId = await ChatAuthors.GetPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatPrincipalId = await GetOwnChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         return await Backend.GetRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -114,7 +114,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
             return false;
 
@@ -127,45 +127,35 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<bool> CanPeerChat(
+        Session session, string chatId, string authorId,
+        CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return false;
 
-        var parsedChatPrincipalId = new ChatPrincipalId(chatPrincipalId);
-        if (!parsedChatPrincipalId.IsValid)
+        var parsedAuthorId = new ParsedAuthorId(authorId);
+        if (!parsedAuthorId.IsValid || parsedAuthorId.ChatId.Id != chatId)
             return false;
 
-        if (parsedChatPrincipalId.Kind is ChatPrincipalKind.Author) {
-            var chatId = parsedChatPrincipalId.AuthorId.ChatId.Id;
-            if (!await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken)
-                    .ConfigureAwait(false))
-                return false;
+        if (!await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false))
+            return false;
 
-            var chatAuthor = await ChatAuthorsBackend.Get(chatId, chatPrincipalId, false, cancellationToken)
-                .ConfigureAwait(false);
-            if (chatAuthor == null || chatAuthor.UserId.IsEmpty || chatAuthor.UserId == account.Id)
-                return false;
-        }
-        else {
-            var otherUserId = parsedChatPrincipalId.UserId.Id;
-            var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-            if (otherAccount == null || otherAccount.Id == account.Id)
-                return false;
-        }
+        var author = await ChatAuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null || author.UserId.IsEmpty || author.UserId == account.Id)
+            return false;
+
         return true;
     }
 
     // [ComputeMethod]
-    public virtual async Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken)
     {
-        if (!await CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken).ConfigureAwait(false))
+        if (!await CanPeerChat(session, chatId, authorId, cancellationToken).ConfigureAwait(false))
             return null;
 
-        var userId2 = await ChatAuthorsBackend
-            .GetUserId(chatPrincipalId, cancellationToken)
-            .ConfigureAwait(false);
+        var userId2 = await ChatAuthorsBackend.GetUserId(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (userId2.IsEmpty)
             return null;
 
@@ -173,13 +163,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
-        var (_, contact) = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        var contact = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         return contact;
     }
 
@@ -189,12 +179,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var chatAuthorIds = await ChatAuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await chatAuthorIds
-            .Select(id => ChatAuthors.GetAuthor(session, chatId, id, true, cancellationToken))
+            .Select(id => ChatAuthors.Get(session, chatId, id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
-            .OrderBy(a => a.Name)
+            .OrderBy(a => a.Avatar.Name)
             .ToImmutableArray();
     }
 
@@ -206,7 +196,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string text,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is null)
             return null;
 
@@ -222,28 +212,30 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat?> ChangeChat(IChats.ChangeChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> Change(IChats.ChangeCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, expectedVersion, change) = command;
 
-        var cmd = new IChatsBackend.ChangeChatCommand(chatId, expectedVersion, change.RequireValid());
+        var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
-            var account = await Accounts.Get(session, cancellationToken)
-                .Require(Account.MustBeActive)
+            var account = await Accounts.GetOwn(session, cancellationToken)
+                .Require(AccountFull.MustBeActive)
                 .ConfigureAwait(false);
-            cmd = cmd with { CreatorUserId = account.Id };
+            changeCommand = changeCommand with {
+                CreatorUserId = account.Id,
+            };
         }
         if (change.Update.HasValue)
             await RequirePermissions(session, chatId, ChatPermissions.EditProperties, cancellationToken).ConfigureAwait(false);
-        var chat = await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> JoinChat(IChats.JoinChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> Join(IChats.JoinCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -290,7 +282,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task LeaveChat(IChats.LeaveChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task Leave(IChats.LeaveCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -301,11 +293,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;
-        var chatAuthor = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var chatAuthor = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null || chatAuthor.HasLeft)
             return;
 
-        var leaveAuthorCommand = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, true);
+        var leaveAuthorCommand = new IChatAuthorsBackend.ChangeHasLeftCommand(chatId, chatAuthor.Id, true);
         await Commander.Call(leaveAuthorCommand, cancellationToken).ConfigureAwait(false);
     }
 
@@ -317,6 +310,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var canRead = await HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         if (!canRead)
             return null;
+
         return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -346,16 +340,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             ChatType = ChatType.Peer,
         };
 
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
-        var (contactUserId, contact) = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
-        if (contactUserId.IsNullOrEmpty())
+        var contact = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
             return null;
 
-        var title = await UserContactsBackend.GetPeerChatName(contactUserId, cancellationToken).ConfigureAwait(false);
-        chat = chat with { Title = title };
+        chat = chat with { Title = contact.Avatar.Name };
         return chat;
     }
 
@@ -367,7 +360,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         case ChatIdKind.PeerFull:
             return chatId;
         case ChatIdKind.PeerShort:
-            var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             if (account == null)
                 return null;
             return ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1);
@@ -377,8 +370,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     [ComputeMethod]
-    protected virtual async Task<(string? TargetUserId, UserContact? Contact)> GetPeerChatContact(
-        string chatId, Symbol ownerUserId, CancellationToken cancellationToken)
+    protected virtual async Task<Contact?> GetPeerChatContact(
+        string chatId, string ownerUserId, CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
         switch (parsedChatId.Kind) {
@@ -388,21 +381,35 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             parsedChatId = chatId = ParsedChatId.FormatFullPeerChatId(ownerUserId, parsedChatId.UserId1);
             break;
         default: // Group or Invalid
-            return (null, null);
+            return null;
         }
 
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-        var targetUserId = (userId1, userId2).OtherThan(ownerUserId);
+        var targetUserId = (userId1, userId2).OtherThan((Symbol)ownerUserId);
         if (targetUserId.IsEmpty)
             throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
 
-        var contact = await UserContactsBackend.Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
-        return (targetUserId, contact);
+        var contact = await ContactsBackend.Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
+        return contact;
     }
 
     // Private methods
 
-    private async Task<ChatEntry> GetChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
+    public virtual async Task<Symbol> GetOwnChatPrincipalId(
+        Session session, string chatId,
+        CancellationToken cancellationToken)
+    {
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author != null)
+            return author.Id;
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return account?.Id ?? Symbol.Empty;
+    }
+
+    private async Task<ChatEntry> GetChatEntry(
+        Session session, string chatId, long entryId, ChatEntryType type,
+        CancellationToken cancellationToken)
     {
         var idTile = IdTileStack.FirstLayer.GetTile(entryId);
         var tile = await GetTile(session, chatId, type, idTile.Range, cancellationToken)
@@ -476,8 +483,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 
-    // Private methods
-
     private async Task<ChatEntry> RemoveChatEntry(Session session, string chatId, long entryId, ChatEntryType type, CancellationToken cancellationToken)
     {
         var chatEntry = await GetChatEntry(session, chatId, entryId, type, cancellationToken).ConfigureAwait(false);
@@ -496,7 +501,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var chatAuthor = await ChatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor.HasLeft) {
-            var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatAuthor.Id, false);
+            var command = new IChatAuthorsBackend.ChangeHasLeftCommand(chatId, chatAuthor.Id, false);
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
         var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -518,7 +523,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chatEntry.IsRemoved)
             throw StandardError.NotFound<ChatEntry>();
 
-        var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("User can edit only their own messages.");
 
@@ -536,7 +541,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chatEntry.IsRemoved)
             throw StandardError.NotFound<ChatEntry>();
 
-        var author = await ChatAuthors.Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("User can remove only their own messages.");
 

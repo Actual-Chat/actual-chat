@@ -10,7 +10,8 @@ public interface IAvatarsBackend : IComputeService
 
     [DataContract]
     public sealed record ChangeCommand(
-        [property: DataMember] string AvatarId,
+        [property: DataMember] Symbol AvatarId,
+        [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<AvatarFull> Change
         ) : ICommand<AvatarFull>, IBackendCommand;
 }

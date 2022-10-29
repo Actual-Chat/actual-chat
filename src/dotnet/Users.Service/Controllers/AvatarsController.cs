@@ -17,16 +17,16 @@ public class AvatarsController : ControllerBase, IAvatars
     }
 
     [HttpGet, Publish]
-    public Task<Avatar?> Get(string avatarId, CancellationToken cancellationToken)
-        => _service.Get(avatarId, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<AvatarFull?> GetOwn(Session session, string avatarId, CancellationToken cancellationToken)
         => _service.GetOwn(session, avatarId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken)
-        => _service.ListAvatarIds(session, cancellationToken);
+    public Task<Avatar?> Get(Session session, string avatarId, CancellationToken cancellationToken)
+        => _service.Get(session, avatarId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
+        => _service.ListOwnAvatarIds(session, cancellationToken);
 
     [HttpPost]
     public Task<AvatarFull> Change([FromBody] IAvatars.ChangeCommand command, CancellationToken cancellationToken)

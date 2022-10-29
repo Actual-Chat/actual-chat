@@ -1,39 +1,29 @@
-@inherits ComputedStateComponent<UserChatSettings>
-
+@inherits ComputedStateComponent<LanguageId>
 @{
-    var language = State.ValueOrDefault?.Language;
-    var isDisabled = language == null;
-    var shortcut = language?.Shortcut ?? LanguageId.Default.Shortcut;
+    var m = State.ValueOrDefault.Or(LanguageId.Default);
 }
 
 <ButtonRound
-    Class="chat-language-toggle" Click="OnClick" IsDisabled="@isDisabled">
+    Class="chat-language-toggle" Click="OnClick">
     <span class="w-8 h-8 m-1">
-        @shortcut
+        @m.Shortcut
     </span>
 </ButtonRound>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<UserChatSettings>.Options GetStateOptions()
+    protected override ComputedState<LanguageId>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task<UserChatSettings> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Languages.Use(cancellationToken);
-        return await ChatUserSettings.Get(Session, Chat.Id, cancellationToken) ?? new() {
-            Language = languages.Primary,
-        };
-    }
+    protected override async Task<LanguageId> ComputeState(CancellationToken cancellationToken)
+        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
 
-    private async Task OnClick() {
-        var settings = State.Value with { Language = await LanguageUI.NextLanguage(State.Value.Language) };
-        var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
-        await UICommander.Run(command);
-    }
+    protected Task OnClick()
+        => LanguageUI.ChangeChatLanguage(Chat.Id);
 }

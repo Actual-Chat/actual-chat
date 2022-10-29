@@ -181,7 +181,10 @@ public class ChatUI
     }
 
     public void ShowChatAuthorModal(string authorId)
-        => ModalUI.Show(new ChatAuthorModal.Model(authorId));
+    {
+        var parsedAuthorId = new ParsedAuthorId(authorId).RequireValid();
+        ModalUI.Show(new ChatAuthorModal.Model(parsedAuthorId.ChatId, parsedAuthorId.Id));
+    }
 
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));

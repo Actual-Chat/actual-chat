@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 public record ChatAuthorRules(
     [property: DataMember] Symbol ChatId,
     [property: DataMember] ChatAuthorFull? Author,
-    [property: DataMember] Account? Account,
+    [property: DataMember] AccountFull? Account,
     [property: DataMember] ChatPermissions Permissions = 0)
 {
     public static ChatAuthorRules None(Symbol chatId) => new(chatId, null, null);

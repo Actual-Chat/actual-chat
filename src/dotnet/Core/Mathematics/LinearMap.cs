@@ -92,7 +92,7 @@ public readonly struct LinearMap
             || points.Length == 2 && points[0] == points[1];
     }
 
-    public LinearMap AssertValid(bool requireInvertible = false)
+    public LinearMap RequireValid(bool requireInvertible = false)
     {
         if (!IsValid())
             throw StandardError.Constraint($"Invalid {GetType().Name}.");
@@ -190,7 +190,7 @@ public readonly struct LinearMap
 
     public LinearMap AppendOrUpdateTail(LinearMap tail, float xEpsilon)
     {
-        tail.AssertValid();
+        tail.RequireValid();
         var points = Points;
         var i = points.IndexOfLowerOrEqualX(tail[0].X - xEpsilon);
         if (i < 0)

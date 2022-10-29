@@ -24,7 +24,7 @@ public class ChatOperationsTest : AppHostTestBase
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
-        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = chatTitle,
                 ChatType = ChatType.Group,
@@ -64,7 +64,7 @@ public class ChatOperationsTest : AppHostTestBase
         rules.CanEditRoles().Should().BeTrue();
         rules.IsOwner().Should().BeTrue();
 
-        var author = await chatAuthors.Get(session, chat.Id, default);
+        var author = await chatAuthors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
     }
@@ -84,7 +84,7 @@ public class ChatOperationsTest : AppHostTestBase
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+            var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
                     ChatType = ChatType.Group,
@@ -124,7 +124,7 @@ public class ChatOperationsTest : AppHostTestBase
             }
             canJoin.Should().BeTrue();
 
-            var command = new IChats.JoinChatCommand(session, chatId);
+            var command = new IChats.JoinCommand(session, chatId);
             await commander.Call(command, default);
 
             await AssertUserJoined(tester.AppServices, session, chatId, user);
@@ -134,7 +134,7 @@ public class ChatOperationsTest : AppHostTestBase
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LeaveChat(bool isPublicChat)
+    public async Task Leave(bool isPublicChat)
     {
         using var appHost = await NewAppHost();
 
@@ -146,7 +146,7 @@ public class ChatOperationsTest : AppHostTestBase
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+            var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
                     ChatType = ChatType.Group,
@@ -179,11 +179,11 @@ public class ChatOperationsTest : AppHostTestBase
                 await Task.Delay(1000); // Let the command complete
             }
 
-            var joinChatCommand = new IChats.JoinChatCommand(session, chatId);
+            var joinChatCommand = new IChats.JoinCommand(session, chatId);
             await commander.Call(joinChatCommand);
             await AssertUserJoined(tester.AppServices, session, chatId, user);
 
-            var leaveCommand = new IChats.LeaveChatCommand(session, chatId);
+            var leaveCommand = new IChats.LeaveCommand(session, chatId);
             await commander.Call(leaveCommand);
 
             var permissions = await chats.GetRules(session, chatId, default);
@@ -222,7 +222,7 @@ public class ChatOperationsTest : AppHostTestBase
         var chat = await chats.Get(session, chatId, default);
         chat.Should().NotBeNull();
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
-        var author = await chatAuthors.Get(session, chatId, default);
+        var author = await chatAuthors.GetOwn(session, chatId, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
         author.HasLeft.Should().BeFalse();
@@ -241,7 +241,7 @@ public class ChatOperationsTest : AppHostTestBase
         var chatAuthors = services.GetRequiredService<IChatAuthors>();
         var chatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
 
-        var cAuthor = await Computed.Capture(() => chatAuthors.Get(session, chatId, default));
+        var cAuthor = await Computed.Capture(() => chatAuthors.GetOwn(session, chatId, default));
         await cAuthor.When(a => a is { HasLeft: true })
             .WaitAsync(TimeSpan.FromSeconds(3));
         var author = await cAuthor.Use();

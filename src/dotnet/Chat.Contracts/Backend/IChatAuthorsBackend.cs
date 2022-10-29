@@ -3,9 +3,9 @@ namespace ActualChat.Chat;
 public interface IChatAuthorsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<ChatAuthorFull?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthorFull?> Get(string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ChatAuthorFull?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthorFull?> GetByUserId(string chatId, string userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -16,8 +16,8 @@ public interface IChatAuthorsBackend : IComputeService
 
     // Non-compute methods
 
-    Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
-    Task<ChatAuthor> GetOrCreate(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
+    Task<ChatAuthorFull> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthorFull> GetOrCreate(string chatId, string userId, CancellationToken cancellationToken);
 
     // Commands
 
@@ -25,17 +25,27 @@ public interface IChatAuthorsBackend : IComputeService
     Task<ChatAuthorFull> Create(CreateCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatAuthorFull> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ChatAuthorFull> SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record CreateCommand(
-        [property: DataMember] string ChatId,
-        [property: DataMember] string UserId,
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] Symbol UserId,
         [property: DataMember] bool RequireAccount
         ) : ICommand<ChatAuthorFull>, IBackendCommand;
 
     [DataContract]
     public sealed record ChangeHasLeftCommand(
-        [property: DataMember] string AuthorId,
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] Symbol AuthorId,
         [property: DataMember] bool HasLeft
+    ) : ICommand<ChatAuthorFull>, IBackendCommand;
+
+    [DataContract]
+    public sealed record SetAvatarCommand(
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] Symbol AuthorId,
+        [property: DataMember] Symbol AvatarId
     ) : ICommand<ChatAuthorFull>, IBackendCommand;
 }

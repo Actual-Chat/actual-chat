@@ -24,7 +24,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
             throw StandardError.NotSupported("User mentions aren't supported yet.");
         if (!targetId.OrdinalHasPrefix("a:", out var authorId))
             authorId = targetId;
-        return await ChatAuthorsBackend.Get(ChatId, authorId, true, cancellationToken).ConfigureAwait(false);
+        return await ChatAuthorsBackend.Get(ChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)

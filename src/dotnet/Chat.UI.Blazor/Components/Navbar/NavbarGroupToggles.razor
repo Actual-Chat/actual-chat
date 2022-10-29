@@ -9,7 +9,7 @@
 
 <ChatsNavbarGroupToggle/>
 
-@if (m.Account.IsActive()) {
+@if (m.IsActive()) {
     <NavbarGroupToggle
         Title="Contacts"
         Id="@NavbarGroupIds.Contacts"
@@ -18,7 +18,7 @@
         <i class="icon-people text-2xl font-medium"></i>
     </NavbarGroupToggle>
 }
-@if (m.Account.IsAdmin) {
+@if (m.IsAdmin) {
     <NavbarGroupToggle
         Title="Administration"
         Id="@NavbarGroupIds.Administration"

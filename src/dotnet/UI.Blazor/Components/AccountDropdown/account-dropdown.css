@@ -15,13 +15,13 @@
 .btn.btn-square.account-btn {
     @apply flex flex-1 ml-1 bg-transparent rounded-none;
 }
-.btn-square.account-btn .author-badge {
+.btn-square.account-btn .avatar-badge {
     @apply bg-transparent p-0;
 }
 .btn-square.account-btn .btn-content {
     @apply p-2;
 }
-.btn-square.account-btn .author-badge > * {
+.btn-square.account-btn .avatar-badge > * {
     @apply m-0;
 }
 .btn.btn-square.account-btn:hover > .btn-content {

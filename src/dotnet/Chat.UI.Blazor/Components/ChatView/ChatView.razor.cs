@@ -115,7 +115,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var chat = Chat;
         var chatId = chat.Id.Value;
-        var author = await ChatAuthors.Get(Session, chatId, cancellationToken);
+        var author = await ChatAuthors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryState?.Value ?? 0;

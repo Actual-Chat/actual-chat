@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 [DataContract]
 public sealed record UnregisteredUserSettings
 {
-    internal const string KvasKey = nameof(UnregisteredUserSettings);
+    public const string KvasKey = nameof(UnregisteredUserSettings);
 
     // ChatId -> AuthorId map
     [DataMember] public ImmutableDictionary<string, string> ChatAuthors { get; init; } = ImmutableDictionary<string, string>.Empty;

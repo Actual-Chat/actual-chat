@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<bool>
 
 @{
@@ -19,6 +20,7 @@
 
 @code{
     [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     [Parameter] public bool HideSetDefaultButton { get; set; }
@@ -29,7 +31,12 @@
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => AvatarId == await Avatars.GetDefaultAvatarId(Session, default);
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken);
+        var defaultAvatarId = accountSettings.DefaultAvatarId;
+        if (defaultAvatarId.IsEmpty)
+            defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
+        return AvatarId == defaultAvatarId;
+    }
 
 }

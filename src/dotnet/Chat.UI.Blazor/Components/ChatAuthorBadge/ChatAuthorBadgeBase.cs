@@ -39,15 +39,16 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         if (!IsValid)
             return new () { InitialValue = Model.None };
 
+        var model = Model.Loading;
         // Try to provide pre-filled initialValue for the first render when everything is cached
         var authorTask = GetChatAuthor(Session, ChatId, AuthorId, default);
 #pragma warning disable VSTHRD002
         var author = authorTask.IsCompletedSuccessfully ? authorTask.Result : null;
 #pragma warning restore VSTHRD002
-        var model = author == null ? Model.None : new Model(author);
 
         if (author != null) {
-            var ownAuthorTask = ChatAuthors.Get(Session, ChatId, default);
+            model = new Model(author);
+            var ownAuthorTask = ChatAuthors.GetOwn(Session, ChatId, default);
 #pragma warning disable VSTHRD002
             var ownAuthor = ownAuthorTask.IsCompletedSuccessfully ? ownAuthorTask.Result : null;
 #pragma warning restore VSTHRD002
@@ -68,7 +69,7 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
             return Model.None;
 
         var presence = await GetPresence(Session, ChatId, AuthorId, cancellationToken);
-        var ownAuthor = await ChatAuthors.Get(Session, ChatId, cancellationToken);
+        var ownAuthor = await ChatAuthors.GetOwn(Session, ChatId, cancellationToken);
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
         return new(author, presence, isOwn);
     }
@@ -82,13 +83,9 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         if (!IsValid)
             return null;
 
-        var author = await ChatAuthors.GetAuthor(session, chatId, authorId, true, cancellationToken);
+        var author = await ChatAuthors.Get(session, chatId, authorId, cancellationToken);
         if (author == null)
             return null;
-        if (string.IsNullOrWhiteSpace(author.Picture)) {
-            var picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg";
-            author = author with { Picture = picture };
-        }
         return author;
     }
 
@@ -118,5 +115,6 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
         bool IsOwn = false)
     {
         public static Model None { get; } = new(ChatAuthor.None);
+        public static Model Loading { get; } = new(ChatAuthor.Loading); // Should differ by ref. from None
     }
 }

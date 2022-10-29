@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<AuthorName Author="@m.ChatAuthor" Class="@Class" Click="OnChatAuthorClick"/>
+<AvatarName Avatar="@m.ChatAuthor.Avatar" Class="@Class" Click="OnChatAuthorClick"/>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -13,7 +13,9 @@
     [Parameter] public bool EnableDetailsPopup { get; set; } = true;
 
     private void OnChatAuthorClick() {
-        if (EnableDetailsPopup)
-            ChatUI.ShowChatAuthorModal(State.LatestNonErrorValue.ChatAuthor.Id);
+        if (EnableDetailsPopup) {
+            var author = State.LatestNonErrorValue.ChatAuthor;
+            ChatUI.ShowChatAuthorModal(author.Id);
+        }
     }
 }

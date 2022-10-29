@@ -275,7 +275,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (Computed.IsInvalidating())
             return;
 
-        var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         var userId = chatAuthor!.UserId;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, chatAuthor);
@@ -304,14 +304,16 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     private string GetIconUrl(Chat.Chat chat, ChatAuthorFull chatAuthor)
          => chat.ChatType switch {
              ChatType.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+             ChatType.Peer => !chatAuthor.Avatar.Picture.IsNullOrEmpty()
+                 ? UrlMapper.ContentUrl(chatAuthor.Avatar.Picture)
+                 : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
          };
 
     private static string GetTitle(Chat.Chat chat, ChatAuthorFull chatAuthor)
          => chat.ChatType switch {
-             ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
-             ChatType.Peer => $"{chatAuthor.Name}",
+             ChatType.Group => $"{chatAuthor.Avatar.Name} @ {chat.Title}",
+             ChatType.Peer => $"{chatAuthor.Avatar.Name}",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
          };
 

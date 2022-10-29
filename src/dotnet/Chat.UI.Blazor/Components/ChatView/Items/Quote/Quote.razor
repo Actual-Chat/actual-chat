@@ -4,7 +4,7 @@
 @{
     var message = Message;
     var entry = message.Entry;
-    var authorNameCls = Message.Entry.AuthorId == _principalId ? "text-06 " : "text-02 ";
+    var authorNameCls = Message.Entry.AuthorId == OwnAuthor?.Id ? "text-06 " : "text-02 ";
     authorNameCls += "font-bold min-w-fit";
 }
 
@@ -36,6 +36,9 @@
 </div>
 
 @code {
+    private string Text { get; set; } = null!;
+    private ChatAuthorFull? OwnAuthor { get; set; } = null;
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
@@ -48,8 +51,6 @@
     public ChatMessageModel Message { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatEntryLinkType LinkType { get; set; }
-    private string Text { get; set; } = null!;
-    private string _principalId = "";
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
@@ -60,7 +61,7 @@
         MarkupHub.ChatId = Message.Entry.ChatId;
         var markup = await MarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
         Text = MarkupFormatter.ReadableUnstyled.Format(markup);
-        _principalId = await ChatAuthors.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None);
+        OwnAuthor = await ChatAuthors.GetOwn(Session, Message.Entry.ChatId, CancellationToken.None);
     }
 
     private async Task OnQuoteClick() {

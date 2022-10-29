@@ -210,11 +210,11 @@
     }
 
     private async Task TryUpdatePeerChatRecency() {
-        await Update(RecencyScope.ChatContact, Chat.Id);
+        await Update(RecencyScope.Chat, Chat.Id);
 
         if (Chat.ChatType == ChatType.Peer) {
             var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require();
-            await Update(RecencyScope.UserContact, contact.Id);
+            await Update(RecencyScope.Contact, contact.Id);
         }
 
         Task Update(RecencyScope scope, string key) {
@@ -227,7 +227,7 @@
 
     private async Task OnOpenPrevious() {
         var chatId = ChatUI.SelectedChatId.Value;
-        var author = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        var author = await ChatAuthors.GetOwn(Session, chatId, CancellationToken.None);
         if (author == null)
             return;
 

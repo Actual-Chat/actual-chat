@@ -2,20 +2,15 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
-
-public enum UserAvatarType
-{
-    User = 0,
-    AnonymousChatAuthor = 1,
-}
 
 /// <summary>
 /// User avatar. <br />
 /// </summary>
 [Table("Avatars")]
-public class DbAvatar : IHasId<string>, IRequirementTarget
+public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;

@@ -5,7 +5,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<AuthorBadge Author="@m.ChatAuthor" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
+<AvatarBadge Avatar="@m.ChatAuthor.Avatar" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;

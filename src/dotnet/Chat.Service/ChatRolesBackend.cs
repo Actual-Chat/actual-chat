@@ -120,7 +120,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatRole?> Change(IChatRolesBackend.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatRole> Change(IChatRolesBackend.ChangeCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -131,7 +131,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                 _ = Get(chatId, invChatRole.Id, default);
                 _ = PseudoList(chatId);
             }
-            return default;
+            return default!;
         }
 
         chatId = chatId.RequireNonEmpty("Command.ChatId");
@@ -139,7 +139,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway
-        await dbContext.Chats.FindAsync(DbKey.Compose(chatId)).Require().ConfigureAwait(false);
+        await dbContext.Chats.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
 
         ChatRole? chatRole;
         DbChatRole? dbChatRole;
@@ -168,8 +168,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
             dbChatRole = await dbContext.ChatRoles.ForUpdate()
                 .SingleAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
                 .ConfigureAwait(false);
-            chatRole = dbChatRole.ToModel();
-            VersionChecker.RequireExpected(chatRole.Version, expectedVersion);
+            chatRole = dbChatRole.RequireVersion(expectedVersion).ToModel();
 
             if (change.IsUpdate(out update)) {
                 if ((update.SystemRole ?? chatRole.SystemRole) != chatRole.SystemRole)
@@ -179,7 +178,6 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
                 };
                 chatRole = DiffEngine.Patch(chatRole, update).Fix();
                 dbChatRole.UpdateFrom(chatRole);
-                dbContext.Update(dbChatRole);
             }
             else {
                 // Remove
@@ -229,7 +227,7 @@ public class ChatRolesBackend : DbServiceBase<ChatDbContext>, IChatRolesBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        chatRole = dbChatRole?.ToModel();
+        chatRole = dbChatRole.ToModel();
         context.Operation().Items.Set(chatRole);
         return chatRole;
     }

@@ -1,21 +1,21 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits MenuBase
 
-@if (_userContact != null) {
-    <CascadingValue Value="@_userContact">
+@if (_contact != null) {
+    <CascadingValue Value="@_contact">
         <ContactMenuPin/>
     </CascadingValue>
 }
 
 @code {
-    private UserContact? _userContact;
+    private Contact? _contact;
 
-    [Inject] private IUserContacts UserContacts { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is {Length: > 0}) {
-            _userContact = await UserContacts.Get(Session, Arguments[0], CancellationToken.None);
+            _contact = await Contacts.Get(Session, Arguments[0], CancellationToken.None);
         }
     }
 }

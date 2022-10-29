@@ -14,7 +14,7 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbReactionSummary> ReactionSummaries { get; protected set; } = null!;
     public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
     public DbSet<DbChatOwner> ChatOwners { get; protected set; } = null!;
-    public DbSet<DbChatAuthor> ChatAuthors { get; protected set; } = null!;
+    public DbSet<DbAuthor> ChatAuthors { get; protected set; } = null!;
     public DbSet<DbChatRole> ChatRoles { get; protected set; } = null!;
     public DbSet<DbChatAuthorRole> ChatAuthorRoles { get; protected set; } = null!;
 

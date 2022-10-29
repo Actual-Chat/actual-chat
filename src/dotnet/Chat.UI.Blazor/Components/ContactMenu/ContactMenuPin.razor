@@ -26,7 +26,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public UserContact Contact { get; set; } = null!;
+    [CascadingParameter] public Contact Contact { get; set; } = null!;
     private string ChatId => ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
 
     protected override ComputedState<bool>.Options GetStateOptions()

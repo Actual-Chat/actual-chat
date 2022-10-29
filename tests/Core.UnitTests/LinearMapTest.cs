@@ -9,19 +9,19 @@ public class LinearMapTest : TestBase
     [Fact]
     public void BasicTest()
     {
-        var map = new LinearMap(0, 1).AssertValid();
+        var map = new LinearMap(0, 1).RequireValid();
         map.TryMap(-1).Should().BeNull();
         map.TryMap(1).Should().BeNull();
         map.TryMap(0).Should().Be(1.0f);
 
-        map = new LinearMap(0, 1, 1, 3).AssertValid();
+        map = new LinearMap(0, 1, 1, 3).RequireValid();
         map.TryMap(-0.1f).Should().BeNull();
         map.TryMap(1.1f).Should().BeNull();
         map.TryMap(0).Should().Be(1.0f);
         map.TryMap(1).Should().Be(3.0f);
         map.TryMap(0.5f).Should().Be(2.0f);
 
-        map = new LinearMap(0, 1, 1, 3, 11, 4).AssertValid();
+        map = new LinearMap(0, 1, 1, 3, 11, 4).RequireValid();
         map.TryMap(-0.1f).Should().BeNull();
         map.TryMap(11.1f).Should().BeNull();
         map.TryMap(0).Should().Be(1.0f);
@@ -52,14 +52,14 @@ public class LinearMapTest : TestBase
     public void WrongMapTest()
     {
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(1, 1, 1, 2).AssertValid();
+            new LinearMap(1, 1, 1, 2).RequireValid();
         });
-        new LinearMap(1, 2, 2, 2).AssertValid();
+        new LinearMap(1, 2, 2, 2).RequireValid();
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(1, 2, 2, 2).AssertValid(true);
+            new LinearMap(1, 2, 2, 2).RequireValid(true);
         });
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(1, 2, 2, 1).AssertValid(true);
+            new LinearMap(1, 2, 2, 1).RequireValid(true);
         });
     }
 }

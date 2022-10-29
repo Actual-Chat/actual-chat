@@ -19,7 +19,7 @@ internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
         Symbol chatId,
         CancellationToken cancellationToken)
     {
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 

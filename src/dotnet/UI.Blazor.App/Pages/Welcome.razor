@@ -96,7 +96,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
-            Account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false),
+            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
         };
 
@@ -108,7 +108,7 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public Account? Account { get; init; }
+        public AccountFull? Account { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 }

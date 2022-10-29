@@ -1,0 +1,50 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.Chat
+
+<div class="avatar-badge" onclick="@Click">
+    <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
+    <div class="@_contentClass flex-y">
+        <div class="avatar-badge-name">
+            <AvatarName Avatar="@Avatar" Size="@Size" Class="@TextClass"/>
+        </div>
+        @if (ShowPresenceText && !_statusText.IsNullOrEmpty()) {
+            <div>
+                <span class="@_statusTextClass">@_statusText</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _contentClass = "";
+    private string _statusTextClass = "";
+    private string _statusText = "";
+
+    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public string TextClass { get; set; } = "";
+    [Parameter] public bool ShowPresenceText { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        _contentClass = GetContentClass();
+        _statusText = GetPresenceText();
+        _statusTextClass = GetPresenceTextClass();
+    }
+
+    private string GetContentClass()
+        => "ml-3";
+
+    private string GetPresenceText()
+        => Presence switch {
+            Presence.Recording => "recording",
+            Presence.Online => "online",
+            _ => "",
+        };
+
+    private string GetPresenceTextClass()
+        => (int)Size < 12 ? "text-xxs leading-4" : "";
+
+}

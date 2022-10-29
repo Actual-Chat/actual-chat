@@ -1,0 +1,78 @@
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+@{
+    RenderFragment? presenceFragment = null;
+    var title = HasTooltip ? Avatar.Name : "";
+
+    if (Presence == Presence.Recording) {
+        presenceFragment =
+            @<div class="text-code animate-pulse">
+                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 32 32">
+                    <circle cx="8" cy="9" r="6"/>
+                </svg>
+            </div>;
+    }
+    else if (Presence == Presence.Online) {
+        presenceFragment =
+            @<div class="text-online">
+                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 32 32">
+                    <circle cx="8" cy="8" r="7"/>
+                </svg>
+            </div>;
+    }
+}
+
+<div class="author-avatar-badge flex-x items-center rounded-full">
+    <div class="relative overflow-hidden">
+        @if (ReferenceEquals(Avatar, Avatar.Loading)) {
+            <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
+        } else {
+            <img class="@_avatarClass @Class rounded-full block"
+                 src="@_avatarPictureUrl" alt="avatar" title="@title"
+                 @onclick="@Click"/>
+        }
+
+        @if (presenceFragment != null) {
+            <div class="@_presenceClass absolute bg-01">
+                @presenceFragment
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _avatarClass = "";
+    private string _presenceClass = "";
+    private string _avatarPictureUrl = "";
+
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter] public Presence Presence { get; set; }
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HasTooltip { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _avatarClass = GetSizeClass();
+        if (Click.HasDelegate)
+            _avatarClass += " cursor-pointer";
+        _presenceClass = GetPresenceClass();
+        _avatarPictureUrl = UrlMapper.ContentUrl(Avatar.Picture);
+    }
+
+    private string GetPresenceClass() {
+        return Presence switch {
+            Presence.Unknown => "",
+            Presence.Offline => "",
+            _ => "right-0 bottom-0 w-4 h-4 rounded-full",
+            };
+    }
+
+    private string GetSizeClass() {
+        var size = (int) Size;
+        return $"pic-size-{size}";
+    }
+}

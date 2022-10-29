@@ -4,21 +4,21 @@ public static class AuthorsBackendExt
 {
     internal static async Task<Symbol> GetUserId(
         this IChatAuthorsBackend chatAuthorsBackend,
-        ChatPrincipalId chatPrincipalId,
+        Symbol chatId,
+        ParsedChatPrincipalId chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        if (chatPrincipalId.Kind == ChatPrincipalKind.User)
+        switch (chatPrincipalId.Kind) {
+        case ChatPrincipalKind.User:
             return chatPrincipalId.UserId;
-
-        var authorId = chatPrincipalId.AuthorId;
-        var parsedAuthorId = new ParsedAuthorId(authorId);
-        if (!parsedAuthorId.IsValid)
-            return default;
-
-        var chatId = parsedAuthorId.ChatId;
-        var chatAuthor = await chatAuthorsBackend
-            .Get(chatId, authorId, false, cancellationToken)
-            .ConfigureAwait(false);
-        return chatAuthor?.UserId ?? Symbol.Empty;
+        case ChatPrincipalKind.Author:
+            var authorId = chatPrincipalId.AuthorId;
+            if (chatId != authorId.ChatId.Id)
+                return Symbol.Empty;
+            var chatAuthor = await chatAuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            return chatAuthor?.UserId ?? Symbol.Empty;
+        default:
+            return Symbol.Empty;
+        }
     }
 }

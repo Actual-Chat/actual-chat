@@ -5,11 +5,11 @@ namespace ActualChat.Chat;
 public interface IChatAuthors : IComputeService
 {
     [ComputeMethod]
-    Task<ChatAuthor?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ChatAuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ChatAuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<Symbol> GetPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -18,34 +18,38 @@ public interface IChatAuthors : IComputeService
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatAuthor?> GetAuthor(Session session, string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Presence> GetAuthorPresence(
-        Session session,
-        string chatId,
-        string authorId,
-        CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken);
+    Task<bool> CanAddToContacts(Session session, string chatId, string authorId, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
     Task AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task CreateChatAuthors(CreateChatAuthorsCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record AddToContactsCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatPrincipalId
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] Symbol AuthorId
         ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record CreateChatAuthorsCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
-        [property: DataMember] string[] UserIds
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] Symbol[] UserIds
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record SetAvatarCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId,
+        [property: DataMember] Symbol AuthorId,
+        [property: DataMember] Symbol AvatarId
+    ) : ISessionCommand<Unit>;
 }

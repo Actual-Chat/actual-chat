@@ -22,8 +22,8 @@
 @code {
     private bool _isLoading = true;
     private Exception? _error;
-    private Account? _restEaseAccount;
-    private Account? _fusionAccount;
+    private AccountFull? _restEaseAccount;
+    private AccountFull? _fusionAccount;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -41,10 +41,10 @@
                 RequestBodySerializer = Services.GetRequiredService<RequestBodySerializer>(),
                 ResponseDeserializer = Services.GetRequiredService<ResponseDeserializer>()
             }.For<IAccountsClientDef>();
-            _restEaseAccount = await client.Get(Session, cts.Token);
+            _restEaseAccount = await client.GetOwn(Session, cts.Token);
 
             // Gets user using Fusion service
-            _fusionAccount = await Accounts.Get(Session, cts.Token);
+            _fusionAccount = await Accounts.GetOwn(Session, cts.Token);
         }
         catch(Exception e) {
             _error = e;

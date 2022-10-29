@@ -37,7 +37,7 @@ internal class Reactions : IReactions
         var chatRules = await Chats.GetRules(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 
-        var author = await ChatAuthors.Get(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetOwn(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return;
 

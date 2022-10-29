@@ -1,13 +1,11 @@
 ﻿using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
-using Stl.Versioning;
 
 namespace ActualChat.Users;
 
 public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 {
-    private IAuth Auth { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
@@ -35,9 +33,9 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
     // [CommandHandler]
     public virtual async Task<AvatarFull> Change(IAvatarsBackend.ChangeCommand command, CancellationToken cancellationToken)
     {
-        var (avatarId, change) = command;
+        var (avatarId, expectedVersion, change) = command;
         if (Computed.IsInvalidating()) {
-            if (!avatarId.IsNullOrEmpty())
+            if (!avatarId.IsEmpty)
                 _ = Get(avatarId, default);
             return default!;
         }
@@ -55,13 +53,15 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
             dbContext.Avatars.Add(dbAvatar);
         }
         else {
-            var dbAvatar = await dbContext.Avatars.FindAsync(DbKey.Compose(avatarId)).ConfigureAwait(false);
-            if (dbAvatar == null)
-                throw StandardError.NotFound<Avatar>();
-            VersionChecker.RequireExpected(dbAvatar.Version, avatar.Version);
+            var dbAvatar = await dbContext.Avatars
+                .Get(avatarId, cancellationToken)
+                .RequireVersion(expectedVersion)
+                .ConfigureAwait(false);
 
             if (change.IsUpdate(out avatar)) {
-                avatar = avatar with { Version = VersionGenerator.NextVersion(avatar.Version) };
+                avatar = avatar with {
+                    Version = VersionGenerator.NextVersion(avatar.Version),
+                };
                 dbAvatar.UpdateFrom(avatar);
             }
             else

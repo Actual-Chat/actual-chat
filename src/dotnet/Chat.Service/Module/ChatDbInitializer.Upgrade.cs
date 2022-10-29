@@ -39,8 +39,8 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         try {
             Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
             foreach (var chatId in candidateChatIds) {
-                var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
-                await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+                var command = new IChatsBackend.UpgradeChatCommand(chatId);
+                await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             }
             Log.LogInformation("Chats are upgraded");
         }
@@ -95,8 +95,8 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no 'Announcements' chat, creating one");
-            var cmd = new IChatsBackend.CreateAnnouncementsChatCommand();
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            var command = new IChatsBackend.CreateAnnouncementsChatCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Announcements' chat is created");
         }
         catch (Exception e) {
@@ -109,8 +109,8 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         try {
             Log.LogInformation("starting FixCorruptedLastReadPositions");
-            var cmd = new IChatsBackend.FixCorruptedChatReadPositionsCommand();
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            var command = new IChatsBackend.FixCorruptedChatReadPositionsCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("FixCorruptedLastReadPositions complete");
         }
         catch (Exception e) {

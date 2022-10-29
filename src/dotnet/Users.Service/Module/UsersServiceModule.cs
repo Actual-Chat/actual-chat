@@ -73,12 +73,12 @@ public class UsersServiceModule : HostModule<UsersSettings>
             // Overriding / adding extra DbAuthentication services
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
-            db.AddEntityResolver<string, DbAccount>();
-            db.AddEntityResolver<string, DbUserPresence>();
-            db.AddEntityResolver<string, DbUserContact>();
-            db.AddEntityResolver<string, DbChatReadPosition>();
             db.AddEntityResolver<string, DbKvasEntry>();
+            db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();
+            db.AddEntityResolver<string, DbContact>();
+            db.AddEntityResolver<string, DbUserPresence>();
+            db.AddEntityResolver<string, DbChatReadPosition>();
 
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
@@ -101,7 +101,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             if (commandAssembly == typeof(EditUserCommand).Assembly
                 && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
-            if (commandAssembly == typeof(Account).Assembly)
+            if (commandAssembly == typeof(AccountFull).Assembly)
                 return true;
             return false;
         });
@@ -134,8 +134,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IAvatars, Avatars>();
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
-        fusion.AddComputeService<IUserContacts, UserContacts>();
-        fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
+        fusion.AddComputeService<IContacts, Contacts>();
+        fusion.AddComputeService<IContactsBackend, ContactsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
         fusion.AddComputeService<IChatReadPositionsBackend, ChatReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();

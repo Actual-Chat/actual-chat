@@ -15,7 +15,7 @@ public interface IChatRolesBackend : IComputeService
     Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, string roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ChatRole?> Change(ChangeCommand command, CancellationToken cancellationToken);
+    Task<ChatRole> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(
@@ -23,5 +23,5 @@ public interface IChatRolesBackend : IComputeService
         [property: DataMember] string RoleId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatRoleDiff> Change
-    ) : ICommand<ChatRole?>, IBackendCommand;
+    ) : ICommand<ChatRole>, IBackendCommand;
 }

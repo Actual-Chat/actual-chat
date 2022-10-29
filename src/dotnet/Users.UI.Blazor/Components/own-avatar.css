@@ -1,0 +1,76 @@
+.own-avatar-editor {
+    @apply flex flex-wrap gap-4;
+}
+
+.own-avatar-editor-item {
+    @apply cursor-pointer;
+}
+
+.own-avatar-card {
+    @apply w-10 h-10;
+    @apply flex flex-col items-center overflow-hidden;
+    @apply bg-white font-semibold text-center;
+}
+
+.own-avatar-card-content {
+    @apply my-auto;
+}
+
+.own-avatar-card-bio {
+    @apply mt-2 h-8 text-xs text-03;
+    @apply font-light;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.own-avatar-card-picture {
+    @apply w-16 h-16 rounded-full shadow-lg mx-auto;
+}
+svg.own-avatar-card-picture {
+    @apply text-03 fill-current opacity-40;
+}
+
+.own-avatar-card-tag {
+    @apply pl-2 pr-2.5 pt-1 pb-0.5 rounded-bl;
+    @apply bg-online;
+    @apply align-top text-03 text-xxs font-light;
+}
+
+.own-avatar-card-add-tile .own-avatar-card-picture {
+    @apply m-auto;
+}
+
+.modal-frame.own-account-editor-modal {
+    @apply max-w-full md:max-w-90 rounded-none md:rounded-lg;
+}
+
+.is-default-avatar {
+    @apply h-12 my-2;
+}
+.is-default-avatar label.checkbox {
+    @apply m-0;
+}
+.default-avatar-btn {
+    @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
+}
+.default-avatar-btn:hover {
+    @apply bg-hover;
+}
+.default-avatar-btn,
+.delete-avatar-btn,
+.delete-avatar-btn *,
+.default-avatar-btn * {
+    @apply cursor-pointer;
+}
+.delete-avatar-btn {
+    @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
+}
+.delete-avatar-btn:hover {
+    @apply bg-error-hover;
+}
+
+.edit-account-avatar {
+    @apply w-30 h-30 self-center;
+}

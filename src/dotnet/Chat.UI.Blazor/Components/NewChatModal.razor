@@ -43,7 +43,7 @@
 
     private async Task OnCreate()
     {
-        var cmd = new IChats.ChangeChatCommand(Session, "", null, new() {
+        var command = new IChats.ChangeCommand(Session, "", null, new() {
             Create = new ChatDiff() {
                 Title = _form.Title,
                 ChatType = ChatType.Group,
@@ -51,7 +51,10 @@
             },
         });
         try {
-            var chat = await UICommander.Call(cmd);
+            var (chat, error) = await UICommander.Run(command);
+            if (error != null)
+                return;
+
             chat = chat.Require();
             await ModalInstance.CloseAsync();
             Nav.NavigateTo(Links.ChatPage(chat.Id));

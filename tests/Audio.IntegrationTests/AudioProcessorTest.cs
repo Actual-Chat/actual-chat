@@ -60,7 +60,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = LanguageId.Default,
             });
 
-        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
                 ChatType = ChatType.Group,
@@ -70,9 +70,8 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        await commander.Call(new IChatUserSettings.SetCommand(session, chat.Id, new UserChatSettings {
-            Language = LanguageId.Russian,
-        }), CancellationToken.None);
+        var userChatSettings = new UserChatSettings { Language = LanguageId.Russian };
+        await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
 
@@ -102,7 +101,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = LanguageId.Default,
             });
 
-        var chat = await commander.Call(new IChats.ChangeChatCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
                 ChatType = ChatType.Group,

@@ -4,7 +4,7 @@
     var m = State.LatestNonErrorValue;
 }
 
-<AuthorCircle Author="@m.ChatAuthor" Size="@Size" Presence="@m.Presence" />
+<AvatarCircle Avatar="@m.ChatAuthor.Avatar" Size="@Size" Presence="@m.Presence" />
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;

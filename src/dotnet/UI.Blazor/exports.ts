@@ -1,6 +1,6 @@
 // Please sort the imports alphabetically!
 import './Components/AccountDropdown/account-dropdown.css'
-import './Components/AuthorBadge/author-badge.css'
+import './Components/Avatar/avatar.css'
 import './Components/Badge/badge.css'
 import './Components/BlazorModeToggle/blazor-mode-toggle.css'
 import './Components/Button/button.css';

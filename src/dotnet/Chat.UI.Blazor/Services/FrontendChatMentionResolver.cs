@@ -23,10 +23,10 @@ public class FrontendChatMentionResolver : IChatMentionResolver
     {
         var targetId = mention.Id;
         if (targetId.OrdinalHasPrefix("u:", out var userId))
-            return await Accounts.GetUserAuthor(targetId, cancellationToken).ConfigureAwait(false);
+            throw StandardError.NotSupported("User mentions aren't supported yet.");
         if (!targetId.OrdinalHasPrefix("a:", out var authorId))
             authorId = targetId;
-        return await ChatAuthors.GetAuthor(Session, ChatId, authorId, true, cancellationToken).ConfigureAwait(false);
+        return await ChatAuthors.Get(Session, ChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
@@ -34,6 +34,6 @@ public class FrontendChatMentionResolver : IChatMentionResolver
     public async ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken)
     {
         var author = await ResolveAuthor(mention, cancellationToken).ConfigureAwait(false);
-        return author?.Name;
+        return author?.Avatar.Name;
     }
 }

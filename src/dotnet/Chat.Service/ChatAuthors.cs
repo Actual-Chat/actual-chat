@@ -16,7 +16,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     private IAccountsBackend AccountsBackend { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IUserContactsBackend UserContactsBackend { get; }
+    private IContactsBackend ContactsBackend { get; }
     private IUserPresences UserPresences { get; }
     private IServerKvas ServerKvas { get; }
     private IChatAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IChatAuthorsBackend>();
@@ -25,19 +25,35 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     {
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        UserContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         ServerKvas = services.ServerKvas();
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
+        Session session,
+        string chatId,
+        string authorId,
+        CancellationToken cancellationToken)
+    {
+        // Check that user has access to chat
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        return author;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatAuthorFull?> GetOwn(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account != null)
-            return await Backend.GetByUserId(chatId, account.Id, false, cancellationToken).ConfigureAwait(false);
+            return await Backend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
 
         var kvas = ServerKvas.GetClient(session);
         var settings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
@@ -45,7 +61,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (authorId.IsNullOrEmpty())
             return null;
 
-        return await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -53,29 +69,17 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         Session session, string chatId, string authorId,
         CancellationToken cancellationToken)
     {
-        var author = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        var rules = await ChatsBackend.GetRules(chatId, author.Id, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = await GetOwn(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.EditRoles);
 
-        return await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Symbol> GetPrincipalId(
-        Session session, string chatId,
-        CancellationToken cancellationToken)
-    {
-        var author = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author != null)
-            return author.Id;
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
-        return account?.Id.Value ?? "";
+        return await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return ImmutableArray<Symbol>.Empty;
 
@@ -89,7 +93,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return ImmutableArray<Symbol>.Empty;
 
@@ -99,7 +103,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account != null)
             return await Backend.ListUserChatIds(account.Id, cancellationToken).ConfigureAwait(false);
 
@@ -113,23 +117,6 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> GetAuthor(
-        Session session,
-        string chatId,
-        string authorId,
-        bool inherit,
-        CancellationToken cancellationToken)
-    {
-        // Check that user has access to chat
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
-
-        var author = await Backend.Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
-        return author;
-    }
-
-    // [ComputeMethod]
     public virtual async Task<Presence> GetAuthorPresence(
         Session session,
         string chatId,
@@ -140,7 +127,7 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (chat == null)
             return Presence.Unknown;
 
-        var author = await Backend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Presence.Offline;
         if (author.UserId.IsEmpty || author.IsAnonymous)
@@ -149,12 +136,13 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> CanAddToContacts(Session session, string chatPrincipalId, CancellationToken cancellationToken)
+    public virtual async Task<bool> CanAddToContacts(Session session, string chatId, string authorId, CancellationToken cancellationToken)
     {
-        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (otherUserId.IsEmpty)
             return false;
-        var contact = await UserContactsBackend.Get(userId, otherUserId, cancellationToken).ConfigureAwait(false);
+
+        var contact = await ContactsBackend.Get(userId, otherUserId, cancellationToken).ConfigureAwait(false);
         return contact == null;
     }
 
@@ -164,11 +152,12 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatPrincipalId) = command;
-        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        var (session, chatId, chatPrincipalId) = command;
+        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (otherUserId.IsEmpty)
             return;
-        _ = await UserContactsBackend.GetOrCreate(userId, otherUserId, cancellationToken).ConfigureAwait(false);
+
+        _ = await ContactsBackend.GetOrCreate(userId, otherUserId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -181,20 +170,36 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         chatRules.Require(ChatPermissions.Invite);
 
         foreach (var userId in command.UserIds)
-            await Backend.GetOrCreate(command.ChatId, userId, true, cancellationToken).ConfigureAwait(false);
+            await Backend.GetOrCreate(command.ChatId, userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task SetAvatar(IChatAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, authorId, avatarId) = command;
+        var (userId, otherUserId) = await GetPeerChatUserIds(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (otherUserId.IsEmpty)
+            return;
+
+        var setAvatarCommand = new IChatAuthorsBackend.SetAvatarCommand(chatId, authorId, avatarId);
+        await Commander.Call(setAvatarCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
     private async Task<(Symbol UserId, Symbol OtherUserId)> GetPeerChatUserIds(
-        Session session, string chatPrincipalId,
+        Session session,
+        Symbol chatId,
+        ParsedChatPrincipalId chatPrincipalId,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return default;
 
-        var otherUserId = await Backend.GetUserId(chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        var otherUserId = await Backend.GetUserId(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (otherUserId.IsEmpty)
             return default;
 

@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 [DataContract]
 public sealed record UserAvatarSettings
 {
-    internal const string KvasKey = nameof(UserAvatarSettings);
+    public const string KvasKey = nameof(UserAvatarSettings);
 
     [DataMember] public ImmutableArray<Symbol> AvatarIds { get; init; } = ImmutableArray<Symbol>.Empty;
     [DataMember] public Symbol DefaultAvatarId { get; init; }

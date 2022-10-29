@@ -189,7 +189,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
         await CreateChatEntries(chats, session, ChatId, 3);
         var author = await services.GetRequiredService<IChatAuthors>()
-            .Get(session, ChatId, CancellationToken.None)
+            .GetOwn(session, ChatId, CancellationToken.None)
             .Require();
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
         var reader = chats.NewEntryReader(session, ChatId, ChatEntryType.Text);
