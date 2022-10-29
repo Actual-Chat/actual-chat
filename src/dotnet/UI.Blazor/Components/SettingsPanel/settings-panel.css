@@ -96,10 +96,10 @@
     @apply justify-start;
 }
 .tile-item-body {
-    @apply flex-y max-w-full max-h-12;
+    @apply grid max-w-full max-h-12;
 }
 .tile-item-body-content {
-    @apply overflow-y-hidden leading-5 min-h-5 max-h-5 text-sm text-02;
+    @apply w-full min-h-5 max-h-5 overflow-hidden leading-5 truncate text-sm text-02;
 }
 .tile-item-body-caption {
     @apply text-xs font-normal text-03;

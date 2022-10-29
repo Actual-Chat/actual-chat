@@ -44,7 +44,7 @@
             }
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
-                    <div class="header chat-message-header ml-1">
+                    <div class="grid header chat-message-header ml-1">
                         <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
