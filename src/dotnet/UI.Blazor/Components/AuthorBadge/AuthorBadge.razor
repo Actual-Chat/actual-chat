@@ -3,8 +3,8 @@
 
 <div class="author-badge" onclick="@Click">
     <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="ml-2 flex-y">
-        <div class="author-badge-name">
+    <div class="flex-y ml-2">
+        <div class="author-badge-name grid">
             <AuthorName Author="@Author" Size="@Size" Class="@TextClass"/>
         </div>
         @if (ShowsStatusText && !_statusText.IsNullOrEmpty()) {
