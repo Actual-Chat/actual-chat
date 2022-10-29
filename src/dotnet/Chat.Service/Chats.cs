@@ -95,8 +95,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string chatId,
         CancellationToken cancellationToken)
     {
-        var chatPrincipalId = await GetOwnChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -395,7 +395,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     // Private methods
 
-    public virtual async Task<Symbol> GetOwnChatPrincipalId(
+    public virtual async Task<Symbol> GetOwnPrincipalId(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {

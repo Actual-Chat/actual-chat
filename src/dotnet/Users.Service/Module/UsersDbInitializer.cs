@@ -50,7 +50,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             });
             dbContext.Avatars.Add(new DbAvatar() {
                 Id = avatarId,
-                ChatPrincipalId = UserConstants.Admin.UserId,
+                PrincipalId = UserConstants.Admin.UserId,
                 Name = UserConstants.Admin.Name,
                 Picture = UserConstants.Admin.Picture,
             });

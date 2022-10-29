@@ -73,7 +73,7 @@
 
         var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
             Create = new AvatarFull() {
-                ChatPrincipalId = Account.Id,
+                PrincipalId = Account.Id,
             }.WithMissingPropertiesFrom(Account.Avatar),
         });
         var (avatar, error) = await UICommander.Run(command);

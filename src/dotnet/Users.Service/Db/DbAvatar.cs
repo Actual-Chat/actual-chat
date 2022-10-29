@@ -16,7 +16,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string ChatPrincipalId { get; set; } = null!;
+    public string PrincipalId { get; set; } = null!;
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public string Bio { get; set; } = "";
@@ -28,7 +28,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new() {
             Id = Id,
             Version = Version,
-            ChatPrincipalId = ChatPrincipalId,
+            PrincipalId = PrincipalId,
             Name = Name,
             Picture = Picture,
             Bio = Bio,
@@ -39,12 +39,12 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (Id.IsNullOrEmpty())
             Id = model.Id;
         else if (model.Id != Id)
-            throw StandardError.Constraint("Can't change Avatar Id.");
+            throw StandardError.Constraint("Can't change Avatar.Id.");
 
-        if (ChatPrincipalId.IsNullOrEmpty())
-            ChatPrincipalId = model.ChatPrincipalId;
-        else if (ChatPrincipalId != model.ChatPrincipalId)
-            throw StandardError.Constraint("Can't change Avatar ChatPrincipalId.");
+        if (PrincipalId.IsNullOrEmpty())
+            PrincipalId = model.PrincipalId;
+        else if (PrincipalId != model.PrincipalId)
+            throw StandardError.Constraint("Can't change Avatar.PrincipalId.");
 
         Version = model.Version;
         Name = model.Name;
@@ -57,7 +57,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         public void Configure(EntityTypeBuilder<DbAvatar> builder)
         {
             builder.Property(a => a.Id).IsRequired();
-            builder.Property(a => a.ChatPrincipalId).IsRequired();
+            builder.Property(a => a.PrincipalId).IsRequired();
             builder.Property(a => a.Name).IsRequired();
         }
     }

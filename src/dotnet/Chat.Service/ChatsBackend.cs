@@ -56,19 +56,19 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         string chatId,
-        string chatPrincipalId,
+        string principalId,
         CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
-        var parsedChatPrincipalId = new ParsedPrincipalId(chatPrincipalId);
-        if (!parsedChatId.IsValid || !parsedChatPrincipalId.IsValidOrEmpty)
+        var parsedPrincipalId = new ParsedPrincipalId(principalId);
+        if (!parsedChatId.IsValid || !parsedPrincipalId.IsValidOrEmpty)
             return AuthorRules.None(chatId);
-        var (parsedAuthorId, parsedUserId) = parsedChatPrincipalId;
+        var (parsedAuthorId, parsedUserId) = parsedPrincipalId;
 
         // Peer chat: we don't use actual roles to determine rules here
         var chatType = parsedChatId.Kind.ToChatType();
         if (chatType is ChatType.Peer)
-            return await GetPeerChatRules(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+            return await GetPeerChatRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
         // Group chat
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -76,7 +76,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return AuthorRules.None(chatId);
 
         AuthorFull? author = null;
-        if (parsedChatPrincipalId.Kind == PrincipalKind.Author) {
+        if (parsedPrincipalId.Kind == PrincipalKind.Author) {
             author = await AuthorsBackend.Get(chatId, parsedAuthorId, cancellationToken).ConfigureAwait(false);
             parsedUserId = author?.UserId ?? Symbol.Empty;
         } // Otherwise parsedUserId is either valid or empty
@@ -608,19 +608,19 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryType), cancellationToken);
 
     private async Task<AuthorRules> GetPeerChatRules(
-        string chatId, string chatPrincipalId,
+        string chatId, string principalId,
         CancellationToken cancellationToken)
     {
         var parsedChatId = new ParsedChatId(chatId);
-        var parsedChatPrincipalId = new ParsedPrincipalId(chatPrincipalId);
-        if (parsedChatId.Kind != ChatIdKind.PeerFull || !parsedChatPrincipalId.IsValid)
+        var parsedPrincipalId = new ParsedPrincipalId(principalId);
+        if (parsedChatId.Kind != ChatIdKind.PeerFull || !parsedPrincipalId.IsValid)
             return AuthorRules.None(chatId);
 
         var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-        var userId = parsedChatPrincipalId.UserId.Id;
+        var userId = parsedPrincipalId.UserId.Id;
         var author = (AuthorFull)null!;
         if (userId.IsEmpty) {
-            var authorId = parsedChatPrincipalId.AuthorId.Id;
+            var authorId = parsedPrincipalId.AuthorId.Id;
             if (!authorId.IsEmpty)
                 author = await AuthorsBackend
                     .Get(chatId, authorId, cancellationToken)
@@ -629,7 +629,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
 
         var otherUserId = (userId1, userId2).OtherThan(userId);
-        if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be chatPrincipalId
+        if (userId.IsEmpty || otherUserId.IsEmpty) // One of these users should be principalId
             return AuthorRules.None(chatId);
 
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);

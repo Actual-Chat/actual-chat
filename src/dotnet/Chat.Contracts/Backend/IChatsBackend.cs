@@ -13,7 +13,7 @@ public partial interface IChatsBackend : IComputeService
     [ComputeMethod]
     Task<AuthorRules> GetRules(
         string chatId,
-        string chatPrincipalId,
+        string principalId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

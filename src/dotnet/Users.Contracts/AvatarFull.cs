@@ -13,7 +13,7 @@ public sealed record AvatarFull : Avatar
     public static new AvatarFull None { get; } = new();
     public static new AvatarFull Loading { get; } = new(); // Should differ by ref. from None
 
-    [DataMember] public Symbol ChatPrincipalId { get; init; }
+    [DataMember] public Symbol PrincipalId { get; init; }
 
     // Helpers
 

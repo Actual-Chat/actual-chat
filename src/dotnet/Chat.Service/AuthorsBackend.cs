@@ -236,10 +236,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         if (newAvatar != null) {
             // We're creating an author for unregistered user here,
-            // and its newAvatar.ChatPrincipalId is empty here,
+            // and its newAvatar.PrincipalId is empty here,
             // so we need to set it to the right one as a follow-up.
             newAvatar = newAvatar with {
-                ChatPrincipalId = author.Id,
+                PrincipalId = author.Id,
             };
             new IAvatarsBackend.ChangeCommand(newAvatar.Id, newAvatar.Version, new Change<AvatarFull>() {
                 Update = newAvatar,
