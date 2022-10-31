@@ -334,18 +334,20 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private async ValueTask<AuthorFull> AddAvatar(AuthorFull author, CancellationToken cancellationToken)
     {
-        if (author.AvatarId.IsEmpty) {
-            var account = await AccountsBackend.Get(author.UserId, cancellationToken).Require().ConfigureAwait(false);
-            author = author with {
-                Avatar = account.Avatar,
-            };
+        if (!author.AvatarId.IsEmpty) {
+            var avatar = await AvatarsBackend.Get(author.AvatarId, cancellationToken).ConfigureAwait(false);
+            if (avatar != null) {
+                author = author with {
+                    Avatar = avatar,
+                };
+                return author;
+            }
         }
-        else {
-            var avatar = await AvatarsBackend.Get(author.AvatarId, cancellationToken).Require().ConfigureAwait(false);
-            author = author with {
-                Avatar = avatar,
-            };
-        }
+
+        var account = await AccountsBackend.Get(author.UserId, cancellationToken).Require().ConfigureAwait(false);
+        author = author with {
+            Avatar = account.Avatar,
+        };
         return author;
     }
 }
