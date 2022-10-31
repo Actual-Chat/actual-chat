@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ActualChat.Users.Db;
 
-// TODO(AY): Rename this table to UserPresences on migration to MySql
 [Table("UserPresences")]
 public class DbUserPresence : IRequirementTarget
 {

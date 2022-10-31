@@ -10,15 +10,15 @@ namespace ActualChat.Users.Db;
 [Index(nameof(OwnerUserId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    public DbContact() { }
-    public DbContact(Contact contact)
-        => UpdateFrom(contact);
-
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
     public string OwnerUserId { get; set; } = "";
     public string? TargetUserId { get; set; }
+
+    public DbContact() { }
+    public DbContact(Contact contact)
+        => UpdateFrom(contact);
 
     public static string ComposeId(string ownerUserId, string contactUserId)
         => $"{ownerUserId}:{contactUserId}";

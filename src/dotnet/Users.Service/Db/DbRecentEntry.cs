@@ -8,11 +8,13 @@ namespace ActualChat.Users.Db;
 public class DbRecentEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _updatedAt;
+
     [Key] public string Id { get; set; } = null!;
     public string ShardKey { get; set; } = null!;
     public string Key { get; set; } = null!;
     public string Scope { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
+
     public DateTime UpdatedAt {
         get => _updatedAt.DefaultKind(DateTimeKind.Utc);
         set => _updatedAt = value.DefaultKind(DateTimeKind.Utc);
