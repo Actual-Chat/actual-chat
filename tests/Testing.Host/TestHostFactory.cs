@@ -81,8 +81,8 @@ public static class TestHostFactory
             logging.AddFilter("Stl.CommandR", LogLevel.Information);
             logging.AddFilter("Stl.Fusion", LogLevel.Information);
             logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
-            logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
-            logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);
+            // logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
+            // logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
             logging.AddDebug();
             // XUnit logging requires weird setup b/c otherwise it filters out
