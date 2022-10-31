@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Authentication;
 using Xamarin.Android.Net;
 
@@ -8,11 +9,13 @@ public partial class NativeHttpClientFactory
     private partial HttpMessageHandler? CreatePlatformMessageHandler()
         => new AndroidMessageHandler {
             SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+            AutomaticDecompression = DecompressionMethods.All,
             UseCookies = true,
             MaxConnectionsPerServer = 200,
         };
 
 
+    // this code can be used for debugging purposes
     // private class NativeMessageHandler : AndroidMessageHandler
     // {
     //     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
