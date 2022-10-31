@@ -125,9 +125,12 @@ public static class MauiProgram
     private static void ConfigureServices(IServiceCollection services)
     {
         // HttpClient
+#if !WINDOWS
         services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton<IHttpClientFactory, NativeHttpClientFactory>();
-
+        services.AddSingleton<NativeHttpClientFactory>();
+        services.TryAddSingleton<IHttpClientFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
+        services.TryAddSingleton<IHttpMessageHandlerFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
+#endif
         AppConfigurator.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
