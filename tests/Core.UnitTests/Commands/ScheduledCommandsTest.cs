@@ -9,7 +9,7 @@ public class ScheduledCommandsTest: TestBase
     public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
     { }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task EnqueueEventOnCommandCompletion()
     {
         await using var services = new ServiceCollection()
