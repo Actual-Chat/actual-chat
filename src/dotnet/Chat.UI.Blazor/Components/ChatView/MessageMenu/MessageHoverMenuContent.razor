@@ -19,7 +19,7 @@
         </ButtonRound>
     }
     <ButtonRound Class="more-btn"
-                 data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key).ToString())"
+                 data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
                  data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                  data-menu-position="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
