@@ -44,7 +44,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var userId = sessionInfo.UserId;
 
         if (Computed.IsInvalidating()) {
-            InvalidateUserPresenceIfOffline(userId);
+            InvalidatePresenceIfOffline(userId);
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
             return;
@@ -64,7 +64,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             dbUser.Name = newName;
         }
 
-        await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
+        await UpdatePresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -132,20 +132,20 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             return;
 
         if (Computed.IsInvalidating()) {
-            InvalidateUserPresenceIfOffline(userId);
+            InvalidatePresenceIfOffline(userId);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        await UpdateUserPresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
+        await UpdatePresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task UpdateUserPresence(
+    private async Task UpdatePresence(
         UsersDbContext dbContext,
         string userId,
         CancellationToken cancellationToken)
@@ -161,7 +161,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;
     }
 
-    private void InvalidateUserPresenceIfOffline(string userId)
+    private void InvalidatePresenceIfOffline(string userId)
     {
         var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
         if (c == null || c.IsInvalidated())
