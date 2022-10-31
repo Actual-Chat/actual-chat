@@ -7,21 +7,22 @@ public class ChatUnreadMessages : IDisposable
 {
     public const int MaxCount = 1000;
 
-    private Session Session { get; }
-    private IChats Chats { get; }
-    private Symbol ChatId { get; }
-    private ChatUI ChatUI { get; }
-    private IMentions Mentions { get; }
     private readonly AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
     private SyncedStateLease<long?>? _lastReadEntryState;
 
-    public ChatUnreadMessages(Session session, Symbol chatId, ChatUI chatUI, IChats chats, IMentions mentions)
+    private Session Session { get; }
+    private Symbol ChatId { get; }
+    private IChats Chats { get; }
+    private IMentions Mentions { get; }
+    private ChatUI ChatUI { get; }
+
+    public ChatUnreadMessages(Session session, Symbol chatId, IChats chats, IMentions mentions, ChatUI chatUI)
     {
         Session = session;
-        Chats = chats;
         ChatId = chatId;
-        ChatUI = chatUI;
+        Chats = chats;
         Mentions = mentions;
+        ChatUI = chatUI;
     }
 
     public void Dispose()

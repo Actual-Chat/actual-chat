@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using ActualChat.Commands;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -10,25 +11,23 @@ namespace ActualChat.Notification;
 
 public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
+    private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
+    private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
     private UrlMapper UrlMapper { get; }
 
-    public NotificationsBackend(
-        IServiceProvider services,
-        IAuthorsBackend authorsBackend,
-        FirebaseMessagingClient firebaseMessagingClient,
-        IChatsBackend chatsBackend,
-        IDbEntityResolver<string, DbNotification> dbNotificationResolver,
-        UrlMapper urlMapper) : base(services)
+    public NotificationsBackend(IServiceProvider services) : base(services)
     {
-        AuthorsBackend = authorsBackend;
-        FirebaseMessagingClient = firebaseMessagingClient;
-        ChatsBackend = chatsBackend;
-        DbNotificationResolver = dbNotificationResolver;
-        UrlMapper = urlMapper;
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
+        DbNotificationResolver = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
+        FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
     }
 
     // [ComputeMethod]
@@ -51,20 +50,19 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var mutedUserIdsTask = dbContext.MutedChatSubscriptions
-            .Where(cs => cs.ChatId == chatId)
-            .Select(cs => cs.UserId)
-            .ToListAsync(cancellationToken);
-        var userIdsTask = AuthorsBackend
-            .ListUserIds(chatId, cancellationToken);
-        await Task.WhenAll(mutedUserIdsTask, userIdsTask).ConfigureAwait(false);
+        var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        var notificationModes = await userIds
+            .Select(async userId => {
+                var kvas = ServerKvasBackend.GetUserClient(userId);
+                var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+                return (UserId: userId, userChatSettings.NotificationMode);
+            })
+            .Collect()
+            .ConfigureAwait(false);
 
-        var mutedUserIds = (await mutedUserIdsTask.ConfigureAwait(false))
-            .Select(userId => (Symbol)userId)
-            .ToHashSet();
-        var userIds = await userIdsTask.ConfigureAwait(false);
-        var subscriberIds = userIds
-            .Where(userId => !mutedUserIds.Contains(userId))
+        var subscriberIds = notificationModes
+            .Where(kv => kv.NotificationMode != ChatNotificationMode.Muted)
+            .Select(kv => kv.UserId)
             .ToImmutableArray();
         return subscriberIds;
     }

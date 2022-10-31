@@ -164,7 +164,7 @@
             var linkedChatEntry = ChatUI.LinkedChatEntry.Value;
             var chatEntry = linkedChatEntry?.Entry;
             ChatUI.LinkedChatEntry.Value = null;
-            UICommander.CancelUpdateDelays();
+            _ = UICommander.RunNothing();
 
             long entryId;
             if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
@@ -192,7 +192,7 @@
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
         ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
-        UICommander.CancelUpdateDelays();
+        _ = UICommander.RunNothing();
         await MarkupEditorRef.SetText(chatEntry.Content, true);
     }
 
@@ -248,7 +248,7 @@
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
         ChatUI.LinkedChatEntry.Value = null;
-        UICommander.CancelUpdateDelays();
+        _ = UICommander.RunNothing();
         await MarkupEditorRef.Clear(true);
     }
 

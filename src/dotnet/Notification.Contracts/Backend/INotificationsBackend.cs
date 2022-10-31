@@ -15,7 +15,7 @@ public interface INotificationsBackend : IComputeService
     Task<NotificationEntry> GetNotification(string userId, string notificationId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task NotifyUser(INotificationsBackend.NotifyUserCommand command, CancellationToken cancellationToken);
+    Task NotifyUser(NotifyUserCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);

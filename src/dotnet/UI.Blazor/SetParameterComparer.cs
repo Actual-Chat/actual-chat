@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor;
 
-public class CollectionParameterComparer : ParameterComparer
+public class SetParameterComparer : ParameterComparer
 {
     public override bool AreEqual(object? oldValue, object? newValue)
     {

@@ -21,11 +21,11 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private INotifications Notifications { get; init; } = null!;
     [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(CollectionParameterComparer))]
-    public List<Symbol> Chats { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(SetParameterComparer))]
+    public List<Symbol> ChatIds { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
     public override Task SetParametersAsync(ParameterView parameters)
@@ -41,15 +41,21 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (Chats.Count == 0)
+        if (ChatIds.Count == 0)
             return Model.None;
 
-        var count = await UnreadMessages.GetCount(Chats, cancellationToken);
-        var isSubscribed = (await Chats.Select(x => Notifications.IsSubscribed(Session, x, cancellationToken)).Collect()).Any();
+        var count = await UnreadMessages.GetCount(ChatIds, cancellationToken);
+        var notificationModes = await ChatIds
+            .Select(async chatId => {
+                var chatNotificationMode = await AccountSettings
+                    .GetChatNotificationMode(chatId, cancellationToken)
+                    .ConfigureAwait(false);
+                return (ChatId: chatId, NotificationMode: chatNotificationMode);
+            }).Collect();
 
         return new() {
             Count = count,
-            IsSubscribed = isSubscribed,
+            IsSubscribed = notificationModes.Any(kv => kv.NotificationMode != ChatNotificationMode.Muted),
         };
     }
 

@@ -76,8 +76,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Setting default avatar for admin
             var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
-            var adminKvasPrefix = serverKvasBackend.GetUserPrefix(adminUser.Id);
-            var adminKvas = serverKvasBackend.GetClient(adminKvasPrefix);
+            var adminKvas = serverKvasBackend.GetUserClient(adminUser);
             var adminAvatarSettings = new UserAvatarSettings() {
                 DefaultAvatarId = avatarId,
                 AvatarIds = ImmutableArray.Create((Symbol)avatarId),

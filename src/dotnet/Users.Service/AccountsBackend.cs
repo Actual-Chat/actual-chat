@@ -41,7 +41,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         account = dbAccount.ToModel(account);
 
         // Adding Avatar
-        var kvas = ServerKvasBackend.GetClient(ServerKvasBackend.GetUserPrefix(account.Id));
+        var kvas = ServerKvasBackend.GetUserClient(account);
         var userAvatarSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
         var avatarId = userAvatarSettings.DefaultAvatarId;
         if (avatarId.IsEmpty) // Default avatar isn't selected - let's pick the first one

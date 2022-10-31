@@ -128,7 +128,7 @@
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
-            UICommander.CancelUpdateDelays();
+            _ = UICommander.RunNothing();
         }
 
         account ??= await accountTask;

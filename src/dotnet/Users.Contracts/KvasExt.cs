@@ -6,6 +6,12 @@ public static class KvasExt
 {
     // UserChatSettings
 
+    public static async ValueTask<ChatNotificationMode> GetChatNotificationMode(this IKvas kvas, string chatId, CancellationToken cancellationToken)
+    {
+        var chatUserSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        return chatUserSettings.NotificationMode;
+    }
+
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, string chatId, CancellationToken cancellationToken)
     {
         var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
