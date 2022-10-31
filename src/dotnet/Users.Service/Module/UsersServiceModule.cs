@@ -126,7 +126,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
 
         // Module's own services
-        services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
         services.AddSingleton<IUsersTempBackend, UsersTempBackend>();
         fusion.AddComputeService<IAccounts, Accounts>();

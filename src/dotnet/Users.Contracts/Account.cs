@@ -5,8 +5,8 @@ public record Account(
     [property: DataMember] Symbol Id
 ) : IHasId<Symbol>, IRequirementTarget
 {
-    public static Account None { get; } = new(Symbol.Empty);
-    public static Account Loading { get; } = new(Symbol.Empty); // Should differ by ref. from None
+    public static Account None { get; } = new(Symbol.Empty) { Avatar = Avatar.None };
+    public static Account Loading { get; } = new(Symbol.Empty) { Avatar = Avatar.Loading }; // Should differ by ref. from None
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
         new(() => StandardError.Account.None()),

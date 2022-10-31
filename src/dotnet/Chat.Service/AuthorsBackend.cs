@@ -17,7 +17,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     private IAccountsBackend AccountsBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IRandomNameGenerator RandomNameGenerator { get; }
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
     private IServerKvas ServerKvas { get; }
@@ -27,7 +26,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     {
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
         DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
         AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
@@ -191,7 +189,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 Create = new AvatarFull() {
                     Id = Symbol.Empty,
                     Version = VersionGenerator.NextVersion(),
-                    Name = RandomNameGenerator.Generate(),
+                    Name = RandomNameGenerator.Default.Generate(),
                     Bio = "Unregistered user",
                     Picture = "", // NOTE(AY): Add a random one?
                 },
@@ -336,18 +334,26 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     {
         if (!author.AvatarId.IsEmpty) {
             var avatar = await AvatarsBackend.Get(author.AvatarId, cancellationToken).ConfigureAwait(false);
-            if (avatar != null) {
-                author = author with {
-                    Avatar = avatar,
-                };
-                return author;
-            }
+            if (avatar != null)
+                return WithAvatar(author, avatar);
+        }
+        if (!author.UserId.IsEmpty) {
+            var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (account != null)
+                return WithAvatar(author, account.Avatar);
         }
 
-        var account = await AccountsBackend.Get(author.UserId, cancellationToken).Require().ConfigureAwait(false);
-        author = author with {
-            Avatar = account.Avatar,
-        };
-        return author;
+        return WithAvatar(author, GetDefaultAvatar(author));
+
+        AuthorFull WithAvatar(AuthorFull a, Avatar avatar)
+            => a with { Avatar = avatar };
     }
+
+    private AvatarFull GetDefaultAvatar(AuthorFull author)
+        => new() {
+            Id = default,
+            Name = RandomNameGenerator.Default.Generate(author.Id),
+            Picture = DefaultUserPicture.GetAvataaar(author.Id),
+            Bio = "",
+        };
 }

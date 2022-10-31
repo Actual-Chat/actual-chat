@@ -108,7 +108,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
             Id = default,
             PrincipalId = account.Id,
             Name = account.User.Name,
-            Picture = DefaultPicture.Get(account),
+            Picture = DefaultUserPicture.Get(account.User),
             Bio = "",
         };
 }
