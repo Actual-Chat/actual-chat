@@ -7,9 +7,6 @@ using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
-/// <summary>
-/// User avatar. <br />
-/// </summary>
 [Table("UserAvatars")]
 public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
@@ -58,9 +55,6 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAvatar>
     {
         public void Configure(EntityTypeBuilder<DbAvatar> builder)
-        {
-            builder.Property(a => a.Id).IsRequired();
-            builder.Property(a => a.Name).IsRequired();
-        }
+            => builder.Property(a => a.Id).IsRequired();
     }
 }
