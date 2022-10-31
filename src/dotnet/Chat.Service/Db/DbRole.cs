@@ -12,8 +12,6 @@ namespace ActualChat.Chat.Db;
 public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
-    string IHasId<string>.Id => Id;
-
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 

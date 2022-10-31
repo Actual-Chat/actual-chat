@@ -14,12 +14,11 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbContact(Contact contact)
         => UpdateFrom(contact);
 
-    string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string OwnerUserId { get; set; } = null!;
-    public string TargetUserId { get; set; } = null!;
+    public string OwnerUserId { get; set; } = "";
+    public string? TargetUserId { get; set; }
 
     public static string ComposeId(string ownerUserId, string contactUserId)
         => $"{ownerUserId}:{contactUserId}";
@@ -28,7 +27,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new() {
             Id = Id,
             OwnerUserId = OwnerUserId,
-            TargetUserId = TargetUserId,
+            TargetUserId = TargetUserId ?? Symbol.Empty,
             Version = Version,
         };
 
@@ -36,7 +35,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerUserId, model.TargetUserId);
         OwnerUserId = model.OwnerUserId;
-        TargetUserId = model.TargetUserId;
+        TargetUserId = model.TargetUserId.NullIfEmpty()?.Value;
         Version = model.Version;
     }
 
@@ -46,7 +45,6 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.OwnerUserId).IsRequired();
-            builder.Property(a => a.TargetUserId).IsRequired();
         }
     }
 }

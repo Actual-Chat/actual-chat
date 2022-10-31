@@ -12,7 +12,6 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
-    string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
