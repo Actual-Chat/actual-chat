@@ -42,7 +42,7 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         if (contact == null)
             return null;
 
-        var account = await AccountsBackend.Get(contact.Id, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(contact.TargetUserId, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
