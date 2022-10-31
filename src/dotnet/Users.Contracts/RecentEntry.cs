@@ -13,6 +13,6 @@ public sealed record RecentEntry(
 
 public enum RecencyScope
 {
-    UserContact,
-    ChatContact,
+    Contact,
+    Chat,
 }

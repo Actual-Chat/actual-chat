@@ -12,7 +12,7 @@ public class AppServerAuthHelper : ServerAuthHelper
     public AppServerAuthHelper(Options settings, IServiceProvider services)
         : base(settings, services)
     {
-        ClaimMapper = Services.GetRequiredService<ClaimMapper>();
+        ClaimMapper = services.GetRequiredService<ClaimMapper>();
         _closeWindowAppRequestPath = Settings.CloseWindowRequestPath + "-app";
     }
 

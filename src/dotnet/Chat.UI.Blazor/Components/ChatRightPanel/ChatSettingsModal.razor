@@ -129,10 +129,10 @@
             IsPublic = _form.IsPublic,
             Picture = _form.Picture,
         };
-        var cmd = new IChats.ChangeChatCommand(Session, chat.Id, chat.Version, new() {
+        var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await UICommander.Run(cmd);
+        await UICommander.Run(command);
         await ModalInstance.CloseAsync();
     }
 
@@ -175,7 +175,7 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public ChatAuthorRules? Rules { get; init; }
+        public AuthorRules? Rules { get; init; }
         public LinkInfo? PublicUrl { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }

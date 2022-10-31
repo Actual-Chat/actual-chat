@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatOwners")]
-public class DbChatOwner
+public class DbChatOwner : IRequirementTarget
 {
     [Column("ChatId")]
     public string DbChatId { get; set; } = "";

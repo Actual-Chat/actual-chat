@@ -1,0 +1,88 @@
+@using System.ComponentModel.DataAnnotations
+@using Stl.Fusion.Authentication.Commands
+@implements IModalView<OwnAccountEditorModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame Title="Edit account" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
+        <Body>
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+
+        <OwnAvatar
+            AvatarId="@ModalModel.AvatarId"
+            ChatId="@ModalModel.ChatId"
+            Size="SquareSize.Size30"
+            Class="edit-account-avatar"/>
+
+        <FormSection InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+            <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
+        </FormSection>
+
+        <FormSection InputId="@_form.PhoneFieldId" Label="Phone" IsRequired="false" IsLabelInsideInput="true">
+            <TextBox @bind-Value="@_form.Phone" Id="@_form.PhoneFieldId" Autofocus="true"/>
+        </FormSection>
+
+        </Body>
+        <Buttons>
+            <FormButtons>
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+            </FormButtons>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        var account = await Accounts.GetOwn(Session, default);
+        _form.Name = account?.User.Name ?? "";
+        _form.CopyToBase();
+    }
+
+    private async void OnSave() {
+        var command = new EditUserCommand(Session, _form.Name);
+        var (_, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        _form.CopyToBase();
+        CloseModal();
+    }
+
+    private void OnCancel()
+        => CloseModal();
+
+    private void CloseModal()
+        => _ = ModalInstance.CloseAsync();
+
+    public sealed class FormModel : FormModel<FormModel> {
+
+        [Required, MinLength(4)]
+        public string Name { get; set; } = "";
+        public string NameFieldId { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string PhoneFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("own-account-editor", componentIdGenerator)
+        { }
+    }
+
+    public sealed record Model(Symbol AvatarId, Symbol ChatId);
+}

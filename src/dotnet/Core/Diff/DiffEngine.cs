@@ -30,7 +30,7 @@ public class DiffEngine : IHasServices
     public DiffEngine(IServiceProvider services, IMatchingTypeFinder? diffHandlerFinder = null)
     {
         Services = services;
-        DiffHandlerFinder = diffHandlerFinder ?? Services.GetService<IMatchingTypeFinder>() ?? new MatchingTypeFinder();
+        DiffHandlerFinder = diffHandlerFinder ?? services.GetService<IMatchingTypeFinder>() ?? new MatchingTypeFinder();
     }
 
     // GetHandler

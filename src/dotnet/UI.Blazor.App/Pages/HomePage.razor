@@ -7,12 +7,14 @@
 @{
     var m = State.LatestNonErrorValue;
     var account = m.Account;
-    if (account == null)
-        return; // Not yet computed
-    if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
-        <Welcome/>
+    if (!AccountFull.MustExist.IsSatisfied(account)) {
+        if (ReferenceEquals(account, AccountFull.None)) {
+            // Loaded, but user doesn't have an account
+            <Welcome/>
+        }
+        return; // Not yet loaded
     }
-    else if (!m.Link.IsNullOrEmpty() && !_navigated) {
+    if (!m.Link.IsNullOrEmpty() && !_navigated) {
         _navigated = true; // prevents multiple calls
         // Do automatic redirect on first load.
         Nav.NavigateTo(m.Link, false, true);
@@ -23,7 +25,7 @@
     private bool _navigated;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
@@ -34,12 +36,12 @@
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() { InitialValue = new Model(null, Symbol.Empty) };
+        return new() { InitialValue = Model.Loading };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        string link = "";
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
+        var link = "";
         if (HistoryUI.IsInitialLocation) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
                 link = Links.ChatPage("");
@@ -55,10 +57,12 @@
     protected override void OnAfterRender(bool firstRender) {
         var m = State.LatestNonErrorValue;
         var account = m.Account;
-        if (ReferenceEquals(account, Account.Guest))
-            // mark as ready to display Welcome screen
-            AppIsReadyMarker.Set();
+        if (!ReferenceEquals(account, AccountFull.Loading))
+            LoadingUI.MarkLoaded();
     }
 
-    public record Model(Account? Account, string Link);
+    public record Model(AccountFull Account, string Link) {
+        public static Model None { get; } = new(AccountFull.None, "");
+        public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
+    }
 }

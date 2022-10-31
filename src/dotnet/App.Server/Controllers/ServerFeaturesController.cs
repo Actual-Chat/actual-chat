@@ -15,7 +15,7 @@ public class ServerFeaturesController : ControllerBase, IServerFeatures
     public ServerFeaturesController(IServiceProvider services)
     {
         Services = services;
-        Service = Services.GetRequiredService<IServerFeatures>();
+        Service = services.GetRequiredService<IServerFeatures>();
     }
 
     [HttpGet]

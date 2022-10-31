@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ActualChat.Users.Account?>
+@inherits ComputedStateComponent<ActualChat.Users.AccountFull?>
 @{
     var account = State.LatestNonErrorValue;
     if (account != null) {
@@ -18,11 +18,11 @@
     [Inject] IAccounts Accounts { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    protected override ComputedState<Account?>.Options GetStateOptions()
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
-        => Accounts.Get(Session, cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 
 
     private void OnSettingsClick()

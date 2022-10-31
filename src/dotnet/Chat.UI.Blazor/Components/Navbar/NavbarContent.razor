@@ -13,7 +13,7 @@
     <ContactListNavbarWidget />
 }
 
-@if (m.Account.IsAdmin) {
+@if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/admin/user-invites">Invite Users</NavbarItem>
     </NavbarGroup>
@@ -30,7 +30,7 @@
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
         <NavbarItem Url="/test/blazor">Blazor</NavbarItem>
         <NavbarItem Url="/test/js">JavaScript</NavbarItem>
-        @if (HostInfo.HostKind == HostKind.Maui) {
+        @if (HostInfo.AppKind == AppKind.Maui) {
             <NavbarItem Url="/test/maui">Maui</NavbarItem>
         }
         <NavbarItem Url="/test/system">System</NavbarItem>

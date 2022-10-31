@@ -45,8 +45,8 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbChat = AddChat(dbContext, yesterday, _user.Id);
             chatId = dbChat.Id;
-            var dbChatAuthor = AddChatAuthor(dbContext, dbChat.Id, _user.Id);
-            var authorId = dbChatAuthor.Id;
+            var dbAuthor = AddAuthor(dbContext, dbChat.Id, _user.Id);
+            var authorId = dbAuthor.Id;
             long entryId = 1;
             AddAudioEntry(dbContext, dbChat.Id, authorId, ref entryId, entry1BeginsAt, TimeSpan.FromSeconds(20));
             AddAudioEntry(dbContext, dbChat.Id, authorId, ref entryId, entry2BeginsAt, TimeSpan.FromSeconds(60));
@@ -67,18 +67,17 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         newMoment.Should().Be(yesterday.AddSeconds(5).ToMoment());
     }
 
-    private static DbChatAuthor AddChatAuthor(ChatDbContext dbContext,  string chatId, string userId)
+    private static DbAuthor AddAuthor(ChatDbContext dbContext,  string chatId, string userId)
     {
-        var dbAuthor = new DbChatAuthor {
-            Id = DbChatAuthor.ComposeId(chatId, 1),
+        var dbAuthor = new DbAuthor {
+            Id = DbAuthor.ComposeId(chatId, 1),
             ChatId = chatId,
             LocalId = 1,
             Version = 1,
-            Name = "User1",
             IsAnonymous = false,
             UserId = userId,
         };
-        dbContext.ChatAuthors.Add(dbAuthor);
+        dbContext.Authors.Add(dbAuthor);
         return dbAuthor;
     }
 

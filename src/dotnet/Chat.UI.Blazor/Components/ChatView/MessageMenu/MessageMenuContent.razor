@@ -51,7 +51,7 @@
 @code{
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
@@ -71,7 +71,7 @@
     {
         var chatEntry = ChatMessageModel.Entry;
         var chatId = chatEntry.ChatId;
-        var requestAuthor = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        var requestAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
         var сanReply = rules.CanWrite();
@@ -93,13 +93,11 @@
         await ClipboardUI.WriteText(url);
     }
 
-    private async Task OnCopyLinkClick() {
-        await ClipboardUI.WriteText(ClickedLinkUrl!);
-    }
+    private async Task OnCopyLinkClick()
+        => await ClipboardUI.WriteText(ClickedLinkUrl!);
 
-    private Task Edit(ChatEntry chatEntry) {
-        return UIEventHub.Publish(new EditChatMessageEvent(chatEntry));
-    }
+    private Task Edit(ChatEntry chatEntry)
+        => UIEventHub.Publish(new EditChatMessageEvent(chatEntry));
 
     public sealed record Model {
         public static readonly Model None = new();

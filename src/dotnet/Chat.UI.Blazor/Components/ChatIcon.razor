@@ -3,10 +3,10 @@
         <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="@Size"/>
         break;
     case ChatType.Peer:
-        <UserAuthorCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="@Size"/>
+        <AccountCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="@Size"/>
         break;
     default:
-        <AuthorCircle Author="Author.None" Size="@Size" />
+        <AvatarCircle Avatar="@Avatar.None" Size="@Size" />
         break;
 }
 
@@ -29,7 +29,7 @@
         if (Chat.ChatType != ChatType.Peer)
             return Symbol.Empty;
 
-        var account = await Accounts.Get(Session, CancellationToken.None);
+        var account = await Accounts.GetOwn(Session, CancellationToken.None);
         if (account is null)
             return Symbol.Empty;
 

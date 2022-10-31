@@ -10,7 +10,7 @@
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
-                <UnreadMessagesCounter Chats="chats" Click="@OnTabUnreadBadgeClick"/>
+                <UnreadMessagesCounter ChatIds="chats" Click="@OnTabUnreadBadgeClick"/>
             </TitleContent>
             <ChildContent>
                 <div class="h-full flex-y my-2">
@@ -41,7 +41,7 @@
 @code {
     private TabId _activeTabId;
 
-    [Inject] private AppIsReadyMarker AppIsReadyMarker { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -88,7 +88,7 @@
 
     protected override void OnAfterRender(bool firstRender) {
         if (State.LatestNonErrorValue != Model.None)
-            AppIsReadyMarker.Set();
+            LoadingUI.MarkLoaded();
     }
 
     private Task<ImmutableList<Chat>> ListChats(TabId tabId)

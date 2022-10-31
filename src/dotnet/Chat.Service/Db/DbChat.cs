@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Stl.Generators;
 using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
@@ -7,6 +8,8 @@ namespace ActualChat.Chat.Db;
 [Table("Chats")]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
     private DateTime _createdAt;
 
     public DbChat() { }

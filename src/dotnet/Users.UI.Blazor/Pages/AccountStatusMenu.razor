@@ -14,7 +14,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private async Task OnStatusSelected(AccountStatus newStatus) {
-        var account = await Accounts.Get(Session, default).Require();
+        var account = await Accounts.GetOwn(Session, default).Require();
         var updatedAccount = account with { Status = newStatus };
         await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
     }

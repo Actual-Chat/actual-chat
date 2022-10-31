@@ -7,7 +7,7 @@
 
     var message = model.Message;
     var entry = message.Entry;
-    var authorNameCls = Message.Entry.AuthorId == model.PrincipalId ? "text-06 " : "text-02 ";
+    var authorNameCls = Message.Entry.AuthorId == model.OwnAuthor?.Id ? "text-06 " : "text-02 ";
     authorNameCls += "font-bold text-base";
 }
 
@@ -15,7 +15,7 @@
     <div class="block bg-primary left-line min-h-10"></div>
     <div class="flex-y w-full px-2 opacity-90">
         <div class="grid pl-0.5">
-            <ChatAuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
+            <AuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
         </div>
         <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
             <div class="flex-x w-full overflow-hidden">
@@ -28,7 +28,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -52,15 +52,15 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
         var hasAttachments = chatEntry.Attachments.Length > 0;
-        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, CancellationToken.None);
+        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, cancellationToken);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var principalId = await ChatAuthor.GetPrincipalId(Session, chatEntry.ChatId, cancellationToken);
-        return new (Message, _quoteText, principalId);
+        var ownAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, cancellationToken);
+        return new (Message, _quoteText, ownAuthor);
     }
 
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(Message.Entry.AuthorId);
+    private void OnAuthorClick()
+        => ChatUI.ShowAuthorModal(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
@@ -69,6 +69,9 @@
         }
     }
 
-    public record Model(ChatMessageModel Message, string Quote, Symbol PrincipalId);
+    public record Model(
+        ChatMessageModel Message,
+        string Quote,
+        Author? OwnAuthor);
 
 }

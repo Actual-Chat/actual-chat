@@ -15,7 +15,7 @@
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        if (Arguments is {Length: 3}) {
+        if (Arguments is { Length: 3 }) {
             var chatId = Arguments[0];
             var entryId = long.Parse(Arguments[1]);
             _link = Arguments[2].NullIfEmpty();

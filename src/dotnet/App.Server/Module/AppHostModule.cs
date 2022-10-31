@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
+using ActualChat.Commands;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
@@ -132,12 +133,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
         services.AddSingleton(new PublisherOptions {
-            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, RandomStringGenerator.Base32Alphabet)}",
+            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, Alphabet.AlphaNumeric)}",
         });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication();
+        fusion.AddLocalCommandScheduler();
 
         // Web
         var dataProtection = Settings.DataProtection.NullIfEmpty()

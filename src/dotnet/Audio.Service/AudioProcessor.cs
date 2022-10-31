@@ -21,7 +21,6 @@ public sealed class AudioProcessor : IAudioProcessor
     private ILogger AudioSourceLog { get; }
     private bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private IChatUserSettings? ChatUserSettings { get; }
 
     private Options Settings { get; }
     private ITranscriber Transcriber { get; }
@@ -31,7 +30,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private TranscriptPostProcessor TranscriptPostProcessor { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
     private IChats Chats { get; }
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
     private IServerKvas ServerKvas { get; }
@@ -47,12 +46,11 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
         Chats = services.GetRequiredService<IChats>();
-        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
         AudioSourceLog = services.LogFor<AudioSource>();
-        ChatUserSettings = services.GetService<IChatUserSettings>();
         ServerKvas = services.GetRequiredService<IServerKvas>();
     }
 
@@ -71,10 +69,10 @@ public sealed class AudioProcessor : IAudioProcessor
             if (Constants.DebugMode.AudioRecordingStream)
                 recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
-            var language = await GetLanguageForTranscription(record, cancellationToken).ConfigureAwait(false);
+            var language = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
             var languages = ImmutableArray.Create(language);
 
-            var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
             var audio = new AudioSource(
                 Task.FromResult(AudioSource.DefaultFormat),
                 recordingStream,
@@ -142,18 +140,12 @@ public sealed class AudioProcessor : IAudioProcessor
 
     // Private methods
 
-    private async Task<LanguageId> GetLanguageForTranscription(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<LanguageId> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
-        var settings = ChatUserSettings != null!
-            ? await ChatUserSettings.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false)
-            : null;
-        var language = settings?.Language;
-        if (language != null)
-            return language.Value;
-
-        var kvas = new KvasClient(ServerKvas, record.Session);
-        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
-        return languageSettings.Primary;
+        var kvas = ServerKvas.GetClient(record.Session);
+        var userChatSettings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
+        var language = await userChatSettings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
+        return language;
     }
 
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, Task<ChatEntry> audioEntryTask, CancellationToken cancellationToken)

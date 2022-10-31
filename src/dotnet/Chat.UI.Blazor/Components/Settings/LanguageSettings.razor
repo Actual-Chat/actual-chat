@@ -45,7 +45,7 @@
         if (languages.Secondary == language)
             languages = languages with { Secondary = languages.Primary };
 
-        LanguageUI.Languages.Value = languages with { Primary = language };
+        LanguageUI.Settings.Value = languages with { Primary = language };
     }
 
     private void SetSecondary(LanguageId? language) {
@@ -53,11 +53,11 @@
         if (languages.Primary == language && languages.Secondary != null)
             languages = languages with { Primary = languages.Secondary.Value };
 
-        LanguageUI.Languages.Value = languages with { Secondary = language };
+        LanguageUI.Settings.Value = languages with { Secondary = language };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Languages.Use(cancellationToken);
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
         return new(languages);
     }
 

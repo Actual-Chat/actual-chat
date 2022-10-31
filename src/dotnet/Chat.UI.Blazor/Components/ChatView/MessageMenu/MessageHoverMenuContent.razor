@@ -51,7 +51,7 @@
 
     private async Task Reply(ChatEntry chatEntry) {
         ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
-        Services.UICommander().CancelUpdateDelays();
+        _ = Services.UICommander().RunNothing();
         await UIEventHub.Publish(new FocusChatMessageEditorEvent());
     }
 

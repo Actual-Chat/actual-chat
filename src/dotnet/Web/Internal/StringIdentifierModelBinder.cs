@@ -21,13 +21,11 @@ public class StringIdentifierModelBinder : IModelBinder
 
         try {
             if (_identifierFactory == null) {
-
                 var stringArg = Expression.Parameter(typeof(string), "str");
                 var ctor = bindingContext.ModelType.GetConstructor(new[] { typeof(string) });
                 _identifierFactory = Expression
                     .Lambda<Func<string,IIdentifier>>(Expression.New(ctor!, stringArg), stringArg)
                     .Compile();
-
             }
             var sValue = valueProviderResult.FirstValue ?? "";
             var result = _identifierFactory(sValue);

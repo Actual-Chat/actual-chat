@@ -76,7 +76,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
     private async Task UpdateStatus(AccountStatus newStatus)
     {
-        var account = await _accounts.Get(_tester.Session, default).Require();
+        var account = await _accounts.GetOwn(_tester.Session, default).Require();
         account = account with { Status = newStatus };
         await _accounts.GetCommander().Call(new IAccounts.UpdateCommand(_adminSession, account));
     }

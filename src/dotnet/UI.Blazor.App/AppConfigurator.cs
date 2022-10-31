@@ -39,7 +39,6 @@ namespace ActualChat.UI.Blazor.App
                 typeof(BlazorUICoreModule),
                 typeof(AudioClientModule),
                 typeof(AudioBlazorUIModule),
-                typeof(ChatModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
                 typeof(InviteClientModule),

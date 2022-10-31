@@ -11,7 +11,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
     protected DbInfo<TDbContext> DbInfo { get; }
 
     protected DbInitializer(IServiceProvider services) : base(services)
-        => DbInfo = Services.GetRequiredService<DbInfo<TDbContext>>();
+        => DbInfo = services.GetRequiredService<DbInfo<TDbContext>>();
 
     public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
 

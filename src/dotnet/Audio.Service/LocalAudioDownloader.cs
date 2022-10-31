@@ -10,7 +10,7 @@ public class LocalAudioDownloader : AudioDownloader
     private IBlobStorageProvider Blobs { get; init; }
 
     public LocalAudioDownloader(IServiceProvider services) : base(services)
-        => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
+        => Blobs = services.GetRequiredService<IBlobStorageProvider>();
 
     public override async Task<AudioSource> Download(
         string audioBlobUrl,

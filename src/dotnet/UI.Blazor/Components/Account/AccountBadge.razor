@@ -1,0 +1,13 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@inherits AccountBadgeBase
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<AvatarBadge Avatar="@m.Account.Avatar" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
+
+@code {
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public string TextClass { get; set; } = "";
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+}

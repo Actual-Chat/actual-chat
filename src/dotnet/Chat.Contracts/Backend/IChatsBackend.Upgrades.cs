@@ -3,9 +3,9 @@ namespace ActualChat.Chat;
 public partial interface IChatsBackend
 {
     [CommandHandler]
-    Task FixCorruptedChatReadPositions(FixCorruptedChatReadPositionsCommand command, CancellationToken cancellationToken);
+    Task FixCorruptedReadPositions(FixCorruptedReadPositionsCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record FixCorruptedChatReadPositionsCommand(
+    public sealed record FixCorruptedReadPositionsCommand(
     ) : ICommand<Unit>, IBackendCommand;
 }

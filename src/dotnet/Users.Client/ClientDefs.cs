@@ -6,12 +6,12 @@ namespace ActualChat.Users.Client;
 [BasePath("accounts")]
 public interface IAccountsClientDef
 {
+    [Get(nameof(GetOwn))]
+    Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken);
     [Get(nameof(Get))]
-    Task<Account?> Get(Session session, CancellationToken cancellationToken);
-    [Get(nameof(GetByUserId))]
-    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
-    [Get(nameof(GetUserAuthor))]
-    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken);
+    [Get(nameof(GetFull))]
+    Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
     Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
 }
@@ -23,22 +23,20 @@ public interface IUserPresencesClientDef
     Task<Presence> Get(string userId, CancellationToken cancellationToken);
 }
 
-[BasePath("userAvatars")]
-public interface IUserAvatarsClientDef
+[BasePath("avatars")]
+public interface IAvatarsClientDef
 {
+    [Get(nameof(GetOwn))]
+    Task<AvatarFull?> GetOwn(Session session, string avatarId, CancellationToken cancellationToken);
     [Get(nameof(Get))]
-    Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
-    [Get(nameof(GetDefaultAvatarId))]
-    Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
-    [Get(nameof(ListAvatarIds))]
-    Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken);
+    Task<Avatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
+    [Get(nameof(ListOwnAvatarIds))]
+    Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
 
-    [Post(nameof(Create))]
-    Task<UserAvatar> Create([Body] IUserAvatars.CreateCommand command, CancellationToken cancellationToken);
-    [Post(nameof(Update))]
-    Task Update([Body] IUserAvatars.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Change))]
+    Task<AvatarFull> Change([Body] IAvatars.ChangeCommand command, CancellationToken cancellationToken);
     [Post(nameof(SetDefault))]
-    Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
+    Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("recentEntries")]
@@ -54,14 +52,14 @@ public interface IRecentEntriesClientDef
     Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("chatReadPositions")]
-public interface IChatReadPositionsClientDef
+[BasePath("readPositions")]
+public interface IReadPositionsClientDef
 {
     [Get(nameof(Get))]
     public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
-    public Task Set([Body] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken);
+    public Task Set([Body] IReadPositions.SetCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]
@@ -78,13 +76,13 @@ public interface IServerKvasClientDef
     Task MoveSessionKeys([Body] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default);
 }
 
-[BasePath("userContacts")]
-public interface IUserContactsClientDef
+[BasePath("contacts")]
+public interface IContactsClientDef
 {
     [Get(nameof(Get))]
-    Task<UserContact?> Get(Session session, string contactId, CancellationToken cancellationToken);
+    Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken);
     [Get(nameof(List))]
-    Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<Contact>> List(Session session, CancellationToken cancellationToken);
     [Post(nameof(Change))]
-    Task<UserContact?> Change([Body] IUserContacts.ChangeCommand command, CancellationToken cancellationToken);
+    Task<Contact> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
 }

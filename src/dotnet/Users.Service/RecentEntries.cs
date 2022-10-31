@@ -20,7 +20,7 @@ public class RecentEntries : IRecentEntries
         int limit,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return ImmutableArray<RecentEntry>.Empty;
 
@@ -34,11 +34,11 @@ public class RecentEntries : IRecentEntries
             return null; // It just spawns other commands, so nothing to do here
 
         var (session, scope, key, moment) = command;
-        var account = await Accounts.Get(session, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
-        var cmd = new IRecentEntriesBackend.UpdateCommand(scope, account.Id, key, moment);
-        return await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        var updateCommand = new IRecentEntriesBackend.UpdateCommand(scope, account.Id, key, moment);
+        return await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -40,7 +40,7 @@
     }
 
     <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-         @onclick="() => OnValueChanged(!m.IsSubscribed)"
+         @onclick="() => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted)"
          @onclick:preventDefault="true">
         <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
             <i class="icon-bell text-2xl text-icons-03"></i>
@@ -50,23 +50,23 @@
                 Notifications
             </div>
             <div class="text-03 text-base">
-                @(m.IsSubscribed ? "On" : "Off")
+                @(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")
             </div>
         </div>
         <div class="flex self-center">
-            <Toggle Value="@(m.IsSubscribed)" />
+            <Toggle Value="@(m.NotificationMode == ChatNotificationMode.Muted)" />
         </div>
     </div>
 </div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private INotifications Notifications { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -80,14 +80,14 @@
         var publicUrlTitle = chatAbsolutePath == null
             ? ""
             : chatAbsolutePath.Substring(1, chatAbsolutePath.Length - 1);
-        var isSubscribed = await Notifications.IsSubscribed(Session, Chat.Id, cancellationToken);
+        var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new Model {
             Title = Chat.Title,
             IsPublic = Chat.IsPublic,
             Picture = Chat.Picture,
             PublicUrl = publicUrl,
             PublicUrlTitle = publicUrlTitle,
-            IsSubscribed = isSubscribed,
+            NotificationMode = userChatSettings.NotificationMode,
         };
     }
 
@@ -96,7 +96,13 @@
     }
 
     private Task OnValueChanged(bool isMuted)
-        => UICommander.Run(new INotifications.SetStatusCommand(Session, Chat.Id, isMuted));
+        => UICommander.RunLocal(async cancellationToken => {
+            var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
+            userChatSettings = userChatSettings with {
+                NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
+                };
+            await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
+        });
 
     public sealed record Model {
         public static Model None { get; } = new();
@@ -106,6 +112,6 @@
         public bool IsPublic { get; init; }
         public string? PublicUrl { get; init; }
         public string? PublicUrlTitle { get; init; }
-        public bool IsSubscribed { get; init; }
+        public ChatNotificationMode NotificationMode { get; init; }
     }
 }

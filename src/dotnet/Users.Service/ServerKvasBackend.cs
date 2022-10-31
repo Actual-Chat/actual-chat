@@ -54,7 +54,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         await using var __ = dbContext.ConfigureAwait(false);
 
         var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);
-        var dbKvasEntryList = await dbContext.KvasEntries
+        var dbKvasEntryList = await dbContext.KvasEntries.ForUpdate()
             .Where(e => keys.Contains(e.Key))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

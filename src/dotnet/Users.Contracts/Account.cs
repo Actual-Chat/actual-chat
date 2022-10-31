@@ -1,25 +1,18 @@
 namespace ActualChat.Users;
 
-public sealed record Account(Symbol Id, User User) : IHasId<Symbol>, IRequirementTarget
+[DataContract]
+public record Account(
+    [property: DataMember] Symbol Id
+) : IHasId<Symbol>, IRequirementTarget
 {
-    public static Account Guest { get; } = new(Symbol.Empty, User.NewGuest()) { Status = AccountStatus.Inactive };
+    public static Account None { get; } = new(Symbol.Empty) { Avatar = Avatar.None };
+    public static Account Loading { get; } = new(Symbol.Empty) { Avatar = Avatar.Loading }; // Should differ by ref. from None
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
         new(() => StandardError.Account.None()),
-        (Account? p) => p != null);
-    public static Requirement<Account> MustBeAdmin { get; } = MustExist & Requirement.New(
-        new(() => StandardError.Account.NonAdmin()),
-        (Account? p) => p?.IsAdmin ?? false);
-    public static Requirement<Account> MustNotBeInactive { get; } = MustExist & Requirement.New(
-        new(() => StandardError.Account.Inactive()),
-        (Account? p) => p != null && (p.Status != AccountStatus.Inactive || p.IsAdmin));
-    public static Requirement<Account> MustNotBeSuspended { get; } = MustExist & Requirement.New(
-        new(() => StandardError.Account.Suspended()),
-        (Account? p) => p != null && (p.Status != AccountStatus.Suspended || p.IsAdmin));
-    public static Requirement<Account> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
+        (Account? a) => a is { Id.IsEmpty: false });
 
-    public long Version { get; init; }
-    public AccountStatus Status { get; init; }
-    public Symbol AvatarId { get; init; }
-    public bool IsAdmin { get; init; }
+    [DataMember] public long Version { get; init; }
+    [DataMember] public AccountStatus Status { get; init; }
+    [DataMember] public Avatar Avatar { get; init; } = null!;
 }

@@ -11,7 +11,7 @@ public interface IChats : IComputeService
     Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<ChatAuthorRules> GetRules(
+    Task<AuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken);
@@ -55,13 +55,11 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken);
-
+    Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken);
-
+    Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken);
+    Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
@@ -78,11 +76,11 @@ public interface IChats : IComputeService
     // Commands
 
     [CommandHandler]
-    Task<Chat?> ChangeChat(ChangeChatCommand command, CancellationToken cancellationToken);
+    Task<Chat> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<Unit> JoinChat(JoinChatCommand command, CancellationToken cancellationToken);
+    Task<Unit> Join(JoinCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task LeaveChat(LeaveChatCommand command, CancellationToken cancellationToken);
+    Task Leave(LeaveCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ChatEntry> UpsertTextEntry(UpsertTextEntryCommand command, CancellationToken cancellationToken);
@@ -90,23 +88,29 @@ public interface IChats : IComputeService
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record ChangeChatCommand(
+    public sealed record ChangeCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
+        [property: DataMember] Symbol ChatId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatDiff> Change
-        ) : ISessionCommand<Chat?>;
+        ) : ISessionCommand<Chat>;
 
     [DataContract]
-    public sealed record JoinChatCommand(
+    public sealed record JoinCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId
+        [property: DataMember] Symbol ChatId
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record LeaveCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] Symbol ChatId
+    ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record UpsertTextEntryCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
+        [property: DataMember] Symbol ChatId,
         [property: DataMember] long? Id,
         [property: DataMember] string Text
         ) : ISessionCommand<ChatEntry>
@@ -119,13 +123,7 @@ public interface IChats : IComputeService
     [DataContract]
     public sealed record RemoveTextEntryCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
+        [property: DataMember] Symbol ChatId,
         [property: DataMember] long EntryId
         ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public sealed record LeaveChatCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] string ChatId
-    ) : ISessionCommand<Unit>;
 }

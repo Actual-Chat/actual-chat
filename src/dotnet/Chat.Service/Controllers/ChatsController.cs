@@ -29,7 +29,7 @@ public class ChatsController : ControllerBase, IChats
         => _service.List(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatAuthorRules> GetRules(
+    public Task<AuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
@@ -73,15 +73,15 @@ public class ChatsController : ControllerBase, IChats
         => _service.CanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> CanSendPeerChatMessage(Session session, string chatPrincipalId, CancellationToken cancellationToken)
-        => _service.CanSendPeerChatMessage(session, chatPrincipalId, cancellationToken);
+    public Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+        => _service.CanPeerChat(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string?> GetPeerChatId(Session session, string chatPrincipalId, CancellationToken cancellationToken)
-        => _service.GetPeerChatId(session, chatPrincipalId, cancellationToken);
+    public Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+        => _service.GetPeerChatId(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<UserContact?> GetPeerChatContact(Session session, Symbol chatId, CancellationToken cancellationToken)
+    public Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
         => _service.GetPeerChatContact(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
@@ -103,15 +103,15 @@ public class ChatsController : ControllerBase, IChats
     // Commands
 
     [HttpPost]
-    public Task<Chat?> ChangeChat([FromBody] IChats.ChangeChatCommand command, CancellationToken cancellationToken)
+    public Task<Chat> Change([FromBody] IChats.ChangeCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
+    public Task<Unit> Join([FromBody] IChats.JoinCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task LeaveChat([FromBody] IChats.LeaveChatCommand command, CancellationToken cancellationToken)
+    public Task Leave([FromBody] IChats.LeaveCommand command, CancellationToken cancellationToken)
         => _commander.Call(command, cancellationToken);
 
     [HttpPost]

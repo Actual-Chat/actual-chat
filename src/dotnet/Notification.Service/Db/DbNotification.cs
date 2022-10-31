@@ -6,7 +6,7 @@ namespace ActualChat.Notification.Db;
 
 [Table("Notifications")]
 [Index(nameof(UserId), nameof(Id))]
-public class DbNotification : IHasId<string>
+public class DbNotification : IHasId<string>, IRequirementTarget
 {
     private DateTime _createdAt;
     private DateTime? _modifiedAt;
@@ -19,7 +19,7 @@ public class DbNotification : IHasId<string>
     public string Content { get; set; } = null!;
     public string? ChatId { get; set; }
     public long? ChatEntryId { get; set; }
-    public string? ChatAuthorId { get; set; }
+    public string? AuthorId { get; set; }
     public string IconUrl { get; set; } = null!;
     [NotMapped] public bool IsActive => _handledAt != null;
 

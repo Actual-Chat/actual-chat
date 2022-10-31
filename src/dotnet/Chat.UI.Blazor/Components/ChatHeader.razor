@@ -47,7 +47,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnInviteClick()
-        => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+        => ModalUI.Show(new InviteAuthor.Model(Chat));
 
     private void OnSwitchRightPanelClick()
         => RightPanelUI.Switch();

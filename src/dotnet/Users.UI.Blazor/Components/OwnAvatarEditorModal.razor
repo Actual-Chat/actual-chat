@@ -1,0 +1,186 @@
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Chat
+@using Stl.CommandR.Internal
+@implements IModalView<OwnAvatarEditorModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame Title="@_form.Title" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
+        <Body>
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+        <PicUpload
+            ImageUploadUrl="@UploadUrl"
+            ImagePicked="OnImagePicked"
+            Size="SquareSize.Size30"
+            Title="@_form.Bio"
+            ContentId="@_form.Picture">
+            <NoPicture>
+                <AnonymousIcon Class="w-32 h-32"/>
+            </NoPicture>
+        </PicUpload>
+
+        <FormSection InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+            <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
+        </FormSection>
+
+        <FormSection InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
+            <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
+        </FormSection>
+
+        <FormSection InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
+            <button type="button" class="default-avatar-btn" onclick="@ChangeDefaultAvatar">
+                <div>
+                    <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-icons-01")"></i>
+                </div>
+                <div class="flex w-full px-8 text-02">
+                    Make default
+                </div>
+                <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
+            </button>
+        </FormSection>
+
+        <button type="button" class="delete-avatar-btn">
+            <div>
+                <i class="icon-trash03 text-xl text-error"></i>
+            </div>
+            <div class="flex w-full px-8 text-error">
+                Delete avatar
+            </div>
+        </button>
+
+        @if (!ModalModel.ChatId.IsEmpty) {
+            <FormSection InputId="@_form.IsActiveFieldId">
+                <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
+                            Label="Used in this chat (otherwise the default one is used)"/>
+            </FormSection>
+        }
+        </Body>
+        <Buttons>
+            <FormButtons>
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+            </FormButtons>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
+        var account = await Accounts.GetOwn(Session, default);
+        var isDefault = ModalModel.AvatarId == (account?.Avatar.Id ?? Symbol.Empty);
+        var isActive = false;
+        if (!ModalModel.ChatId.IsEmpty) {
+            var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
+            isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
+        }
+
+        _form.Name = avatar?.Name ?? "";
+        _form.Picture = avatar?.Picture ?? "";
+        _form.Bio = avatar?.Bio ?? "";
+        _form.IsDefault = isDefault;
+        _form.IsActive = isActive;
+        _form.Title = ModalModel.Title;
+        _form.CopyToBase();
+    }
+
+    private async Task OnSave() {
+        var (avatarId, chatId, title) = ModalModel;
+        var avatar = await Avatars.GetOwn(Session, avatarId, default);
+        if (avatar == null) {
+            _ = UICommander.Run(new LocalActionCommand() {
+                Handler = _ => throw StandardError.NotFound<Avatar>(),
+            });
+            return;
+        }
+        avatar = avatar with {
+            Name = _form.Name,
+            Bio = _form.Bio,
+            Picture = _form.Picture,
+        };
+        var command = new IAvatars.ChangeCommand(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
+            Update = avatar,
+        });
+        var (_, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        if (_form.IsDefault && !_form.Base.IsDefault)
+            await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
+        if (!chatId.IsEmpty && _form.IsActive && !_form.Base.IsActive)
+            await SetActiveAvatar(_form.IsActive ? avatarId : default);
+
+        _form.CopyToBase();
+        CloseModal();
+    }
+
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
+        _form.CopyToBase();
+        StateHasChanged();
+    }
+
+    private async Task SetDefaultAvatar(Symbol avatarId)
+    {
+        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
+        await UICommander.Run(command);
+    }
+
+    private async Task SetActiveAvatar(Symbol avatarId)
+    {
+        var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
+        if (author == null)
+            return;
+
+        author = author with { AvatarId = avatarId };
+        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, author.Id, avatarId);
+        await UICommander.Run(command);
+    }
+
+    private void OnCancel()
+        => CloseModal();
+
+    private void CloseModal()
+        => _ = ModalInstance.CloseAsync();
+
+    private void ChangeDefaultAvatar()
+        => _form.IsDefault = !_form.IsDefault;
+
+    public sealed class FormModel : FormModel<FormModel> {
+        [Required, MinLength(1)] public string Name { get; set; } = "";
+        public string NameFieldId { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public string Bio { get; set; } = "";
+        public string BioFieldId { get; set; } = "";
+        public bool IsDefault { get; set; }
+        public string IsDefaultFieldId { get; set; } = "";
+        public bool IsActive { get; set; }
+        public string IsActiveFieldId { get; set; } = "";
+        public string Title { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("avatar-editor", componentIdGenerator) {
+        }
+    }
+
+    public sealed record Model(Symbol AvatarId, Symbol ChatId, string Title);
+}

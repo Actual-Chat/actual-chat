@@ -9,9 +9,9 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
         <div class="flex-x w-full mx-4 items-center gap-x-2">
-            <AuthorCircle Author="@_author" Size="SquareSize.Size10"/>
+            <AvatarCircle Avatar="@_author.Avatar" Size="SquareSize.Size10"/>
             <div class="grid">
-                <AuthorName Author="@_author" Size="SquareSize.Size8" Class="text-base md:text-sm text-icons-02 max-h-6 overflow-y-hidden truncate"/>
+                <AvatarName Avatar="@_author.Avatar" Size="SquareSize.Size8" Class="text-base md:text-sm text-icons-02 max-h-6 overflow-y-hidden truncate"/>
                 <LiveTimeDeltaText Class="text-xs md:text-xxs text-icons-02" Moment="@ChatEntry.BeginsAt"/>
             </div>
         </div>
@@ -33,14 +33,14 @@
     private Author? _author;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback OnCloseClick { set; get; }
 
     protected override async Task OnParametersSetAsync() {
         if (ChatEntry != null) {
-            _author = await ChatAuthors.GetAuthor(Session, ChatEntry.ChatId, ChatEntry.AuthorId, true, CancellationToken.None).ConfigureAwait(false);
+            _author = await Authors.Get(Session, ChatEntry.ChatId, ChatEntry.AuthorId, CancellationToken.None).ConfigureAwait(false);
         }
     }
 

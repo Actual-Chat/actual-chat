@@ -52,7 +52,7 @@ public class FeedbackModule : HostModule<FeedbackSettings>
         // Module's own services
         fusion.AddComputeService<IFeedbacks, Feedbacks>();
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

@@ -1,7 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<Account?>
+@inherits ComputedStateComponent<AccountFull?>
 @{
     var account = State.LatestNonErrorValue;
 }
@@ -81,8 +81,8 @@
         return base.DisposeAsync();
     }
 
-    protected override Task<Account?> ComputeState(CancellationToken cancellationToken)
-        => Accounts.Get(Session, cancellationToken);
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => _requirementCheckerRef.Reset();

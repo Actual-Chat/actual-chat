@@ -1,0 +1,94 @@
+@using System.Text.Encodings.Web
+@using ActualChat.Chat
+@inherits ComputedStateComponent<ImmutableArray<Symbol>>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<div class="flex-y gap-y-2">
+    @foreach (var avatarId in m) {
+        <Tile>
+            <TileItem Unselected="true">
+                <Icon>
+                    <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
+                </Icon>
+                <Right>
+                    <TileButtons OnEditClick="@(() => EditAvatar(avatarId, "Edit avatar"))"
+                                 OnSetDefaultClick="@(() => SetDefaultAvatar(avatarId))"
+                                 AvatarId="@avatarId"/>
+                </Right>
+                <Content>
+                    <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="OwnAvatar.ShowInfo.Name"/>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <i class="icon-at text-xl"></i>
+                </Icon>
+                <Content>
+                    Id: @avatarId
+                </Content>
+                <Caption>
+                    Avatar Id
+                </Caption>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <i class="icon-info text-xl"></i>
+                </Icon>
+                <Content>
+                    Some bio: <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="OwnAvatar.ShowInfo.Bio"/>
+                </Content>
+                <Caption>
+                    Bio
+                </Caption>
+            </TileItem>
+        </Tile>
+    }
+
+    <OwnAvatarAddTile OnClick="OnAddNewAvatar"/>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+    [Parameter] public string ChatId { get; set; } = "";
+
+    protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
+        => new () { InitialValue = ImmutableArray<Symbol>.Empty };
+
+    protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
+        => await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+
+    private async Task OnAddNewAvatar() {
+        if (!ChatId.IsNullOrEmpty())
+            throw StandardError.Constraint("Avatars can be added on account page only");
+
+        var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull() {
+                PrincipalId = Account.Id,
+            }.WithMissingPropertiesFrom(Account.Avatar),
+        });
+        var (avatar, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+
+        EditAvatar(avatar.Id, "Add avatar");
+    }
+
+    private void EditAvatar(string avatarId, string title) {
+        ModalUI.Show(new OwnAvatarEditorModal.Model(avatarId, ChatId, title));
+    }
+
+    private async Task SetDefaultAvatar(string avatarId) {
+        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
+        await UICommander.Run(command);
+    }
+}

@@ -50,10 +50,7 @@ public static class MauiProgram
 #endif
 
         services.AddSingleton(c => new HostInfo {
-            HostKind = HostKind.Maui,
-            RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                .Add(ServiceScope.Client)
-                .Add(ServiceScope.BlazorUI),
+            AppKind = AppKind.Maui,
             Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = GetBaseUrl(),

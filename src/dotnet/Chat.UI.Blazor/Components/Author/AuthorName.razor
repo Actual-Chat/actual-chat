@@ -1,0 +1,21 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits AuthorBadgeBase
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<AvatarName Avatar="@m.Author.Avatar" Class="@Class" Click="OnAuthorClick"/>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool EnableDetailsPopup { get; set; } = true;
+
+    private void OnAuthorClick() {
+        if (EnableDetailsPopup) {
+            var author = State.LatestNonErrorValue.Author;
+            ChatUI.ShowAuthorModal(author.Id);
+        }
+    }
+}

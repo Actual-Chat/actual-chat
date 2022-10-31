@@ -17,16 +17,16 @@ public class AccountsController : ControllerBase, IAccounts
     }
 
     [HttpGet, Publish]
-    public Task<Account?> Get(Session session, CancellationToken cancellationToken)
-        => _service.Get(session, cancellationToken);
+    public Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken)
+        => _service.GetOwn(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
-        => _service.GetByUserId(session, userId, cancellationToken);
+    public Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken)
+        => _service.Get(session, userId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
-        => _service.GetUserAuthor(userId, cancellationToken);
+    public Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken)
+        => _service.GetFull(session, userId, cancellationToken);
 
     [HttpPost]
     public Task Update([FromBody] IAccounts.UpdateCommand command, CancellationToken cancellationToken)

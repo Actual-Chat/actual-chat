@@ -168,7 +168,7 @@ public sealed class Transcript
             .AppendOrUpdateTail(map[mapPrefix.Length..], TextToTimeMapTextPrecision);
 
         var diff = new Transcript(textSuffix, mapSuffix, IsStable, !noDiffFlag);
-        diff.AssertValid(); // TODO(AY): Remove this call once we see everything is fine
+        diff.RequireValid(); // TODO(AY): Remove this call once we see everything is fine
         return diff;
     }
 
@@ -207,9 +207,9 @@ public sealed class Transcript
         return new Transcript(newText, newTextToTimeMap, diff.IsStable);
     }
 
-    public void AssertValid()
+    public void RequireValid()
     {
-        TextToTimeMap.AssertValid();
+        TextToTimeMap.RequireValid();
         if (TextRange.Size() != Text.Length)
             throw StandardError.Internal("TextRange.Size() != Text.Length.");
     }

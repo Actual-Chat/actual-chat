@@ -1,16 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Stl.Generators;
 using Stl.Versioning;
 
 namespace ActualChat.Invite.Db;
 
 [Table("Invites")]
 [Index(nameof(SearchKey), nameof(Remaining))]
-public class DbInvite : IHasId<string>, IHasVersion<long>
+public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<InviteDetails>();
+    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     private DateTime _createdAt;
     private DateTime _expiresOn;

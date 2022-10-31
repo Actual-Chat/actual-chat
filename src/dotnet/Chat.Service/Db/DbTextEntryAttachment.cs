@@ -1,15 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("TextEntryAttachments")]
-public class DbTextEntryAttachment
+public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public DbTextEntryAttachment() { }
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
 
     // (ChatId, EntryId, Index)
+    string IHasId<string>.Id => CompositeId;
     [Key] public string CompositeId { get; set; } = "";
     public string ChatEntryId { get; set; } = "";
     public int Index { get; set; }

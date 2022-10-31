@@ -6,15 +6,15 @@ public static class ServerKvasExt
         Session session, string key, string? value,
         CancellationToken cancellationToken = default)
     {
-        var cmd = new IServerKvas.SetCommand(session, key, value);
-        return serverKvas.GetCommander().Call(cmd, true, cancellationToken);
+        var command = new IServerKvas.SetCommand(session, key, value);
+        return serverKvas.GetCommander().Call(command, true, cancellationToken);
     }
 
     public static Task SetMany(this IServerKvas serverKvas,
         Session session, (string Key, string? Value)[] items,
         CancellationToken cancellationToken = default)
     {
-        var cmd = new IServerKvas.SetManyCommand(session, items);
-        return serverKvas.GetCommander().Call(cmd, true, cancellationToken);
+        var command = new IServerKvas.SetManyCommand(session, items);
+        return serverKvas.GetCommander().Call(command, true, cancellationToken);
     }
 }

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
@@ -12,21 +14,23 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Column(TypeName = "smallint")]
     public AccountStatus Status { get; set; }
 
-    public string AvatarId { get; set; } = "";
-
-    public Account ToModel(Account model)
+    public AccountFull ToModel(AccountFull model)
         => model with {
             Id = Id,
             Status = Status,
-            AvatarId = AvatarId,
             Version = Version,
         };
 
-    public void UpdateFrom(Account model)
+    public void UpdateFrom(AccountFull model)
     {
         Id = model.Id;
         Version = model.Version;
         Status = model.Status;
-        AvatarId = model.AvatarId;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbAccount>
+    {
+        public void Configure(EntityTypeBuilder<DbAccount> builder)
+            => builder.Property(a => a.Id).IsRequired();
     }
 }

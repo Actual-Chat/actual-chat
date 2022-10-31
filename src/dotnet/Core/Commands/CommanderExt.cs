@@ -13,8 +13,8 @@ public static class CommanderExt
             builder.Services.Replace(eventCommandHandlerResolverDescriptor);
         else
             builder.Services.TryAdd(eventCommandHandlerResolverDescriptor);
-        builder.Services.TryAddSingleton<EventHandlerHub>();
-        builder.AddHandlers<EventHandlerHub>();
+        builder.Services.TryAddSingleton<EventHandlerInvoker>();
+        builder.AddHandlers<EventHandlerInvoker>();
         return builder;
     }
 }

@@ -16,7 +16,7 @@ public abstract class HubClientBase : IDisposable
     protected HubClientBase(string hubUrl, IServiceProvider services)
     {
         Services = services;
-        Log = Services.LogFor(GetType());
+        Log = services.LogFor(GetType());
         HubUrl = hubUrl;
 
  #pragma warning disable MA0056

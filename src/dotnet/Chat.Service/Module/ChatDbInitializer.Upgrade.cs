@@ -15,7 +15,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         // These steps are already executed on prod:
         // await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
-        // await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
+        // await UpgradePermissions(dbContext, cancellationToken).ConfigureAwait(false);
         // await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
         await FixCorruptedLastReadPositions(dbContext, cancellationToken).ConfigureAwait(false);
     }
@@ -39,8 +39,8 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         try {
             Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
             foreach (var chatId in candidateChatIds) {
-                var cmd = new IChatsBackend.UpgradeChatCommand(chatId);
-                await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+                var command = new IChatsBackend.UpgradeChatCommand(chatId);
+                await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             }
             Log.LogInformation("Chats are upgraded");
         }
@@ -50,35 +50,35 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
     }
 
-    private async Task UpgradeChatRolesPermissions(ChatDbContext dbContext, CancellationToken cancellationToken)
+    private async Task UpgradePermissions(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         var chatId = (string)Constants.Chat.AnnouncementsChatId;
-        var candidateRoles = await dbContext.ChatRoles
-            .Where(c => c.SystemRole == SystemChatRole.Anyone)
+        var candidateDbRoles = await dbContext.Roles
+            .Where(c => c.SystemRole == SystemRole.Anyone)
             .Where(c => c.ChatId != chatId)
             .Where(c => !c.CanLeave || !c.CanSeeMembers)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        if (candidateRoles.Count == 0) {
-            Log.LogInformation("No chat roles to upgrade");
+        if (candidateDbRoles.Count == 0) {
+            Log.LogInformation("No roles to upgrade");
             return;
         }
 
         try {
-            Log.LogInformation("Upgrading chat roles ({RolesNumber}) permissions...", candidateRoles.Count);
+            Log.LogInformation("Upgrading roles ({RolesNumber}) permissions...", candidateDbRoles.Count);
 
-            foreach (var chatRole in candidateRoles) {
-                chatRole.CanLeave = true;
-                chatRole.CanSeeMembers = true;
+            foreach (var dbRole in candidateDbRoles) {
+                dbRole.CanLeave = true;
+                dbRole.CanSeeMembers = true;
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            Log.LogInformation("Chat roles permissions are upgraded");
+            Log.LogInformation("Role permissions are upgraded");
         }
         catch (Exception e) {
-            Log.LogCritical(e, "Failed to upgrade chat roles permissions!");
+            Log.LogCritical(e, "Failed to upgrade role permissions!");
             throw;
         }
     }
@@ -95,8 +95,8 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no 'Announcements' chat, creating one");
-            var cmd = new IChatsBackend.CreateAnnouncementsChatCommand();
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+            var command = new IChatsBackend.CreateAnnouncementsChatCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Announcements' chat is created");
         }
         catch (Exception e) {
@@ -108,13 +108,13 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     private async Task FixCorruptedLastReadPositions(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         try {
-            Log.LogInformation("starting FixCorruptedLastReadPositions");
-            var cmd = new IChatsBackend.FixCorruptedChatReadPositionsCommand();
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("FixCorruptedLastReadPositions complete");
+            Log.LogInformation("FixCorruptedReadPositions: started");
+            var command = new IChatsBackend.FixCorruptedReadPositionsCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("FixCorruptedReadPositions: completed");
         }
         catch (Exception e) {
-            Log.LogCritical(e, "Failed to fix corrupted last read positions");
+            Log.LogCritical(e, "FixCorruptedReadPositions failed");
             throw;
         }
     }

@@ -31,16 +31,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         };
         dbContext.Chats.Add(dbChat);
 
-        var dbAuthor = new DbChatAuthor {
-            Id = DbChatAuthor.ComposeId(defaultChatId, 1),
+        var dbAuthor = new DbAuthor {
+            Id = DbAuthor.ComposeId(defaultChatId, 1),
             ChatId = defaultChatId,
             LocalId = 1,
             Version = VersionGenerator.NextVersion(),
-            Name = UserConstants.Admin.Name,
             IsAnonymous = false,
             UserId = adminUserId,
         };
-        dbContext.ChatAuthors.Add(dbAuthor);
+        dbContext.Authors.Add(dbAuthor);
 
         try {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -50,7 +49,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             dbContext.ChangeTracker.Clear();
         }
 
-        await AddChatAuthors(dbContext, cancellationToken).ConfigureAwait(false);
+        await AddAuthors(dbContext, cancellationToken).ConfigureAwait(false);
 
         await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
             .ConfigureAwait(false);
@@ -70,24 +69,23 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         // TODO(AY): Remove this once logic above is upgraded to create chats properly
         await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
-        await UpgradeChatRolesPermissions(dbContext, cancellationToken).ConfigureAwait(false);
+        await UpgradePermissions(dbContext, cancellationToken).ConfigureAwait(false);
         await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AddChatAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
+    private async Task AddAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         var defaultChatId = Constants.Chat.DefaultChatId;
         for (int i = 1; i < 30; i++) {
-            var dbAuthor = new DbChatAuthor {
-                Id = DbChatAuthor.ComposeId(defaultChatId, i + 1),
+            var dbAuthor = new DbAuthor {
+                Id = DbAuthor.ComposeId(defaultChatId, i + 1),
                 ChatId = defaultChatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
-                Name = $"User_{i}",
                 IsAnonymous = false,
                 UserId = $"user{i}",
             };
-            dbContext.ChatAuthors.Add(dbAuthor);
+            dbContext.Authors.Add(dbAuthor);
             try {
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -101,7 +99,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     private async Task AddRandomEntries(
         ChatDbContext dbContext,
         DbChat dbChat,
-        DbChatAuthor dbAuthor,
+        DbAuthor dbAuthor,
         double audioRecordProbability,
         int count,
         Moment? beginsAt,

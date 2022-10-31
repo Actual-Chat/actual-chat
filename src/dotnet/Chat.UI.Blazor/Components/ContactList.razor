@@ -15,7 +15,7 @@
 
 @code {
     [Parameter, EditorRequired] public ContactListKind Kind { get; set; } = ContactListKind.Unpinned;
-    [Parameter, EditorRequired] public List<UserContact>? Contacts { get; set; }
+    [Parameter, EditorRequired] public List<Contact>? Contacts { get; set; }
 
     private string GetCss(ContactListKind kind)
         => kind switch {

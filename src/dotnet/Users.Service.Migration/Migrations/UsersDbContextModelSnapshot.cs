@@ -28,11 +28,6 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<string>("AvatarId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("avatar_id");
-
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
                         .HasColumnName("status");
@@ -48,20 +43,69 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("accounts");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbChatReadPosition", b =>
+            modelBuilder.Entity("ActualChat.Users.Db.DbAvatar", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<long>("ReadEntryId")
+                    b.Property<string>("Bio")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("bio");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Picture")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("picture");
+
+                    b.Property<string>("PrincipalId")
+                        .HasColumnType("text")
+                        .HasColumnName("principal_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
                         .HasColumnType("bigint")
-                        .HasColumnName("read_entry_id");
+                        .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_chat_read_positions");
+                        .HasName("pk_avatars");
 
-                    b.ToTable("chat_read_positions");
+                    b.ToTable("avatars");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<string>("TargetUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("target_user_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contacts");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_contacts_owner_user_id");
+
+                    b.ToTable("contacts");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
@@ -84,6 +128,22 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_kvas_entries");
 
                     b.ToTable("kvas_entries");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbReadPosition", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ReadEntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("read_entry_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_read_positions");
+
+                    b.ToTable("read_positions");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbRecentEntry", b =>
@@ -223,86 +283,6 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("users");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserAvatar", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Bio")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("bio");
-
-                    b.Property<long>("LocalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("local_id");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Picture")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("picture");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user_avatars");
-
-                    b.ToTable("user_avatars");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserContact", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("IsFavorite")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_favorite");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("OwnerUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("owner_user_id");
-
-                    b.Property<string>("TargetUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("target_user_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user_contacts");
-
-                    b.HasIndex("OwnerUserId")
-                        .HasDatabaseName("ix_user_contacts_owner_user_id");
-
-                    b.ToTable("user_contacts");
-                });
-
             modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>
                 {
                     b.Property<string>("UserId")
@@ -314,9 +294,9 @@ namespace ActualChat.Users.Migrations
                         .HasColumnName("online_check_in_at");
 
                     b.HasKey("UserId")
-                        .HasName("pk_user_presences");
+                        .HasName("pk_presences");
 
-                    b.ToTable("user_presences");
+                    b.ToTable("presences");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>

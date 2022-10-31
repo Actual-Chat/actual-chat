@@ -53,7 +53,7 @@ public class InviteServiceModule : HostModule<InviteSettings>
         fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

@@ -7,7 +7,7 @@ namespace ActualChat.Chat.Db;
 [Table("Mentions")]
 [Index(nameof(ChatId), nameof(EntryId), nameof(AuthorId))]
 [Index(nameof(ChatId), nameof(AuthorId), nameof(EntryId))]
-public class DbMention : IHasId<string>
+public class DbMention : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     public string AuthorId { get; set; } = "";
@@ -16,6 +16,9 @@ public class DbMention : IHasId<string>
 
     public DbMention() { }
     public DbMention(Mention model) => UpdateFrom(model);
+
+    public static string ComposeId(string chatId, long entryId, string authorId)
+        => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{authorId}";
 
     public Mention ToModel()
         => new() {
@@ -32,7 +35,4 @@ public class DbMention : IHasId<string>
         ChatId = model.ChatId;
         EntryId = model.EntryId;
     }
-
-    public static string ComposeId(string chatId, long entryId, string authorId)
-        => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{authorId}";
 }

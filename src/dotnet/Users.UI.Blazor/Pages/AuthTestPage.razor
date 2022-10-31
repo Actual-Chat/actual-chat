@@ -134,11 +134,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
-        var account = await Accounts.Get(Session, cancellationToken) ?? Account.Guest;
+        var account = await Accounts.GetOwn(Session, cancellationToken) ?? AccountFull.None;
         var sessions = await Auth.GetUserSessions(Session, cancellationToken);
         var sessionList = new List<SessionModel>();
 
@@ -173,10 +173,11 @@
     }
 
     public sealed record Model {
-        public static Model None { get; } = new() { Account = Account.Guest };
+        public static Model None { get; } = new() { Account = AccountFull.None };
+        public static Model Loading { get; } = new() { Account = AccountFull.Loading }; // Should differ by ref. from None
 
         public SessionInfo? SessionInfo { get; init; }
-        public Account Account { get; init; } = null!;
+        public AccountFull Account { get; init; } = null!;
         public User User => Account.User;
         public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
     }

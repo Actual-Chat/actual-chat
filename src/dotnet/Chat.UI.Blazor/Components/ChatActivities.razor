@@ -4,14 +4,14 @@
     var m = State.LatestNonErrorValue;
 }
 
-<ChatAuthorCirclesGroup
+<AuthorCircleGroup
     Class="chat-activity-panel"
     MaxIconCount="@MaxIconCount"
     Size="SquareSize.Size6"
     AuthorIds="@m.RecordingAuthorIds" />
 
 @code {
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
 
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }

@@ -1,5 +1,6 @@
-using ActualChat.Notification;
 using ActualChat.Pooling;
+using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -9,24 +10,25 @@ public class UnreadMessages : WorkerBase
     private readonly Dictionary<Symbol, SharedResourcePool<Symbol, ChatUnreadMessages>.Lease> _leases = new (); // caching leases to prevent UnreadMessages recreation
     private readonly SharedResourcePool<Symbol, ChatUnreadMessages> _pool;
 
-    private IChats Chats { get; }
-    private INotifications Notifications { get; }
-    private UnreadMessagesFactory UnreadMessagesFactory { get; }
     private Session Session { get; }
+    private IChats Chats { get; }
+    private AccountSettings AccountSettings { get; }
+    private ChatUnreadMessagesFactory ChatUnreadMessagesFactory { get; }
 
-    public UnreadMessages(IChats chats, INotifications notifications, UnreadMessagesFactory unreadMessagesFactory, Session session)
+    public UnreadMessages(IServiceProvider services)
     {
-        Chats = chats;
-        Notifications = notifications;
-        UnreadMessagesFactory = unreadMessagesFactory;
-        Session = session;
-        _pool = new (CreateUnreadMessages, DisposeUnreadMessages);
+        Session = services.GetRequiredService<Session>();
+        Chats = services.GetRequiredService<IChats>();
+        AccountSettings = services.GetRequiredService<AccountSettings>();
+        ChatUnreadMessagesFactory = services.GetRequiredService<ChatUnreadMessagesFactory>();
+        _pool = new(CreateUnreadMessages, DisposeUnreadMessages);
     }
 
     public async Task<Symbol> GetFirstUnreadChat(IReadOnlyCollection<Symbol> chatIds, CancellationToken cancellationToken)
     {
         foreach (var chatId in chatIds) {
-            if (!await Notifications.IsSubscribed(Session, chatId, cancellationToken).ConfigureAwait(false))
+            var notificationMode = await AccountSettings.GetChatNotificationMode(chatId, cancellationToken).ConfigureAwait(false);
+            if (notificationMode != ChatNotificationMode.Muted)
                 continue;
 
             var unreadCount = await GetCount(chatId, cancellationToken).ConfigureAwait(false);
@@ -87,7 +89,7 @@ public class UnreadMessages : WorkerBase
     }
 
     private Task<ChatUnreadMessages> CreateUnreadMessages(Symbol chatId, CancellationToken cancellationToken)
-        => Task.FromResult(UnreadMessagesFactory.Get(chatId));
+        => Task.FromResult(ChatUnreadMessagesFactory.Get(chatId));
 
     private ValueTask DisposeUnreadMessages(Symbol chatId, ChatUnreadMessages chatUnreadMessages)
     {

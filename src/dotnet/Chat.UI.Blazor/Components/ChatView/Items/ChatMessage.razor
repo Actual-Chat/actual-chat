@@ -11,7 +11,7 @@
     var showHeader = message.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
-    var ownMessageClass = m.PrincipalId == message.Entry.AuthorId ? "own-message" : "";
+    var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplied ? "replied-message" : "";
     var isReply = entry.RepliedChatEntryId != null;
@@ -34,7 +34,7 @@
         <div class="chat-message group px-1.5 py-1 relative">
             @if (showPicture || isReply) {
                 <div class="m-1.5">
-                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnChatAuthorClick"/>
+                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnAuthorClick"/>
                 </div>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -45,7 +45,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="grid header chat-message-header ml-1">
-                        <ChatAuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
+                        <AuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
@@ -96,7 +96,7 @@
     private Markup? _cachedMarkup;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -125,9 +125,11 @@
         var initialValue = Model.None;
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var principalIdTask = ChatAuthors.GetPrincipalId(Session, chatId, default);
-        if (principalIdTask.IsCompletedSuccessfully)
-            initialValue = new Model { PrincipalId = principalIdTask.Result };
+        var ownAuthorTask = Authors.GetOwn(Session, chatId, default);
+        if (ownAuthorTask.IsCompletedSuccessfully) {
+            var ownAuthorId = ownAuthorTask.Result?.Id ?? Symbol.Empty;
+            initialValue = new Model { OwnAuthorId = ownAuthorId };
+        }
         return new ComputedState<Model>.Options {
             InitialValue = initialValue,
         };
@@ -136,16 +138,16 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;
         var chatId = entry.ChatId;
-        var principalId = await ChatAuthors.GetPrincipalId(Session, chatId, cancellationToken);
-        var parsedPrincipalId = new ParsedChatPrincipalId(principalId);
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+        var ownAuthorId = ownAuthor?.Id ?? Symbol.Empty;
 
         var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
-        var isMentioned = IsMentioned(Markup, repliedChatMessage, parsedPrincipalId, hasAnyMentions);
+        var isMentioned = IsMentioned(Markup, repliedChatMessage, ownAuthorId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
-            PrincipalId = principalId,
+            OwnAuthorId = ownAuthorId,
             RepliedChatMessage = repliedChatMessage,
             IsMentioned = isMentioned,
             IsHighlighted = isHighlighted,
@@ -184,8 +186,8 @@
         };
     }
 
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(Message.Entry.AuthorId);
+    private void OnAuthorClick()
+        => ChatUI.ShowAuthorModal(Message.Entry.AuthorId);
 
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
@@ -199,13 +201,12 @@
 
     private bool IsMentioned(Markup markup,
         ChatMessageModel? repliedChatMessage,
-        ParsedChatPrincipalId parsedPrincipalId,
+        Symbol authorId,
         bool hasAnyMentions)
     {
-        if (!parsedPrincipalId.IsValid || parsedPrincipalId.Kind == ChatPrincipalKind.User)
+        if (authorId.IsEmpty)
             return false;
 
-        var authorId = parsedPrincipalId.AuthorId;
         if (repliedChatMessage?.Entry.AuthorId == authorId)
             return true;
 
@@ -217,7 +218,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public Symbol PrincipalId { get; init; }
+        public Symbol OwnAuthorId { get; init; }
         public ChatMessageModel? RepliedChatMessage { get; init; }
         public bool IsMentioned { get; init; }
         public bool IsHighlighted { get; init; }

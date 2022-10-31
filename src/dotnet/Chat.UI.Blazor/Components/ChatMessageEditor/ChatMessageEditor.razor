@@ -91,7 +91,7 @@
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -164,7 +164,7 @@
             var linkedChatEntry = ChatUI.LinkedChatEntry.Value;
             var chatEntry = linkedChatEntry?.Entry;
             ChatUI.LinkedChatEntry.Value = null;
-            UICommander.CancelUpdateDelays();
+            _ = UICommander.RunNothing();
 
             long entryId;
             if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
@@ -192,7 +192,7 @@
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
         ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
-        UICommander.CancelUpdateDelays();
+        _ = UICommander.RunNothing();
         await MarkupEditorRef.SetText(chatEntry.Content, true);
     }
 
@@ -210,11 +210,11 @@
     }
 
     private async Task TryUpdatePeerChatRecency() {
-        await Update(RecencyScope.ChatContact, Chat.Id);
+        await Update(RecencyScope.Chat, Chat.Id);
 
         if (Chat.ChatType == ChatType.Peer) {
             var contact = await Chats.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require();
-            await Update(RecencyScope.UserContact, contact.Id);
+            await Update(RecencyScope.Contact, contact.Id);
         }
 
         Task Update(RecencyScope scope, string key) {
@@ -227,7 +227,7 @@
 
     private async Task OnOpenPrevious() {
         var chatId = ChatUI.SelectedChatId.Value;
-        var author = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         if (author == null)
             return;
 
@@ -248,7 +248,7 @@
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
         ChatUI.LinkedChatEntry.Value = null;
-        UICommander.CancelUpdateDelays();
+        _ = UICommander.RunNothing();
         await MarkupEditorRef.Clear(true);
     }
 

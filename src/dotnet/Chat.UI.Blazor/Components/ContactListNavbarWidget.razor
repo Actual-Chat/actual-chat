@@ -38,7 +38,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IUserContacts Contacts { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
@@ -50,7 +50,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, cancellationToken);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
         if (!account.IsActive())
             return Model.None;
 
@@ -61,7 +61,7 @@
             var activeContactId = GetContactId(selectedChatId);
             contacts = (
                 from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Name)
+                let rank = searchPhrase.GetMatchRank(contact.Avatar.Name)
                 where rank > 0 || contact.TargetUserId == activeContactId
                 orderby rank descending
                 select contact
@@ -92,13 +92,12 @@
         }
     }
 
-    private async Task<List<UserContact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
+    private async Task<List<Contact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
         var contacts = await Contacts.List(Session, cancellationToken);
         return tabId switch {
             TabId.All => contacts.ToList(),
-            TabId.Favorites => contacts.Where(x => x.IsFavorite).ToList(),
             TabId.Recent => await RecentEntries
-                .OrderByRecency(Session, contacts, RecencyScope.UserContact, Constants.Contact.MaxRecentContacts, cancellationToken)
+                .OrderByRecency(Session, contacts, RecencyScope.Contact, Constants.Contact.MaxRecentContacts, cancellationToken)
                 .ConfigureAwait(false), // Ok here
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
@@ -113,16 +112,15 @@
     public enum TabId {
         Recent,
         All,
-        Favorites,
     }
 
     public sealed record Model {
         public static Model None { get; } = new() {
-            PinnedContacts = new List<UserContact>(),
-            UnpinnedContacts = new List<UserContact>(),
+            PinnedContacts = new List<Contact>(),
+            UnpinnedContacts = new List<Contact>(),
         };
 
-        public List<UserContact> PinnedContacts { get; init; } = null!;
-        public List<UserContact> UnpinnedContacts { get; init; } = null!;
+        public List<Contact> PinnedContacts { get; init; } = null!;
+        public List<Contact> UnpinnedContacts { get; init; } = null!;
     }
 }

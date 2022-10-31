@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using ActualChat.Commands;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -10,25 +11,23 @@ namespace ActualChat.Notification;
 
 public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
+    private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
     private UrlMapper UrlMapper { get; }
 
-    public NotificationsBackend(
-        IServiceProvider services,
-        IChatAuthorsBackend chatAuthorsBackend,
-        FirebaseMessagingClient firebaseMessagingClient,
-        IChatsBackend chatsBackend,
-        IDbEntityResolver<string, DbNotification> dbNotificationResolver,
-        UrlMapper urlMapper) : base(services)
+    public NotificationsBackend(IServiceProvider services) : base(services)
     {
-        ChatAuthorsBackend = chatAuthorsBackend;
-        FirebaseMessagingClient = firebaseMessagingClient;
-        ChatsBackend = chatsBackend;
-        DbNotificationResolver = dbNotificationResolver;
-        UrlMapper = urlMapper;
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
+        DbNotificationResolver = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
+        FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
     }
 
     // [ComputeMethod]
@@ -51,20 +50,19 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var mutedUserIdsTask = dbContext.MutedChatSubscriptions
-            .Where(cs => cs.ChatId == chatId)
-            .Select(cs => cs.UserId)
-            .ToListAsync(cancellationToken);
-        var userIdsTask = ChatAuthorsBackend
-            .ListUserIds(chatId, cancellationToken);
-        await Task.WhenAll(mutedUserIdsTask, userIdsTask).ConfigureAwait(false);
+        var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        var notificationModes = await userIds
+            .Select(async userId => {
+                var kvas = ServerKvasBackend.GetUserClient(userId);
+                var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+                return (UserId: userId, userChatSettings.NotificationMode);
+            })
+            .Collect()
+            .ConfigureAwait(false);
 
-        var mutedUserIds = (await mutedUserIdsTask.ConfigureAwait(false))
-            .Select(userId => (Symbol)userId)
-            .ToHashSet();
-        var userIds = await userIdsTask.ConfigureAwait(false);
-        var subscriberIds = userIds
-            .Where(userId => !mutedUserIds.Contains(userId))
+        var subscriberIds = notificationModes
+            .Where(kv => kv.NotificationMode != ChatNotificationMode.Muted)
+            .Select(kv => kv.UserId)
             .ToImmutableArray();
         return subscriberIds;
     }
@@ -134,7 +132,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 existingEntry.Content = entry1.Content;
                 existingEntry.IconUrl = entry1.IconUrl;
                 existingEntry.ChatEntryId = entry1.Message?.EntryId;
-                existingEntry.ChatAuthorId = entry1.Message?.AuthorId;
+                existingEntry.AuthorId = entry1.Message?.AuthorId;
                 existingEntry.ModifiedAt = entry1.NotificationTime;
                 existingEntry.HandledAt = null;
                 context.Operation().Items.Set(entry1.NotificationId);
@@ -149,7 +147,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                     IconUrl = entry1.IconUrl,
                     ChatId = entry1.Message?.ChatId ?? entry1.Chat?.ChatId,
                     ChatEntryId = entry1.Message?.EntryId,
-                    ChatAuthorId = entry1.Message?.AuthorId,
+                    AuthorId = entry1.Message?.AuthorId,
                     CreatedAt = Clocks.CoarseSystemClock.Now,
                     HandledAt = null,
                     ModifiedAt = null,
@@ -248,8 +246,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             dbNotification.ModifiedAt ?? dbNotification.CreatedAt) {
             Message = dbNotification.NotificationType switch {
                 NotificationType.Invitation => null,
-                NotificationType.Message => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
-                NotificationType.Reply => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.ChatAuthorId!),
+                NotificationType.Message => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.AuthorId!),
+                NotificationType.Reply => new MessageNotificationEntry(dbNotification.ChatId!, dbNotification.ChatEntryId!.Value, dbNotification.AuthorId!),
                 _ => throw new ArgumentOutOfRangeException(),
             },
             Chat = dbNotification.NotificationType switch {
@@ -275,17 +273,23 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (Computed.IsInvalidating())
             return;
 
-        var chatAuthor = await ChatAuthorsBackend.Get(chatId, authorId, true, cancellationToken).ConfigureAwait(false);
-        var userId = chatAuthor!.UserId;
+        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null)
+            return;
+
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var title = GetTitle(chat, chatAuthor);
-        var iconUrl = GetIconUrl(chat, chatAuthor);
+        var title = GetTitle(chat, author);
+        var iconUrl = GetIconUrl(chat, author);
         var textContent = GetContent(content);
         var notificationTime = Clocks.CoarseSystemClock.Now;
         var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
-        foreach (var uid in userIds.Where(uid => !OrdinalEquals(uid, userId)))
+        var otherUserIds = userIds.AsEnumerable();
+        if (!author.UserId.IsEmpty)
+            otherUserIds = userIds.Where(uid => !OrdinalEquals(uid, author.UserId));
+
+        foreach (var otherUserId in otherUserIds)
             await new INotificationsBackend.NotifyUserCommand(
-                    uid,
+                    otherUserId,
                     new NotificationEntry(
                         Ulid.NewUlid().ToString(),
                         NotificationType.Message,
@@ -295,23 +299,25 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                         notificationTime) {
                         Message = new MessageNotificationEntry(chatId, entryId, authorId),
                     })
-                .Enqueue(Queues.Users.ShardBy(uid), cancellationToken)
+                .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
                 .ConfigureAwait(false);
     }
 
     // Private methods
 
-    private string GetIconUrl(Chat.Chat chat, ChatAuthor chatAuthor)
+    private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.ChatType switch {
              ChatType.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatType.Peer => !chatAuthor.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chatAuthor.Picture) : "/favicon.ico",
+             ChatType.Peer => !author.Avatar.Picture.IsNullOrEmpty()
+                 ? UrlMapper.ContentUrl(author.Avatar.Picture)
+                 : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
          };
 
-    private static string GetTitle(Chat.Chat chat, ChatAuthor chatAuthor)
+    private static string GetTitle(Chat.Chat chat, AuthorFull author)
          => chat.ChatType switch {
-             ChatType.Group => $"{chatAuthor.Name} @ {chat.Title}",
-             ChatType.Peer => $"{chatAuthor.Name}",
+             ChatType.Group => $"{author.Avatar.Name} @ {chat.Title}",
+             ChatType.Peer => $"{author.Avatar.Name}",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
          };
 

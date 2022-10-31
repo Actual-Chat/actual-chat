@@ -134,7 +134,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         string chatId = Chat.Id;
-        var (account, rules, canJoin) = await Accounts.Get(Session, cancellationToken)
+        var (account, rules, canJoin) = await Accounts.GetOwn(Session, cancellationToken)
             .Join(
                 Chats.GetRules(Session, chatId, cancellationToken),
                 Chats.CanJoin(Session, chatId, cancellationToken)
@@ -150,7 +150,7 @@
 
     private async Task OnJoin() {
         string chatId = Chat.Id;
-        var command = new IChats.JoinChatCommand(Session, chatId);
+        var command = new IChats.JoinCommand(Session, chatId);
         await UICommander.Run(command, default);
     }
 

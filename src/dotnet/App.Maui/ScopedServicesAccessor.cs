@@ -6,7 +6,7 @@ public static class ScopedServicesAccessor
 {
     private static readonly object _lock = new();
     private static IServiceProvider? _scopedServices;
-    private static readonly TaskCompletionSource _whenInitializedSource = new ();
+    private static readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     public static bool IsInitialized
         => _scopedServices != null;
@@ -30,7 +30,7 @@ public static class ScopedServicesAccessor
                 Android.Util.Log.Debug(AndroidConstants.LogTag, $"ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}");
 #endif
                 _scopedServices = value;
-                _whenInitializedSource.TrySetResult();
+                _whenInitializedSource.TrySetResult(default);
             }
         }
     }

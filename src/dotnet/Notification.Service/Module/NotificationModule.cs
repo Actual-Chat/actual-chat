@@ -65,10 +65,7 @@ public class NotificationModule : HostModule<NotificationSettings>
         services.AddSingleton(firebaseMessaging);
         services.AddSingleton<FirebaseMessagingClient>();
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
-
-        // Events
-        fusion.AddLocalCommandScheduler();
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

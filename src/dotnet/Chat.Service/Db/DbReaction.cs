@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("Reactions")]
-public class DbReaction : IHasId<string>
+public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime? _modifiedAt;
     [Key] public string Id { get; set; } = null!;

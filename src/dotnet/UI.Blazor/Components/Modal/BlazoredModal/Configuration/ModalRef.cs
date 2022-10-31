@@ -4,7 +4,7 @@ namespace Blazored.Modal;
 
 public class ModalRef : IModalRef
 {
-    private readonly TaskCompletionSource _resultCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskSource<Unit> _whenClosedSource = TaskSource.New<Unit>(true);
     private readonly ModalService _modalService;
 
     internal Guid Id { get; }
@@ -22,10 +22,10 @@ public class ModalRef : IModalRef
     public void Close()
         => _modalService.Close(this);
 
-    public Task WhenClosed => _resultCompletion.Task;
+    public Task WhenClosed => _whenClosedSource.Task;
 
     internal void Dismiss()
-        => _ = _resultCompletion.TrySetResult();
+        => _ = _whenClosedSource.TrySetResult(default);
 
     internal bool RaiseModalCloseRequest()
     {

@@ -8,7 +8,7 @@ public partial struct LanguageId
     public static LanguageId Russian { get; } = new("ru-RU");
     public static LanguageId Spanish { get; } = new("es-ES");
     public static LanguageId Ukrainian { get; } = new("uk-UA");
-    public static LanguageId Default => English;
+    public static LanguageId Default { get; } = English;
 
     public static LanguageId[] All { get; } = {
         English,
@@ -18,7 +18,7 @@ public partial struct LanguageId
         Spanish,
         Ukrainian,
     };
-    public static ImmutableDictionary<string, LanguageId> Map =
+    public static readonly ImmutableDictionary<string, LanguageId> Map =
             ImmutableDictionary<string, LanguageId>.Empty
                 .WithComparers(StringComparer.OrdinalIgnoreCase)
                 .SetItems(All.Select(x => KeyValuePair.Create(x.Shortcut, x)))
@@ -57,11 +57,11 @@ public partial struct LanguageId
             _ => "?",
         };
 
-    public LanguageId ValidOrDefault()
-        => IsValid ? this : Default;
-
-    public LanguageId Validate()
+    public LanguageId RequireValid()
         => IsValid ? this : throw InvalidLanguageIdError();
+
+    public LanguageId Or(LanguageId alternative)
+        => IsValid ? this : alternative;
 
     private Exception InvalidLanguageIdError()
         => new InvalidOperationException("Invalid LanguageId.");

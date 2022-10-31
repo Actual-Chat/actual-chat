@@ -35,7 +35,7 @@ public class AccountAutoProvisionTest : AppHostTestBase
         var user = await _tester.SignIn(new User("Bob"));
 
         // act
-        var account = (await _accounts.Get(_tester.Session, default))!;
+        var account = (await _accounts.GetOwn(_tester.Session, default))!;
 
         // assert
         account.Should().NotBeNull();
@@ -48,12 +48,12 @@ public class AccountAutoProvisionTest : AppHostTestBase
     {
         // arrange
         var user = await _tester.SignIn(new User("Bob"));
-        var expected = (await _accounts.Get(_tester.Session, default))!;
+        var expected = (await _accounts.GetOwn(_tester.Session, default))!;
         await _tester.SignOut();
 
         // act
         await _tester.SignIn(user);
-        var actual = (await _accounts.Get(_tester.Session, default))!;
+        var actual = (await _accounts.GetOwn(_tester.Session, default))!;
 
         // assert
         actual.Should().BeEquivalentTo(expected, options => options.Excluding(x => x.User));

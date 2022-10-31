@@ -23,8 +23,8 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     {
         Services = services;
         Log = services.LogFor(GetType());
-        JS = Services.GetRequiredService<IJSRuntime>();
-        HostInfo = Services.GetRequiredService<HostInfo>();
+        JS = services.GetRequiredService<IJSRuntime>();
+        HostInfo = services.GetRequiredService<HostInfo>();
         ScreenSize = services.StateFactory().NewMutable<ScreenSize>();
         _whenReadySource = TaskSource.New<Unit>(true);
     }
@@ -38,7 +38,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         var initResult = await JS.InvokeAsync<IBrowserInfoBackend.InitResult>(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
             _backendRef,
-            HostInfo.HostKind == HostKind.Maui);
+            HostInfo.AppKind == AppKind.Maui);
         // Log.LogInformation("Init: {InitResult}", initResult);
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;

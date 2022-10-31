@@ -16,8 +16,9 @@ public class WebModule : HostModule, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // Controllers, etc.
         services.AddMvcCore(options => {
-            options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
+            options.ModelBinderProviders.Add(new IdentifierModelBinderProvider());
         });
     }
 

@@ -4,7 +4,7 @@
 @{
     var message = Message;
     var entry = message.Entry;
-    var authorNameCls = Message.Entry.AuthorId == _principalId ? "text-06 " : "text-02 ";
+    var authorNameCls = Message.Entry.AuthorId == OwnAuthor?.Id ? "text-06 " : "text-02 ";
     authorNameCls += "font-bold min-w-fit";
 }
 
@@ -13,7 +13,7 @@
         <div class="flex-x w-full max-h-8 items-center gap-x-4">
             <i class="icon-reply text-2xl text-icons-01"></i>
             <div class="flex-x w-full overflow-hidden">
-                <ChatAuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
+                <AuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
                 <span>:&nbsp</span>
                 <div class="truncate font-medium">@Text</div>
             </div>
@@ -36,9 +36,12 @@
 </div>
 
 @code {
+    private string Text { get; set; } = null!;
+    private AuthorFull? OwnAuthor { get; set; } = null;
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -48,8 +51,6 @@
     public ChatMessageModel Message { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatEntryLinkType LinkType { get; set; }
-    private string Text { get; set; } = null!;
-    private string _principalId = "";
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
 
@@ -60,7 +61,7 @@
         MarkupHub.ChatId = Message.Entry.ChatId;
         var markup = await MarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
         Text = MarkupFormatter.ReadableUnstyled.Format(markup);
-        _principalId = await ChatAuthor.GetPrincipalId(Session, Message.Entry.ChatId, CancellationToken.None);
+        OwnAuthor = await Authors.GetOwn(Session, Message.Entry.ChatId, CancellationToken.None);
     }
 
     private async Task OnQuoteClick() {

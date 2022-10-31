@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using Cysharp.Text
 @inherits ComputedStateComponent<MessageReactions.Model>
 @{
     var m = State.Value;
@@ -24,7 +25,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()

@@ -18,7 +18,7 @@ public class RequireChat : RequirementComponent
         var parsedChatId = new ParsedChatId(ChatId);
         if (!parsedChatId.IsValid) {
             Log.LogWarning("Invalid ChatId");
-            parsedChatId.AssertValid();
+            parsedChatId.RequireValid();
             return default; // Prev. line always throws, so it should never get here
         }
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);

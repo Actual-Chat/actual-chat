@@ -46,10 +46,7 @@ public static class Program
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
         services.AddSingleton(c => new HostInfo() {
-            HostKind = HostKind.Blazor,
-            RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                .Add(ServiceScope.Client)
-                .Add(ServiceScope.BlazorUI),
+            AppKind = AppKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = baseUrl,

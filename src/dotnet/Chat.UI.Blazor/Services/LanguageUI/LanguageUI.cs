@@ -7,10 +7,11 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class LanguageUI
 {
+    private AccountSettings AccountSettings { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
-    public ISyncedState<UserLanguageSettings> Languages { get; }
+    public ISyncedState<UserLanguageSettings> Settings { get; }
 
     public LanguageUI(IServiceProvider services)
     {
@@ -18,20 +19,36 @@ public class LanguageUI
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
-        var accountSettings = services.GetRequiredService<AccountSettings>();
-        Languages = stateFactory.NewKvasSynced<UserLanguageSettings>(
-            new (accountSettings, UserLanguageSettings.KvasKey) {
+        AccountSettings = services.GetRequiredService<AccountSettings>();
+        Settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
+            new (AccountSettings, UserLanguageSettings.KvasKey) {
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.Instant,
             });
     }
 
-    public async Task<LanguageId> NextLanguage(LanguageId language, CancellationToken cancellationToken = default)
+    public async ValueTask<LanguageId> GetChatLanguage(Symbol chatId, CancellationToken cancellationToken = default)
     {
-        await Languages.WhenFirstTimeRead.ConfigureAwait(false);
-        var languages = await Languages.Use(cancellationToken).ConfigureAwait(false);
-        return languages.Next(language);
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<LanguageId> ChangeChatLanguage(Symbol chatId)
+    {
+        await Settings.WhenFirstTimeRead.ConfigureAwait(false);
+        var settings = Settings.Value;
+        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
+        var language = userChatSettings.Language.Or(settings.Primary);
+        language = settings.Next(language);
+        if (language == userChatSettings.Language)
+            return language;
+
+        userChatSettings = userChatSettings with { Language = language };
+        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
+        return language;
+    }
+
+    // Private methods
 
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
     {

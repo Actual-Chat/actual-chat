@@ -77,7 +77,7 @@ public class RecentChatsUI : WorkerBase
         Task<List<Chat>> OrderByRecency(List<Chat> items)
             => RecentEntries.OrderByRecency(Session,
                 items,
-                RecencyScope.ChatContact,
+                RecencyScope.Chat,
                 chats.Length,
                 cancellationToken);
     }

@@ -32,11 +32,11 @@ public sealed class ModalUI
             return Task.FromResult(ShowInternal(componentType, model, isFullScreen));
 
         IModalRef? modalReference = null;
-        var tcs = new TaskCompletionSource<IModalRef>();
+        var whenCompletedSource = TaskSource.New<IModalRef>(true);
         HistoryUI.NavigateTo(
             () => {
                 modalReference = ShowInternal(componentType, model, isFullScreen);
-                tcs.SetResult(modalReference);
+                whenCompletedSource.SetResult(modalReference);
                 modalReference.ModalCloseRequest += (s, e) => {
                     e.Handled = true;
                     _ = HistoryUI.GoBack();
@@ -45,7 +45,7 @@ public sealed class ModalUI
             () => {
                 modalReference?.Close();
             });
-        return tcs.Task;
+        return whenCompletedSource.Task;
     }
 
     private IModalRef ShowInternal<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class

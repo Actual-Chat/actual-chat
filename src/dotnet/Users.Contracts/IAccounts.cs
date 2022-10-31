@@ -3,11 +3,11 @@ namespace ActualChat.Users;
 public interface IAccounts : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<Account?> Get(Session session, CancellationToken cancellationToken);
+    Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+    Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
@@ -15,6 +15,6 @@ public interface IAccounts : IComputeService
     [DataContract]
     public sealed record UpdateCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Account Account
+        [property: DataMember] AccountFull Account
         ) : ISessionCommand<Unit>;
 }

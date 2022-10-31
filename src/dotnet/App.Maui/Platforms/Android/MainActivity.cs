@@ -44,12 +44,10 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        var appIsReady = false;
-        var appIsCreated = false;
+        var isLoaded = false;
         if (ScopedServicesAccessor.IsInitialized) {
-            appIsCreated = true;
-            var marker = ScopedServicesAccessor.ScopedServices.GetRequiredService<AppIsReadyMarker>();
-            appIsReady = marker.IsReady;
+            var loadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>();
+            isLoaded = loadingUI.WhenLoaded.IsCompleted;
             // If app is put to background with back button
             // and user brings app to foreground by launching app icon or picking app from recents,
             // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
@@ -59,13 +57,13 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log.Debug(AndroidConstants.LogTag, $"MainActivity.OnCreate. Blazor app is created: {appIsCreated}, is ready: {appIsReady}");
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity.OnCreate, is loaded: {isLoaded}");
 
         base.OnCreate(savedInstanceState);
 
-        Log.Debug(AndroidConstants.LogTag, "MainActivity. base.OnCreate completed");
+        Log.Debug(AndroidConstants.LogTag, $"MainActivity.base.OnCreate completed");
 
-        // atempt to have notification reception even after app is swiped out.
+        // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
         // seems it does not help
         var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
@@ -171,8 +169,8 @@ public class MainActivity : MauiAppCompatActivity
             else {
                 Log.Debug(AndroidConstants.LogTag, $"Google SignIn. SignInIntent result is NOK. Actual result: {resultCode}.");
                 new AlertDialog.Builder(this)
-                    .SetTitle("Google SignIn")
-                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")
+                    .SetTitle("Google SignIn")!
+                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")!
                     .Show();
             }
         }
@@ -239,8 +237,8 @@ public class MainActivity : MauiAppCompatActivity
         {
             await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
             var serviceProvider = ScopedServicesAccessor.ScopedServices;
-            var appIsReadyMarker = serviceProvider.GetRequiredService<AppIsReadyMarker>();
-            await appIsReadyMarker.WhenReady.ConfigureAwait(true);
+            var appLoadingUI = serviceProvider.GetRequiredService<LoadingUI>();
+            await appLoadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
             Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap navigates to '{url}'");
             _ = handler.Handle(url);
@@ -252,6 +250,6 @@ public class MainActivity : MauiAppCompatActivity
     {
         public bool OnPreDraw()
             => ScopedServicesAccessor.IsInitialized
-                && ScopedServicesAccessor.ScopedServices.GetRequiredService<AppIsReadyMarker>().IsReady;
+                && ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>().WhenLoaded.IsCompleted;
     }
 }

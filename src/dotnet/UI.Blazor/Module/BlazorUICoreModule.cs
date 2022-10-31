@@ -73,7 +73,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<RenderVars>();
 
         // UI events
-        services.AddScoped<AppIsReadyMarker>();
+        services.AddScoped<LoadingUI>();
         services.AddScoped<UILifetimeEvents>();
         services.AddScoped<UIEventHub>();
 

@@ -20,7 +20,7 @@ public static class UIFeatures
 
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
-            var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             return account?.IsAdmin == true;
         }
     }
@@ -35,7 +35,7 @@ public static class UIFeatures
 
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
-            var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             return account?.IsAdmin == true;
         }
     }

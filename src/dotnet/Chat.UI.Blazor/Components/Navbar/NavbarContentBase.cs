@@ -3,26 +3,20 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public abstract class NavbarContentBase : ComputedStateComponent<NavbarContentBase.Model>
+public abstract class NavbarContentBase : ComputedStateComponent<AccountFull>
 {
     [Inject] protected Session Session { get; init; } = null!;
     [Inject] protected IAccounts Accounts { get; init; } = null!;
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Guest,
+            InitialValue = AccountFull.Loading,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false);
-        return account == null ? Model.Guest : new Model(account);
-    }
-
-    public record Model(Account Account) {
-        public static Model Guest { get; } = new(Account.Guest);
-
-        public User User => Account.User;
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        return account ?? AccountFull.None;
     }
 }
