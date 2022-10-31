@@ -10,7 +10,8 @@
     Url="@($"/chat/{Chat.Id}")"
     IsSelected="@m.IsSelected"
     data-menu="@(MenuRef.New<ChatMenu>(Chat.Id).ToString())"
-    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())">
+    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
+    data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <ChatIcon Chat="Chat"/>
