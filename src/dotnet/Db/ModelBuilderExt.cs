@@ -41,7 +41,7 @@ public static class ModelBuilderExt
         }
     }
 
-    [return: NotNullIfNotNull(nameof(name))]
+    [return: NotNullIfNotNull("name")]
     private static string? FixName(string? name)
     {
         if (name == null)
