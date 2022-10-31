@@ -1,6 +1,5 @@
 ﻿using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
-using Stl.Generators;
 
 namespace ActualChat.Users;
 
@@ -9,14 +8,12 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
     private IAccountsBackend AccountsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
-    private RandomStringGenerator AvatarIdGenerator { get; }
 
     public AvatarsBackend(IServiceProvider services) : base(services)
     {
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
         DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
-        AvatarIdGenerator = new RandomStringGenerator(12, RandomStringGenerator.Base32Alphabet);
     }
 
     // [ComputeMethod]
@@ -46,7 +43,7 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 
         if (change.IsCreate(out var avatar)) {
             avatar = avatar with {
-                Id = AvatarIdGenerator.Next(),
+                Id = DbAvatar.IdGenerator.Next(),
                 Version = VersionGenerator.NextVersion(),
             };
             var dbAvatar = new DbAvatar(avatar);

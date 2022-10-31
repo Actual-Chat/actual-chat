@@ -12,9 +12,6 @@ namespace ActualChat.Invite;
 
 internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 {
-    private const string InviteIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static RandomStringGenerator InviteIdGenerator { get; } = new(10, InviteIdAlphabet);
-
     private IAccounts Accounts { get; }
     private IChatsBackend ChatsBackend { get; }
 
@@ -74,7 +71,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         if (expiresOn == Moment.EpochStart)
             expiresOn = Clocks.SystemClock.Now + TimeSpan.FromDays(7);
         var invite = command.Invite with {
-            Id = InviteIdGenerator.Next(),
+            Id = DbInvite.IdGenerator.Next(),
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
             ExpiresOn = expiresOn,

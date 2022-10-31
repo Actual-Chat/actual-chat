@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Stl.Generators;
 using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
@@ -12,11 +13,13 @@ namespace ActualChat.Users.Db;
 [Table("Avatars")]
 public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
     string IHasId<string>.Id => Id;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string PrincipalId { get; set; } = null!;
+    public string? PrincipalId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public string Bio { get; set; } = "";
@@ -28,7 +31,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new() {
             Id = Id,
             Version = Version,
-            PrincipalId = PrincipalId,
+            PrincipalId = PrincipalId ?? Symbol.Empty,
             Name = Name,
             Picture = Picture,
             Bio = Bio,
@@ -42,7 +45,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
             throw StandardError.Constraint("Can't change Avatar.Id.");
 
         if (PrincipalId.IsNullOrEmpty())
-            PrincipalId = model.PrincipalId;
+            PrincipalId = model.PrincipalId.NullIfEmpty()?.Value;
         else if (PrincipalId != model.PrincipalId)
             throw StandardError.Constraint("Can't change Avatar.PrincipalId.");
 
@@ -57,7 +60,6 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         public void Configure(EntityTypeBuilder<DbAvatar> builder)
         {
             builder.Property(a => a.Id).IsRequired();
-            builder.Property(a => a.PrincipalId).IsRequired();
             builder.Property(a => a.Name).IsRequired();
         }
     }

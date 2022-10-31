@@ -16,8 +16,6 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private static readonly string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
-    private static readonly RandomStringGenerator ChatIdGenerator = new(10, ChatIdAlphabet);
 
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
@@ -259,7 +257,10 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         Chat chat;
         DbChat dbChat;
         if (change.RequireValid().IsCreate(out var update)) {
-            chatId = chatId.NullIfEmpty() ?? ChatIdGenerator.Next();
+            if (!Constants.Chat.PredefinedChatIds.Contains(chatId)) {
+                chatId.RequireEmpty("command.ChatId");
+                chatId = DbChat.IdGenerator.Next();
+            }
             chat = new Chat() {
                 Id = chatId,
                 Version = VersionGenerator.NextVersion(),

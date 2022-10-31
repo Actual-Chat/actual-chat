@@ -58,15 +58,16 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             try {
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (DbUpdateException) {
+            catch (DbUpdateException e) {
                 // Looks like we're starting w/ existing DB
+                Log.LogWarning(e, "Couldn't create 'admin' user, looks like we're starting w/ existing DB");
                 dbContext.ChangeTracker.Clear();
             }
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
             var adminUser = await authBackend.GetUser(default, UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
-                ?? throw StandardError.Internal("Failed to create 'admin' user.");
+                ?? throw StandardError.Internal("Failed to locate 'admin' user.");
             await commander.Call(
                     new SignInCommand(session, adminUser, adminUser.Identities.Keys.Single()),
                     cancellationToken)

@@ -133,7 +133,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
         services.AddSingleton(new PublisherOptions {
-            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, RandomStringGenerator.Base32Alphabet)}",
+            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, Alphabet.AlphaNumeric)}",
         });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
