@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("ReactionSummaries")]
 [Index(nameof(ChatEntryId))]
-public class DbReactionSummary : IHasId<string>, IRequirementTarget
+public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<ImmutableList<string>> AuthorIdsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<ImmutableList<string>>();

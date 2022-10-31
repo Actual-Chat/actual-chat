@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
-public class DbKvasEntry : IHasId<string>, IRequirementTarget
+public class DbKvasEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     string IHasId<string>.Id => Key;
     [Key] public string Key { get; set; } = null!;

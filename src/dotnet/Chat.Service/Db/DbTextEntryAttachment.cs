@@ -1,10 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("TextEntryAttachments")]
-public class DbTextEntryAttachment
+public class DbTextEntryAttachment : IHasVersion<long>, IRequirementTarget
 {
     public DbTextEntryAttachment() { }
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);

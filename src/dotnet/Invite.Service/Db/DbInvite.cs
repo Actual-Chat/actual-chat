@@ -8,7 +8,7 @@ namespace ActualChat.Invite.Db;
 
 [Table("Invites")]
 [Index(nameof(SearchKey), nameof(Remaining))]
-public class DbInvite : IHasId<string>, IHasVersion<long>
+public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<InviteDetails>();

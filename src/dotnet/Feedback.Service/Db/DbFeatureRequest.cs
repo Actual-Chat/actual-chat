@@ -5,7 +5,7 @@ using Stl.Versioning;
 namespace ActualChat.Feedback.Db;
 
 [Table("FeatureRequests")]
-public class DbFeatureRequest : IHasId<string>, IHasVersion<long>
+public class DbFeatureRequest : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
 

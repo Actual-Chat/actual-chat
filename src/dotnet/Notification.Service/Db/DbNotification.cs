@@ -6,7 +6,7 @@ namespace ActualChat.Notification.Db;
 
 [Table("Notifications")]
 [Index(nameof(UserId), nameof(Id))]
-public class DbNotification : IHasId<string>
+public class DbNotification : IHasId<string>, IRequirementTarget
 {
     private DateTime _createdAt;
     private DateTime? _modifiedAt;

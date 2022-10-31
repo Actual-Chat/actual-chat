@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
 [Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
 [Index(nameof(ChatId), nameof(Type), nameof(Version))]
-public class DbChatEntry : IHasId<long>, IHasVersion<long>
+public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;

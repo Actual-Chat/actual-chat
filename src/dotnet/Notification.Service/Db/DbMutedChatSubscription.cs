@@ -7,7 +7,7 @@ namespace ActualChat.Notification.Db;
 
 [Table("MutedChatSubscriptions")]
 [Index(nameof(UserId), nameof(ChatId))]
-public class DbMutedChatSubscription : IHasId<string>, IHasVersion<long>
+public class DbMutedChatSubscription : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public DbMutedChatSubscription() { }
 

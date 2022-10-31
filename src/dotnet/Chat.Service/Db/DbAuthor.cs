@@ -2,13 +2,14 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("ChatAuthors")]
 [Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(UserId))]
-public class DbAuthor : IHasId<string>
+public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
