@@ -3,9 +3,10 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.App.Maui.Services;
 
-public partial class NativeHttpClientFactory : IHttpClientFactory
+public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageHandlerFactory
 {
     private readonly ConcurrentDictionary<string, HttpClient> _clients = new ();
+    private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new ();
 
     private IServiceProvider Services { get; }
     private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; }
@@ -13,6 +14,7 @@ public partial class NativeHttpClientFactory : IHttpClientFactory
 
     public NativeHttpClientFactory(
         IServiceProvider services,
+
         IOptionsSnapshot<HttpClientFactoryOptions> options,
         IEnumerable<IHttpMessageHandlerBuilderFilter> filters)
     {
@@ -22,10 +24,19 @@ public partial class NativeHttpClientFactory : IHttpClientFactory
     }
 
     public HttpClient CreateClient(string name)
-        => _clients.GetOrAdd(name, _ =>
-            CreatePlatformMessageHandler() is { } handler
-                ? ConfigureClient(new HttpClient(ConfigureMessageHandler(handler, name), false), name)
-                : new HttpClient());
+        => _clients.GetOrAdd(
+            name,
+            name1 => ConfigureClient(new HttpClient(CreateHandler(name1), false), name1));
+
+    public HttpMessageHandler CreateHandler(string name)
+        => _messageHandlers.GetOrAdd(name, name1 => {
+            var handler = CreatePlatformMessageHandler();
+            if (handler == null)
+                throw StandardError.NotSupported<NativeHttpClientFactory>(
+                    $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
+
+            return ConfigureMessageHandler(handler, name1);
+        });
 
     private partial HttpMessageHandler? CreatePlatformMessageHandler();
 
