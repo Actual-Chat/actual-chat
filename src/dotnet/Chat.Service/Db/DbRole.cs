@@ -6,7 +6,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
-[Table("ChatRoles")]
+[Table("Roles")]
 [Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(Name))]
 public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget

@@ -7,7 +7,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
-[Table("UserAvatars")]
+[Table("Avatars")]
 public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);

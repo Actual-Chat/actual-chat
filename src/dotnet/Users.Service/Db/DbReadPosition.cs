@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Users.Db;
 
-[Table("ChatReadPositions")]
+[Table("ReadPositions")]
 public class DbReadPosition : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

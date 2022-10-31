@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ActualChat.Users.Db;
 
-[Table("UserPresences")]
+[Table("Presences")]
 public class DbUserPresence : IRequirementTarget
 {
     private DateTime _onlineCheckInAt;

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Chat.Db;
 
-[Table("ChatAuthorRoles")]
+[Table("AuthorRoles")]
 [Index(nameof(DbRoleId), nameof(DbAuthorId), IsUnique = true)]
 public class DbAuthorRole: IRequirementTarget
 {

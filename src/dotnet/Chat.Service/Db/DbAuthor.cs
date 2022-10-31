@@ -6,7 +6,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
-[Table("ChatAuthors")]
+[Table("Authors")]
 [Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(UserId))]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget

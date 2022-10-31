@@ -6,7 +6,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
-[Table("UserContacts")]
+[Table("Contacts")]
 [Index(nameof(OwnerUserId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
