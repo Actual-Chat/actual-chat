@@ -2,7 +2,7 @@ import './menu.css'
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
 import { empty, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
-import { computePosition, flip, Middleware, offset, Placement, shift } from '@floating-ui/dom';
+import { computePosition, flip, Middleware, offset, Placement, shift, ReferenceElement, VirtualElement } from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
 import { Log, LogLevel } from 'logging';
 
@@ -258,25 +258,39 @@ async function updatePosition(menu: Menu): Promise<void> {
 
     debugLog?.log(`updatePosition, menu:`, menu);
     menu.elementRef.style.display = 'block';
-    if (menu.eventData.coords) {
-        Object.assign(menu.elementRef.style, {
-            left: `${menu.eventData.coords.x}px`,
-            top: `${menu.eventData.coords.y}px`,
-        });
-        return;
-    }
 
+    let reference: ReferenceElement;
     const middleware: Middleware[] = [];
-    if (menu.eventData.isHoverMenu) {
+    if (menu.eventData.coords) {
+        const virtualElement: VirtualElement = {
+            getBoundingClientRect() {
+                return {
+                    width: 0,
+                    height: 0,
+                    x: menu.eventData.coords.x,
+                    y: menu.eventData.coords.y,
+                    top: menu.eventData.coords.y,
+                    left: menu.eventData.coords.x,
+                    right: menu.eventData.coords.x,
+                    bottom: menu.eventData.coords.y,
+                };
+            },
+        };
+        reference = virtualElement;
+        middleware.push(flip());
+        middleware.push(shift({ padding: 5 }));
+    } else if (menu.eventData.isHoverMenu) {
+        reference = menu.eventData.element;
         middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
         middleware.push(flip());
     } else {
+        reference = menu.eventData.element;
         middleware.push(offset(6));
         middleware.push(flip());
         middleware.push(shift({ padding: 5 }));
     }
     const { x, y } = await computePosition(
-        menu.eventData.element,
+        reference,
         menu.elementRef,
         {
             placement: menu.eventData.placement,
