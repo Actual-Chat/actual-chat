@@ -3,6 +3,7 @@ using System;
 using ActualChat.Feedback.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Feedback.Migrations
 {
     [DbContext(typeof(FeedbackDbContext))]
-    partial class FeedbackDbContextModelSnapshot : ModelSnapshot
+    [Migration("20221031091407_BigRefactoring1")]
+    partial class BigRefactoring1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
