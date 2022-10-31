@@ -8,6 +8,7 @@ import { Log, LogLevel } from 'logging';
 const LogScope = 'AudioContextLazy';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 async function defaultFactory() : Promise<AudioContext> {
@@ -79,21 +80,25 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
 export class AudioContextLazy implements Disposable {
     private audioContextTask?: PromiseSource<AudioContext> = null;
     private nextInteractionHandler?: Disposable = null;
+    private requireInteraction = true;
 
     public audioContext: AudioContext | null = null;
     public audioContextChanged: EventHandlerSet<AudioContext | null> = new EventHandlerSet<AudioContext | null>();
 
-    constructor(factory: (() => Promise<AudioContext>) = null) {
-        factory ??= defaultFactory;
+    constructor() {
         this.audioContextTask = new PromiseSource<AudioContext>();
-        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
-            const audioContext = await factory();
-            audioContext['lastTime'] = audioContext.currentTime;
-            onDeviceAwake(() => this.wakeUp());
-            this.audioContext = audioContext;
-            this.audioContextTask.resolve(audioContext);
-            this.audioContextChanged.triggerSilently(audioContext);
-        });
+        if (this.requireInteraction) {
+            this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+                const audioContext = await defaultFactory();
+                this.setAudioContext(audioContext);
+                onDeviceAwake(() => this.wakeUp());
+            });
+        }
+        else {
+            void defaultFactory()
+                .then(audioContext => this.setAudioContext(audioContext))
+                .then(() => onDeviceAwake(() => this.wakeUp()));
+        }
     }
 
     public dispose(): void {
@@ -136,20 +141,41 @@ export class AudioContextLazy implements Disposable {
         return this.audioContextTask;
     }
 
-    private refreshAudioContextTask() {
+    public doNotWaitForInteraction(): void {
+        const audioContext = this.audioContext;
+        this.requireInteraction = false;
+        this.nextInteractionHandler?.dispose();
+        this.nextInteractionHandler = null;
+        if (audioContext) {
+            this.setAudioContext(audioContext);
+        }
+        else {
+            void defaultFactory()
+                .then(audioContext1 => this.setAudioContext(audioContext1));
+        }
+    }
+
+    private setAudioContext(audioContext: AudioContext): void {
+        audioContext['lastTime'] = audioContext.currentTime;
+        this.audioContext = audioContext;
+        this.audioContextTask.resolve(audioContext);
+        this.audioContextChanged.triggerSilently(audioContext);
+    }
+
+    private refreshAudioContextTask(): void {
         const audioContext = this.audioContext;
         this.nextInteractionHandler?.dispose();
         this.nextInteractionHandler = null;
         this.audioContext = null;
         this.audioContextTask = new PromiseSource<AudioContext>();
         this.audioContextChanged.triggerSilently(null);
-        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
-            await resume(audioContext, true);
-            audioContext['lastTime'] = audioContext.currentTime;
-            this.audioContext = audioContext;
-            this.audioContextTask.resolve(audioContext);
-            this.audioContextChanged.triggerSilently(audioContext);
-        });
+        if (this.requireInteraction) {
+            this.nextInteractionHandler = NextInteraction.addHandler(() => resume(audioContext, true)
+                .then(audioContext1 => this.setAudioContext(audioContext1)));
+        } else {
+            void resume(audioContext, true)
+                .then(audioContext1 => this.setAudioContext(audioContext1));
+        }
     }
 
     private wakeUp(): void {
