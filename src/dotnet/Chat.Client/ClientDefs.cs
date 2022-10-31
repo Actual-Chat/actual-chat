@@ -84,7 +84,7 @@ public interface IAuthorsClientDef
     [Get(nameof(Get))]
     Task<Author?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(GetOwn))]
-    Task<Author?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetFull))]
     Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(ListChatIds))]

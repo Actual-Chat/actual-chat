@@ -5,7 +5,7 @@ namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandTestService
 {
-    public readonly ConcurrentQueue<IEvent> ProcessedEvents = new ();
+    public readonly ConcurrentQueue<IEvent> ProcessedEvents = new();
 
     [CommandHandler]
     public virtual Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
@@ -23,6 +23,7 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
+        new TestEvent(null).EnqueueOnCompletion(Queues.Default);
         new TestEvent2().EnqueueOnCompletion(Queues.Default);
         return Task.CompletedTask;
     }
