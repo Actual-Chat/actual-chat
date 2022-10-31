@@ -2,9 +2,10 @@
 @inherits MenuBase
 
 @if (_chatMessageModel != null) {
-    <CascadingValue Value="@_chatMessageModel">
-        <MessageMenuContent ClickedLinkUrl="@_link" />
-    </CascadingValue>
+    <MessageMenuContent
+        ChatMessageModel="_chatMessageModel"
+        ClickedLinkUrl="@_link">
+    </MessageMenuContent>
 }
 
 @code {

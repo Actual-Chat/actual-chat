@@ -58,7 +58,7 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter] public ChatMessageModel ChatMessageModel { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
     [Parameter] public string? ClickedLinkUrl { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
