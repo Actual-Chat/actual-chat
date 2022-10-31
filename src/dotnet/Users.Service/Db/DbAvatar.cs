@@ -10,7 +10,7 @@ namespace ActualChat.Users.Db;
 /// <summary>
 /// User avatar. <br />
 /// </summary>
-[Table("Avatars")]
+[Table("UserAvatars")]
 public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
