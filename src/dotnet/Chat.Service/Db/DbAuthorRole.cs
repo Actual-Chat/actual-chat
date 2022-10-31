@@ -17,9 +17,9 @@ public class DbAuthorRole: IRequirementTarget
     {
         public void Configure(EntityTypeBuilder<DbAuthorRole> builder)
         {
+            builder.HasKey(e => new { AuthorId = e.DbAuthorId, RoleId = e.DbRoleId });
             builder.Property(a => a.DbAuthorId).IsRequired();
             builder.Property(a => a.DbRoleId).IsRequired();
-            builder.HasKey(e => new { AuthorId = e.DbAuthorId, RoleId = e.DbRoleId });
         }
     }
 }

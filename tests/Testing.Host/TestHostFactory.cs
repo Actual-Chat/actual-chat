@@ -1,5 +1,6 @@
 using ActualChat.App.Server;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
@@ -76,14 +77,16 @@ public static class TestHostFactory
             var debugCategories = new List<string> {
                 "Stl.Fusion",
                 "Stl.CommandR",
+                "Stl.Fusion.EntityFramework.Operations",
                 // DbLoggerCategory.Database.Transaction.Name,
                 // DbLoggerCategory.Database.Connection.Name,
-                // DbLoggerCategory.Database.Command.Name,
+                DbLoggerCategory.Database.Command.Name,
+                DbLoggerCategory.Update.Name,
                 // DbLoggerCategory.Query.Name,
                 // DbLoggerCategory.Update.Name,
             };
             var suppressedCategories = new List<string>() {
-                "Microsoft",
+                // "Microsoft", // Be careful with this - it suppresses all EF messages!
                 "Stl.Fusion.Interception",
                 "Stl.CommandR.Interception",
                 // "Microsoft.EntityFrameworkCore",
@@ -92,22 +95,29 @@ public static class TestHostFactory
 
             bool LogFilter(string category, LogLevel level)
             {
-                if (suppressedCategories.Any(category.StartsWith))
+                if (suppressedCategories.Any(category.OrdinalStartsWith))
                     return false;
-                if (level is LogLevel.Debug && debugCategories.Any(category.StartsWith))
+                if (level is LogLevel.Debug && debugCategories.Any(category.OrdinalStartsWith))
                     return true;
                 return level >= LogLevel.Information;
             }
 
             logging.ClearProviders();
             logging.SetMinimumLevel(LogLevel.Debug);
-            logging.AddFilter(LogFilter);
+            logging.AddFilter(DbLoggerCategory.Update.Name, LogLevel.Information);
+            logging.AddFilter(DbLoggerCategory.Database.Command.Name, LogLevel.Information);
+            logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);
+            logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
+            logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
+            logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);
+            // logging.AddFilter(LogFilter);
             logging.AddDebug();
             // XUnit logging requires weird setup b/c otherwise it filters out
             // everything below LogLevel.Information
-            logging.AddProvider(new XunitTestOutputLoggerProvider(
-                new TestOutputHelperAccessor(output),
-                LogFilter));
+            logging.AddProvider(
+                new XunitTestOutputLoggerProvider(
+                    new TestOutputHelperAccessor(output),
+                    (_, _) => true));
         });
 
     private static void ConfigureTestApp(IConfigurationBuilder config, ITestOutputHelper output)

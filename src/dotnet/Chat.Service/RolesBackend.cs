@@ -128,6 +128,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             return default!;
         }
 
+        change.RequireValid();
         chatId = chatId.RequireNonEmpty("Command.ChatId");
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -137,8 +138,8 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
         Role? role;
         DbRole? dbRole;
-        if (change.RequireValid().IsCreate(out var update)) {
-            roleId.RequireEmpty("Command.RoleId");
+        if (change.IsCreate(out var update)) {
+            roleId.RequireEmpty("command.RoleId");
             var localId = await DbRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);

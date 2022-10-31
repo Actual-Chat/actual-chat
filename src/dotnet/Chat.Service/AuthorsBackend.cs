@@ -102,7 +102,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var userId = account?.Id ?? Symbol.Empty;
 
         var command = new IAuthorsBackend.CreateCommand(chatId, userId, false);
-        author = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
             var kvas = ServerKvas.GetClient(session);
@@ -121,7 +121,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return author;
 
         var command = new IAuthorsBackend.CreateCommand(chatId, userId, true);
-        author = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
@@ -205,14 +205,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 AvatarId = newAvatar.Id,
                 IsAnonymous = true,
             };
-            dbContext.Add(dbAuthor);
         }
         else {
             // We're creating an author for registered user,
             // so it makes sense to check if such an author already exists
             dbAuthor = await dbContext.Authors
                 .Include(a => a.Roles)
-                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId.Value, cancellationToken)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
             if (dbAuthor != null)
                 return dbAuthor.ToModel(); // Already exist, so we don't recreate one
@@ -229,6 +228,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         dbAuthor.Id = DbAuthor.ComposeId(chatId, dbAuthor.LocalId);
         dbAuthor.Version = VersionGenerator.NextVersion();
         dbAuthor.UserId = account?.Id;
+        dbContext.Add(dbAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var author = dbAuthor.ToModel();

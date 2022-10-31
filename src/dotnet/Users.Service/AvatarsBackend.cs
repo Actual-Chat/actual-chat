@@ -5,13 +5,11 @@ namespace ActualChat.Users;
 
 public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 {
-    private IAccountsBackend AccountsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
 
     public AvatarsBackend(IServiceProvider services) : base(services)
     {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
         DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
     }

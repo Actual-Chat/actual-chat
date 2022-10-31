@@ -31,7 +31,7 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
             },
         });
 
-        var newContact = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        var newContact = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return newContact;
     }
 
@@ -114,7 +114,7 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         Contact? contact;
         DbContact? dbContact;
         if (change.IsCreate(out var contactDiff)) {
-            id.RequireEmpty("Command.Id");
+            id.RequireEmpty("command.Id");
             contact = DiffEngine.Patch(new Contact(), contactDiff);
             if (contact.OwnerUserId.IsEmpty)
                 throw StandardError.Constraint("OwnerUserId is empty.");

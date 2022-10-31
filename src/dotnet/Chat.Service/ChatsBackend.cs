@@ -251,12 +251,13 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return null!;
         }
 
+        change.RequireValid();
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         Chat chat;
         DbChat dbChat;
-        if (change.RequireValid().IsCreate(out var update)) {
+        if (change.IsCreate(out var update)) {
             if (!Constants.Chat.PredefinedChatIds.Contains(chatId)) {
                 chatId.RequireEmpty("command.ChatId");
                 chatId = DbChat.IdGenerator.Next();
@@ -280,7 +281,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
             if (chat.ChatType is ChatType.Peer) {
                 // Peer chat
-                creatorUserId.RequireEmpty("Command.CreatorUserId");
+                creatorUserId.RequireEmpty("command.CreatorUserId");
                 var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
                 var ownerUserIds = new[] { userId1.Value, userId2.Value };
                 await ownerUserIds

@@ -173,6 +173,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             await Backend.GetOrCreate(command.ChatId, userId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task SetAvatar(IAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
