@@ -73,40 +73,13 @@ public static class TestHostFactory
     public static void ConfigureLogging(IServiceCollection services, ITestOutputHelper output)
         => services.AddLogging(logging => {
             // Overriding default logging to more test-friendly one
-
-            var debugCategories = new List<string> {
-                "Stl.Fusion",
-                "Stl.CommandR",
-                "Stl.Fusion.EntityFramework.Operations",
-                // DbLoggerCategory.Database.Transaction.Name,
-                // DbLoggerCategory.Database.Connection.Name,
-                DbLoggerCategory.Database.Command.Name,
-                DbLoggerCategory.Update.Name,
-                // DbLoggerCategory.Query.Name,
-                // DbLoggerCategory.Update.Name,
-            };
-            var suppressedCategories = new List<string>() {
-                // "Microsoft", // Be careful with this - it suppresses all EF messages!
-                "Stl.Fusion.Interception",
-                "Stl.CommandR.Interception",
-                // "Microsoft.EntityFrameworkCore",
-                // "Microsoft.AspNetCore",
-            };
-
-            bool LogFilter(string category, LogLevel level)
-            {
-                if (suppressedCategories.Any(category.OrdinalStartsWith))
-                    return false;
-                if (level is LogLevel.Debug && debugCategories.Any(category.OrdinalStartsWith))
-                    return true;
-                return level >= LogLevel.Information;
-            }
-
             logging.ClearProviders();
             logging.SetMinimumLevel(LogLevel.Debug);
-            logging.AddFilter(DbLoggerCategory.Update.Name, LogLevel.Information);
-            logging.AddFilter(DbLoggerCategory.Database.Command.Name, LogLevel.Information);
-            logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);
+            // logging.AddFilter(DbLoggerCategory.Update.Name, LogLevel.Information);
+            // logging.AddFilter(DbLoggerCategory.Database.Command.Name, LogLevel.Information);
+            // logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);
+            logging.AddFilter("Stl.CommandR", LogLevel.Information);
+            logging.AddFilter("Stl.Fusion", LogLevel.Information);
             logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
             logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
             logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);
