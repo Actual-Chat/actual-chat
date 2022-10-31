@@ -4,8 +4,8 @@
 
 <div class="avatar-badge" onclick="@Click">
     <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="ml-2 flex-y">
-        <div class="avatar-badge-name">
+    <div class="flex-y ml-2">
+        <div class="avatar-badge-name grid">
             <AvatarName Avatar="@Avatar" Size="@Size" Class="@TextClass"/>
         </div>
         @if (ShowStatusText && !_statusText.IsNullOrEmpty()) {
