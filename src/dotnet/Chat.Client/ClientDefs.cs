@@ -127,8 +127,8 @@ public interface IRolesClientDef
 [BasePath("mentions")]
 public interface IMentionsClientDef
 {
-    [Get(nameof(GetOwnLast))]
-    Task<Mention?> GetOwnLast(
+    [Get(nameof(GetLastOwn))]
+    Task<Mention?> GetLastOwn(
         Session session,
         Symbol chatId,
         CancellationToken cancellationToken);
