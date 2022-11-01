@@ -4,17 +4,18 @@
 @{
     var message = Message;
     var entry = message.Entry;
-    var authorNameCls = Message.Entry.AuthorId == _principalId ? "text-06 " : "text-primary ";
-    authorNameCls += "font-bold w-fit max-w-48 bg-selected rounded-full px-2";
+    var colorCls = Message.Entry.AuthorId == OwnAuthor?.Id ? "text-06 " : "text-primary ";
+    var authorNameCls = colorCls + "font-medium max-w-64 pl-2";
 }
 
 <div class="chat-quote cursor-pointer" @onclick="OnQuoteClick">
     @if (LinkType == ChatEntryLinkType.Reply) {
-        <div class="flex-x w-full max-h-8 items-center gap-x-4">
-            <i class="icon-reply text-2xl text-icons-01"></i>
-            <div class="flex-x w-full overflow-hidden gap-x-2">
+        <div class="flex-x w-full max-h-8 items-center">
+            <i class="icon-reply text-xl @colorCls"></i>
+            <div class="flex-x w-full overflow-hidden">
                 <AuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
-                <div class="truncate">@Text</div>
+                <span class="@colorCls pr-1">:&nbsp</span>
+                <div class="flex-1 truncate">@Text</div>
             </div>
             <RenderSlot Name="QuoteCloseButton"/>
         </div>
