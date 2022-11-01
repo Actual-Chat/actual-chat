@@ -73,7 +73,7 @@
 
     public sealed class FormModel : FormModel<FormModel> {
 
-        [Required, MinLength(4)]
+        [Required, MinLength(4, ErrorMessage = "Name must be at least 4 characters.")]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
         public string Phone { get; set; } = "";

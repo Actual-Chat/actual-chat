@@ -45,6 +45,13 @@
 .modal-frame .dialog-buttons {
     @apply px-4 md:px-1 overflow-hidden;
 }
+.dialog-body .validation-errors {
+    @apply rounded-md mb-2;
+}
+.dialog-body .validation-errors .validation-message {
+     @apply flex justify-center rounded-md p-2 bg-error text-04 font-normal text-base;
+ }
+
 .modal-frame * {
     @apply cursor-default;
 }
