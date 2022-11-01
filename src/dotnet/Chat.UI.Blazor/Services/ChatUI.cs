@@ -203,7 +203,7 @@ public class ChatUI
         => Task.FromResult(StateFactory.NewCustomSynced<long?>(
             new(
                 // Reader
-                async ct => await ReadPositions.Get(Session, chatId, ct).ConfigureAwait(false),
+                async ct => await ReadPositions.GetOwn(Session, chatId, ct).ConfigureAwait(false),
                 // Writer
                 async (lastReadEntryId, ct) => {
                     if (lastReadEntryId is not { } entryId)

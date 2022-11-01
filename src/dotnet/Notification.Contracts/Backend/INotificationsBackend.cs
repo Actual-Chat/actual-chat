@@ -4,19 +4,17 @@ public interface INotificationsBackend : IComputeService
 {
     [ComputeMethod]
     Task<ImmutableArray<Device>> ListDevices(string userId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListSubscriberIds(string chatId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<ImmutableArray<string>> ListRecentNotificationIds(string userId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<NotificationEntry> GetNotification(string userId, string notificationId, CancellationToken cancellationToken);
 
+    // Command handlers
+
     [CommandHandler]
     Task NotifyUser(NotifyUserCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);
 

@@ -14,7 +14,7 @@ public class RecentEntries : IRecentEntries
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<RecentEntry>> List(
+    public virtual async Task<ImmutableArray<RecentEntry>> ListOwn(
         Session session,
         RecencyScope scope,
         int limit,

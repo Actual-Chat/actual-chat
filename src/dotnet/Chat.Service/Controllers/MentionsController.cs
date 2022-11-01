@@ -13,9 +13,9 @@ public class MentionsController : ControllerBase, IMentions
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<Mention?> GetLast(
+    public Task<Mention?> GetLastOwn(
         Session session,
         Symbol chatId,
         CancellationToken cancellationToken)
-        => _service.GetLast(session, chatId, cancellationToken);
+        => _service.GetLastOwn(session, chatId, cancellationToken);
 }

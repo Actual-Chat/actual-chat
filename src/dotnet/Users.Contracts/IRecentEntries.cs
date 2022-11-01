@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 public interface IRecentEntries : IComputeService
 {
     [ComputeMethod]
-    Task<ImmutableArray<RecentEntry>> List(
+    Task<ImmutableArray<RecentEntry>> ListOwn(
         Session session,
         RecencyScope scope,
         int limit,

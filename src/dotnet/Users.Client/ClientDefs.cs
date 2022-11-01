@@ -42,8 +42,8 @@ public interface IAvatarsClientDef
 [BasePath("recentEntries")]
 public interface IRecentEntriesClientDef
 {
-    [Get(nameof(List))]
-    Task<ImmutableArray<RecentEntry>> List(
+    [Get(nameof(ListOwn))]
+    Task<ImmutableArray<RecentEntry>> ListOwn(
         Session session,
         RecencyScope scope,
         int limit,
@@ -55,8 +55,8 @@ public interface IRecentEntriesClientDef
 [BasePath("readPositions")]
 public interface IReadPositionsClientDef
 {
-    [Get(nameof(Get))]
-    public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetOwn))]
+    public Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
     public Task Set([Body] IReadPositions.SetCommand command, CancellationToken cancellationToken);
@@ -79,10 +79,10 @@ public interface IServerKvasClientDef
 [BasePath("contacts")]
 public interface IContactsClientDef
 {
-    [Get(nameof(Get))]
-    Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken);
-    [Get(nameof(List))]
-    Task<ImmutableArray<Contact>> List(Session session, CancellationToken cancellationToken);
+    [Get(nameof(GetOwn))]
+    Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken);
+    [Get(nameof(ListOwn))]
+    Task<ImmutableArray<Contact>> ListOwn(Session session, CancellationToken cancellationToken);
     [Post(nameof(Change))]
     Task<Contact> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
 }

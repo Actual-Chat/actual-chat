@@ -11,7 +11,7 @@ public interface IAuthors : IComputeService
     [ComputeMethod]
     Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]

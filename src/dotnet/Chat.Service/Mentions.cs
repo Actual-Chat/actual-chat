@@ -14,7 +14,7 @@ internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
     }
 
     // [ComputeMethod]
-    public virtual async Task<Mention?> GetLast(
+    public virtual async Task<Mention?> GetLastOwn(
         Session session,
         Symbol chatId,
         CancellationToken cancellationToken)

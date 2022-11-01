@@ -63,7 +63,7 @@
         if (account == null)
             return Model.None;
 
-        var contacts = await Contacts.List(Session, cancellationToken).ConfigureAwait(false);
+        var contacts = await Contacts.ListOwn(Session, cancellationToken).ConfigureAwait(false);
         var canAddToContacts = !contacts.Any(c => c.TargetUserId == account.Id);
         return new Model {
             Account = account,

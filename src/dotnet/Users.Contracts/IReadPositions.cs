@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 public interface IReadPositions : IComputeService
 {
     [ComputeMethod]
-    Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task Set(SetCommand command, CancellationToken cancellationToken);

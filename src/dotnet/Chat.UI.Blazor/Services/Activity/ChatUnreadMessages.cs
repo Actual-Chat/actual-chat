@@ -32,7 +32,7 @@ public class ChatUnreadMessages : IDisposable
     {
         // Let's start this in parallel
         var lastReadEntryIdTask = GetLastReadEntryId(cancellationToken);
-        var getMentionsTask = Mentions.GetLast(Session, ChatId, cancellationToken);
+        var getMentionsTask = Mentions.GetLastOwn(Session, ChatId, cancellationToken);
 
         var lastReadEntryId = await lastReadEntryIdTask.ConfigureAwait(false);
         if (lastReadEntryId == null)

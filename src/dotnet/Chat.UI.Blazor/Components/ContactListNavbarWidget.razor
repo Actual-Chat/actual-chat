@@ -93,7 +93,7 @@
     }
 
     private async Task<List<Contact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
-        var contacts = await Contacts.List(Session, cancellationToken);
+        var contacts = await Contacts.ListOwn(Session, cancellationToken);
         return tabId switch {
             TabId.All => contacts.ToList(),
             TabId.Recent => await RecentEntries

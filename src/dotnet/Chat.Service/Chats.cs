@@ -45,7 +45,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Session session,
         CancellationToken cancellationToken)
     {
-        var chatIds = await Authors.ListChatIds(session, cancellationToken).ConfigureAwait(false);
+        var chatIds = await Authors.ListOwnChatIds(session, cancellationToken).ConfigureAwait(false);
         var chats = await chatIds
             .Select(id => Get(session, id, cancellationToken))
             .Collect()

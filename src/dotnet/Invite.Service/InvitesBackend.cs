@@ -6,7 +6,6 @@ using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
-using Stl.Generators;
 
 namespace ActualChat.Invite;
 
@@ -19,6 +18,18 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     {
         Accounts = services.GetRequiredService<IAccounts>();
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Invite?> Get(string id, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbInvite = await dbContext.Invites
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        return dbInvite?.ToModel();
     }
 
     // [ComputeMethod]
@@ -35,18 +46,6 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbInvites.Select(x => x.ToModel()).ToImmutableArray();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Invite?> Get(string id, CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbInvite = await dbContext.Invites
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            .ConfigureAwait(false);
-        return dbInvite?.ToModel();
     }
 
     // [CommandHandler]

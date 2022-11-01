@@ -17,14 +17,14 @@ public class ContactsController : ControllerBase, IContacts
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Contact>> List(
+    public Task<ImmutableArray<Contact>> ListOwn(
         Session session,
         CancellationToken cancellationToken)
-        => Service.List(session, cancellationToken);
+        => Service.ListOwn(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken)
-        => Service.Get(session, contactId, cancellationToken);
+    public Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken)
+        => Service.GetOwn(session, contactId, cancellationToken);
 
     public Task<Contact> Change(IContacts.ChangeCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);

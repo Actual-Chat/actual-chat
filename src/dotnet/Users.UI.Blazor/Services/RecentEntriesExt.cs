@@ -11,7 +11,7 @@ public static class RecentEntriesExt
         CancellationToken cancellationToken)
         where T : IHasId<Symbol>
     {
-        var recent = await recentEntries.List(session, scope, limit, cancellationToken).ConfigureAwait(false);
+        var recent = await recentEntries.ListOwn(session, scope, limit, cancellationToken).ConfigureAwait(false);
         var recentMap = recent.ToDictionary(x => (Symbol)x.Key, x => x.UpdatedAt);
         return items
             .OrderByDescending(x => recentMap.GetValueOrDefault(x.Id, Moment.MinValue))

@@ -227,7 +227,7 @@ public class ChatOperationsTest : AppHostTestBase
         author!.UserId.Should().Be(user.Id);
         author.HasLeft.Should().BeFalse();
 
-        var ownChatIds = await authors.ListChatIds(session, default);
+        var ownChatIds = await authors.ListOwnChatIds(session, default);
         ownChatIds.Should().Contain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);
@@ -247,7 +247,7 @@ public class ChatOperationsTest : AppHostTestBase
         var author = await cAuthor.Use();
         author!.HasLeft.Should().BeTrue();
 
-        var ownChatIds = await authors.ListChatIds(session, default);
+        var ownChatIds = await authors.ListOwnChatIds(session, default);
         ownChatIds.Should().NotContain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);

@@ -79,7 +79,7 @@
         var existingUserIds = new HashSet<Symbol>(
             await Authors.ListUserIds(Session, Chat.Id, DisposeToken));
 
-        var contacts = await Contacts.List(Session, DisposeToken);
+        var contacts = await Contacts.ListOwn(Session, DisposeToken);
         var resolvedContacts = await contacts
             .Select(async contact => {
                 // Default scheduler is used from here (in this block)

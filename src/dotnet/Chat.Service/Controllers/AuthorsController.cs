@@ -30,8 +30,8 @@ public class AuthorsController : ControllerBase, IAuthors
         => _service.GetFull(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken)
-        => _service.ListChatIds(session, cancellationToken);
+    public Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
+        => _service.ListOwnChatIds(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)

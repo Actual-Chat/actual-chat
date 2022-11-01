@@ -14,7 +14,17 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Contact>> List(
+    public virtual async Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var contact = await Backend.Get(contactId, cancellationToken).ConfigureAwait(false);
+        if (contact?.OwnerUserId == account.Id)
+            return contact;
+        throw StandardError.Unauthorized("Contact is missing or you don't have access to it.");
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<Contact>> ListOwn(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -31,16 +41,6 @@ public class Contacts : IContacts
             .SkipNullItems()
             // .OrderBy(c => c.Name)
             .ToImmutableArray();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var contact = await Backend.Get(contactId, cancellationToken).ConfigureAwait(false);
-        if (contact?.OwnerUserId == account.Id)
-            return contact;
-        throw StandardError.Unauthorized("Contact is missing or you don't have access to it.");
     }
 
     // [CommandHandler]

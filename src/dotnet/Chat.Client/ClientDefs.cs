@@ -87,8 +87,8 @@ public interface IAuthorsClientDef
     Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetFull))]
     Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [Get(nameof(ListChatIds))]
-    Task<ImmutableArray<Symbol>> ListChatIds(Session session, CancellationToken cancellationToken);
+    [Get(nameof(ListOwnChatIds))]
+    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListUserIds))]
@@ -127,8 +127,8 @@ public interface IRolesClientDef
 [BasePath("mentions")]
 public interface IMentionsClientDef
 {
-    [Get(nameof(GetLast))]
-    Task<Mention?> GetLast(
+    [Get(nameof(GetOwnLast))]
+    Task<Mention?> GetOwnLast(
         Session session,
         Symbol chatId,
         CancellationToken cancellationToken);
