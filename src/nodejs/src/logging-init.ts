@@ -18,8 +18,6 @@ export function initLogging(Log: unknown) : void {
     minLevels.set('Rpc', LogLevel.Info);
     minLevels.set('BrowserInfo', LogLevel.Info);
     minLevels.set('LocalSettings', LogLevel.Info);
-    minLevels.set('VirtualList', LogLevel.Info);
-    minLevels.set('VirtualListPlan', LogLevel.Info);
     minLevels.set('UndoStack', LogLevel.Info);
     minLevels.set('MarkupEditor', LogLevel.Info);
     minLevels.set('ChatMessageEditor', LogLevel.Info);
@@ -32,10 +30,13 @@ export function initLogging(Log: unknown) : void {
     minLevels.set('AudioPlayerController', LogLevel.Info);
     minLevels.set('AudioPlayer', LogLevel.Info);
     minLevels.set('UserActivityUI', LogLevel.Info);
+    minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
+    minLevels.set('VirtualList', LogLevel.Debug);
+    minLevels.set('VirtualListPlan', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
 }
