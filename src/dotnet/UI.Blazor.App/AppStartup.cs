@@ -21,7 +21,7 @@ using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App
 {
-    public static class AppConfigurator
+    public static class AppStartup
     {
         public static async Task ConfigureServices(IServiceCollection services, params Type[] platformPluginTypes)
         {
@@ -39,6 +39,7 @@ namespace ActualChat.UI.Blazor.App
                 typeof(BlazorUICoreModule),
                 typeof(AudioClientModule),
                 typeof(AudioBlazorUIModule),
+                typeof(ChatModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
                 typeof(InviteClientModule),

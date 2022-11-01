@@ -12,8 +12,8 @@ public class ChatModule : HostModule
     public ChatModule(IPluginHost plugins) : base(plugins) { }
     public override void InjectServices(IServiceCollection services)
     {
+        var rawParser = new MarkupParser();
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server)) {
-            var rawParser = new MarkupParser();
             var sharedCache = new ConcurrentLruCache<string, Markup>(16384, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
@@ -24,7 +24,6 @@ public class ChatModule : HostModule
             });
         }
         else { // WASM and MAUI apps
-            var rawParser = new MarkupParser();
             var sharedCache = new ThreadSafeLruCache<string, Markup>(4096);
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);

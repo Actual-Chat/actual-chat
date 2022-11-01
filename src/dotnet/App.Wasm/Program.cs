@@ -52,6 +52,6 @@ public static class Program
             BaseUrl = baseUrl,
         });
 
-        await AppConfigurator.ConfigureServices(services).ConfigureAwait(false);
+        await AppStartup.ConfigureServices(services).ConfigureAwait(false);
     }
 }
