@@ -641,7 +641,7 @@ export class VirtualList implements VirtualListAccessor {
     }
 
     private async requestData(): Promise<void> {
-        if (this._plan.isFullyLoaded)
+        if (this._plan.isFullyLoaded || this._isRendering)
             return;
 
         this._query = this.getDataQuery();
