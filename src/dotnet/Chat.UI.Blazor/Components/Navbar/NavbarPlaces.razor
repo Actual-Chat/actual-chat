@@ -13,17 +13,6 @@
     </ButtonSquare>
 </div>
 
-<div class="flex-x items-center">
-    <ButtonSquare
-        Class="plus-chat"
-        Click="@OnClick"
-        Tooltip="Create Place"
-        ContentClass="navbar-navigation-button"
-        FloatingPosition="FloatingPosition.Right">
-        <i class="icon-plus text-2xl font-medium"></i>
-    </ButtonSquare>
-</div>
-
 @code {
     private Task OnClick()
         => FeedbackUI.AskFeatureRequestFeedback("places", "Places");

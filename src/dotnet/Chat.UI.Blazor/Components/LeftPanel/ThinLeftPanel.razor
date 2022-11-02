@@ -6,7 +6,15 @@
         <div class="flex w-full py-3 justify-center">
             <img class="w-8 h-8 fill-current" alt="Actual Chat" src="/favicon.svg"/>
         </div>
-        <div class="flex w-full grow flex-y items-center gap-y-2">
+        <div class="flex-y w-full grow items-center gap-y-2">
+            <ButtonSquare
+                Click="OnPlusButtonClick"
+                Class="plus-btn"
+                Tooltip="New chat..."
+                ContentClass="navbar-navigation-button"
+                FloatingPosition="FloatingPosition.Right">
+                <i class="icon-plus text-2xl font-medium"></i>
+            </ButtonSquare>
             <NavbarGroupToggles/>
             <div class="border-t border-placeholder w-4/5 my-2"></div>
             <NavbarPlaces/>
@@ -16,3 +24,13 @@
         </div>
     </div>
 </div>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    private void OnPlusButtonClick() {
+        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
+            addAction();
+    }
+
+}

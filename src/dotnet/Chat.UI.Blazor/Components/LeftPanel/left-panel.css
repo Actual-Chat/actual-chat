@@ -7,3 +7,7 @@
 .thin-left-panel-content {
     @apply flex h-full flex-y;
 }
+
+.plus-btn.btn {
+    @apply h-auto;
+}
