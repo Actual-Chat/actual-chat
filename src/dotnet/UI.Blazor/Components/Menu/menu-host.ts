@@ -154,6 +154,18 @@ export class MenuHost implements Disposable {
                 this.renderMenu(eventData);
             });
 
+        fromEvent(document, 'long-press')
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
+                switchMap((eventData: EventData | undefined) => {
+                    return eventData ? of(eventData) : empty();
+                }),
+            )
+            .subscribe((eventData: EventData) => {
+                this.renderMenu(eventData);
+            });
+
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
