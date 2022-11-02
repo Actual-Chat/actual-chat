@@ -2,9 +2,14 @@
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
     var m = State.LatestNonErrorValue;
+    var editorCls = "";
+    if (ScreenSize.IsNarrow())
+        editorCls = "narrow";
+    if (ScreenSize.IsWide())
+        editorCls = "wide";
 }
 
-<div class="flex-y w-full h-full bg-05 md:bg-01" oncontextmenu="return false;">
+<div class="relative min-h-auto bg-07 md:bg-01 @editorCls" oncontextmenu="return false;">
     @if (m == Model.None) {
         // render skeletons until State is computed
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
@@ -13,41 +18,52 @@
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
                     </div>
                 </div>
-                <div class="chat-audio-panel flex-x gap-x-6">
-                    <div class="language-button">
-                        <div class="chat-language-toggle shadow-mobile-button shadow-shadow-main btn btn-round">
-                            <div class=" btn-content" tabindex="-1">
-                                <div class="btn-content-inner">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="recorder-button">
-                        <div class="record-off recorder-wrapper">
-                            <div class="record-off-btn btn btn-round">
-                                <div class=" btn-content" tabindex="-1">
-                                    <div class="btn-content-inner">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="record-on-btn btn btn-round">
+                @* mobile panel *@
+                @if (ScreenSize.IsNarrow()) {
+                    <div class="chat-audio-panel flex-x gap-x-6">
+                        <div class="language-button !shadow-none">
+                            <div class="btn btn-round">
                                 <div class=" btn-content" tabindex="-1">
                                     <div class="btn-content-inner">
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        <div class="recorder-button">
+                            <div class="rounded-full h-20 w-20">
+                                <div class="btn btn-round recorder-skeleton">
+                                    <div class="btn-content" tabindex="-1">
+                                        <div class="btn-content-inner">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="playback-button">
+                            <div class="listen-off playback-wrapper !shadow-none">
+                                <div class="btn btn-round">
+                                    <div class=" btn-content" tabindex="-1">
+                                        <div class="btn-content-inner">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                }
+            </div>
+            @* desktop panel *@
+            @if (ScreenSize.IsWide()) {
+                <div class="chat-audio-panel">
                     <div class="playback-button">
-                        <div class="listen-off playback-wrapper">
-                            <div class="off btn btn-round">
-                                <div class=" btn-content" tabindex="-1">
-                                    <div class="btn-content-inner">
-                                    </div>
-                                </div>
+                        <div class="btn btn-round">
+                            <div class=" btn-content" tabindex="-1">
                             </div>
-                            <div class="loud-btn btn btn-round">
+                        </div>
+                    </div>
+                    <div class="recorder-button flex">
+                        <div class="rounded-full mx-1">
+                            <div class="btn btn-round">
                                 <div class=" btn-content" tabindex="-1">
                                     <div class="btn-content-inner">
                                     </div>
@@ -55,40 +71,16 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="chat-audio-panel">
-                <div class="playback-button">
-                    <div class="play off btn btn-round">
-                        <div class=" btn-content" tabindex="-1">
-                        </div>
-                    </div>
-                </div>
-                <div class="recorder-button flex">
-                    <div class="record-off recorder-wrapper">
-                        <div class="record-off-btn btn btn-round">
-                            <div class=" btn-content" tabindex="-1">
-                                <div class="btn-content-inner">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="record-on-btn btn btn-round">
-                            <div class=" btn-content" tabindex="-1">
+                    <div class="language-button">
+                        <div class="btn btn-round">
+                            <div class="btn-content" tabindex="-1">
                                 <div class="btn-content-inner">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="language-button">
-                    <div class="chat-language-toggle btn btn-round">
-                        <div class=" btn-content" tabindex="-1">
-                            <div class="btn-content-inner">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            }
         </div>
     } else {
         @if (m.CanPost) {
@@ -124,6 +116,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {

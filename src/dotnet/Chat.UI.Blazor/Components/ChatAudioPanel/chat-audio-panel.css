@@ -66,6 +66,9 @@
 .narrow .chat-audio-panel .recorder-wrapper .btn .btn-content {
     @apply min-w-17 max-w-17 min-h-17 max-h-17 text-04;
 }
+.narrow .chat-audio-panel .recorder-button .btn.recorder-skeleton .btn-content {
+    @apply min-w-20 min-h-20;
+}
 .narrow .chat-audio-panel .recorder-wrapper.record-off,
 .narrow .chat-audio-panel .recorder-wrapper.record-on-to-off {
     @apply border-primary transition-colors duration-300;
