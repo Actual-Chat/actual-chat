@@ -7,7 +7,6 @@
     const string flexClass = $"{flexBase} flex-col";
     const string invFlexClass = $"{flexBase} flex-col-reverse";
 
-    var isLoaded = State.Snapshot.UpdateCount != 0;
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0
@@ -57,9 +56,7 @@
     <div @key="VirtualListSpecialKeys.EndSpacer"
          class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
          style="height: @(endSpacerSize)px">
-        @if (isLoaded || !DelaySkeletonRendering) {
-            <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
-        }
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="VirtualListSpecialKeys.Container"
@@ -85,8 +82,6 @@
     <div @key="VirtualListSpecialKeys.Spacer"
          class="@invFlexClass flex-none spacer spacer-start overflow-y-hidden"
          style="height: @(spacerSize)px">
-        @if (isLoaded || !DelaySkeletonRendering) {
-            <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
-        }
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 </div>

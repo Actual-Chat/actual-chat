@@ -32,12 +32,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public RenderFragment<TItem> Item { get; set; } = null!;
 
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
-    [Parameter] public int SkeletonCount { get; set; } = 16;
-    [Parameter] public double SpacerSize { get; set; } = 200;
-    [Parameter] public double LoadZoneSize { get; set; } = 2160;
-    [Parameter] public double BufferZoneSize { get; set; } = 4320;
-    [Parameter] public long MaxExpandBy { get; set; } = 256;
-    [Parameter] public bool DelaySkeletonRendering { get; set; } = true;
+    [Parameter] public int SkeletonCount { get; set; } = 32;
+    [Parameter] public double SpacerSize { get; set; } = 300;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
 
@@ -88,9 +84,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                 Ref,
-                BlazorRef,
-                LoadZoneSize,
-                BufferZoneSize);
+                BlazorRef);
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
     }

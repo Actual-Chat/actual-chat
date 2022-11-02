@@ -26,10 +26,10 @@ const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 5;
 const EdgeEpsilon: number = 4;
-const MaxExpandBy: number = 256;
-const MinExpandBy: number = 32;
+const MaxExpandBy: number = 320;
 const RenderTimeout: number = 640;
 const UpdateTimeout: number = 1200;
+const DefaultLoadZone: number = 2000;
 
 export class VirtualList implements VirtualListAccessor {
     /** ref to div.virtual-list */
@@ -47,7 +47,6 @@ export class VirtualList implements VirtualListAccessor {
     private readonly _scrollPivotObserver: IntersectionObserver;
     private readonly _skeletonObserver: IntersectionObserver;
     private readonly _ironPantsIntervalHandle: number;
-    private readonly _bufferZoneSize;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
 
@@ -71,31 +70,28 @@ export class VirtualList implements VirtualListAccessor {
     public renderState: VirtualListRenderState;
     public clientSideState: VirtualListClientSideState;
     public readonly statistics: VirtualListStatistics = new VirtualListStatistics();
-    public readonly loadZoneSize;
     public readonly items: Record<string, VirtualListClientSideItem>;
+
+    public get loadZoneSize() {
+        return (this.clientSideState?.viewportHeight ?? DefaultLoadZone) * 2;
+    }
 
     public static create(
         ref: HTMLElement,
-        backendRef: DotNet.DotNetObject,
-        loadZoneSize: number,
-        bufferZoneSize: number,
+        backendRef: DotNet.DotNetObject
     ) {
-        return new VirtualList(ref, backendRef, loadZoneSize, bufferZoneSize);
+        return new VirtualList(ref, backendRef);
     }
 
     public constructor(
         ref: HTMLElement,
-        backendRef: DotNet.DotNetObject,
-        loadZoneSize: number,
-        bufferZoneSize: number
+        backendRef: DotNet.DotNetObject
     ) {
         if (debugLog) {
             debugLog.log(`constructor`);
             window['virtualList'] = this;
         }
 
-        this.loadZoneSize = loadZoneSize;
-        this._bufferZoneSize = bufferZoneSize;
         this._ref = ref;
         this._blazorRef = backendRef;
         this._isDisposed = false;
@@ -115,11 +111,15 @@ export class VirtualList implements VirtualListAccessor {
             { attributes: true, attributeFilter: ['data-render-index'] });
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
+        // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
+        // Trigger callbacks as early as it can on any intersection change, even 1 percent
         const visibilityThresholds = [...Array(100).keys() ].map(i => i / 100);
         this._visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
             {
+                // Track visibility as intersection of virtual list viewport, not the window!
                 root: this._ref,
+                // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
                 threshold: visibilityThresholds,
 
@@ -132,14 +132,17 @@ export class VirtualList implements VirtualListAccessor {
             this.onScrollPivotVisibilityChange,
             {
                 root: this._ref,
+                // Track pivot positions near center of the virtual list viewport.
                 rootMargin: '-30%',
+                // Receive callback on any intersection change, even 1 percent.
                 threshold: visibilityThresholds,
             });
         this._skeletonObserver = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
             {
                 root: this._ref,
-                rootMargin: `${Math.round(loadZoneSize/4)}px`,
+                // Extend visibility outside of the viewport by 1/4 of the loadzone
+                rootMargin: `${Math.round(this.loadZoneSize/4)}px`,
                 threshold: visibilityThresholds,
             });
 
@@ -512,6 +515,7 @@ export class VirtualList implements VirtualListAccessor {
 
         this.clientSideState = state;
         const plan = this._plan = this._lastPlan.next();
+
         if (!plan.isFullyLoaded)
             await this.requestData();
     }, 2);
@@ -670,17 +674,18 @@ export class VirtualList implements VirtualListAccessor {
             return this._lastQuery;
         }
         const alreadyLoaded = plan.itemRange;
-        let loadStart = viewport.Start - this.loadZoneSize;
+        const loadZoneSize = this.loadZoneSize;
+        let loadStart = viewport.Start - loadZoneSize;
         if (loadStart < alreadyLoaded.Start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.Start;
-        let loadEnd = viewport.End + this.loadZoneSize;
+        let loadEnd = viewport.End + loadZoneSize;
         if (loadEnd > alreadyLoaded.End && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.End;
         const isScrollingUp = alreadyLoaded.Start - loadStart > loadEnd - alreadyLoaded.End;
-        let bufferZoneSize = this._bufferZoneSize;
+        let bufferZoneSize = loadZoneSize * 2;
         if (needsMoreAndMore) {
-            const loadMore = this.loadZoneSize * 2;
-            bufferZoneSize *= 2;
+            const loadMore = loadZoneSize * 2;
+            bufferZoneSize *= 3;
             if (isScrollingUp) {
                 // try to load more in the direction of scrolling
                 loadStart -= loadMore;
@@ -724,22 +729,21 @@ export class VirtualList implements VirtualListAccessor {
 
         const firstItem = items[startIndex];
         const lastItem = items[endIndex];
-        let startGap = Math.max(0, firstItem.range.Start - loadZone.Start);
-        let endGap = Math.max(0, loadZone.End - lastItem.range.End);
-        const expandStartBy = this.renderState.hasVeryFirstItem
+        const startGap = Math.max(0, firstItem.range.Start - loadZone.Start);
+        const endGap = Math.max(0, loadZone.End - lastItem.range.End);
+        const expandStartBy = this.renderState.hasVeryFirstItem || startGap === 0
             ? 0
-            : clamp(Math.ceil(startGap / itemSize), 0, MaxExpandBy);
-        const expandEndBy = this.renderState.hasVeryLastItem
+            : clamp(Math.ceil(Math.max(startGap, loadZoneSize) / itemSize), 0, MaxExpandBy);
+        const expandEndBy = this.renderState.hasVeryLastItem || endGap === 0
             ? 0
-            : clamp(Math.ceil(endGap / itemSize), 0, MaxExpandBy);
+            : clamp(Math.ceil(Math.max(endGap, loadZoneSize) / itemSize), 0, MaxExpandBy);
         const keyRange = new Range(firstItem.Key, lastItem.Key);
         const query = new VirtualListDataQuery(keyRange);
         query.expandStartBy = expandStartBy / responseFulfillmentRatio;
         query.expandEndBy = expandEndBy / responseFulfillmentRatio;
-        if (query.expandStartBy > 0 && query.expandStartBy < MinExpandBy)
-            query.expandStartBy = MinExpandBy;
-        if (query.expandEndBy > 0 && query.expandEndBy < MinExpandBy)
-            query.expandEndBy = MinExpandBy;
+
+        if (query.expandStartBy === query.expandEndBy && query.expandEndBy === 0)
+            return this._lastQuery;
 
         return query;
     }
