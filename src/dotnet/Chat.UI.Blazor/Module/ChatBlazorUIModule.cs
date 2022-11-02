@@ -35,6 +35,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         services.AddScoped<NavbarUI>();
+        services.AddScoped<PlusButtonPanelUI>();
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);

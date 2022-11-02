@@ -8,10 +8,9 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-2">
             <ButtonSquare
-                Click="OnPlusButtonClick"
-                Class="plus-btn"
+                Click="OnClick"
+                Class="navbar-navigation-button plus-btn on"
                 Tooltip="New chat..."
-                ContentClass="navbar-navigation-button"
                 FloatingPosition="FloatingPosition.Right">
                 <i class="icon-plus text-2xl font-medium"></i>
             </ButtonSquare>
@@ -23,14 +22,19 @@
             <AccountDropdown/>
         </div>
     </div>
+    <PlusButtonPanel/>
 </div>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PlusButtonPanelUI PlusButtonPanelUI { get; init; } = null!;
 
     private void OnPlusButtonClick() {
         if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
             addAction();
     }
+
+    private void OnClick()
+        => PlusButtonPanelUI.Switch();
 
 }
