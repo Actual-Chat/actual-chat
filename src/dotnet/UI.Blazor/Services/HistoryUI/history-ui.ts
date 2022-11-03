@@ -12,13 +12,25 @@ export class HistoryUI {
     }
 
     public getState = (): unknown => {
-        const state = history.state;
-        debugLog?.log(`getState:`, state);
-        return state;
+        const currentState = history.state;
+        if (currentState && currentState.hasOwnProperty('userState')) {
+            const state = currentState.userState;
+            debugLog?.log(`getState:`, state);
+            return state;
+        }
+        debugLog?.log(`getState:`, currentState);
+        return currentState;
     }
 
     public setState = (state: unknown): void => {
         debugLog?.log(`setState:`, state);
-        history.replaceState(state, '');
+        const currentState = history.state;
+        if (currentState && currentState.hasOwnProperty('userState')) {
+            currentState.userState = state;
+            history.replaceState(currentState, '');
+        }
+        else {
+            history.replaceState(state, '');
+        }
     }
 }
