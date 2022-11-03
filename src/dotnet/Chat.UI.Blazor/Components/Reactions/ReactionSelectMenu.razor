@@ -1,0 +1,18 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<ReactionSelect ChatEntry="@_entry" Class="gap-2" ReactionClass="w-4 h-4" />
+
+@code {
+    private ChatEntry _entry = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is { Length: 1 }) {
+            var chatEntryId = new ParsedChatEntryId(Arguments[0]);
+            var reader = Chats.NewEntryReader(Session, chatEntryId.ChatId, ChatEntryType.Text);
+            _entry = await reader.Get(chatEntryId.EntryId, CancellationToken.None).Require();
+        }
+    }
+}

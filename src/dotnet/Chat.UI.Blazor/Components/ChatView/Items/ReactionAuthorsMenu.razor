@@ -20,7 +20,7 @@
         if (Arguments is {Length: 2}) {
             var chatEntryId = Arguments[0];
             _emoji = Arguments[1];
-            var summaries = await Reactions.List(Session, chatEntryId, CancellationToken.None).ConfigureAwait(false);
+            var summaries = await Reactions.ListSummaries(Session, chatEntryId, CancellationToken.None).ConfigureAwait(false);
             var summary = summaries.FirstOrDefault(x => x.Emoji == _emoji);
             if (summary == null)
                 return;

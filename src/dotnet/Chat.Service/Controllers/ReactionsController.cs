@@ -17,11 +17,15 @@ public class ReactionsController : ControllerBase, IReactions
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<ReactionSummary>> List(
+    public Task<Reaction?> Get(Session session, Symbol chatEntryId, CancellationToken cancellationToken)
+        => Service.Get(session, chatEntryId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
         Symbol chatEntryId,
         CancellationToken cancellationToken)
-        => Service.List(session, chatEntryId, cancellationToken);
+        => Service.ListSummaries(session, chatEntryId, cancellationToken);
 
     [HttpPost]
     public Task React(IReactions.ReactCommand command, CancellationToken cancellationToken)

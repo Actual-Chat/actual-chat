@@ -3,27 +3,39 @@
     if (!_areReactionsEnabled)
         return;
 }
-<ul class="reaction-select">
-    @foreach (var emoji in Emoji.All) {
+<ul class="reaction-select @Class">
+    @foreach (var emoji in _emojis) {
         <MenuEntry
             OnClick="_ => React(emoji.Code)"
             Class="reaction-select-reaction"
             Tooltip="@emoji.Name">
-            <TextContent>@emoji.Code</TextContent>
+            <IconContent>
+                <EmojiIcon Code="@emoji.Code" class="@ReactionClass"/>
+            </IconContent>
         </MenuEntry>
     }
 </ul>
 
 @code {
+    private const int MaxReactionsCount = 7;
     private bool _areReactionsEnabled;
+    private Emoji[] _emojis = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+    [Parameter] public bool ShowDefaultReaction { get; set; } = true;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ReactionClass { get; set; } = "w-5 h-5";
 
     protected override async Task OnInitializedAsync() {
         _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
+    }
+
+    protected override void OnParametersSet() {
+        var skipCount = ShowDefaultReaction ? 0 : 1;
+        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionsCount).ToArray();
     }
 
     private Task React(string emoji) {
