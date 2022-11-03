@@ -8,7 +8,7 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-2">
             <ButtonSquare
-                Click="OnCreationPanelSwitch"
+                Click="OnCreationCreationModalShow"
                 Class="navbar-navigation-button plus-btn on"
                 Tooltip="Create"
                 FloatingPosition="FloatingPosition.Right">
@@ -24,21 +24,19 @@
             <AccountDropdown/>
         </div>
     </div>
-    <CreationPanel/>
 </div>
 
 @code {
     private bool _enableIncompleteUI;
 
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private CreationPanelUI CreationPanelUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    private void OnCreationPanelSwitch()
-        => CreationPanelUI.Switch();
-
+    private void OnCreationCreationModalShow()
+        => ModalUI.Show(new CreationModal.Model());
 }

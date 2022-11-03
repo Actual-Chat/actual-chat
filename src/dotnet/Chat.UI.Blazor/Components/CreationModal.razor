@@ -1,0 +1,62 @@
+@using Stl.Extensibility
+@implements IModalView<CreationModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame class="creation-modal">
+    <Body>
+        <div class="creation-panel">
+            <div class="header">
+                <div class="w-full px-4 text-lg font-medium">Create</div>
+                <ButtonRound Class="transparent" ContentClass="!min-w-14 !max-w-14">
+                    <i class="icon-search text-xl font-medium"></i>
+                </ButtonRound>
+            </div>
+            <div class="creation-buttons">
+                <CreationButton Title="New Group" OnClick="OnCreateNewGroupClick">
+                    <Icon>
+                        <i class="icon-people text-2xl"></i>
+                    </Icon>
+                </CreationButton>
+                <CreationButton Title="New Channel">
+                    <Icon>
+                        <i class="icon-loudspeaker text-2xl"></i>
+                    </Icon>
+                </CreationButton>
+                <CreationButton Title="New Contact">
+                    <Icon>
+                        <i class="icon-person-add text-2xl"></i>
+                    </Icon>
+                </CreationButton>
+                <CreationButton Title="New Place">
+                    <Icon>
+                        <i class="icon-plus text-2xl"></i>
+                    </Icon>
+                </CreationButton>
+            </div>
+            <CreationPanelContacts/>
+        </div>
+    </Body>
+    <Buttons>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private bool _enableIncompleteUI;
+
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    }
+
+    private void OnCreateNewGroupClick() {
+        ModalInstance.CloseAsync();
+        ModalUI.Show(new AddMembersModal.Model());
+    }
+
+    public sealed record Model;
+}

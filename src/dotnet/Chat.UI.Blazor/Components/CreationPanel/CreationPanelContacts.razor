@@ -16,15 +16,19 @@
         </Tab>;
 }
 
-<TabPanel
-    BottomHill="true"
-    Class="overflow-y-hidden"
-    TabsClass="left-panel-tabs"
-    ActiveTabChanged="OnActiveTabChanged">
+@if (m.PinnedContacts.Count + m.UnpinnedContacts.Count != 0) {
+    <div class="contacts">
+        <TabPanel
+            BottomHill="true"
+            Class="overflow-y-hidden"
+            TabsClass="left-panel-tabs"
+            ActiveTabChanged="OnActiveTabChanged">
 
-    @RenderTab(TabId.Recent, "Recent")
-    @RenderTab(TabId.All, "A-Z")
-</TabPanel>
+            @RenderTab(TabId.Recent, "Recent")
+            @RenderTab(TabId.All, "A-Z")
+        </TabPanel>
+    </div>
+}
 
 @code{
     private TabId _activeTabId;

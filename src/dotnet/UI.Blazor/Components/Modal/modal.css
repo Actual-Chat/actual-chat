@@ -55,6 +55,13 @@
 .modal-frame * {
     @apply cursor-default;
 }
+.modal-frame .btn,
+.modal-frame .btn * {
+    @apply cursor-pointer;
+}
+.modal-frame input[type=text] {
+    @apply cursor-text;
+}
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
