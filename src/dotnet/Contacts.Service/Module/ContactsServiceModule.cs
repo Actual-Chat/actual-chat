@@ -1,15 +1,8 @@
 using ActualChat.Contacts.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Kvas;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Server;
-using Stl.Fusion.Server.Authentication;
 using Stl.Plugins;
-using Stl.Redis;
 
 namespace ActualChat.Contacts.Module;
 
@@ -28,6 +21,7 @@ public class ContactsServiceModule : HostModule<ContactsSettings>
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        services.AddSingleton<IDbInitializer, ContactsDbInitializer>();
         dbModule.AddDbContextServices<ContactsDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
             db.AddEntityResolver<string, DbContact>();
