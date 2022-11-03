@@ -1,13 +1,13 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class PlusButtonPanelUI
+public class CreationPanelUI
 {
     private readonly IMutableState<bool> _isVisible;
 
     public IState<bool> IsVisible
         => _isVisible;
 
-    public PlusButtonPanelUI(IServiceProvider services)
+    public CreationPanelUI(IServiceProvider services)
     {
         var stateFactory = services.StateFactory();
         _isVisible = stateFactory.NewMutable<bool>();
