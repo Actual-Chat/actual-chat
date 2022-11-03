@@ -2,7 +2,7 @@
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Notification.Client.Module;
+namespace ActualChat.Notification.Module;
 
 public class NotificationClientModule : HostModule
 {

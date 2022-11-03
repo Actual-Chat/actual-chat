@@ -14,5 +14,5 @@ public record Account(
 
     [DataMember] public long Version { get; init; }
     [DataMember] public AccountStatus Status { get; init; }
-    [DataMember] public Avatar Avatar { get; init; } = null!;
+    [DataMember] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 }

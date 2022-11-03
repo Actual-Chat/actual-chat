@@ -2,7 +2,7 @@
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Feedback.Client.Module;
+namespace ActualChat.Feedback.Module;
 
 public class FeedbackClientModule : HostModule
 {

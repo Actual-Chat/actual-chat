@@ -1,4 +1,5 @@
 @using ActualChat.Users.UI.Blazor.Services
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<ContactListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -61,8 +62,8 @@
             var activeContactId = GetContactId(selectedChatId);
             contacts = (
                 from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Avatar.Name)
-                where rank > 0 || contact.TargetUserId == activeContactId
+                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
+                where rank > 0 || contact.UserId == activeContactId
                 orderby rank descending
                 select contact
                 ).ToList();
@@ -82,13 +83,13 @@
         };
 
         Symbol GetContactId(string chatId) {
-            var targetUserId = ParsedChatId.TryParse(chatId, out var parsedChatId)
+            var userId = ParsedChatId.TryParse(chatId, out var parsedChatId)
                 ? parsedChatId.GetPeerChatTargetUserId(account.User.Id)
                 : Symbol.Empty;
-            return contacts.All(c => c.TargetUserId != targetUserId)
+            return contacts.All(c => c.UserId != userId)
                 ? Symbol.Empty
                 : // No active contact in the current group
-                targetUserId;
+                userId;
         }
     }
 

@@ -7,28 +7,28 @@ namespace ActualChat.Notification.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class NotificationsController : ControllerBase, INotifications
 {
-    private readonly INotifications _service;
-    private readonly ICommander _commander;
+    private INotifications Service { get; }
+    private ICommander Commander { get; }
 
     public NotificationsController(INotifications service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
     [HttpGet, Publish]
     public Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
-        => _service.GetNotification(session, notificationId, cancellationToken);
+        => Service.GetNotification(session, notificationId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
-        => _service.ListRecentNotificationIds(session, cancellationToken);
+        => Service.ListRecentNotificationIds(session, cancellationToken);
 
     [HttpPost]
     public Task RegisterDevice([FromBody] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task HandleNotification([FromBody] INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 }

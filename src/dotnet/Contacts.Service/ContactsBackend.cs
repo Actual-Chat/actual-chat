@@ -1,11 +1,13 @@
+using ActualChat.Chat;
 using ActualChat.Commands;
-using ActualChat.Users.Db;
+using ActualChat.Contacts.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
-namespace ActualChat.Users;
+namespace ActualChat.Contacts;
 
-public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
+public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBackend
 {
     private IAccountsBackend AccountsBackend { get; }
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
@@ -23,10 +25,11 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         var contact = await Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
         if (contact != null)
             return contact;
-        var command = new IContactsBackend.ChangeCommand(Symbol.Empty, null, new Change<ContactDiff> {
-            Create = new ContactDiff {
-                OwnerUserId = ownerUserId,
-                TargetUserId = targetUserId,
+
+        var command = new IContactsBackend.ChangeCommand(Symbol.Empty, null, new Change<Contact> {
+            Create = new Contact {
+                OwnerId = ownerUserId,
+                UserId = targetUserId,
             },
         });
 
@@ -42,13 +45,11 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         if (contact == null)
             return null;
 
-        var account = await AccountsBackend.Get(contact.TargetUserId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(contact.UserId, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
 
-        contact = contact with {
-            Avatar = account.Avatar,
-        };
+        contact = contact with { Account = account };
         return contact;
     }
 
@@ -82,11 +83,36 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var contactIds = await dbContext.Contacts
-            .Where(a => a.OwnerUserId == userId)
+            .Where(a => a.OwnerId == userId)
             .Select(a => a.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
         return contactIds;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<Contact?> GetPeerChatContact(
+        string chatId, string ownerUserId,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = new ParsedChatId(chatId);
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.PeerFull:
+            break;
+        case ChatIdKind.PeerShort:
+            parsedChatId = chatId = ParsedChatId.FormatFullPeerChatId(ownerUserId, parsedChatId.UserId1);
+            break;
+        default: // Group or Invalid
+            return null;
+        }
+
+        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
+        var targetUserId = (userId1, userId2).OtherThan((Symbol)ownerUserId);
+        if (targetUserId.IsEmpty)
+            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
+
+        var contact = await Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
+        return contact;
     }
 
     // [CommandHandler]
@@ -99,8 +125,9 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         if (Computed.IsInvalidating()) {
             var invContact = context.Operation().Items.Get<Contact>();
             if (invContact != null) {
-                _ = GetContactIds(invContact.OwnerUserId, default);
-                _ = Get(invContact.OwnerUserId, invContact.TargetUserId, default);
+                _ = GetContactIds(invContact.OwnerId, default);
+                if (!invContact.UserId.IsEmpty)
+                    _ = Get(invContact.OwnerId, invContact.UserId, default);
                 _ = Get(invContact.Id, default);
             }
             return default!;
@@ -110,27 +137,37 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        Contact? contact;
         DbContact? dbContact;
-        if (change.IsCreate(out var contactDiff)) {
+        if (change.IsCreate(out var contact)) {
             id.RequireEmpty("command.Id");
-            contact = DiffEngine.Patch(new Contact(), contactDiff);
-            if (contact.OwnerUserId.IsEmpty)
-                throw StandardError.Constraint("OwnerUserId is empty.");
-            if (contact.TargetUserId.IsEmpty)
-                throw StandardError.Constraint("TargetUserId is empty.");
+            contact = DiffEngine.Patch(new Contact(), contact);
+            if (contact.OwnerId.IsEmpty)
+                throw StandardError.Constraint("OwnerId is empty.");
+            if (!contact.UserId.IsEmpty) {
+                dbContact = await dbContext.Contacts
+                    .FirstOrDefaultAsync(c =>
+                            // ReSharper disable once AccessToModifiedClosure
+                            c.OwnerId == contact.OwnerId.Value
+                            // ReSharper disable once AccessToModifiedClosure
+                            && c.UserId == contact.UserId.Value,
+                        cancellationToken
+                    ).ConfigureAwait(false);
+            }
+            else if (!contact.ChatId.IsEmpty) {
+                dbContact = await dbContext.Contacts
+                    .FirstOrDefaultAsync(c =>
+                            // ReSharper disable once AccessToModifiedClosure
+                            c.OwnerId == contact.OwnerId.Value
+                            // ReSharper disable once AccessToModifiedClosure
+                            && c.UserId == contact.ChatId.Value,
+                        cancellationToken
+                    ).ConfigureAwait(false);
+            }
+            else
+                throw StandardError.Constraint("Neither UserId nor ChatId is set.");
 
-            dbContact = await dbContext.Contacts
-                .FirstOrDefaultAsync(c =>
-                    // ReSharper disable once AccessToModifiedClosure
-                    c.OwnerUserId == contact.OwnerUserId.Value
-                    // ReSharper disable once AccessToModifiedClosure
-                    && c.TargetUserId == contact.TargetUserId.Value,
-                    cancellationToken
-                ).ConfigureAwait(false);
             if (dbContact != null)
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
-
             dbContact = new DbContact(contact);
             dbContext.Add(dbContact);
         }
@@ -140,12 +177,8 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
                 .Get(id, cancellationToken)
                 .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
-            contact = dbContact.ToModel();
-
-            if (change.IsUpdate(out contactDiff)) {
-                contact = DiffEngine.Patch(contact, contactDiff);
+            if (change.IsUpdate(out contact))
                 dbContact.UpdateFrom(contact);
-            }
             else
                 dbContext.Remove(dbContact);
         }
@@ -157,7 +190,7 @@ public class ContactsBackend : DbServiceBase<UsersDbContext>, IContactsBackend
         if (change.IsCreate(out _)) {
             new IRecentEntriesBackend.UpdateCommand(
                 RecencyScope.Contact,
-                contact!.OwnerUserId,
+                contact!.OwnerId,
                 contact.Id,
                 Clocks.SystemClock.UtcNow
                 ).EnqueueOnCompletion(Queues.Users);

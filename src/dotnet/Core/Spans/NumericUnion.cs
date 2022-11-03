@@ -1,7 +1,7 @@
 namespace ActualChat.Spans;
 
 [StructLayout(LayoutKind.Explicit)]
-internal struct Union
+public struct NumericUnion
 {
     [FieldOffset(0)]
     public uint UInt;

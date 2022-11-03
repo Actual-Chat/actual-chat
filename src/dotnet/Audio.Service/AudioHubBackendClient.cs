@@ -1,4 +1,4 @@
-using ActualChat.SignalR.Client;
+using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
 

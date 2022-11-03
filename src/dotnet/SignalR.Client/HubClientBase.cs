@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Stl.Fusion.Bridge;
 
-namespace ActualChat.SignalR.Client;
+namespace ActualChat.SignalR;
 
 public abstract class HubClientBase : IDisposable
 {

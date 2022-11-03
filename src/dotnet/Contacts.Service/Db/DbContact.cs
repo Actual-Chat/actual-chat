@@ -4,17 +4,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 
-namespace ActualChat.Users.Db;
+namespace ActualChat.Contacts.Db;
 
 [Table("Contacts")]
-[Index(nameof(OwnerUserId))]
+[Index(nameof(OwnerId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string OwnerUserId { get; set; } = "";
-    public string? TargetUserId { get; set; }
+    public string OwnerId { get; set; } = "";
+    public string? UserId { get; set; }
+    public string? ChatId { get; set; }
 
     public DbContact() { }
     public DbContact(Contact contact)
@@ -26,16 +27,18 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public Contact ToModel()
         => new() {
             Id = Id,
-            OwnerUserId = OwnerUserId,
-            TargetUserId = TargetUserId ?? Symbol.Empty,
+            OwnerId = OwnerId,
+            UserId = UserId ?? Symbol.Empty,
+            ChatId = ChatId ?? Symbol.Empty,
             Version = Version,
         };
 
     public void UpdateFrom(Contact model)
     {
-        Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerUserId, model.TargetUserId);
-        OwnerUserId = model.OwnerUserId;
-        TargetUserId = model.TargetUserId.NullIfEmpty()?.Value;
+        Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerId, model.UserId);
+        OwnerId = model.OwnerId;
+        UserId = model.UserId.NullIfEmpty()?.Value;
+        ChatId = model.ChatId.NullIfEmpty()?.Value;
         Version = model.Version;
     }
 
@@ -44,7 +47,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         public void Configure(EntityTypeBuilder<DbContact> builder)
         {
             builder.Property(a => a.Id).IsRequired();
-            builder.Property(a => a.OwnerUserId).IsRequired();
+            builder.Property(a => a.OwnerId).IsRequired();
         }
     }
 }

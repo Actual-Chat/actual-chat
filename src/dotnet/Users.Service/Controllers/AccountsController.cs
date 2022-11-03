@@ -7,28 +7,28 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class AccountsController : ControllerBase, IAccounts
 {
-    private readonly IAccounts _service;
-    private readonly ICommander _commander;
+    private IAccounts Service { get; }
+    private ICommander Commander { get; }
 
     public AccountsController(IAccounts service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
     [HttpGet, Publish]
     public Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken)
-        => _service.GetOwn(session, cancellationToken);
+        => Service.GetOwn(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken)
-        => _service.Get(session, userId, cancellationToken);
+        => Service.Get(session, userId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken)
-        => _service.GetFull(session, userId, cancellationToken);
+        => Service.GetFull(session, userId, cancellationToken);
 
     [HttpPost]
     public Task Update([FromBody] IAccounts.UpdateCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 }

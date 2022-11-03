@@ -1,7 +1,7 @@
 using ActualChat.Users;
 using RestEase;
 
-namespace ActualChat.Chat.Client;
+namespace ActualChat.Chat;
 
 [BasePath("chats")]
 public interface IChatsClientDef
@@ -57,8 +57,6 @@ public interface IChatsClientDef
     Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(GetPeerChatId))]
     Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [Get(nameof(GetPeerChatContact))]
-    Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(ListMentionableAuthors))]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);

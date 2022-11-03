@@ -58,8 +58,6 @@ public interface IChats : IComputeService
     Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);

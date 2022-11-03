@@ -1,6 +1,6 @@
 ﻿using RestEase;
 
-namespace ActualChat.Notification.Client;
+namespace ActualChat.Notification;
 
 [BasePath("notifications")]
 public interface INotificationsClientDef

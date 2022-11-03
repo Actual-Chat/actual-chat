@@ -7,16 +7,12 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class UserPresencesController : ControllerBase, IUserPresences
 {
-    private readonly IUserPresences _service;
-    private readonly ICommander _commander;
+    private IUserPresences Service { get; }
 
-    public UserPresencesController(IUserPresences service, ICommander commander)
-    {
-        _service = service;
-        _commander = commander;
-    }
+    public UserPresencesController(IUserPresences service)
+        => Service = service;
 
     [HttpGet, Publish]
     public Task<Presence> Get(string userId, CancellationToken cancellationToken)
-        => _service.Get(userId, cancellationToken);
+        => Service.Get(userId, cancellationToken);
 }

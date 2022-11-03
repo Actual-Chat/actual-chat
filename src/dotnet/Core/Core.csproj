@@ -17,6 +17,7 @@
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
+
   <ItemGroup>
     <None Update="Identifiers\StringIdentifiers.tt">
       <Generator>TextTemplatingFileGenerator</Generator>

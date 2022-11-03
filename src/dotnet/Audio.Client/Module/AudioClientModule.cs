@@ -3,7 +3,7 @@ using ActualChat.Transcription;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Audio.Client.Module;
+namespace ActualChat.Audio.Module;
 
 public class AudioClientModule : HostModule
 {

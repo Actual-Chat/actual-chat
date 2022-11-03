@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
@@ -11,12 +12,13 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IAuthorsBackend? _backend;
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
+    private IContactsBackend? _contactsBackend;
 
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IContactsBackend ContactsBackend { get; }
+    private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
     private IUserPresences UserPresences { get; }
     private IServerKvas ServerKvas { get; }
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
@@ -25,7 +27,6 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     {
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         ServerKvas = services.ServerKvas();
     }

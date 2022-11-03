@@ -1,4 +1,5 @@
 @using Stl.Extensibility
+@using ActualChat.Contacts
 @implements IModalView<InviteAuthor.Model>
 @implements IDisposable
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -83,11 +84,11 @@
         var resolvedContacts = await contacts
             .Select(async contact => {
                 // Default scheduler is used from here (in this block)
-                var account = await Accounts.Get(Session, contact.TargetUserId, DisposeToken).ConfigureAwait(false);
+                var account = contact.Account;
                 if (account == null)
                     return null;
 
-                var presence = await UserPresences.Get(contact.TargetUserId, DisposeToken).ConfigureAwait(false);
+                var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
                 return new Contact() {
                     Account = account,
                     Presence = presence,

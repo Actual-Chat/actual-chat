@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Notification.Service\Notification.Service.csproj" />
   </ItemGroup>

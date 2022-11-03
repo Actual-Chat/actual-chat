@@ -4,6 +4,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
+using ActualChat.Contacts;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;

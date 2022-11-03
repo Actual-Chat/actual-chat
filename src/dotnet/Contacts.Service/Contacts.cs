@@ -1,4 +1,9 @@
-namespace ActualChat.Users;
+using ActualChat.Chat;
+using ActualChat.Users;
+
+namespace ActualChat.Contacts;
+
+#pragma warning disable MA0049
 
 public class Contacts : IContacts
 {
@@ -18,7 +23,7 @@ public class Contacts : IContacts
     {
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         var contact = await Backend.Get(contactId, cancellationToken).ConfigureAwait(false);
-        if (contact?.OwnerUserId == account.Id)
+        if (contact?.OwnerId == account.Id)
             return contact;
         throw StandardError.Unauthorized("Contact is missing or you don't have access to it.");
     }
@@ -43,6 +48,19 @@ public class Contacts : IContacts
             .ToImmutableArray();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<Contact?> GetPeerChatContact(
+        Session session, string chatId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return null;
+
+        var contact = await Backend.GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        return contact;
+    }
+
     // [CommandHandler]
     public virtual async Task<Contact> Change(IContacts.ChangeCommand command, CancellationToken cancellationToken)
     {
@@ -56,7 +74,7 @@ public class Contacts : IContacts
         if (!change.Create.HasValue) {
             // Update or Remove
             var contact = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
-            if (contact.OwnerUserId != account.Id)
+            if (contact.OwnerId != account.Id)
                 throw StandardError.Unauthorized("Users can change only their own contacts.");
         }
 

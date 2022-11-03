@@ -79,7 +79,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("avatars");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbContact", b =>
+            modelBuilder.Entity("ActualChat.Users.Db.DbContactOld", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

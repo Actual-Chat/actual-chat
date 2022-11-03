@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Commands;
+using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Users;
@@ -160,17 +161,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
 
         return ParsedChatId.FormatShortPeerChatId(userId2);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return null;
-
-        var contact = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
-        return contact;
     }
 
     // [ComputeMethod]
@@ -344,11 +334,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (account == null)
             return null;
 
-        var contact = await GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        var contact = await ContactsBackend.GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
 
-        chat = chat with { Title = contact.Avatar.Name };
+        chat = chat with { Title = contact.Account!.Avatar.Name };
         return chat;
     }
 
@@ -367,30 +357,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         default: // Group or Invalid
             throw new ArgumentOutOfRangeException(nameof(chatId));
         }
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<Contact?> GetPeerChatContact(
-        string chatId, string ownerUserId, CancellationToken cancellationToken)
-    {
-        var parsedChatId = new ParsedChatId(chatId);
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.PeerFull:
-            break;
-        case ChatIdKind.PeerShort:
-            parsedChatId = chatId = ParsedChatId.FormatFullPeerChatId(ownerUserId, parsedChatId.UserId1);
-            break;
-        default: // Group or Invalid
-            return null;
-        }
-
-        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-        var targetUserId = (userId1, userId2).OtherThan((Symbol)ownerUserId);
-        if (targetUserId.IsEmpty)
-            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
-
-        var contact = await ContactsBackend.Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
-        return contact;
     }
 
     // Private methods

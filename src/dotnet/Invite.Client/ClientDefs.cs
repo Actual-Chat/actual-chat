@@ -1,6 +1,6 @@
 ﻿using RestEase;
 
-namespace ActualChat.Invite.Client;
+namespace ActualChat.Invite;
 
 [BasePath("invites")]
 public interface IInvitesClientDef

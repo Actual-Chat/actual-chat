@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 
-namespace ActualChat.Users.Controllers;
+namespace ActualChat.Contacts.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
@@ -25,6 +25,10 @@ public class ContactsController : ControllerBase, IContacts
     [HttpGet, Publish]
     public Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken)
         => Service.GetOwn(session, contactId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
+        => Service.GetPeerChatContact(session, chatId, cancellationToken);
 
     public Task<Contact> Change(IContacts.ChangeCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);

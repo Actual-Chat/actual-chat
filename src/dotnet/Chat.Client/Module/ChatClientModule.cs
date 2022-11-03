@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Chat.Client.Module;
+namespace ActualChat.Chat.Module;
 
 public class ChatClientModule : HostModule
 {
