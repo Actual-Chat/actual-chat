@@ -137,8 +137,11 @@ public interface IMentionsClientDef
 [BasePath("reactions")]
 public interface IReactionsClientDef
 {
-    [Get(nameof(List))]
-    Task<ImmutableArray<ReactionSummary>> List(
+    [Get(nameof(Get))]
+    Task<Reaction?> Get(Session session, Symbol chatEntryId, CancellationToken cancellationToken);
+
+    [Get(nameof(ListSummaries))]
+    Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
         Symbol chatEntryId,
         CancellationToken cancellationToken);

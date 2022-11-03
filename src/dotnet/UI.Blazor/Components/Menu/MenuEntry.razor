@@ -12,13 +12,15 @@
                 @IconContent
             }
         </div>
-        <div class="ac-menu-text">
-            @if (TextContent == null) {
-                @Text
-            } else {
-                @TextContent
-            }
-        </div>
+        @if (TextContent != null || !Text.IsNullOrEmpty()) {
+            <div class="ac-menu-text">
+                @if (TextContent == null) {
+                    @Text
+                } else {
+                    @TextContent
+                }
+            </div>
+        }
     </div>
 </li>
 

@@ -4,11 +4,12 @@
 @{
     var entry = Message.Entry;
     var m = State.LatestNonErrorValue;
+    var quickReactionTooltip = $"React with '{Emoji.ThumbsUp.Name}'";
 }
 <div class="flex-x gap-x-1">
-    @if (entry.AudioEntryId != null) {
-        <MessageMenuPlay Entry="@entry"/>
-    }
+    <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
+        <EmojiIcon Code="@Emoji.ThumbsUp.Code" class="w-5 h-5"/>
+    </ButtonRound>
     @if (m.CanReply) {
         <ButtonRound
             Click="@(() => Reply(Message.Entry))"
@@ -17,6 +18,9 @@
             FloatingPosition="FloatingPosition.Top">
             <i class="icon-reply text-xl text-icon-01"></i>
         </ButtonRound>
+    }
+    @if (entry.AudioEntryId != null) {
+        <MessageMenuPlay Entry="@entry"/>
     }
     <ButtonRound Class="more-btn"
                  data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
@@ -31,6 +35,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -55,7 +60,16 @@
         await UIEventHub.Publish(new FocusChatMessageEditorEvent());
     }
 
+    private Task OnReactionClick() {
+        return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
+            ChatId = Message.Entry.ChatId,
+            EntryId = Message.Entry.Id,
+            Emoji = Emoji.ThumbsUp,
+        }));
+    }
+
     public record Model(bool CanReply) {
         public static readonly Model None = new(false);
     }
+
 }

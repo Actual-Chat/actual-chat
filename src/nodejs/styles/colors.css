@@ -27,6 +27,7 @@
     --disabled: #E7E7E7;
 
     --primary: #2970FF;
+    --reaction: rgba(41, 112, 255, 0.16); /* In fact it's --primary with bg opacity 0.16, but tailwind does not support custom colors with bg opacity */
     --primary-hover: #2569F1;
     --primary-title: #FFFFFF;
 

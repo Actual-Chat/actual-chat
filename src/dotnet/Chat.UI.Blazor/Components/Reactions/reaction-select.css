@@ -1,0 +1,6 @@
+.reaction-select {
+    @apply flex-x items-center gap-2.5;
+}
+.reaction-select-reaction {
+    @apply min-w-0;
+}

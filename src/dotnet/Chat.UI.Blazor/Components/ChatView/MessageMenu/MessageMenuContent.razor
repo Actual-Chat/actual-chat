@@ -4,9 +4,10 @@
 @{
     var m = State.LatestNonErrorValue;
     var entry = ChatMessageModel.Entry;
+    var reactionClass = ScreenSize.IsNarrow() ? "w-6 h-6" : "w-5 h-5";
 }
 
-<ReactionSelect ChatEntry="@entry"/>
+<ReactionSelect ChatEntry="@entry" Class="chat-message-menu-reaction-select" ReactionClass="@reactionClass"/>
 
 @if (m.CanReply) {
     <MenuEntry
@@ -61,6 +62,7 @@
 
     [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
     [Parameter] public string? ClickedLinkUrl { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new ComputedState<Model>.Options {

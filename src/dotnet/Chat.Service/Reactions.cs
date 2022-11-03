@@ -16,7 +16,20 @@ internal class Reactions : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ReactionSummary>> List(
+    public virtual async Task<Reaction?> Get(Session session, Symbol chatEntryId, CancellationToken cancellationToken)
+    {
+        var parsedChatEntryId = new ParsedChatEntryId(chatEntryId);
+        var chatAuthor = await Authors.GetOwn(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null)
+            return null;
+
+        var chatRules = await Chats.GetRules(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        return await Backend.Get(chatEntryId, chatAuthor.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
         Symbol chatEntryId,
         CancellationToken cancellationToken)

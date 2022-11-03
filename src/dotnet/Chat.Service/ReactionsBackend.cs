@@ -13,6 +13,17 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         => ChatsBackend = chatsBackend;
 
     // [ComputeMethod]
+    public virtual async Task<Reaction?> Get(Symbol chatEntryId, Symbol chatAuthorId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbReaction = await dbContext.Reactions.Get(DbReaction.ComposeId(chatEntryId, chatAuthorId), cancellationToken)
+            .ConfigureAwait(false);
+        return dbReaction?.ToModel();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> List(
         string chatEntryId,
         CancellationToken cancellationToken)
@@ -34,6 +45,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         var chatEntryId = new ParsedChatEntryId(chatId, ChatEntryType.Text, entryId).ToString();
         if (Computed.IsInvalidating()) {
             _ = List(chatEntryId, default);
+            _ = Get(chatEntryId, authorId, default);
             return;
         }
 

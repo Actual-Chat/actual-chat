@@ -235,19 +235,3 @@
 .language-settings-item {
     @apply flex-x items-center my-1;
 }
-
-.reaction-select {
-    @apply flex-x justify-between;
-}
-.reaction-select-reaction {
-    @apply min-w-0 p-0 h-auto;
-}
-.reaction-select-reaction .ac-menu-content {
-    @apply gap-x-0;
-}
-.reaction-select-reaction .ac-menu-text {
-    @apply text-xl mx-0.5;
-}
-.mobile .reaction-select-reaction .ac-menu-text {
-    @apply text-2xl mx-1;
-}
