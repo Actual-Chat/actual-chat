@@ -1,31 +1,30 @@
+.creation-modal.modal-frame {
+    @apply gap-y-0 p-0 rounded-lg min-w-90 max-w-90;
+    max-height: 40rem;
+}
 .creation-panel {
-    @apply absolute flex-y left-0 bottom-0 w-full md:w-110;
-    @apply bg-01 border-bg-04 border-0 md:border-r md:border-t;
-}
-.creation-panel.closed {
-    @apply h-0 transition-all duration-300 ease-in-out;
-}
-.creation-panel.open {
-    @apply h-5/6 transition-all duration-300 ease-in-out;
+    @apply flex-y left-0 bottom-0 w-full bg-01;
 }
 
 .creation-panel .header {
     @apply flex-x min-h-14 items-center border-b border-bg-04;
 }
+.creation-panel .header.add-members {
+    @apply flex-x min-h-14 items-center border-0;
+}
 
 .creation-panel .creation-buttons {
-    @apply flex-y p-2 border-b border-bg-04;
+    @apply flex-y p-2;
 }
 .creation-btn {
-    @apply flex-x items-center min-h-12 rounded-md;
+    @apply flex-x items-center min-h-12 rounded-md cursor-pointer;
 }
 .creation-btn * {
-    @apply text-primary;
+    @apply text-primary cursor-pointer;
 }
 .creation-btn:hover {
     @apply bg-secondary;
 }
-
-.creation-panel .contacts {
-
+.creation-modal .contacts {
+    @apply border-t border-bg-04;
 }

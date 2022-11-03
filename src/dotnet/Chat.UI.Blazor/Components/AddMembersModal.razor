@@ -1,0 +1,105 @@
+@using Stl.Extensibility
+@implements IModalView<AddMembersModal.Model>
+@implements IDisposable
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame class="creation-modal">
+    <Body>
+        <div class="creation-panel">
+            <div class="header add-members">
+                <div class="w-full px-4 text-lg font-medium">Add members</div>
+                <ButtonRound Class="transparent" ContentClass="!min-w-14 !max-w-14" Click="OnClose">
+                    <i class="icon-close text-xl font-medium"></i>
+                </ButtonRound>
+            </div>
+            <div class="mb-4 px-4">
+                <SearchBox
+                    @ref="_searchBoxRef"
+                    Class="mt-1"
+                    Placeholder="Type the username"
+                    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                    TextChanged="@OnFilter"/>
+            </div>
+            <CreationPanelContacts/>
+        </div>
+    </Body>
+    <Buttons>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private bool _enableIncompleteUI;
+    private SearchBox _searchBoxRef = null!;
+
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
+
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private CancellationTokenSource DisposeTokenSource { get; }
+    private CancellationToken DisposeToken { get; }
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public AddMembersModal()
+    {
+        DisposeTokenSource = new();
+        DisposeToken = DisposeTokenSource.Token;
+    }
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+
+        var contacts = await Contacts.ListOwn(Session, DisposeToken);
+        var resolvedContacts = await contacts
+            .Select(async contact => {
+                // Default scheduler is used from here (in this block)
+                var account = await Accounts.Get(Session, contact.TargetUserId, DisposeToken).ConfigureAwait(false);
+                if (account == null)
+                    return null;
+
+                var presence = await UserPresences.Get(contact.TargetUserId, DisposeToken).ConfigureAwait(false);
+                return new Contact() {
+                    Account = account,
+                };
+            })
+            .Collect();
+
+        AllContacts = resolvedContacts
+            .SkipNullItems()
+            .OrderBy(x => x.Account.Avatar.Name)
+            .ToArray();
+        FilteredContacts = AllContacts;
+    }
+
+    private void OnClose()
+        => ModalInstance.CloseAsync();
+
+    private void OnCreateNewGroupClick() {
+        ModalInstance.CloseAsync();
+        ModalUI.Show(new NewChatModal.Model());
+    }
+
+    public void Dispose()
+        => DisposeTokenSource.Cancel();
+
+    private void OnFilter(string filter) {
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
+    }
+
+    public sealed record Model;
+
+    private sealed class Contact {
+        public Account Account { get; init;} = null!;
+    }
+}
