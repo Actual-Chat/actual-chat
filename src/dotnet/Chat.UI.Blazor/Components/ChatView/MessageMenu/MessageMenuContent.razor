@@ -7,44 +7,45 @@
 }
 
 <ReactionSelect ChatEntry="@entry"/>
+
 @if (m.CanReply) {
     <MenuEntry
         OnClick="@(() => Reply(entry))"
-        Icon="icon-reply text-xl"
+        Icon="icon-reply"
         Text="Reply">
     </MenuEntry>
 }
 <MenuEntry
     OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })"
-    Icon="icon-hash-fill text-xl"
+    Icon="icon-hash-fill"
     Text="Create thread">
 </MenuEntry>
 @if (!ClickedLinkUrl.IsNullOrEmpty()) {
     <MenuEntry
         OnClick="@OnCopyLinkClick"
-        Icon="icon-link-2 text-xl"
+        Icon="icon-link-2"
         Text="Copy link">
     </MenuEntry>
 }
 <MenuEntry
     OnClick="@(() => CopyMessageLink(entry))"
-    Icon="icon-link-2 text-xl"
+    Icon="icon-link-2"
     Text="Copy message link">
 </MenuEntry>
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
     <MenuEntry
         OnClick="@(() => Edit(entry))"
-        Icon="icon-edit text-xl"
+        Icon="icon-edit"
         Text="Edit">
     </MenuEntry>
 }
 @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
+    <MenuEntrySeparator />
     <MenuEntry
         OnClick="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))"
         Class="warning-item"
-        Icon="icon-trash text-xl"
-        Text="Delete message"
-        StartGroup="true">
+        Icon="icon-trash"
+        Text="Delete message">
     </MenuEntry>
 }
 

@@ -29,22 +29,28 @@
 .ac-menu-content {
     @apply flex-x gap-x-2 items-center;
 }
-.ac-menu-icon {
+.ac-menu-icon > i {
     @apply text-icons-01 text-2xl;
+}
+.mobile .ac-menu-icon > i {
+    @apply text-2xl;
 }
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
 }
+.mobile .ac-menu-text {
+    @apply text-xl;
+}
 .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
 }
-.ac-menu-item.important-item .ac-menu-icon,
-.ac-menu-item.important-item.off .ac-menu-icon,
+.ac-menu-item.important-item .ac-menu-icon > i,
+.ac-menu-item.important-item.off .ac-menu-icon > i,
 .ac-menu-item.important-item .ac-menu-text,
 .ac-menu-item.important-item.off .ac-menu-text {
     @apply text-primary;
 }
-.ac-menu-item.important-item.on .ac-menu-icon,
+.ac-menu-item.important-item.on .ac-menu-icon > i,
 .ac-menu-item.important-item.on .ac-menu-text {
     @apply text-error;
 }
@@ -54,7 +60,7 @@
 .ac-menu-item.warning-item:hover {
     @apply bg-error-hover;
 }
-.ac-menu-item.warning-item:hover .ac-menu-icon,
+.ac-menu-item.warning-item:hover .ac-menu-icon > i,
 .ac-menu-item.warning-item:hover .ac-menu-text {
     @apply text-error;
 }
