@@ -50,6 +50,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Components.WebView" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebView.Maui" Version="7.0.0-rc.2.6866" />
     <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
