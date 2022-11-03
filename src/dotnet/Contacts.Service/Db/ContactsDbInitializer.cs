@@ -9,7 +9,6 @@ public class ContactsDbInitializer : DbInitializer<ContactsDbContext>
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
-        await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dependencies = (
             from kv in InitializeTasks
             let dbInitializer = kv.Key
@@ -21,5 +20,6 @@ public class ContactsDbInitializer : DbInitializer<ContactsDbContext>
             select task
             ).ToArray();
         await Task.WhenAll(dependencies).ConfigureAwait(false);
+        await base.Initialize(cancellationToken).ConfigureAwait(false);
     }
 }

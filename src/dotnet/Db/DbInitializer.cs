@@ -8,12 +8,12 @@ namespace ActualChat.Db;
 public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
     where TDbContext : DbContext
 {
-    protected DbInfo<TDbContext> DbInfo { get; }
+    public DbInfo<TDbContext> DbInfo { get; }
+    public new DbHub<TDbContext> DbHub => base.DbHub;
+    public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
 
     protected DbInitializer(IServiceProvider services) : base(services)
         => DbInfo = services.GetRequiredService<DbInfo<TDbContext>>();
-
-    public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
 
     public virtual async Task Initialize(CancellationToken cancellationToken)
     {

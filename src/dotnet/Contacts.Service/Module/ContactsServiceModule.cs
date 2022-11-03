@@ -1,6 +1,7 @@
 using ActualChat.Contacts.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Redis.Module;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 
@@ -18,6 +19,10 @@ public class ContactsServiceModule : HostModule<ContactsSettings>
     {
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
+
+        // Redis
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<ContactsDbContext>(services, Settings.Redis);
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();

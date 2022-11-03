@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Contacts.Service\Contacts.Service.csproj" />
+    <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
   </ItemGroup>
 
   <ItemGroup>

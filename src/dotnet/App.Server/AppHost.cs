@@ -65,6 +65,7 @@ public class AppHost : IDisposable
 
         async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
         {
+            DbInitializer.Current = dbInitializer;
             try {
                 log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
                 await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
@@ -80,10 +81,13 @@ public class AppHost : IDisposable
                 taskSource.TrySetException(e);
                 throw;
             }
+            finally {
+                DbInitializer.Current = null;
+            }
         }
 
         var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(i => i, i => TaskSource.New<bool>(true));
+            .ToDictionary(i => i, _ => TaskSource.New<bool>(true));
         var initializeTasks = initializeTaskSources
             .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
         foreach (var (dbInitializer, _) in initializeTasks)

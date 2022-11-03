@@ -24,7 +24,6 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
-        await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dependencies = (
             from kv in InitializeTasks
             let dbInitializer = kv.Key
@@ -34,6 +33,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             select task
             ).ToArray();
         await Task.WhenAll(dependencies).ConfigureAwait(false);
+        await base.Initialize(cancellationToken).ConfigureAwait(false);
 
         var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);

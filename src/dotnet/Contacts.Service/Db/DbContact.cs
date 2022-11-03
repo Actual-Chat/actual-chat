@@ -22,7 +22,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => UpdateFrom(contact);
 
     public static string ComposeId(string ownerUserId, string contactUserId)
-        => $"{ownerUserId}:{contactUserId}";
+        => $"{ownerUserId} u/{contactUserId}";
 
     public Contact ToModel()
         => new() {
