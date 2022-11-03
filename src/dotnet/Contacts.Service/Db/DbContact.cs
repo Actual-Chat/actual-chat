@@ -21,8 +21,10 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbContact(Contact contact)
         => UpdateFrom(contact);
 
-    public static string ComposeId(string ownerUserId, string contactUserId)
+    public static string ComposeUserContactId(string ownerUserId, string contactUserId)
         => $"{ownerUserId} u/{contactUserId}";
+    public static string ComposeChatContactId(string ownerUserId, string chatId)
+        => $"{ownerUserId} c/{chatId}";
 
     public Contact ToModel()
         => new() {
@@ -35,7 +37,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(Contact model)
     {
-        Id = !model.Id.IsEmpty ? model.Id : ComposeId(model.OwnerId, model.UserId);
+        Id = !model.Id.IsEmpty ? model.Id : ComposeUserContactId(model.OwnerId, model.UserId);
         OwnerId = model.OwnerId;
         UserId = model.UserId.NullIfEmpty()?.Value;
         ChatId = model.ChatId.NullIfEmpty()?.Value;

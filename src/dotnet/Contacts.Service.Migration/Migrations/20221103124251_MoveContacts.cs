@@ -24,8 +24,11 @@ namespace ActualChat.Contacts.Migrations
             var usersDbContext = usersDbInitializer.DbHub.CreateDbContext();
             var oldContacts = usersDbContext.Contacts.ToList();
             foreach (var oc in oldContacts) {
+                if (oc.OwnerUserId.IsNullOrEmpty() || oc.TargetUserId.IsNullOrEmpty())
+                    continue;
+
                 var c = new DbContact() {
-                    Id = oc.Id.OrdinalReplace(":", " u/"),
+                    Id = DbContact.ComposeUserContactId(oc.OwnerUserId, oc.TargetUserId),
                     Version = oc.Version,
                     OwnerId = oc.OwnerUserId,
                     UserId = oc.TargetUserId,

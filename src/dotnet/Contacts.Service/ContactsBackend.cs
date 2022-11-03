@@ -59,7 +59,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
             return null;
 
-        var id = DbContact.ComposeId(ownerUserId, targetUserId);
+        var id = DbContact.ComposeUserContactId(ownerUserId, targetUserId);
         return await Get(id, cancellationToken).ConfigureAwait(false);
 
         // Old code:
