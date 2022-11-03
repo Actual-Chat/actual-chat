@@ -118,7 +118,7 @@
 
         LastReadEntryState.DisposeSilently();
         LastReadEntryState = null;
-        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default).ConfigureAwait(false);
+        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
 
         if (JSRef != null!) {
             // Only when rendered
