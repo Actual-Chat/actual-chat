@@ -241,6 +241,7 @@ internal static class Program
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+            #pragma warning disable IL2026
             var nbgv = JsonSerializer.Deserialize<NbgvModel>(cmd.StandardOutput ?? throw new WithoutStackException("nbgv returned null"));
 
             if (nbgv == null)
@@ -407,7 +408,7 @@ internal static class Program
 
         try {
             /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
-            await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
+            await RunTargetsWithoutExitingAsync(targets:arguments, options, messageOnly:ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
             return 0;
         }
         catch (TargetFailedException targetException) {
