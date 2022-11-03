@@ -19,5 +19,5 @@ import './Components/ChatAudioPanel/chat-audio-panel.css';
 import './Components/Navbar/navbar.css';
 import './Components/LeftPanel/left-panel.css';
 import './Components/Reactions/reaction-select.css';
-import './Components/PlusButtonPanel/plus-button-panel.css';
+import './Components/CreationPanel/creation-panel.css';
 import './Pages/user-page.css'

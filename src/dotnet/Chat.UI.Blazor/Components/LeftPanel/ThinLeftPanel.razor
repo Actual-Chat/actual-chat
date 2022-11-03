@@ -8,33 +8,37 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-2">
             <ButtonSquare
-                Click="OnClick"
+                Click="OnCreationPanelSwitch"
                 Class="navbar-navigation-button plus-btn on"
-                Tooltip="New chat..."
+                Tooltip="Create"
                 FloatingPosition="FloatingPosition.Right">
                 <i class="icon-plus text-2xl font-medium"></i>
             </ButtonSquare>
             <NavbarGroupToggles/>
-            <div class="border-t border-placeholder w-4/5 my-2"></div>
-            <NavbarPlaces/>
+            @if (_enableIncompleteUI) {
+                <div class="border-t border-placeholder w-4/5 my-2"></div>
+                <NavbarPlaces/>
+            }
         </div>
         <div class="flex w-full py-2 justify-center">
             <AccountDropdown/>
         </div>
     </div>
-    <PlusButtonPanel/>
+    <CreationPanel/>
 </div>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private PlusButtonPanelUI PlusButtonPanelUI { get; init; } = null!;
+    private bool _enableIncompleteUI;
 
-    private void OnPlusButtonClick() {
-        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
-            addAction();
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private CreationPanelUI CreationPanelUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    private void OnClick()
-        => PlusButtonPanelUI.Switch();
+    private void OnCreationPanelSwitch()
+        => CreationPanelUI.Switch();
 
 }
