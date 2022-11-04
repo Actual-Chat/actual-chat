@@ -1,5 +1,5 @@
 .message-wrapper {
-    @apply flex-x relative w-full select-none md:select-all;
+    @apply flex-x relative w-full select-none md:select-auto;
     @apply border-l-2 border-bg-01;
 }
 .message-wrapper:hover {

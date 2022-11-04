@@ -28,7 +28,7 @@
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg select-none md:select-all;
+    @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg select-none md:select-auto;
 }
 .navbar-item .navbar-item-content {
     @apply text-02 overflow-hidden my-0.5;
