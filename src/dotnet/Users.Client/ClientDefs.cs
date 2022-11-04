@@ -39,19 +39,6 @@ public interface IAvatarsClientDef
     Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("recentEntries")]
-public interface IRecentEntriesClientDef
-{
-    [Get(nameof(ListOwn))]
-    Task<ImmutableArray<RecentEntry>> ListOwn(
-        Session session,
-        RecencyScope scope,
-        int limit,
-        CancellationToken cancellationToken);
-    [Post(nameof(Update))]
-    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
-}
-
 [BasePath("readPositions")]
 public interface IReadPositionsClientDef
 {

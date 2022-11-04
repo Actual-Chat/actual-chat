@@ -30,6 +30,10 @@ public class AuthorsController : ControllerBase, IAuthors
         => Service.GetFull(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+        => Service.GetAccount(session, chatId, authorId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
         => Service.ListOwnChatIds(session, cancellationToken);
 
@@ -45,15 +49,7 @@ public class AuthorsController : ControllerBase, IAuthors
     public Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken)
         => Service.GetAuthorPresence(session, chatId, authorId, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<bool> CanAddToContacts(Session session, string chatId, string authorId, CancellationToken cancellationToken)
-        => Service.CanAddToContacts(session, chatId, authorId, cancellationToken);
-
     // Commands
-
-    [HttpPost]
-    public Task AddToContacts([FromBody] IAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
-        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task CreateAuthors([FromBody] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken)

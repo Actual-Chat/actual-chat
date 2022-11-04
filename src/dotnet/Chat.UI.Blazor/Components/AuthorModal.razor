@@ -1,4 +1,5 @@
 @using Stl.Extensibility
+@using ActualChat.Contacts
 @implements IModalView<AuthorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
@@ -19,7 +20,7 @@
             @if (m.CanAddContact) {
                 <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
-            @if (m.CanSendMessage) {
+            @if (m.CanPeerChat) {
                 <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
             }
         </div>
@@ -27,9 +28,10 @@
 </DialogFrame>
 
 @code {
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
@@ -53,12 +55,24 @@
         if (author == null)
             return ComputedModel.None;
 
-        var canAddToContactsTask = Authors.CanAddToContacts(Session, ChatId, AuthorId, default);
-        var canSendPeerChatMessageTask = Chats.CanPeerChat(Session, ChatId, AuthorId, default);
+        var ownAccount = await Accounts.GetOwn(Session, default);
+        if (ownAccount == null)
+            return new ComputedModel() { Author = author };
+
+        var account = await Authors.GetAccount(Session, ChatId, AuthorId, default);
+        if (account == null)
+            return new ComputedModel() {
+                Author = author,
+                OwnAccount = ownAccount,
+            };
+
+        var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
+        var canAddContact = !contactIds.Any(cid => cid.IsUserContact(out var userId) && userId == account.Id);
         return new ComputedModel() {
             Author = author,
-            CanAddContact = await canAddToContactsTask.ConfigureAwait(false),
-            CanSendMessage = await canSendPeerChatMessageTask.ConfigureAwait(false),
+            Account = account,
+            OwnAccount = ownAccount,
+            CanAddContact = canAddContact,
         };
     }
 
@@ -67,18 +81,31 @@
             return;
         IsAddingContact = true;
         StateHasChanged();
+        try {
+            var m = State.LatestNonErrorValue;
+            if (m.Account == null || m.OwnAccount == null)
+                return;
 
-        await UICommander.Run(new IAuthors.AddToContactsCommand(Session, ChatId, AuthorId));
+            var contactId = new ContactId(m.OwnAccount.Id, m.Account.Id, ContactKind.User);
+            var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {
+                Create = new Contact(contactId),
+            });
+            await UICommander.Run(command);
+        }
+        finally {
+            IsAddingContact = false;
+            await ModalInstance.CloseAsync();
+            StateHasChanged();
+        }
 
-        IsAddingContact = false;
-        await ModalInstance.CloseAsync();
-        StateHasChanged();
     }
 
-    private async Task OnSendMessageClick() {
-        var peerChatId = await Chats.GetPeerChatId(Session, ChatId, AuthorId, default);
-        if (peerChatId.IsNullOrEmpty())
+    private void OnSendMessageClick() {
+        var account = State.LatestNonErrorValue.Account;
+        if (account == null)
             return;
+
+        var peerChatId = ParsedChatId.FormatShortPeerChatId(account.Id);
         Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 
@@ -87,8 +114,10 @@
         public static ComputedModel Loading { get; } = new() { Author = Author.Loading }; // Should differ by ref. from None
 
         public Author Author { get; init; } = null!;
+        public Account? Account { get; init; }
+        public Account? OwnAccount { get; init; }
+        public bool CanPeerChat => Account != null;
         public bool CanAddContact { get; init; }
-        public bool CanSendMessage { get; init; }
     }
 
     public sealed record Model(Symbol ChatId, Symbol AuthorId);

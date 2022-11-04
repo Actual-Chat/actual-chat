@@ -64,8 +64,8 @@
         if (account == null)
             return Model.None;
 
-        var contacts = await Contacts.ListOwn(Session, cancellationToken).ConfigureAwait(false);
-        var canAddToContacts = !contacts.Any(c => c.UserId == account.Id);
+        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        var canAddToContacts = !contactIds.Any(cid => cid.IsUserContact(out var userId) && userId == account.Id);
         return new Model {
             Account = account,
             CanAddContact = canAddToContacts,
@@ -82,13 +82,11 @@
         try {
             var ownAccount = await Accounts.GetOwn(Session, default).Require();
             var account = await Accounts.Get(Session, UserId, default).Require();
-            var change = new Change<Contact>() {
-                Create = new Contact() {
-                    OwnerId = ownAccount.Id,
-                    UserId = account.Id,
-                },
-            };
-            await UICommander.Run(new IContacts.ChangeCommand(Session, default, default, change));
+            var contactId = new ContactId(ownAccount.Id, account.Id, ContactKind.User);
+            var command = new IContacts.ChangeCommand(Session, contactId, default, new Change<Contact>() {
+                Create = new Contact(contactId),
+            });
+            await UICommander.Run(command);
         }
         finally {
             IsAddingContact = false;

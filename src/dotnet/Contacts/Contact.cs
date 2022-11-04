@@ -3,23 +3,20 @@ using Stl.Versioning;
 
 namespace ActualChat.Contacts;
 
-public enum ContactKind
-{
-    User = 0,
-    Chat = 1,
-}
-
 [DataContract]
-public record Contact : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+public sealed record Contact : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember] public Symbol Id { get; init; } = Symbol.Empty;
+    [DataMember] public ContactId Id { get; init; } = default;
     [DataMember] public long Version { get; init; }
-    [DataMember] public Symbol OwnerId { get; init; } = Symbol.Empty;
-    [DataMember] public Symbol UserId { get; init; } // Used only on writes
-    [DataMember] public Symbol ChatId { get; init; } // Used only on writes
-    [DataMember] public Account? Account { get; init; } // Populated only on reads
-    [DataMember] public Chat.Chat? Chat { get; init; } // Populated only oh reads
+    [DataMember] public Moment TouchedAt { get; init; }
+
+    // The following properties are populated only on reads
+    [DataMember] public Account? Account { get; init; }
+    [DataMember] public Chat.Chat? Chat { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ContactKind Kind => UserId.IsEmpty ? ContactKind.Chat : ContactKind.User;
+    public ContactKind Kind => Id.Kind;
+
+    public Contact() { }
+    public Contact(ContactId id) => Id = id;
 }

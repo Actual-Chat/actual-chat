@@ -137,8 +137,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IReadPositionsBackend, ReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
-        fusion.AddComputeService<IRecentEntries, RecentEntries>();
-        fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

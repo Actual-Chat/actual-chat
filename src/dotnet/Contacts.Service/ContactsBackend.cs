@@ -2,6 +2,7 @@ using ActualChat.Chat;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Users;
+using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -9,109 +10,87 @@ namespace ActualChat.Contacts;
 
 public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBackend
 {
-    private IAccountsBackend AccountsBackend { get; }
+    private IAccountsBackend? _accountsBackend;
+    private IChatsBackend? _chatsBackend;
+
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
-    private DiffEngine DiffEngine { get; }
 
     public ContactsBackend(IServiceProvider services) : base(services)
-    {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        DbContactResolver = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
-        DiffEngine = services.GetRequiredService<DiffEngine>();
-    }
-
-    public async Task<Contact> GetOrCreate(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
-    {
-        var contact = await Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
-        if (contact != null)
-            return contact;
-
-        var command = new IContactsBackend.ChangeCommand(Symbol.Empty, null, new Change<Contact> {
-            Create = new Contact {
-                OwnerId = ownerUserId,
-                UserId = targetUserId,
-            },
-        });
-
-        var newContact = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
-        return newContact;
-    }
+        => DbContactResolver = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> Get(string contactId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> Get(string ownerId, string id, CancellationToken cancellationToken)
     {
-        var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
+        var dbContact = await DbContactResolver.Get(id, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel();
-        if (contact == null)
+        if (contact is not { Id.IsValid: true })
+            return null;
+        if (contact.Id.OwnerId != ownerId)
             return null;
 
-        var account = await AccountsBackend.Get(contact.UserId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
+        if (contact.Id.IsUserContact(out var userId)) {
+            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            contact = contact with { Account = account };
+        }
+        else if (contact.Id.IsChatContact(out var chatId)) {
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            contact = contact with { Chat = chat };
+        }
+        else
             return null;
 
-        contact = contact with { Account = account };
         return contact;
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> Get(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> GetUserContact(string ownerId, string userId, CancellationToken cancellationToken)
     {
-        if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
+        if (ownerId.IsNullOrEmpty() || userId.IsNullOrEmpty())
             return null;
 
-        var id = DbContact.ComposeUserContactId(ownerUserId, targetUserId);
-        return await Get(id, cancellationToken).ConfigureAwait(false);
-
-        // Old code:
-        /*
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbContact = await dbContext.Contacts
-            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetUserId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbContact?.ToModel();
-        */
+        var id = new ContactId(ownerId, userId, ContactKind.User);
+        return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<ContactId>> List(string ownerId, CancellationToken cancellationToken)
     {
-        if (userId.IsNullOrEmpty())
-            return Array.Empty<string>();
+        var parsedOwnerId = (ParsedUserId) ownerId;
+        if (!parsedOwnerId.IsValid) // We need to make sure it's valid before using it in idPrefix
+            return ImmutableArray<ContactId>.Empty;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = ownerId + ' ';
         var contactIds = await dbContext.Contacts
-            .Where(a => a.OwnerId == userId)
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .OrderBy(a => a.Id)
             .Select(a => a.Id)
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return contactIds;
+
+        // That's just a bit more efficient conversion than .Select().ToImmutableArray()
+        var result = new ContactId[contactIds.Count];
+        for (var i = 0; i < contactIds.Count; i++)
+            result[i] = new ContactId(contactIds[i]);
+        return ImmutableArray.Create(result);
     }
 
-    [ComputeMethod]
-    public virtual async Task<Contact?> GetPeerChatContact(
-        string chatId, string ownerUserId,
-        CancellationToken cancellationToken)
+    public async Task<Contact> GetOrCreateUserContact(string ownerId, string userId, CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(chatId);
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.PeerFull:
-            break;
-        case ChatIdKind.PeerShort:
-            parsedChatId = chatId = ParsedChatId.FormatFullPeerChatId(ownerUserId, parsedChatId.UserId1);
-            break;
-        default: // Group or Invalid
-            return null;
-        }
+        var contact = await GetUserContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
+        if (contact != null)
+            return contact;
 
-        var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
-        var targetUserId = (userId1, userId2).OtherThan((Symbol)ownerUserId);
-        if (targetUserId.IsEmpty)
-            throw StandardError.Constraint("Specified peer chat doesn't belong to the current user.");
+        var id = new ContactId(ownerId, userId, ContactKind.User).RequireFullyValid();
+        var command = new IContactsBackend.ChangeCommand(id, null, new Change<Contact> {
+            Create = new Contact { Id = id },
+        });
 
-        var contact = await Get(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
+        contact = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return contact;
     }
 
@@ -125,60 +104,44 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (Computed.IsInvalidating()) {
             var invContact = context.Operation().Items.Get<Contact>();
             if (invContact != null) {
-                _ = GetContactIds(invContact.OwnerId, default);
-                if (!invContact.UserId.IsEmpty)
-                    _ = Get(invContact.OwnerId, invContact.UserId, default);
-                _ = Get(invContact.Id, default);
+                _ = Get(invContact.Id.OwnerId, invContact.Id, default);
+                if (!change.Update.HasValue) // Create or Delete
+                    _ = List(invContact.Id.OwnerId, default);
             }
             return default!;
         }
 
+        id.RequireFullyValid();
         change.RequireValid();
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         DbContact? dbContact;
         if (change.IsCreate(out var contact)) {
-            id.RequireEmpty("command.Id");
-            contact = DiffEngine.Patch(new Contact(), contact);
-            if (contact.OwnerId.IsEmpty)
-                throw StandardError.Constraint("OwnerId is empty.");
-            if (!contact.UserId.IsEmpty) {
-                dbContact = await dbContext.Contacts
-                    .FirstOrDefaultAsync(c =>
-                            // ReSharper disable once AccessToModifiedClosure
-                            c.OwnerId == contact.OwnerId.Value
-                            // ReSharper disable once AccessToModifiedClosure
-                            && c.UserId == contact.UserId.Value,
-                        cancellationToken
-                    ).ConfigureAwait(false);
-            }
-            else if (!contact.ChatId.IsEmpty) {
-                dbContact = await dbContext.Contacts
-                    .FirstOrDefaultAsync(c =>
-                            // ReSharper disable once AccessToModifiedClosure
-                            c.OwnerId == contact.OwnerId.Value
-                            // ReSharper disable once AccessToModifiedClosure
-                            && c.UserId == contact.ChatId.Value,
-                        cancellationToken
-                    ).ConfigureAwait(false);
-            }
-            else
-                throw StandardError.Constraint("Neither UserId nor ChatId is set.");
-
+            dbContact = await dbContext.Contacts.Get(id.Format(), cancellationToken).ConfigureAwait(false);
             if (dbContact != null)
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
+
+            contact = contact with {
+                Id = id,
+                Version = VersionGenerator.NextVersion(),
+                TouchedAt = Clocks.SystemClock.Now,
+            };
             dbContact = new DbContact(contact);
             dbContext.Add(dbContact);
         }
         else {
             // Update or Delete
             dbContact = await dbContext.Contacts
-                .Get(id, cancellationToken)
+                .Get(id.Format(), cancellationToken)
                 .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
-            if (change.IsUpdate(out contact))
+            if (change.IsUpdate(out contact)) {
+                contact = contact with {
+                    Version = VersionGenerator.NextVersion(dbContact.Version),
+                };
                 dbContact.UpdateFrom(contact);
+            }
             else
                 dbContext.Remove(dbContact);
         }
@@ -186,15 +149,37 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         contact = dbContact.ToModel();
         context.Operation().Items.Set(contact);
-
-        if (change.IsCreate(out _)) {
-            new IRecentEntriesBackend.UpdateCommand(
-                RecencyScope.Contact,
-                contact!.OwnerId,
-                contact.Id,
-                Clocks.SystemClock.UtcNow
-                ).EnqueueOnCompletion(Queues.Users);
-        }
         return contact;
+    }
+
+    // [CommandHandler]
+    public virtual async Task Touch(IContactsBackend.TouchCommand command, CancellationToken cancellationToken)
+    {
+        var id = command.Id;
+        if (Computed.IsInvalidating()) {
+            if (id.IsFullyValid)
+                _ = Get(id.OwnerId, id, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        id.RequireFullyValid();
+        // Update or Delete
+        var dbContact = await dbContext.Contacts
+            .Get(id.Format(), cancellationToken)
+            .ConfigureAwait(false);
+        if (dbContact == null)
+            return;
+
+        var contact = dbContact.ToModel();
+        contact = contact with {
+            Version = VersionGenerator.NextVersion(contact.Version),
+            TouchedAt = Clocks.SystemClock.Now,
+        };
+        dbContact.UpdateFrom(contact);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

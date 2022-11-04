@@ -17,19 +17,20 @@ public class ContactsController : ControllerBase, IContacts
     }
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Contact>> ListOwn(
+    public Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken)
+        => Service.Get(session, id, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)
-        => Service.ListOwn(session, cancellationToken);
+        => Service.ListIds(session, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken)
-        => Service.GetOwn(session, contactId, cancellationToken);
+    [HttpPost]
+    public Task<Contact> Change([FromBody] IContacts.ChangeCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
-        => Service.GetPeerChatContact(session, chatId, cancellationToken);
-
-    public Task<Contact> Change(IContacts.ChangeCommand command, CancellationToken cancellationToken)
+    [HttpPost]
+    public Task Touch([FromBody] IContacts.TouchCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 }

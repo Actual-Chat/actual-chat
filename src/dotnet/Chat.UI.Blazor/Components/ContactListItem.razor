@@ -17,7 +17,7 @@
     data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
-            <AccountCircle UserId="@Contact.UserId" ShowPresence="true"/>
+            <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
             <span class="text-ellipsis whitespace-nowrap overflow-hidden">
                 <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
             </span>
@@ -52,9 +52,9 @@
     [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var presence = await UserPresences.Get(Contact.UserId, cancellationToken);
-        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerId, Contact.UserId);
-        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.UserId);
+        var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
+        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
+        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
         var (isSelected, isListening, isRecording) =

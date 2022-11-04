@@ -25,17 +25,18 @@
 }
 
 @code {
+    private string ContactChatId => Contact.Id.ToFullChatId();
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [CascadingParameter] public Contact Contact { get; set; } = null!;
-    private string ChatId => ParsedChatId.FormatFullPeerChatId(Contact.OwnerId, Contact.UserId);
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(ChatId);
+        => ChatUI.IsPinned(ContactChatId);
 
     private void Toggle()
-        => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ContactChatId, !State.ValueOrDefault);
 }

@@ -5,13 +5,13 @@ namespace ActualChat.Contacts;
 [BasePath("contacts")]
 public interface IContactsClientDef
 {
-    [Get(nameof(GetOwn))]
-    Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken);
-    [Get(nameof(ListOwn))]
-    Task<ImmutableArray<Contact>> ListOwn(Session session, CancellationToken cancellationToken);
-    [Get(nameof(GetPeerChatContact))]
-    Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken);
+    [Get(nameof(ListIds))]
+    Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
     Task<Contact> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Touch))]
+    Task Touch([Body] IContacts.TouchCommand command, CancellationToken cancellationToken);
 }

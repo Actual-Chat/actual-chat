@@ -47,16 +47,10 @@ public interface IChatsClientDef
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
+    [Get(nameof(HasInvite))]
+    Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(CanJoin))]
-    Task<bool> CanJoin(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken);
-
-    [Get(nameof(CanPeerChat))]
-    Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [Get(nameof(GetPeerChatId))]
-    Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(ListMentionableAuthors))]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
@@ -85,6 +79,9 @@ public interface IAuthorsClientDef
     Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetFull))]
     Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    [Get(nameof(GetAccount))]
+    Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+
     [Get(nameof(ListOwnChatIds))]
     Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
@@ -96,11 +93,7 @@ public interface IAuthorsClientDef
     Task<Author?> GetAuthor(Session session, string chatId, string authorId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthorPresence))]
     Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [Get(nameof(CanAddToContacts))]
-    Task<bool> CanAddToContacts(Session session, string chatId, string authorId, CancellationToken cancellationToken);
 
-    [Post(nameof(AddToContacts))]
-    Task AddToContacts([Body] IAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateAuthors))]
     Task CreateAuthors([Body] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken);
     [Post(nameof(SetAvatar))]

@@ -118,14 +118,14 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             if (account.IsActive())
                 throw StandardError.StateTransition("Your account is already active.");
             new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active })
-                .EnqueueOnCompletion(Queues.Users.ShardBy(account.User.Id));
+                .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
             _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
             new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(account.User.Id));
+                .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 
         dbInvite.UpdateFrom(invite);

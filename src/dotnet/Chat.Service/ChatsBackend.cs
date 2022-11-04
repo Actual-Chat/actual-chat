@@ -9,8 +9,6 @@ using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
-using Stl.Generators;
-using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
@@ -289,8 +287,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
-                var contact1Task = ContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
-                var contact2Task = ContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+                var contact1Task = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
+                var contact2Task = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
                 await Task.WhenAll(contact1Task, contact2Task).ConfigureAwait(false);
             }
             else {
@@ -628,7 +626,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 author = await AuthorsBackend
                     .Get(chatId, authorId, cancellationToken)
                     .ConfigureAwait(false);
-            userId = author?.UserId ?? default;
+            userId = author?.UserId ?? Symbol.Empty;
         }
 
         var otherUserId = (userId1, userId2).OtherThan(userId);

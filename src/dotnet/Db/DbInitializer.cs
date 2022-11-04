@@ -8,8 +8,9 @@ namespace ActualChat.Db;
 public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
     where TDbContext : DbContext
 {
-    public DbInfo<TDbContext> DbInfo { get; }
+    public new IServiceProvider Services => base.Services;
     public new DbHub<TDbContext> DbHub => base.DbHub;
+    public DbInfo<TDbContext> DbInfo { get; }
     public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
 
     protected DbInitializer(IServiceProvider services) : base(services)

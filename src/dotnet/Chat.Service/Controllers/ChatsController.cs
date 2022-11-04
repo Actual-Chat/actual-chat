@@ -69,16 +69,12 @@ public class ChatsController : ControllerBase, IChats
         => Service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken)
+        => Service.HasInvite(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
         => Service.CanJoin(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken)
-        => Service.CanPeerChat(session, chatId, authorId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken)
-        => Service.GetPeerChatId(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)

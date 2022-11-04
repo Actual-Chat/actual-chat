@@ -44,8 +44,8 @@ public partial class ChatsBackend
                 .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect(0)
                 .ConfigureAwait(false);
-            var tContact1 = ContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
-            var tContact2 = ContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+            var tContact1 = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
+            var tContact2 = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
             var (contact1, contact2) = await tContact1.Join(tContact2).ConfigureAwait(false);
         }
         else {

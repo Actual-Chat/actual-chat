@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Contacts;
@@ -19,46 +18,31 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var contact = await Backend.Get(contactId, cancellationToken).ConfigureAwait(false);
-        if (contact?.OwnerId == account.Id)
-            return contact;
-        throw StandardError.Unauthorized("Contact is missing or you don't have access to it.");
+        var contactId = new ContactId(id);
+        if (!contactId.IsFullyValid)
+            return null;
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account == null || account.Id != contactId.OwnerId)
+            return null;
+
+        var contact = await Backend.Get(account.Id, id, cancellationToken).ConfigureAwait(false);
+        return contact;
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Contact>> ListOwn(
+    public virtual async Task<ImmutableArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
-            return ImmutableArray<Contact>.Empty;
+            return ImmutableArray<ContactId>.Empty;
 
-        var contactIds = await Backend.GetContactIds(account.Id, cancellationToken).ConfigureAwait(false);
-        var contacts = await contactIds
-            .Select(contactId => Backend.Get(contactId, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        return contacts
-            .SkipNullItems()
-            // .OrderBy(c => c.Name)
-            .ToImmutableArray();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetPeerChatContact(
-        Session session, string chatId,
-        CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return null;
-
-        var contact = await Backend.GetPeerChatContact(chatId, account.Id, cancellationToken).ConfigureAwait(false);
-        return contact;
+        var contactIds = await Backend.List(account.Id, cancellationToken).ConfigureAwait(false);
+        return contactIds;
     }
 
     // [CommandHandler]
@@ -68,18 +52,33 @@ public class Contacts : IContacts
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, id, expectedVersion, change) = command;
+        id.RequireFullyValid();
         change.RequireValid();
 
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        if (!change.Create.HasValue) {
-            // Update or Remove
-            var contact = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
-            if (contact.OwnerId != account.Id)
-                throw StandardError.Unauthorized("Users can change only their own contacts.");
-        }
+        if (id.OwnerId != account.Id)
+            throw StandardError.Unauthorized("Users can change only their own contacts.");
 
         return await Commander
             .Call(new IContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public async Task Touch(IContacts.TouchCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, id) = command;
+        id.RequireFullyValid();
+
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        if (id.OwnerId != account.Id)
+            throw StandardError.Unauthorized("Users can change only their own contacts.");
+
+        await Commander
+            .Call(new IContactsBackend.TouchCommand(id), cancellationToken)
             .ConfigureAwait(false);
     }
 }

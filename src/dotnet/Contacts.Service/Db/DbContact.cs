@@ -7,9 +7,12 @@ using Stl.Versioning;
 namespace ActualChat.Contacts.Db;
 
 [Table("Contacts")]
-[Index(nameof(OwnerId))]
+[Index(nameof(OwnerId), nameof(UserId))]
+[Index(nameof(OwnerId), nameof(ChatId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private DateTime _touchedAt;
+
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -17,31 +20,42 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
     public string? ChatId { get; set; }
 
+    public DateTime TouchedAt {
+        get => _touchedAt.DefaultKind(DateTimeKind.Utc);
+        set => _touchedAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
     public DbContact() { }
     public DbContact(Contact contact)
         => UpdateFrom(contact);
 
-    public static string ComposeUserContactId(string ownerUserId, string contactUserId)
-        => $"{ownerUserId} u/{contactUserId}";
-    public static string ComposeChatContactId(string ownerUserId, string chatId)
-        => $"{ownerUserId} c/{chatId}";
-
     public Contact ToModel()
         => new() {
             Id = Id,
-            OwnerId = OwnerId,
-            UserId = UserId ?? Symbol.Empty,
-            ChatId = ChatId ?? Symbol.Empty,
             Version = Version,
+            TouchedAt = TouchedAt.ToMoment(),
         };
 
     public void UpdateFrom(Contact model)
     {
-        Id = !model.Id.IsEmpty ? model.Id : ComposeUserContactId(model.OwnerId, model.UserId);
-        OwnerId = model.OwnerId;
-        UserId = model.UserId.NullIfEmpty()?.Value;
-        ChatId = model.ChatId.NullIfEmpty()?.Value;
         Version = model.Version;
+        TouchedAt = model.TouchedAt.ToDateTimeClamped();
+        if (!Id.IsNullOrEmpty())
+            return; // Only Version & TouchedAt can be changed for already existing contacts
+
+        var contactId = model.Id.RequireValid();
+        Id = contactId;
+        OwnerId = contactId.OwnerId;
+        switch (contactId.Kind) {
+        case ContactKind.User:
+            UserId = contactId.OwnerId;
+            break;
+        case ContactKind.Chat:
+            ChatId = contactId.OwnerId;
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(model));
+        }
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>
