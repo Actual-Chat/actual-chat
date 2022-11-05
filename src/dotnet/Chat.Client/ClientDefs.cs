@@ -9,9 +9,6 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
-    [Get(nameof(List))]
-    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
-
     [Get(nameof(GetRules))]
     Task<AuthorRules> GetRules(
         Session session,
@@ -82,8 +79,6 @@ public interface IAuthorsClientDef
     [Get(nameof(GetAccount))]
     Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
 
-    [Get(nameof(ListOwnChatIds))]
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListUserIds))]

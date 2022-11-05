@@ -126,22 +126,6 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account != null)
-            return await Backend.ListUserChatIds(account.Id, cancellationToken).ConfigureAwait(false);
-
-        var kvas = ServerKvas.GetClient(session);
-        var unregisteredAuthorSettings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
-        var chats = unregisteredAuthorSettings.Chats;
-        var chatIds = chats.Keys.AsEnumerable();
-        if (!chats.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
-            chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
-        return chatIds.Select(x => (Symbol) x).ToImmutableArray();
-    }
-
-    // [ComputeMethod]
     public virtual async Task<Presence> GetAuthorPresence(
         Session session,
         string chatId,

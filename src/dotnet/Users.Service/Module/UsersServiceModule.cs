@@ -127,7 +127,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
-        services.AddSingleton<IUsersTempBackend, UsersTempBackend>();
+        services.AddSingleton<IUsersUpgradeBackend, UsersUpgradeBackend>();
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();

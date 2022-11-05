@@ -8,11 +8,12 @@ public static class MaybeTrimmedExt
         var isTrimmed = false;
         foreach (var value in values) {
             sum += value.Value;
+            if (sum >= trimAt) {
+                sum = trimAt;
+                isTrimmed = true;
+                break;
+            }
             isTrimmed |= value.IsTrimmed;
-        }
-        if (sum >= trimAt) {
-            sum = trimAt;
-            isTrimmed = true;
         }
         return (sum, isTrimmed);
     }

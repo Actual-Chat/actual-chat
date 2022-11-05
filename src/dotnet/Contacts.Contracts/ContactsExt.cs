@@ -2,25 +2,25 @@ namespace ActualChat.Contacts;
 
 public static class ContactsExt
 {
-    public static ValueTask<IEnumerable<Contact>> ListChatContacts(
+    public static ValueTask<List<Contact>> ListChatContacts(
         this IContacts contacts,
         Session session,
         CancellationToken cancellationToken)
-        => contacts.ListContacts(session, c => c.Chat != null, cancellationToken);
+        => contacts.ListContacts(session, c => c.Account == null, cancellationToken);
 
-    public static ValueTask<IEnumerable<Contact>> ListUserContacts(
+    public static ValueTask<List<Contact>> ListUserContacts(
         this IContacts contacts,
         Session session,
         CancellationToken cancellationToken)
         => contacts.ListContacts(session, c => c.Account != null, cancellationToken);
 
-    public static ValueTask<IEnumerable<Contact>> ListContacts(
+    public static ValueTask<List<Contact>> ListContacts(
         this IContacts contacts,
         Session session,
         CancellationToken cancellationToken)
         => contacts.ListContacts(session, null, cancellationToken);
 
-    public static async ValueTask<IEnumerable<Contact>> ListContacts(
+    public static async ValueTask<List<Contact>> ListContacts(
         this IContacts contacts,
         Session session,
         Func<Contact, bool>? filter,
@@ -32,8 +32,8 @@ public static class ContactsExt
             .Collect()
             .ConfigureAwait(false);
         if (filter == null)
-            return candidates.SkipNullItems();
+            return candidates.SkipNullItems().ToList();
 
-        return candidates.Where(c => c != null && filter.Invoke(c))!;
+        return candidates.Where(c => c != null && filter.Invoke(c)).ToList()!;
     }
 }

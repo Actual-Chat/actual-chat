@@ -13,6 +13,7 @@ public sealed record Contact : IHasId<ContactId>, IHasVersion<long>, IRequiremen
     // The following properties are populated only on reads
     [DataMember] public Account? Account { get; init; }
     [DataMember] public Chat.Chat? Chat { get; init; }
+    [DataMember] public Symbol ChatId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ContactKind Kind => Id.Kind;

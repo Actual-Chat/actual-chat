@@ -14,8 +14,6 @@ public interface IAuthors : IComputeService
     Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
-    [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);

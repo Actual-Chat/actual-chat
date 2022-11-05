@@ -42,19 +42,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Chat>> List(
-        Session session,
-        CancellationToken cancellationToken)
-    {
-        var chatIds = await Authors.ListOwnChatIds(session, cancellationToken).ConfigureAwait(false);
-        var chats = await chatIds
-            .Select(id => Get(session, id, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        return chats.SkipNullItems().OrderBy(x => x.Title).ToImmutableArray();
-    }
-
-    // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         Session session,
         string chatId,

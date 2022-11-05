@@ -5,12 +5,12 @@ using Stl.Fusion.EntityFramework;
 namespace ActualChat.Users;
 
 [Obsolete]
-public class UsersTempBackend : DbServiceBase<UsersDbContext>,  IUsersTempBackend
+public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgradeBackend
 {
-    public UsersTempBackend(IServiceProvider services) : base(services)
+    public UsersUpgradeBackend(IServiceProvider services) : base(services)
     { }
 
-    public virtual async Task<ImmutableList<string>> ListUserIds(CancellationToken cancellationToken)
+    public virtual async Task<ImmutableList<string>> ListAllUserIds(CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);

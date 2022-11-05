@@ -25,10 +25,6 @@ public class ChatsController : ControllerBase, IChats
         => Service.Get(session, chatId ?? "", cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
-        => Service.List(session, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<AuthorRules> GetRules(
         Session session,
         string chatId,

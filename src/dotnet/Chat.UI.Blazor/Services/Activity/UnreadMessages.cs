@@ -21,7 +21,7 @@ public class UnreadMessages : WorkerBase
         Chats = services.GetRequiredService<IChats>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         ChatUnreadMessagesFactory = services.GetRequiredService<ChatUnreadMessagesFactory>();
-        _pool = new(CreateUnreadMessages, DisposeUnreadMessages);
+        _pool = new(CreateChatUnreadMessages, DisposeChatUnreadMessages);
     }
 
     public async Task<Symbol> GetFirstUnreadChat(IReadOnlyCollection<Symbol> chatIds, CancellationToken cancellationToken)
@@ -39,11 +39,11 @@ public class UnreadMessages : WorkerBase
         return Symbol.Empty;
     }
 
-    public async Task<MaybeTrimmed<int>> GetUnreadChatsCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    public async Task<MaybeTrimmed<int>> GetUnreadChatCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
     {
         var counts = await GetCounts(chatIds, cancellationToken);
         var count = counts.Sum(x => x.Value > 0 ? 1 : 0);
-        return new (count, count > MaxUnreadChatsCount);
+        return (count, MaxUnreadChatsCount);
     }
 
     public async Task<MaybeTrimmed<int>> GetCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
@@ -74,24 +74,25 @@ public class UnreadMessages : WorkerBase
         await foreach (var c in changes) {
             var chatIds = c.Value.Select(x => x.Id).ToList();
             var removedChatIds = _leases.Keys.Except(chatIds);
+            var addedChatIds = chatIds.Except(_leases.Keys);
+
             foreach (var chatId in removedChatIds) {
                 _leases.Remove(chatId, out var removed);
                 removed?.Dispose();
             }
-
-            var addedLeases = await chatIds.Except(_leases.Keys)
+            var newLeases = await addedChatIds
                 .Select(id => _pool.Rent(id, cancellationToken).AsTask())
                 .Collect()
                 .ConfigureAwait(false);
-            foreach (var lease in addedLeases)
+            foreach (var lease in newLeases)
                 _leases.Add(lease.Key, lease);
         }
     }
 
-    private Task<ChatUnreadMessages> CreateUnreadMessages(Symbol chatId, CancellationToken cancellationToken)
+    private Task<ChatUnreadMessages> CreateChatUnreadMessages(Symbol chatId, CancellationToken cancellationToken)
         => Task.FromResult(ChatUnreadMessagesFactory.Get(chatId));
 
-    private ValueTask DisposeUnreadMessages(Symbol chatId, ChatUnreadMessages chatUnreadMessages)
+    private ValueTask DisposeChatUnreadMessages(Symbol chatId, ChatUnreadMessages chatUnreadMessages)
     {
         chatUnreadMessages.Dispose();
         return ValueTask.CompletedTask;

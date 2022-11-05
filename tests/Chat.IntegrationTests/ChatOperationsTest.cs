@@ -222,12 +222,13 @@ public class ChatOperationsTest : AppHostTestBase
         var chat = await chats.Get(session, chatId, default);
         chat.Should().NotBeNull();
         var authors = services.GetRequiredService<IAuthors>();
+        var authorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         var author = await authors.GetOwn(session, chatId, default);
         author.Should().NotBeNull();
         author!.UserId.Should().Be(user.Id);
         author.HasLeft.Should().BeFalse();
 
-        var ownChatIds = await authors.ListOwnChatIds(session, default);
+        var ownChatIds = await authorsUpgradeBackend.ListOwnChatIds(session, default);
         ownChatIds.Should().Contain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);
@@ -240,6 +241,7 @@ public class ChatOperationsTest : AppHostTestBase
     {
         var authors = services.GetRequiredService<IAuthors>();
         var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        var authorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
 
         var cAuthor = await Computed.Capture(() => authors.GetOwn(session, chatId, default));
         await cAuthor.When(a => a is { HasLeft: true })
@@ -247,7 +249,7 @@ public class ChatOperationsTest : AppHostTestBase
         var author = await cAuthor.Use();
         author!.HasLeft.Should().BeTrue();
 
-        var ownChatIds = await authors.ListOwnChatIds(session, default);
+        var ownChatIds = await authorsUpgradeBackend.ListOwnChatIds(session, default);
         ownChatIds.Should().NotContain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);

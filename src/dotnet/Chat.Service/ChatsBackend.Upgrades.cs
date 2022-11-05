@@ -147,9 +147,9 @@ public partial class ChatsBackend
             return default!;
         }
 
-        var usersTempBackend = Services.GetRequiredService<IUsersTempBackend>();
+        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
         var hostInfo = Services.GetRequiredService<HostInfo>();
-        var userIds = await usersTempBackend.ListUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
         string? creatorId = null;
 
@@ -251,9 +251,9 @@ public partial class ChatsBackend
             return; // It just spawns other commands, so nothing to do here
 
         var readPositionsBackend = Services.GetRequiredService<IReadPositionsBackend>();
-        var usersTempBackend = Services.GetRequiredService<IUsersTempBackend>();
+        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
 
-        var userIds = await usersTempBackend.ListUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
             var chatIds = await AuthorsBackend.ListUserChatIds(userId, cancellationToken).ConfigureAwait(false);
             foreach (var chatId in chatIds) {

@@ -1,14 +1,9 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod(MinCacheDuration = 60)]
-    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AuthorRules> GetRules(

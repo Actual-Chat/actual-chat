@@ -34,10 +34,6 @@ public class AuthorsController : ControllerBase, IAuthors
         => Service.GetAccount(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
-        => Service.ListOwnChatIds(session, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, cancellationToken);
 

@@ -27,7 +27,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await Chats.List(Session, cancellationToken);
-        var count = await UnreadMessages.GetUnreadChatsCount(chats.Select(x => x.Id), cancellationToken);
+        var count = await UnreadMessages.GetUnreadChatCount(chats.Select(x => x.Id), cancellationToken);
         return new(count);
     }
 

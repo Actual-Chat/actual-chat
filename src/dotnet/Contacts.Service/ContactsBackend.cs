@@ -30,13 +30,22 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (contact.Id.OwnerId != ownerId)
             return null;
 
+        var chatId = contact.Id.ToFullChatId();
         if (contact.Id.IsUserContact(out var userId)) {
-            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            contact = contact with { Account = account };
+            var accountTask = AccountsBackend.Get(userId, cancellationToken);
+            var chatTask = ChatsBackend.Get(chatId, cancellationToken);
+            contact = contact with {
+                Account = await accountTask.ConfigureAwait(false),
+                Chat = await chatTask.ConfigureAwait(false),
+                ChatId = chatId,
+            };
         }
-        else if (contact.Id.IsChatContact(out var chatId)) {
+        else if (contact.Id.IsChatContact(out _)) {
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            contact = contact with { Chat = chat };
+            contact = contact with {
+                Chat = chat,
+                ChatId = chatId,
+            };
         }
         else
             return null;

@@ -6,6 +6,15 @@ public readonly record struct MaybeTrimmed<T>(
     bool IsTrimmed = false)
     where T : notnull
 {
+    public MaybeTrimmed(T value, T maxValue) : this(value)
+    {
+        if (Comparer<T>.Default.Compare(value, maxValue) < 0)
+            return;
+
+        Value = maxValue;
+        IsTrimmed = true;
+    }
+
     public void Deconstruct(out T value, out bool isTrimmed)
     {
         value = Value;
@@ -20,4 +29,6 @@ public readonly record struct MaybeTrimmed<T>(
     public static implicit operator MaybeTrimmed<T>(T value) => new(value);
     public static implicit operator MaybeTrimmed<T>((T Value, bool IsTrimmed) source)
         => new(source.Value, source.IsTrimmed);
+    public static implicit operator MaybeTrimmed<T>((T Value, T MaxValue) source)
+        => new(source.Value, source.MaxValue);
 }
