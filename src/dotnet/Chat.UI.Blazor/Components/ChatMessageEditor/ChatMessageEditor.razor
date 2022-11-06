@@ -9,6 +9,7 @@
 @using ActualChat.Kvas
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
+@using Stl.Locking
 
 @{
     var editorCls = "";
@@ -73,6 +74,8 @@
 </div>
 
 @code {
+    private AsyncLock _lastReadEntrySync = new(ReentryMode.CheckedPass);
+
     private static object MentionListManagerKey { get; } = new();
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
@@ -105,20 +108,24 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        LastReadEntryState?.DisposeSilently();
-        LastReadEntryState = null!;
+
+        using (await _lastReadEntrySync.Lock()) {
+            LastReadEntryState?.DisposeSilently();
+            LastReadEntryState = null!;
+        }
     }
 
     protected override async Task OnParametersSetAsync() {
-        var oldChatId = MarkupHub.ChatId;
-        if (oldChatId == Chat.Id)
-            return;
+        using (await _lastReadEntrySync.Lock()) {
+            var oldChatId = MarkupHub.ChatId;
+            if (oldChatId == Chat.Id)
+                return;
 
-        MarkupHub.ChatId = Chat.Id;
-
-        LastReadEntryState.DisposeSilently();
-        LastReadEntryState = null;
-        LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
+            LastReadEntryState.DisposeSilently();
+            LastReadEntryState = null;
+            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
+            MarkupHub.ChatId = Chat.Id;
+        }
 
         if (JSRef != null!) {
             // Only when rendered
@@ -151,6 +158,7 @@
     // Private methods
 
     private async Task Post(string? text = null) {
+        using var __ = await _lastReadEntrySync.Lock();
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
         var attachments = AttachmentListRef.Attachments;
