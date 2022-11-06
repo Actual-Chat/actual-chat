@@ -53,6 +53,12 @@ public class FirebaseMessagingClient
             }
             break;
         }
+        case NotificationType.Reaction:
+            if (!chatId.IsNullOrEmpty()) {
+                tag = chatId;
+                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
+            }
+            break;
         default:
             throw new InvalidOperationException("NotificationType is not supported.");
         }
