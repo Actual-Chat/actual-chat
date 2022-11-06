@@ -267,7 +267,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         CancellationToken cancellationToken)
     {
         var (chatId, entryId, authorId, content, changeKind) = @event;
-        if (changeKind is ChangeKind.Remove)
+        if (changeKind != ChangeKind.Create)
             return;
 
         if (Computed.IsInvalidating())
