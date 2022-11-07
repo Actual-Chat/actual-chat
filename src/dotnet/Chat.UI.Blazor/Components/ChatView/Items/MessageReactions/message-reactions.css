@@ -2,7 +2,7 @@
     @apply flex-x gap-2 items-center h-4.5;
 }
 .message-reactions-reaction {
-    @apply flex-x bg-reaction text-primary text-xs justify-center items-center cursor-pointer px-1 gap-0.5 rounded-lg h-4.5 w-9;
+    @apply flex-x bg-reaction text-primary text-xs justify-center items-center cursor-pointer px-1 gap-0.5 rounded-lg h-4.5 min-w-9;
 }
 .message-reactions-reaction-own {
     @apply bg-primary text-primary-title;
