@@ -2,7 +2,7 @@ using System.Numerics;
 using ActualChat.Audio;
 using Cysharp.Text;
 using Google.Api.Gax.Grpc;
-using Google.Cloud.Speech.V1P1Beta1;
+using Google.Cloud.Speech.V2;
 using Google.Protobuf;
 
 namespace ActualChat.Transcription.Google;
@@ -46,30 +46,63 @@ public class GoogleTranscriberProcess : WorkerBase
             var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
+            // var config = new RecognitionConfig {
+            //     Encoding = MapEncoding(format.CodecKind),
+            //     AudioChannelCount = format.ChannelCount,
+            //     SampleRateHertz = format.SampleRate,
+            //     LanguageCode = Options.Language,
+            //     UseEnhanced = true,
+            //     MaxAlternatives = 1,
+            //     EnableAutomaticPunctuation = Options.IsPunctuationEnabled,
+            //     EnableSpokenPunctuation = false,
+            //     EnableSpokenEmojis = false,
+            //     EnableWordTimeOffsets = true,
+            //     DiarizationConfig = new() {
+            //         EnableSpeakerDiarization = true,
+            //         MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
+            //     },
+            //     Metadata = new() {
+            //         InteractionType = RecognitionMetadata.Types.InteractionType.Discussion,
+            //         MicrophoneDistance = RecognitionMetadata.Types.MicrophoneDistance.Nearfield,
+            //         RecordingDeviceType = RecognitionMetadata.Types.RecordingDeviceType.Smartphone,
+            //     },
+            // };
+
             var config = new RecognitionConfig {
-                Encoding = MapEncoding(format.CodecKind),
-                AudioChannelCount = format.ChannelCount,
-                SampleRateHertz = format.SampleRate,
-                LanguageCode = Options.Language,
-                UseEnhanced = true,
-                MaxAlternatives = 1,
-                EnableAutomaticPunctuation = Options.IsPunctuationEnabled,
-                EnableSpokenPunctuation = false,
-                EnableSpokenEmojis = false,
-                EnableWordTimeOffsets = true,
-                DiarizationConfig = new() {
-                    EnableSpeakerDiarization = true,
-                    MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
+                Features = new RecognitionFeatures {
+                    EnableAutomaticPunctuation = true,
+                    MaxAlternatives = 1,
+                    DiarizationConfig = new SpeakerDiarizationConfig {
+                        MinSpeakerCount = 1,
+                        MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
+                    },
+                    EnableSpokenPunctuation = true,
+                    EnableSpokenEmojis = true,
+                    ProfanityFilter = false,
+                    EnableWordConfidence = true,
+                    EnableWordTimeOffsets = true,
+                    MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
                 },
+                AutoDecodingConfig = new AutoDetectDecodingConfig(),
             };
 
+            speechClient.get
+
+            speechClient.CreateRecognizerAsync(new CreateRecognizerRequest {
+
+            })
             var recognizeRequests = speechClient.StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
             await recognizeRequests.WriteAsync(new () {
                     StreamingConfig = new () {
                         Config = config,
-                        InterimResults = true,
-                        SingleUtterance = false,
+                        StreamingFeatures = new StreamingRecognitionFeatures {
+                            InterimResults = true,
+                            // TODO(AK): test google VAD events - probably it might be useful
+                            // VoiceActivityTimeout =
+                            // EnableVoiceActivityEvents =
+                        },
                     },
+                    Recognizer = "",
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
@@ -189,27 +222,13 @@ public class GoogleTranscriberProcess : WorkerBase
         try {
             await foreach (var chunk in webMByteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(chunk),
+                    Audio = ByteString.CopyFrom(chunk),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }
         }
         finally {
             await recognizeRequests.WriteCompleteAsync().ConfigureAwait(false);
-        }
-    }
-
-    private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodecKind codecKind)
-    {
-        switch (codecKind) {
-        case AudioCodecKind.Wav:
-            return RecognitionConfig.Types.AudioEncoding.Linear16;
-        case AudioCodecKind.Flac:
-            return RecognitionConfig.Types.AudioEncoding.Flac;
-        case AudioCodecKind.Opus:
-            return RecognitionConfig.Types.AudioEncoding.WebmOpus;
-        default:
-            return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
         }
     }
 }
