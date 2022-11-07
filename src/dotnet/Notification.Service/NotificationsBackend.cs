@@ -282,7 +282,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         ReactionChangedEvent @event,
         CancellationToken cancellationToken)
     {
-        var (chatEntryId, authorId, originalMessageAuthorUserId, emoji, originalMessageContent, changeKind) = @event;
+        var (chatEntryId, authorId, originalMessageAuthorUserId, emoji, originalMessageContent, isTextContent, changeKind) = @event;
         if (changeKind == ChangeKind.Remove)
             return;
 
@@ -294,7 +294,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (author.UserId == originalMessageAuthorUserId)
             return;
 
-        var textContent = $"{emoji} to your \"{GetContent(originalMessageContent, 30)}\"";
+        var trimmedContent = GetContent(originalMessageContent, 30);
+        var textContent = isTextContent
+            ? $"{emoji} to your \"{trimmedContent}\""
+            : $"{emoji} to your {trimmedContent}";
         await SendMessageRelatedNotifications(parsedChatEntryId.ChatId,
                 parsedChatEntryId.EntryId,
                 authorId,

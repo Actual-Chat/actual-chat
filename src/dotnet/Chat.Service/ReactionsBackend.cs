@@ -154,7 +154,18 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             if (entryAuthor == null)
                 return;
 
-            new ReactionChangedEvent(chatEntryId, authorId, entryAuthor.UserId, newEmoji, entry.Content, changeKind)
+            var content = entry.Content;
+            var isText = !content.IsNullOrEmpty();
+            if (!isText) {
+                var imagesCount = entry.Attachments.Count(x => x.IsImage());
+                content = imagesCount switch {
+                    1 => "image",
+                    > 1 => "images",
+                    0 when entry.Attachments.Length == 1 => entry.Attachments[0].FileName,
+                    _ => "files: " + string.Join(", ", entry.Attachments.Select(x => x.FileName)),
+                };
+            }
+            new ReactionChangedEvent(chatEntryId, authorId, entryAuthor.UserId, newEmoji, content, isText, changeKind)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(entryAuthor.UserId));
         }
     }

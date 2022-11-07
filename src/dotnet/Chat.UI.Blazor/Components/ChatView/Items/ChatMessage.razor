@@ -70,8 +70,7 @@
                     @if (entry.Attachments.Length > 0) {
                         <div class="message-attachments mx-1">
                             @foreach (var attachment in entry.Attachments) {
-                                var isImage = attachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
-                                @if (isImage) {
+                                @if (attachment.IsImage()) {
                                     <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
                                 } else {
                                     <FileAttachment Attachment="@attachment"/>
