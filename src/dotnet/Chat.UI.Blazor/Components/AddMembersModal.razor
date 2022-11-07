@@ -24,6 +24,13 @@
         </div>
     </Body>
     <Buttons>
+        <div class="btn-group">
+            @* @{ *@
+                @* var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}"; *@
+            @* } *@
+            <Button Type="@ButtonType.Button" Click="OnClose" Class="btn-secondary">Cancel</Button>
+            <Button Type="@ButtonType.Submit" Class="btn-primary">Create</Button>
+        </div>
     </Buttons>
 </DialogFrame>
 
