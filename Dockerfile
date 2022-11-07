@@ -33,11 +33,6 @@ COPY src/dotnet/*/*.csproj ./
 RUN for file in $(ls *.csproj); do mkdir -p src/dotnet/${file%.*}/ && mv $file src/dotnet/${file%.*}/; done
 COPY src/dotnet/Directory.Build.* src/dotnet/tsconfig.json src/dotnet/
 
-# copy from {repoRoot}/tests/
-COPY tests/*/*.csproj ./
-RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/${file%.*}/; done
-COPY tests/Directory.Build.* tests/.editorconfig tests/
-
 COPY build/ build/
 
 RUN apt update \
@@ -75,10 +70,9 @@ RUN npm run build:Release
 
 FROM dotnet-restore as base
 COPY src/dotnet/ src/dotnet/
-COPY tests/ tests/
 COPY *.props *.targets ./
 # we need to regenerate ThisAssembly files with the new version info
-RUN dotnet msbuild /t:GenerateAssemblyVersionInfo ActualChat.sln
+RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.sln
 
 FROM base as dotnet-build
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj
