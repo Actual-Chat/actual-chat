@@ -106,6 +106,12 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Install dotnet 7.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+          dotnet-quality: 'preview'
+
       - name: Debug Build for tests
         run: |-
           dotnet run --project build --configuration Release -- restore
@@ -165,6 +171,12 @@ jobs:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
           lfs: true
+
+      - name: Install dotnet 7.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+          dotnet-quality: 'preview'
 
       - name: Debug Build for tests
         run: |-
