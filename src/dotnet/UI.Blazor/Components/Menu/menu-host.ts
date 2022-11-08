@@ -232,7 +232,7 @@ export class MenuHost implements Disposable {
     }
 
     private mapHoverEvent(event: Event): EventData | undefined {
-        if (!(event.target instanceof HTMLElement)) {
+        if (!(event.target instanceof Element)) {
             this.hideMenus(x => x.isHoverMenu);
             return undefined;
         }
