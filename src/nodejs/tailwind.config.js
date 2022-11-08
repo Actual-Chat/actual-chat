@@ -293,6 +293,7 @@ module.exports = {
       110: '27.5rem',
       120: '30rem',
       144: '36rem',
+      160: '40rem',
     },
     'relativeSpacing' : {
       '1/2': '50%',
