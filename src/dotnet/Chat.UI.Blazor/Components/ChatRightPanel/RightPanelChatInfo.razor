@@ -54,7 +54,7 @@
             </div>
         </div>
         <div class="flex self-center">
-            <Toggle Value="@(m.NotificationMode == ChatNotificationMode.Muted)" />
+            <Toggle Value="@(m.NotificationMode != ChatNotificationMode.Muted)" />
         </div>
     </div>
 </div>
