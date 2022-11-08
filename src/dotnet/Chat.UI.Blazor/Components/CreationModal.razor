@@ -1,24 +1,152 @@
 @using Stl.Extensibility
+@using System.ComponentModel.DataAnnotations
 @implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
+@{
+    RenderFragment RenderArrowBack()
+        => @<ButtonRound Class="transparent" Click="GetPreviousPage">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>;
+
+    RenderFragment RenderTitle(string title)
+        => @<div class="w-full px-2 md:px-4 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
+}
+
 <CascadingValue Value="_enableIncompleteUI">
     <DialogFrame class="creation-modal" ShowMobileHeader="false">
-
     <Body>
         @if (ModalModel.PageNumber == 1) {
-            <CreationModalMenu CreateNewGroup="GetNextPage" ReturnToPrevious="GetPreviousPage"/>
+            <div class="creation-panel">
+                <div class="header">
+                    @if (ScreenSize.IsNarrow()) {
+                        @RenderArrowBack()
+                    }
+                    @RenderTitle("Create")
+                    <ButtonRound Class="transparent">
+                        <i class="icon-search text-2xl md:text-xl font-medium"></i>
+                    </ButtonRound>
+                </div>
+                <div class="creation-buttons">
+                    <CreationButton Title="New Group" OnClick="@GetNextPage">
+                        <Icon>
+                            <i class="icon-people text-2xl"></i>
+                        </Icon>
+                    </CreationButton>
+                    <CreationButton Title="New Channel">
+                        <Icon>
+                            <i class="icon-loudspeaker text-2xl"></i>
+                        </Icon>
+                    </CreationButton>
+                    <CreationButton Title="New Contact">
+                        <Icon>
+                            <i class="icon-person-add text-2xl"></i>
+                        </Icon>
+                    </CreationButton>
+                    <CreationButton Title="New Place">
+                        <Icon>
+                            <i class="icon-plus text-2xl"></i>
+                        </Icon>
+                    </CreationButton>
+                </div>
+                <CreationPanelContacts/>
+            </div>
         } else if (ModalModel.PageNumber == 2) {
-            <CreationModalAddMembers OnClose="OnClose" ReturnToPrevious="GetPreviousPage"/>
+            <div class="creation-panel">
+                <div class="header add-members">
+                    @if (ScreenSize.IsNarrow()) {
+                        @RenderArrowBack()
+                    }
+                    @RenderTitle("Add members")
+                    <ButtonRound Class="transparent" Click="OnClose">
+                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
+                    </ButtonRound>
+                </div>
+                <div class="mb-4 px-4">
+                    <SearchBox
+                        @ref="_searchBoxRef"
+                        Class="mt-1"
+                        Placeholder="Type the username"
+                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                        TextChanged="@OnFilter"/>
+                </div>
+                <CreationPanelContacts/>
+            </div>
         } else if (ModalModel.PageNumber == 3) {
-            <CreationModalGroupTitle OnCancel="OnClose" ReturnToPrevious="GetPreviousPage"/>
+            <div class="creation-panel">
+                <div class="header add-members">
+                    @if (ScreenSize.IsNarrow()) {
+                        @RenderArrowBack()
+                    }
+                    @RenderTitle("New Group")
+                    <ButtonRound Class="transparent" Click="OnClose">
+                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
+                    </ButtonRound>
+                </div>
+
+                <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate" Id="@_form.FormId" Class="px-4">
+                    <DataAnnotationsValidator/>
+                    <div class="flex-y grow overflow-y-auto">
+                        <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true" IsLabelInsideInput="true" Class="my-2">
+                            <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
+                        </FormSection>
+
+                        <div class="flex-y gap-y-2 max-h-120 custom-scrollbar overflow-y-auto">
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 1
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 2
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 3
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 4
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 5
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 6
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 7
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 8
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 9
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 10
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 11
+                            </div>
+                            <div class="min-h-16 border border-bg-04 rounded-lg">
+                                Contact 12
+                            </div>
+                        </div>
+                    </div>
+                </Form>
+            </div>
         }
     </Body>
     <Buttons>
         @if (ModalModel.PageNumber == 2) {
             <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="OnClose" Class="btn-secondary">Cancel</Button>
+                <Button Type="@ButtonType.Button" Click="GetPreviousPage" Class="btn-secondary">Back</Button>
                 <Button Type="@ButtonType.Button" Click="GetNextPage" Class="btn-primary">Next</Button>
+            </div>
+        } else if (ModalModel.PageNumber == 3) {
+            <div class="btn-group">
+                @{
+                    var submitClass = $"btn-primary {(!_form.Title.IsNullOrEmpty() ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Click="GetPreviousPage" Class="btn-secondary">Back</Button>
+                <Button Type="@ButtonType.Button" Click="OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
             </div>
         }
     </Buttons>
@@ -28,16 +156,65 @@
 
 @code {
     private bool _enableIncompleteUI;
+    private SearchBox _searchBoxRef = null!;
+    private Form _formRef = null!;
+    private FormModel _form = null!;
 
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        _form = new(ComponentIdGenerator);
+
+        var contacts = await Contacts.ListOwn(Session, default);
+        var resolvedContacts = await contacts
+            .Select(async contact => {
+    // Default scheduler is used from here (in this block)
+                var account = await Accounts.Get(Session, contact.TargetUserId, default).ConfigureAwait(false);
+                if (account == null)
+                    return null;
+
+                var presence = await UserPresences.Get(contact.TargetUserId, default).ConfigureAwait(false);
+                return new Contact() {
+                    Account = account,
+                };
+            })
+            .Collect();
+
+        AllContacts = resolvedContacts
+            .SkipNullItems()
+            .OrderBy(x => x.Account.Avatar.Name)
+            .ToArray();
+        FilteredContacts = AllContacts;
+    }
+
+    private void OnFilter(string filter) {
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
+    }
+
+    private sealed class Contact {
+        public Account Account { get; init;} = null!;
+    }
 
     private void OnClose()
         => ModalInstance.CloseAsync();
@@ -46,9 +223,50 @@
         => ModalModel = new Model(ModalModel.PageNumber + 1);
 
     private void GetPreviousPage() {
-        if (ModalModel.PageNumber == 1)
-            ModalInstance.CloseAsync();
-        ModalModel = new Model(ModalModel.PageNumber - 1);
+        if (ModalModel.PageNumber > 1)
+            ModalModel = new Model(ModalModel.PageNumber - 1);
+        else
+            OnClose();
+    }
+
+    private async Task OnCreate()
+    {
+        var command = new IChats.ChangeCommand(Session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = _form.Title,
+                ChatType = ChatType.Group,
+                IsPublic = _form.IsPublic,
+            },
+        });
+        try {
+            var (chat, error) = await UICommander.Run(command);
+            if (error != null)
+                return;
+
+            chat = chat.Require();
+            await ModalInstance.CloseAsync();
+            Nav.NavigateTo(Links.ChatPage(chat.Id));
+        }
+        catch {
+    // Intended: command errors are shown in the UI anyway
+        }
+    }
+
+    public class FormModel
+    {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+        public bool IsPublic { get; set; }
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string IsPublicId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            IsPublicId = $"{FormId}-isPublic";
+        }
     }
 
     public sealed record Model(int PageNumber);

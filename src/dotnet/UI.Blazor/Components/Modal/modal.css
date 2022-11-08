@@ -99,7 +99,7 @@
 }
 
 .dialog-buttons {
-    @apply flex flex-row justify-end;
+    @apply flex flex-row justify-end min-h-20;
 }
 .dialog-buttons .btn,
 .dialog-buttons .btn * {

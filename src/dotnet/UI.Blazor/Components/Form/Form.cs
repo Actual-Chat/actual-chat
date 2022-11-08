@@ -10,6 +10,7 @@ public class Form : EditForm
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsHorizontal { get; set; }
+    [Parameter] public string Id { get; set; } = "";
 
     public bool IsValid { get; private set; } = true;
 

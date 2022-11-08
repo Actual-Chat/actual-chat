@@ -1,16 +1,25 @@
 .creation-modal.modal-frame {
-    @apply gap-y-0 p-0 rounded-lg min-w-full max-h-full;
-    @apply md:min-w-90 md:max-w-90 md:max-h-160;
+    @apply gap-y-0 p-0 md:rounded-lg min-w-full min-h-full max-h-full;
+    @apply md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
 }
 .creation-panel {
     @apply flex-y left-0 bottom-0 w-full bg-01;
 }
 
 .creation-panel .header {
-    @apply flex-x min-h-14 items-center border-b border-bg-04;
+    @apply flex-x min-h-14 max-h-14 items-center border-b border-bg-04;
 }
+.creation-panel .header .btn,
+.creation-panel .header .btn .btn-content {
+    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+}
+.creation-panel .header .btn.btn-round.transparent:hover,
+.creation-panel .header .btn.btn-round.transparent:hover .btn-content {
+    @apply bg-transparent;
+}
+
 .creation-panel .header.add-members {
-    @apply flex-x min-h-14 items-center border-0;
+    @apply border-transparent;
 }
 
 .creation-panel .creation-buttons {
