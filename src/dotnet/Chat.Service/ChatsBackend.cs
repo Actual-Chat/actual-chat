@@ -19,9 +19,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IRolesBackend RolesBackend { get; }
+    private IContactsBackend ContactsBackend { get; }
     private IMarkupParser MarkupParser { get; }
     private IChatMentionResolverFactory ChatMentionResolverFactory { get; }
-    private IContactsBackend ContactsBackend { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
@@ -32,6 +32,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
+        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMentionResolverFactory = services.GetRequiredService<BackendChatMentionResolverFactory>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
