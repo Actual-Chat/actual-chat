@@ -23,6 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
+    <PackageReference Update="AspNetCore.HealthChecks.NpgSql" Version="6.0.2" />
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.14"/>
     <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="7.0.0-rc.2" />

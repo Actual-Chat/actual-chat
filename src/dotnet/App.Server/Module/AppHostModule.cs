@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Reflection;
 using ActualChat.Commands;
+using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
@@ -107,6 +108,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseResponseCaching();
         app.UseAuthentication();
         app.UseEndpoints(endpoints => {
+            endpoints.MapAppHealth();
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();

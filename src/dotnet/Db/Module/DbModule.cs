@@ -32,13 +32,14 @@ public class DbModule : HostModule<DbSettings>
 
         // Replacing variables
         var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
             ("instance_", instance.IsNullOrEmpty() ? "" : $"{instance}_"),
             ("instance.", instance.IsNullOrEmpty() ? "" : $"{instance}."),
             ("_instance", instance.IsNullOrEmpty() ? "" : $"_{instance}"),
             (".instance", instance.IsNullOrEmpty() ? "" : $".{instance}"),
-            ("context", typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
+            ("context", contextName));
 
         // Creating DbInfo<TDbContext>
         var (dbKind, connectionStringSuffix) = connectionString switch {
@@ -59,6 +60,9 @@ public class DbModule : HostModule<DbSettings>
         };
 
         // Adding services
+        if (dbKind == DbKind.PostgreSql)
+            services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", tags: new[] { HealthTags.Ready });
+
         services.AddSingleton(dbInfo);
         services.AddDbContextFactory<TDbContext>(builder => {
             switch (dbKind) {
