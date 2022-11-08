@@ -2,43 +2,29 @@
 @implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame class="creation-modal">
+<CascadingValue Value="_enableIncompleteUI">
+    <DialogFrame class="creation-modal" ShowMobileHeader="false">
+
     <Body>
-        <div class="creation-panel">
-            <div class="header">
-                <div class="w-full px-4 text-lg font-medium">Create</div>
-                <ButtonRound Class="transparent" ContentClass="!min-w-14 !max-w-14">
-                    <i class="icon-search text-xl font-medium"></i>
-                </ButtonRound>
-            </div>
-            <div class="creation-buttons">
-                <CreationButton Title="New Group" OnClick="OnCreateNewGroupClick">
-                    <Icon>
-                        <i class="icon-people text-2xl"></i>
-                    </Icon>
-                </CreationButton>
-                <CreationButton Title="New Channel">
-                    <Icon>
-                        <i class="icon-loudspeaker text-2xl"></i>
-                    </Icon>
-                </CreationButton>
-                <CreationButton Title="New Contact">
-                    <Icon>
-                        <i class="icon-person-add text-2xl"></i>
-                    </Icon>
-                </CreationButton>
-                <CreationButton Title="New Place">
-                    <Icon>
-                        <i class="icon-plus text-2xl"></i>
-                    </Icon>
-                </CreationButton>
-            </div>
-            <CreationPanelContacts/>
-        </div>
+        @if (ModalModel.PageNumber == 1) {
+            <CreationModalMenu CreateNewGroup="GetNextPage" ReturnToPrevious="GetPreviousPage"/>
+        } else if (ModalModel.PageNumber == 2) {
+            <CreationModalAddMembers OnClose="OnClose" ReturnToPrevious="GetPreviousPage"/>
+        } else if (ModalModel.PageNumber == 3) {
+            <CreationModalGroupTitle OnCancel="OnClose" ReturnToPrevious="GetPreviousPage"/>
+        }
     </Body>
     <Buttons>
+        @if (ModalModel.PageNumber == 2) {
+            <div class="btn-group">
+                <Button Type="@ButtonType.Button" Click="OnClose" Class="btn-secondary">Cancel</Button>
+                <Button Type="@ButtonType.Button" Click="GetNextPage" Class="btn-primary">Next</Button>
+            </div>
+        }
     </Buttons>
-</DialogFrame>
+    </DialogFrame>
+</CascadingValue>
+
 
 @code {
     private bool _enableIncompleteUI;
@@ -46,17 +32,24 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    protected override async Task OnInitializedAsync()
+        => _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+
+    private void OnClose()
+        => ModalInstance.CloseAsync();
+
+    private void GetNextPage()
+        => ModalModel = new Model(ModalModel.PageNumber + 1);
+
+    private void GetPreviousPage() {
+        if (ModalModel.PageNumber == 1)
+            ModalInstance.CloseAsync();
+        ModalModel = new Model(ModalModel.PageNumber - 1);
     }
 
-    private void OnCreateNewGroupClick() {
-        ModalInstance.CloseAsync();
-        ModalUI.Show(new AddMembersModal.Model());
-    }
-
-    public sealed record Model;
+    public sealed record Model(int PageNumber);
 }
