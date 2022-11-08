@@ -14,8 +14,12 @@ public static class ApplicationBuilderExt
             _ => port,
         };
         return app.Use((context, next) => {
+            if (context.Request.Path.Value?.StartsWith(HealthChecksExt.PathPrefix, StringComparison.OrdinalIgnoreCase) == true)
+                return next();
+
             context.Request.Scheme = scheme;
             context.Request.Host = port > 0 ? new HostString(host, port) : new HostString(host);
+
             return next();
         });
     }
