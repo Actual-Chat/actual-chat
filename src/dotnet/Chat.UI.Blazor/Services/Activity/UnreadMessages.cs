@@ -1,3 +1,4 @@
+using ActualChat.Contacts;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -11,6 +12,7 @@ public class UnreadMessages : WorkerBase
     private readonly SharedResourcePool<Symbol, ChatUnreadMessages> _pool;
 
     private Session Session { get; }
+    private IContacts Contacts { get; }
     private IChats Chats { get; }
     private AccountSettings AccountSettings { get; }
     private ChatUnreadMessagesFactory ChatUnreadMessagesFactory { get; }
@@ -18,6 +20,7 @@ public class UnreadMessages : WorkerBase
     public UnreadMessages(IServiceProvider services)
     {
         Session = services.GetRequiredService<Session>();
+        Contacts = services.GetRequiredService<IContacts>();
         Chats = services.GetRequiredService<IChats>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         ChatUnreadMessagesFactory = services.GetRequiredService<ChatUnreadMessagesFactory>();
@@ -69,10 +72,10 @@ public class UnreadMessages : WorkerBase
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var cChats = await Computed.Capture(() => Chats.List(Session, cancellationToken)).ConfigureAwait(false);
-        var changes = cChats.Changes(cancellationToken).ConfigureAwait(false);
+        var cContactIds = await Computed.Capture(() => Contacts.ListIds(Session, cancellationToken)).ConfigureAwait(false);
+        var changes = cContactIds.Changes(cancellationToken).ConfigureAwait(false);
         await foreach (var c in changes) {
-            var chatIds = c.Value.Select(x => x.Id).ToList();
+            var chatIds = c.Value.Select(cid => cid.ToFullChatId()).ToList();
             var removedChatIds = _leases.Keys.Except(chatIds);
             var addedChatIds = chatIds.Except(_leases.Keys);
 

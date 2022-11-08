@@ -6,7 +6,11 @@ namespace ActualChat.Contacts;
 public interface IContactsClientDef
 {
     [Get(nameof(Get))]
-    Task<Contact?> Get(Session session, string contactId, CancellationToken cancellationToken);
+    Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken);
+    [Get(nameof(GetForChat))]
+    Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetForUser))]
+    Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken);
     [Get(nameof(ListIds))]
     Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 

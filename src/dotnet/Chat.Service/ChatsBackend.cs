@@ -12,7 +12,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
+public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
@@ -34,7 +34,6 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMentionResolverFactory = services.GetRequiredService<BackendChatMentionResolverFactory>();
-        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
@@ -411,8 +410,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<TextEntryAttachment> CreateTextEntryAttachment(
-        IChatsBackend.CreateTextEntryAttachmentCommand command,
+    public virtual async Task<TextEntryAttachment> CreateAttachment(
+        IChatsBackend.CreateAttachmentCommand command,
         CancellationToken cancellationToken)
     {
         var attachment = command.Attachment;

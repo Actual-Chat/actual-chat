@@ -151,8 +151,7 @@
         if (author == null)
             return;
 
-        author = author with { AvatarId = avatarId };
-        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, author.Id, avatarId);
+        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, avatarId);
         await UICommander.Run(command);
     }
 

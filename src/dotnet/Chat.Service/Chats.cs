@@ -298,7 +298,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (otherUserId.IsEmpty)
             return null;
 
-        var contact = await ContactsBackend.GetUserContact(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
+        var contact = await ContactsBackend.GetForUser(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
         if (contact?.Account == null)
             return null;
 
@@ -391,7 +391,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 Width = attachmentUpload.Width,
                 Height = attachmentUpload.Height,
             };
-            var createAttachmentCommand = new IChatsBackend.CreateTextEntryAttachmentCommand(attachment);
+            var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
             await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return textEntry;

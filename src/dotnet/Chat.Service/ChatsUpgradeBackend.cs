@@ -1,20 +1,40 @@
 using System.Security.Claims;
+using ActualChat.Chat.Db;
+using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class ChatsBackend
+public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBackend
 {
+    private IAccountsBackend AccountsBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
+    private IRolesBackend RolesBackend { get; }
+    private IContactsBackend ContactsBackend { get; }
+    private IChatsBackend Backend { get; }
+
+    public ChatsUpgradeBackend(IServiceProvider services) : base(services)
+    {
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        RolesBackend = services.GetRequiredService<IRolesBackend>();
+        ContactsBackend = services.GetRequiredService<IContactsBackend>();
+        Backend = services.GetRequiredService<IChatsBackend>();
+    }
+
     // [CommandHandler]
-    public virtual async Task UpgradeChat(IChatsBackend.UpgradeChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task UpgradeChat(
+        IChatsUpgradeBackend.UpgradeChatCommand command,
+        CancellationToken cancellationToken)
     {
         var chatId = command.ChatId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
-            _ = Get(invChat.Id, default);
+            _ = Backend.Get(invChat.Id, default);
             return;
         }
 
@@ -139,11 +159,14 @@ public partial class ChatsBackend
         context.Operation().Items.Set(chat);
     }
 
-    public virtual async Task<Chat> CreateAnnouncementsChat(IChatsBackend.CreateAnnouncementsChatCommand command, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task<Chat> CreateAnnouncementsChat(
+        IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
+        CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
         if (Computed.IsInvalidating()) {
-            _ = Get(chatId, default);
+            _ = Backend.Get(chatId, default);
             return default!;
         }
 
@@ -245,7 +268,9 @@ public partial class ChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task FixCorruptedReadPositions(IChatsBackend.FixCorruptedReadPositionsCommand command, CancellationToken cancellationToken)
+    public virtual async Task FixCorruptedReadPositions(
+        IChatsUpgradeBackend.FixCorruptedReadPositionsCommand command,
+        CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -261,7 +286,7 @@ public partial class ChatsBackend
                 if (lastReadEntryId.GetValueOrDefault() == 0)
                     continue;
 
-                var idRange = await GetIdRange(chatId, ChatEntryType.Text, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await Backend.GetIdRange(chatId, ChatEntryType.Text, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryId = idRange.End - 1;
                 if (lastEntryId >= lastReadEntryId)
                     continue;

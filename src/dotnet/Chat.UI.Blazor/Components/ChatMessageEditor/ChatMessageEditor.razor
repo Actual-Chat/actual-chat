@@ -181,7 +181,6 @@
 
             if (LastReadEntryState != null)
                 LastReadEntryState.Value = entryId;
-            _ = TryUpdatePeerChatRecency();
             _ = ChatUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
@@ -209,20 +208,6 @@
     private ValueTask ClearAttachments() {
         AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
         return JSRef.InvokeVoidAsync("clearAttachments");
-    }
-
-    private async Task TryUpdatePeerChatRecency() {
-        await Update(RecencyScope.Chat, Chat.Id);
-
-        if (Chat.ChatType == ChatType.Peer) {
-            var contact = await Contacts.GetPeerChatContact(Session, Chat.Id, CancellationToken.None).Require();
-            await Update(RecencyScope.Contact, contact.Id);
-        }
-
-        Task Update(RecencyScope scope, string key) {
-            var command = new IRecentEntries.UpdateCommand(Session, scope, key, Clocks.SystemClock.UtcNow);
-            return UICommander.Run(command, CancellationToken.None);
-        }
     }
 
     // Event handlers

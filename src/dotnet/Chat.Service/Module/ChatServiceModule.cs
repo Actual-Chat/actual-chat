@@ -79,10 +79,12 @@ public class ChatServiceModule : HostModule<ChatSettings>
         // Chats
         fusion.AddComputeService<IChats, Chats>();
         fusion.AddComputeService<IChatsBackend, ChatsBackend>();
+        commander.AddCommandService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
         // Authors
         fusion.AddComputeService<IAuthors, Authors>();
         fusion.AddComputeService<IAuthorsBackend, AuthorsBackend>();
+        commander.AddCommandService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
         fusion.AddComputeService<IRoles, Roles>();

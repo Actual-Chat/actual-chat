@@ -39,7 +39,7 @@ public readonly struct ContactId : IEquatable<ContactId>
         if (id[spaceIndex + 2] != '/')
             return;
 
-        switch (id[spaceIndex+ 1]) {
+        switch (id[spaceIndex + 1]) {
         case 'u':
             Kind = ContactKind.User;
             break;

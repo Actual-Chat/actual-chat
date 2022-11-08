@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Contacts;
@@ -33,6 +34,41 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
+    public virtual async Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var ownerId = account.Id;
+
+        var parsedChatId = new ParsedChatId(chatId);
+        ContactId id;
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.Group:
+            id = new ContactId(ownerId, parsedChatId.Id, ContactKind.Chat);
+            break;
+        case ChatIdKind.PeerShort:
+            id = new ContactId(ownerId, parsedChatId.UserId1, ContactKind.User);
+            break;
+        case ChatIdKind.PeerFull:
+            id = new ContactId(ownerId, parsedChatId.GetPeerChatTargetUserId(ownerId), ContactKind.User);
+            break;
+        default:
+            return null;
+        }
+
+        return await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var ownerId = account.Id;
+
+        var id = new ContactId(ownerId, userId, ContactKind.User);
+        return await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ImmutableArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)
@@ -41,7 +77,7 @@ public class Contacts : IContacts
         if (account == null)
             return ImmutableArray<ContactId>.Empty;
 
-        var contactIds = await Backend.List(account.Id, cancellationToken).ConfigureAwait(false);
+        var contactIds = await Backend.ListIds(account.Id, cancellationToken).ConfigureAwait(false);
         return contactIds;
     }
 

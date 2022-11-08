@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
 @{
     var m = State.ValueOrDefault ?? new();
@@ -16,6 +17,7 @@
 
 @code {
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
 
@@ -26,8 +28,9 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await Chats.List(Session, cancellationToken);
-        var count = await UnreadMessages.GetUnreadChatCount(chats.Select(x => x.Id), cancellationToken);
+        var chatContacts = await Contacts.ListChatContacts(Session, cancellationToken);
+        var chats = chatContacts.Select(c => c.Chat);
+        var count = await UnreadMessages.GetUnreadChatCount(chats.Select(c => c!.Id), cancellationToken);
         return new(count);
     }
 

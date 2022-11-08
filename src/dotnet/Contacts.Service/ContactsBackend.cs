@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Users;
@@ -12,9 +13,11 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 {
     private IAccountsBackend? _accountsBackend;
     private IChatsBackend? _chatsBackend;
+    private IAuthorsBackend? _authorsBackend;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
 
     public ContactsBackend(IServiceProvider services) : base(services)
@@ -54,7 +57,32 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> GetUserContact(string ownerId, string userId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> GetForChat(string ownerId, string chatId, CancellationToken cancellationToken)
+    {
+        if (ownerId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
+            return null;
+
+        var parsedChatId = new ParsedChatId(chatId);
+        ContactId id;
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.Group:
+            id = new ContactId(ownerId, parsedChatId.Id, ContactKind.Chat);
+            break;
+        case ChatIdKind.PeerShort:
+            id = new ContactId(ownerId, parsedChatId.UserId1, ContactKind.User);
+            break;
+        case ChatIdKind.PeerFull:
+            id = new ContactId(ownerId, parsedChatId.GetPeerChatTargetUserId(ownerId), ContactKind.User);
+            break;
+        default:
+            return null;
+        }
+
+        return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Contact?> GetForUser(string ownerId, string userId, CancellationToken cancellationToken)
     {
         if (ownerId.IsNullOrEmpty() || userId.IsNullOrEmpty())
             return null;
@@ -64,7 +92,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ContactId>> List(string ownerId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<ContactId>> ListIds(string ownerId, CancellationToken cancellationToken)
     {
         var parsedOwnerId = (ParsedUserId) ownerId;
         if (!parsedOwnerId.IsValid) // We need to make sure it's valid before using it in idPrefix
@@ -90,7 +118,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
     public async Task<Contact> GetOrCreateUserContact(string ownerId, string userId, CancellationToken cancellationToken)
     {
-        var contact = await GetUserContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
+        var contact = await GetForUser(ownerId, userId, cancellationToken).ConfigureAwait(false);
         if (contact != null)
             return contact;
 
@@ -115,7 +143,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             if (invContact != null) {
                 _ = Get(invContact.Id.OwnerId, invContact.Id, default);
                 if (!change.Update.HasValue) // Create or Delete
-                    _ = List(invContact.Id.OwnerId, default);
+                    _ = ListIds(invContact.Id.OwnerId, default);
             }
             return default!;
         }
@@ -190,5 +218,33 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // Events
+
+    [EventHandler]
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (chatId, entryId, authorId, content, changeKind) = @event;
+        if (changeKind != ChangeKind.Create)
+            return;
+
+        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null || author.UserId.IsEmpty)
+            return;
+
+        var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return;
+
+        var contact = await GetForChat(account.Id, chatId, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
+            return;
+
+        var command = new IContactsBackend.TouchCommand(contact.Id);
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 }

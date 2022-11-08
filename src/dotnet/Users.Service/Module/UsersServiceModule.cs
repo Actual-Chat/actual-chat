@@ -127,7 +127,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
-        services.AddSingleton<IUsersUpgradeBackend, UsersUpgradeBackend>();
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
@@ -137,6 +136,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IReadPositionsBackend, ReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
+        commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
