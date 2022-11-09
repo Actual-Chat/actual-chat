@@ -41,7 +41,7 @@
     @apply border-t border-bg-04;
 }
 .creation-modal .btn-group {
-    @apply px-2 py-4 w-full max-w-none overflow-hidden;
+    @apply p-2 w-full max-w-none overflow-hidden;
 }
 .creation-modal .btn-group .btn {
     @apply min-w-0 max-w-none;
