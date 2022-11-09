@@ -2,6 +2,9 @@
     @apply fixed w-screen h-screen overflow-hidden pointer-events-none z-menu-container;
     height: calc(var(--vh, 1vh) * 100);
 }
+.ac-menu-overlay {
+    background-color: rgba(0,0,0,.32);
+}
 .ac-menu {
     @apply hidden absolute bg-01 rounded-xl p-1 pointer-events-auto z-menu;
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;

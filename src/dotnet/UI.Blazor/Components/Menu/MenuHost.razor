@@ -3,10 +3,10 @@
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
 
-<div class="ac-menu-host">
+<div class="ac-menu-host @(GetHostCssClass())">
     <CascadingValue Value="@this" IsFixed="true">
         @foreach (var menu in _menus) {
-            <div id="@menu.Id" @key="menu.Id" class="@(GetCssClass(menu))">
+            <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
                 <ul class="ac-menu-list">
                     <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                 </ul>
@@ -66,12 +66,19 @@
         _blazorRef = null!;
     }
 
-    private string GetCssClass(Model menu) {
+    private string GetMenuCssClass(Model menu) {
         var cls = menu.IsHoverMenu
             ? "ac-menu-hover"
             : "ac-menu";
         if (ScreenSize.IsNarrow())
             cls += " mobile";
+        return cls;
+    }
+
+    private string GetHostCssClass() {
+        var cls = "";
+        if (_menus.Any(x => !x.IsHoverMenu) && ScreenSize.IsNarrow())
+            cls += "ac-menu-overlay";
         return cls;
     }
 
