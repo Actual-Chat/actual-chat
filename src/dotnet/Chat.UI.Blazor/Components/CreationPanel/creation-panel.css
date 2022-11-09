@@ -18,7 +18,7 @@
 }
 .creation-panel .header .btn.btn-round.transparent:hover,
 .creation-panel .header .btn.btn-round.transparent:hover .btn-content {
-    @apply bg-transparent;
+    @apply bg-transparent md:bg-round-hover;
 }
 
 .creation-panel .header.add-members {
