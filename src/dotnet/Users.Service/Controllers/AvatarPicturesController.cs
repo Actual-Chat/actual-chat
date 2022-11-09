@@ -15,7 +15,7 @@ public class AvatarPicturesController : UploadControllerBase
     {
         return Upload(ValidateRequest, GetContentIdPrefix, cancellationToken);
 
-        async Task<IActionResult?> ValidateRequest()
+        async ValueTask<IActionResult?> ValidateRequest()
         {
             var userAvatar = await Avatars.GetOwn(SessionResolver.Session, avatarId, cancellationToken).ConfigureAwait(false);
             return userAvatar is null ? NotFound() : null;

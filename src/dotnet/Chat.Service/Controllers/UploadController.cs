@@ -15,7 +15,7 @@ public class UploadController : UploadControllerBase
     {
         return Upload(ValidateRequest, GetContentIdPrefix, cancellationToken);
 
-        async Task<IActionResult?> ValidateRequest()
+        async ValueTask<IActionResult?> ValidateRequest()
         {
             var chat = await _chats.Get(SessionResolver.Session, chatId, cancellationToken).ConfigureAwait(false);
             return chat == null ? NotFound() : null;
