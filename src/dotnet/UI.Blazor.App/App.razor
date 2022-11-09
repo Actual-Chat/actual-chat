@@ -17,7 +17,7 @@
         return;
     }
 
-    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies" OnNavigateAsync="HistoryUI.RouterOnNavigateAsync">
+    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
         <Found>
             <ErrorWrapper>
                 <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>

@@ -36,7 +36,7 @@ public sealed class ModalUI
         HistoryUI.NavigateTo(
             () => {
                 modalReference = ShowInternal(componentType, model, isFullScreen);
-                whenCompletedSource.SetResult(modalReference);
+                whenCompletedSource.TrySetResult(modalReference);
                 modalReference.ModalCloseRequest += (s, e) => {
                     e.Handled = true;
                     _ = HistoryUI.GoBack();

@@ -2,35 +2,47 @@ import { Log, LogLevel } from 'logging';
 
 const LogScope: string = 'HistoryUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class HistoryUI {
     static create(): HistoryUI {
         debugLog?.log(`create`);
+        HistoryUI.SetupHistoryStateEnrichment();
         return new HistoryUI();
     }
 
-    public getState = (): unknown => {
-        const currentState = history.state;
-        if (currentState && currentState.hasOwnProperty('userState')) {
-            const state = currentState.userState;
-            debugLog?.log(`getState:`, state);
-            return state;
-        }
-        debugLog?.log(`getState:`, currentState);
-        return currentState;
-    }
+    private static SetupHistoryStateEnrichment()
+    {
+        // Enrich history state that blazor setups
+        // https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Services/NavigationManager.ts#L157
+        // enrichment allows to detect navigation, back and forward moves.
+        let idSeed = 0;
 
-    public setState = (state: unknown): void => {
-        debugLog?.log(`setState:`, state);
-        const currentState = history.state;
-        if (currentState && currentState.hasOwnProperty('userState')) {
-            currentState.userState = state;
-            history.replaceState(currentState, '');
-        }
-        else {
-            history.replaceState(state, '');
-        }
+        // enrich user state
+        const enrichUserState = state =>
+            JSON.stringify({
+                               _index: state?._index ?? 0,
+                               _id: ++idSeed,
+                               userState: state.userState
+                           });
+
+        const pushState = history.pushState;
+        history.pushState = function(state) {
+            debugLog?.log(`pushState invoked:`, state);
+            arguments[0] = {
+                _index: state._index,
+                userState: enrichUserState(state)
+            };
+            return pushState.apply(history, arguments);
+        };
+
+        const replaceState = history.replaceState;
+        history.replaceState = function(state) {
+            debugLog?.log(`replaceState invoked:`, state);
+            arguments[0] = {
+                _index: state._index,
+                userState: enrichUserState(state)
+            };
+            return replaceState.apply(history, arguments);
+        };
     }
 }
