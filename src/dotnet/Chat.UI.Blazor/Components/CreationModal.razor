@@ -10,7 +10,7 @@
             </ButtonRound>;
 
     RenderFragment RenderTitle(string title)
-        => @<div class="w-full px-2 md:px-4 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
+        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
 }
 
 <CascadingValue Value="_enableIncompleteUI">
@@ -86,7 +86,7 @@
 
                 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate" Id="@_form.FormId" Class="px-2">
                     <DataAnnotationsValidator/>
-                    <div class="flex-y grow max-h-132 overflow-y-auto">
+                    <div class="flex-y grow max-h-128 overflow-y-auto">
                         <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2">
                             <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
                         </FormSection>
