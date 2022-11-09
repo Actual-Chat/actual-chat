@@ -5,6 +5,9 @@
 .creation-modal.modal-frame .dialog-body {
     @apply px-2;
 }
+.creation-modal.modal-frame .dialog-buttons {
+    @apply px-4 py-2;
+}
 .creation-panel {
     @apply flex-y left-0 bottom-0 w-full bg-01;
 }
@@ -41,7 +44,7 @@
     @apply border-t border-bg-04;
 }
 .creation-modal .btn-group {
-    @apply p-2 w-full max-w-none overflow-hidden;
+    @apply py-2 w-full max-w-none overflow-hidden;
 }
 .creation-modal .btn-group .btn {
     @apply min-w-0 max-w-none;
