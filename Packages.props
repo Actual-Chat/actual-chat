@@ -55,6 +55,7 @@
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
