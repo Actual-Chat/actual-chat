@@ -6,4 +6,5 @@ public enum NotificationType
     Reply,
     Invitation,
     Mention,
+    Reaction,
 }

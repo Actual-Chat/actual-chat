@@ -9,13 +9,21 @@
 }
 <ul class="message-reactions">
     @foreach (var reaction in m.Reactions) {
-        <li class="message-reactions-reaction" @onclick="_ => ToggleReaction(reaction.Emoji)"
+        var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
+        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.CompositeId, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()">
-            <span class="message-reactions-reaction-emoji">@reaction.Emoji</span>
+            <EmojiIcon Code="@reaction.Emoji" class="w-4 h-4"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
+
+    <li class="message-reactions-add hover:bg-reaction text-icons-03"
+        data-menu="@(MenuRef.New<ReactionSelectMenu>(ChatEntry.CompositeId))"
+        data-menu-trigger="@MenuTriggers.LeftClick.Format()"
+        data-menu-position="@(FloatingPosition.Right.ToPositionString())">
+        <AddReactionIcon/>
+    </li>
 </ul>
 
 @code {
@@ -35,11 +43,11 @@
         => new() { InitialValue = new Model(ChatEntry.HasReactions, ImmutableArray<ReactionSummary>.Empty), };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var summaries = await Reactions.List(Session, ChatEntry.CompositeId, cancellationToken);
+        var summaries = await Reactions.ListSummaries(Session, ChatEntry.CompositeId, cancellationToken);
         if (summaries.Length == 0)
             return new Model(false, summaries);
-
-        return new Model(true, summaries);
+        var ownReaction = await Reactions.Get(Session, ChatEntry.CompositeId, cancellationToken);
+        return new Model(true, summaries, ownReaction);
     }
 
     private Task ToggleReaction(string emoji) {
@@ -50,5 +58,5 @@
         }));
     }
 
-    public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions);
+    public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions, Reaction? OwnReaction = null);
 }

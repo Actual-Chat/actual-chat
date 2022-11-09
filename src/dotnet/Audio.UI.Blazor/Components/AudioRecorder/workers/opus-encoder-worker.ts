@@ -1,14 +1,14 @@
 /// #if MEM_LEAK_DETECTION
-import codec, { Encoder, Codec } from '@actual-chat/codec/codec.debug';
+import codec, { Codec, Encoder } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #else
 /// #code import codec, { Encoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
-
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
+import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { handleRpc } from 'rpc';
 
@@ -119,7 +119,10 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(message.audioHubUrl)
+        .withUrl(message.audioHubUrl, {
+            skipNegotiation: true,
+            transport: signalR.HttpTransportType.WebSockets
+        })
         .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)

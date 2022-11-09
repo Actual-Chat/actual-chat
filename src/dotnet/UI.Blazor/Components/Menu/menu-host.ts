@@ -50,6 +50,8 @@ export class MenuHost implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
     ) {
         try {
+            updateVh();
+            window.addEventListener('resize', updateVh);
             this.listenForEvents();
         } catch (error) {
             errorLog?.log(`constructor: unhandled error:`, error);
@@ -64,6 +66,7 @@ export class MenuHost implements Disposable {
         this.disposed$.next();
         this.disposed$.complete();
         this.menus = [];
+        window.removeEventListener('resize', updateVh);
     }
 
     public showMenu(id: string): void {
@@ -154,6 +157,18 @@ export class MenuHost implements Disposable {
                 this.renderMenu(eventData);
             });
 
+        fromEvent(document, 'long-press')
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
+                switchMap((eventData: EventData | undefined) => {
+                    return eventData ? of(eventData) : empty();
+                }),
+            )
+            .subscribe((eventData: EventData) => {
+                this.renderMenu(eventData);
+            });
+
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
@@ -217,7 +232,7 @@ export class MenuHost implements Disposable {
     }
 
     private mapHoverEvent(event: Event): EventData | undefined {
-        if (!(event.target instanceof HTMLElement)) {
+        if (!(event.target instanceof Element)) {
             this.hideMenus(x => x.isHoverMenu);
             return undefined;
         }
@@ -239,6 +254,11 @@ export class MenuHost implements Disposable {
             coords: undefined,
         };
     }
+}
+
+function updateVh(): void {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 
 function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {

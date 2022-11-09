@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0.5-bullseye-slim-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:7.0.0-rc.2-bullseye-slim-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -11,7 +11,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0.300-bullseye-slim-amd64 as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:7.0.100-rc.2-bullseye-slim-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -78,7 +78,7 @@ COPY src/dotnet/ src/dotnet/
 COPY tests/ tests/
 COPY *.props *.targets ./
 # we need to regenerate ThisAssembly files with the new version info
-RUN dotnet msbuild /t:GenerateAssemblyVersionInfo ActualChat.sln
+RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.sln
 
 FROM base as dotnet-build
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj

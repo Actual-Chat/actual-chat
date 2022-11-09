@@ -2,7 +2,7 @@
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>

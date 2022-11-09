@@ -1,11 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
 
-@if (StartGroup) {
-    <li class="ac-menu-separator">
-        <hr class="ac-menu-separator-hr">
-    </li>
-}
-
 <li @onclick="OnClick"
     class="ac-menu-item @Class"
     data-tooltip="@Tooltip"
@@ -18,13 +12,15 @@
                 @IconContent
             }
         </div>
-        <div class="ac-menu-text">
-            @if (TextContent == null) {
-                @Text
-            } else {
-                @TextContent
-            }
-        </div>
+        @if (TextContent != null || !Text.IsNullOrEmpty()) {
+            <div class="ac-menu-text">
+                @if (TextContent == null) {
+                    @Text
+                } else {
+                    @TextContent
+                }
+            </div>
+        }
     </div>
 </li>
 
@@ -33,7 +29,6 @@
     [Parameter] public string Icon { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool StartGroup { get; set; }
     [Parameter] public RenderFragment? IconContent { get; set; }
     [Parameter] public RenderFragment? TextContent { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";

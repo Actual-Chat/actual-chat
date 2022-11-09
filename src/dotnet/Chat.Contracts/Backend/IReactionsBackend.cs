@@ -3,6 +3,9 @@ namespace ActualChat.Chat;
 public interface IReactionsBackend : IComputeService
 {
     [ComputeMethod]
+    Task<Reaction?> Get(Symbol chatEntryId, Symbol chatAuthorId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<ImmutableArray<ReactionSummary>> List(
         string chatEntryId,
         CancellationToken cancellationToken);

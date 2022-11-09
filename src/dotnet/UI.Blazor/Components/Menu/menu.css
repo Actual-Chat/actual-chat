@@ -1,9 +1,13 @@
 .ac-menu-host {
     @apply fixed w-screen h-screen overflow-hidden pointer-events-none z-menu-container;
+    height: calc(var(--vh, 1vh) * 100);
 }
 .ac-menu {
     @apply hidden absolute bg-01 rounded-xl p-1 pointer-events-auto z-menu;
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
+}
+.ac-menu.mobile {
+    @apply !left-0 !top-auto right-0 bottom-0 rounded-bl-none rounded-br-none;
 }
 .ac-menu-hover {
     @apply hidden absolute bg-01 rounded-full p-1 border border-bg-03 pointer-events-auto z-menu-hover;
@@ -25,22 +29,28 @@
 .ac-menu-content {
     @apply flex-x gap-x-2 items-center;
 }
-.ac-menu-icon {
+.ac-menu-icon > i {
     @apply text-icons-01 text-2xl;
+}
+.mobile .ac-menu-icon > i {
+    @apply text-2xl;
 }
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
 }
+.mobile .ac-menu-text {
+    @apply text-xl;
+}
 .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
 }
-.ac-menu-item.important-item .ac-menu-icon,
-.ac-menu-item.important-item.off .ac-menu-icon,
+.ac-menu-item.important-item .ac-menu-icon > i,
+.ac-menu-item.important-item.off .ac-menu-icon > i,
 .ac-menu-item.important-item .ac-menu-text,
 .ac-menu-item.important-item.off .ac-menu-text {
     @apply text-primary;
 }
-.ac-menu-item.important-item.on .ac-menu-icon,
+.ac-menu-item.important-item.on .ac-menu-icon > i,
 .ac-menu-item.important-item.on .ac-menu-text {
     @apply text-error;
 }
@@ -50,7 +60,7 @@
 .ac-menu-item.warning-item:hover {
     @apply bg-error-hover;
 }
-.ac-menu-item.warning-item:hover .ac-menu-icon,
+.ac-menu-item.warning-item:hover .ac-menu-icon > i,
 .ac-menu-item.warning-item:hover .ac-menu-text {
     @apply text-error;
 }
