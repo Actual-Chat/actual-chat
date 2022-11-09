@@ -36,7 +36,7 @@
 .btn.btn-primary.disabled,
 .btn.btn-secondary:disabled,
 .btn.btn-secondary.disabled {
-    @apply bg-disabled text-primary-title border-disabled;
+    @apply bg-secondary-hover text-primary-title border-secondary-hover;
 }
 
 /* Secondary */
