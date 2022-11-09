@@ -7,7 +7,7 @@
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
 .ac-menu.mobile {
-    @apply !left-0 !top-auto right-0 bottom-0 rounded-bl-none rounded-br-none;
+    @apply !left-1 !top-auto right-1 bottom-0 rounded-bl-none rounded-br-none;
 }
 .ac-menu-hover {
     @apply hidden absolute bg-01 rounded-full p-1 border border-bg-03 pointer-events-auto z-menu-hover;
