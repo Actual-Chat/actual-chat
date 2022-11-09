@@ -4,7 +4,7 @@
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.ContentId);
     var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
-    var imgStyle = "max-width: 800px; max-height: 600px";
+    var imgStyle = $"max-width: {MaxWidth}px; max-height: {MaxHeight}px";
     if (attachment.Height > 0 && attachment.Width > 0) {
         var (width, height) = (attachment.Width, attachment.Height)
             .ToVector2()

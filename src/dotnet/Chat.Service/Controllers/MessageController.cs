@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Primitives;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -98,11 +99,11 @@ public class MessageController : ControllerBase
                 var attributes = post.Payload.Attachments.First(c => c.Id == file.Id);
                 var fileName = attributes.FileName.IsNullOrEmpty() ? file.FileName : attributes.FileName;
                 var description = attributes.Description ?? "";
-                var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
+                var imageSize = await GetImageSize(file).ConfigureAwait(false);
                 var upload = new TextEntryAttachmentUpload(fileName, file.Content, file.ContentType) {
                     Description = description,
-                    Width = imageInfo?.Width ?? 0,
-                    Height = imageInfo?.Height ?? 0,
+                    Width = imageSize?.Width ?? 0,
+                    Height = imageSize?.Height ?? 0,
                 };
                 uploads.Add(upload);
             }
@@ -118,6 +119,36 @@ public class MessageController : ControllerBase
         }
     }
 
+    private async Task<Size?> GetImageSize(FileInfo file)
+    {
+        // Sometimes we can see that image preview is distorted.
+        // This happens because image EXIF metadata contains information about image rotation
+        // which is automatically applied by modern image viewers and browsers.
+        // So we need to switch width and height to get appropriate size for image preview.
+        // https://github.com/SixLabors/ImageSharp/issues/790#issuecomment-447581798
+        var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
+        if (imageInfo == null)
+            return null;
+
+        var width = imageInfo.Width;
+        var height = imageInfo.Height;
+
+        // this piece of code is taken from
+        // https://github.com/SixLabors/ImageSharp.Web/pull/217/files#diff-d2d776f1c972b363ddcedf7c3c5c91e2449b8cbfa588c4ce0aeac073909aca8dR147
+        if (imageInfo.Metadata.ExifProfile != null) {
+            IExifValue<ushort> orientation = imageInfo.Metadata.ExifProfile.GetValue(ExifTag.Orientation);
+            return orientation.Value switch {
+                ExifOrientationMode.LeftTop
+                    or ExifOrientationMode.RightTop
+                    or ExifOrientationMode.RightBottom
+                    or ExifOrientationMode.LeftBottom => new Size(height, width),
+                _ => new Size(width, height),
+            };
+        }
+
+        return new Size(width, height);
+    }
+
     private async Task<IImageInfo?> GetImageInfo(FileInfo file)
     {
         if (!file.ContentType.OrdinalIgnoreCaseContains("image"))
@@ -125,7 +156,8 @@ public class MessageController : ControllerBase
 
         try {
             using var stream = new MemoryStream(file.Content);
-            return await Image.IdentifyAsync(stream).ConfigureAwait(false);
+            var imageInfo = await Image.IdentifyAsync(stream).ConfigureAwait(false);
+            return imageInfo;
         }
         catch (Exception exc) {
             _log.LogError(exc, "Failed to extract image info from '{FileName}'", file.FileName);
