@@ -62,7 +62,7 @@
                         <i class="icon-close text-2xl md:text-xl font-medium"></i>
                     </ButtonRound>
                 </div>
-                <div class="mb-4 px-4">
+                <div class="mb-4 px-2">
                     <SearchBox
                         @ref="_searchBoxRef"
                         Class="mt-1"
@@ -84,14 +84,14 @@
                     </ButtonRound>
                 </div>
 
-                <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate" Id="@_form.FormId" Class="px-4">
+                <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate" Id="@_form.FormId" Class="px-2">
                     <DataAnnotationsValidator/>
-                    <div class="flex-y grow overflow-y-auto">
-                        <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true" IsLabelInsideInput="true" Class="my-2">
+                    <div class="flex-y grow max-h-132 overflow-y-auto">
+                        <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2">
                             <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
                         </FormSection>
 
-                        <div class="flex-y gap-y-2 max-h-120 custom-scrollbar overflow-y-auto">
+                        <div class="flex-y gap-y-2 custom-scrollbar overflow-y-auto">
                             <div class="min-h-16 border border-bg-04 rounded-lg">
                                 Contact 1
                             </div>

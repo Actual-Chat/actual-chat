@@ -51,7 +51,7 @@ public class Form : EditForm
 
         var i = 0;
         builder.OpenElement(i++, "form");
-        builder.AddAttribute(i++, "class", $"form {(IsHorizontal ? "form-x" : "form-y")}");
+        builder.AddAttribute(i++, "class", $"form {(IsHorizontal ? "form-x" : "form-y")} {Class}");
         builder.AddMultipleAttributes(i++, AdditionalAttributes);
         builder.AddAttribute(i++, "onsubmit", _handleSubmitCached);
         builder.OpenComponent<CascadingValue<EditContext>>(i++);

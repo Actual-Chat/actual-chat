@@ -2,6 +2,9 @@
     @apply gap-y-0 p-0 md:rounded-lg min-w-full min-h-full max-h-full;
     @apply md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
 }
+.creation-modal.modal-frame .dialog-body {
+    @apply px-2;
+}
 .creation-panel {
     @apply flex-y left-0 bottom-0 w-full bg-01;
 }
@@ -11,7 +14,7 @@
 }
 .creation-panel .header .btn,
 .creation-panel .header .btn .btn-content {
-    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
 }
 .creation-panel .header .btn.btn-round.transparent:hover,
 .creation-panel .header .btn.btn-round.transparent:hover .btn-content {
@@ -23,7 +26,7 @@
 }
 
 .creation-panel .creation-buttons {
-    @apply flex-y p-2;
+    @apply flex-y py-2;
 }
 .creation-btn {
     @apply flex-x items-center min-h-12 rounded-md cursor-pointer;
