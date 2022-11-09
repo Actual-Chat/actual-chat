@@ -30,17 +30,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <!-- You must reference migration projects here for services w/ DBs -->
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
     <ProjectReference Include="..\Contacts.Service.Migration\Contacts.Service.Migration.csproj" />
     <ProjectReference Include="..\Feedback.Service.Migration\Feedback.Service.Migration.csproj" />
     <ProjectReference Include="..\Notification.Service.Migration\Notification.Service.Migration.csproj" />
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
+    <!-- And service projects for stateless / other services -->
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\Transcription.Service\Transcription.Service.csproj" />
-    <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />
-    <ProjectReference Include="..\Notification.Client\Notification.Client.csproj" />
+    <!-- But don't reference their clients! -->
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" />
   </ItemGroup>
