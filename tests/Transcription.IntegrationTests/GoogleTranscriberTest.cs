@@ -6,17 +6,21 @@ namespace ActualChat.Transcription.IntegrationTests;
 
 public class GoogleTranscriberTest : TestBase
 {
+    private IServiceProvider Services { get; }
     private ILogger<GoogleTranscriber> Log { get; }
 
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-        => Log = log;
+    public GoogleTranscriberTest(IServiceProvider services, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+    {
+        Services = services;
+        Log = log;
+    }
 
     [Theory]
     [InlineData("file.webm")]
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
-        var transcriber = new GoogleTranscriber(Log);
+        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         var options = new TranscriptionOptions {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -24,7 +28,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var diffs = await transcriber.Transcribe("test-user", options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
@@ -36,7 +40,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(Log);
+        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -44,7 +48,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var diffs = await transcriber.Transcribe("test-user", options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());

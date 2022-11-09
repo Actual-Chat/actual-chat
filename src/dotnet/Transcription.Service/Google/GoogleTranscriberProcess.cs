@@ -9,6 +9,8 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
+    private readonly Task<Recognizer> _recognizerTask;
+
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
@@ -19,10 +21,12 @@ public class GoogleTranscriberProcess : WorkerBase
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
+        Task<Recognizer> recognizerTask,
         TranscriptionOptions options,
         AudioSource audioSource,
         ILogger? log = null)
     {
+        _recognizerTask = recognizerTask;
         Log = log ?? NullLogger.Instance;
         Options = options;
         AudioSource = audioSource;
@@ -40,61 +44,17 @@ public class GoogleTranscriberProcess : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
+            var recognizer = await _recognizerTask.ConfigureAwait(false);
             var webMStreamAdapter = new WebMStreamAdapter(Log);
             await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
-            var format = AudioSource.Format;
             var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
-            // var config = new RecognitionConfig {
-            //     Encoding = MapEncoding(format.CodecKind),
-            //     AudioChannelCount = format.ChannelCount,
-            //     SampleRateHertz = format.SampleRate,
-            //     LanguageCode = Options.Language,
-            //     UseEnhanced = true,
-            //     MaxAlternatives = 1,
-            //     EnableAutomaticPunctuation = Options.IsPunctuationEnabled,
-            //     EnableSpokenPunctuation = false,
-            //     EnableSpokenEmojis = false,
-            //     EnableWordTimeOffsets = true,
-            //     DiarizationConfig = new() {
-            //         EnableSpeakerDiarization = true,
-            //         MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
-            //     },
-            //     Metadata = new() {
-            //         InteractionType = RecognitionMetadata.Types.InteractionType.Discussion,
-            //         MicrophoneDistance = RecognitionMetadata.Types.MicrophoneDistance.Nearfield,
-            //         RecordingDeviceType = RecognitionMetadata.Types.RecordingDeviceType.Smartphone,
-            //     },
-            // };
-
-            var config = new RecognitionConfig {
-                Features = new RecognitionFeatures {
-                    EnableAutomaticPunctuation = true,
-                    MaxAlternatives = 1,
-                    DiarizationConfig = new SpeakerDiarizationConfig {
-                        MinSpeakerCount = 1,
-                        MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
-                    },
-                    EnableSpokenPunctuation = true,
-                    EnableSpokenEmojis = true,
-                    ProfanityFilter = false,
-                    EnableWordConfidence = true,
-                    EnableWordTimeOffsets = true,
-                    MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
-                },
-                AutoDecodingConfig = new AutoDetectDecodingConfig(),
-            };
-
-            speechClient.get
-
-            speechClient.CreateRecognizerAsync(new CreateRecognizerRequest {
-
-            })
-            var recognizeRequests = speechClient.StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
-            await recognizeRequests.WriteAsync(new () {
-                    StreamingConfig = new () {
-                        Config = config,
+            var recognizeRequests = speechClient
+                .StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
+            await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
+                    StreamingConfig = new StreamingRecognitionConfig {
+                        Config = new RecognitionConfig(), // Use recognizer' settings
                         StreamingFeatures = new StreamingRecognitionFeatures {
                             InterimResults = true,
                             // TODO(AK): test google VAD events - probably it might be useful
@@ -102,7 +62,7 @@ public class GoogleTranscriberProcess : WorkerBase
                             // EnableVoiceActivityEvents =
                         },
                     },
-                    Recognizer = "",
+                    Recognizer = recognizer.Name,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
@@ -134,9 +94,9 @@ public class GoogleTranscriberProcess : WorkerBase
     private void ProcessResponse(StreamingRecognizeResponse response)
     {
         DebugLog?.LogDebug("Response={Response}", response);
-        var error = response.Error;
-        if (error != null)
-            throw new TranscriptionException($"G{error.Code:D}", error.Message);
+        // var error = response.Error;
+        // if (error != null)
+        //     throw new TranscriptionException($"G{error.Code:D}", error.Message);
 
         Transcript transcript;
         var results = response.Results;
@@ -159,7 +119,7 @@ public class GoogleTranscriberProcess : WorkerBase
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            var endTime = (float)results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
+            var endTime = (float)results.First().ResultEndOffset.ToTimeSpan().TotalSeconds;
             transcript = State.AppendAlternative(text, endTime);
         }
         DebugLog?.LogDebug("Transcript={Transcript}", transcript);
@@ -174,7 +134,7 @@ public class GoogleTranscriberProcess : WorkerBase
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
 
         var alternative = result.Alternatives.Single();
-        var endTime = (float)result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        var endTime = (float)result.ResultEndOffset.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
         if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
             text = " " + text;
@@ -183,14 +143,14 @@ public class GoogleTranscriberProcess : WorkerBase
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
         foreach (var word in alternative.Words) {
-            var wordStartTime = (float)word.StartTime.ToTimeSpan().TotalSeconds;
+            var wordStartTime = (float)word.StartOffset.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
             var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
             if (wordStart < 0)
                 continue;
 
-            var wordEndTime = (float)word.EndTime.ToTimeSpan().TotalSeconds;
+            var wordEndTime = (float)word.EndOffset.ToTimeSpan().TotalSeconds;
             var wordEnd = wordStart + word.Word.Length;
 
             mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));
