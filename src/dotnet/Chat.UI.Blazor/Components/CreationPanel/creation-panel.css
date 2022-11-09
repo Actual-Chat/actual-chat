@@ -6,7 +6,7 @@
     @apply px-2;
 }
 .creation-modal.modal-frame .dialog-buttons {
-    @apply px-4 py-2;
+    @apply px-4 py-2 min-h-16;
 }
 .creation-panel {
     @apply flex-y left-0 bottom-0 w-full bg-01;
