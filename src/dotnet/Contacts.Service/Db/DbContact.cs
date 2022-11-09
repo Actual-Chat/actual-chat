@@ -7,8 +7,7 @@ using Stl.Versioning;
 namespace ActualChat.Contacts.Db;
 
 [Table("Contacts")]
-[Index(nameof(OwnerId), nameof(UserId))]
-[Index(nameof(OwnerId), nameof(ChatId))]
+[Index(nameof(OwnerId))]
 public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _touchedAt;

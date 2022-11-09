@@ -36,7 +36,7 @@ public readonly struct ContactId : IEquatable<ContactId>
         var spaceIndex = id.IndexOf(' ');
         if (spaceIndex <= 0 || spaceIndex + 3 >= id.Length)
             return;
-        if (id[spaceIndex + 2] != '/')
+        if (id[spaceIndex + 2] != ':')
             return;
 
         switch (id[spaceIndex + 1]) {
@@ -97,8 +97,8 @@ public readonly struct ContactId : IEquatable<ContactId>
 
     public string Format()
         => Kind switch {
-            ContactKind.User => $"{OwnerId.Value} u/{OtherId.Value}",
-            ContactKind.Chat => $"{OwnerId.Value} c/{OtherId.Value}",
+            ContactKind.User => $"{OwnerId.Value} u:{OtherId.Value}",
+            ContactKind.Chat => $"{OwnerId.Value} c:{OtherId.Value}",
             _ => "",
         };
 
