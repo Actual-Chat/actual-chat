@@ -8,12 +8,14 @@ namespace ActualChat.Contacts;
 public class Contacts : IContacts
 {
     private IAccounts Accounts { get; }
+    private IChats Chats { get; }
     private IContactsBackend Backend { get; }
     private ICommander Commander { get; }
 
     public Contacts(IServiceProvider services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
+        Chats = services.GetRequiredService<IChats>();
         Backend = services.GetRequiredService<IContactsBackend>();
         Commander = services.Commander();
     }
@@ -30,7 +32,11 @@ public class Contacts : IContacts
             return null;
 
         var contact = await Backend.Get(account.Id, id, cancellationToken).ConfigureAwait(false);
-        return contact;
+        if (contact == null)
+            return null;
+
+        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return canRead ? contact : null;
     }
 
     // [ComputeMethod]
@@ -55,7 +61,12 @@ public class Contacts : IContacts
             return null;
         }
 
-        return await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
+            return null;
+
+        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return canRead ? contact : null;
     }
 
     // [ComputeMethod]
@@ -65,7 +76,12 @@ public class Contacts : IContacts
         var ownerId = account.Id;
 
         var id = new ContactId(ownerId, userId, ContactKind.User);
-        return await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
+            return null;
+
+        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return canRead ? contact : null;
     }
 
     // [ComputeMethod]

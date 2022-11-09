@@ -34,28 +34,17 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return null;
 
         var chatId = contact.Id.ToFullChatId();
+        var chatTask = ChatsBackend.Get(chatId, cancellationToken);
         if (contact.Id.IsUserContact(out var userId)) {
-            var ownAccount = await AccountsBackend.Get(ownerId, cancellationToken).ConfigureAwait(false);
-            if (ownAccount == null)
-                return null;
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (account == null)
                 return null;
 
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat != null) {
-                var ownAuthor = await AuthorsBackend.GetByUserId(chatId, ownAccount.Id, cancellationToken).ConfigureAwait(false);
-                var ownRules = await ChatsBackend.GetRules(chatId, ownAuthor?.Id ?? ownAccount.Id, cancellationToken).ConfigureAwait(false);
-                if (!ownRules.CanRead())
-                    return null;
-            }
-            else {
-                // Peer chat doesn't exist yet
-                chat = new Chat.Chat() {
-                    Id = chatId,
-                    ChatType = ChatType.Peer,
-                };
-            }
+            var chat = await chatTask.ConfigureAwait(false);
+            chat ??= new Chat.Chat() {
+                Id = chatId,
+                ChatType = ChatType.Peer,
+            };
             chat = chat with {
                 Title = account.Avatar.Name,
                 Picture = account.Avatar.Picture,
@@ -67,17 +56,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             };
         }
         else if (contact.Id.IsChatContact(out _)) {
-            var ownAccount = await AccountsBackend.Get(ownerId, cancellationToken).ConfigureAwait(false);
-            if (ownAccount == null)
-                return null; // TODO(AY): Fix this after adding Guest account support
-
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            var chat = await chatTask.ConfigureAwait(false);
             if (chat == null)
-                return null;
-
-            var ownAuthor = await AuthorsBackend.GetByUserId(chatId, ownAccount.Id, cancellationToken).ConfigureAwait(false);
-            var ownRules = await ChatsBackend.GetRules(chatId, ownAuthor?.Id ?? ownAccount.Id, cancellationToken).ConfigureAwait(false);
-            if (!ownRules.CanRead())
                 return null;
 
             contact = contact with {
