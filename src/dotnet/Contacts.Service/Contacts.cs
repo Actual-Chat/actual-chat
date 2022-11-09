@@ -101,7 +101,7 @@ public class Contacts : IContacts
     }
 
     // [CommandHandler]
-    public async Task Touch(IContacts.TouchCommand command, CancellationToken cancellationToken)
+    public virtual async Task Touch(IContacts.TouchCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here

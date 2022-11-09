@@ -58,9 +58,8 @@ public class RecentChatsUI : WorkerBase
     {
         var selectedChat = await GetSelectedChat(cancellationToken).ConfigureAwait(false);
         var chats = await List(cancellationToken).ConfigureAwait(false);
-        if (selectedChat != null && !chats.Contains(selectedChat))
+        if (selectedChat != null && chats.All(c => c.Id != selectedChat.Id))
             chats = chats.Insert(0, selectedChat);
-
         return chats;
     }
 

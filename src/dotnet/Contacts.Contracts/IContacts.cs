@@ -3,18 +3,18 @@ namespace ActualChat.Contacts;
 public interface IContacts : IComputeService
 {
     [ComputeMethod]
-    public Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken);
+    Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken);
+    Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken);
+    Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task<Contact> Change(ChangeCommand command, CancellationToken cancellationToken);
+    Task<Contact> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task Touch(TouchCommand command, CancellationToken cancellationToken);
+    Task Touch(TouchCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(

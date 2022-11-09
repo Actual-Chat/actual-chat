@@ -279,16 +279,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
         }
 
-        var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
-            return null;
-
-        var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        chat ??= new Chat {
-            Id = chatId,
-            ChatType = ChatType.Peer,
-        };
-
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;
@@ -299,14 +289,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
 
         var contact = await ContactsBackend.GetForUser(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
-        if (contact?.Account == null)
-            return null;
-
-        chat = chat with {
-            Title = contact.Account.Avatar.Name,
-            Picture = contact.Account.Avatar.Picture,
-        };
-        return chat;
+        return contact?.Chat;
     }
 
     [ComputeMethod]
