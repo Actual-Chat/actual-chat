@@ -1,4 +1,7 @@
 {
+  "HostSettings": {
+    "AppKind": "TestServer"
+  },
   "RedisSettings": {
     "DefaultRedis": "localhost|test_{instance.}{context}"
   },

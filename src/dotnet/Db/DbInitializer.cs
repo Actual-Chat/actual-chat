@@ -18,6 +18,8 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
     public virtual async Task Initialize(CancellationToken cancellationToken)
     {
+        var hostInfo = Services.GetRequiredService<HostInfo>();
+
         var dbContext = DbHub.CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -28,8 +30,13 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB '{DatabaseName}'...", db.GetDbConnection().Database);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            //await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
-            await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+            var mustMigrate = false;
+            if (hostInfo.RequiredServiceScopes.Contains(ServiceScope.Test))
+                mustMigrate = Random.Shared.Next(10) == 0; // 10% migration probability in tests
+            if (mustMigrate)
+                await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+            else
+                await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
             Log.LogInformation("Migrating DB '{DatabaseName}'...", db.GetDbConnection().Database);
