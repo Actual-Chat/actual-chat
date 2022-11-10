@@ -7,7 +7,7 @@
 @if (!_areReactionsEnabled || !m.HasReactions) {
     return;
 }
-<ul class="message-reactions">
+<ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
         <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
@@ -35,6 +35,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
 
     protected override async Task OnInitializedAsync()
         => _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
