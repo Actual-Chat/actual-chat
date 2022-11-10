@@ -66,22 +66,22 @@
                             </CascadingValue>
                         </p>
                     }
-                    </div>
-                    @if (entry.Attachments.Length > 0) {
-                        <div class="message-attachments mx-1">
-                            @foreach (var attachment in entry.Attachments) {
-                                @if (attachment.IsImage()) {
-                                    <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
-                                } else {
-                                    <FileAttachment Attachment="@attachment"/>
-                                }
-                            }
-                        </div>
-                    }
-                    @if (entry.HasReactions) {
-                        <MessageReactions ChatEntry="@entry" />
-                    }
                 </div>
+                @if (entry.Attachments.Length > 0) {
+                    <div class="message-attachments mx-1">
+                        @foreach (var attachment in entry.Attachments) {
+                            @if (attachment.IsImage()) {
+                                <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                            } else {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        }
+                    </div>
+                }
+                @if (entry.HasReactions) {
+                    <MessageReactions ChatEntry="@entry" Class="chat-message-reactions" />
+                }
+            </div>
             </div>
         </div>
 
