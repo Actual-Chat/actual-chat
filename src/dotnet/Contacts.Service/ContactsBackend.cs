@@ -164,12 +164,16 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         id.RequireFullyValid();
         change.RequireValid();
+        var dbId = id.Format();
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         DbContact? dbContact;
         if (change.IsCreate(out var contact)) {
-            dbContact = await dbContext.Contacts.Get(id.Format(), cancellationToken).ConfigureAwait(false);
+            dbContact = await dbContext.Contacts.ForUpdate()
+                .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
+                .ConfigureAwait(false);
             if (dbContact != null)
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
 
@@ -183,10 +187,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         }
         else {
             // Update or Delete
-            dbContact = await dbContext.Contacts
-                .Get(id.Format(), cancellationToken)
-                .RequireVersion(expectedVersion)
+            dbContact = await dbContext.Contacts.ForUpdate()
+                .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
                 .ConfigureAwait(false);
+            dbContact.RequireVersion(expectedVersion);
             if (change.IsUpdate(out contact)) {
                 contact = contact with {
                     Version = VersionGenerator.NextVersion(dbContact.Version),
@@ -218,8 +222,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         id.RequireFullyValid();
         // Update or Delete
-        var dbContact = await dbContext.Contacts
-            .Get(id.Format(), cancellationToken)
+        var dbId = id.Format();
+        var dbContact = await dbContext.Contacts.ForUpdate()
+            .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
             .ConfigureAwait(false);
         if (dbContact == null)
             return;

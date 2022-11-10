@@ -26,35 +26,35 @@ public class FirebaseMessagingClient
     {
         var (notificationId, notificationType, title, content, iconUrl, _) = entry;
         var message = entry.Message;
-        var chatId = message?.ChatId;
+        var chatId = message?.ChatId ?? Symbol.Empty;
         var entryId = message?.EntryId;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var tag = "topic";
         string link = null!;
         switch (notificationType) {
         case NotificationType.Message: {
-            if (!chatId.IsNullOrEmpty()) {
+            if (!chatId.IsEmpty) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
             }
             break;
         }
         case NotificationType.Reply: {
-            if (!chatId.IsNullOrEmpty()) {
+            if (!chatId.IsEmpty) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
             }
             break;
         }
         case NotificationType.Invitation: {
-            if (!chatId.IsNullOrEmpty()) {
+            if (!chatId.IsEmpty) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId));
             }
             break;
         }
         case NotificationType.Reaction:
-            if (!chatId.IsNullOrEmpty()) {
+            if (!chatId.IsEmpty) {
                 tag = chatId;
                 link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
             }
@@ -69,7 +69,7 @@ public class FirebaseMessagingClient
             Data = new Dictionary<string, string>(StringComparer.Ordinal) {
                 { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
                 { NotificationConstants.MessageDataKeys.Tag, tag },
-                { NotificationConstants.MessageDataKeys.ChatId, chatId ?? "" },
+                { NotificationConstants.MessageDataKeys.ChatId, chatId },
                 { NotificationConstants.MessageDataKeys.EntryId, entryIdAsString },
                 { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
                 { NotificationConstants.MessageDataKeys.Link, link },

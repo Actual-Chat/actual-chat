@@ -72,10 +72,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var (userId, entry) = command;
         var notificationType = entry.Type;
         if (Computed.IsInvalidating()) {
-            var invNotificationId = context.Operation().Items.Get<string>();
-            if (invNotificationId.IsNullOrEmpty())
+            var invNotificationId = context.Operation().Items.Get<Symbol>();
+            if (invNotificationId.IsEmpty) // Created
                 _ = ListRecentNotificationIds(userId, default);
-            else
+            else // Updated
                 _ = GetNotification(userId, invNotificationId, default);
             return;
         }
@@ -98,7 +98,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 if (entry.NotificationTime - existingEntry.NotificationTime <= TimeSpan.FromSeconds(30))
                     return;
 
-                entry = entry with { NotificationId = existingEntry.NotificationId };
+                entry = entry with { Id = existingEntry.Id };
             }
         }
         else if (notificationType == NotificationType.Invitation) {
@@ -112,7 +112,6 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         else
             throw StandardError.NotSupported<NotificationType>("Notification type is unsupported.");
 
-
         await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
         await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
 
@@ -121,22 +120,23 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             var dbContext = CreateDbContext().ReadWrite();
             await using var __ = dbContext.ConfigureAwait(false);
 
-            var existingEntry = await dbContext.Notifications.Get(entry1.NotificationId, cancellationToken1)
+            var dbEntry = await dbContext.Notifications.ForUpdate()
+                .SingleOrDefaultAsync(e => e.Id == entry1.Id.Value, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (existingEntry != null) {
-                existingEntry.Title = entry1.Title;
-                existingEntry.Content = entry1.Content;
-                existingEntry.IconUrl = entry1.IconUrl;
-                existingEntry.ChatEntryId = entry1.Message?.EntryId;
-                existingEntry.AuthorId = entry1.Message?.AuthorId;
-                existingEntry.ModifiedAt = entry1.NotificationTime;
-                existingEntry.HandledAt = null;
-                context.Operation().Items.Set(entry1.NotificationId);
+            if (dbEntry != null) {
+                dbEntry.Title = entry1.Title;
+                dbEntry.Content = entry1.Content;
+                dbEntry.IconUrl = entry1.IconUrl;
+                dbEntry.ChatEntryId = entry1.Message?.EntryId;
+                dbEntry.AuthorId = entry1.Message?.AuthorId;
+                dbEntry.ModifiedAt = entry1.NotificationTime;
+                dbEntry.HandledAt = null;
+                context.Operation().Items.Set(entry1.Id);
             }
             else {
-                existingEntry = new DbNotification {
-                    Id = entry1.NotificationId,
+                dbEntry = new DbNotification {
+                    Id = entry1.Id,
                     UserId = userId,
                     NotificationType = entry1.Type,
                     Title = entry1.Title,
@@ -149,7 +149,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                     HandledAt = null,
                     ModifiedAt = null,
                 };
-                dbContext.Notifications.Add(existingEntry);
+                dbContext.Notifications.Add(dbEntry);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

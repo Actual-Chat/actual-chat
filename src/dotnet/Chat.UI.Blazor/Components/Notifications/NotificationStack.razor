@@ -10,7 +10,7 @@
     @onmouseover="MouseOver"
     @onmouseout="MouseOut">
     @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {
-        var notificationId = notification.NotificationId;
+        var notificationId = notification.Id.Value;
         <Notification @key="@notificationId"
                       Closed="() => OnClose(notificationId)"
                       AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"

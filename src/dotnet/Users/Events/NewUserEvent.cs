@@ -4,6 +4,5 @@ namespace ActualChat.Users.Events;
 
 [DataContract]
 public record NewUserEvent(
-    [property: DataMember(Order = 0)]
-    string UserId
+    [property: DataMember] Symbol UserId
     ) : IEvent;
