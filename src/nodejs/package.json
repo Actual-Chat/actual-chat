@@ -57,6 +57,7 @@
     "rxjs": "^7.5.5",
     "swiftclick": "^2.1.1",
     "tslib": "^2.4.0",
+    "uuid": "^9.0.0",
     "wasm-audio-resampler": "^2.0.0"
   },
   "prettier": {

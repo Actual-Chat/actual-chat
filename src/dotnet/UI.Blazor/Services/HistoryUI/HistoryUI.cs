@@ -11,7 +11,6 @@ public class HistoryUI
     private IJSObjectReference? _jsRef;
     private int _historyIndex;
 
-    private BrowserInfo BrowserInfo { get; }
     private IJSRuntime JS { get; }
     private ILogger<HistoryUI> Log { get; }
     private NavigationManager Nav { get; }
@@ -22,19 +21,17 @@ public class HistoryUI
     public event EventHandler<EventArgs>? AfterLocationChangedHandled;
 
     public HistoryUI(
-        BrowserInfo browserInfo,
         IJSRuntime js,
         NavigationManager nav,
         ILogger<HistoryUI> log)
     {
-        BrowserInfo = browserInfo;
         JS = js;
         Log = log;
         Nav = nav;
 
         IsInitialLocation = true;
         _historyIndex = 0;
-        _history.Add(new HistoryItem(Nav.Uri, 0));
+        _history.Add(new HistoryItem(Nav.Uri, ""));
         Log.LogDebug("Initial location: '{Location}'", Nav.Uri);
 
         // HistoryUI is initialized upon BlazorCircuitContext is created.
@@ -81,7 +78,7 @@ public class HistoryUI
         if (readHistoryIndex < _historyIndex)
             move = HistoryMove.Backward;
         else if (readHistoryIndex > _historyIndex) {
-            var isExistingHistoryItem = _history.Any(c => c.Id == state.Id);
+            var isExistingHistoryItem = _history.Any(c => OrdinalEquals(c.Id, state.Id));
             move = isExistingHistoryItem ? HistoryMove.Forward : HistoryMove.Navigate;
         }
         else {
@@ -145,7 +142,7 @@ public class HistoryUI
 
     private record PendingHistoryItem(HistoryItemPrototype HistoryItem, int HistoryIndex);
 
-    private record HistoryItem(string Uri, int Id)
+    private record HistoryItem(string Uri, string Id)
     {
         public Action? OnForwardAction { get; init; }
         public Action? OnBackAction { get; init; }
@@ -164,7 +161,7 @@ public class HistoryUI
         [JsonPropertyName("_index")]
         public int Index { get; init; }
         [JsonPropertyName("_id")]
-        public int Id { get; init; }
+        public string Id { get; init; } = "";
         [JsonPropertyName("userState")]
         public string? UserState { get; init; }
     }

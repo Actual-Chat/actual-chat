@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import { v4 as uuidv4 } from 'uuid';
 
 const LogScope: string = 'HistoryUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -15,13 +16,12 @@ export class HistoryUI {
         // Enrich history state that blazor setups
         // https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Services/NavigationManager.ts#L157
         // enrichment allows to detect navigation, back and forward moves.
-        let idSeed = 0;
 
         // enrich user state
         const enrichUserState = state =>
             JSON.stringify({
                                _index: state?._index ?? 0,
-                               _id: ++idSeed,
+                               _id: uuidv4(),
                                userState: state.userState
                            });
 
