@@ -72,23 +72,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         return author;
     }
 
-    // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken)
-    {
-        if (userId.IsNullOrEmpty())
-            return ImmutableArray<Symbol>.Empty;
-
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var chatIds = await dbContext.Authors
-            .Where(a => a.UserId == userId && !a.HasLeft)
-            .Select(a => a.ChatId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return chatIds.Select(x => new Symbol(x)).ToImmutableArray();
-    }
-
     // Not a [ComputeMethod]!
     public async Task<AuthorFull> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
@@ -164,8 +147,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating()) {
             if (!userId.IsEmpty) {
                 _ = GetByUserId(chatId, userId, default);
-                _ = GetByUserId(chatId, userId, default);
-                _ = ListUserChatIds(userId, default);
                 _ = ListUserIds(chatId, default);
             }
             _ = ListAuthorIds(chatId, default);
@@ -263,11 +244,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var userId = invAuthor.UserId;
             if (!userId.IsEmpty) {
                 _ = GetByUserId(chatId, userId, default);
-                _ = GetByUserId(chatId, userId, default);
                 _ = ListUserIds(chatId, default);
-                _ = ListUserChatIds(userId, default);
             }
-            _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = ListAuthorIds(chatId, default);
 
@@ -301,11 +279,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var userId = invAuthor.UserId;
             if (!userId.IsEmpty) {
                 _ = GetByUserId(chatId, userId, default);
-                _ = GetByUserId(chatId, userId, default);
                 _ = ListUserIds(chatId, default);
-                _ = ListUserChatIds(userId, default);
             }
-            _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = ListAuthorIds(chatId, default);
 

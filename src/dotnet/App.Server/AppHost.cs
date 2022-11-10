@@ -115,7 +115,7 @@ public class AppHost : IDisposable
         // Looks like there is no better way to set _default_ URL
         cfg.Sources.Insert(0,
             new MemoryConfigurationSource {
-                InitialData = new Dictionary<string, string>(StringComparer.Ordinal) {
+                InitialData = new Dictionary<string, string?>(StringComparer.Ordinal) {
                     { WebHostDefaults.ServerUrlsKey, ServerUrls },
                 },
             });
@@ -132,7 +132,7 @@ public class AppHost : IDisposable
         var jsonProviders = appBuilder.Sources.OfType<JsonConfigurationSource>().Where(j => j.ReloadOnChange).ToArray();
         foreach (var item in jsonProviders) {
             appBuilder.Sources.Remove(item);
-            appBuilder.AddJsonFile(item.Path, item.Optional, reloadOnChange: false);
+            appBuilder.AddJsonFile(item.Path!, item.Optional, reloadOnChange: false);
         }
         appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         appBuilder.AddEnvironmentVariables();

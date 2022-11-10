@@ -10,9 +10,6 @@ public interface IAuthorsBackend : IComputeService
     Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListUserIds(string chatId, CancellationToken cancellationToken);
-    // TODO(AY): Move this method to IUsersBackend
-    [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListUserChatIds(string userId, CancellationToken cancellationToken);
 
     // Non-compute methods
 

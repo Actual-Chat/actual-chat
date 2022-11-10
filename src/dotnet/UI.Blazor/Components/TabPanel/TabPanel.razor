@@ -38,9 +38,8 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
-    public IReadOnlyList<Tab> Tabs => _tabs;
-    [Parameter]
-    public Tab? ActiveTab {
+#pragma warning disable BL0007
+    [Parameter] public Tab? ActiveTab {
         get => _activeTab;
         set {
             if (_activeTab == value)
@@ -51,6 +50,9 @@
             ActiveTabChanged.InvokeAsync(value);
         }
     }
+#pragma warning restore BL0007
+
+    public IReadOnlyList<Tab> Tabs => _tabs;
 
     internal void RegisterTab(Tab tab) {
         var indexToInsert = -1;

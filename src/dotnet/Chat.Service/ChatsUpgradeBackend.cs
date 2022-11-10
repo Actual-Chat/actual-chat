@@ -12,6 +12,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 {
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
+    private IAuthorsUpgradeBackend AuthorsUpgradeBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IChatsBackend Backend { get; }
@@ -20,6 +21,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
     {
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        AuthorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         Backend = services.GetRequiredService<IChatsBackend>();
@@ -280,7 +282,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
-            var chatIds = await AuthorsBackend.ListUserChatIds(userId, cancellationToken).ConfigureAwait(false);
+            var chatIds = await AuthorsUpgradeBackend.ListChatIds(userId, cancellationToken).ConfigureAwait(false);
             foreach (var chatId in chatIds) {
                 var lastReadEntryId = await readPositionsBackend.Get(userId, chatId, cancellationToken).ConfigureAwait(false);
                 if (lastReadEntryId.GetValueOrDefault() == 0)

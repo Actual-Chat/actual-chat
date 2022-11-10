@@ -14,6 +14,8 @@ public class ContactsDbContext : DbContextBase
 
     public ContactsDbContext(DbContextOptions options) : base(options) { }
 
+#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly).UseSnakeCaseNaming();
+#pragma warning restore IL2026
 }

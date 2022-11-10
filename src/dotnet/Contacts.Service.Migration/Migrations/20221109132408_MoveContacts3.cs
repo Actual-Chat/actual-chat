@@ -23,8 +23,8 @@ namespace ActualChat.Contacts.Migrations
             using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
             using var usersDbContext = usersDbInitializer.DbHub.CreateDbContext();
 
-            // Removing all existing DbContacts
-            var dbContacts = dbContext.Contacts.ToList();
+            // Removing all existing user DbContacts
+            var dbContacts = dbContext.Contacts.Where(c => c.UserId != null && c.UserId != "").ToList();
             dbContext.Contacts.RemoveRange(dbContacts);
             dbContext.SaveChanges();
 

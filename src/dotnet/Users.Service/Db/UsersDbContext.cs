@@ -23,6 +23,8 @@ public class UsersDbContext : DbContextBase
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
 
+#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+#pragma warning restore IL2026
 }

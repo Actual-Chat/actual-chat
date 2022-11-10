@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -6,7 +7,7 @@ namespace ActualChat;
 
 public static class DbSetExt
 {
-    public static ValueTask<TEntity?> Get<TEntity>(
+    public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
         this DbSet<TEntity> set,
         Symbol key,
         CancellationToken cancellationToken) where TEntity : class
@@ -15,7 +16,7 @@ public static class DbSetExt
         return set.FindAsync(DbKey.Compose(key.Value), cancellationToken);
     }
 
-    public static ValueTask<TEntity?> Get<TEntity>(
+    public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
         this DbSet<TEntity> set,
         string key,
         CancellationToken cancellationToken) where TEntity : class
@@ -24,7 +25,7 @@ public static class DbSetExt
         return set.FindAsync(DbKey.Compose(key), cancellationToken);
     }
 
-    public static ValueTask<TEntity?> Get<TEntity>(
+    public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
         this DbSet<TEntity> set,
         long key,
         CancellationToken cancellationToken) where TEntity : class

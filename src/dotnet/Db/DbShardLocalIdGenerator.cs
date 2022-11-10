@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using ActualChat.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -12,7 +13,10 @@ public interface IDbShardLocalIdGenerator<TEntity, in TShardKey>
     Task<long> Next(DbContext dbContext, TShardKey shardKey, CancellationToken cancellationToken);
 }
 
-public class DbShardLocalIdGenerator<TDbContext, TEntity, TShardKey> : IDbShardLocalIdGenerator<TEntity, TShardKey>
+public class DbShardLocalIdGenerator<
+    TDbContext,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity,
+    TShardKey> : IDbShardLocalIdGenerator<TEntity, TShardKey>
     where TDbContext : DbContext
     where TEntity : class
     where TShardKey : class

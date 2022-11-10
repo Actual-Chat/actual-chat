@@ -2,5 +2,6 @@ namespace ActualChat.Chat;
 
 public interface IAuthorsUpgradeBackend : ICommandService
 {
-    Task<ImmutableArray<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
+    Task<List<Symbol>> ListChatIds(string userId, CancellationToken cancellationToken);
+    Task<List<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken);
 }

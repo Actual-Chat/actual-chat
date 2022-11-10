@@ -37,7 +37,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         => _optionsReloadToken = optionsMonitor.OnChange(options => _options = options);
 
     /// <inheritdoc />
-    public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider scopeProvider, TextWriter textWriter)
+    public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider? scopeProvider, TextWriter textWriter)
     {
         var message = logEntry.Formatter!.Invoke(logEntry.State, logEntry.Exception);
         if (logEntry.Exception == null && message == null!)
@@ -82,9 +82,9 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         };
     }
 
-    private void WriteScopeInformation(Utf8JsonWriter writer, IExternalScopeProvider scopeProvider)
+    private void WriteScopeInformation(Utf8JsonWriter writer, IExternalScopeProvider? scopeProvider)
     {
-        if (!_options.IncludeScopes || scopeProvider == null!)
+        if (!_options.IncludeScopes || scopeProvider == null)
             return;
 
         writer.WriteStartArray("scopes");
