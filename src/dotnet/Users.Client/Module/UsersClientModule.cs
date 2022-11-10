@@ -4,7 +4,7 @@ using ActualChat.Kvas;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Users.Client.Module;
+namespace ActualChat.Users.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersClientModule : HostModule
@@ -25,9 +25,7 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
         fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
         fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
-        fusionClient.AddReplicaService<IContacts, IContactsClientDef>();
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
         fusionClient.AddReplicaService<IReadPositions, IReadPositionsClientDef>();
-        fusionClient.AddReplicaService<IRecentEntries, IRecentEntriesClientDef>();
     }
 }

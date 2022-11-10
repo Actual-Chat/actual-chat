@@ -17,8 +17,8 @@ public class ReactionsController : ControllerBase, IReactions
     }
 
     [HttpGet, Publish]
-    public Task<Reaction?> Get(Session session, Symbol chatEntryId, CancellationToken cancellationToken)
-        => Service.Get(session, chatEntryId, cancellationToken);
+    public Task<Reaction?> Get(Session session, string entryId, CancellationToken cancellationToken)
+        => Service.Get(session, entryId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<ReactionSummary>> ListSummaries(

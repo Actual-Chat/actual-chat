@@ -192,7 +192,7 @@ public static class EbmlHelper
         writer.Write(VInt.FromEncoded(identifier));
         writer.Write(VInt.EncodeSize(size));
         if (size == 4) {
-            var uInt = new Union { Float = value }.UInt;
+            var uInt = new NumericUnion { Float = value }.UInt;
             for (var i = 1; i <= 4; i++) {
                 var bytes = 4 - i;
                 var bits = bytes * 8;

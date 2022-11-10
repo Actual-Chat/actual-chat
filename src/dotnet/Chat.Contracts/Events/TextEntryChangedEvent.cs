@@ -4,9 +4,7 @@ namespace ActualChat.Chat.Events;
 
 [DataContract]
 public record TextEntryChangedEvent(
-    [property: DataMember(Order = 0)] string ChatId,
-    [property: DataMember(Order = 1)] long EntryId,
-    [property: DataMember(Order = 2)] string AuthorId,
-    [property: DataMember(Order = 3)] string Content,
-    [property: DataMember(Order = 4)] ChangeKind ChangeKind
+    [property: DataMember] ChatEntry Entry,
+    [property: DataMember] AuthorFull Author,
+    [property: DataMember] ChangeKind ChangeKind
     ) : IEvent;

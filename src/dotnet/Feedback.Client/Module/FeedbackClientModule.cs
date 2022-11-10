@@ -3,7 +3,7 @@ using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Feedback.Client.Module;
+namespace ActualChat.Feedback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class FeedbackClientModule : HostModule

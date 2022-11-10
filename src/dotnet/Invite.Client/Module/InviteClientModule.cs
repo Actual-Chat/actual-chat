@@ -3,7 +3,7 @@ using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Invite.Client.Module;
+namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class InviteClientModule : HostModule

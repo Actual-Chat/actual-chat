@@ -1,4 +1,5 @@
 @using Stl.Extensibility
+@using ActualChat.Contacts
 @implements IModalView<InviteAuthor.Model>
 @implements IDisposable
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -79,15 +80,12 @@
         var existingUserIds = new HashSet<Symbol>(
             await Authors.ListUserIds(Session, Chat.Id, DisposeToken));
 
-        var contacts = await Contacts.ListOwn(Session, DisposeToken);
-        var resolvedContacts = await contacts
-            .Select(async contact => {
-                // Default scheduler is used from here (in this block)
-                var account = await Accounts.Get(Session, contact.TargetUserId, DisposeToken).ConfigureAwait(false);
-                if (account == null)
-                    return null;
-
-                var presence = await UserPresences.Get(contact.TargetUserId, DisposeToken).ConfigureAwait(false);
+        var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
+        var contacts = await userContacts
+            .Select(async c => {
+                // Fine to use ConfigureAwait(false) here
+                var account = c.Account!;
+                var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
                 return new Contact() {
                     Account = account,
                     Presence = presence,
@@ -96,8 +94,7 @@
             })
             .Collect();
 
-        AllContacts = resolvedContacts
-            .SkipNullItems()
+        AllContacts = contacts
             .OrderBy(x => x.Account.Avatar.Name)
             .ToArray();
         FilteredContacts = AllContacts;
@@ -150,7 +147,7 @@
     public sealed record Model(Chat Chat);
 
     private sealed class Contact {
-        public Account Account { get; init;} = null!;
+        public Account Account { get; init; } = null!;
         public Presence Presence { get; init; }
         public bool IsExisting { get; init; }
         public bool IsChecked { get; set; }

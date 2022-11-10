@@ -42,7 +42,7 @@ public static class TestHostFactory
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
                     new MemoryConfigurationSource {
-                        InitialData = new Dictionary<string, string> {
+                        InitialData = new Dictionary<string, string?> {
                             { WebHostDefaults.EnvironmentKey, "Development" },
                             { WebHostDefaults.StaticWebAssetsKey, manifestPath },
                         },
@@ -97,7 +97,7 @@ public static class TestHostFactory
     {
         var toDelete = config.Sources
             .Where(s => (s is JsonConfigurationSource source
-                && source.Path.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
+                && (source.Path ?? "").StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
                 || s is EnvironmentVariablesConfigurationSource)
             .ToList();
         foreach (var source in toDelete)
@@ -113,7 +113,7 @@ public static class TestHostFactory
                 ReloadDelay = 100,
                 ReloadOnChange = false,
             });
-        config.AddInMemoryCollection(new Dictionary<string, string> {
+        config.AddInMemoryCollection(new Dictionary<string, string?> {
             { "CoreSettings:Instance", GetInstanceName(output) },
         });
         config.AddEnvironmentVariables();

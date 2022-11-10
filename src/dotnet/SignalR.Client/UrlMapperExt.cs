@@ -1,4 +1,4 @@
-namespace ActualChat.SignalR.Client;
+namespace ActualChat.SignalR;
 
 public static class UrlMapperExt
 {

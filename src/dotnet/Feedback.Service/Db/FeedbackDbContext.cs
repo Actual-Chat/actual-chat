@@ -14,6 +14,8 @@ public class FeedbackDbContext : DbContextBase
 
     public FeedbackDbContext(DbContextOptions options) : base(options) { }
 
+#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(FeedbackDbContext).Assembly).UseSnakeCaseNaming();
+#pragma warning restore IL2026
 }

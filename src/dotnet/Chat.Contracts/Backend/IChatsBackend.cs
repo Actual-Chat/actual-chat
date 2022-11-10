@@ -44,18 +44,10 @@ public partial interface IChatsBackend : IComputeService
 
     [CommandHandler]
     Task<Chat> Change(ChangeCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<TextEntryAttachment> CreateTextEntryAttachment(
-        CreateTextEntryAttachmentCommand command,
-        CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task<Chat> CreateAnnouncementsChat(CreateAnnouncementsChatCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task UpgradeChat(UpgradeChatCommand command, CancellationToken cancellationToken);
+    Task<TextEntryAttachment> CreateAttachment(CreateAttachmentCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(
@@ -66,29 +58,14 @@ public partial interface IChatsBackend : IComputeService
     ) : ICommand<Chat>, IBackendCommand;
 
     [DataContract]
-    public sealed record CreateAudioEntryCommand(
-        [property: DataMember]
-        ChatEntry AudioEntry
-    ) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
-
-    [DataContract]
     public sealed record UpsertEntryCommand(
         [property: DataMember] ChatEntry Entry,
         [property: DataMember] bool HasAttachments = false
     ) : ICommand<ChatEntry>, IBackendCommand;
 
     [DataContract]
-    public sealed record CreateTextEntryAttachmentCommand(
+    public sealed record CreateAttachmentCommand(
         [property: DataMember]
         TextEntryAttachment Attachment
     ) : ICommand<TextEntryAttachment>, IBackendCommand;
-
-    [DataContract]
-    public sealed record UpgradeChatCommand(
-        [property: DataMember] Symbol ChatId
-    ) : ICommand<Unit>, IBackendCommand;
-
-    [DataContract]
-    public sealed record CreateAnnouncementsChatCommand(
-    ) : ICommand<Chat>, IBackendCommand;
 }

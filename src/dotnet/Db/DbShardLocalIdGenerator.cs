@@ -8,11 +8,8 @@ using Stl.Redis;
 namespace ActualChat.Db;
 
 public interface IDbShardLocalIdGenerator<
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    TEntity,
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties
-        | DynamicallyAccessedMemberTypes.PublicMethods)]
-    in TShardKey>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] in TShardKey>
     where TShardKey : class
 {
     Task<long> Next(DbContext dbContext, TShardKey shardKey, CancellationToken cancellationToken);
@@ -20,11 +17,9 @@ public interface IDbShardLocalIdGenerator<
 
 public class DbShardLocalIdGenerator<
     TDbContext,
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    TEntity,
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties
-        | DynamicallyAccessedMemberTypes.PublicMethods)]
-    TShardKey> : IDbShardLocalIdGenerator<TEntity, TShardKey>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TShardKey>
+    : IDbShardLocalIdGenerator<TEntity, TShardKey>
     where TDbContext : DbContext
     where TEntity : class
     where TShardKey : class

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <ItemGroup>
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
   </ItemGroup>
+
 </Project>

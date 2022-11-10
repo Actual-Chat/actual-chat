@@ -78,7 +78,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();
-            db.AddEntityResolver<string, DbContact>();
+            db.AddEntityResolver<string, DbContactOld>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbReadPosition>();
 
@@ -103,7 +103,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             if (commandAssembly == typeof(EditUserCommand).Assembly
                 && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
-            if (commandAssembly == typeof(AccountFull).Assembly)
+            if (commandAssembly == typeof(IAccounts).Assembly) // Users.Contracts assembly
                 return true;
             return false;
         });
@@ -129,20 +129,16 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
-        services.AddSingleton<IUsersTempBackend, UsersTempBackend>();
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IAvatars, Avatars>();
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
-        fusion.AddComputeService<IContacts, Contacts>();
-        fusion.AddComputeService<IContactsBackend, ContactsBackend>();
         fusion.AddComputeService<IReadPositions, ReadPositions>();
         fusion.AddComputeService<IReadPositionsBackend, ReadPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
-        fusion.AddComputeService<IRecentEntries, RecentEntries>();
-        fusion.AddComputeService<IRecentEntriesBackend, RecentEntriesBackend>();
+        commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

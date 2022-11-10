@@ -64,7 +64,7 @@
     }
 
     [JSInvokable]
-    private async Task SetRating(int rating) {
+    public async Task SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;
         await JSRef.InvokeVoidAsync("updateRating", _rating - 1);
     }

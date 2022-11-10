@@ -41,12 +41,12 @@
 @code {
     private TabId _activeTabId;
 
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 

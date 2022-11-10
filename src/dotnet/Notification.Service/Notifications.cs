@@ -63,6 +63,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);

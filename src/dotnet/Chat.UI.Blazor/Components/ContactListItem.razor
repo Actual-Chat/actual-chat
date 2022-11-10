@@ -1,3 +1,4 @@
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<ContactListItem.Model>
 @{
     var m = State.ValueOrDefault;
@@ -17,9 +18,9 @@
     data-long-press-delay="500">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
-            <AccountCircle UserId="@Contact.TargetUserId" ShowPresence="true"/>
+            <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
             <span class="text-ellipsis whitespace-nowrap overflow-hidden">
-                <SearchUIHighlighter Text="@Contact.Avatar.Name"/>
+                <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
             </span>
         </div>
     </ChildContent>
@@ -52,9 +53,9 @@
     [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var presence = await UserPresences.Get(Contact.TargetUserId, cancellationToken);
-        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.OwnerUserId, Contact.TargetUserId);
-        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.TargetUserId);
+        var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
+        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
+        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
         var (isSelected, isListening, isRecording) =

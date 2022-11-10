@@ -33,19 +33,19 @@
     private readonly Action<IState, StateEventKind> _stateChangedHandler;
     private IState _state = null!;
 
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public IState State {
+    [Parameter] public string Class { get; set; } = "";
+#pragma warning disable BL0007
+    [Parameter] public IState State {
         get => _state;
         set {
-            if (_state == value)
+            if (ReferenceEquals(_state, value))
                 return;
             _state?.RemoveEventHandler(StateEventKind.All, _stateChangedHandler);
             _state = value;
             _state?.AddEventHandler(StateEventKind.All, _stateChangedHandler);
         }
     }
+#pragma warning restore BL0007
 
     public bool IsLoading => State == null! || State.Snapshot.UpdateCount == 0;
     public bool IsUpdating => State == null! || State.Snapshot.WhenUpdating().IsCompleted;

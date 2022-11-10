@@ -7,20 +7,20 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class ReadPositionsController: ControllerBase, IReadPositions
 {
-    private readonly IReadPositions _service;
-    private readonly ICommander _commander;
+    private IReadPositions Service { get; }
+    private ICommander Commander { get; }
 
     public ReadPositionsController(IReadPositions service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
     [HttpGet, Publish]
     public Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetOwn(session, chatId, cancellationToken);
+        => Service.GetOwn(session, chatId, cancellationToken);
 
     [HttpPost]
     public Task Set([FromBody] IReadPositions.SetCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 }

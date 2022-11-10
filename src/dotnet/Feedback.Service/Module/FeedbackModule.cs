@@ -12,13 +12,11 @@ namespace ActualChat.Feedback.Module;
 public class FeedbackModule : HostModule<FeedbackSettings>
 {
     public FeedbackModule(IPluginInfoProvider.Query _) : base(_)
-    {
-    }
+    { }
 
     [ServiceConstructor]
     public FeedbackModule(IPluginHost plugins) : base(plugins)
-    {
-    }
+    { }
 
     public override void InjectServices(IServiceCollection services)
     {

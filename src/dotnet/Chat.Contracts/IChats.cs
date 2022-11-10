@@ -1,14 +1,9 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod(MinCacheDuration = 60)]
-    Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AuthorRules> GetRules(
@@ -49,17 +44,9 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> CanJoin(
-        Session session,
-        string chatId,
-        CancellationToken cancellationToken);
-
+    Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken);
+    Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);

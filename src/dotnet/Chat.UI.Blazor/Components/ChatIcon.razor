@@ -33,6 +33,6 @@
         if (account is null)
             return Symbol.Empty;
 
-        return new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.User.Id);
+        return new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.Id);
     }
 }

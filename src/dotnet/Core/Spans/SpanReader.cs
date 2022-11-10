@@ -152,9 +152,9 @@ public ref struct SpanReader
 
         switch (size) {
         case 4:
-            return new Union { UInt = (uint)num.Value }.Float;
+            return new NumericUnion { UInt = (uint)num.Value }.Float;
         case 8:
-            return (float?)new Union { ULong = num.Value }.Double;
+            return (float?)new NumericUnion { ULong = num.Value }.Double;
         default:
             throw StandardError.Format("Incorrect float length.");
         }

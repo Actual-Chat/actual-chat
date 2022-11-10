@@ -98,9 +98,8 @@
     [Parameter] public EventCallback<SettingsTab?> ActiveTabChanged { get; set; }
     [Parameter] public EventCallback OnCloseModalClick { get; set; }
 
-    public IReadOnlyList<SettingsTab> Tabs => _tabs;
-    [Parameter]
-    public SettingsTab? ActiveTab {
+#pragma warning disable BL0007
+    [Parameter] public SettingsTab? ActiveTab {
         get => _activeTab;
         set {
             if (_activeTab == value)
@@ -111,8 +110,7 @@
             ActiveTabChanged.InvokeAsync(value);
         }
     }
-    [Parameter]
-    public string? DefaultTabId {
+    [Parameter] public string? DefaultTabId {
         get => _activeTab?.Id;
         set {
             if (_activeTab?.Id == value)
@@ -124,6 +122,9 @@
             ActiveTabChanged.InvokeAsync(tab);
         }
     }
+#pragma warning restore BL0007
+
+    public IReadOnlyList<SettingsTab> Tabs => _tabs;
 
     internal void RegisterTab(SettingsTab tab) {
         var indexToInsert = -1;

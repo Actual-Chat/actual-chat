@@ -1,4 +1,5 @@
 @page "/u/{UserId}"
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<UserPage.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -63,8 +64,8 @@
         if (account == null)
             return Model.None;
 
-        var contacts = await Contacts.ListOwn(Session, cancellationToken).ConfigureAwait(false);
-        var canAddToContacts = !contacts.Any(c => c.TargetUserId == account.Id);
+        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        var canAddToContacts = !contactIds.Any(cid => cid.IsUserContact(out var userId) && userId == account.Id);
         return new Model {
             Account = account,
             CanAddContact = canAddToContacts,
@@ -81,13 +82,11 @@
         try {
             var ownAccount = await Accounts.GetOwn(Session, default).Require();
             var account = await Accounts.Get(Session, UserId, default).Require();
-            var change = new Change<ContactDiff>() {
-                Create = new ContactDiff() {
-                    OwnerUserId = ownAccount.Id,
-                    TargetUserId = account.Id,
-                },
-            };
-            await UICommander.Run(new IContacts.ChangeCommand(Session, default, default, change));
+            var contactId = new ContactId(ownAccount.Id, account.Id, ContactKind.User);
+            var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {
+                Create = new Contact(contactId),
+            });
+            await UICommander.Run(command);
         }
         finally {
             IsAddingContact = false;

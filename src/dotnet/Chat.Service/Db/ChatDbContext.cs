@@ -23,6 +23,8 @@ public class ChatDbContext : DbContextBase
 
     public ChatDbContext(DbContextOptions options) : base(options) { }
 
+#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly).UseSnakeCaseNaming();
+#pragma warning restore IL2026
 }

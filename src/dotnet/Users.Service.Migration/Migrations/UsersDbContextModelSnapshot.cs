@@ -79,7 +79,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("avatars");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbContact", b =>
+            modelBuilder.Entity("ActualChat.Users.Db.DbContactOld", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
@@ -144,42 +144,6 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_read_positions");
 
                     b.ToTable("read_positions");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbRecentEntry", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Scope")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("scope");
-
-                    b.Property<string>("ShardKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("shard_key");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_recent_entries");
-
-                    b.ToTable("recent_entries");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>

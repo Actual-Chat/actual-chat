@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
 @inherits MenuBase
 
 @if (_contact != null) {
@@ -15,7 +16,7 @@
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is {Length: > 0}) {
-            _contact = await Contacts.GetOwn(Session, Arguments[0], CancellationToken.None);
+            _contact = await Contacts.Get(Session, Arguments[0], CancellationToken.None);
         }
     }
 }

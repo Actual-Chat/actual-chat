@@ -1,6 +1,6 @@
 ﻿using RestEase;
 
-namespace ActualChat.Feedback.Client;
+namespace ActualChat.Feedback;
 
 [BasePath("feedbacks")]
 public interface IFeedbacksClientDef

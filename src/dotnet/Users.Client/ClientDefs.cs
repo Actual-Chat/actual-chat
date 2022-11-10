@@ -1,7 +1,7 @@
 using ActualChat.Kvas;
 using RestEase;
 
-namespace ActualChat.Users.Client;
+namespace ActualChat.Users;
 
 [BasePath("accounts")]
 public interface IAccountsClientDef
@@ -39,19 +39,6 @@ public interface IAvatarsClientDef
     Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("recentEntries")]
-public interface IRecentEntriesClientDef
-{
-    [Get(nameof(ListOwn))]
-    Task<ImmutableArray<RecentEntry>> ListOwn(
-        Session session,
-        RecencyScope scope,
-        int limit,
-        CancellationToken cancellationToken);
-    [Post(nameof(Update))]
-    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
-}
-
 [BasePath("readPositions")]
 public interface IReadPositionsClientDef
 {
@@ -74,15 +61,4 @@ public interface IServerKvasClientDef
     Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
     [Post(nameof(MoveSessionKeys))]
     Task MoveSessionKeys([Body] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default);
-}
-
-[BasePath("contacts")]
-public interface IContactsClientDef
-{
-    [Get(nameof(GetOwn))]
-    Task<Contact?> GetOwn(Session session, string contactId, CancellationToken cancellationToken);
-    [Get(nameof(ListOwn))]
-    Task<ImmutableArray<Contact>> ListOwn(Session session, CancellationToken cancellationToken);
-    [Post(nameof(Change))]
-    Task<Contact> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
 }

@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Allows to delay splash screen removal in MAUI app.
+/// Delays splash screen removal in MAUI app.
 /// </summary>
 public sealed class LoadingUI
 {
@@ -20,6 +20,6 @@ public sealed class LoadingUI
     public void MarkLoaded()
     {
         if (_whenLoadedSource.TrySetResult(default))
-            Log.LogDebug("AppLoadingUI.Loaded");
+            Log.LogDebug("MarkLoaded");
     }
 }

@@ -1,17 +1,18 @@
 namespace ActualChat.Notification;
 
 public record NotificationEntry(
-    string NotificationId,
+    Symbol Id,
     NotificationType Type,
     string Title,
     string Content,
     string IconUrl,
-    Moment NotificationTime)
+    Moment NotificationTime
+    ) : IHasId<Symbol>, IRequirementTarget
 {
     public ChatNotificationEntry? Chat { get; init; }
     public MessageNotificationEntry? Message { get; init; }
 }
 
-public record MessageNotificationEntry(string ChatId, long EntryId, string AuthorId);
+public record MessageNotificationEntry(Symbol ChatId, long EntryId, string AuthorId);
 
-public record ChatNotificationEntry(string ChatId);
+public record ChatNotificationEntry(Symbol ChatId);

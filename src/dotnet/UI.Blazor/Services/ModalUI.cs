@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Blazored.Modal;
 using Blazored.Modal.Services;
 using Stl.Extensibility;
@@ -48,11 +49,14 @@ public sealed class ModalUI
         return whenCompletedSource.Task;
     }
 
-    private IModalRef ShowInternal<TModel>(Type componentType, TModel model, bool isFullScreen) where TModel : class
+    private IModalRef ShowInternal<TModel>(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
+        TModel model,
+        bool isFullScreen)
+        where TModel : class
     {
-        var modalOptions = new ModalOptions
-        {
-            Class = $"blazored-modal modal"
+        var modalOptions = new ModalOptions {
+            Class = "blazored-modal modal",
         };
         if (isFullScreen)
             modalOptions.PositionCustomClass = "position-fullscreen";

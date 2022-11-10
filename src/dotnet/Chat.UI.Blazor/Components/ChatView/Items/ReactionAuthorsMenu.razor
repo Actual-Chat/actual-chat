@@ -11,7 +11,7 @@
 </ul>
 
 @code {
-    private ImmutableList<string> _firstAuthorIds = ImmutableList<string>.Empty;
+    private ImmutableList<Symbol> _firstAuthorIds = ImmutableList<Symbol>.Empty;
     private string _emoji = "";
     [Inject] private IReactions Reactions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;

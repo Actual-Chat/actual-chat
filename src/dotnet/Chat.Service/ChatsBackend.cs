@@ -4,25 +4,24 @@ using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
+using ActualChat.Contacts;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
-using Stl.Generators;
-using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
+public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IRolesBackend RolesBackend { get; }
+    private IContactsBackend ContactsBackend { get; }
     private IMarkupParser MarkupParser { get; }
     private IChatMentionResolverFactory ChatMentionResolverFactory { get; }
-    private IContactsBackend ContactsBackend { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
@@ -33,9 +32,9 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
+        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMentionResolverFactory = services.GetRequiredService<BackendChatMentionResolverFactory>();
-        ContactsBackend = services.GetRequiredService<IContactsBackend>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
@@ -245,6 +244,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var (chatId, expectedVersion, change, creatorUserId) = command;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
             _ = Get(invChat.Id, default);
@@ -288,8 +288,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
-                var contact1Task = ContactsBackend.GetOrCreate(userId1, userId2, cancellationToken);
-                var contact2Task = ContactsBackend.GetOrCreate(userId2, userId1, cancellationToken);
+                var contact1Task = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
+                var contact2Task = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
                 await Task.WhenAll(contact1Task, contact2Task).ConfigureAwait(false);
             }
             else {
@@ -357,8 +357,8 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entry = command.Entry;
         var changeKind = entry.Id == 0 ? ChangeKind.Create : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
         var chatId = entry.ChatId;
-
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
@@ -406,18 +406,19 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         var userId = author!.UserId;
-        new TextEntryChangedEvent(chatId, entry.Id, authorId, entry.Content, changeKind)
-            .EnqueueOnCompletion(Queues.Chats.ShardBy(chatId), Queues.Users.ShardBy(userId));
+        new TextEntryChangedEvent(entry, author, changeKind)
+            .EnqueueOnCompletion(Queues.Users.ShardBy(userId), Queues.Chats.ShardBy(chatId));
         return entry;
     }
 
     // [CommandHandler]
-    public virtual async Task<TextEntryAttachment> CreateTextEntryAttachment(
-        IChatsBackend.CreateTextEntryAttachmentCommand command,
+    public virtual async Task<TextEntryAttachment> CreateAttachment(
+        IChatsBackend.CreateAttachmentCommand command,
         CancellationToken cancellationToken)
     {
         var attachment = command.Attachment;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             InvalidateTiles(command.Attachment.ChatId, ChatEntryType.Text, command.Attachment.EntryId, ChangeKind.Update);
             return default!;
@@ -449,6 +450,9 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         await JoinAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance)
@@ -627,7 +631,7 @@ public partial class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 author = await AuthorsBackend
                     .Get(chatId, authorId, cancellationToken)
                     .ConfigureAwait(false);
-            userId = author?.UserId ?? default;
+            userId = author?.UserId ?? Symbol.Empty;
         }
 
         var otherUserId = (userId1, userId2).OtherThan(userId);

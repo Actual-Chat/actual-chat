@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chat.Service\Chat.Service.csproj" />
+    <ProjectReference Include="..\Contacts.Service\Contacts.Service.csproj" />
+    <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
+
+</Project>

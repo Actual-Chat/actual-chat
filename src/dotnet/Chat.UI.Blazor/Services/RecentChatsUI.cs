@@ -1,5 +1,4 @@
-using ActualChat.Users;
-using ActualChat.Users.UI.Blazor.Services;
+using ActualChat.Contacts;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -7,24 +6,19 @@ public class RecentChatsUI : WorkerBase
 {
     private volatile ImmutableList<Chat> _listIncludingSelectedCached = ImmutableList<Chat>.Empty;
 
+    private Session Session { get; }
+    private IContacts Contacts { get; }
     private IChats Chats { get; }
     private UnreadMessages UnreadMessages { get; }
-    private IRecentEntries RecentEntries { get; }
     private ChatUI ChatUI { get; }
-    private Session Session { get; }
 
-    public RecentChatsUI(
-        IChats chats,
-        UnreadMessages unreadMessages,
-        IRecentEntries recentEntries,
-        ChatUI chatUI,
-        Session session)
+    public RecentChatsUI(IServiceProvider services)
     {
-        Chats = chats;
-        UnreadMessages = unreadMessages;
-        RecentEntries = recentEntries;
-        ChatUI = chatUI;
-        Session = session;
+        Session = services.GetRequiredService<Session>();
+        Contacts = services.GetRequiredService<IContacts>();
+        Chats = services.GetRequiredService<IChats>();
+        UnreadMessages = services.GetRequiredService<UnreadMessages>();
+        ChatUI = services.GetRequiredService<ChatUI>();
         Start();
     }
 
@@ -54,33 +48,7 @@ public class RecentChatsUI : WorkerBase
         return chats.FirstOrDefault(x => x.Id == Constants.Chat.DefaultChatId) ?? chats.FirstOrDefault();
     }
 
-    [ComputeMethod]
-    protected virtual async Task<ImmutableList<Chat>> List(CancellationToken cancellationToken)
-    {
-        var chats = await Chats.List(Session, cancellationToken).ConfigureAwait(false);
-        var chatIdsWithMentions = (await chats
-            .Select(async chat => {
-                var hasMentions = await UnreadMessages.HasMentions(chat.Id, cancellationToken).ConfigureAwait(false);
-                return (Chat: chat, HasMentions: hasMentions);
-            })
-            .Collect()
-            ).Where(x => x.HasMentions)
-            .Select(x => x.Chat.Id)
-            .ToHashSet();
-        var chatsWithMentions = chats.Where(x => chatIdsWithMentions.Contains(x.Id)).ToList();
-        var chatsWithoutMentions = chats.Where(x => !chatIdsWithMentions.Contains(x.Id)).ToList();
-        chatsWithMentions = await OrderByRecency(chatsWithMentions).ConfigureAwait(false);
-        chatsWithoutMentions = await OrderByRecency(chatsWithoutMentions).ConfigureAwait(false);
-
-        return chatsWithMentions.Concat(chatsWithoutMentions).ToImmutableList();
-
-        Task<List<Chat>> OrderByRecency(List<Chat> items)
-            => RecentEntries.OrderByRecency(Session,
-                items,
-                RecencyScope.Chat,
-                chats.Length,
-                cancellationToken);
-    }
+    // Protected methods
 
     protected override Task RunInternal(CancellationToken cancellationToken)
         => InvalidateListIncludingSelected(cancellationToken);
@@ -90,10 +58,32 @@ public class RecentChatsUI : WorkerBase
     {
         var selectedChat = await GetSelectedChat(cancellationToken).ConfigureAwait(false);
         var chats = await List(cancellationToken).ConfigureAwait(false);
-        if (selectedChat != null && !chats.Contains(selectedChat))
+        if (selectedChat != null && chats.All(c => c.Id != selectedChat.Id))
             chats = chats.Insert(0, selectedChat);
-
         return chats;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ImmutableList<Chat>> List(CancellationToken cancellationToken)
+    {
+        var contacts = await Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
+        var contactsWithMentions = (await contacts
+            .Select(async c => {
+                if (c.Chat == null)
+                    return (Contact: c, HasMentions: false);
+                var hasMentions = await UnreadMessages.HasMentions(c.ChatId, cancellationToken).ConfigureAwait(false);
+                return (Contact: c, HasMentions: hasMentions);
+            })
+            .Collect()
+            .ConfigureAwait(false)
+            ).ToList();
+
+        var result = contactsWithMentions
+            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
+            .Select(c => c.Contact.Chat)
+            .SkipNullItems()
+            .ToImmutableList();
+        return result;
     }
 
     private async Task InvalidateListIncludingSelected(CancellationToken cancellationToken)

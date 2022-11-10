@@ -8,8 +8,10 @@ namespace ActualChat.Db;
 
 public static class DbContextBuilderExt
 {
-    public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<TDbContext,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
+    public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<
+        TDbContext,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>
+    (
         this DbContextBuilder<TDbContext> dbContext,
         Func<TDbContext,DbSet<TEntity>> dbSetSelector,
         Expression<Func<TEntity, string, bool>> shardKeyFilter,
@@ -20,13 +22,11 @@ public static class DbContextBuilderExt
         => dbContext.AddShardLocalIdGenerator<TDbContext, TEntity, string>(
             dbSetSelector, shardKeyFilter, localIdSelector, maxLocalIdCacheFactory);
 
-    public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<TDbContext,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        TEntity,
-        [DynamicallyAccessedMembers(
-            DynamicallyAccessedMemberTypes.PublicProperties
-            | DynamicallyAccessedMemberTypes.PublicMethods)]
-        TShardKey>(
+    public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<
+        TDbContext,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TShardKey>
+    (
         this DbContextBuilder<TDbContext> dbContext,
         Func<TDbContext,DbSet<TEntity>> dbSetSelector,
         Expression<Func<TEntity, TShardKey, bool>> shardKeyFilter,

@@ -19,15 +19,15 @@ public class MobileAuthController : Controller
 {
     private const string CallbackScheme = "xamarinessentials";
 
-    private readonly IServiceProvider _services;
-    private readonly IAuth _auth;
-    private readonly ICommander _commander;
+    private IServiceProvider Services { get; }
+    private IAuth Auth { get; }
+    private ICommander Commander { get; }
 
     public MobileAuthController(IServiceProvider services, IAuth auth, ICommander commander)
     {
-        _services = services;
-        _auth = auth;
-        _commander = commander;
+        Services = services;
+        Auth = auth;
+        Commander = commander;
     }
 
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
@@ -72,7 +72,7 @@ public class MobileAuthController : Controller
         if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         else {
-            var helper = _services.GetRequiredService<ServerAuthHelper>();
+            var helper = Services.GetRequiredService<ServerAuthHelper>();
             await helper.UpdateAuthState(
                 new Session(sessionId),
                 HttpContext,
@@ -89,7 +89,7 @@ public class MobileAuthController : Controller
         code = WebUtility.UrlDecode(code);
 
         var schemeName = GoogleDefaults.AuthenticationScheme;
-        var options = _services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
+        var options = Services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
             .Get(schemeName);
 
         using var tokens = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
@@ -120,7 +120,7 @@ public class MobileAuthController : Controller
         var oldUser = HttpContext.User;
         HttpContext.User = principal;
         try {
-            var helper = _services.GetRequiredService<ServerAuthHelper>();
+            var helper = Services.GetRequiredService<ServerAuthHelper>();
             await helper.UpdateAuthState(
                     new Session(sessionId),
                     HttpContext,
@@ -191,8 +191,8 @@ public class MobileAuthController : Controller
     {
         var session = new Session(sessionId);
         // Ideally updatePresence should be done once important things are completed
-        await using var _ = AsyncDisposable.New(() => _auth.UpdatePresence(session, cancellationToken).ToValueTask()).ConfigureAwait(false);
-        await _commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
+        await using var _ = AsyncDisposable.New(() => Auth.UpdatePresence(session, cancellationToken).ToValueTask()).ConfigureAwait(false);
+        await Commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
 
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
     }

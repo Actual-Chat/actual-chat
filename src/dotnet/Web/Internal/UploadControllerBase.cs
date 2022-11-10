@@ -10,9 +10,11 @@ public abstract class UploadControllerBase : ControllerBase
     protected ISessionResolver SessionResolver => _sessionResolver ??= HttpContext.RequestServices.GetRequiredService<ISessionResolver>();
     private IContentSaver ContentSaver => _contentSaver ??= HttpContext.RequestServices.GetRequiredService<IContentSaver>();
 
-    protected async Task<IActionResult> Upload(Func<Task<IActionResult?>> validateRequest, Func<string> getContentIdPrefix, CancellationToken cancellationToken)
+    protected async Task<IActionResult> Upload(
+        Func<ValueTask<IActionResult?>> requestValidator,
+        Func<string> contentIdPrefixFormatter,
+        CancellationToken cancellationToken)
     {
-
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
             return BadRequest("No file content found");
@@ -27,15 +29,15 @@ public abstract class UploadControllerBase : ControllerBase
         if (file.Length > Constants.Chat.PictureFileSizeLimit)
             return BadRequest("Image is too big");
 
-        var validationResult = await validateRequest().ConfigureAwait(false);
+        var validationResult = await requestValidator.Invoke().ConfigureAwait(false);
         if (validationResult != null)
             return validationResult;
 
         var stream = file.OpenReadStream();
         await using var _ = stream.ConfigureAwait(false);
-        var fileExtension = Path.GetExtension(file.FileName);
-        var contentName = $"{Ulid.NewUlid().ToString()}{fileExtension}";
-        var contentId = $"{getContentIdPrefix()}{contentName}";
+
+        var fileName = $"{Ulid.NewUlid().ToString()}{Path.GetExtension(file.FileName)}";
+        var contentId = $"{contentIdPrefixFormatter.Invoke()}{fileName}";
 
         var content = new Content(contentId, file.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);

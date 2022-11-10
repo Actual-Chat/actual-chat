@@ -8,13 +8,13 @@ namespace ActualChat.Chat.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class ChatsController : ControllerBase, IChats
 {
-    private readonly IChats _service;
-    private readonly ICommander _commander;
+    private IChats Service { get; }
+    private ICommander Commander { get; }
 
     public ChatsController(IChats service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
     [HttpGet, Publish]
@@ -22,25 +22,21 @@ public class ChatsController : ControllerBase, IChats
     // and even though this is not valid parameter value, we want it to pass ASP.NET Core
     // parameter validation & trigger the error later.
     public Task<Chat?> Get(Session session, string? chatId, CancellationToken cancellationToken)
-        => _service.Get(session, chatId ?? "", cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<ImmutableArray<Chat>> List(Session session, CancellationToken cancellationToken)
-        => _service.List(session, cancellationToken);
+        => Service.Get(session, chatId ?? "", cancellationToken);
 
     [HttpGet, Publish]
     public Task<AuthorRules> GetRules(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
-        => _service.GetRules(session, chatId, cancellationToken);
+        => Service.GetRules(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatSummary?> GetSummary(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
-        => _service.GetSummary(session, chatId, cancellationToken);
+        => Service.GetSummary(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(
@@ -49,7 +45,7 @@ public class ChatsController : ControllerBase, IChats
         ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
-        => _service.GetEntryCount(session, chatId, entryType, idTileRange, cancellationToken);
+        => Service.GetEntryCount(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatTile> GetTile(
@@ -58,7 +54,7 @@ public class ChatsController : ControllerBase, IChats
         ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
-        => _service.GetTile(session, chatId, entryType, idTileRange, cancellationToken);
+        => Service.GetTile(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Range<long>> GetIdRange(
@@ -66,27 +62,19 @@ public class ChatsController : ControllerBase, IChats
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken)
-        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
+        => Service.GetIdRange(session, chatId, entryType, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken)
+        => Service.HasInvite(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.CanJoin(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<bool> CanPeerChat(Session session, string chatId, string authorId, CancellationToken cancellationToken)
-        => _service.CanPeerChat(session, chatId, authorId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<string?> GetPeerChatId(Session session, string chatId, string authorId, CancellationToken cancellationToken)
-        => _service.GetPeerChatId(session, chatId, authorId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<Contact?> GetPeerChatContact(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetPeerChatContact(session, chatId, cancellationToken);
+        => Service.CanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.ListMentionableAuthors(session, chatId, cancellationToken);
+        => Service.ListMentionableAuthors(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatEntry?> FindNext(
@@ -95,7 +83,7 @@ public class ChatsController : ControllerBase, IChats
         long? startEntryId,
         string text,
         CancellationToken cancellationToken)
-        => _service.FindNext(session, chatId,
+        => Service.FindNext(session, chatId,
             startEntryId,
             text,
             cancellationToken);
@@ -104,21 +92,21 @@ public class ChatsController : ControllerBase, IChats
 
     [HttpPost]
     public Task<Chat> Change([FromBody] IChats.ChangeCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task<Unit> Join([FromBody] IChats.JoinCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task Leave([FromBody] IChats.LeaveCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task<ChatEntry> UpsertTextEntry([FromBody] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task RemoveTextEntry([FromBody] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 }

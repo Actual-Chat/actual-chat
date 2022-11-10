@@ -1,6 +1,7 @@
 using System.Net.Mail;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -70,10 +71,9 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAccount = await dbContext.Accounts
-            .Get(account.Id, cancellationToken)
-            .ConfigureAwait(false)
-            ?? new DbAccount();
+        var dbAccount = await dbContext.Accounts.ForUpdate()
+            .SingleAsync(a => a.Id == account.Id.Value, cancellationToken)
+            .ConfigureAwait(false);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

@@ -1,4 +1,4 @@
-@using ActualChat.Users.UI.Blazor.Services
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<ContactListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
@@ -41,7 +41,6 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -58,11 +57,12 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var activeContactId = GetContactId(selectedChatId);
+            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
+            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
             contacts = (
                 from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Avatar.Name)
-                where rank > 0 || contact.TargetUserId == activeContactId
+                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
+                where rank > 0 || ReferenceEquals(selectedContact, contact)
                 orderby rank descending
                 select contact
                 ).ToList();
@@ -70,35 +70,23 @@
 
         var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.GetFullPeerChatId()))
+            .Where(c => pinnedChatIds.Contains(c.Id.ToFullChatId()))
             .ToList();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.GetFullPeerChatId()))
+            .Where(c => !pinnedChatIds.Contains(c.Id.ToFullChatId()))
             .ToList();
 
         return new Model {
             PinnedContacts = pinnedContacts,
             UnpinnedContacts = unpinnedContacts,
         };
-
-        Symbol GetContactId(string chatId) {
-            var targetUserId = ParsedChatId.TryParse(chatId, out var parsedChatId)
-                ? parsedChatId.GetPeerChatTargetUserId(account.User.Id)
-                : Symbol.Empty;
-            return contacts.All(c => c.TargetUserId != targetUserId)
-                ? Symbol.Empty
-                : // No active contact in the current group
-                targetUserId;
-        }
     }
 
     private async Task<List<Contact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
-        var contacts = await Contacts.ListOwn(Session, cancellationToken);
+        var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
         return tabId switch {
-            TabId.All => contacts.ToList(),
-            TabId.Recent => await RecentEntries
-                .OrderByRecency(Session, contacts, RecencyScope.Contact, Constants.Contact.MaxRecentContacts, cancellationToken)
-                .ConfigureAwait(false), // Ok here
+            TabId.All => contacts.OrderBy(c => c.Account!.Avatar.Name).ToList(),
+            TabId.Recent => contacts.OrderByDescending(c => c.TouchedAt).ToList(),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
     }

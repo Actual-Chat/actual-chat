@@ -97,23 +97,20 @@ public readonly struct ParsedChatId : IEquatable<ParsedChatId>, IHasId<Symbol>
     {
         RequirePeerFullChatId();
         var targetUserId = GetPeerChatTargetUserId(ownerUserId);
+        if (targetUserId.IsEmpty)
+            throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
         return FormatShortPeerChatId(targetUserId);
     }
 
     public Symbol GetPeerChatTargetUserId(Symbol ownerUserId)
     {
         switch (Kind) {
-        case ChatIdKind.Group:
-            return Symbol.Empty;
         case ChatIdKind.PeerShort:
             return UserId1;
         case ChatIdKind.PeerFull:
-            var targetUserId = (UserId1.Id, UserId2.Id).OtherThan(ownerUserId);
-            if (targetUserId.IsEmpty)
-                throw StandardError.Constraint("Specified peer chat Id doesn't belong to the specified user.");
-            return targetUserId;
+            return (UserId1.Id, UserId2.Id).OtherThan(ownerUserId);
         default:
-            throw StandardError.Format("Invalid chat Id format.");
+            return Symbol.Empty;
         }
     }
 

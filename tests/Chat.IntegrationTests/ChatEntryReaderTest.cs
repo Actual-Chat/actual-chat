@@ -91,7 +91,6 @@ public class ChatEntryReaderTest : AppHostTestBase
         }
     }
 
-
     [Fact]
     public async Task ReadTilesTest()
     {

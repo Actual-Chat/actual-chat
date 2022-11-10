@@ -39,7 +39,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         try {
             Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
             foreach (var chatId in candidateChatIds) {
-                var command = new IChatsBackend.UpgradeChatCommand(chatId);
+                var command = new IChatsUpgradeBackend.UpgradeChatCommand(chatId);
                 await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             }
             Log.LogInformation("Chats are upgraded");
@@ -95,7 +95,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no 'Announcements' chat, creating one");
-            var command = new IChatsBackend.CreateAnnouncementsChatCommand();
+            var command = new IChatsUpgradeBackend.CreateAnnouncementsChatCommand();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Announcements' chat is created");
         }
@@ -109,7 +109,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         try {
             Log.LogInformation("FixCorruptedReadPositions: started");
-            var command = new IChatsBackend.FixCorruptedReadPositionsCommand();
+            var command = new IChatsUpgradeBackend.FixCorruptedReadPositionsCommand();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("FixCorruptedReadPositions: completed");
         }

@@ -3,7 +3,7 @@ using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Notification.Client.Module;
+namespace ActualChat.Notification.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class NotificationClientModule : HostModule

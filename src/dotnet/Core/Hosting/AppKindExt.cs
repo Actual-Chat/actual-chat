@@ -16,7 +16,8 @@ public static class AppKindExt
                 ServiceScope.MauiApp,
                 ServiceScope.Client,
                 ServiceScope.BlazorUI),
-            AppKind.Test => AppKind.Test.GetRequiredServiceScopes().Add(ServiceScope.Test),
+            AppKind.TestServer => AppKind.WebServer.GetRequiredServiceScopes()
+                .Add(ServiceScope.Test),
             _ => throw new ArgumentOutOfRangeException(nameof(appKind), appKind, null),
         };
 }

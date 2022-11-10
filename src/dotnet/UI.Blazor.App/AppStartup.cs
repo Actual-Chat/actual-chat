@@ -1,19 +1,18 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Audio.Client.Module;
+using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
-using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
-using ActualChat.Feedback.Client.Module;
+using ActualChat.Contacts.Module;
+using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
-using ActualChat.Invite.Client.Module;
+using ActualChat.Invite.Module;
 using ActualChat.MediaPlayback.Module;
 using ActualChat.Module;
-using ActualChat.Notification.Client.Module;
+using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.Users.Client.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -59,10 +58,12 @@ namespace ActualChat.UI.Blazor.App
                 typeof(ChatModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
+                typeof(ContactsClientModule),
                 typeof(InviteClientModule),
                 typeof(UsersContractsModule),
                 typeof(UsersClientModule),
                 typeof(UsersBlazorUIModule),
+                typeof(UsersContractsModule),
                 typeof(FeedbackClientModule),
                 typeof(NotificationClientModule),
                 typeof(NotificationBlazorUIModule),
