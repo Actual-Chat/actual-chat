@@ -3,8 +3,7 @@ using ActualChat.Commands;
 namespace ActualChat.Chat.Events;
 
 [DataContract]
-public record TextEntryChangedEvent(
-    [property: DataMember] ChatEntry Entry,
+public record AuthorChangedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] ChangeKind ChangeKind
-    ) : IEvent;
+) : IEvent;

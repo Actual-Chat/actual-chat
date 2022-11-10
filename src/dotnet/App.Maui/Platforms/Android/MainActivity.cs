@@ -237,8 +237,8 @@ public class MainActivity : MauiAppCompatActivity
         {
             await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
             var serviceProvider = ScopedServicesAccessor.ScopedServices;
-            var appLoadingUI = serviceProvider.GetRequiredService<LoadingUI>();
-            await appLoadingUI.WhenLoaded.ConfigureAwait(true);
+            var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
+            await loadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
             Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap navigates to '{url}'");
             _ = handler.Handle(url);

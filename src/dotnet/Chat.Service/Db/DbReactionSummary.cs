@@ -9,8 +9,8 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatEntryId))]
 public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<ImmutableList<string>> AuthorIdsSerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<ImmutableList<string>>();
+    private static ITextSerializer<ImmutableList<Symbol>> AuthorIdsSerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<ImmutableList<Symbol>>();
 
     [Key] public string Id { get; set; } = null!;
     public string ChatEntryId { get; set; } = "";

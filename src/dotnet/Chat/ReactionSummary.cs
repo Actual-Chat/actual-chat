@@ -1,13 +1,15 @@
+using Stl.Versioning;
+
 namespace ActualChat.Chat;
 
-public record ReactionSummary
+public record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember] public string Id { get; init; } = "";
-    [DataMember] public string ChatEntryId { get; init; } = "";
+    [DataMember] public Symbol Id { get; init; } = "";
+    [DataMember] public long Version { get; init; }
+    [DataMember] public Symbol ChatEntryId { get; init; } = "";
     [DataMember] public string Emoji { get; init; } = "";
     [DataMember] public long Count { get; init; }
-    [DataMember] public long Version { get; init; }
-    public ImmutableList<string> FirstAuthorIds { get; init; } = ImmutableList<string>.Empty;
+    public ImmutableList<Symbol> FirstAuthorIds { get; init; } = ImmutableList<Symbol>.Empty;
 
     public ReactionSummary Increase()
         => this with { Count = Count + 1 };
@@ -19,11 +21,11 @@ public record ReactionSummary
         return result;
     }
 
-    public ReactionSummary AddAuthor(string authorId)
+    public ReactionSummary AddAuthor(Symbol authorId)
         => FirstAuthorIds.Count < Constants.Chat.ReactionFirstAuthorIdsLimit
             ? this with { FirstAuthorIds = FirstAuthorIds.Add(authorId) }
             : this;
 
-    public ReactionSummary RemoveAuthor(string authorId)
-        => this with { FirstAuthorIds = FirstAuthorIds.Remove(authorId, StringComparer.Ordinal) };
+    public ReactionSummary RemoveAuthor(Symbol authorId)
+        => this with { FirstAuthorIds = FirstAuthorIds.Remove(authorId) };
 }

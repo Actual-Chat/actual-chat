@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 public interface IReactions
 {
     [ComputeMethod]
-    Task<Reaction?> Get(Session session, Symbol chatEntryId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(Session session, string entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<ReactionSummary>> ListSummaries(

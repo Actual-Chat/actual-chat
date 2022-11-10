@@ -1,15 +1,15 @@
 namespace ActualChat.Chat;
 
 // TODO(FC): remove this model since it should not be used from client side
-public record Reaction : IHasId<string>, IRequirementTarget
+public record Reaction : IHasId<Symbol>, IRequirementTarget
 {
-    [DataMember] public string Id { get; init; } = "";
-    [DataMember] public string AuthorId { get; init; } = "";
-    [DataMember] public string ChatId { get; init; } = ""; // TODO(FC): try replacing with ChatEntryId
+    [DataMember] public Symbol Id { get; init; }
+    [DataMember] public Symbol AuthorId { get; init; }
+    [DataMember] public Symbol ChatId { get; init; } // TODO(FC): try replacing with ChatEntryId
     [DataMember] public long EntryId { get; init; }
     [DataMember] public string Emoji { get; init; } = "";
 
-    public void Deconstruct(out string authorId, out string chatId, out long entryId, out string emoji)
+    public void Deconstruct(out Symbol authorId, out Symbol chatId, out long entryId, out string emoji)
     {
         authorId = AuthorId;
         chatId = ChatId;

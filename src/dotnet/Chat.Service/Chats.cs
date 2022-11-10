@@ -424,7 +424,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (hasInvite)
             // Remove the invite
             new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null)
-                .EnqueueOnCompletion(Queues.Users);
+                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
     }
 
     // Assertions

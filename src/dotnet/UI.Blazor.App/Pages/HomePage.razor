@@ -7,13 +7,14 @@
 @{
     var m = State.LatestNonErrorValue;
     var account = m.Account;
-    if (!AccountFull.MustExist.IsSatisfied(account)) {
-        if (ReferenceEquals(account, AccountFull.None)) {
-            // Loaded, but user doesn't have an account
-            <Welcome/>
-        }
-        return; // Not yet loaded
+    if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
+        return;
+    if (ReferenceEquals(account, AccountFull.None)) { // Loaded, but user doesn't have an account
+        <Welcome/>
+        return;
     }
+
+    // Logged in
     if (!m.Link.IsNullOrEmpty() && !_navigated) {
         _navigated = true; // prevents multiple calls
         // Do automatic redirect on first load.
@@ -25,11 +26,11 @@
     private bool _navigated;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
@@ -62,7 +63,6 @@
     }
 
     public record Model(AccountFull Account, string Link) {
-        public static Model None { get; } = new(AccountFull.None, "");
         public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
     }
 }

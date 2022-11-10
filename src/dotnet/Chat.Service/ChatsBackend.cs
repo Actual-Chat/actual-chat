@@ -405,8 +405,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         var userId = author!.UserId;
-        new TextEntryChangedEvent(chatId, entry.Id, authorId, entry.Content, changeKind)
-            .EnqueueOnCompletion(Queues.Chats.ShardBy(chatId), Queues.Users.ShardBy(userId));
+        new TextEntryChangedEvent(entry, author, changeKind)
+            .EnqueueOnCompletion(Queues.Users.ShardBy(userId), Queues.Chats.ShardBy(chatId));
         return entry;
     }
 

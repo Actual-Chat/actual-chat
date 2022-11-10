@@ -37,6 +37,21 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTa
 
     public Symbol CompositeId { get; init; } = "";
 
+    public string GetContentOrDescription()
+    {
+        if (!Content.IsNullOrEmpty())
+            return Content;
+
+        var imageCount = Attachments.Count(x => x.IsImage());
+        var description = imageCount switch {
+            1 => "image",
+            > 1 => "images",
+            0 when Attachments.Length == 1 => Attachments[0].FileName,
+            _ => "files: " + string.Join(", ", Attachments.Select(x => x.FileName)),
+        };
+        return description;
+    }
+
     // This record relies on version-based equality
     public bool Equals(ChatEntry? other)
         => EqualityComparer.Equals(this, other);

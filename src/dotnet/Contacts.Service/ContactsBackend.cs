@@ -3,7 +3,6 @@ using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Users;
-using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -238,24 +237,58 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // Events
 
     [EventHandler]
+    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
+    {
+        var (author, _) = @event;
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var userId = author.UserId;
+        var chatId = author.ChatId;
+        if (userId.IsEmpty) // We do nothing for anonymous authors for now
+            return;
+
+        var parsedChatId = new ParsedChatId(chatId).RequireValid();
+        ContactId id;
+        switch (parsedChatId.Kind) {
+        case ChatIdKind.Group:
+            id = new ContactId(userId, chatId, ContactKind.Chat);
+            break;
+        case ChatIdKind.PeerFull:
+            id = new ContactId(userId, parsedChatId.GetPeerChatTargetUserId(userId), ContactKind.User);
+            break;
+        default:
+            Log.LogWarning("Invalid event (unsupported ChatId kind): {Event}", @event);
+            return;
+        }
+
+        var contact = await Get(userId, id, cancellationToken).ConfigureAwait(false);
+        if ((contact == null) == author.HasLeft)
+            return; // No need to make any changes
+
+        var change = author.HasLeft
+            ? new Change<Contact>() { Remove = true }
+            : new Change<Contact>() { Create = new Contact(id) };
+        var command = new IContactsBackend.ChangeCommand(id, null, change);
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (chatId, entryId, authorId, content, changeKind) = @event;
+        var (_, author, changeKind) = @event;
         if (changeKind != ChangeKind.Create)
             return;
 
-        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if (author == null || author.UserId.IsEmpty)
+        var userId = author.UserId;
+        var chatId = author.ChatId;
+        if (userId.IsEmpty) // We do nothing for anonymous authors for now
             return;
 
-        var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return;
-
-        var contact = await GetForChat(account.Id, chatId, cancellationToken).ConfigureAwait(false);
+        var contact = await GetForChat(userId, chatId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return;
 

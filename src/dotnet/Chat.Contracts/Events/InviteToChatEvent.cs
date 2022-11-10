@@ -4,6 +4,6 @@ namespace ActualChat.Chat.Events;
 
 [DataContract]
 public record InviteToChatEvent(
-    [property: DataMember(Order = 0)] string ChatId,
-    [property: DataMember(Order = 1)] string UserId
+    [property: DataMember] string ChatId,
+    [property: DataMember] string UserId
     ) : IEvent;

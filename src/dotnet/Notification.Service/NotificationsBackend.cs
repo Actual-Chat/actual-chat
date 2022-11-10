@@ -265,16 +265,17 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         TextEntryChangedEvent @event,
         CancellationToken cancellationToken)
     {
-        var (chatId, entryId, authorId, content, changeKind) = @event;
-        if (changeKind != ChangeKind.Create)
-            return;
-
         if (Computed.IsInvalidating())
             return;
 
-        var textContent = GetContent(content);
-        var userIds = await ListSubscriberIds(chatId, cancellationToken).ConfigureAwait(false);
-        await SendMessageRelatedNotifications(chatId, entryId, authorId, textContent, NotificationType.Message, userIds, cancellationToken).ConfigureAwait(false);
+        var (entry, author, changeKind) = @event;
+        if (changeKind != ChangeKind.Create)
+            return;
+
+        var text = GetText(entry);
+        var userIds = await ListSubscriberIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        await SendMessageRelatedNotifications(entry, author, text, NotificationType.Message, userIds, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     [EventHandler]
@@ -282,45 +283,34 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         ReactionChangedEvent @event,
         CancellationToken cancellationToken)
     {
-        var (chatEntryId, authorId, originalMessageAuthorUserId, emoji, originalMessageContent, isTextContent, changeKind) = @event;
-        if (changeKind == ChangeKind.Remove)
-            return;
-
         if (Computed.IsInvalidating())
             return;
 
-        var parsedChatEntryId = new ParsedChatEntryId(chatEntryId);
-        var author = await AuthorsBackend.Get(parsedChatEntryId.ChatId, authorId, cancellationToken).Require().ConfigureAwait(false);
-        if (author.UserId == originalMessageAuthorUserId)
+        var (entry, author, reactionAuthor, emoji, changeKind) = @event;
+        if (changeKind == ChangeKind.Remove)
+            return;
+        if (author.UserId.IsEmpty) // No notifs to anonymous users
+            return;
+        if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
-        var trimmedContent = GetContent(originalMessageContent, 30);
-        var textContent = isTextContent
-            ? $"{emoji} to your \"{trimmedContent}\""
-            : $"{emoji} to your {trimmedContent}";
-        await SendMessageRelatedNotifications(parsedChatEntryId.ChatId,
-                parsedChatEntryId.EntryId,
-                authorId,
-                textContent,
-                NotificationType.Reaction,
-                new[] { (Symbol)originalMessageAuthorUserId },
-                cancellationToken)
+        var text = $"{emoji} to \"{GetText(entry, 30)}\"";
+        var userIds = new[] { author.UserId };
+        await SendMessageRelatedNotifications(entry, author, text, NotificationType.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
     // Private methods
 
     private async Task SendMessageRelatedNotifications(
-        string chatId,
-        long entryId,
-        string authorId,
-        string textContent,
+        ChatEntry entry,
+        AuthorFull author,
+        string text,
         NotificationType notificationType,
         IEnumerable<Symbol> userIds,
         CancellationToken cancellationToken)
     {
-        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+        var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, author);
         var iconUrl = GetIconUrl(chat, author);
         var notificationTime = Clocks.CoarseSystemClock.Now;
@@ -333,10 +323,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                         Ulid.NewUlid().ToString(),
                         notificationType,
                         title,
-                        textContent,
+                        text,
                         iconUrl,
                         notificationTime) {
-                        Message = new MessageNotificationEntry(chatId, entryId, authorId),
+                        Message = new MessageNotificationEntry(entry.ChatId, entry.Id, author.Id),
                     })
                 .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
                 .ConfigureAwait(false);
@@ -358,9 +348,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
              _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
          };
 
-     private static string GetContent(string chatEventContent, int maxLength = 100)
+     private static string GetText(ChatEntry entry, int maxLength = 100)
      {
-         var markup = MarkupParser.ParseRaw(chatEventContent);
+         var content = entry.GetContentOrDescription();
+         var markup = MarkupParser.ParseRaw(content);
          markup = new MarkupTrimmer(maxLength).Rewrite(markup);
          return MarkupFormatter.ReadableUnstyled.Format(markup);
      }

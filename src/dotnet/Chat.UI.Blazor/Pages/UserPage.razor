@@ -83,7 +83,7 @@
             var ownAccount = await Accounts.GetOwn(Session, default).Require();
             var account = await Accounts.Get(Session, UserId, default).Require();
             var contactId = new ContactId(ownAccount.Id, account.Id, ContactKind.User);
-            var command = new IContacts.ChangeCommand(Session, contactId, default, new Change<Contact>() {
+            var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {
                 Create = new Contact(contactId),
             });
             await UICommander.Run(command);

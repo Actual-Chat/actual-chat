@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Db;
 using ActualChat.Kvas;
@@ -222,15 +223,16 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             };
             new IAvatarsBackend.ChangeCommand(newAvatar.Id, newAvatar.Version, new Change<AvatarFull>() {
                 Update = newAvatar,
-            }).EnqueueOnCompletion(Queues.Users);
+            }).EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
         }
 
         var chatTextIdRange = await ChatsBackend
             .GetIdRange(command.ChatId, ChatEntryType.Text, false, cancellationToken)
             .ConfigureAwait(false);
+        new AuthorChangedEvent(author, ChangeKind.Create)
+            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
         new IReadPositionsBackend.SetCommand(command.UserId, command.ChatId, chatTextIdRange.End - 1)
-            .EnqueueOnCompletion(Queues.Users);
-
+            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
         return author;
     }
 
@@ -240,7 +242,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var context = CommandContext.GetCurrent();
         var (chatId, authorId, hasLeft) = command;
         if (Computed.IsInvalidating()) {
-            var invAuthor = context.Operation().Items.Get<AuthorFull>()!;
+            var invAuthor = context.Operation().Items.Get<AuthorFull>();
+            if (invAuthor == null)
+                return default!; // No change was made
+
             var userId = invAuthor.UserId;
             if (!userId.IsEmpty) {
                 _ = GetByUserId(chatId, userId, default);
@@ -248,7 +253,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             }
             _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = ListAuthorIds(chatId, default);
-
             return default!;
         }
 
@@ -259,12 +263,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .Include(a => a.Roles)
             .SingleAsync(a => a.Id == authorId.Value, cancellationToken)
             .ConfigureAwait(false);
+        if (dbAuthor.HasLeft == hasLeft)
+            return dbAuthor.ToModel();
+
         dbAuthor.HasLeft = hasLeft;
         dbAuthor.Version = VersionGenerator.NextVersion(dbAuthor.Version);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var author = dbAuthor.ToModel();
         context.Operation().Items.Set(author);
+        new AuthorChangedEvent(author, ChangeKind.Update)
+            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
         return author;
     }
 
@@ -283,7 +292,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             }
             _ = Get(invAuthor.ChatId, invAuthor.Id, default);
             _ = ListAuthorIds(chatId, default);
-
             return default!;
         }
 
@@ -317,7 +325,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (account != null)
                 return WithAvatar(author, account.Avatar);
         }
-
         return WithAvatar(author, GetDefaultAvatar(author));
 
         AuthorFull WithAvatar(AuthorFull a, Avatar avatar)

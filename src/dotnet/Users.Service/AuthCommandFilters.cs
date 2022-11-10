@@ -92,7 +92,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var isNewUser = context.Operation().Items.Get<bool>(); // Set by default command handler
         if (isNewUser)
             new NewUserEvent(userId)
-                .EnqueueOnCompletion(Queues.Users);
+                .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
     }
 
     [CommandHandler(IsFilter = true, Priority = 1)]
