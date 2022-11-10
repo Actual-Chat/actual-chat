@@ -1,7 +1,6 @@
 import { PromiseSource } from 'promises';
 import { Log, LogLevel } from 'logging';
 import { audioContextLazy } from 'audio-context-lazy';
-import './browser-info.css'
 
 const LogScope = 'BrowserInfo';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
