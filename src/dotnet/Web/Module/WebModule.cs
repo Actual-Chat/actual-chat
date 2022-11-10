@@ -1,10 +1,12 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using ActualChat.Web.Internal;
 using Microsoft.AspNetCore.Builder;
 using Stl.Plugins;
 
 namespace ActualChat.Web.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class WebModule : HostModule, IWebModule
 {
     public WebModule(IPluginInfoProvider.Query _) : base(_) { }

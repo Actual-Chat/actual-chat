@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Backend;
@@ -8,6 +9,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Invite.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class InviteServiceModule : HostModule<InviteSettings>
 {
     public InviteServiceModule(IPluginInfoProvider.Query _) : base(_)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -18,6 +19,7 @@ using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersServiceModule : HostModule<UsersSettings>
 {
     public UsersServiceModule(IPluginInfoProvider.Query _) : base(_) { }

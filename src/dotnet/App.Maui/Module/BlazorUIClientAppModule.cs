@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
@@ -6,6 +7,7 @@ using Stl.Plugins;
 
 namespace ActualChat.App.Maui.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BlazorUIClientAppModule : HostModule, IBlazorUIModule
 {
     public BlazorUIClientAppModule(IPluginInfoProvider.Query _) : base(_) { }

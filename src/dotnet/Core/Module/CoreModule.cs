@@ -1,4 +1,5 @@
-﻿using ActualChat.Blobs.Internal;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Stl.Extensibility;
@@ -8,6 +9,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class CoreModule : HostModule<CoreSettings>
 {
     public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -40,7 +42,9 @@ public class CoreModule : HostModule<CoreSettings>
 
         // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
+ #pragma warning disable CS0618
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
+ #pragma warning restore CS0618
             : new DefaultObjectPoolProvider());
         services.AddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
 

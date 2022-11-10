@@ -1,9 +1,11 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.MediaPlayback.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class PlaybackModule : HostModule
 {
     public PlaybackModule(IPluginInfoProvider.Query _) : base(_) { }

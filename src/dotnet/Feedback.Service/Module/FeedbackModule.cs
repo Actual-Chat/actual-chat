@@ -1,4 +1,5 @@
-﻿using ActualChat.Db.Module;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Db.Module;
 using ActualChat.Feedback.Db;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -7,16 +8,15 @@ using Stl.Plugins;
 
 namespace ActualChat.Feedback.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class FeedbackModule : HostModule<FeedbackSettings>
 {
     public FeedbackModule(IPluginInfoProvider.Query _) : base(_)
-    {
-    }
+    { }
 
     [ServiceConstructor]
     public FeedbackModule(IPluginHost plugins) : base(plugins)
-    {
-    }
+    { }
 
     public override void InjectServices(IServiceCollection services)
     {

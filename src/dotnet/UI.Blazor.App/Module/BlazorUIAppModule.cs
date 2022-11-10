@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BlazorUIAppModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "blazorApp";

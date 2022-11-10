@@ -1,4 +1,5 @@
-﻿using ActualChat.Db.Module;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
@@ -11,6 +12,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Notification.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class NotificationModule : HostModule<NotificationSettings>
 {
     public NotificationModule(IPluginInfoProvider.Query _) : base(_)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal.Services;
@@ -8,6 +9,7 @@ using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";

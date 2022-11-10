@@ -1,13 +1,20 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualChat.UI.Blazor.App;
+using Stl.Interception.Interceptors;
 
 namespace ActualChat.App.Wasm;
 
 public static class Program
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
@@ -7,6 +8,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Kubernetes.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class KubernetesModule : HostModule<KubernetesSettings>
 {
     public KubernetesModule(IPluginInfoProvider.Query _) : base(_) { }

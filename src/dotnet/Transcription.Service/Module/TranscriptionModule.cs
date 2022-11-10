@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Transcription.Google;
 using Stl.Plugins;
 
 namespace ActualChat.Transcription.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class TranscriptionModule: HostModule
 {
     public TranscriptionModule(IPluginInfoProvider.Query _) : base(_) { }

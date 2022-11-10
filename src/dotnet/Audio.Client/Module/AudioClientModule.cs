@@ -1,10 +1,12 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using ActualChat.Transcription;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AudioClientModule : HostModule
 {
     public AudioClientModule(IPluginInfoProvider.Query _) : base(_) { }

@@ -1,9 +1,11 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Feedback.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class FeedbackClientModule : HostModule
 {
     public FeedbackClientModule(IPluginInfoProvider.Query _) : base(_) { }
