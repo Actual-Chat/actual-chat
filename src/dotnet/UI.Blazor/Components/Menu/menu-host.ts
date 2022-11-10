@@ -50,8 +50,6 @@ export class MenuHost implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
     ) {
         try {
-            updateVh();
-            window.addEventListener('resize', updateVh);
             this.listenForEvents();
         } catch (error) {
             errorLog?.log(`constructor: unhandled error:`, error);
@@ -66,7 +64,6 @@ export class MenuHost implements Disposable {
         this.disposed$.next();
         this.disposed$.complete();
         this.menus = [];
-        window.removeEventListener('resize', updateVh);
     }
 
     public showMenu(id: string): void {
@@ -254,11 +251,6 @@ export class MenuHost implements Disposable {
             coords: undefined,
         };
     }
-}
-
-function updateVh(): void {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 
 function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
