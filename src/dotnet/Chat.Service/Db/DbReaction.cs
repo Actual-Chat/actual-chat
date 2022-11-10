@@ -11,7 +11,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     public string AuthorId { get; set; } = "";
     public string ChatEntryId { get; set; } = "";
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
     public string Emoji { get; set; } = "";
 
     public DateTime? ModifiedAt {
