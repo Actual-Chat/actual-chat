@@ -29,7 +29,7 @@ public static class GoogleTranscriptReader
                     new StreamingRecognitionResult {
                         IsFinal = r.IsFinal,
                         Stability = r.Stability,
-                        ResultEndOffset = r.ResultEndTime.FromString(),
+                        ResultEndOffset = r.ResultEndOffset.FromString(),
                         Alternatives = {
                             r.Alternatives.Select(a =>
                                 new SpeechRecognitionAlternative {
@@ -39,9 +39,9 @@ public static class GoogleTranscriptReader
                                         a.Words == null ? Array.Empty<WordInfo>() : a.Words.Select(w =>
                                             new WordInfo {
                                                 Word = w.Word,
-                                                StartOffset = w.StartTime.FromString(),
-                                                EndOffset = w.EndTime.FromString(),
-                                                SpeakerLabel = w.SpeakerLabel
+                                                StartOffset = w.StartOffset.FromString(),
+                                                EndOffset = w.EndOffset.FromString(),
+                                                SpeakerLabel = w.SpeakerLabel,
                                             }),
                                     },
                                 }
@@ -75,7 +75,7 @@ public class Result
     public List<Alternative> Alternatives { get; set; } = null!;
     public float Stability { get; set; }
     public bool IsFinal { get; set; }
-    public string ResultEndTime { get; set; } = null!;
+    public string ResultEndOffset { get; set; } = null!;
 }
 
 public class Alternative
@@ -87,8 +87,8 @@ public class Alternative
 
 public class WordN
 {
-    public string StartTime { get; set; } = null!;
-    public string EndTime { get; set; } = null!;
+    public string StartOffset { get; set; } = null!;
+    public string EndOffset { get; set; } = null!;
     public string Word { get; set; } = null!;
     public string SpeakerLabel { get; set; } = null!;
 }
