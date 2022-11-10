@@ -1,9 +1,10 @@
 import './menu.css'
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
-import { empty, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
+import { empty, skipWhile, combineLatestWith, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
 import { computePosition, flip, Middleware, offset, Placement, shift, ReferenceElement, VirtualElement } from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
+import screenSize from '../../Services/ScreenSize/screen-size';
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MenuHost';
@@ -145,6 +146,9 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
+                combineLatestWith(screenSize.size),
+                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
@@ -169,6 +173,9 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
+                combineLatestWith(screenSize.size),
+                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
