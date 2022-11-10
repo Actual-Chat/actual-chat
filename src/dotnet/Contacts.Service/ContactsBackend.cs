@@ -191,7 +191,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             dbContact = await dbContext.Contacts.ForUpdate()
                 .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
                 .ConfigureAwait(false);
-            dbContact.RequireVersion(expectedVersion);
+            dbContact = dbContact.RequireVersion(expectedVersion);
             if (change.IsUpdate(out contact)) {
                 contact = contact with {
                     Version = VersionGenerator.NextVersion(dbContact.Version),
