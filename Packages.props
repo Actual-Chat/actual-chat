@@ -3,23 +3,21 @@
 
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.0-rc.2.22476.2</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.0</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>7.0.0-rc.2.22472.11</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>7.0.0</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.0-rc.2</EntityFrameworkCoreNpgsqlVersion>
-    <EntityFrameworkCoreMySqlVersion>6.0.2</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>7.0.0-rc.2.22472.3</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsLoggingVersion>7.0.0-rc.2.22472.3</MicrosoftExtensionsLoggingVersion>
-    <MySqlVersion>2.1.13</MySqlVersion>
+    <MicrosoftExtensionsVersion>7.0.0</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsLoggingVersion>7.0.0</MicrosoftExtensionsLoggingVersion>
     <NpgsqlVersion>7.0.0-rc2</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
     <RedisVersion>2.6.80</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>4.0.19</StlFusionVersion>
+    <StlFusionVersion>4.1.5</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <OpenTelemetryVersion>1.4.0-beta.2</OpenTelemetryVersion>
-    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.8</OpenTelemetryAspNetCoreVersion>
+    <OpenTelemetryVersion>1.4.0-beta.3</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.9</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -28,18 +26,18 @@
     <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="7.0.0-rc.2" />
     <PackageReference Update="FirebaseAdmin" Version="2.3.0" />
-    <PackageReference Update="Google.Api.Gax" Version="3.7.0" />
-    <PackageReference Update="Google.Api.Gax.Rest" Version="3.7.0" />
-    <PackageReference Update="Google.Api.Gax.Grpc" Version="3.7.0" />
+    <PackageReference Update="Google.Api.Gax" Version="4.2.0" />
+    <PackageReference Update="Google.Api.Gax.Rest" Version="4.2.0" />
+    <PackageReference Update="Google.Api.Gax.Grpc" Version="4.2.0" />
     <PackageReference Update="Google.Api.Gax.Grpc.GrpcCore" Version="3.7.0" />
     <PackageReference Update="Google.Apis" Version="1.57.0" />
     <PackageReference Update="Google.Apis.Auth" Version="1.57.0" />
-    <PackageReference Update="Google.Cloud.Storage.V1" Version="3.7.0" />
+    <PackageReference Update="Google.Cloud.Storage.V1" Version="4.1.0" />
     <!-- We use Grpc.Core from otlp exporter -->
-    <PackageReference Update="Grpc.Core" Version="2.46.3" />
+    <PackageReference Update="Grpc.Core" Version="2.46.5" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
-    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-beta07"/>
-    <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
+    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="3.0.0-beta01"/>
+    <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
     <PackageReference Update="MessagePack" Version="2.4.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.4.*"/>
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)"/>
@@ -52,20 +50,20 @@
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)"/>
-    <PackageReference Update="Microsoft.AspNetCore.Components.WebView.Maui" Version="7.0.0-rc.2.6866" />
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebView.Maui" Version="7.0.*" />
     <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="7.0.0-rc.2.22472.3"/>
+    <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsLoggingVersion)"/>
     <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Http.Polly" Version="7.0.0-rc.2.22476.2" />
+    <PackageReference Update="Microsoft.Extensions.Http.Polly" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
@@ -80,11 +78,9 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.JSInterop" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.2"/>
-    <PackageReference Update="MySqlConnector" Version="$(MySqlVersion)"/>
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)"/>
     <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)"/>
     <PackageReference Update="Newtonsoft.Json" Version="13.0.*"/>
-    <PackageReference Update="Pomelo.EntityFrameworkCore.MySql" Version="$(EntityFrameworkCoreMySqlVersion)"/>
     <PackageReference Update="RestEase" Version="1.5.*"/>
     <PackageReference Update="Pidgin" Version="3.2.0"/>
     <PackageReference Update="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
@@ -136,7 +132,7 @@
     <PackageReference Update="Crayon" Version="2.0.69"/>
 
     <!-- Build / test time only -->
-    <PackageReference Update="bunit" Version="1.11.7"/>
+    <PackageReference Update="bunit" Version="1.12.6"/>
     <PackageReference Update="FluentAssertions" Version="6.8.*"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="2.0.1" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.3.2"/>
@@ -156,9 +152,9 @@
     <!-- Analyzers -->
     <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.analyzers" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.3.48" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.4.27" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.744" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.746" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Generators -->
     <PackageReference Update="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>

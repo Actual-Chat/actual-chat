@@ -15,7 +15,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     [Key] public string Id { get; set; } = null!;
     public string ChatEntryId { get; set; } = "";
     public long Count { get; set; }
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
     public string Emoji { get; set; } = "";
     public string FirstAuthorIdsJson { get; set; } = "";
 

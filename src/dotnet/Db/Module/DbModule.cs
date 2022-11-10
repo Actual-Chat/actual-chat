@@ -1,5 +1,4 @@
 using ActualChat.Configuration;
-using ActualChat.Db.MySql;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
@@ -47,8 +46,6 @@ public class DbModule : HostModule<DbSettings>
                 => (DbKind.InMemory, suffix.Trim()),
             { } s when s.OrdinalHasPrefix("postgresql:", out var suffix)
                 => (DbKind.PostgreSql, suffix.Trim()),
-            { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
-                => (DbKind.MySql, suffix.Trim()),
             _ => throw StandardError.Format("Unrecognized database connection string."),
         };
         var dbInfo = new DbInfo<TDbContext> {
@@ -78,17 +75,6 @@ public class DbModule : HostModule<DbSettings>
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 builder.UseNpgsqlHintFormatter();
-                // To be enabled later (requires migrations):
-                // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
-                break;
-            case DbKind.MySql:
-                var serverVersion = ServerVersion.AutoDetect(dbInfo.ConnectionString);
-                builder.UseMySql(dbInfo.ConnectionString, serverVersion, mySql => {
-                    mySql.EnableRetryOnFailure(0);
-                    // mySql.MaxBatchSize(1);
-                    mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
-                });
-                builder.UseMySqlHintFormatter();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;

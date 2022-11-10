@@ -9,9 +9,7 @@
   <ItemGroup>
     <PackageReference Include="EFCore.CheckConstraints" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
-    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
     <PackageReference Include="Pipelines.Sockets.Unofficial" />
     <PackageReference Include="Stl.Fusion.Server" />
     <PackageReference Include="Stl.Fusion.EntityFramework" />
