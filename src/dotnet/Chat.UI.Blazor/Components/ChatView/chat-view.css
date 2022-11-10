@@ -23,30 +23,6 @@
     @apply text-06;
 }
 
-.chat-message-modal .chat-message:hover {
-    @apply bg-01;
-}
-.chat-message-modal .chat-message:hover .avatar-badge {
-    @apply bg-01;
-}
-
-.chat-message-modal .message-attachment-file a {
-    @apply cursor-default pointer-events-none;
-}
-
-.chat-message-modal .message-attachment-file a svg {
-    @apply hidden;
-}
-
-.chat-message-modal .message-attachment-image a {
-    @apply cursor-default pointer-events-none;
-}
-
-.chat-message-quoted {
-    height: 100%;
-    border-left: 4px solid;
-    @apply border-bg-03 cursor-pointer;
-}
 .chat-message-highlighted {
     @apply animate-highlight;
 }
@@ -138,7 +114,4 @@
 }
 .message-attachments + .chat-message-reactions {
     @apply mt-2;
-}
-.message-attachment-image img.skeleton {
-    @apply bg-skeleton rounded-md animate-pulse;
 }

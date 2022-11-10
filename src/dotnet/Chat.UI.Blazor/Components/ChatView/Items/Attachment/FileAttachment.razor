@@ -4,7 +4,7 @@
     var fileSize = Attachment.Length / (1024 * 1024d);
     var url = UrlMapper.ContentUrl(Attachment.ContentId);
 }
-<div class="message-attachment-file mt-1">
+<div class="file-attachment">
     <div class="flex w-[400px] p-2 bg-zinc-200 rounded-md items-center">
         <div class="pr-2">
             <svg class="text-indigo-400 fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -13,9 +13,9 @@
         </div>
         <div class="flex-1">
             <div>
-                <a class="text-blue-700 cursor-pointer overflow-hidden text-ellipsis hover:underline" href="@url" target="_blank" role="button">@Attachment.FileName</a>
+                <a class="file-attachment-name" href="@url" target="_blank" role="button">@Attachment.FileName</a>
             </div>
-            <div class="text-03 text-xs">@fileSize.ToString("N2") MB</div>
+            <div class="file-attachment-size">@fileSize.ToString("N2") MB</div>
         </div>
         <div>
             <a class="cursor-pointer" href="@url" target="_blank" role="button">

@@ -4,6 +4,7 @@ export * from './Components/MentionList/mention-list';
 export * from './Services/LanguageUI/language-ui';
 
 import './Components/components.css';
+import './Components/ChatView/Items/Attachment/attachment.css';
 import './Components/ChatView/Items/MessageReactions/message-reactions.css';
 import './Components/ChatView/Items/Quote/quote.css';
 import './Components/ChatView/chat-view.css';
