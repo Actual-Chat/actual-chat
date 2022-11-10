@@ -38,6 +38,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
     {
         var (entry, author, changeKind) = @event;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChangedAuthorIds = context.Operation().Items.Get<HashSet<Symbol>>();
             if (invChangedAuthorIds != null) {

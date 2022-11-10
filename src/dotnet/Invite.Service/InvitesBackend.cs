@@ -54,6 +54,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {
@@ -88,6 +89,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {

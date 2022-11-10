@@ -25,6 +25,7 @@ public class ReadPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositions
     {
         var (userId, chatId, readEntryId, force) = command;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             if (context.Operation().Items.Get<bool>())
                 _ = Get(userId, chatId, default);

@@ -68,9 +68,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     // [CommandHandler]
     public virtual async Task NotifyUser(INotificationsBackend.NotifyUserCommand command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
         var (userId, entry) = command;
         var notificationType = entry.Type;
+        var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invNotificationId = context.Operation().Items.GetOrDefault(Symbol.Empty);
             if (invNotificationId.IsEmpty) // Created
@@ -117,7 +118,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         async Task UpsertEntry(NotificationEntry entry1, CancellationToken cancellationToken1)
         {
-            var dbContext = CreateDbContext().ReadWrite();
+            var dbContext = await CreateCommandDbContext(cancellationToken1).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
 
             var dbEntry = await dbContext.Notifications.ForUpdate()
@@ -179,6 +180,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     public virtual async Task RemoveDevices(INotificationsBackend.RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invUserIds = context.Operation().Items.Get<HashSet<string>>();
             if (invUserIds is { Count: > 0 })
@@ -186,6 +188,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                     _ = ListDevices(invUserId, default);
             return;
         }
+
         var affectedUserIds = new HashSet<string>(StringComparer.Ordinal);
         var dbContext = CreateDbContext(readWrite: true);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -274,7 +277,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         var text = GetText(entry);
         var userIds = await ListSubscriberIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        await SendMessageRelatedNotifications(entry, author, text, NotificationType.Message, userIds, cancellationToken)
+        await EnqueueMessageRelatedNotifications(entry, author, text, NotificationType.Message, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -296,13 +299,13 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         var text = $"{emoji} to \"{GetText(entry, 30)}\"";
         var userIds = new[] { author.UserId };
-        await SendMessageRelatedNotifications(entry, author, text, NotificationType.Reaction, userIds, cancellationToken)
+        await EnqueueMessageRelatedNotifications(entry, author, text, NotificationType.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task SendMessageRelatedNotifications(
+    private async ValueTask EnqueueMessageRelatedNotifications(
         ChatEntry entry,
         AuthorFull author,
         string text,
@@ -316,20 +319,19 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var notificationTime = Clocks.CoarseSystemClock.Now;
         var otherUserIds = author.UserId.IsEmpty ? userIds : userIds.Where(uid => uid != author.UserId);
 
-        foreach (var otherUserId in otherUserIds)
-            await new INotificationsBackend.NotifyUserCommand(
-                    otherUserId,
-                    new NotificationEntry(
-                        Ulid.NewUlid().ToString(),
-                        notificationType,
-                        title,
-                        text,
-                        iconUrl,
-                        notificationTime) {
-                        Message = new MessageNotificationEntry(entry.ChatId, entry.Id, author.Id),
-                    })
-                .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
-                .ConfigureAwait(false);
+        foreach (var otherUserId in otherUserIds) {
+            var notificationEntry = new NotificationEntry(
+                Ulid.NewUlid().ToString(),
+                notificationType,
+                title,
+                text,
+                iconUrl,
+                notificationTime) {
+                Message = new MessageNotificationEntry(entry.ChatId, entry.Id, author.Id),
+            };
+            new INotificationsBackend.NotifyUserCommand(otherUserId, notificationEntry)
+                .EnqueueOnCompletion(Queues.Users.ShardBy(otherUserId));
+        }
     }
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)

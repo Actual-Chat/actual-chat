@@ -244,6 +244,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var (chatId, expectedVersion, change, creatorUserId) = command;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
             _ = Get(invChat.Id, default);
@@ -356,8 +357,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entry = command.Entry;
         var changeKind = entry.Id == 0 ? ChangeKind.Create : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
         var chatId = entry.ChatId;
-
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
@@ -417,6 +418,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var attachment = command.Attachment;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             InvalidateTiles(command.Attachment.ChatId, ChatEntryType.Text, command.Attachment.EntryId, ChangeKind.Update);
             return default!;
@@ -448,6 +450,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         await JoinAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance)

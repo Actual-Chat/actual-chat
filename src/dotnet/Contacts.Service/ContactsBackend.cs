@@ -150,8 +150,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         IContactsBackend.ChangeCommand command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
         var (id, expectedVersion, change) = command;
+        var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invContact = context.Operation().Items.Get<Contact>();
             if (invContact != null) {
@@ -244,10 +245,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
     {
-        var (author, _) = @event;
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
+        var (author, _) = @event;
         var userId = author.UserId;
         var chatId = author.ChatId;
         if (userId.IsEmpty) // We do nothing for anonymous authors for now

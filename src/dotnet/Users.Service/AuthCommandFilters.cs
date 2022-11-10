@@ -102,6 +102,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         // - Validates user name
 
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             return;

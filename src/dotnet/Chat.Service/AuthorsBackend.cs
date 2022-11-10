@@ -239,8 +239,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [CommandHandler]
     public virtual async Task<AuthorFull> ChangeHasLeft(IAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
         var (chatId, authorId, hasLeft) = command;
+        var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>();
             if (invAuthor == null)
@@ -281,8 +282,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [CommandHandler]
     public virtual async Task<AuthorFull> SetAvatar(IAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
         var (chatId, authorId, avatarId) = command;
+        var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>()!;
             var userId = invAuthor.UserId;

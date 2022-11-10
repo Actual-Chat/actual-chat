@@ -34,6 +34,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
     {
         var chatId = command.ChatId;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
             _ = Backend.Get(invChat.Id, default);
