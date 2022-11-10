@@ -5,6 +5,7 @@ export * from './Services/LanguageUI/language-ui';
 
 import './Components/components.css';
 import './Components/ChatView/Items/MessageReactions/message-reactions.css';
+import './Components/ChatView/Items/Quote/quote.css';
 import './Components/ChatView/chat-view.css';
 import './Components/ChatMenu/chat-menu.css';
 import './Components/MarkupParts/markup-parts.css';
