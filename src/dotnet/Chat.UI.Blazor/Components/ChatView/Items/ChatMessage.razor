@@ -53,7 +53,7 @@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
                     </div>
                 }
-                <div class="content message-content rounded-sm">
+                <div class="message-content rounded-sm">
                     @if (isReply) {
                         <QuotedMessage Message="@m.RepliedChatMessage"/>
                     }
@@ -63,9 +63,9 @@
                         <p class="chat-message-markup mx-1">
                             <CascadingValue Value="@entry" IsFixed="true">
                                 <MarkupView Markup="@Markup"/>
-                                </CascadingValue>
-                            </p>
-                        }
+                            </CascadingValue>
+                        </p>
+                    }
                     </div>
                     @if (entry.Attachments.Length > 0) {
                         <div class="message-attachments mx-1">

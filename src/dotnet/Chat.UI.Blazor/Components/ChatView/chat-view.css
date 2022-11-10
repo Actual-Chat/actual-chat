@@ -42,23 +42,6 @@
     @apply cursor-default pointer-events-none;
 }
 
-.chat-quote {
-    @apply flex-x w-full bg-03 py-2 px-2 text-base;
-}
-.close-reply.btn.btn-round .btn-content {
-    @apply bg-transparent min-w-8 max-w-8 min-h-8 max-h-8;
-}
-.chat-quote .btn.btn-square:hover .btn-content {
-    @apply bg-transparent;
-}
-
-.quoted-message {
-    @apply px-1.5 w-full h-12;
-    @apply flex-x items-center;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-03 cursor-pointer;
-}
-
 .chat-message-quoted {
     height: 100%;
     border-left: 4px solid;
