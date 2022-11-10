@@ -72,7 +72,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var (userId, entry) = command;
         var notificationType = entry.Type;
         if (Computed.IsInvalidating()) {
-            var invNotificationId = context.Operation().Items.Get<Symbol>();
+            var invNotificationId = context.Operation().Items.GetOrDefault(Symbol.Empty);
             if (invNotificationId.IsEmpty) // Created
                 _ = ListRecentNotificationIds(userId, default);
             else // Updated
