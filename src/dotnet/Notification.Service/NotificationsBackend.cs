@@ -329,8 +329,9 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 notificationTime) {
                 Message = new MessageNotificationEntry(entry.ChatId, entry.Id, author.Id),
             };
-            new INotificationsBackend.NotifyUserCommand(otherUserId, notificationEntry)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(otherUserId));
+            await new INotificationsBackend.NotifyUserCommand(otherUserId, notificationEntry)
+                .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
