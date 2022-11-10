@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "users";

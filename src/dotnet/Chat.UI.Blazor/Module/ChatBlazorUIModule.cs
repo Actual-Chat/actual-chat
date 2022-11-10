@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
@@ -8,6 +9,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";

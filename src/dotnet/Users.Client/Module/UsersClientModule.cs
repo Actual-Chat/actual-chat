@@ -1,10 +1,12 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Users.Client.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersClientModule : HostModule
 {
     public UsersClientModule(IPluginInfoProvider.Query _) : base(_) { }

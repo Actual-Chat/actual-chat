@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
@@ -26,6 +27,7 @@ using Stl.Plugins;
 
 namespace ActualChat.App.Server.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AppHostModule : HostModule<HostSettings>, IWebModule
 {
     public static string AppVersion { get; } =

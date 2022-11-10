@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Notification.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 {
     public NotificationBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }

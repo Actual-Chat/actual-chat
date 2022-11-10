@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Client.Module;
@@ -23,6 +24,22 @@ namespace ActualChat.UI.Blazor.App
 {
     public static class AppStartup
     {
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CoreModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaybackModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUICoreModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioBlazorUIModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatBlazorUIModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InviteClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersContractsModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersBlazorUIModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeedbackClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationBlazorUIModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUIAppModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatModule))]
         public static async Task ConfigureServices(IServiceCollection services, params Type[] platformPluginTypes)
         {
             // Commander - it must be added first to make sure its options are set
@@ -50,6 +67,7 @@ namespace ActualChat.UI.Blazor.App
                 typeof(NotificationClientModule),
                 typeof(NotificationBlazorUIModule),
                 typeof(BlazorUIAppModule),
+                typeof(ChatModule),
             };
             pluginTypes.AddRange(platformPluginTypes);
             pluginHostBuilder.UsePlugins(pluginTypes);

@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Invite.Client.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class InviteClientModule : HostModule
 {
     public InviteClientModule(IPluginInfoProvider.Query _) : base(_) { }
