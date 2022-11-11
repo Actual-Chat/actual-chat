@@ -1,7 +1,9 @@
 using ActualChat.Audio;
 using ActualChat.Module;
 using Google.Api.Gax;
+using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
+using Grpc.Core;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ActualChat.Transcription.Google;
@@ -11,18 +13,15 @@ public class GoogleTranscriber : ITranscriber
     private readonly Lazy<Task<Location>> _location;
 
     private CoreSettings CoreSettings { get; }
-    private TranscriptionOptions Options { get; }
     private IMemoryCache Cache { get; }
     private ILogger Log { get; }
 
     public GoogleTranscriber(
         CoreSettings coreSettings,
-        TranscriptionOptions options,
         IMemoryCache cache,
         ILogger<GoogleTranscriber>? log = null)
     {
         CoreSettings = coreSettings;
-        Options = options;
         Cache = cache;
         Log = log ?? NullLogger<GoogleTranscriber>.Instance;
         #pragma warning disable VSTHRD011
@@ -36,32 +35,38 @@ public class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         var recognizerId = transcriberKey.Value;
-        var recognizerTask = GetOrCreateRecognizer(recognizerId, cancellationToken);
+        var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
         var process = new GoogleTranscriberProcess(recognizerTask, options, audioSource, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
 
-        async Task<Recognizer> GetOrCreateRecognizer(string recognizerId1, CancellationToken cancellationToken1)
+        async Task<Recognizer> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
         {
             var recognizer = await Cache.GetOrCreateAsync(recognizerId1,
             async entry => {
                 var speechClient = await new SpeechClientBuilder().BuildAsync(cancellationToken1).ConfigureAwait(false);
                 var location = await _location.Value;
 
-                var parent = $"projects/{location.ProjectId}/locations/{location.RegionId}";
+                var parent = $"projects/{location.ProjectId}/locations/global";
                 var recognizerName = $"{parent}/recognizers/{recognizerId}";
-                var existingRecognizer = await speechClient.GetRecognizerAsync(
-                    new GetRecognizerRequest {
-                        Name = recognizerName,
-                    },
-                    cancellationToken1);
+                try {
+                    var existingRecognizer = await speechClient.GetRecognizerAsync(
+                        new GetRecognizerRequest {
+                            Name = recognizerName,
+                        },
+                        cancellationToken1);
+                    entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
+                    return existingRecognizer;
+                }
+                catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) { }
+
                 var newRecognizerOperation = await speechClient.CreateRecognizerAsync(
                     new CreateRecognizerRequest {
                         Parent = parent,
                         RecognizerId = recognizerId,
                         Recognizer = new Recognizer {
                             Model = "latest_long",
-                            DisplayName = recognizerName,
+                            DisplayName = recognizerId,
                             LanguageCodes = { options.Language },
                             DefaultRecognitionConfig = new RecognitionConfig {
                                 Features = new RecognitionFeatures {
@@ -69,7 +74,7 @@ public class GoogleTranscriber : ITranscriber
                                     MaxAlternatives = 1,
                                     DiarizationConfig = new SpeakerDiarizationConfig {
                                         MinSpeakerCount = 1,
-                                        MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
+                                        MaxSpeakerCount = options1.MaxSpeakerCount ?? 5,
                                     },
                                     EnableSpokenPunctuation = true,
                                     EnableSpokenEmojis = true,
@@ -81,15 +86,15 @@ public class GoogleTranscriber : ITranscriber
                                 AutoDecodingConfig = new AutoDetectDecodingConfig(),
                             },
                         },
-                    }, cancellationToken1);
+                    }, new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(10)), null, null, WriteOptions.Default, null));
 
                 var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync();
                 var newRecognizer = completedNewRecognizerOperation.Result;
                 entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
-                return newRecognizer;
+                return newRecognizer!;
             });
 
-            return recognizer;
+            return recognizer!;
         }
     }
 
@@ -99,6 +104,9 @@ public class GoogleTranscriber : ITranscriber
             return new Location(CoreSettings.GoogleProjectId, CoreSettings.GoogleRegionId);
 
         var platform = await Platform.InstanceAsync().ConfigureAwait(false);
+        if (platform?.GaeDetails == null)
+            throw StandardError.NotSupported<GoogleTranscriber>(
+                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}/{nameof(CoreSettings.GoogleRegionId)}");
         return new Location(platform.ProjectId, platform.GkeDetails.Location);
     }
 
