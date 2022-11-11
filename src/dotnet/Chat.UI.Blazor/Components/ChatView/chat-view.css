@@ -109,9 +109,9 @@
 .message-hover-menu .btn.btn-round:hover .btn-content {
     @apply bg-round-hover;
 }
-.message-content + .chat-message-reactions {
+.message-content + .message-reactions {
     @apply mt-0.5;
 }
-.message-attachments + .chat-message-reactions {
+.message-attachments + .message-reactions {
     @apply mt-2;
 }

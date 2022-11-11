@@ -79,11 +79,11 @@
                     </div>
                 }
                 @if (entry.HasReactions) {
-                    <MessageReactions ChatEntry="@entry" Class="chat-message-reactions" />
+                    <MessageReactions ChatEntry="@entry" />
                 }
             </div>
-            </div>
         </div>
+    </div>
 
     @if (!message.IsQuote) {
         <div class="message-hover-menu-placement placement"></div>
