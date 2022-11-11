@@ -49,11 +49,11 @@ public class PlaywrightTest : AppHostTestBase
         lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
         lastMessage.Should().Be("Test-123");
 
-        static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessagesCount)
+        static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessageCount)
         {
             var stopTime = DateTime.Now + timeout;
             var newMessages = await GetMessages(page).ConfigureAwait(false);
-            while (newMessages.Count == oldMessagesCount) {
+            while (newMessages.Count == oldMessageCount) {
                 await Task.Delay(500).ConfigureAwait(false);
                 newMessages = await GetMessages(page).ConfigureAwait(false);
                 if (DateTime.Now >= stopTime) {

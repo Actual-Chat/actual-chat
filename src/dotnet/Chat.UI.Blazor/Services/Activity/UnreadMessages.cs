@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class UnreadMessages : WorkerBase
 {
-    private const int MaxUnreadChatsCount = 99;
+    private const int MaxUnreadChatCount = 99;
     private readonly Dictionary<Symbol, SharedResourcePool<Symbol, ChatUnreadMessages>.Lease> _leases = new (); // caching leases to prevent UnreadMessages recreation
     private readonly SharedResourcePool<Symbol, ChatUnreadMessages> _pool;
 
@@ -46,7 +46,7 @@ public class UnreadMessages : WorkerBase
     {
         var counts = await GetCounts(chatIds, cancellationToken);
         var count = counts.Sum(x => x.Value > 0 ? 1 : 0);
-        return (count, MaxUnreadChatsCount);
+        return (count, MaxUnreadChatCount);
     }
 
     public async Task<MaybeTrimmed<int>> GetCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)

@@ -17,7 +17,7 @@
 </ul>
 
 @code {
-    private const int MaxReactionsCount = 7;
+    private const int MaxReactionCount = 7;
     private bool _areReactionsEnabled;
     private Emoji[] _emojis = null!;
 
@@ -35,7 +35,7 @@
 
     protected override void OnParametersSet() {
         var skipCount = ShowDefaultReaction ? 0 : 1;
-        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionsCount).ToArray();
+        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
     }
 
     private Task React(string emoji) {
