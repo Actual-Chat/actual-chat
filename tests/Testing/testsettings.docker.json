@@ -2,6 +2,12 @@
   "HostSettings": {
     "AppKind": "TestServer"
   },
+  "CoreSettings": {
+    "Instance": "dev",
+    "GoogleStorageBucket": "",
+    "GoogleProjectId": "",
+    "GoogleRegionId": "us-central1"
+  },
   "RedisSettings": {
     "DefaultRedis": "redis|test_{instance.}{context}"
   },

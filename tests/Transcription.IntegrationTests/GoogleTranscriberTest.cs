@@ -1,18 +1,24 @@
 using ActualChat.Audio;
+using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Transcription.Google;
+using FluentAssertions.Common;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Stl.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
 public class GoogleTranscriberTest : TestBase
 {
-    private IServiceProvider Services { get; }
     private ILogger<GoogleTranscriber> Log { get; }
+    private CoreSettings CoreSettings { get; }
 
-    public GoogleTranscriberTest(IServiceProvider services, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+    public GoogleTranscriberTest(IConfiguration configuration, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
     {
-        Services = services;
         Log = log;
+        CoreSettings = configuration.GetSettings<CoreSettings>();
     }
 
     [Theory]
@@ -20,7 +26,9 @@ public class GoogleTranscriberTest : TestBase
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
-        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        var transcriber = new GoogleTranscriber(
+            CoreSettings,
+            new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -40,7 +48,9 @@ public class GoogleTranscriberTest : TestBase
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
-        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        var transcriber = new GoogleTranscriber(
+            CoreSettings,
+            new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
