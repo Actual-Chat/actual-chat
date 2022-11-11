@@ -10,6 +10,7 @@
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
     if (ReferenceEquals(account, AccountFull.None)) { // Loaded, but user doesn't have an account
+        _signInHasRequested = true;
         <Welcome/>
         return;
     }
@@ -24,6 +25,7 @@
 
 @code {
     private bool _navigated;
+    private bool _signInHasRequested;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
@@ -43,7 +45,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
         var link = "";
-        if (HistoryUI.IsInitialLocation) {
+        if (HistoryUI.IsInitialLocation || _signInHasRequested) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
                 link = Links.ChatPage("");
             else {
