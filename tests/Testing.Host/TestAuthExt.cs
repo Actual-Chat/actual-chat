@@ -98,13 +98,9 @@ public static class TestAuthExt
 
     private static async Task StartClientSignInWith(string scheme, IPage page)
     {
-        var signInButton = await page.WaitForSelectorAsync("button :text(\"Sign in\")");
-        signInButton.Should().NotBeNull();
-        await signInButton!.ClickAsync();
-
-        var signInWithBtn = await page.WaitForSelectorAsync($"button :text(\"Sign in with {scheme}\")");
-        signInWithBtn.Should().NotBeNull();
-        await signInWithBtn!.ClickAsync();
+        var continueWithGoogleBtn = await page.WaitForSelectorAsync("button :text(\"Continue with Google\")");
+        continueWithGoogleBtn.Should().NotBeNull();
+        await continueWithGoogleBtn!.ClickAsync();
     }
 
     private static async Task HandleGoogleSignInPopup(string user, string password, IPage page)
