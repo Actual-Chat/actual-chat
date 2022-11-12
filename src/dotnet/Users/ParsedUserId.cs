@@ -24,7 +24,7 @@ public readonly struct ParsedUserId : IEquatable<ParsedUserId>, IHasId<Symbol>
         for (var i = 0; i < idValue.Length; i++) {
             var c = idValue[i];
             if (!char.IsLetterOrDigit(c)) {
-                if (c == '@' && i == 0)
+                if (c == GuestId.PrefixChar && i == 0)
                     continue; // GuestId
                 IsValid = false;
                 return;

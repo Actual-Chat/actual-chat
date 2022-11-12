@@ -7,18 +7,19 @@ namespace ActualChat.Users;
 public record struct GuestId(
     [property: DataMember(Order = 0)] Symbol Id)
 {
-    private static RandomStringGenerator IdGenerator { get; } = new(8, Alphabet.AlphaNumeric);
+    private static readonly RandomStringGenerator IdGenerator = new(8, Alphabet.AlphaNumeric);
+    public static readonly char PrefixChar = '~';
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsValid {
         get {
             var value = Id.Value;
-            return value.Length > IdGenerator.Length && value[0] == '~';
+            return value.Length > IdGenerator.Length && value[0] == PrefixChar;
         }
     }
 
     public static GuestId New()
-        => ZString.Concat('~', IdGenerator.Next());
+        => ZString.Concat(PrefixChar, IdGenerator.Next());
 
     public GuestId RequireValid()
         => IsValid ? this : throw StandardError.Format("Invalid guest Id format.");
