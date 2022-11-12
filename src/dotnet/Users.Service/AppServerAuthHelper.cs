@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Users;
@@ -25,6 +26,22 @@ public class AppServerAuthHelper : ServerAuthHelper
         if (isCloseWindowRequest && request.Query.TryGetValue("flow", out var flows))
             closeWindowFlowName = flows.FirstOrDefault() ?? "";
         return isCloseWindowRequest;
+    }
+
+    protected override Task<SessionInfo> SetupSession(
+        Session session,
+        SessionInfo? sessionInfo,
+        string ipAddress,
+        string userAgent,
+        CancellationToken cancellationToken)
+    {
+        var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
+        var options = sessionInfo?.Options ?? ImmutableOptionSet.Empty;
+        if (!options.GetOrDefault<GuestId>().IsValid)
+            setupSessionCommand = setupSessionCommand with {
+                Options = ImmutableOptionSet.Empty.Set(GuestId.New()),
+            };
+        return Commander.Call(setupSessionCommand, true, cancellationToken);
     }
 
     protected override (User User, UserIdentity AuthenticatedIdentity) CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema)

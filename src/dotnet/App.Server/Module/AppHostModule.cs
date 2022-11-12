@@ -3,7 +3,6 @@ using System.IO.Compression;
 using System.Net;
 using System.Reflection;
 using ActualChat.Commands;
-using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
@@ -22,6 +21,7 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Authentication;
 using Stl.Generators;
 using Stl.Plugins;
 
