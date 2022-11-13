@@ -146,7 +146,7 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
-                combineLatestWith(screenSize.size),
+                combineLatestWith(screenSize.size$),
                 skipWhile(([_, screenSize]) => screenSize === 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
@@ -173,7 +173,7 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
-                combineLatestWith(screenSize.size),
+                combineLatestWith(screenSize.size$),
                 skipWhile(([_, screenSize]) => screenSize === 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),

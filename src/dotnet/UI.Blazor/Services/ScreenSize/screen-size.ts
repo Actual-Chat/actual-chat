@@ -45,7 +45,7 @@ export class ScreenSize {
         );
     }
 
-    public get size(): Observable<Size> {
+    public get size$(): Observable<Size> {
         return this.screenSize$;
     }
 
