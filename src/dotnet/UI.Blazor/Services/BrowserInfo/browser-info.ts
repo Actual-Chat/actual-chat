@@ -29,7 +29,7 @@ export class BrowserInfo {
             audioContextLazy.doNotWaitForInteraction();
         }
 
-        screenSize.size
+        screenSize.size$
             .pipe(take(1))
             .subscribe(size => {
                 const initResult: InitResult = {
@@ -40,7 +40,7 @@ export class BrowserInfo {
                 };
 
                 void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
-                screenSize.size.subscribe(x => this.onScreenSizeChanged(x))
+                screenSize.size$.subscribe(x => this.onScreenSizeChanged(x))
             });
 
         return this;
