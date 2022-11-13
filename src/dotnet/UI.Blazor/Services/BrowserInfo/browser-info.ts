@@ -1,6 +1,8 @@
 import { PromiseSource } from 'promises';
 import { Log, LogLevel } from 'logging';
 import { audioContextLazy } from 'audio-context-lazy';
+import { take } from 'rxjs';
+import screenSize from '../ScreenSize/screen-size';
 
 const LogScope = 'BrowserInfo';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -8,31 +10,17 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class BrowserInfo {
-    private static screenSizeMeasureDiv: HTMLDivElement = null;
     private static backendRef: DotNet.DotNetObject = null;
     private static _isMaui: boolean = null;
 
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
-    public static screenSize: string;
     public static utcOffset: number;
     public static isTouchCapableCached: boolean = null;
     public static windowId: string = "";
 
     public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): BrowserInfo {
         this.backendRef = backendRef1;
-        this.screenSizeMeasureDiv = document.createElement("div");
-        this.screenSizeMeasureDiv.className = "screen-size-measure";
-        document.body.appendChild(this.screenSizeMeasureDiv);
-        this.screenSizeMeasureDiv.innerHTML = `
-            <div data-size="ExtraLarge2"></div>
-            <div data-size="ExtraLarge"></div>
-            <div data-size="Large"></div>
-            <div data-size="Medium"></div>
-            <div data-size="Small"></div>
-        `
-        window.addEventListener('resize', this.onWindowResize);
         this.utcOffset = new Date().getTimezoneOffset();
-        this.screenSize = this.measureScreenSize();
         // @ts-ignore
         this.windowId = window.App.windowId;
         this.whenReady.resolve(undefined);
@@ -41,14 +29,19 @@ export class BrowserInfo {
             audioContextLazy.doNotWaitForInteraction();
         }
 
-        const initResult: InitResult = {
-            screenSizeText: this.screenSize,
-            utcOffset: this.utcOffset,
-            isTouchCapable: this.isTouchCapable,
-            windowId: this.windowId,
-        };
+        screenSize.size
+            .pipe(take(1))
+            .subscribe(size => {
+                const initResult: InitResult = {
+                    screenSizeText: size,
+                    utcOffset: this.utcOffset,
+                    isTouchCapable: this.isTouchCapable,
+                    windowId: this.windowId,
+                };
 
-        void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
+                void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
+                screenSize.size.subscribe(x => this.onScreenSizeChanged(x))
+            });
 
         return this;
     }
@@ -71,35 +64,6 @@ export class BrowserInfo {
     private static onScreenSizeChanged(screenSize: string): void {
         debugLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize)
-    };
-
-    // Event handlers
-
-    private static onWindowResize = (event: Event) => {
-        const screenSize = this.measureScreenSize();
-        if (screenSize === this.screenSize)
-            return;
-
-        this.screenSize = screenSize;
-        this.onScreenSizeChanged(this.screenSize);
-    };
-
-    // Private methods
-
-    private static measureScreenSize(): string {
-        let itemDiv : HTMLDivElement = null;
-        for (const item of this.screenSizeMeasureDiv.children) {
-            itemDiv = item as HTMLDivElement;
-            if (!item)
-                continue;
-
-            const isVisible = window.getComputedStyle(itemDiv).getPropertyValue('width') !== 'auto';
-            debugLog?.log(`measureScreenSize: size:`, itemDiv.dataset['size'], ', isVisible:', isVisible);
-            if (isVisible)
-                return itemDiv.dataset['size'];
-        }
-        // Returning the last "available" size
-        return itemDiv.dataset['size'] ?? "Unknown";
     };
 }
 
