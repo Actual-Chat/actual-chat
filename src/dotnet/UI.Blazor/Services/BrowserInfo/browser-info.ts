@@ -18,7 +18,7 @@ export class BrowserInfo {
     public static isTouchCapableCached: boolean = null;
     public static windowId: string = "";
 
-    public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): InitResult {
+    public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): BrowserInfo {
         this.backendRef = backendRef1;
         this.screenSizeMeasureDiv = document.createElement("div");
         this.screenSizeMeasureDiv.className = "screen-size-measure";
@@ -41,12 +41,16 @@ export class BrowserInfo {
             audioContextLazy.doNotWaitForInteraction();
         }
 
-        return {
+        const initResult: InitResult = {
             screenSizeText: this.screenSize,
             utcOffset: this.utcOffset,
             isTouchCapable: this.isTouchCapable,
             windowId: this.windowId,
-        }
+        };
+
+        void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
+
+        return this;
     }
 
     public static get isTouchCapable(): boolean {
