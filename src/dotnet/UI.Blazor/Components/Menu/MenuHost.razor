@@ -5,12 +5,24 @@
 
 <div class="ac-menu-host @(GetHostCssClass())">
     <CascadingValue Value="@this" IsFixed="true">
-        @foreach (var menu in _menus) {
-            <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
-                <ul class="ac-menu-list">
-                    <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
-                </ul>
+        @if (IsOverlayVisible) {
+            <div class="ac-menu-overlay">
+                @foreach (var menu in _menus) {
+                    <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
+                        <ul class="ac-menu-list">
+                            <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
+                        </ul>
+                    </div>
+                }
             </div>
+        } else {
+            @foreach (var menu in _menus) {
+                <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
+                    <ul class="ac-menu-list">
+                        <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
+                    </ul>
+                </div>
+            }
         }
     </CascadingValue>
 </div>
@@ -77,10 +89,13 @@
 
     private string GetHostCssClass() {
         var cls = "";
-        if (_menus.Any(x => !x.IsHoverMenu) && ScreenSize.IsNarrow())
-            cls += "ac-menu-overlay";
+        if (IsOverlayVisible)
+            cls += "no-events";
         return cls;
     }
+
+    private bool IsOverlayVisible
+        => _menus.Any(x => !x.IsHoverMenu) && ScreenSize.IsNarrow();
 
     private sealed record Model(
         string Id,

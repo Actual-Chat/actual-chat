@@ -1,7 +1,11 @@
 .ac-menu-host {
     @apply fixed inset-0 overflow-hidden pointer-events-none z-menu-container;
 }
+.ac-menu-host.no-events {
+    @apply pointer-events-auto;
+}
 .ac-menu-overlay {
+    @apply fixed inset-0 overflow-hidden z-menu-overlay;
     background-color: rgba(0,0,0,.32);
 }
 .ac-menu {
