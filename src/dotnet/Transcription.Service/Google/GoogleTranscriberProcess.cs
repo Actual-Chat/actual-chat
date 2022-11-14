@@ -52,21 +52,24 @@ public class GoogleTranscriberProcess : WorkerBase
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
             var recognizeRequests = speechClient
                 .StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
+            var streamingRecognitionConfig = new StreamingRecognitionConfig {
+                Config = new RecognitionConfig {
+                    AutoDecodingConfig = new AutoDetectDecodingConfig()
+                }, // Use recognizer' settings
+                StreamingFeatures = new StreamingRecognitionFeatures {
+                    InterimResults = true,
+                    // TODO(AK): test google VAD events - probably it might be useful
+                    // VoiceActivityTimeout =
+                    // EnableVoiceActivityEvents =
+                },
+            };
             await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
-                    StreamingConfig = new StreamingRecognitionConfig {
-                        Config = new RecognitionConfig(), // Use recognizer' settings
-                        StreamingFeatures = new StreamingRecognitionFeatures {
-                            InterimResults = true,
-                            // TODO(AK): test google VAD events - probably it might be useful
-                            // VoiceActivityTimeout =
-                            // EnableVoiceActivityEvents =
-                        },
-                    },
+                    StreamingConfig = streamingRecognitionConfig,
                     Recognizer = recognizer.Name,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
-            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests),
+            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests, streamingRecognitionConfig),
                 Log,
                 $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
                 cancellationToken);
@@ -119,11 +122,15 @@ public class GoogleTranscriberProcess : WorkerBase
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            var endTime = (float)results.First().ResultEndOffset.ToTimeSpan().TotalSeconds;
-            transcript = State.AppendAlternative(text, endTime);
+            // TODO(AK): ResultEndOffset is null!
+            var resultEndOffset = results.First().ResultEndOffset;
+            if (resultEndOffset != null) {
+                var endTime = (float)resultEndOffset.ToTimeSpan().TotalSeconds;
+                transcript = State.AppendAlternative(text, endTime);
+                DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+                Transcripts.Writer.TryWrite(transcript);
+            }
         }
-        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
-        Transcripts.Writer.TryWrite(transcript);
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,
@@ -177,11 +184,13 @@ public class GoogleTranscriberProcess : WorkerBase
 
     private async Task PushAudio(
         IAsyncEnumerable<byte[]> webMByteStream,
-        SpeechClient.StreamingRecognizeStream recognizeRequests)
+        SpeechClient.StreamingRecognizeStream recognizeRequests,
+        StreamingRecognitionConfig streamingRecognitionConfig)
     {
         try {
             await foreach (var chunk in webMByteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
+                    StreamingConfig = streamingRecognitionConfig,
                     Audio = ByteString.CopyFrom(chunk),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);

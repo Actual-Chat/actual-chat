@@ -55,8 +55,10 @@ public class GoogleTranscriber : ITranscriber
                             Name = recognizerName,
                         },
                         cancellationToken1);
-                    entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
-                    return existingRecognizer;
+                    if (existingRecognizer.ExpireTime != null)
+                        entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
+                    if (existingRecognizer.State == Recognizer.Types.State.Active)
+                        return existingRecognizer;
                 }
                 catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) { }
 
@@ -86,11 +88,14 @@ public class GoogleTranscriber : ITranscriber
                                 AutoDecodingConfig = new AutoDetectDecodingConfig(),
                             },
                         },
-                    }, new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(10)), null, null, WriteOptions.Default, null));
+                    },
+                    CallSettings.FromCancellationToken(cancellationToken));
+                    // new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(10)), null, null, WriteOptions.Default, null));
 
                 var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync();
                 var newRecognizer = completedNewRecognizerOperation.Result;
-                entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
+                if (newRecognizer.ExpireTime != null)
+                    entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
                 return newRecognizer!;
             });
 
