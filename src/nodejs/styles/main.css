@@ -169,3 +169,22 @@ input.input-underlined {
     @apply fixed z-90 w-auto md:w-1/5 inset-x-2 md:inset-x-auto md:right-2 py-4;
     @apply h-full overflow-y-auto;
 }
+
+/* Landing page */
+
+.landing {
+    @apply w-full;
+}
+.landing .page {
+    @apply flex-y h-screen;
+}
+.landing .page-scrolling {
+    @apply flex-y h-full;
+}
+.landing .page-1 {
+    background: #0036A3 url("../../dotnet/App.Wasm/wwwroot/landing/p1-ellipses.png") no-repeat;
+    background-size: cover;
+}
+.landing .page-2 {
+    @apply bg-01;
+}

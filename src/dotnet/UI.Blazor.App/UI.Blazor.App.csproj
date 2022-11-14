@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <TypeScriptCompile Include="Pages\Landing\landing.ts" />
     <TypeScriptCompile Include="Pages\Test\js-test-page.ts" />
   </ItemGroup>
 

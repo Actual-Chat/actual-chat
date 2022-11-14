@@ -6,7 +6,7 @@
 
 <div class="base-layout no-layout bg-02 flex-1 flex-x h-full max-h-full relative">
     <div class="base-layout-body">
-        <div class="bg-01 flex-1 overflow-y-auto">
+        <div class="bg-01 flex-1 overflow-auto custom-scrollbar-hide">
             @if (failures.Count != 0) {
                 <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
                     @foreach (var failure in failures) {
