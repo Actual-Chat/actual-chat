@@ -1,5 +1,3 @@
-// import './mention-list.css';
-
 const LogScope = 'Landing';
 
 export class Landing {
@@ -9,7 +7,7 @@ export class Landing {
     private pageBottoms: {};
     private pageNumbers: {};
     private bottom: number;
-    private currentPage: number = 1;
+    private currentPageNumber: number = 1;
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
         return new Landing(landing, blazorRef);
@@ -21,8 +19,9 @@ export class Landing {
         this.bottom = window.innerHeight;
         this.getPageData();
         this.getPageBottom();
-        window.addEventListener('wheel', this.getScrollDirection, {passive: false});
-        window.addEventListener('keydown', this.onUpOrDownClick);
+        window.addEventListener('wheel', this.getScrollDirection, {passive: false, });
+        window.addEventListener('keydown', this.onUpOrDownClick, {passive: false, });
+
     }
 
     private getPageData() {
@@ -40,9 +39,88 @@ export class Landing {
         });
         this.pageNumbers = numbers;
         this.pageBottoms = bottoms;
-        console.log('current page bottom: ', this.pageBottoms[this.currentPage]);
-        console.log('this.bottom: ', this.bottom);
     }
+
+    private getScrollDirection = ((event: WheelEvent & { target: Element; }) => {
+        let page = this.pages[this.currentPageNumber];
+        if (event.deltaY > 0
+            && this.currentPageNumber < Object.keys(this.pages).length) {
+            // scroll down
+            this.preventEvent(event);
+            if (page.classList.contains('page-scrolling')
+                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
+                this.scrollToPageEnd(page);
+            } else {
+                this.scrollToNextPage();
+            }
+        } else if (event.deltaY < 0
+            && this.currentPageNumber > 1) {
+            // scroll up
+            this.preventEvent(event);
+            if (page.classList.contains('page-scrolling')
+                && Math.abs(page.getBoundingClientRect().top) > 100) {
+                this.scrollToPageStart(page);
+            } else {
+                this.scrollToPreviousPage();
+            }
+        } else this.getPageData();
+    });
+
+    private onUpOrDownClick = ((event: KeyboardEvent & { target: Element; }) => {
+        if (document.activeElement === document.querySelector('body')) {
+            let page = this.pages[this.currentPageNumber] as HTMLElement;
+            if (event.keyCode == 40 && this.currentPageNumber < Object.keys(this.pages).length) {
+                // scroll down
+                this.preventEvent(event);
+                if (page.classList.contains('page-scrolling')
+                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
+                    this.scrollToPageEnd(page);
+                } else {
+                    this.scrollToNextPage();
+                }
+            } else if (event.keyCode == 38 && this.currentPageNumber > 1) {
+                // scroll up
+                this.preventEvent(event);
+                if (page.classList.contains('page-scrolling')
+                    && Math.abs(page.getBoundingClientRect().top) > 100) {
+                    this.scrollToPageStart(page);
+                } else {
+                    this.scrollToPreviousPage();
+                }
+            } else this.getPageData();
+        }
+    });
+
+    private scrollToNextPage() {
+        let nextPageId = '#' + this.pageNumbers[this.currentPageNumber + 1];
+        let nextPage = this.landing.querySelector(`${nextPageId}`);
+        nextPage.scrollIntoView({ behavior: 'smooth', });
+        this.currentPageNumber += 1;
+        setTimeout(() => {
+            this.getPageData();
+        }, 1000);
+    }
+
+    private scrollToPreviousPage() {
+        let previousPageId = '#' + this.pageNumbers[this.currentPageNumber - 1];
+        let previousPage = this.landing.querySelector(`${previousPageId}`);
+        if (previousPage.classList.contains('page-scrolling')) {
+            previousPage.scrollIntoView({ behavior: 'smooth', block: 'end'});
+        } else {
+            previousPage.scrollIntoView({ behavior: 'smooth', });
+        }
+        this.currentPageNumber -= 1;
+        setTimeout(() => {
+            this.getPageData();
+        }, 1000);
+    }
+
+    private scrollToPageEnd = (page: HTMLElement) =>
+        page.scrollIntoView({behavior: 'smooth', block: 'end'});
+
+    private scrollToPageStart = (page: HTMLElement) =>
+        page.scrollIntoView({behavior: 'smooth', block: 'start'});
+
 
     private getPageBottom = () =>
         this.bottom = window.innerHeight;
@@ -50,52 +128,6 @@ export class Landing {
     private preventEvent(e: Event) {
         e.preventDefault();
         e.stopPropagation();
-    }
-
-    private getScrollDirection = ((event: WheelEvent & { target: Element; }) => {
-        let currentPage = this.pages[this.currentPage];
-        if (event.deltaY > 0 && this.currentPage < Object.keys(this.pages).length && Math.abs(currentPage.getBoundingClientRect().bottom - this.bottom) < 5) {
-            // scroll down
-            this.preventEvent(event);
-            this.scrollToNextPage();
-        } else if (event.deltaY < 0 && this.currentPage > 1 && Math.abs(currentPage.getBoundingClientRect().top) < 5) {
-            // scroll up
-            this.preventEvent(event);
-            this.scrollToPreviousPage();
-        } else this.getPageData();
-    });
-
-    private onUpOrDownClick = ((event: KeyboardEvent & { target: Element; }) => {
-        if (document.activeElement === document.querySelector('body')) {
-            let currentPage = this.pages[this.currentPage];
-            if (event.keyCode == 40 && this.currentPage < Object.keys(this.pages).length && Math.abs(currentPage.getBoundingClientRect().bottom - this.bottom) < 5) {
-                // scroll down
-                this.preventEvent(event);
-                this.scrollToNextPage();
-            } else if (event.keyCode == 38 && this.currentPage > 1 && Math.abs(currentPage.getBoundingClientRect().top) < 5) {
-                // scroll up
-                this.preventEvent(event);
-                this.scrollToPreviousPage();
-            } else this.getPageData();
-        }
-    });
-
-    private scrollToNextPage() {
-        let nextPageId = '#' + this.pageNumbers[this.currentPage + 1];
-        let nextPage = this.landing.querySelector(`${nextPageId}`);
-        nextPage.scrollIntoView({ behavior: 'smooth', });
-        this.currentPage += 1;
-        this.getPageData();
-        console.log('this.currentPage: ', this.currentPage);
-    }
-
-    private scrollToPreviousPage() {
-        let previousPageId = '#' + this.pageNumbers[this.currentPage - 1];
-        let previousPage = this.landing.querySelector(`${previousPageId}`);
-        previousPage.scrollIntoView({ behavior: 'smooth', });
-        this.currentPage -= 1;
-        this.getPageData();
-        console.log('this.currentPage: ', this.currentPage);
     }
 
     public dispose() {
