@@ -1,0 +1,125 @@
+@page "/start"
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using System.Security.Cryptography
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Module
+@inherits ComputedStateComponent<Landing.Model>
+@layout NoLayout
+@{
+    var m = State.LatestNonErrorValue;
+    var account = m.Account;
+    var user = account?.User.OrGuest();
+    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
+}
+
+<div @ref="Ref" class="landing">
+    <div class="page page-1 overflow-y-hidden" id="landing-page-1">
+        <div class="flex-x w-full py-12 px-16 items-center">
+            <div class="min-w-fit">
+                <img src="/landing/p1-icon.png" alt="icon" class="min-w-10 min-h-10 max-h-10">
+            </div>
+            <div class="px-2 mb-2 w-full">
+                <img src="/landing/p1-brand.png" alt="brand" class="min-h-8 max-h-8">
+            </div>
+            <div class="min-w-fit">
+                <img src="/landing/p1-for-business.png" alt="business" class="min-h-8 max-h-8">
+            </div>
+        </div>
+        <div class="flex-x px-16 h-full overflow-hidden">
+            <div class="flex-y w-2/3 gap-y-12 justify-center">
+                <div>
+                    <img src="/landing/p1-description.png" alt="description" class="h-48">
+                </div>
+                <div>
+                    <img src="/landing/p1-signin.png" alt="signin" class="w-48">
+                </div>
+            </div>
+            <div class="flex w-1/3 justify-center">
+                <img src="/landing/p1-phone.png" alt="phone">
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-2 page-scrolling overflow-y-hidden" id="landing-page-2">
+        <div class="flex w-full h-80 py-12 px-16 items-center">
+            <img src="/landing/p2-header.png" alt="description">
+        </div>
+        <div class="flex px-16 overflow-hidden">
+            <img src="/landing/p2-timeline.png" alt="timeline">
+        </div>
+        <div class="flex px-16 overflow-hidden">
+            <img src="/landing/p2-footer.png" alt="footer">
+        </div>
+    </div>
+
+    <div class="page page-3 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
+        <div class="flex overflow-hidden justify-center items-center">
+            <img src="/landing/p3-body.png" alt="body">
+        </div>
+    </div>
+
+    <div class="page page-4 overflow-y-hidden" id="landing-page-4">
+        <div class="flex w-full h-40 py-12 px-16 items-center">
+            <img src="/landing/p4-header.png" alt="header">
+        </div>
+        <div class="flex px-16 h-full overflow-hidden bg-[#EEEEF6]">
+            <img src="/landing/p4-body.png" alt="body">
+        </div>
+    </div>
+</div>
+
+@code {
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    private DotNetObjectReference<Landing> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => AuthSchemas = await ClientAuth.GetSchemas();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.Landing.create",
+                Ref, BlazorRef
+                );
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+        => new() {
+            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+        };
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public AccountFull? Account { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}
