@@ -4,14 +4,19 @@ namespace ActualChat.Chat;
 
 [DataContract]
 public sealed record Role(
-    [property: DataMember] Symbol Id, // Corresponds to DbRole.Id
+    [property: DataMember] RoleId Id, // Corresponds to DbRole.Id
     [property: DataMember] string Name = "",
     [property: DataMember] SystemRole SystemRole = SystemRole.None
-    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+    ) : IHasId<RoleId>, IHasVersion<long>, IRequirementTarget
 {
     [DataMember] public long Version { get; init; } = 0;
     [DataMember] public string Picture { get; init; } = "";
     [DataMember] public ChatPermissions Permissions { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => Id.ChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public long LocalId => Id.LocalId;
 
     public Role Fix()
     {
@@ -37,6 +42,6 @@ public sealed record RoleDiff : RecordDiff
     [DataMember] public SystemRole? SystemRole { get; init; }
     [DataMember] public string? Picture { get; init; }
     [DataMember] public ChatPermissions? Permissions { get; init; }
-    [DataMember] public SetDiff<ImmutableArray<Symbol>, Symbol> AuthorIds { get; init; } =
-        SetDiff<ImmutableArray<Symbol>, Symbol>.Unchanged;
+    [DataMember] public SetDiff<ImmutableArray<AuthorId>, AuthorId> AuthorIds { get; init; } =
+        SetDiff<ImmutableArray<AuthorId>, AuthorId>.Unchanged;
 }

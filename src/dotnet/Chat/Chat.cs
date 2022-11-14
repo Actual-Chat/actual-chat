@@ -3,26 +3,28 @@
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record Chat : IHasId<Symbol>, IRequirementTarget
+public sealed record Chat : IHasId<ChatId>, IRequirementTarget
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
-        (Chat? c) => c != null);
+        (Chat? c) => c is { Id.IsEmpty: false });
 
-    [DataMember] public Symbol Id { get; init; } = "";
+    [DataMember] public ChatId Id { get; init; }
     [DataMember] public long Version { get; init; }
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
-    [DataMember] public ChatType ChatType { get; init; } = ChatType.Group;
     [DataMember] public bool IsPublic { get; init; }
     [DataMember] public string Picture { get; init; } = "";
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatKind Kind => Id.Kind;
 }
 
 [DataContract]
 public sealed record ChatDiff : RecordDiff
 {
     [DataMember] public string? Title { get; init; }
-    [DataMember] public ChatType? ChatType { get; init; }
+    [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
     [DataMember] public string? Picture { get; init; }
 }

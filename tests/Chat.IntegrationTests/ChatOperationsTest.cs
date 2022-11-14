@@ -27,7 +27,7 @@ public class ChatOperationsTest : AppHostTestBase
         var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = chatTitle,
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
                 IsPublic = isPublicChat,
             },
         }));
@@ -87,7 +87,7 @@ public class ChatOperationsTest : AppHostTestBase
             var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
-                    ChatType = ChatType.Group,
+                    Kind = ChatKind.Group,
                     IsPublic = isPublicChat,
                 },
             }));
@@ -149,7 +149,7 @@ public class ChatOperationsTest : AppHostTestBase
             var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
-                    ChatType = ChatType.Group,
+                    Kind = ChatKind.Group,
                     IsPublic = isPublicChat,
                 },
             }));

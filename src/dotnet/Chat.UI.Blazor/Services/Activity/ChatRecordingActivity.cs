@@ -23,7 +23,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
     public ChatActivity Owner { get; }
     public Symbol ChatId { get; internal set; }
     public ChatEntryReader EntryReader
-        => _entryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryType.Audio);
+        => _entryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
 
     public ChatRecordingActivity(ChatActivity owner)
     {
@@ -51,7 +51,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         var startAt = Owner.Clocks.SystemClock.Now;
-        var idRange = await Owner.Chats.GetIdRange(Owner.Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var idRange = await Owner.Chats.GetIdRange(Owner.Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await EntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)

@@ -5,5 +5,5 @@ public enum EbmlEntryType : byte
     None = 0,
     Ebml,
     Segment,
-    Cluster
+    Cluster,
 }

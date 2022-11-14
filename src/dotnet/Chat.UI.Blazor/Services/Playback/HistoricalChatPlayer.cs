@@ -10,8 +10,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
     {
         var cpuClock = Clocks.CpuClock;
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
@@ -81,8 +81,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         if (shift <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shift));
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
             .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
@@ -121,8 +121,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         if (shift <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shift));
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
-        var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
             .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, fullIdRange, cancellationToken)

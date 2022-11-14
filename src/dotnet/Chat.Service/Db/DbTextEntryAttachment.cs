@@ -11,25 +11,25 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
 
     // (ChatId, EntryId, Index)
-    string IHasId<string>.Id => CompositeId;
-    [Key] public string CompositeId { get; set; } = "";
-    public string ChatEntryId { get; set; } = "";
-    public int Index { get; set; }
+    [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
+    public string EntryId { get; set; } = "";
+    public int Index { get; set; }
+
     public string ContentId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
 
-    public static string ComposeId(string chatId, long entryId, int index)
-        => Invariant($"{chatId}:{entryId}:{index}");
+    public static string ComposeId(ChatEntryId entryId, int index)
+        => Invariant($"{entryId.ChatId.Value}:{entryId.LocalId}:{index}");
 
     public TextEntryAttachment ToModel()
     {
-        var chatEntryId = new ParsedChatEntryId(ChatEntryId);
+        var entryId = new ChatEntryId(EntryId);
         return new () {
-            ChatId = chatEntryId.ChatId,
-            EntryId = chatEntryId.EntryId,
-            Index = Index,
+            Id = Id,
             Version = Version,
+            EntryId = entryId,
+            Index = Index,
             ContentId = ContentId,
             MetadataJson = MetadataJson
         };
@@ -37,10 +37,14 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
 
     public void UpdateFrom(TextEntryAttachment model)
     {
-        CompositeId = ComposeId(model.ChatId, model.EntryId, model.Index);
-        ChatEntryId = new ParsedChatEntryId(model.ChatId, ChatEntryType.Text, model.EntryId);
-        Index = model.Index;
+        var entryId = model.EntryId;
+        if (entryId.EntryKind != ChatEntryKind.Text)
+            throw new ArgumentOutOfRangeException(nameof(model), "Attachments are allowed only for text entries.");
+
+        Id = ComposeId(entryId, model.Index);
         Version = model.Version;
+        EntryId = entryId;
+        Index = model.Index;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;
     }

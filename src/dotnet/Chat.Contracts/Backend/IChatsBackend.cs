@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public partial interface IChatsBackend : IComputeService
@@ -19,7 +21,7 @@ public partial interface IChatsBackend : IComputeService
     [ComputeMethod]
     Task<long> GetEntryCount(
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         Range<long>? idTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken);
@@ -27,7 +29,7 @@ public partial interface IChatsBackend : IComputeService
     [ComputeMethod]
     Task<ChatTile> GetTile(
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken);
@@ -36,7 +38,7 @@ public partial interface IChatsBackend : IComputeService
     [ComputeMethod]
     Task<Range<long>> GetIdRange(
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         bool includeRemoved,
         CancellationToken cancellationToken);
 
@@ -51,10 +53,10 @@ public partial interface IChatsBackend : IComputeService
 
     [DataContract]
     public sealed record ChangeCommand(
-        [property: DataMember] Symbol ChatId,
+        [property: DataMember] ChatId ChatId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatDiff> Change,
-        [property: DataMember] Symbol CreatorUserId = default
+        [property: DataMember] UserId CreatorUserId = default
     ) : ICommand<Chat>, IBackendCommand;
 
     [DataContract]

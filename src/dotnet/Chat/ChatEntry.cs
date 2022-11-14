@@ -3,27 +3,34 @@ using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
+[DataContract]
+public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<long>, IRequirementTarget
 {
     private static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
         VersionBasedEqualityComparer<ChatEntry, long>.Instance;
 
-    public Symbol ChatId { get; init; }
-    public ChatEntryType Type { get; init; }
-    public long Id { get; init; }
-    public long Version { get; init; }
-    public bool IsRemoved { get; init; }
-    public Symbol AuthorId { get; init; }
-    public Moment BeginsAt { get; init; }
-    public Moment? ClientSideBeginsAt { get; init; }
-    public Moment? EndsAt { get; init; }
-    public Moment? ContentEndsAt { get; init; }
-    public string Content { get; init; } = "";
-    public bool HasReactions { get; init; }
-    public Symbol StreamId { get; init; } = "";
-    public long? AudioEntryId { get; init; }
-    public long? VideoEntryId { get; init; }
-    public LinearMap TextToTimeMap { get; init; }
+    long IHasId<long>.Id => LocalId;
+    [DataMember] public ChatEntryId Id { get; init; }
+    [DataMember] public long Version { get; init; }
+    [DataMember] public bool IsRemoved { get; init; }
+    [DataMember] public Symbol AuthorId { get; init; }
+    [DataMember] public Moment BeginsAt { get; init; }
+    [DataMember] public Moment? ClientSideBeginsAt { get; init; }
+    [DataMember] public Moment? EndsAt { get; init; }
+    [DataMember] public Moment? ContentEndsAt { get; init; }
+    [DataMember] public string Content { get; init; } = "";
+    [DataMember] public bool HasReactions { get; init; }
+    [DataMember] public Symbol StreamId { get; init; } = "";
+    [DataMember] public long? AudioEntryId { get; init; }
+    [DataMember] public long? VideoEntryId { get; init; }
+    [DataMember] public LinearMap TextToTimeMap { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => Id.ChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public long LocalId => Id.LocalId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatEntryKind Kind => Id.EntryKind;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration
@@ -34,8 +41,6 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTa
 
     public long? RepliedChatEntryId { get; init; }
     public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
-
-    public Symbol CompositeId { get; init; } = "";
 
     public string GetContentOrDescription()
     {

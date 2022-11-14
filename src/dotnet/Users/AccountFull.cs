@@ -2,12 +2,12 @@ namespace ActualChat.Users;
 
 [DataContract]
 public sealed record AccountFull(
-    Symbol Id,
+    UserId Id,
     [property: DataMember] User User
     ) : Account(Id)
 {
-    public static new AccountFull None { get; } = new(Symbol.Empty, User.NewGuest()) { Avatar = Avatar.None };
-    public static new AccountFull Loading { get; } = new(Symbol.Empty, User.NewGuest()) { Avatar = Avatar.Loading }; // Should differ by ref. from None
+    public static new AccountFull None { get; } = new(default, User.NewGuest()) { Avatar = Avatar.None };
+    public static new AccountFull Loading { get; } = new(default, User.NewGuest()) { Avatar = Avatar.Loading }; // Should differ by ref. from None
 
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.Account.None()),

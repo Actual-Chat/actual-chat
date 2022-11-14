@@ -6,7 +6,7 @@ public record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementT
 {
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public long Version { get; init; }
-    [DataMember] public Symbol ChatEntryId { get; init; } = "";
+    [DataMember] public Symbol EntryId { get; init; } = "";
     [DataMember] public string Emoji { get; init; } = "";
     [DataMember] public long Count { get; init; }
     public ImmutableList<Symbol> FirstAuthorIds { get; init; } = ImmutableList<Symbol>.Empty;

@@ -36,7 +36,7 @@
         <div class="chat-message group px-1.5 py-1 relative">
             @if (showPicture || isReply) {
                 <div class="m-1.5">
-                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnAuthorClick"/>
+                    <ChatMessageAuthorCircle Id="@entry.AuthorId" Click="@OnAuthorClick"/>
                 </div>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -47,7 +47,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="flex-x items-baseline header chat-message-header ml-1">
-                        <AuthorName AuthorId="@entry.AuthorId" Class="author-name"/>
+                        <AuthorName Id="@entry.AuthorId" Class="author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
@@ -58,7 +58,7 @@
                         <QuotedMessage Message="@m.RepliedChatMessage"/>
                     }
                     @if (entry.IsStreaming) {
-                        <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryType="@Message.ShowEntryType" />
+                        <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryKind="@Message.ShowEntryKind" />
                     } else {
                         <p class="chat-message-markup mx-1">
                             <CascadingValue Value="@entry" IsFixed="true">
@@ -106,7 +106,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private Markup Markup => _cachedMarkup ?? GetMarkup();
-    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Message { get; set; } = null!;
@@ -162,11 +162,11 @@
         var markup = message.Entry.AudioEntryId == null || message.IsQuote
             ? MarkupParser.Parse(message.Entry.Content)
             : new PlayableTextMarkup(message.Entry.Content, message.Entry.TextToTimeMap);
-        if (message.ShowEntryType) {
+        if (message.ShowEntryKind) {
             // Adds "T" or "Audio" symbol to the beginning of markup
             var isAudio = markup is PlayableTextMarkup;
-            var entryTypeMarkup = new ChatEntryTypeMarker(isAudio ? ChatEntryType.Audio : ChatEntryType.Text);
-            markup = new MarkupSeq(entryTypeMarkup, markup);
+            var entryKindMarker = new ChatEntryKindMarker(isAudio ? ChatEntryKind.Audio : ChatEntryKind.Text);
+            markup = new MarkupSeq(entryKindMarker, markup);
         }
         return markup;
     }

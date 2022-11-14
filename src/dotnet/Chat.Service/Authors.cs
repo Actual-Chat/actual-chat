@@ -139,8 +139,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Presence.Offline;
-        if (author.UserId.IsEmpty || author.IsAnonymous)
+        if (author.IsAnonymous || author.UserId.IsEmpty)
             return Presence.Unknown; // Important: we shouldn't report anonymous author presence
+
         return await UserPresences.Get(author.UserId.Value, cancellationToken).ConfigureAwait(false);
     }
 

@@ -182,7 +182,7 @@ public class ChatUI
 
     public void ShowAuthorModal(string authorId)
     {
-        var parsedAuthorId = new ParsedAuthorId(authorId).RequireValid();
+        var parsedAuthorId = new AuthorId(authorId).RequireValid();
         ModalUI.Show(new AuthorModal.Model(parsedAuthorId.ChatId, parsedAuthorId.Id));
     }
 
@@ -321,8 +321,8 @@ public class ChatUI
             if (!chat.IsListening)
                 return chat.Recency;
 
-            var chatIdRange = await Chats.GetIdRange(Session, chat.ChatId, ChatEntryType.Audio, ct);
-            var chatEntryReader = Chats.NewEntryReader(Session, chat.ChatId, ChatEntryType.Audio);
+            var chatIdRange = await Chats.GetIdRange(Session, chat.ChatId, ChatEntryKind.Audio, ct);
+            var chatEntryReader = Chats.NewEntryReader(Session, chat.ChatId, ChatEntryKind.Audio);
             var lastEntry = await chatEntryReader.GetLast(chatIdRange, ct);
             if (lastEntry == null)
                 return chat.Recency;

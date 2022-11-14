@@ -7,42 +7,46 @@ namespace ActualChat.Chat.Db;
 [Table("Reactions")]
 public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private DateTime? _modifiedAt;
+    private DateTime _modifiedAt;
+
     [Key] public string Id { get; set; } = null!;
-    public string AuthorId { get; set; } = "";
-    public string ChatEntryId { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
+    public string AuthorId { get; set; } = "";
+    public string EntryId { get; set; } = "";
+
     public string Emoji { get; set; } = "";
 
-    public DateTime? ModifiedAt {
-        get => _modifiedAt?.DefaultKind(DateTimeKind.Utc);
-        set => _modifiedAt = value?.DefaultKind(DateTimeKind.Utc);
+    public DateTime ModifiedAt {
+        get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
+        set => _modifiedAt = value.DefaultKind(DateTimeKind.Utc);
     }
+
+    public static string ComposeId(string chatEntryId, string authorId)
+        => $"{chatEntryId}:{authorId}";
 
     public DbReaction() { }
     public DbReaction(Reaction model) => UpdateFrom(model);
 
     public Reaction ToModel()
     {
-        var chatEntryId = new ParsedChatEntryId(ChatEntryId);
+        var chatEntryId = new ChatEntryId(EntryId);
         return new () {
             Id = Id,
+            Version = Version,
             AuthorId = AuthorId,
-            ChatId = chatEntryId.ChatId,
-            EntryId = chatEntryId.EntryId,
+            EntryId = chatEntryId,
             Emoji = Emoji,
+            ModifiedAt = ModifiedAt,
         };
     }
 
     public void UpdateFrom(Reaction model)
     {
-        var chatEntryId = new ParsedChatEntryId(model.ChatId, ChatEntryType.Text, model.EntryId);
-        Id = ComposeId(chatEntryId, model.AuthorId);
+        Id = ComposeId(model.EntryId, model.AuthorId);
+        Version = model.Version;
         AuthorId = model.AuthorId;
-        ChatEntryId = chatEntryId;
+        EntryId = model.EntryId;
         Emoji = model.Emoji;
+        ModifiedAt = model.ModifiedAt;
     }
-
-    public static string ComposeId(string chatEntryId, string authorId)
-        => $"{chatEntryId}:{authorId}";
 }

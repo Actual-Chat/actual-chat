@@ -40,7 +40,7 @@
 
     private Task React(string emoji) {
         var command = new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = ChatEntry.ChatId, EntryId = ChatEntry.Id, Emoji = emoji,
+            ChatId = ChatEntry.ChatId, EntryLocalId = ChatEntry.Id, Emoji = emoji,
         });
         return UICommander.Run(command);
     }

@@ -63,7 +63,7 @@ public class AudioProcessorTest : AppHostTestBase
         var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
             },
         }));
         chat = chat.Require();
@@ -104,7 +104,7 @@ public class AudioProcessorTest : AppHostTestBase
         var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
             },
         }));
         chat = chat.Require();

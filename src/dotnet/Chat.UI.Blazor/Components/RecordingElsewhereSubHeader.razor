@@ -47,7 +47,7 @@
         if (recordingChat == null)
             return Model.None;
 
-        if (recordingChat.ChatType == ChatType.Group)
+        if (recordingChat.Kind == ChatKind.Group)
             return new Model {
                 RecordingChat = recordingChat,
                 RecordingChatUrl = Links.ChatPage(recordingChat.Id),
@@ -57,7 +57,7 @@
         if (account == null)
             return Model.None;
 
-        var parsedChatId = new ParsedChatId(recordingChat.Id);
+        var parsedChatId = new ChatId(recordingChat.Id);
         return new Model {
             RecordingChat = recordingChat,
             RecordingChatUrl = Links.ChatPage(parsedChatId.Shorten(account.Id)),

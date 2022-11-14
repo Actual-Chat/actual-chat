@@ -81,9 +81,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return author;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var userId = account?.Id ?? Symbol.Empty;
+        var userId = account?.Id ?? default;
 
-        var command = new IAuthorsBackend.CreateCommand(chatId, userId, false);
+        var command = new IAuthorsBackend.CreateCommand(new ChatId(chatId), userId, false);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
@@ -102,7 +102,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (author != null)
             return author;
 
-        var command = new IAuthorsBackend.CreateCommand(chatId, userId, true);
+        var command = new IAuthorsBackend.CreateCommand(new ChatId(chatId), new UserId(userId), true);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return author;
     }
@@ -227,7 +227,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         var chatTextIdRange = await ChatsBackend
-            .GetIdRange(command.ChatId, ChatEntryType.Text, false, cancellationToken)
+            .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
             .ConfigureAwait(false);
         new AuthorChangedEvent(author, ChangeKind.Create)
             .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
@@ -317,13 +317,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private async ValueTask<AuthorFull> AddAvatar(AuthorFull author, CancellationToken cancellationToken)
     {
-        if (!author.AvatarId.IsEmpty) {
-            var avatar = await AvatarsBackend.Get(author.AvatarId, cancellationToken).ConfigureAwait(false);
+        var avatarId = author.AvatarId;
+        if (!avatarId.IsEmpty) {
+            var avatar = await AvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
             if (avatar != null)
                 return WithAvatar(author, avatar);
         }
-        if (!author.UserId.IsEmpty) {
-            var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+        var userId = author.UserId;
+        if (!userId.IsEmpty) {
+            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (account != null)
                 return WithAvatar(author, account.Avatar);
         }

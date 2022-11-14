@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public interface IAuthorsBackend : IComputeService
@@ -27,22 +29,22 @@ public interface IAuthorsBackend : IComputeService
 
     [DataContract]
     public sealed record CreateCommand(
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] Symbol UserId,
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] UserId UserId,
         [property: DataMember] bool RequireAccount
         ) : ICommand<AuthorFull>, IBackendCommand;
 
     [DataContract]
     public sealed record ChangeHasLeftCommand(
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] Symbol AuthorId,
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] AuthorId AuthorId,
         [property: DataMember] bool HasLeft
     ) : ICommand<AuthorFull>, IBackendCommand;
 
     [DataContract]
     public sealed record SetAvatarCommand(
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] Symbol AuthorId,
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] AuthorId AuthorId,
         [property: DataMember] Symbol AvatarId
     ) : ICommand<AuthorFull>, IBackendCommand;
 }

@@ -39,7 +39,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         try {
             Log.LogInformation("Upgrading {ChatCount} chats...", candidateChatIds.Count);
             foreach (var chatId in candidateChatIds) {
-                var command = new IChatsUpgradeBackend.UpgradeChatCommand(chatId);
+                var command = new IChatsUpgradeBackend.UpgradeChatCommand(new ChatId(chatId));
                 await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             }
             Log.LogInformation("Chats are upgraded");

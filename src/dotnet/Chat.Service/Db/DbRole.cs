@@ -12,10 +12,10 @@ namespace ActualChat.Chat.Db;
 public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 
-    [ConcurrencyCheck] public long Version { get; set; }
     [Column(TypeName = "smallint")]
     public SystemRole SystemRole { get; set; }
     public string Name { get; set; } = "";
@@ -65,10 +65,10 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(Role model)
     {
-        var parsedRoleId = new ParsedRoleId(model.Id).RequireValid();
-        Id = model.Id;
-        ChatId = parsedRoleId.ChatId;
-        LocalId = parsedRoleId.LocalId;
+        var id = model.Id;
+        Id = id;
+        ChatId = id.ChatId;
+        LocalId = id.LocalId;
         Version = model.Version;
         SystemRole = model.SystemRole;
         Name = model.Name;

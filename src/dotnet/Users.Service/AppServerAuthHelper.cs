@@ -37,10 +37,19 @@ public class AppServerAuthHelper : ServerAuthHelper
     {
         var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
         var options = sessionInfo?.Options ?? ImmutableOptionSet.Empty;
-        if (!options.GetOrDefault<GuestId>().IsValid)
-            setupSessionCommand = setupSessionCommand with {
-                Options = ImmutableOptionSet.Empty.Set(GuestId.New()),
-            };
+        if ((sessionInfo?.UserId ?? "").Length == 0) { // Unauthenticated
+            GuestId? guestId = null;
+            try {
+                guestId = options.Get<GuestId>();
+            }
+            catch {
+                // Intended: GuestId type was changed, so it might throw an error
+            }
+            if (guestId is not { UserId.IsGuestId: true }) // No GuestId
+                setupSessionCommand = setupSessionCommand with {
+                    Options = ImmutableOptionSet.Empty.Set(new GuestId(UserId.NewGuest())),
+                };
+        }
         return Commander.Call(setupSessionCommand, true, cancellationToken);
     }
 

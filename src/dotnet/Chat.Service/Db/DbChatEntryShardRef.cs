@@ -1,7 +1,7 @@
 namespace ActualChat.Chat.Db;
 
-public sealed record DbChatEntryShardRef(string ChatId, ChatEntryType Type)
+public sealed record DbChatEntryShardRef(string ChatId, ChatEntryKind Kind)
 {
     public override string ToString()
-        => $"{ChatId}:{Type}";
+        => $"{ChatId}:{Kind}";
 }

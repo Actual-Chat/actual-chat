@@ -49,7 +49,7 @@
 
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
+        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryKind.Audio);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);

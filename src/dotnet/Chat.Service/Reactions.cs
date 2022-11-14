@@ -18,7 +18,7 @@ internal class Reactions : IReactions
     // [ComputeMethod]
     public virtual async Task<Reaction?> Get(Session session, string entryId, CancellationToken cancellationToken)
     {
-        var parsedChatEntryId = new ParsedChatEntryId(entryId);
+        var parsedChatEntryId = new ChatEntryId(entryId);
         var chatAuthor = await Authors.GetOwn(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
             return null;
@@ -34,7 +34,7 @@ internal class Reactions : IReactions
         Symbol chatEntryId,
         CancellationToken cancellationToken)
     {
-        var parsedChatEntryId = new ParsedChatEntryId(chatEntryId);
+        var parsedChatEntryId = new ChatEntryId(chatEntryId);
         var chatRules = await Chats.GetRules(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         return await Backend.List(chatEntryId, cancellationToken).ConfigureAwait(false);
@@ -47,10 +47,10 @@ internal class Reactions : IReactions
             return; // It just spawns other commands, so nothing to do here
 
         var (session, reaction) = command;
-        var chatRules = await Chats.GetRules(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
+        var chatRules = await Chats.GetRules(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 
-        var author = await Authors.GetOwn(session, reaction.ChatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.GetOwn(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return;
 

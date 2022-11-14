@@ -4,7 +4,7 @@
 <ul>
     @foreach (var authorId in _firstAuthorIds) {
         <li class="flex-x justify-between">
-            <AuthorBadge AuthorId="@authorId" Size="SquareSize.Size5"/>
+            <AuthorBadge Id="@authorId" Size="SquareSize.Size5"/>
             <div class="ml-2">@_emoji</div>
         </li>
     }

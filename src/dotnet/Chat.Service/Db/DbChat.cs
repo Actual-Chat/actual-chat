@@ -17,8 +17,9 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
+
     public string Title { get; set; } = "";
-    public ChatType ChatType { get; set; }
+    public ChatKind Kind { get; set; }
     public string Picture { get; set; } = "";
 
     // Permissions & Rules
@@ -33,23 +34,22 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public Chat ToModel()
         => new() {
-            Id = Id,
+            Id = new ChatId(Id),
             Version = Version,
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
-            ChatType = ChatType,
             Picture = Picture,
         };
 
     public void UpdateFrom(Chat model)
     {
-        Id = model.Id;
+        Id = model.Id.Value;
         Version = model.Version;
         Title = model.Title;
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
-        ChatType = model.ChatType;
+        Kind = model.Kind;
         Picture = model.Picture;
     }
 }

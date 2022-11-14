@@ -95,7 +95,7 @@
     }
 
     private void OnSendMessageClick() {
-        var peerChatId = ParsedChatId.FormatShortPeerChatId(UserId);
+        var peerChatId = ChatId.FormatShort(UserId);
         Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 

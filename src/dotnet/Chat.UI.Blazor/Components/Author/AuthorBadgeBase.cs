@@ -10,12 +10,12 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Inject] protected IUserPresences UserPresences { get; init; } = null!;
     [Inject] protected Session Session { get; init; } = null!;
 
-    protected ParsedAuthorId ParsedAuthorId { get; private set; }
-    protected Symbol ChatId => ParsedAuthorId.ChatId;
-    protected bool IsValid => ParsedAuthorId.IsValid;
+    protected AuthorId AuthorId { get; private set; }
+    protected Symbol ChatId => AuthorId.ChatId;
+    protected bool IsValid => !AuthorId.IsEmpty;
     protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
-    [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public bool ShowsPresence { get; set; }
     [Parameter] public bool ShowsRecording { get; set; }
 
@@ -25,7 +25,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override async Task OnParametersSetAsync() {
-        ParsedAuthorId = new ParsedAuthorId(AuthorId);
+        AuthorId = AuthorId.TryParse(Id, out var authorId) ? authorId : default;
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
@@ -35,13 +35,13 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        ParsedAuthorId = new ParsedAuthorId(AuthorId);
+        AuthorId = AuthorId.TryParse(Id, out var authorId) ? authorId : default;
         if (!IsValid)
             return new () { InitialValue = Model.None };
 
         var model = Model.Loading;
         // Try to provide pre-filled initialValue for the first render when everything is cached
-        var authorTask = GetAuthor(Session, ChatId, AuthorId, default);
+        var authorTask = GetAuthor(Session, ChatId, Id, default);
 #pragma warning disable VSTHRD002
         var author = authorTask.IsCompletedSuccessfully ? authorTask.Result : null;
 #pragma warning restore VSTHRD002
@@ -64,11 +64,11 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         if (!IsValid)
             return Model.None;
 
-        var author = await GetAuthor(Session, ChatId, AuthorId, cancellationToken);
+        var author = await GetAuthor(Session, ChatId, Id, cancellationToken);
         if (author == null)
             return Model.None;
 
-        var presence = await GetPresence(Session, ChatId, AuthorId, cancellationToken);
+        var presence = await GetPresence(Session, ChatId, Id, cancellationToken);
         var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
         return new(author, presence, isOwn);

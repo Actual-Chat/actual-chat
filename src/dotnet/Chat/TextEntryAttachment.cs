@@ -1,20 +1,24 @@
 ﻿namespace ActualChat.Chat;
 
-public sealed record TextEntryAttachment
+[DataContract]
+public sealed record TextEntryAttachment : IRequirementTarget
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
 
-    public Symbol ChatId { get; init; }
-    public long EntryId { get; init; }
-    public int Index { get; init; }
-    public long Version { get; init; }
-    public string ContentId { get; init; } = "";
+    [DataMember] public Symbol Id { get; init; }
+    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public int Index { get; init; }
+    [DataMember] public long Version { get; init; }
+    [DataMember] public string ContentId { get; init; } = "";
 
-    public string MetadataJson {
+    [DataMember] public string MetadataJson {
         get => _metadata.Data;
         init => _metadata.Data = value;
     }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => EntryId.ChatId;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ImmutableOptionSet Metadata {
@@ -22,31 +26,37 @@ public sealed record TextEntryAttachment
         init => _metadata.Value = value;
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long Length {
         get => GetMetadataValue(0L);
         init => SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string FileName {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Description {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string ContentType {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public int Width {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public int Height {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);

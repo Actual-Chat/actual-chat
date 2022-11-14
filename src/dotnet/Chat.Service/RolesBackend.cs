@@ -24,8 +24,8 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     // [ComputeMethod]
     public virtual async Task<Role?> Get(string chatId, string roleId, CancellationToken cancellationToken)
     {
-        var parsedRoleId = (ParsedRoleId)roleId;
-        if (!(parsedRoleId.IsValid && parsedRoleId.ChatId == chatId))
+        var parsedRoleId = new RoleId(roleId);
+        if (parsedRoleId.ChatId.Value != chatId)
             return null;
 
         var dbRole = await DbRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
@@ -143,7 +143,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             var localId = await DbRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new ParsedRoleId(chatId, localId).Id;
+            roleId = new RoleId(chatId, localId, SkipValidation.Instance).Id;
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };

@@ -21,7 +21,7 @@ public interface IChats : IComputeService
     Task<long> GetEntryCount(
         Session session,
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
@@ -31,7 +31,7 @@ public interface IChats : IComputeService
     Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         CancellationToken cancellationToken);
 
     // Client-side methods always skips entries with IsRemoved flag
@@ -39,7 +39,7 @@ public interface IChats : IComputeService
     Task<ChatTile> GetTile(
         Session session,
         string chatId,
-        ChatEntryType entryType,
+        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
@@ -77,7 +77,7 @@ public interface IChats : IComputeService
     [DataContract]
     public sealed record ChangeCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId,
+        [property: DataMember] ChatId ChatId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatDiff> Change
         ) : ISessionCommand<Chat>;
@@ -85,32 +85,32 @@ public interface IChats : IComputeService
     [DataContract]
     public sealed record JoinCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId
+        [property: DataMember] ChatId ChatId
         ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record LeaveCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId
+        [property: DataMember] ChatId ChatId
     ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record UpsertTextEntryCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] long? Id,
-        [property: DataMember] string Text
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] long? LocalId,
+        [property: DataMember] string Text,
+        [property: DataMember] Option<long?> RepliedChatEntryId = default
         ) : ISessionCommand<ChatEntry>
     {
         [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
             ImmutableArray<TextEntryAttachmentUpload>.Empty;
-        [DataMember] public long? RepliedChatEntryId { get; set; }
     }
 
     [DataContract]
     public sealed record RemoveTextEntryCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] long EntryId
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] long LocalId
         ) : ISessionCommand<Unit>;
 }

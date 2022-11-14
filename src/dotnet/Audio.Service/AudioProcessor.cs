@@ -211,9 +211,10 @@ public sealed class AudioProcessor : IAudioProcessor
         var delay = now - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
+        var chatId = new ChatId(audioSegment.AudioRecord.ChatId);
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, SkipValidation.Instance);
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry() {
-            ChatId = audioSegment.AudioRecord.ChatId,
-            Type = ChatEntryType.Audio,
+            Id = chatEntryId,
             AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
@@ -251,7 +252,7 @@ public sealed class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         Transcript? transcript = null;
-        ChatEntry? audioEntry = null;
+        ChatEntry? chatAudioEntry = null;
         ChatEntry? textEntry = null;
         IChatsBackend.UpsertEntryCommand? command;
 
@@ -266,14 +267,14 @@ public sealed class AudioProcessor : IAudioProcessor
                 continue;
 
             // Got first non-empty transcript -> create text entry
-            audioEntry ??= await audioEntryTask.ConfigureAwait(false);
+            chatAudioEntry ??= await audioEntryTask.ConfigureAwait(false);
+            var chatEntryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, SkipValidation.Instance);
             textEntry = new ChatEntry() {
-                ChatId = audioEntry.ChatId,
-                Type = ChatEntryType.Text,
-                AuthorId = audioEntry.AuthorId,
+                Id = chatEntryId,
+                AuthorId = chatAudioEntry.AuthorId,
                 Content = "",
                 StreamId = transcriptStreamId,
-                BeginsAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
             };
             command = new IChatsBackend.UpsertEntryCommand(textEntry);
             textEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
@@ -287,8 +288,8 @@ public sealed class AudioProcessor : IAudioProcessor
         textEntry = textEntry with {
             Content = transcript.Text,
             StreamId = Symbol.Empty,
-            AudioEntryId = audioEntry!.Id,
-            EndsAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
+            AudioEntryId = chatAudioEntry!.LocalId,
+            EndsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
             TextToTimeMap = textToTimeMap,
         };
         if (EmptyRegex.IsMatch(transcript.Text)) {

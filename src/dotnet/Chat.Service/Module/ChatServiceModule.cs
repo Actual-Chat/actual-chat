@@ -43,8 +43,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
             // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
                 dbContext => dbContext.ChatEntries,
-                (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
-                e => e.Id);
+                (e, shardKey) => e.ChatId == shardKey.ChatId && e.Kind == shardKey.Kind,
+                e => e.LocalId);
 
             // DbAuthor
             db.AddShardLocalIdGenerator(dbContext => dbContext.Authors,

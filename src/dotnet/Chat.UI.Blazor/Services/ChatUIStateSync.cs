@@ -295,7 +295,7 @@ public class ChatUIStateSync : WorkerBase
             return (recordingChatId, 0);
 
         var (_, end) = await Chats
-            .GetIdRange(Session, recordingChatId, ChatEntryType.Text, cancellationToken)
+            .GetIdRange(Session, recordingChatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
         return (recordingChatId, end);
     }

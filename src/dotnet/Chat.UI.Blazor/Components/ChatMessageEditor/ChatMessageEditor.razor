@@ -226,9 +226,9 @@
         if (author == null)
             return;
 
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, CancellationToken.None);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryType.Text, idTileLayer);
+        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
             chatIdRange,
             x => x.AuthorId == author.Id && !x.AudioEntryId.HasValue && x.StreamId.IsEmpty,

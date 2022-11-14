@@ -15,7 +15,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
     public bool IsQuote { get; init; }
-    public bool ShowEntryType { get; init; }
+    public bool ShowEntryKind { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
     {
@@ -88,7 +88,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
                 IsFirstUnread = isUnread && !isPrevUnread,
-                ShowEntryType = contentKindChanged
+                ShowEntryKind = contentKindChanged
             };
             result.Add(model);
 

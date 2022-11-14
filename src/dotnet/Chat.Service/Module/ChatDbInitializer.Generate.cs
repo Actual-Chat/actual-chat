@@ -14,7 +14,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         Log.LogInformation("Generating initial DB content...");
 
         // Creating "The Actual One" chat
-        var defaultChatId = Constants.Chat.DefaultChatId;
+        var defaultChatId = new ChatId(Constants.Chat.DefaultChatId);
         var adminUserId = UserConstants.Admin.UserId;
         var dbChat = new DbChat {
             Id = defaultChatId,
@@ -75,7 +75,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     private async Task AddAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
-        var defaultChatId = Constants.Chat.DefaultChatId;
+        var defaultChatId = new ChatId(Constants.Chat.DefaultChatId);
         for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbAuthor {
                 Id = DbAuthor.ComposeId(defaultChatId, i + 1),
@@ -105,6 +105,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
+        var chatId = new ChatId(dbChat.Id);
         var chats = (ChatsBackend)Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
@@ -138,21 +139,21 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         {
             lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
             lastBeginsAt = lastEndsAt;
-            var id = await chats
-                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+            var localId = await chats
+                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
-            var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
-                Type = ChatEntryType.Text,
+            var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, SkipValidation.Instance);
+            var entry = new DbChatEntry {
+                Id = id.Value,
+                Kind = ChatEntryKind.Text,
                 ChatId = dbChat.Id,
-                Id = id,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content = $"{id} {content ?? GetRandomSentence(rnd, 30)}",
                 AuthorId = dbAuthor.Id,
             };
-            dbContext.Add(textEntry);
+            dbContext.Add(entry);
         }
 
         async Task AddAudioEntry1()
@@ -165,16 +166,17 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
 
-            var id = await chats
-                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
+            var localId = await chats
+                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Audio, cancellationToken)
                 .ConfigureAwait(false);
+            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, SkipValidation.Instance);
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
+                Id = id.Value,
                 ChatId = dbChat.Id,
-                Type = ChatEntryType.Audio,
-                Id = id,
+                Kind = ChatEntryKind.Audio,
+                LocalId = localId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
@@ -183,14 +185,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             };
             dbContext.Add(audioEntry);
 
-            id = await chats
-                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+            localId = await chats
+                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
+            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, SkipValidation.Instance);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
+                Id = id.Value,
                 ChatId = dbChat.Id,
-                Type = ChatEntryType.Text,
-                Id = id,
+                Kind = ChatEntryKind.Text,
+                LocalId = localId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
@@ -198,7 +201,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                     "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
                     + "открыв мне чудо на Земле",
                 TextToTimeMap = textToTimeMap,
-                AudioEntryId = audioEntry.Id,
+                AudioEntryId = audioEntry.LocalId,
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(textEntry);
@@ -216,14 +219,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
-            var id = await chats
-                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
+            var localId = await chats
+                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Audio, cancellationToken)
                 .ConfigureAwait(false);
+            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, SkipValidation.Instance);
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Audio, id),
+                Id = id.Value,
                 ChatId = dbChat.Id,
-                Type = ChatEntryType.Audio,
-                Id = id,
+                Kind = ChatEntryKind.Audio,
+                LocalId = localId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
@@ -232,14 +236,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             };
             dbContext.Add(audioEntry);
 
-            id = await chats
-                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+            localId = await chats
+                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
+            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, SkipValidation.Instance);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.ComposeId(dbChat.Id, ChatEntryType.Text, id),
-                ChatId = dbChat.Id,
-                Type = ChatEntryType.Text,
                 Id = id,
+                ChatId = dbChat.Id,
+                Kind = ChatEntryKind.Text,
+                LocalId = localId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
@@ -247,7 +252,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                     "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
                     + "шаг и холоду лютому слишком просто сладить с тобой",
                 TextToTimeMap = textToTimeMap,
-                AudioEntryId = audioEntry.Id,
+                AudioEntryId = audioEntry.LocalId,
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(textEntry);

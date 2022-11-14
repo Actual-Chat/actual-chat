@@ -6,12 +6,12 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[Index(nameof(ChatId), nameof(Type), nameof(IsRemoved), nameof(Id))] // For GetEntryCount queries
-[Index(nameof(ChatId), nameof(Type), nameof(Id))]
-[Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
-[Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
-[Index(nameof(ChatId), nameof(Type), nameof(Version))]
-public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
+[Index(nameof(ChatId), nameof(Kind), nameof(IsRemoved), nameof(LocalId))] // For GetEntryCount queries
+[Index(nameof(ChatId), nameof(Kind), nameof(LocalId))]
+[Index(nameof(ChatId), nameof(Kind), nameof(BeginsAt), nameof(EndsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(EndsAt), nameof(BeginsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(Version))]
+public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;
@@ -22,10 +22,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
-    [Key] public string CompositeId { get; set; } = "";
-    public string ChatId { get; set; } = "";
-    public long Id { get; set; }
+    [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
+    public string ChatId { get; set; } = "";
+    public long LocalId { get; set; }
+
     public bool IsRemoved { get; set; }
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
@@ -52,7 +53,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
 
     public double Duration { get; set; }
 
-    public ChatEntryType Type { get; set; }
+    public ChatEntryKind Kind { get; set; }
     public string Content { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
@@ -62,18 +63,14 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
-    public static string ComposeId(string chatId, ChatEntryType entryType, long entryId)
-        => $"{chatId}:{entryType:D}:{entryId.ToString(CultureInfo.InvariantCulture)}";
-
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
-        => new() {
-            CompositeId = CompositeId,
-            ChatId = ChatId,
-            Type = Type,
-            Id = Id,
+    {
+        var chatId = new ChatId(ChatId);
+        var id = new ChatEntryId(Id, chatId, Kind, LocalId, SkipValidation.Instance);
+        return new () {
+            Id = id,
             Version = Version,
             IsRemoved = IsRemoved,
-
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt,
@@ -87,20 +84,21 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
             RepliedChatEntryId = RepliedChatEntryId!,
             Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
-            TextToTimeMap = Type == ChatEntryType.Text
+            TextToTimeMap = Kind == ChatEntryKind.Text
                 ? TextToTimeMap != null
-                ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
-                : default
+                    ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
+                    : default
                 : default,
 #pragma warning restore IL2026
         };
+    }
 
     public void UpdateFrom(ChatEntry model)
     {
-        CompositeId = ComposeId(model.ChatId, model.Type, model.Id);
+        Id = model.Id.Value;
         ChatId = model.ChatId;
-        Type = model.Type;
-        Id = model.Id;
+        Kind = model.Kind;
+        LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
 

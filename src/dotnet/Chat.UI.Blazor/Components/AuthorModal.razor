@@ -11,8 +11,8 @@
 <DialogFrame Title="@title">
     <Body>
         <div class="flex-x items-center gap-x-3">
-            <AuthorCircle AuthorId="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
-            <AuthorName AuthorId="@AuthorId" Class="text-02 font-semibold text-lg" EnableDetailsPopup="false" />
+            <AuthorCircle Id="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
+            <AuthorName Id="@AuthorId" Class="text-02 font-semibold text-lg" EnableDetailsPopup="false" />
         </div>
     </Body>
     <Buttons>
@@ -46,7 +46,7 @@
         => new() { InitialValue = ComputedModel.Loading };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var parsedAuthorId = new ParsedAuthorId(AuthorId);
+        var parsedAuthorId = new AuthorId(AuthorId);
         if (!parsedAuthorId.IsValid)
             return ComputedModel.None;
 
@@ -105,7 +105,7 @@
         if (account == null)
             return;
 
-        var peerChatId = ParsedChatId.FormatShortPeerChatId(account.Id);
+        var peerChatId = ActualChat.Chat.ChatId.FormatShort(account.Id);
         Nav.NavigateTo(Links.ChatPage(peerChatId));
     }
 

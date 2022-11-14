@@ -10,8 +10,8 @@
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is { Length: 1 }) {
-            var chatEntryId = new ParsedChatEntryId(Arguments[0]);
-            var reader = Chats.NewEntryReader(Session, chatEntryId.ChatId, ChatEntryType.Text);
+            var chatEntryId = new ChatEntryId(Arguments[0]);
+            var reader = Chats.NewEntryReader(Session, chatEntryId.ChatId, ChatEntryKind.Text);
             _entry = await reader.Get(chatEntryId.EntryId, CancellationToken.None).Require();
         }
     }

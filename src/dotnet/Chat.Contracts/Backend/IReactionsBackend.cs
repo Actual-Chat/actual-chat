@@ -6,9 +6,7 @@ public interface IReactionsBackend : IComputeService
     Task<Reaction?> Get(string entryId, string authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ReactionSummary>> List(
-        string chatEntryId,
-        CancellationToken cancellationToken);
+    Task<ImmutableArray<ReactionSummary>> List(string entryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task React(ReactCommand command, CancellationToken cancellationToken);

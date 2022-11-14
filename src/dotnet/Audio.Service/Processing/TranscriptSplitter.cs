@@ -86,7 +86,7 @@ public class TranscriptSplitter : TranscriptionProcessorBase
         {
             if (delay)
                 await cpuClock.Delay(TextEntryWaitDelay, cancellationToken).ConfigureAwait(false);
-            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryType.Text, true, cancellationToken).ConfigureAwait(false);
+            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
             return idRange.End;
         }
     }

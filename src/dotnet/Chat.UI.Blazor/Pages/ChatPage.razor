@@ -7,7 +7,7 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     if (m.IsUnavailable) {
-        <RequireChat ChatId="@m.ParsedChatId.Id.Value" />
+        <RequireChat ChatId="@m.ChatId.Id.Value" />
         return;
     }
     var error = State.Error; // AY: Add code displaying the error bar later
@@ -114,12 +114,12 @@
         var accountTask = Accounts.GetOwn(Session, default);
         var account = (AccountFull?) null;
 
-        var parsedChatId = new ParsedChatId(chatId);
+        var parsedChatId = new ChatId(chatId);
         if (parsedChatId.Kind is ChatIdKind.PeerShort) {
             account ??= await accountTask;
             parsedChatId = account != null
-                ? ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1)
-                : parsedChatId.Invalid();
+                ? ActualChat.Chat.ChatId.Format(account.Id, parsedChatId.UserId1)
+                : parsedChatId.ToInvalid();
         }
 
         // parsedChatId is either (valid & not short) or invalid at this point
@@ -146,17 +146,17 @@
     private void OnUnreadMessagesClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, AccountFull? Account) {
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull? Account) {
         public static Model None { get; } = new(default, null, null);
         public static Model Loading { get; } = new(default, null, null); // Should differ by ref. from None
 
-        public bool IsNone => ParsedChatId.Id.IsEmpty;
+        public bool IsNone => ChatId.Id.IsEmpty;
         public bool IsUnavailable => !IsNone && Chat is null;
 
         public bool IsSame(Model? other) {
             if (other == null)
                 return false;
-            return ParsedChatId == other.ParsedChatId
+            return ChatId == other.ChatId
                 && ReferenceEquals(Chat, other.Chat)
                 && ReferenceEquals(Account, other.Account);
         }

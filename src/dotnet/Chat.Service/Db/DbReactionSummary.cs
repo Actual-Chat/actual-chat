@@ -6,16 +6,17 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ReactionSummaries")]
-[Index(nameof(ChatEntryId))]
+[Index(nameof(EntryId))]
 public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private static ITextSerializer<ImmutableList<Symbol>> AuthorIdsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<ImmutableList<Symbol>>();
 
     [Key] public string Id { get; set; } = null!;
-    public string ChatEntryId { get; set; } = "";
-    public long Count { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
+    public string EntryId { get; set; } = "";
+
+    public long Count { get; set; }
     public string Emoji { get; set; } = "";
     public string FirstAuthorIdsJson { get; set; } = "";
 
@@ -28,7 +29,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     public ReactionSummary ToModel()
         => new () {
             Id = Id,
-            ChatEntryId = ChatEntryId,
+            EntryId = EntryId,
             Emoji = Emoji,
             Count = Count,
             Version = Version,
@@ -37,8 +38,8 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
 
     public void UpdateFrom(ReactionSummary model)
     {
-        Id = ComposeId(model.ChatEntryId, model.Emoji);
-        ChatEntryId = model.ChatEntryId;
+        Id = ComposeId(model.EntryId, model.Emoji);
+        EntryId = model.EntryId;
         Emoji = model.Emoji;
         Version = model.Version;
         Count = model.Count;

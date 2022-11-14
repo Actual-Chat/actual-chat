@@ -19,8 +19,8 @@ public interface IRolesBackend : IComputeService
 
     [DataContract]
     public sealed record ChangeCommand(
-        [property: DataMember] string ChatId,
-        [property: DataMember] string RoleId,
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] RoleId RoleId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<RoleDiff> Change
     ) : ICommand<Role>, IBackendCommand;

@@ -17,7 +17,7 @@ public partial class ChatDbInitializer
             var thisChatEntries = dbContext.ChatEntries.Where(e => e.ChatId == chatId);
             var duplicateEntries = await (
                 from e in thisChatEntries
-                let count = thisChatEntries.Count(e1 => e1.Id == e.Id && e1.Type == e.Type)
+                let count = thisChatEntries.Count(e1 => e1.LocalId == e.LocalId && e1.Kind == e.Kind)
                 where count > 1
                 select e
                 ).ToListAsync(cancellationToken)
@@ -29,9 +29,9 @@ public partial class ChatDbInitializer
             foreach (var e in duplicateEntries)
                 Log.LogCritical(
                     "- Entry w/ CompositeId = {CompositeId}, Id = {Id}, Type = {Type}, '{Content}'",
-                    e.CompositeId,
                     e.Id,
-                    e.Type,
+                    e.LocalId,
+                    e.Kind,
                     e.Content);
         }
     }

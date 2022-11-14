@@ -108,8 +108,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
     {
         try {
             cancellationToken.ThrowIfCancellationRequested();
-            if (audioEntry.Type != ChatEntryType.Audio)
-                throw StandardError.NotSupported($"The entry's Type must be {ChatEntryType.Audio}.");
+            if (audioEntry.Kind != ChatEntryKind.Audio)
+                throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");
             if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
                 return PlayTrackCommand.PlayNothingProcess;
             return await (audioEntry.IsStreaming

@@ -76,7 +76,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (lastReadEntryId is { } entryId)
             navigateToEntryId = entryId;
         else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
             navigateToEntryId = chatIdRange.ToInclusive().End;
         }
 
@@ -117,7 +117,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatId = chat.Id.Value;
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryState?.Value ?? 0;
         if (LastReadEntryState != null && lastReadEntryId >= chatIdRange.End) {
             // looks like an error, let's reset last read position to the las entry id
@@ -131,7 +131,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
         var lastTile = await Chats.GetTile(Session,
             chatId,
-            ChatEntryType.Text,
+            ChatEntryKind.Text,
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
@@ -176,12 +176,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var adjustedRange = queryRange.Clamp(chatIdRange);
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await idTiles
-            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
+            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
 
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
-            .Where(e => e.Type == ChatEntryType.Text)
+            .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
         var hasVeryFirstItem = adjustedRange.Start <= chatIdRange.Start;

@@ -51,7 +51,7 @@ namespace ActualChat.Contacts.Migrations
                 var chat = dbChats.GetValueOrDefault(dbAuthor.ChatId);
                 if (chat == null) // No chat
                     continue;
-                if (chat.ChatType != ChatType.Group) // Not a group chat
+                if (chat.Kind != ChatKind.Group) // Not a group chat
                     continue;
 
                 var c = new DbContact() {

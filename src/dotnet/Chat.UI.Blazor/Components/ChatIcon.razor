@@ -1,8 +1,8 @@
-@switch (Chat.ChatType) {
-    case ChatType.Group:
+@switch (Chat.Kind) {
+    case ChatKind.Group:
         <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="@Size"/>
         break;
-    case ChatType.Peer:
+    case ChatKind.Peer:
         <AccountCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="@Size"/>
         break;
     default:
@@ -26,13 +26,13 @@
     }
 
     private async Task<Symbol> GetPeerChatTargetUserId() {
-        if (Chat.ChatType != ChatType.Peer)
+        if (Chat.Kind != ChatKind.Peer)
             return Symbol.Empty;
 
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         if (account is null)
             return Symbol.Empty;
 
-        return new ParsedChatId(Chat.Id).GetPeerChatTargetUserId(account.Id);
+        return new ChatId(Chat.Id).GetPeerChatTargetUserId(account.Id);
     }
 }

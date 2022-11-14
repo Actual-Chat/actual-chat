@@ -4,7 +4,7 @@ public interface IMentionsBackend
 {
     [ComputeMethod]
     Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        string chatId,
+        string authorId,
         CancellationToken cancellationToken);
 }

@@ -71,7 +71,7 @@ public class ChatActivityTest : AppHostTestBase
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
             ChatId = ChatId,
-            Type = ChatEntryType.Audio,
+            Kind = ChatEntryKind.Audio,
             AuthorId = author.Id,
             Content = "",
             StreamId = "FAKE",

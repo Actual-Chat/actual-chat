@@ -104,11 +104,11 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     private static void AddAudioEntry(ChatDbContext dbContext, string chatId, string authorId, ref long entryId, DateTime beginsAt, TimeSpan duration)
     {
         var audioEntry = new DbChatEntry {
-            CompositeId = DbChatEntry.ComposeId(chatId, ChatEntryType.Audio, entryId),
+            Id = DbChatEntry.ComposeId(chatId, ChatEntryKind.Audio, entryId),
             ChatId = chatId,
             AuthorId = authorId,
-            Type = ChatEntryType.Audio,
-            Id = entryId,
+            Kind = ChatEntryKind.Audio,
+            LocalId = entryId,
             Version = 1,
             BeginsAt = beginsAt,
             EndsAt = beginsAt.Add(duration),

@@ -15,10 +15,10 @@
                 <div class="flex-1">
                     <div class="ml-1 flex-x py-2">
                         <div class="">
-                            <ChatMessageAuthorCircle AuthorId="@m.Entry.AuthorId"/>
+                            <ChatMessageAuthorCircle Id="@m.Entry.AuthorId"/>
                         </div>
                         <div class="flex-y float-left px-2">
-                            <AuthorName AuthorId="@m.Entry.AuthorId" Class="font-bold text-03"/>
+                            <AuthorName Id="@m.Entry.AuthorId" Class="font-bold text-03"/>
                             <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                         </div>
                     </div>

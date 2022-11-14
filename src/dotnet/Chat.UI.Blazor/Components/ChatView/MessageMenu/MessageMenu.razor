@@ -20,7 +20,7 @@
             var chatId = Arguments[0];
             var entryId = long.Parse(Arguments[1]);
             _link = Arguments[2].NullIfEmpty();
-            var reader = Chats.NewEntryReader(Session, chatId, ChatEntryType.Text);
+            var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
             var chatEntry = await reader.Get(entryId, CancellationToken.None);
             _chatMessageModel = chatEntry != null
                 ? new ChatMessageModel(chatEntry)

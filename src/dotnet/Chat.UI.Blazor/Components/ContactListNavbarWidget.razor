@@ -57,7 +57,7 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
+            var selectedUserId = new ChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
             var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
             contacts = (
                 from contact in contacts
@@ -70,10 +70,10 @@
 
         var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.Id.ToFullChatId()))
+            .Where(c => pinnedChatIds.Contains(c.Id.GetChatId()))
             .ToList();
         var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.Id.ToFullChatId()))
+            .Where(c => !pinnedChatIds.Contains(c.Id.GetChatId()))
             .ToList();
 
         return new Model {

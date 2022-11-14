@@ -30,7 +30,7 @@ public class RecentChatsUI : WorkerBase
     public virtual async Task<Chat?> GetSelectedChat(CancellationToken cancellationToken)
     {
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (!ParsedChatId.TryParse(selectedChatId, out _))
+        if (!ChatId.TryParse(selectedChatId, out _))
             selectedChatId = Symbol.Empty;
         if (selectedChatId.IsEmpty)
             return null;

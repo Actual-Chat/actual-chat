@@ -15,7 +15,7 @@
     <div class="block bg-primary left-line min-h-10"></div>
     <div class="flex-y w-full px-2 opacity-90">
         <div class="grid pl-0.5">
-            <AuthorName AuthorId="@entry.AuthorId" Class="@authorNameCls"/>
+            <AuthorName Id="@entry.AuthorId" Class="@authorNameCls"/>
         </div>
         <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
             <div class="flex-x w-full overflow-hidden">
@@ -41,7 +41,7 @@
 
     private string _quoteText = "";
 
-    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;

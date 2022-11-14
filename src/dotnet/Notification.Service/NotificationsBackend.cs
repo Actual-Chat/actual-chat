@@ -289,7 +289,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (Computed.IsInvalidating())
             return;
 
-        var (entry, author, reactionAuthor, emoji, changeKind) = @event;
+        var (reaction, entry, author, reactionAuthor, changeKind) = @event;
         if (changeKind == ChangeKind.Remove)
             return;
         if (author.UserId.IsEmpty) // No notifs to anonymous users
@@ -297,7 +297,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
-        var text = $"{emoji} to \"{GetText(entry, 30)}\"";
+        var text = $"{reaction.Emoji} to \"{GetText(entry, 30)}\"";
         var userIds = new[] { author.UserId };
         await EnqueueMessageRelatedNotifications(entry, author, text, NotificationType.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);
@@ -336,19 +336,19 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
-         => chat.ChatType switch {
-             ChatType.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatType.Peer => !author.Avatar.Picture.IsNullOrEmpty()
+         => chat.Kind switch {
+             ChatKind.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
+             ChatKind.Peer => !author.Avatar.Picture.IsNullOrEmpty()
                  ? UrlMapper.ContentUrl(author.Avatar.Picture)
                  : "/favicon.ico",
-             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null),
+             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null),
          };
 
     private static string GetTitle(Chat.Chat chat, AuthorFull author)
-         => chat.ChatType switch {
-             ChatType.Group => $"{author.Avatar.Name} @ {chat.Title}",
-             ChatType.Peer => $"{author.Avatar.Name}",
-             _ => throw new ArgumentOutOfRangeException(nameof(chat.ChatType), chat.ChatType, null)
+         => chat.Kind switch {
+             ChatKind.Group => $"{author.Avatar.Name} @ {chat.Title}",
+             ChatKind.Peer => $"{author.Avatar.Name}",
+             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
          };
 
      private static string GetText(ChatEntry entry, int maxLength = 100)

@@ -2,8 +2,8 @@ namespace ActualChat.Users;
 
 [DataContract]
 public record Account(
-    [property: DataMember] Symbol Id
-) : IHasId<Symbol>, IRequirementTarget
+    [property: DataMember] UserId Id
+) : IHasId<UserId>, IRequirementTarget
 {
     public static Account None => AccountFull.None;
     public static Account Loading => AccountFull.Loading; // Should differ by ref. from None

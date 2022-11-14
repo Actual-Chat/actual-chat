@@ -54,8 +54,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
-        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
-        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);
+        var fullChatId = ChatId.Format(Contact.Id.OwnerId, Contact.Id.OtherId);
+        var shortChatId = ChatId.FormatShort(Contact.Id.OtherId);
 
         var isOnline = presence is Presence.Online or Presence.Recording;
         var (isSelected, isListening, isRecording) =

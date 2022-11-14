@@ -24,9 +24,6 @@ public class Contacts : IContacts
     public virtual async Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken)
     {
         var contactId = new ContactId(id);
-        if (!contactId.IsFullyValid)
-            return null;
-
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null || account.Id != contactId.OwnerId)
             return null;
@@ -45,7 +42,7 @@ public class Contacts : IContacts
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         var ownerId = account.Id;
 
-        var parsedChatId = new ParsedChatId(chatId);
+        var parsedChatId = new ChatId(chatId);
         ContactId id;
         switch (parsedChatId.Kind) {
         case ChatIdKind.Group:

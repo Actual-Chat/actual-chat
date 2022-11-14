@@ -53,7 +53,6 @@
 
     private Task ToggleReaction(string emoji) {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = ChatEntry.ChatId,
             EntryId = ChatEntry.Id,
             Emoji = emoji,
         }));

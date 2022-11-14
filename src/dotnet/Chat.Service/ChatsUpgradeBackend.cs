@@ -53,13 +53,13 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             return;
 
         Log.LogInformation("Upgrading chat #{ChatId}: '{ChatTitle}' ({ChatType})",
-            chatId, dbChat.Title, dbChat.ChatType);
+            chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        var isPeer = chat.ChatType is ChatType.Peer;
-        var parsedChatId = new ParsedChatId(chatId);
-        parsedChatId = isPeer ? parsedChatId.RequirePeerFullChatId() : parsedChatId.RequireGroupChatId();
-        if (chat.ChatType is ChatType.Peer) {
+        var isPeer = chat.Kind is ChatKind.Peer;
+        var parsedChatId = new ChatId(chatId);
+        parsedChatId = isPeer ? parsedChatId.RequirePeerChatId() : parsedChatId.RequireGroupChatId();
+        if (chat.Kind is ChatKind.Peer) {
             // Peer chat
             var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
             var ownerUserIds = new[] { userId1.Value, userId2.Value };
@@ -217,7 +217,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
             Create = new ChatDiff {
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
                 Title = "Actual.chat Announcements",
                 IsPublic = true,
             },
@@ -289,7 +289,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                 if (lastReadEntryId.GetValueOrDefault() == 0)
                     continue;
 
-                var idRange = await Backend.GetIdRange(chatId, ChatEntryType.Text, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await Backend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryId = idRange.End - 1;
                 if (lastEntryId >= lastReadEntryId)
                     continue;

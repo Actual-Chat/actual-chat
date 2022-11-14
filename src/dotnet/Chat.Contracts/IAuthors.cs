@@ -31,14 +31,14 @@ public interface IAuthors : IComputeService
     [DataContract]
     public sealed record CreateAuthorsCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] Symbol[] UserIds
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] UserId[] UserIds
         ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record SetAvatarCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
+        [property: DataMember] ChatId ChatId,
         [property: DataMember] Symbol AvatarId
     ) : ISessionCommand<Unit>;
 }

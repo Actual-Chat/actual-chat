@@ -15,7 +15,7 @@ public class RequireChat : RequirementComponent
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
-        var parsedChatId = new ParsedChatId(ChatId);
+        var parsedChatId = new ChatId(ChatId);
         if (!parsedChatId.IsValid) {
             Log.LogWarning("Invalid ChatId");
             parsedChatId.RequireValid();
