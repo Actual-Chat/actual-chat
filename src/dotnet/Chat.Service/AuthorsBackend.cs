@@ -38,6 +38,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         string chatId, string authorId,
         CancellationToken cancellationToken)
     {
+        if (authorId == AuthorExt.GetWalleId(chatId))
+            return AuthorExt.GetWalle(chatId);
+
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         if (dbAuthor == null || !OrdinalEquals(dbAuthor.ChatId, chatId))
             return null;
@@ -54,6 +57,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     {
         if (userId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
             return null;
+
+        if (string.Equals(userId, UserConstants.Walle.UserId, StringComparison.Ordinal))
+            return AuthorExt.GetWalle(chatId);
 
         AuthorFull? author;
         { // Closes "using" block earlier
@@ -261,6 +267,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAuthor = await dbContext.Authors
+            .ForUpdate()
             .Include(a => a.Roles)
             .SingleAsync(a => a.Id == authorId.Value, cancellationToken)
             .ConfigureAwait(false);
@@ -277,7 +284,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
         return author;
     }
-
 
     // [CommandHandler]
     public virtual async Task<AuthorFull> SetAvatar(IAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
