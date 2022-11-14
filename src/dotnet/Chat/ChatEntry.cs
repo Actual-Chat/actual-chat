@@ -19,6 +19,8 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTa
     public Moment? EndsAt { get; init; }
     public Moment? ContentEndsAt { get; init; }
     public string Content { get; init; } = "";
+    public ServiceEntryDetails? ServiceEntry { get; init; }
+    public bool IsServiceEntry => ServiceEntry != null;
     public bool HasReactions { get; init; }
     public Symbol StreamId { get; init; } = "";
     public long? AudioEntryId { get; init; }

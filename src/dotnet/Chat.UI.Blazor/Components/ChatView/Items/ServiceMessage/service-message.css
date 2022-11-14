@@ -1,0 +1,6 @@
+.service-message {
+    @apply flex-x h-8 justify-center items-center gap-1;
+}
+.service-message-author-name {
+    @apply font-bold text-03 cursor-pointer hover:opacity-80;
+}

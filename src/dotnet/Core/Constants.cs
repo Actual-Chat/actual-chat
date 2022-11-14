@@ -5,7 +5,9 @@ public static partial class Constants
     public static class Chat
     {
         public static Symbol DefaultChatId { get; } = "the-actual-one";
+        public const long WalleAuthorLocalId = -1;
         public static Symbol AnnouncementsChatId { get; } = "announcements";
+
         public static ImmutableArray<Symbol> PredefinedChatIds { get; } =
             ImmutableArray.Create(DefaultChatId, AnnouncementsChatId);
 
@@ -34,10 +36,5 @@ public static partial class Constants
         public static TimeSpan SkipCheckInPeriod { get; } = TimeSpan.FromSeconds(30);
         public static TimeSpan AwayTimeout { get; } = TimeSpan.FromSeconds(60);
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
-    }
-
-    public static class Contact
-    {
-        public const int MaxRecentContacts = 20;
     }
 }
