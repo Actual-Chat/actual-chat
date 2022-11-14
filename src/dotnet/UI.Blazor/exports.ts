@@ -25,6 +25,7 @@ export * from './Services/BrowserInfo/browser-info';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/HistoryUI/history-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
+export * from './Services/Navigator/navigator'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'
