@@ -2,7 +2,6 @@ using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Transcription.Google;
-using FluentAssertions.Common;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -26,6 +25,10 @@ public class GoogleTranscriberTest : TestBase
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
+        // Global - Google Speech v2 doesnt work with Http/3!
+        // GlobalHttpSettings.SocketsHttpHandler.AllowHttp3
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         var transcriber = new GoogleTranscriber(
             CoreSettings,
             new MemoryCache(Options.Create(new MemoryCacheOptions())));
