@@ -1,6 +1,15 @@
 .reaction-select {
-    @apply flex-x items-center gap-2.5;
+    @apply flex-x items-center;
 }
 .reaction-select-reaction {
-    @apply min-w-0;
+    @apply min-w-0 px-2;
+}
+.reaction-select-reaction-emoji {
+    @apply h-5 w-5;
+}
+.reaction-select-menu .reaction-select-reaction {
+    @apply p-0 h-6 w-8 justify-center;
+}
+.reaction-select-menu .reaction-select-reaction-emoji {
+    @apply h-5 w-5;
 }

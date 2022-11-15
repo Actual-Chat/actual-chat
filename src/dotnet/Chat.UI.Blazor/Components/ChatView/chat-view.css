@@ -61,16 +61,15 @@
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
-.chat-message-menu .menu-item {
-    @apply h-8 text-left w-full;
+.mobile .message-menu .reaction-select {
+    @apply h-10 gap-4;
 }
-.chat-message-menu-reaction-select {
-    @apply gap-2.5;
+.mobile .message-menu .reaction-select-reaction-emoji {
+    @apply w-6 h-6;
 }
-.mobile .chat-message-menu-reaction-select {
-    @apply h-12 gap-4;
+.chat-message:hover .message-reactions-add {
+    @apply visible;
 }
-
 .chat-message-transcript {
     @apply text-02 whitespace-normal;
 }
@@ -110,8 +109,8 @@
     @apply bg-round-hover;
 }
 .message-content + .message-reactions {
-    @apply mt-0.5;
+    @apply -mt-0.5;
 }
 .message-attachments + .message-reactions {
-    @apply mt-2;
+    @apply mt-1;
 }

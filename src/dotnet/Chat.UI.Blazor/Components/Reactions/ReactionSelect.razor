@@ -3,14 +3,13 @@
     if (!_areReactionsEnabled)
         return;
 }
-<ul class="reaction-select @Class">
+<ul class="reaction-select">
     @foreach (var emoji in _emojis) {
         <MenuEntry
             OnClick="_ => React(emoji.Code)"
-            Class="reaction-select-reaction"
-            Tooltip="@emoji.Name">
+            Class="reaction-select-reaction">
             <IconContent>
-                <EmojiIcon Code="@emoji.Code" class="@ReactionClass"/>
+                <EmojiIcon Code="@emoji.Code" class="reaction-select-reaction-emoji"/>
             </IconContent>
         </MenuEntry>
     }
@@ -26,8 +25,6 @@
     [Inject] private Features Features { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
-    [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string ReactionClass { get; set; } = "w-5 h-5";
 
     protected override async Task OnInitializedAsync() {
         _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);

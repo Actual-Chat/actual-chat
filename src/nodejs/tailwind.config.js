@@ -84,7 +84,7 @@ module.exports = {
         'primary': 'var(--primary)',
         'primary-hover': 'var(--primary-hover)',
         'primary-title': 'var(--primary-title)',
-        'reaction': 'var(--reaction)',
+        'reaction-own': 'var(--reaction-own)',
         'secondary': 'var(--secondary)',
         'secondary-hover': 'var(--secondary-hover)',
         'secondary-title': 'var(--secondary-title)',

@@ -13,16 +13,16 @@
         <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.CompositeId, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()">
-            <EmojiIcon Code="@reaction.Emoji" class="w-4 h-4"/>
+            <EmojiIcon Code="@reaction.Emoji" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
 
-    <li class="message-reactions-add hover:bg-reaction text-icons-03"
+    <li class="message-reactions-add"
         data-menu="@(MenuRef.New<ReactionSelectMenu>(ChatEntry.CompositeId))"
         data-menu-trigger="@MenuTriggers.LeftClick.Format()"
         data-menu-position="@(FloatingPosition.Right.ToPositionString())">
-        <AddReactionIcon/>
+        <AddReactionIcon class="message-reactions-add-icon"/>
     </li>
 </ul>
 
