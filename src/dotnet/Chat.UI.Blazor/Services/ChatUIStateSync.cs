@@ -1,7 +1,6 @@
 ﻿using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -304,7 +303,7 @@ public class ChatUIStateSync : WorkerBase
     {
         var changes = ChatUI.HighlightedChatEntryId
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .Where(x => x.Value != 0);
+            .Where(x => !x.Value.IsEmpty);
         CancellationTokenSource? cts = null;
         try {
             await foreach (var cHighlightedChatEntryId in changes.ConfigureAwait(false)) {
@@ -316,7 +315,7 @@ public class ChatUIStateSync : WorkerBase
                     await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
                     ChatUI.HighlightedChatEntryId.Set(
                         highlightedChatEntryId,
-                        (expected, result) => result.IsValue(out var v) && v == expected ? 0 : result);
+                        (expected, result) => result.IsValue(out var v) && v == expected ? default : result);
                 }, CancellationToken.None);
             }
         }

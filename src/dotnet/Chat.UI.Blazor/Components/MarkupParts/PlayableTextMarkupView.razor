@@ -113,7 +113,7 @@
         if (hasActivePlaying) {
             colorLease ??= PaletteProvider
                 .GetPalette(Entry.ChatId)
-                .RentColor(Entry.AuthorId, Entry.Id);
+                .RentColor(Entry.AuthorId, Entry.LocalId);
         }
         else {
             if (colorLease != null) {

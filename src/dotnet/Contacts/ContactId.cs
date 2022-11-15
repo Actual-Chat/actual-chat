@@ -50,6 +50,24 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
         ChatId = chatId;
     }
 
+    public ContactId(UserId ownerId, UserId userId, SkipValidation _)
+    {
+        Id = $"{ownerId} u:{userId}";
+        Kind = ContactKind.User;
+        OwnerId = ownerId;
+        UserId = userId;
+        ChatId = default;
+    }
+
+    public ContactId(UserId ownerId, ChatId chatId, SkipValidation _)
+    {
+        Id = $"{ownerId} c:{chatId}";
+        Kind = ContactKind.Chat;
+        OwnerId = ownerId;
+        UserId = default;
+        ChatId = chatId;
+    }
+
     public bool IsUserContact(out UserId userId)
     {
         userId = UserId;

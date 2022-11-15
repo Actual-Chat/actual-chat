@@ -27,7 +27,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     {
         var dbContact = await DbContactResolver.Get(id, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel();
-        if (contact is not { Id.IsValid: true })
+        if (contact is not { Id.IsEmpty: false })
             return null;
         if (contact.Id.OwnerId != ownerId)
             return null;
@@ -42,7 +42,6 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             var chat = await chatTask.ConfigureAwait(false);
             chat ??= new Chat.Chat() {
                 Id = chatId,
-                Kind = ChatKind.Peer,
             };
             chat = chat with {
                 Title = account.Avatar.Name,
@@ -76,18 +75,15 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (ownerId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
             return null;
 
+        var parsedOwnerId = new UserId(ownerId);
         var parsedChatId = new ChatId(chatId);
         ContactId id;
-        switch (parsedChatId.Kind) {
-        case ChatKind.Group:
-            id = new ContactId(ownerId, parsedChatId.Id, ContactKind.Chat);
-            break;
-        case ChatKind.PeerFull:
-            id = new ContactId(ownerId, parsedChatId.GetPeerChatTargetUserId(ownerId), ContactKind.User);
-            break;
-        default:
+        if (parsedChatId.IsPeerChatId(parsedOwnerId, out var userId))
+            id = new ContactId(parsedOwnerId, userId, SkipValidation.Instance);
+        else if (parsedChatId.IsGroupChatId())
+            id = new ContactId(parsedOwnerId, parsedChatId, SkipValidation.Instance);
+        else
             return null;
-        }
 
         return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
@@ -98,21 +94,21 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (ownerId.IsNullOrEmpty() || userId.IsNullOrEmpty())
             return null;
 
-        var id = new ContactId(ownerId, userId, ContactKind.User);
+        var parsedOwnerId = new UserId(ownerId);
+        var parsedUserId = new UserId(userId);
+        var id = new ContactId(parsedOwnerId, parsedUserId, SkipValidation.Instance);
         return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ContactId>> ListIds(string ownerId, CancellationToken cancellationToken)
     {
-        var parsedOwnerId = (UserId) ownerId;
-        if (!parsedOwnerId.IsValid) // We need to make sure it's valid before using it in idPrefix
-            return ImmutableArray<ContactId>.Empty;
+        var parsedOwnerId = new UserId(ownerId);
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ownerId + ' ';
+        var idPrefix = parsedOwnerId.Value + ' ';
         var contactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .OrderBy(a => a.Id)
@@ -133,7 +129,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (contact != null)
             return contact;
 
-        var id = new ContactId(ownerId, userId, ContactKind.User).RequireFullyValid();
+        var parsedOwnerId = new UserId(ownerId);
+        var parsedUserId = new UserId(userId);
+        var id = new ContactId(parsedOwnerId, parsedUserId, SkipValidation.Instance);
         var command = new IContactsBackend.ChangeCommand(id, null, new Change<Contact> {
             Create = new Contact { Id = id },
         });
@@ -160,7 +158,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return default!;
         }
 
-        id.RequireFullyValid();
+        id.RequireNonEmpty();
         change.RequireValid();
         var dbId = id.Value;
 
@@ -210,15 +208,13 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     {
         var id = command.Id;
         if (Computed.IsInvalidating()) {
-            if (id.IsFullyValid)
-                _ = Get(id.OwnerId, id, default);
+            _ = Get(id.OwnerId, id, default);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        id.RequireFullyValid();
         // Update or Delete
         var dbId = id.Value;
         var dbContact = await dbContext.Contacts.ForUpdate()
@@ -251,21 +247,17 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (userId.IsEmpty) // We do nothing for anonymous authors for now
             return;
 
-        var parsedChatId = new ChatId(chatId).RequireValid();
         ContactId id;
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.Group:
-            id = new ContactId(userId, chatId, ContactKind.Chat);
-            break;
-        case ChatIdKind.PeerFull:
-            id = new ContactId(userId, parsedChatId.GetPeerChatTargetUserId(userId), ContactKind.User);
-            break;
-        default:
+        if (chatId.IsPeerChatId(userId, out var otherUserId))
+            id = new ContactId(userId, otherUserId, SkipValidation.Instance);
+        else if (chatId.IsGroupChatId())
+            id = new ContactId(userId, chatId, SkipValidation.Instance);
+        else {
             Log.LogWarning("Invalid event (unsupported ChatId kind): {Event}", @event);
             return;
         }
 
-        var contact = await Get(userId, id, cancellationToken).ConfigureAwait(false);
+        var contact = await Get(otherUserId, id, cancellationToken).ConfigureAwait(false);
         if ((contact == null) == author.HasLeft)
             return; // No need to make any changes
 

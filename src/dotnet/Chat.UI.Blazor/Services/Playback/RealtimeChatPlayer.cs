@@ -20,7 +20,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         var startEntry = await audioEntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
-        var startId = startEntry?.Id ?? idRange.End;
+        var startId = startEntry?.LocalId ?? idRange.End;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {

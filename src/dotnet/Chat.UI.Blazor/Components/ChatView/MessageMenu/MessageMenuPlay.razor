@@ -55,8 +55,10 @@
         foreach (var playbackState in playbackStates) {
             var trackInfo = playbackState.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
-                var audioEntryId = chatAudioTrackInfo.AudioEntry.Id;
-                if (audioEntryId == Entry.AudioEntryId) {
+                var audioEntry = chatAudioTrackInfo.AudioEntry;
+                if (audioEntry.ChatId != Entry.ChatId)
+                    continue;
+                if (audioEntry.LocalId == Entry.AudioEntryId) {
                     if (isPaused || playbackState.State.IsStarted) {
                         canPlay = false;
                     }

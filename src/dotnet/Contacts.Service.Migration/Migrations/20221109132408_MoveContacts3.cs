@@ -1,6 +1,7 @@
 ﻿using ActualChat.Contacts.Db;
 using ActualChat.Db;
 using ActualChat.Hosting;
+using ActualChat.Users;
 using ActualChat.Users.Module;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -34,8 +35,10 @@ namespace ActualChat.Contacts.Migrations
                 if (oc.OwnerUserId.IsNullOrEmpty() || oc.TargetUserId.IsNullOrEmpty())
                     continue;
 
+                var ownerId = new UserId(oc.OwnerUserId);
+                var userId = new UserId(oc.TargetUserId);
                 var c = new DbContact() {
-                    Id = new ContactId(oc.OwnerUserId, oc.TargetUserId, ContactKind.User),
+                    Id = new ContactId(ownerId, userId, SkipValidation.Instance),
                     Version = oc.Version,
                     OwnerId = oc.OwnerUserId,
                     UserId = oc.TargetUserId,

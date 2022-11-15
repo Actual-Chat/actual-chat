@@ -30,7 +30,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public Contact ToModel()
         => new() {
-            Id = Id,
+            Id = new ContactId(Id),
             Version = Version,
             TouchedAt = TouchedAt.ToMoment(),
         };
@@ -42,15 +42,15 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!Id.IsNullOrEmpty())
             return; // Only Version & TouchedAt can be changed for already existing contacts
 
-        var contactId = model.Id.RequireValid();
-        Id = contactId;
-        OwnerId = contactId.OwnerId;
-        switch (contactId.Kind) {
+        var id = model.Id;
+        Id = id;
+        OwnerId = id.OwnerId;
+        switch (id.Kind) {
         case ContactKind.User:
-            UserId = contactId.OwnerId;
+            UserId = id.OwnerId;
             break;
         case ContactKind.Chat:
-            ChatId = contactId.OwnerId;
+            ChatId = id.OwnerId;
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(model));

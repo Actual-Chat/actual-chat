@@ -15,15 +15,15 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
 
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        string chatId,
+        string authorId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.AuthorId == authorId.Value)
+            .Where(x => x.ChatId == chatId && x.AuthorId == authorId)
             .OrderByDescending(x => x.EntryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -54,7 +54,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         var markup = MarkupParser.Parse(entry.Content);
         var authorIds = new MentionExtractor().GetMentionedAuthorIds(markup);
         var existingMentions = await dbContext.Mentions
-            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryId == entry.Id)
+            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryId == entry.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -64,16 +64,15 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
             changedAuthorIds.AddRange(existingMentions.Select(m => (Symbol)m.AuthorId));
         }
         else {
-            var toRemove = existingMentions.ExceptBy(authorIds, x => x.Id).ToList();
+            var toRemove = existingMentions.ExceptBy(authorIds.Select(a => a.Id), x => x.Id).ToList();
             dbContext.Mentions.RemoveRange(toRemove);
 
             var toAdd = authorIds
-                .Except(existingMentions.Select(x => (Symbol)x.AuthorId))
+                .Except(existingMentions.Select(x => new AuthorId(x.AuthorId)))
                 .Select(authorId1 => new DbMention {
-                    Id = DbMention.ComposeId(entry.ChatId, entry.Id, authorId1),
+                    Id = DbMention.ComposeId(entry.Id, authorId1),
                     AuthorId = authorId1,
-                    ChatId = entry.ChatId,
-                    EntryId = entry.Id,
+                    EntryId = entry.LocalId,
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);
 

@@ -61,7 +61,7 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IParsab
     public static bool TryParse(string? s, out UserId result)
     {
         result = default;
-        if (s == null || s.Length < 6)
+        if (s == null || s.Length < 3) // Tests may use some accounts with short Ids + there is "admin"
             return false;
 
         for (var i = 0; i < s.Length; i++) {

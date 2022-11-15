@@ -52,11 +52,14 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
         Kind = ChatKind.Peer;
     }
 
+    public bool IsGroupChatId()
+        => Kind == ChatKind.Group;
+
     public bool IsPeerChatId(UserId ownUserId, out UserId otherUserId)
     {
         if (IsPeerChatId(out var userId1, out var userId2)) {
-            otherUserId = (userId1, userId2).OtherThanOrDefault(ownUserId);
-            return !otherUserId.IsEmpty;
+            otherUserId = (userId1, userId2).OtherThan(ownUserId);
+            return true;
         }
         otherUserId = default;
         return false;

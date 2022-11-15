@@ -32,7 +32,7 @@ public class ChatUI
     public ISyncedState<ImmutableHashSet<PinnedChat>> PinnedChats { get; }
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
     public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
-    public IMutableState<long> HighlightedChatEntryId { get; }
+    public IMutableState<ChatEntryId> HighlightedChatEntryId { get; }
 
     public ChatUI(IServiceProvider services)
     {
@@ -59,7 +59,7 @@ public class ChatUI
                 Corrector = FixActiveChats,
             });
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
-        HighlightedChatEntryId = StateFactory.NewMutable<long>();
+        HighlightedChatEntryId = StateFactory.NewMutable<ChatEntryId>();
 
         // Read entry states from other windows / devices aren't delayed
         _lastReadEntryStatesUpdateDelayer = FixedDelayer.Instant;
@@ -182,7 +182,7 @@ public class ChatUI
 
     public void ShowAuthorModal(string authorId)
     {
-        var parsedAuthorId = new AuthorId(authorId).RequireValid();
+        var parsedAuthorId = new AuthorId(authorId);
         ModalUI.Show(new AuthorModal.Model(parsedAuthorId.ChatId, parsedAuthorId.Id));
     }
 

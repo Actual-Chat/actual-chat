@@ -80,12 +80,12 @@ public readonly struct PrincipalId : IEquatable<PrincipalId>, IParsable<Principa
         => TryParse(s, out result);
     public static bool TryParse(string? s, out PrincipalId result)
     {
-        if (UserId.TryParse(s, out var userId)) {
-            result = new PrincipalId(userId, SkipValidation.Instance);
-            return true;
-        }
         if (AuthorId.TryParse(s, out var authorId)) {
             result = new PrincipalId(authorId, SkipValidation.Instance);
+            return true;
+        }
+        if (UserId.TryParse(s, out var userId)) {
+            result = new PrincipalId(userId, SkipValidation.Instance);
             return true;
         }
         result = default;

@@ -62,8 +62,7 @@
 
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = Message.Entry.ChatId,
-            EntryLocalId = Message.Entry.Id,
+            EntryId = Message.Entry.Id,
             Emoji = Emoji.ThumbsUp,
         }));
     }

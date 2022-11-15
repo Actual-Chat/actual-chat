@@ -85,12 +85,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigateToEntry(navigateToEntryId);
     }
 
-    public void NavigateToEntry(long navigateToEntryId)
+    public void NavigateToEntry(long localId)
     {
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
         NavigateToEntryId.Value = null;
-        NavigateToEntryId.Value = navigateToEntryId;
+        NavigateToEntryId.Value = localId;
     }
 
     public void TryNavigateToEntry()
@@ -114,7 +114,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized;
 
         var chat = Chat;
-        var chatId = chat.Id.Value;
+        var chatId = chat.Id;
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
@@ -135,7 +135,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != authorId || entry.Id <= _initialLastReadEntryId)
+            if (entry.AuthorId != authorId || entry.LocalId <= _initialLastReadEntryId)
                 continue;
 
             // scroll only on text entries
@@ -143,8 +143,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 continue;
 
             // scroll to the latest Author entry - e.g.m when author submits the new one
-            _initialLastReadEntryId = entry.Id;
-            entryId = entry.Id;
+            _initialLastReadEntryId = entry.LocalId;
+            entryId = entry.LocalId;
             mustScrollToEntry = true;
         }
 
@@ -205,7 +205,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         if (isHighlighted)
             // highlight entry when it has already been loaded
-            ChatUI.HighlightedChatEntryId.Value = entryId;
+            ChatUI.HighlightedChatEntryId.Value = new ChatEntryId(chatId, ChatEntryKind.Text, entryId, SkipValidation.Instance);
 
         return result;
     }
@@ -252,9 +252,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => TryNavigateToEntry();
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent navigation, CancellationToken cancellationToken)
+    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
-        NavigateToEntry(navigation.ChatEntryId);
+        if (@event.ChatEntryId.ChatId == Chat.Id)
+            NavigateToEntry(@event.ChatEntryId.LocalId);
         return Task.CompletedTask;
     }
 }

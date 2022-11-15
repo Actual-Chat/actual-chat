@@ -7,7 +7,7 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     if (m.IsUnavailable) {
-        <RequireChat ChatId="@m.ChatId.Id.Value" />
+        <RequireChat Id="@m.ChatId.Id.Value" />
         return;
     }
     var error = State.Error; // AY: Add code displaying the error bar later

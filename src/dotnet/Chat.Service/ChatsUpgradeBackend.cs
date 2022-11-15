@@ -32,7 +32,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         IChatsUpgradeBackend.UpgradeChatCommand command,
         CancellationToken cancellationToken)
     {
-        var chatId = command.ChatId;
+        var chatId = command.ChatId.RequireNonEmpty();
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -44,7 +44,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        chatId = chatId.RequireNonEmpty("Command.ChatId");
         var dbChat = await dbContext.Chats
             .Include(c => c.Owners)
             .SingleOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken)
@@ -56,12 +55,8 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        var isPeer = chat.Kind is ChatKind.Peer;
-        var parsedChatId = new ChatId(chatId);
-        parsedChatId = isPeer ? parsedChatId.RequirePeerChatId() : parsedChatId.RequireGroupChatId();
-        if (chat.Kind is ChatKind.Peer) {
+        if (chat.Id.IsPeerChatId(out var userId1, out var userId2)) {
             // Peer chat
-            var (userId1, userId2) = (parsedChatId.UserId1.Id, parsedChatId.UserId2.Id);
             var ownerUserIds = new[] { userId1.Value, userId2.Value };
             await ownerUserIds
                 .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
@@ -106,8 +101,8 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                         Create = new RoleDiff() {
                             SystemRole = SystemRole.Owner,
                             Permissions = ChatPermissions.Owner,
-                            AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
-                                AddedItems = ImmutableArray<Symbol>.Empty.AddRange(ownerAuthors.Select(a => a.Id)),
+                            AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
+                                AddedItems = ImmutableArray<AuthorId>.Empty.AddRange(ownerAuthors.Select(a => a.Id)),
                             },
                         },
                     });
@@ -130,8 +125,8 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                         new() {
                             Update = new RoleDiff() {
                                 Permissions = ChatPermissions.Owner,
-                                AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol>() {
-                                    AddedItems = ImmutableArray<Symbol>.Empty.AddRange(missingAuthors.Select(a => a.Id)),
+                                AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
+                                    AddedItems = ImmutableArray<AuthorId>.Empty.AddRange(missingAuthors.Select(a => a.Id)),
                                 },
                             },
                         });
@@ -167,7 +162,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
         CancellationToken cancellationToken)
     {
-        var chatId = Constants.Chat.AnnouncementsChatId;
+        var chatId = new ChatId(Constants.Chat.AnnouncementsChatId);
         if (Computed.IsInvalidating()) {
             _ = Backend.Get(chatId, default);
             return default!;
@@ -177,14 +172,12 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var hostInfo = Services.GetRequiredService<HostInfo>();
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
-        string? creatorId = null;
-
+        UserId creatorId = default;
         var adminUser = await AccountsBackend.Get(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false);
         if (adminUser != null)
             creatorId = adminUser.Id;
 
-        var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
+        var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             var user = account?.User;
@@ -197,22 +190,21 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
             if (hostInfo.IsDevelopmentInstance) {
                 if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
-                    owners.Add(email, userId);
+                    userIdByEmail.Add(email, userId);
             }
             else {
                 if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat") || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
-                    owners.Add(email, userId);
+                    userIdByEmail.Add(email, userId);
             }
         }
 
-        if (creatorId == null) {
-            if (owners.TryGetValue("alex.yakunin@actual.chat", out var temp))
+        if (creatorId.IsEmpty) {
+            if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
                 creatorId = temp;
-            else if (owners.Count > 0)
-                creatorId = owners.First().Value;
+            else if (userIdByEmail.Count > 0)
+                creatorId = userIdByEmail.First().Value;
         }
-
-        if (creatorId == null)
+        if (creatorId.IsEmpty)
             throw StandardError.Constraint("Creator user not found");
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
@@ -236,22 +228,22 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         });
         await Commander.Call(changeAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
 
-        var authorsByUserId = new Dictionary<string, AuthorFull>(StringComparer.OrdinalIgnoreCase);
+        var authorByUserId = new Dictionary<UserId, AuthorFull>();
         foreach (var userId in userIds) {
             // join existent users to the chat
            var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
-           authorsByUserId.Add(userId, author);
+           authorByUserId.Add(userId, author);
         }
 
         var ownerRole = await RolesBackend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var ownerAuthorIds = ImmutableArray<Symbol>.Empty;
-        foreach (var userId in owners.Values) {
-            if (OrdinalEquals(userId, creatorId))
+        var ownerAuthorIds = ImmutableArray<AuthorId>.Empty;
+        foreach (var userId in userIdByEmail.Values) {
+            if (userId == creatorId)
                 continue;
-            if (!authorsByUserId.TryGetValue(userId, out var author))
+            if (!authorByUserId.TryGetValue(userId, out var author))
                 continue;
             ownerAuthorIds = ownerAuthorIds.Add(author.Id);
         }
@@ -259,8 +251,8 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         if (ownerAuthorIds.Length > 0) {
             var changeOwnerRoleCmd = new IRolesBackend.ChangeCommand(chatId, ownerRole.Id, null, new() {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ImmutableArray<Symbol>, Symbol> {
-                        AddedItems = ownerAuthorIds
+                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
+                        AddedItems = ownerAuthorIds,
                     }
                 },
             });

@@ -3,7 +3,9 @@ namespace ActualChat.Chat;
 public record Mention : IHasId<Symbol>, IRequirementTarget
 {
     [DataMember] public Symbol Id { get; init; } = "";
-    [DataMember] public string AuthorId { get; init; } = "";
-    [DataMember] public string ChatId { get; init; } = "";
-    [DataMember] public long EntryId { get; init; }
+    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public AuthorId AuthorId { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => EntryId.ChatId;
 }

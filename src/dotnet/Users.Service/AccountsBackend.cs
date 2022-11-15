@@ -27,8 +27,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(string id, CancellationToken cancellationToken)
     {
-        if (id.IsNullOrEmpty())
-            return null;
+        var userId = new UserId(id);
 
         // We _must_ have a dependency on AuthBackend.GetUser here
         var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
@@ -36,7 +35,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
             return null;
 
         var dbAccount = await DbAccountResolver.Get(id, cancellationToken).Require().ConfigureAwait(false);
-        var account = new AccountFull(user.Id, user) {
+        var account = new AccountFull(userId, user) {
             IsAdmin = IsAdmin(user),
         };
         account = dbAccount.ToModel(account);

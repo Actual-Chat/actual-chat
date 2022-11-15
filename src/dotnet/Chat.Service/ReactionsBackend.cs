@@ -57,7 +57,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             return;
         }
 
-        var entry = await GetChatEntry(chatId, chatEntryId.LocalId, cancellationToken).Require().ConfigureAwait(false);
+        var entry = await GetChatEntry(chatEntryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -154,17 +154,17 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         }
     }
 
-    private async Task<ChatEntry?> GetChatEntry(string chatId, long entryId, CancellationToken cancellationToken)
+    private async Task<ChatEntry?> GetChatEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var chatTile = await ChatsBackend.GetTile(
-                chatId,
-                ChatEntryKind.Text,
+                entryId.ChatId,
+                entryId.EntryKind,
                 idTile.Range,
                 false,
                 cancellationToken)
             .ConfigureAwait(false);
-        var entry = chatTile.Entries.FirstOrDefault(x => x.Id == entryId);
+        var entry = chatTile.Entries.FirstOrDefault(x => x.LocalId == entryId.LocalId);
         return entry;
     }
 }

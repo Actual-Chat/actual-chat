@@ -44,19 +44,12 @@ public class Contacts : IContacts
 
         var parsedChatId = new ChatId(chatId);
         ContactId id;
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.Group:
-            id = new ContactId(ownerId, parsedChatId.Id, ContactKind.Chat);
-            break;
-        case ChatIdKind.PeerShort:
-            id = new ContactId(ownerId, parsedChatId.UserId1, ContactKind.User);
-            break;
-        case ChatIdKind.PeerFull:
-            id = new ContactId(ownerId, parsedChatId.GetPeerChatTargetUserId(ownerId), ContactKind.User);
-            break;
-        default:
+        if (parsedChatId.IsPeerChatId(ownerId, out var userId))
+            id = new ContactId(ownerId, userId, SkipValidation.Instance);
+        else if (parsedChatId.IsGroupChatId())
+            id = new ContactId(ownerId, parsedChatId, SkipValidation.Instance);
+        else
             return null;
-        }
 
         var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
         if (contact == null)
@@ -72,7 +65,7 @@ public class Contacts : IContacts
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         var ownerId = account.Id;
 
-        var id = new ContactId(ownerId, userId, ContactKind.User);
+        var id = new ContactId(ownerId, new UserId(userId), SkipValidation.Instance);
         var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
@@ -101,7 +94,7 @@ public class Contacts : IContacts
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, id, expectedVersion, change) = command;
-        id.RequireFullyValid();
+        id.RequireNonEmpty();
         change.RequireValid();
 
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
@@ -120,7 +113,7 @@ public class Contacts : IContacts
             return; // It just spawns other commands, so nothing to do here
 
         var (session, id) = command;
-        id.RequireFullyValid();
+        id.RequireNonEmpty();
 
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         if (id.OwnerId != account.Id)

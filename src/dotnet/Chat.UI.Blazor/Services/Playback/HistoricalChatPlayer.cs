@@ -25,7 +25,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
         var overallPauseDelay = TimeSpan.Zero;
 
-        idRange = (startEntry.Id, idRange.End);
+        idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.StreamId.IsEmpty) // Streaming entry
@@ -92,7 +92,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return null;
         }
 
-        idRange = (startEntry.Id, idRange.End);
+        idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         var remainedShift = shift;
         var lastShiftPosition = playingAt;
@@ -132,7 +132,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return null;
         }
 
-        Range<long> idRange = (startEntry.Id, fullIdRange.End);
+        Range<long> idRange = (startEntry.LocalId, fullIdRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
@@ -150,7 +150,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return null;
         }
 
-        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.Id)).ToExclusive();
+        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).ToExclusive();
         var reverseEntries = audioEntryReader.ReadReverse(idRange, cancellationToken);
         var remainedShift = shift;
         var lastShiftPosition = playingAt;
