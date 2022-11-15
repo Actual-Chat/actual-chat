@@ -173,8 +173,8 @@ jobs:
     steps:
       - name: Install postgresql-client
         run: |
-          apk update
-          apk add postgresql-client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
       - name: "Set some postgres settings"
         run: |
