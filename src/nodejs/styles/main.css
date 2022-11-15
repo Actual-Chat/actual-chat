@@ -188,3 +188,11 @@ input.input-underlined {
 .landing .page-2 {
     @apply bg-01;
 }
+.landing-auth-btn.btn.btn-round {
+    @apply text-lg md:text-base;
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
+}
+.landing-auth-btn.btn.btn-round .btn-content {
+    @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
+}
+

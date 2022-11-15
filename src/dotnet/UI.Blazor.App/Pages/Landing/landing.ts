@@ -1,3 +1,5 @@
+import { debounce } from 'promises';
+
 const LogScope = 'Landing';
 
 export class Landing {
@@ -41,12 +43,14 @@ export class Landing {
         this.pageBottoms = bottoms;
     }
 
-    private getScrollDirection = ((event: WheelEvent & { target: Element; }) => {
+    private getScrollDirectionThrottled = debounce(
+        (event: WheelEvent & { target: Element; }) => this.getScrollDirectionInternal(event), 300, true);
+
+    private getScrollDirectionInternal = ((event: WheelEvent & { target: Element; }) => {
         let page = this.pages[this.currentPageNumber];
         if (event.deltaY > 0
             && this.currentPageNumber < Object.keys(this.pages).length) {
             // scroll down
-            this.preventEvent(event);
             if (page.classList.contains('page-scrolling')
                 && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
                 this.scrollToPageEnd(page);
@@ -56,7 +60,6 @@ export class Landing {
         } else if (event.deltaY < 0
             && this.currentPageNumber > 1) {
             // scroll up
-            this.preventEvent(event);
             if (page.classList.contains('page-scrolling')
                 && Math.abs(page.getBoundingClientRect().top) > 100) {
                 this.scrollToPageStart(page);
@@ -66,27 +69,42 @@ export class Landing {
         } else this.getPageData();
     });
 
+    private getScrollDirection = ((event: WheelEvent & { target: Element; }) => {
+        this.preventEvent(event);
+        this.getScrollDirectionThrottled(event);
+    });
+
+    private getDownClickThrottled = debounce(
+        (page: HTMLElement) => {
+            if (page.classList.contains('page-scrolling')
+                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
+                this.scrollToPageEnd(page);
+            } else {
+                this.scrollToNextPage();
+            }
+        }, 300, true);
+
+    private getUpClickThrottled = debounce(
+        (page: HTMLElement) => {
+            if (page.classList.contains('page-scrolling')
+                && Math.abs(page.getBoundingClientRect().top) > 100) {
+                this.scrollToPageStart(page);
+            } else {
+                this.scrollToPreviousPage();
+            }
+        }, 300, true);
+
     private onUpOrDownClick = ((event: KeyboardEvent & { target: Element; }) => {
         if (document.activeElement === document.querySelector('body')) {
             let page = this.pages[this.currentPageNumber] as HTMLElement;
             if (event.keyCode == 40 && this.currentPageNumber < Object.keys(this.pages).length) {
                 // scroll down
                 this.preventEvent(event);
-                if (page.classList.contains('page-scrolling')
-                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
-                    this.scrollToPageEnd(page);
-                } else {
-                    this.scrollToNextPage();
-                }
+                this.getDownClickThrottled(page);
             } else if (event.keyCode == 38 && this.currentPageNumber > 1) {
                 // scroll up
                 this.preventEvent(event);
-                if (page.classList.contains('page-scrolling')
-                    && Math.abs(page.getBoundingClientRect().top) > 100) {
-                    this.scrollToPageStart(page);
-                } else {
-                    this.scrollToPreviousPage();
-                }
+                this.getUpClickThrottled(page);
             } else this.getPageData();
         }
     });
