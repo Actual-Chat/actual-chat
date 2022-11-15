@@ -76,6 +76,7 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
+    <PackageReference Update="Microsoft.IO.RecyclableMemoryStream" Version="2.2.1"/>
     <PackageReference Update="Microsoft.JSInterop" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.2"/>
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)"/>
@@ -100,8 +101,6 @@
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)"/>
-    <PackageReference Update="Storage.NetCore" Version="9.27.0"/>
-    <PackageReference Update="Storage.NetCore.Gcp.CloudStorage" Version="1.0.1"/>
     <PackageReference Update="Swashbuckle.AspNetCore" Version="6.4.0"/>
     <PackageReference Update="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)"/>
