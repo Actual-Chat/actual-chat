@@ -170,6 +170,7 @@ jobs:
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
+        entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000"]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
