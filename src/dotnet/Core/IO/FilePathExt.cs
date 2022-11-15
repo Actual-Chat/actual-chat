@@ -8,10 +8,10 @@ public static class FilePathExt
     {
         var relativePath = path.RelativeTo(baseBath);
         var pathValue = relativePath.Value;
-        return pathValue != "."
-            && pathValue != ".."
-            && !pathValue.StartsWith("../")
-            && !pathValue.StartsWith(@"..\")
+        return !OrdinalEquals(pathValue, ".")
+            && !OrdinalEquals(pathValue, "..")
+            && !pathValue.OrdinalStartsWith("../")
+            && !pathValue.OrdinalStartsWith(@"..\")
             && !relativePath.IsRooted;
     }
 }

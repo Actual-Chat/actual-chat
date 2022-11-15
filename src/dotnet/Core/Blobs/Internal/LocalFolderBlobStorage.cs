@@ -52,7 +52,8 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
         var fullPath = _directory & path;
         Directory.CreateDirectory(fullPath.DirectoryPath);
-        await using var fileStream = File.Create(fullPath);
+        var fileStream = File.Create(fullPath);
+        await using var _ = fileStream.ConfigureAwait(false);
         await dataStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
     }
 

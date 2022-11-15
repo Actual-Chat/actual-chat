@@ -14,7 +14,7 @@ public class GoogleTranscriber : ITranscriber
         AudioSource audioSource,
         CancellationToken cancellationToken)
     {
-        var process = new GoogleTranscriberProcess(options, audioSource, cancellationToken, Log);
+        var process = new GoogleTranscriberProcess(options, audioSource, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
     }
