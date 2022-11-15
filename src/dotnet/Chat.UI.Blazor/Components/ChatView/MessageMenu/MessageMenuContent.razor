@@ -4,54 +4,55 @@
 @{
     var m = State.LatestNonErrorValue;
     var entry = ChatMessageModel.Entry;
-    var reactionClass = ScreenSize.IsNarrow() ? "w-6 h-6" : "w-5 h-5";
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
 }
 
-<ReactionSelect ChatEntry="@entry" Class="chat-message-menu-reaction-select" ReactionClass="@reactionClass"/>
-@if (showPlayButton) {
-    <MessageMenuPlay Entry="@entry" IsMenu="true"/>
-}
-@if (m.CanReply) {
+<div class="message-menu">
+    <ReactionSelect ChatEntry="@entry"/>
+    @if (showPlayButton) {
+        <MessageMenuPlay Entry="@entry" IsMenu="true"/>
+    }
+    @if (m.CanReply) {
+        <MenuEntry
+            OnClick="@(() => Reply(entry))"
+            Icon="icon-reply"
+            Text="Reply">
+        </MenuEntry>
+    }
     <MenuEntry
-        OnClick="@(() => Reply(entry))"
-        Icon="icon-reply"
-        Text="Reply">
+        OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })"
+        Icon="icon-hash-fill"
+        Text="Create thread">
     </MenuEntry>
-}
-<MenuEntry
-    OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })"
-    Icon="icon-hash-fill"
-    Text="Create thread">
-</MenuEntry>
-@if (!ClickedLinkUrl.IsNullOrEmpty()) {
+    @if (!ClickedLinkUrl.IsNullOrEmpty()) {
+        <MenuEntry
+            OnClick="@OnCopyLinkClick"
+            Icon="icon-link-2"
+            Text="Copy link">
+        </MenuEntry>
+    }
     <MenuEntry
-        OnClick="@OnCopyLinkClick"
+        OnClick="@(() => CopyMessageLink(entry))"
         Icon="icon-link-2"
-        Text="Copy link">
+        Text="Copy message link">
     </MenuEntry>
-}
-<MenuEntry
-    OnClick="@(() => CopyMessageLink(entry))"
-    Icon="icon-link-2"
-    Text="Copy message link">
-</MenuEntry>
-@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
-    <MenuEntry
-        OnClick="@(() => Edit(entry))"
-        Icon="icon-edit"
-        Text="Edit">
-    </MenuEntry>
-}
-@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
-    <MenuEntrySeparator />
-    <MenuEntry
-        OnClick="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))"
-        Class="warning-item"
-        Icon="icon-trash"
-        Text="Delete message">
-    </MenuEntry>
-}
+    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
+        <MenuEntry
+            OnClick="@(() => Edit(entry))"
+            Icon="icon-edit"
+            Text="Edit">
+        </MenuEntry>
+    }
+    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
+        <MenuEntrySeparator />
+        <MenuEntry
+            OnClick="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))"
+            Class="warning-item"
+            Icon="icon-trash"
+            Text="Delete message">
+        </MenuEntry>
+    }
+</div>
 
 @code{
     [Inject] private Session Session { get; init; } = null!;
