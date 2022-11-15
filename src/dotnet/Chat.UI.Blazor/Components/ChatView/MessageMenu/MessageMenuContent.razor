@@ -5,10 +5,13 @@
     var m = State.LatestNonErrorValue;
     var entry = ChatMessageModel.Entry;
     var reactionClass = ScreenSize.IsNarrow() ? "w-6 h-6" : "w-5 h-5";
+    var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
 }
 
 <ReactionSelect ChatEntry="@entry" Class="chat-message-menu-reaction-select" ReactionClass="@reactionClass"/>
-
+@if (showPlayButton) {
+    <MessageMenuPlay Entry="@entry" IsMenu="true"/>
+}
 @if (m.CanReply) {
     <MenuEntry
         OnClick="@(() => Reply(entry))"
