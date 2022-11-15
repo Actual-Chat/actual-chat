@@ -175,8 +175,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
-          - name: Connect to PostgreSQL with CLI
-            run: psql -c 'SELECT VERSION();'
+
+      - name: Connect to PostgreSQL with CLI
+        run: psql -c 'SELECT VERSION();'
 
       - name: Show PostgreSQL config file
         run: psql -c 'SHOW config_file;'
