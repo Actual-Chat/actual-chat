@@ -13,6 +13,9 @@ public class
 
     public virtual async Task SaveContent(IContentSaverBackend.SaveContentCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         var stream = MemoryStreamManager.GetStream();
         await using var _ = stream.ConfigureAwait(false);
         await stream.WriteAsync(command.Content, cancellationToken).ConfigureAwait(false);
