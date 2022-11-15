@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Net.Mime;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.IO;
 using Stl.IO;
@@ -60,7 +61,7 @@ public static class ByteStreamExt
 
         var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
-        await target.Write(blobId, stream, "application/octet-stream", cancellationToken).ConfigureAwait(false);
+        await target.Write(blobId, stream, MediaTypeNames.Application.Octet, cancellationToken).ConfigureAwait(false);
         return bytesWritten;
     }
 
