@@ -183,7 +183,7 @@ jobs:
           sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
           cat /var/lib/postgresql/data/postgresql.conf
           EOF
-          docker restart --time 0 postgres
+          docker restart --time 0 ${{ job.services.postgres.id }}
           sleep 5
 
       - name: Show max connections
