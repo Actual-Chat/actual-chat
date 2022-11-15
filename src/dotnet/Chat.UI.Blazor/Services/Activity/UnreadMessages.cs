@@ -8,8 +8,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class UnreadMessages : WorkerBase
 {
     private const int MaxUnreadChatCount = 99;
-    private readonly Dictionary<Symbol, SharedResourcePool<Symbol, ChatUnreadMessages>.Lease> _leases = new (); // caching leases to prevent UnreadMessages recreation
-    private readonly SharedResourcePool<Symbol, ChatUnreadMessages> _pool;
+    private readonly Dictionary<ChatId, SharedResourcePool<ChatId, ChatUnreadMessages>.Lease> _leases = new (); // caching leases to prevent UnreadMessages recreation
+    private readonly SharedResourcePool<ChatId, ChatUnreadMessages> _pool;
 
     private Session Session { get; }
     private IContacts Contacts { get; }
@@ -27,7 +27,7 @@ public class UnreadMessages : WorkerBase
         _pool = new(CreateChatUnreadMessages, DisposeChatUnreadMessages);
     }
 
-    public async Task<Symbol> GetFirstUnreadChat(IReadOnlyCollection<Symbol> chatIds, CancellationToken cancellationToken)
+    public async Task<ChatId> GetFirstUnreadChat(IReadOnlyCollection<ChatId> chatIds, CancellationToken cancellationToken)
     {
         foreach (var chatId in chatIds) {
             var notificationMode = await AccountSettings.GetChatNotificationMode(chatId, cancellationToken).ConfigureAwait(false);
@@ -39,35 +39,35 @@ public class UnreadMessages : WorkerBase
                 return chatId;
         }
 
-        return Symbol.Empty;
+        return default;
     }
 
-    public async Task<MaybeTrimmed<int>> GetUnreadChatCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    public async Task<MaybeTrimmed<int>> GetUnreadChatCount(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
     {
         var counts = await GetCounts(chatIds, cancellationToken);
         var count = counts.Sum(x => x.Value > 0 ? 1 : 0);
         return (count, MaxUnreadChatCount);
     }
 
-    public async Task<MaybeTrimmed<int>> GetCount(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    public async Task<MaybeTrimmed<int>> GetCount(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
     {
         var counts = await GetCounts(chatIds, cancellationToken);
         return counts.Sum(ChatUnreadMessages.MaxCount);
     }
 
-    public async Task<MaybeTrimmed<int>> GetCount(Symbol chatId, CancellationToken cancellationToken)
+    public async Task<MaybeTrimmed<int>> GetCount(ChatId chatId, CancellationToken cancellationToken)
     {
         var unreadMessages = await _pool.Rent(chatId, cancellationToken).ConfigureAwait(false);
         return await unreadMessages.Resource.GetCount(cancellationToken);
     }
 
-    public async Task<bool> HasMentions(Symbol chatId, CancellationToken cancellationToken)
+    public async Task<bool> HasMentions(ChatId chatId, CancellationToken cancellationToken)
     {
         var unreadMessages = await _pool.Rent(chatId, cancellationToken).ConfigureAwait(false);
         return await unreadMessages.Resource.HasMentions(cancellationToken);
     }
 
-    private Task<List<MaybeTrimmed<int>>> GetCounts(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    private Task<List<MaybeTrimmed<int>>> GetCounts(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
         => chatIds.Select(x => GetCount(x, cancellationToken)).Collect();
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
@@ -92,10 +92,10 @@ public class UnreadMessages : WorkerBase
         }
     }
 
-    private Task<ChatUnreadMessages> CreateChatUnreadMessages(Symbol chatId, CancellationToken cancellationToken)
+    private Task<ChatUnreadMessages> CreateChatUnreadMessages(ChatId chatId, CancellationToken cancellationToken)
         => Task.FromResult(ChatUnreadMessagesFactory.Get(chatId));
 
-    private ValueTask DisposeChatUnreadMessages(Symbol chatId, ChatUnreadMessages chatUnreadMessages)
+    private ValueTask DisposeChatUnreadMessages(ChatId chatId, ChatUnreadMessages chatUnreadMessages)
     {
         chatUnreadMessages.Dispose();
         return ValueTask.CompletedTask;

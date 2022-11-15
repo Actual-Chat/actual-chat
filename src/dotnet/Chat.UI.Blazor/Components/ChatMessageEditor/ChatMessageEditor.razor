@@ -89,7 +89,7 @@
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private MarkupEditorHtmlConverter HtmlConverter => MarkupHub.MarkupEditorHtmlConverter;
-    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<long?>? ReadState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
@@ -112,8 +112,8 @@
         BlazorRef = null!;
 
         using (await _lastReadEntrySync.Lock()) {
-            LastReadEntryState?.DisposeSilently();
-            LastReadEntryState = null!;
+            ReadState?.DisposeSilently();
+            ReadState = null!;
         }
     }
 
@@ -123,9 +123,9 @@
             if (oldChatId == Chat.Id)
                 return;
 
-            LastReadEntryState.DisposeSilently();
-            LastReadEntryState = null;
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
+            ReadState.DisposeSilently();
+            ReadState = null;
+            ReadState = await ChatUI.LeaseReadState(Chat.Id, default);
             MarkupHub.ChatId = Chat.Id;
         }
 
@@ -176,19 +176,19 @@
             ChatUI.LinkedChatEntry.Value = null;
             _ = UICommander.RunNothing();
 
-            long entryId;
+            long readEntryId;
             if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
                 if (chatEntry == null)
                     throw new InternalError("Linked chat entry points to null entry.");
-                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
-                entryId = chatEntry.Id;
+                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.LocalId, text));
+                readEntryId = chatEntry.LocalId;
 
             } else {
-                entryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
+                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
             }
 
-            if (LastReadEntryState != null)
-                LastReadEntryState.Value = entryId;
+            if (ReadState != null)
+                ReadState.Value = readEntryId;
             _ = ChatUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
@@ -221,7 +221,7 @@
     // Event handlers
 
     private async Task OnOpenPrevious() {
-        var chatId = ChatUI.SelectedChatId.Value;
+        var chatId = ChatUI.SelectedContact.Value.GetChatId();
         var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         if (author == null)
             return;

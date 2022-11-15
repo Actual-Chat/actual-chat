@@ -60,8 +60,8 @@ public class ChatUIStateSync : WorkerBase
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldSelectedChatId = ChatUI.SelectedChatId.Value;
-        var changes = ChatUI.SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var oldSelectedChatId = ChatUI.SelectedContact.Value;
+        var changes = ChatUI.SelectedContact.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cSelectedChatId in changes.ConfigureAwait(false)) {
             var newSelectedChatId = cSelectedChatId.Value;
 
@@ -77,7 +77,7 @@ public class ChatUIStateSync : WorkerBase
     private async Task InvalidatePinnedChatsDependencies(CancellationToken cancellationToken)
     {
         var oldPinnedChatIds = new HashSet<Symbol>();
-        var changes = ChatUI.PinnedChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = ChatUI.PinnedContacts.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cPinnedChats in changes.ConfigureAwait(false)) {
             var newPinnedChatIds = cPinnedChats.Value.Select(c => c.ChatId).ToHashSet();
 
@@ -97,7 +97,7 @@ public class ChatUIStateSync : WorkerBase
     {
         var oldRecordingChatId = Symbol.Empty;
         var oldListeningChatIds = new HashSet<Symbol>();
-        var changes = ChatUI.ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = ChatUI.ActiveContacts.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cActiveChats in changes.ConfigureAwait(false)) {
             var activeChats = cActiveChats.Value;
             var newRecordingChatId = activeChats.FirstOrDefault(c => c.IsRecording).ChatId;

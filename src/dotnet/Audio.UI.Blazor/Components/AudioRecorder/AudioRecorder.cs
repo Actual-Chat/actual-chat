@@ -3,7 +3,7 @@ using ActualChat.Messaging;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public record AudioRecorderState(Symbol ChatId) : IHasId<Ulid>
+public record AudioRecorderState(ChatId ChatId) : IHasId<Ulid>
 {
     public Ulid Id { get; } = Ulid.NewUlid();
     public bool IsRecording { get; init; }
@@ -64,7 +64,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         return await JSRef!.InvokeAsync<bool>("canRecord", cancellationToken);
     }
 
-    public async Task StartRecording(Symbol chatId, CancellationToken cancellationToken = default)
+    public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -112,7 +112,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         return null;
     }
 
-    private async Task StartRecordingInternal(string chatId)
+    private async Task StartRecordingInternal(ChatId chatId)
     {
         if (State.Value != null)
             return;

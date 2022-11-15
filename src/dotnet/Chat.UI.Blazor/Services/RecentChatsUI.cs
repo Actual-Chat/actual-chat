@@ -29,7 +29,7 @@ public class RecentChatsUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<Chat?> GetSelectedChat(CancellationToken cancellationToken)
     {
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await ChatUI.SelectedContact.Use(cancellationToken).ConfigureAwait(false);
         if (!ChatId.TryParse(selectedChatId, out _))
             selectedChatId = Symbol.Empty;
         if (selectedChatId.IsEmpty)

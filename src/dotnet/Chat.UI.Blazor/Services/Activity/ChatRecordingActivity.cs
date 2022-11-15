@@ -3,7 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public interface IChatRecordingActivity : IDisposable
 {
     ChatActivity Owner { get; }
-    Symbol ChatId { get; }
+    ChatId ChatId { get; }
 
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
     Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken);
@@ -21,7 +21,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
 
     public ChatActivity Owner { get; }
-    public Symbol ChatId { get; internal set; }
+    public ChatId ChatId { get; internal set; }
     public ChatEntryReader EntryReader
         => _entryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
 
@@ -56,7 +56,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         var startEntry = await EntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
-        var startId = startEntry?.Id ?? idRange.End;
+        var startId = startEntry?.LocalId ?? idRange.End;
 
         var entries = EntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
@@ -68,7 +68,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
                     using var maxDurationTokenSource = new CancellationTokenSource(Constants.Chat.MaxEntryDuration);
                     using var commonTokenSource = cancellationToken.LinkWith(maxDurationTokenSource.Token);
                     await EntryReader.GetWhen(
-                            entry.Id,
+                            entry.LocalId,
                             e => e is not { IsStreaming: true },
                             commonTokenSource.Token
                         ).ConfigureAwait(false);

@@ -11,7 +11,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Inject] protected Session Session { get; init; } = null!;
 
     protected AuthorId AuthorId { get; private set; }
-    protected Symbol ChatId => AuthorId.ChatId;
+    protected ChatId ChatId => AuthorId.ChatId;
     protected bool IsValid => !AuthorId.IsEmpty;
     protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 

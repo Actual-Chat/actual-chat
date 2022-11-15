@@ -8,15 +8,15 @@ public class ChatUnreadMessages : IDisposable
     public const int MaxCount = 1000;
 
     private readonly AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
-    private SyncedStateLease<long?>? _lastReadEntryState;
+    private SyncedStateLease<long?>? _readEntryState;
 
     private Session Session { get; }
-    private Symbol ChatId { get; }
+    private ChatId ChatId { get; }
     private IChats Chats { get; }
     private IMentions Mentions { get; }
     private ChatUI ChatUI { get; }
 
-    public ChatUnreadMessages(Session session, Symbol chatId, IChats chats, IMentions mentions, ChatUI chatUI)
+    public ChatUnreadMessages(Session session, ChatId chatId, IChats chats, IMentions mentions, ChatUI chatUI)
     {
         Session = session;
         ChatId = chatId;
@@ -26,29 +26,29 @@ public class ChatUnreadMessages : IDisposable
     }
 
     public void Dispose()
-        => _lastReadEntryState?.Dispose();
+        => _readEntryState?.Dispose();
 
     public async Task<bool> HasMentions(CancellationToken cancellationToken)
     {
         // Let's start this in parallel
-        var lastReadEntryIdTask = GetLastReadEntryId(cancellationToken);
+        var readEntryIdTask = GetReadEntryId(cancellationToken);
         var getMentionsTask = Mentions.GetLastOwn(Session, ChatId, cancellationToken);
 
-        var lastReadEntryId = await lastReadEntryIdTask.ConfigureAwait(false);
+        var lastReadEntryId = await readEntryIdTask.ConfigureAwait(false);
         if (lastReadEntryId == null)
             return false; // Never opened this chat, so no unread mentions
 
         var lastMention = await getMentionsTask.ConfigureAwait(false);
-        return lastMention?.EntryId > lastReadEntryId;
+        return lastMention?.EntryId.LocalId > lastReadEntryId;
     }
 
     public async Task<MaybeTrimmed<int>> GetCount(CancellationToken cancellationToken)
     {
         // Let's start this in parallel
-        var lastReadEntryIdTask = GetLastReadEntryId(cancellationToken);
+        var readEntryIdTask = GetReadEntryId(cancellationToken);
         var getSummaryTask = Chats.GetSummary(Session, ChatId, cancellationToken);
 
-        var lastReadEntryId = await lastReadEntryIdTask.ConfigureAwait(false);
+        var lastReadEntryId = await readEntryIdTask.ConfigureAwait(false);
         if (lastReadEntryId == null)
             return 0; // Never opened this chat, so no unread messages
 
@@ -62,11 +62,11 @@ public class ChatUnreadMessages : IDisposable
     }
 
     // TODO: in fact it should not nullable
-    private async Task<long?> GetLastReadEntryId(CancellationToken cancellationToken)
+    private async Task<long?> GetReadEntryId(CancellationToken cancellationToken)
     {
         using (var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false))
-            _lastReadEntryState ??= await ChatUI.LeaseLastReadEntryState(ChatId, cancellationToken).ConfigureAwait(false);
+            _readEntryState ??= await ChatUI.LeaseReadState(ChatId, cancellationToken).ConfigureAwait(false);
 
-        return await _lastReadEntryState.Use(cancellationToken).ConfigureAwait(false);
+        return await _readEntryState.Use(cancellationToken).ConfigureAwait(false);
     }
 }

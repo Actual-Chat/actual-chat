@@ -36,7 +36,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
-    protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
+    protected override Task OnInitializedAsync() => ChatUI.SelectedContact.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = Model.Loading };

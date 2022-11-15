@@ -50,7 +50,7 @@ public class NavbarUI
         if (visible)
             _ = HistoryUI.GoBack();
         else {
-            var selectedChatId = ChatUI.SelectedChatId.Value;
+            var selectedChatId = ChatUI.SelectedContact.Value;
             if (!selectedChatId.IsEmpty)
                 Nav.NavigateTo(Links.ChatPage(selectedChatId));
         }

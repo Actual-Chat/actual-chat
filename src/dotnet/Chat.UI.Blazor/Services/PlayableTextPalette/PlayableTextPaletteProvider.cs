@@ -3,14 +3,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class PlayableTextPaletteProvider
 {
     private const int MaxPalettesNumber = 5;
-    private readonly LinkedList<(Symbol ChatId, PlayableTextPalette Palette)> _cache = new ();
+    private readonly LinkedList<(ChatId ChatId, PlayableTextPalette Palette)> _cache = new ();
 
-    public PlayableTextPalette GetPalette(Symbol chatId)
+    public PlayableTextPalette GetPalette(ChatId chatId)
     {
         PlayableTextPalette palette;
         lock (_cache) {
             if (_cache.Count == 0) {
-                palette = CreatePalette();
+                palette = NewPalette();
                 _cache.AddFirst((chatId, palette));
             }
             else {
@@ -32,7 +32,7 @@ public class PlayableTextPaletteProvider
                     else {
                         while (_cache.Count >= MaxPalettesNumber)
                             _cache.RemoveLast();
-                        palette = CreatePalette();
+                        palette = NewPalette();
                         _cache.AddFirst((chatId, palette));
                     }
                 }
@@ -41,6 +41,5 @@ public class PlayableTextPaletteProvider
         return palette;
     }
 
-    private static PlayableTextPalette CreatePalette()
-        => new PlayableTextPalette();
+    private static PlayableTextPalette NewPalette() => new ();
 }

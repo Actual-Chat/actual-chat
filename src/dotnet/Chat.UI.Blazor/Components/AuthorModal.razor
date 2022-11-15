@@ -36,8 +36,8 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
-    private string ChatId => ModalModel.ChatId; // Shortcut
-    private string AuthorId => ModalModel.AuthorId;  // Shortcut
+    private ChatId ChatId => ModalModel.ChatId; // Shortcut
+    private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -46,11 +46,10 @@
         => new() { InitialValue = ComputedModel.Loading };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var parsedAuthorId = new AuthorId(AuthorId);
-        if (!parsedAuthorId.IsValid)
+        if (AuthorId.IsEmpty)
             return ComputedModel.None;
 
-        var chatId = parsedAuthorId.ChatId.Id;
+        var chatId = AuthorId.ChatId.Id;
         var author = await Authors.Get(Session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return ComputedModel.None;
@@ -66,12 +65,14 @@
                 OwnAccount = ownAccount,
             };
 
+        var contactId = new ContactId(ownAccount.Id, account.Id, SkipValidation.Instance);
         var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
-        var canAddContact = !contactIds.Any(cid => cid.IsUserContact(out var userId) && userId == account.Id);
+        var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {
             Author = author,
             Account = account,
             OwnAccount = ownAccount,
+            ContactId = contactId,
             CanAddContact = canAddContact,
         };
     }
@@ -83,12 +84,11 @@
         StateHasChanged();
         try {
             var m = State.LatestNonErrorValue;
-            if (m.Account == null || m.OwnAccount == null)
+            if (m.ContactId.IsEmpty)
                 return;
 
-            var contactId = new ContactId(m.OwnAccount.Id, m.Account.Id, ContactKind.User);
-            var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {
-                Create = new Contact(contactId),
+            var command = new IContacts.ChangeCommand(Session, m.ContactId, null, new Change<Contact>() {
+                Create = new Contact(m.ContactId),
             });
             await UICommander.Run(command);
         }
@@ -101,12 +101,11 @@
     }
 
     private void OnSendMessageClick() {
-        var account = State.LatestNonErrorValue.Account;
-        if (account == null)
+        var m = State.LatestNonErrorValue;
+        if (m.ContactId.IsEmpty || m.OwnAccount == null)
             return;
 
-        var peerChatId = ActualChat.Chat.ChatId.FormatShort(account.Id);
-        Nav.NavigateTo(Links.ChatPage(peerChatId));
+        Nav.NavigateTo(Links.ChatPage(m.ContactId.GetChatId().Shorten(m.OwnAccount.Id)));
     }
 
     public sealed record ComputedModel {
@@ -116,9 +115,11 @@
         public Author Author { get; init; } = null!;
         public Account? Account { get; init; }
         public Account? OwnAccount { get; init; }
+        public ContactId ContactId { get; init; }
+
         public bool CanPeerChat => Account != null;
         public bool CanAddContact { get; init; }
     }
 
-    public sealed record Model(Symbol ChatId, Symbol AuthorId);
+    public sealed record Model(ChatId ChatId, AuthorId AuthorId);
 }

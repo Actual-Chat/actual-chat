@@ -15,6 +15,6 @@ public class ChatUnreadMessagesFactory
         ChatUI = services.GetRequiredService<ChatUI>();
     }
 
-    public ChatUnreadMessages Get(Symbol chatId)
+    public ChatUnreadMessages Get(ChatId chatId)
         => new(Session, chatId, Chats, Mentions, ChatUI);
 }

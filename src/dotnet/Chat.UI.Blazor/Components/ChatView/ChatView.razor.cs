@@ -47,7 +47,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             VisibleKeys = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token);
+            LastReadEntryState = await ChatUI.LeaseReadState(Chat.Id, _disposeToken.Token);
             _initialLastReadEntryId = LastReadEntryState.Value;
         }
         finally {

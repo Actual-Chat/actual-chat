@@ -1,7 +1,4 @@
-using ActualChat.Chat;
-using ActualChat.Users;
-
-namespace ActualChat.Contacts;
+namespace ActualChat;
 
 #pragma warning disable MA0011
 
@@ -92,7 +89,7 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
             return chatId;
         if (IsUserContact(out var userId))
             return new ChatId(OwnerId, userId, SkipValidation.Instance);
-        throw StandardError.Internal("Invalid contact.");
+        return default;
     }
 
     // Equality

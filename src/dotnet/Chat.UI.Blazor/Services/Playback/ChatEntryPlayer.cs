@@ -19,12 +19,12 @@ public sealed class ChatEntryPlayer : ProcessorBase
     private CancellationToken AbortToken { get; }
 
     public Session Session { get; }
-    public Symbol ChatId { get; }
+    public ChatId ChatId { get; }
     public Playback Playback { get; }
 
     public ChatEntryPlayer(
         Session session,
-        Symbol chatId,
+        ChatId chatId,
         Playback playback,
         IServiceProvider services,
         CancellationToken cancellationToken)

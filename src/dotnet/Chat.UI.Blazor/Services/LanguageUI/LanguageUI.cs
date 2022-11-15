@@ -27,13 +27,13 @@ public class LanguageUI
             });
     }
 
-    public async ValueTask<LanguageId> GetChatLanguage(Symbol chatId, CancellationToken cancellationToken = default)
+    public async ValueTask<LanguageId> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<LanguageId> ChangeChatLanguage(Symbol chatId)
+    public async Task<LanguageId> ChangeChatLanguage(ChatId chatId)
     {
         await Settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;

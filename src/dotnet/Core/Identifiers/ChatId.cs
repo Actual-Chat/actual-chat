@@ -1,6 +1,5 @@
-using ActualChat.Users;
 
-namespace ActualChat.Chat;
+namespace ActualChat;
 
 #pragma warning disable MA0011
 

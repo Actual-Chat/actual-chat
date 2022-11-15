@@ -4,14 +4,14 @@ public class ChatPlayers : WorkerBase
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
-    private volatile ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
-        ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
+    private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
+        ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private IServiceProvider Services { get; }
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
     public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
-    public IMutableState<Symbol> HistoricalPlaybackChatId { get; }
+    public IMutableState<ChatId> HistoricalPlaybackChatId { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
@@ -21,7 +21,7 @@ public class ChatPlayers : WorkerBase
 
         var stateFactory = services.StateFactory();
         ChatPlaybackState = stateFactory.NewMutable<ChatPlaybackState?>();
-        HistoricalPlaybackChatId = stateFactory.NewMutable<Symbol>();
+        HistoricalPlaybackChatId = stateFactory.NewMutable<ChatId>();
         Start();
     }
 
@@ -33,7 +33,7 @@ public class ChatPlayers : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual Task<ChatPlayer?> Get(Symbol chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    public virtual Task<ChatPlayer?> Get(ChatId chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
     {
         lock (Lock) return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
     }
@@ -44,7 +44,7 @@ public class ChatPlayers : WorkerBase
             StartPlayback(playbackState);
         }, CancellationToken.None);
 
-    public void StartHistoricalPlayback(Symbol chatId, Moment startAt)
+    public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
         => StartPlayback(new HistoricalChatPlaybackState(chatId, startAt));
 
     public void StartPlayback(ChatPlaybackState? playbackState)
@@ -137,14 +137,14 @@ public class ChatPlayers : WorkerBase
         {
             if (state is HistoricalChatPlaybackState historical) {
                 await Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
-                HistoricalPlaybackChatId.Value = Symbol.Empty;
+                HistoricalPlaybackChatId.Value = default;
             }
             else if (state is RealtimeChatPlaybackState realtime)
                 await Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
         }
     }
 
-    private ChatPlayer GetOrCreate(Symbol chatId, ChatPlayerKind playerKind)
+    private ChatPlayer GetOrCreate(ChatId chatId, ChatPlayerKind playerKind)
     {
         this.ThrowIfDisposedOrDisposing();
         if (chatId.IsEmpty)
@@ -166,7 +166,7 @@ public class ChatPlayers : WorkerBase
         return newPlayer;
     }
 
-    private async Task Close(Symbol chatId, ChatPlayerKind playerKind)
+    private async Task Close(ChatId chatId, ChatPlayerKind playerKind)
     {
         if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -182,7 +182,7 @@ public class ChatPlayers : WorkerBase
             _ = Get(chatId, playerKind, default);
     }
 
-    private Task<Task> ResumeRealtimePlayback(Symbol chatId, CancellationToken cancellationToken)
+    private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsEmpty)
             return Task.FromResult(Task.CompletedTask);
@@ -193,7 +193,7 @@ public class ChatPlayers : WorkerBase
             : player.Start(Clocks.SystemClock.Now, cancellationToken);
     }
 
-    private async Task<Task> ResumeRealtimePlayback(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    private async Task<Task> ResumeRealtimePlayback(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
     {
         var resultPlayingTasks = await chatIds
             .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
@@ -202,7 +202,7 @@ public class ChatPlayers : WorkerBase
         return Task.WhenAll(resultPlayingTasks);
     }
 
-    private Task<Task> StartHistoricalPlayback(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
+    private Task<Task> StartHistoricalPlayback(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
         if (chatId.IsEmpty)
             return Task.FromResult(Task.CompletedTask);
@@ -210,14 +210,14 @@ public class ChatPlayers : WorkerBase
         return player.Start(startAt, cancellationToken);
     }
 
-    private Task Stop(Symbol chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    private Task Stop(ChatId chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
     {
         ChatPlayer? player;
         lock (Lock) player = _players.GetValueOrDefault((chatId, playerKind));
         return player?.Stop() ?? Task.CompletedTask;
     }
 
-    private Task Stop(IEnumerable<Symbol> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    private Task Stop(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
         => chatIds
             .Select(chatId => Stop(chatId, playerKind, cancellationToken))
             .Collect(0);

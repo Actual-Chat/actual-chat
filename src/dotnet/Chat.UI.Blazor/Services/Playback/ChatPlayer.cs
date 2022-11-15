@@ -24,12 +24,12 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats { get; }
 
     public Session Session { get; }
-    public Symbol ChatId { get; }
+    public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
     public Task? WhenPlaying => _whenPlaying;
 
-    protected ChatPlayer(Session session, Symbol chatId, IServiceProvider services)
+    protected ChatPlayer(Session session, ChatId chatId, IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());

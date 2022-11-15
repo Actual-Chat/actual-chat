@@ -73,7 +73,7 @@
         };
     }
 
-    private void OnAuthorClick(Symbol chatId, Symbol authorId)
+    private void OnAuthorClick(ChatId chatId, AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(chatId, authorId));
 
     private void OnSelfClick()

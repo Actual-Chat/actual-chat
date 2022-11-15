@@ -180,7 +180,7 @@
         _rewindController.Rewind(m.ChatId, moment.Value, shift);
     }
 
-    private void OnRewindRequested(Symbol chatId, DateTime momentFrom, TimeSpan shift) {
+    private void OnRewindRequested(ChatId chatId, DateTime momentFrom, TimeSpan shift) {
         _ = InvokeAsync(() => {
             var m = State.LatestNonErrorValue;
             if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
@@ -204,7 +204,7 @@
         public bool IsPaused { get; init; }
         public HistoricalChatPlayer? ChatPlayer { get; init; }
         public string ChatTitle { get; init; } = "";
-        public Symbol ChatId { get; init; }
+        public ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
         public ImmutableArray<Symbol> AuthorIds { get; init; }
     }
@@ -212,17 +212,17 @@
     internal class RewindController
     {
         private Timer _rewindTimer;
-        private Symbol _chatId;
+        private ChatId _chatId;
         private DateTime _rewindFrom;
         private TimeSpan _rewindSpan;
 
-        public RewindController(Action<Symbol, DateTime, TimeSpan> onRewindRequested)
+        public RewindController(Action<ChatId, DateTime, TimeSpan> onRewindRequested)
         {
             _rewindTimer = new Timer(300) { AutoReset = false };
             _rewindTimer.Elapsed += (s,e) => onRewindRequested(_chatId, _rewindFrom, _rewindSpan);
         }
 
-        public void Rewind(Symbol chatId, DateTime moment, TimeSpan shift)
+        public void Rewind(ChatId chatId, DateTime moment, TimeSpan shift)
         {
             if (!_rewindTimer.Enabled) {
                 _chatId = chatId;

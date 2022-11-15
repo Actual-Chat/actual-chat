@@ -1,7 +1,7 @@
-namespace ActualChat.Chat;
+namespace ActualChat;
 
 public enum PrincipalKind
 {
-    Author,
+    Author = 0,
     User,
 }

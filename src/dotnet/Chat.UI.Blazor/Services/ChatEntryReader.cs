@@ -6,13 +6,13 @@ public sealed class ChatEntryReader
 
     public IChats Chats { get; }
     public Session Session { get; init; }
-    public Symbol ChatId { get; init; }
+    public ChatId ChatId { get; init; }
     public ChatEntryKind EntryKind { get; init; }
     public TileLayer<long> IdTileLayer { get; init; }
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
     public int MaxEntryCountDisorder { get; init; } = 1000;
 
-    public ChatEntryReader(IChats chats, Session session, Symbol chatId, ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
+    public ChatEntryReader(IChats chats, Session session, ChatId chatId, ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
     {
         Chats = chats;
         Session = session;

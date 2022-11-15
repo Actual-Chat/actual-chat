@@ -116,7 +116,7 @@ public interface IMentionsClientDef
     [Get(nameof(GetLastOwn))]
     Task<Mention?> GetLastOwn(
         Session session,
-        Symbol chatId,
+        string chatId,
         CancellationToken cancellationToken);
 }
 

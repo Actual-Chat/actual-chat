@@ -5,7 +5,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
     /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
     private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
-    public RealtimeChatPlayer(Session session, Symbol chatId, IServiceProvider services)
+    public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Realtime;
 

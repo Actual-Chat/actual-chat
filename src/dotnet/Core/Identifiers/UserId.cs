@@ -1,7 +1,7 @@
 using Cysharp.Text;
 using Stl.Generators;
 
-namespace ActualChat.Users;
+namespace ActualChat;
 
 #pragma warning disable MA0011
 
