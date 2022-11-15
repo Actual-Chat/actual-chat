@@ -66,7 +66,7 @@ internal class GoogleCloudBlobStorage : IBlobStorage
 
         var resultTasks = new List<Task>(paths.Count);
         resultTasks.AddRange(paths.Select(path => _client.DeleteObjectAsync(_bucket, path, cancellationToken: cancellationToken)));
-        await Task.WhenAll(resultTasks);
+        await Task.WhenAll(resultTasks).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyCollection<bool>> Exists(
@@ -77,7 +77,7 @@ internal class GoogleCloudBlobStorage : IBlobStorage
 
         var resultTasks = new List<Task<bool>>(paths.Count);
         resultTasks.AddRange(paths.Select(path => ExistsInternal(path, cancellationToken)));
-        return await Task.WhenAll(resultTasks);
+        return await Task.WhenAll(resultTasks).ConfigureAwait(false);
 
         async Task<bool> ExistsInternal(string path1, CancellationToken cancellationToken1)
         {
