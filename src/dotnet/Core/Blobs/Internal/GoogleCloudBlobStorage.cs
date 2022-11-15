@@ -1,6 +1,7 @@
 using System.Net;
 using Google;
 using Google.Cloud.Storage.V1;
+using Microsoft.IO;
 
 namespace ActualChat.Blobs.Internal;
 
@@ -9,17 +10,20 @@ internal class GoogleCloudBlobStorage : IBlobStorage
     private readonly string _bucket;
     private readonly StorageClient _client;
 
-    public GoogleCloudBlobStorage(string bucket)
+    private RecyclableMemoryStreamManager MemoryStreamManager { get; }
+
+    public GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager memoryStreamManager)
     {
         _bucket = bucket;
         _client = StorageClient.Create();
+        MemoryStreamManager = memoryStreamManager;
     }
 
     public async Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
         if (path == null) throw new ArgumentNullException(nameof(path));
 
-        var stream = new MemoryStream();
+        var stream = MemoryStreamManager.GetStream();
         try {
             await _client.DownloadObjectAsync(_bucket, path, stream, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

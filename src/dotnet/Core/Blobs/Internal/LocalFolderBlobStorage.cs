@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using ActualChat.IO;
 using Stl.IO;
 
@@ -17,11 +18,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
-        if (path == null) throw new ArgumentNullException(nameof(path));
-
-        var filePath = FilePath.New(path);
-        if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
-            throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the .ctor directory.");
+        ValidatePath(path);
 
         try {
             return Task.FromResult<Stream?>(File.OpenRead( _directory & path));
@@ -38,14 +35,12 @@ internal class LocalFolderBlobStorage : IBlobStorage
     {
         if (path == null) throw new ArgumentNullException(nameof(path));
 
-        var filePath = FilePath.New(path);
-        if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
-            throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the .ctor directory.");
+        ValidatePath(path);
 
         var fullPath = _directory & path;
         return !File.Exists(fullPath)
             ? Task.FromResult<string?>(null)
-            : Task.FromResult<string?>("application/octet-stream");
+            : Task.FromResult<string?>(MediaTypeNames.Application.Octet);
     }
 
     public async Task Write(string path, Stream dataStream, string contentType, CancellationToken cancellationToken)
@@ -53,9 +48,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         if (path == null) throw new ArgumentNullException(nameof(path));
         if (dataStream == null) throw new ArgumentNullException(nameof(dataStream));
 
-        var filePath = FilePath.New(path);
-        if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
-            throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the .ctor directory.");
+        ValidatePath(path);
 
         var fullPath = _directory & path;
         Directory.CreateDirectory(fullPath.DirectoryPath);
@@ -71,9 +64,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
             return Task.CompletedTask;
 
         foreach (var path in paths) {
-            var filePath = FilePath.New(path);
-            if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
-                throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the .ctor directory.");
+            ValidatePath(path);
 
             var fullPath = (_directory & path).Value;
             if (File.Exists(fullPath))
@@ -96,9 +87,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         var index = 0;
         var result = new bool[paths.Count];
         foreach (var path in paths) {
-            var filePath = FilePath.New(path);
-            if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
-                throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the .ctor directory.");
+            ValidatePath(path);
 
             var fullPath = (_directory & path).Value;
             if (File.Exists(fullPath))
@@ -112,4 +101,13 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
     public ValueTask DisposeAsync()
         => ValueTask.CompletedTask;
+
+    private void ValidatePath(string path)
+    {
+        if (path == null) throw new ArgumentNullException(nameof(path));
+
+        var filePath = FilePath.New(path);
+        if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
+            throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the base directory.");
+    }
 }
