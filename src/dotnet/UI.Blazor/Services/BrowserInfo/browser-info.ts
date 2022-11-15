@@ -18,7 +18,7 @@ export class BrowserInfo {
     public static isTouchCapableCached: boolean = null;
     public static windowId: string = "";
 
-    public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): BrowserInfo {
+    public static init(backendRef1: DotNet.DotNetObject, isMaui: boolean): void {
         this.backendRef = backendRef1;
         this.utcOffset = new Date().getTimezoneOffset();
         // @ts-ignore
@@ -42,8 +42,6 @@ export class BrowserInfo {
                 void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
                 screenSize.size$.subscribe(x => this.onScreenSizeChanged(x))
             });
-
-        return this;
     }
 
     public static get isTouchCapable(): boolean {

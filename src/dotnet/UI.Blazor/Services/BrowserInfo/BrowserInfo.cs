@@ -35,7 +35,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     public async Task Init()
     {
         _backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        _ = await JS.InvokeAsync<IJSObjectReference>(
+        await JS.InvokeVoidAsync(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
             _backendRef,
             HostInfo.AppKind == AppKind.Maui);

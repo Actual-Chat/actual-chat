@@ -11,10 +11,8 @@
     <div class="navbar-item-content">
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
-        } else if (BrowserInfo.IsTouchCapable) {
-            <a class="unfocusable" href="@Url">@ChildContent</a>
         } else {
-            <a class="unfocusable" href="@Url" @onmousedown="@(e => Click(e))" @onclick:preventDefault>@ChildContent</a>
+            <a class="unfocusable cursor-pointer" data-href="@Url">@ChildContent</a>
         }
     </div>
     <div class="navbar-item-ending">
@@ -23,10 +21,6 @@
 </div>
 
 @code {
-    [Inject] private FocusUI FocusUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool? IsOnline { get; set; }
     [Parameter] public bool IsSelected { get; set; }
@@ -34,11 +28,4 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> InputAttributes { get; set; } = new();
-
-    private void Click(MouseEventArgs args) {
-        if (args.Button == 2)
-            return;
-        FocusUI.Blur();
-        Nav.NavigateTo(Url);
-    }
 }

@@ -1,9 +1,9 @@
 using System.Buffers;
+using System.Net.Mime;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.IO;
 using Stl.IO;
 using Stl.OS;
-using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs;
 
@@ -61,7 +61,7 @@ public static class ByteStreamExt
 
         var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
-        await target.WriteAsync(blobId, stream, false, cancellationToken).ConfigureAwait(false);
+        await target.Write(blobId, stream, MediaTypeNames.Application.Octet, cancellationToken).ConfigureAwait(false);
         return bytesWritten;
     }
 

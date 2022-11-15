@@ -13,6 +13,8 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(Kind), nameof(Version))]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private static ITextSerializer<ServiceEntryDetails> ServiceEntrySerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<ServiceEntryDetails>();
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;
@@ -30,6 +32,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsRemoved { get; set; }
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
+    public bool IsServiceEntry { get; set; }
+
 
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -76,7 +80,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ClientSideBeginsAt = ClientSideBeginsAt,
             EndsAt = EndsAt,
             ContentEndsAt = ContentEndsAt,
-            Content = Content,
+            Content = !IsServiceEntry ? Content : "",
+            ServiceEntry = IsServiceEntry ? ServiceEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
@@ -108,12 +113,13 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         EndsAt = model.EndsAt;
         ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
-        Content = model.Content;
         HasReactions = model.HasReactions;
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
         RepliedChatEntryId = model.RepliedChatEntryId;
+        Content = model.ServiceEntry != null ? ServiceEntrySerializer.Write(model.ServiceEntry) : model.Content;
+        IsServiceEntry = model.ServiceEntry != null;
 #pragma warning disable IL2026
         TextToTimeMap = !model.TextToTimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TextToTimeMap)

@@ -450,6 +450,27 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             await JoinDefaultChatIfAdmin(@event.UserId, cancellationToken).ConfigureAwait(false);
     }
 
+    [EventHandler]
+    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        var (author, _) = @event;
+
+        var createServiceEntryCommand = new IChatsBackend.UpsertEntryCommand(new ChatEntry {
+            AuthorId = AuthorExt.GetWalleId(author.ChatId),
+            ServiceEntry = new () {
+                MembersChange = new () {
+                    AuthorId = author.Id,
+                    HasLeft = author.HasLeft,
+                },
+            },
+            ChatId = author.ChatId,
+        });
+        await Commander.Call(createServiceEntryCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     [ComputeMethod]

@@ -6,7 +6,7 @@
 }
 
 .pic-upload-picker {
-    @apply invisible absolute w-32 h-32 top-0 left-0 rounded-full;
+    @apply invisible absolute w-20 h-20 top-0 left-0 rounded-full;
     @apply rounded-full bg-gradient-to-t from-logo-01 via-logo-03 to-logo-02;
 }
 .pic-upload-picker,

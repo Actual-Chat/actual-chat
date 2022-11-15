@@ -272,7 +272,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             return;
 
         var (entry, author, changeKind) = @event;
-        if (changeKind != ChangeKind.Create)
+        if (changeKind != ChangeKind.Create || entry.IsServiceEntry)
             return;
 
         var text = GetText(entry);

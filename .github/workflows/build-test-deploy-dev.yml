@@ -155,7 +155,7 @@ jobs:
           # Maps port 6379 on service container to the host
           - 6379:6379
       postgres:
-        image: postgres:14.0-alpine3.14
+        image: postgres:15.1-alpine
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
@@ -171,6 +171,24 @@ jobs:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
     steps:
+      - name: Install postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: "Set some postgres settings"
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} bash << EOF
+          sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+          sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
+          cat /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 ${{ job.services.postgres.id }}
+          sleep 5
+
+      - name: Show max connections
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+
       - name: Checkout
         uses: actions/checkout@v3
         with:

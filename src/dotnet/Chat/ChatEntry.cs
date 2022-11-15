@@ -19,6 +19,7 @@ public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<
     [DataMember] public Moment? EndsAt { get; init; }
     [DataMember] public Moment? ContentEndsAt { get; init; }
     [DataMember] public string Content { get; init; } = "";
+    [DataMember] public ServiceEntryDetails? ServiceEntry { get; init; }
     [DataMember] public bool HasReactions { get; init; }
     [DataMember] public Symbol StreamId { get; init; } = "";
     [DataMember] public long? AudioEntryId { get; init; }
@@ -31,6 +32,8 @@ public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<
     public long LocalId => Id.LocalId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatEntryKind Kind => Id.EntryKind;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsServiceEntry => ServiceEntry != null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration

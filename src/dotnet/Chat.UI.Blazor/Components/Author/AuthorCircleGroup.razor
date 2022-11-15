@@ -4,21 +4,20 @@
     if (authorIds.Length == 0)
         return;
     var maxLength = MaxIconCount > authorIds.Length ? authorIds.Length : MaxIconCount;
-    var cls = "-mr-2 border border-bg-02 rounded-full";
 }
 
-<div class="@Class flex-x gap-x-2 pr-3">
+<div class="author-circle-group @Class">
     @{
         var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
             var authorId = authorIds[i];
-            <div class="@cls" style="z-index: @zIndex;">
-                <AuthorCircle Id="@authorId" Size="@Size" />
+            <div class="author-circle-group-item" style="z-index: @zIndex;">
+                <AuthorCircle AuthorId="@authorId" Size="@Size" />
             </div>
             zIndex++;
         }
         if (authorIds.Length > MaxIconCount) {
-            <div class="@cls" style="z-index: @(maxLength + 1);">
+            <div class="author-circle-group-item" style="z-index: @(maxLength + 1);">
                 @{
                     var avatarText = authorIds.Length < 11
                         ? "+" + (authorIds.Length - MaxIconCount)

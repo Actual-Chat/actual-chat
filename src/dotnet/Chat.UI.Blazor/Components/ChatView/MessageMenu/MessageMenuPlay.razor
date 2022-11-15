@@ -6,27 +6,44 @@
 }
 
 @if (canPlay) {
-    <ButtonRound
-        Click="OnPlay"
-        Class="play-btn"
-        Tooltip="Play"
-        FloatingPosition="FloatingPosition.Top">
-        <i class="icon-play-fill text-xl text-primary"></i>
-    </ButtonRound>
+    @if (IsMenu) {
+        <MenuEntry
+            OnClick="OnPlay"
+            Icon="icon-play-fill text-primary"
+            Text="Play">
+        </MenuEntry>
+    } else {
+        <ButtonRound
+            Click="OnPlay"
+            Class="play-btn"
+            Tooltip="Play"
+            FloatingPosition="FloatingPosition.Top">
+            <i class="icon-play-fill text-xl text-primary"></i>
+        </ButtonRound>
+    }
 } else {
-    <ButtonRound
-        Click="OnStop"
-        Class="play-btn"
-        Tooltip="Stop"
-        FloatingPosition="FloatingPosition.Top">
-        <i class="icon-Stop-fill text-xl text-error"></i>
-    </ButtonRound>
+    @if (IsMenu) {
+        <MenuEntry
+            OnClick="OnStop"
+            Icon="icon-Stop-fill text-error"
+            Text="Stop">
+        </MenuEntry>
+    } else {
+        <ButtonRound
+            Click="OnStop"
+            Class="play-btn"
+            Tooltip="Stop"
+            FloatingPosition="FloatingPosition.Top">
+            <i class="icon-Stop-fill text-xl text-error"></i>
+        </ButtonRound>
+    }
 }
 
 @code {
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool IsMenu { get; set; } = false;
 
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());

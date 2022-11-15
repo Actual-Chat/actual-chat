@@ -26,6 +26,11 @@
     <ActualChat.UI.Blazor.Components.Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 
+@if (message.Entry.IsServiceEntry) {
+    <ServiceMessage Message="Message"/>
+    return;
+}
+
 <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
@@ -47,7 +52,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="flex-x items-baseline header chat-message-header ml-1">
-                        <AuthorName Id="@entry.AuthorId" Class="author-name"/>
+                        <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" />
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@

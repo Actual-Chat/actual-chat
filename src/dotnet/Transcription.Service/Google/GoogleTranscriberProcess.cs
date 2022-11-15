@@ -21,7 +21,6 @@ public class GoogleTranscriberProcess : WorkerBase
     public GoogleTranscriberProcess(
         TranscriptionOptions options,
         AudioSource audioSource,
-        CancellationToken stopToken,
         ILogger? log = null)
     {
         Log = log ?? NullLogger.Instance;
@@ -61,11 +60,6 @@ public class GoogleTranscriberProcess : WorkerBase
                 DiarizationConfig = new() {
                     EnableSpeakerDiarization = true,
                     MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
-                },
-                Metadata = new() {
-                    InteractionType = RecognitionMetadata.Types.InteractionType.Discussion,
-                    MicrophoneDistance = RecognitionMetadata.Types.MicrophoneDistance.Nearfield,
-                    RecordingDeviceType = RecognitionMetadata.Types.RecordingDeviceType.Smartphone,
                 },
             };
 

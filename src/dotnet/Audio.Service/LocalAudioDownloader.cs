@@ -24,7 +24,15 @@ public class LocalAudioDownloader : AudioDownloader
         var blobId = match.Groups["blobId"].Value;
         Log.LogDebug("Fetching blob #{BlobId}", blobId);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        var stream = await blobStorage.OpenReadAsync(blobId, cancellationToken).ConfigureAwait(false);
+        var stream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
+        if (stream == null) {
+            Log.LogWarning("Blob #{BlobId} is not found", blobId);
+            return new AudioSource(Task.FromResult(AudioSource.DefaultFormat),
+                AsyncEnumerable.Empty<AudioFrame>(),
+                TimeSpan.Zero,
+                Services.LogFor<AudioSource>(),
+                cancellationToken);
+        }
         var byteStream = stream.ReadByteStream(true, cancellationToken);
 
         var audio = await ReadFromByteStream(byteStream, cancellationToken).ConfigureAwait(false);

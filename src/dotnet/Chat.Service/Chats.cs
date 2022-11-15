@@ -14,7 +14,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     private IAccounts Accounts { get; }
-    private IAccountsBackend AccountsBackend { get; }
     private IAuthors Authors { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IContactsBackend ContactsBackend { get; }
@@ -24,7 +23,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public Chats(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         Authors = services.GetRequiredService<IAuthors>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
