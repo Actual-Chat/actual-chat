@@ -118,15 +118,18 @@
     }
 
     protected override async Task OnParametersSetAsync() {
+        var chatId = Chat.Id;
         using (await _lastReadEntrySync.Lock()) {
             var oldChatId = MarkupHub.ChatId;
-            if (oldChatId == Chat.Id)
+            if (oldChatId.IsEmpty)
+                MarkupHub.ChatId = chatId; // initially set chat id for mentions.
+            if (oldChatId == chatId)
                 return;
 
             LastReadEntryState.DisposeSilently();
             LastReadEntryState = null;
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, default);
-            MarkupHub.ChatId = Chat.Id;
+            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(chatId, default);
+            MarkupHub.ChatId = chatId;
         }
 
         if (JSRef != null!) {
