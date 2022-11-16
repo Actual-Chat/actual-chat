@@ -7,6 +7,8 @@ namespace ActualChat.Blobs.Internal;
 
 internal class GoogleCloudBlobStorage : IBlobStorage
 {
+    private const int MinChunkSize = 128 * 1024;
+
     private readonly string _bucket;
     private readonly StorageClient _client;
 
@@ -25,14 +27,25 @@ internal class GoogleCloudBlobStorage : IBlobStorage
 
         var stream = MemoryStreamManager.GetStream();
         try {
-            await _client.DownloadObjectAsync(_bucket, path, stream, cancellationToken: cancellationToken)
+            await _client.DownloadObjectAsync(_bucket,
+                    path,
+                    stream,
+                    cancellationToken: cancellationToken,
+                    options: new DownloadObjectOptions {
+                        ChunkSize = MinChunkSize,
+                    })
                 .ConfigureAwait(false);
+            stream.Position = 0L;
+            return stream;
         }
         catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound) {
+            stream.DisposeSilently();
             return null;
         }
-        stream.Position = 0L;
-        return stream;
+        catch {
+            stream.DisposeSilently();
+            throw;
+        }
     }
 
     public async Task<string?> GetContentType(string path, CancellationToken cancellationToken)

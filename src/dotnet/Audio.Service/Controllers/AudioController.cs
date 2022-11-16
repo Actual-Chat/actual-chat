@@ -19,6 +19,7 @@ public class AudioController : ControllerBase
         if (byteStream == null)
             return NotFound();
 
+        // stream will be disposed by the asp.net framework
         return File(byteStream, "audio/webm");
     }
 }

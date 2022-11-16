@@ -23,6 +23,7 @@ public class ContentController : ControllerBase
             return NotFound();
 
         var contentType = await blobStorage.GetContentType(blobId, cancellationToken).ConfigureAwait(false);
+        // stream will be disposed by the asp.net framework
         return File(byteStream, contentType ?? MediaTypeNames.Application.Octet);
     }
 }
