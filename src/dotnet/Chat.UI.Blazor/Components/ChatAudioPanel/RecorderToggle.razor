@@ -11,7 +11,7 @@
         RecordingState.Off => "record-off",
         RecordingState.Initializing => "record-init",
         _ => "record-on",
-        };
+    };
 }
 
 @if (CanRecord) {
@@ -58,18 +58,14 @@
 
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
+    private bool? _canRecord = null;
     private bool IsLongPress { get; set; } = false;
-    private bool CanRecord { get; set; } = true;
-
-    protected override async Task OnInitializedAsync() {
-        CanRecord = await AudioRecorder.CanRecord();
-    }
+    private bool CanRecord => _canRecord ?? true;
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        CanRecord = await AudioRecorder.CanRecord(cancellationToken);
         var isRecordingRequested = await ChatUI.IsRecording(ChatId);
         // Default scheduler is used from here
         var lastState = State.LatestNonErrorValue;
@@ -99,22 +95,28 @@
             _ = ChatUI.SetRecordingChatId(Symbol.Empty);
             return;
         }
-        CanRecord = await AudioRecorder.CanRecord();
-        if (!CanRecord) {
+
+        if (_canRecord == null) {
+            _canRecord = await AudioRecorder.CanRecord();
             StateHasChanged();
-            return;
         }
+        if (!CanRecord)
+            return;
+
         _ = ChatUI.SetRecordingChatId(ChatId);
     }
 
     private async Task OnLongPressStart() {
         if (IsLongPress)
             return;
-        CanRecord = await AudioRecorder.CanRecord();
-        if (!CanRecord) {
+
+        if (_canRecord == null) {
+            _canRecord = await AudioRecorder.CanRecord();
             StateHasChanged();
-            return;
         }
+        if (!CanRecord)
+            return;
+
         IsLongPress = true;
         _ = ChatUI.SetRecordingChatId(ChatId);
     }
@@ -122,6 +124,7 @@
     private void OnLongPressStop() {
         if (!IsLongPress)
             return;
+
         IsLongPress = false;
         _ = ChatUI.SetRecordingChatId(Symbol.Empty);
     }
