@@ -190,7 +190,7 @@
                 entryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
             }
 
-            if (LastReadEntryState != null)
+            if (LastReadEntryState != null && LastReadEntryState.Value < entryId)
                 LastReadEntryState.Value = entryId;
             _ = ChatUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
