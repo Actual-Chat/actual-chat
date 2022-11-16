@@ -162,7 +162,7 @@ public class ChatEntryReaderTest : AppHostTestBase
                 "it was a teenage wedding and the all folks wished them well");
     }
 
-    [Theory]
+    [Theory(Skip = "Flaky")]
     [InlineData(0, "it was a teenage wedding and the all folks wished them well")]
     [InlineData(1, "rape me rape me my friend")]
     [InlineData(2, "back in black i hit the sack")]
