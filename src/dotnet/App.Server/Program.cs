@@ -13,6 +13,8 @@ internal static class Program
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 

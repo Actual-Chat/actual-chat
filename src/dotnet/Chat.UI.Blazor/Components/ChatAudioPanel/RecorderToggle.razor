@@ -9,7 +9,6 @@
         RecordingState.OffToOn => "record-off-to-on",
         RecordingState.OnToOff => "record-on-to-off",
         RecordingState.Off => "record-off",
-        RecordingState.Initializing => "record-init",
         _ => "record-on",
     };
 }
@@ -51,7 +50,6 @@
         Off,
         OnToOff,
         OffToOn,
-        Initializing,
     }
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
@@ -78,19 +76,17 @@
 
         return (lastState.RecordingState, isRecordingRequested, recordingState?.IsRecording ?? false) switch  {
             (RecordingState.OffToOn, false, false) => new (RecordingState.OnToOff),
-            (RecordingState.Initializing, false, false) => new (RecordingState.OnToOff),
             (RecordingState.On, false, _) => new (RecordingState.OnToOff),
             (RecordingState.OnToOff, false, false) => new (RecordingState.OnToOff),
-            (RecordingState.Initializing, _, true) => new (RecordingState.OffToOn),
             (_, false, false) => new (RecordingState.Off),
-            (_, true, false) => new (RecordingState.Initializing),
+            (_, true, false) => new (RecordingState.OffToOn),
             (_, _, true) => new (RecordingState.On),
         };
     }
 
     private async Task OnClick() {
         var m = State.LatestNonErrorValue;
-        var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.Initializing;
+        var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.OffToOn;
         if (isRecordingInThisChat) {
             _ = ChatUI.SetRecordingChatId(Symbol.Empty);
             return;
