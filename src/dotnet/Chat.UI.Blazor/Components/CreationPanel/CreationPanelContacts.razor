@@ -1,34 +1,49 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Users.UI.Blazor.Services
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<CreationPanelContacts.Model>
 
 @{
     var m = State.LatestNonErrorValue;
+    var panelHeaderCls = "overflow-y-hidden";
+    if (HideHeader)
+        panelHeaderCls += " hide-header";
 
     RenderFragment RenderTab(TabId tabId, string title) =>
         @<Tab
              Title="@title" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y my-2">
-                <ContactList Contacts="m.PinnedContacts" Kind="ContactListKind.Pinned"/>
-                <ContactList Contacts="m.UnpinnedContacts" Kind="ContactListKind.Unpinned"/>
+                @foreach (var contact in m.Contacts) {
+                    <CreationPanelContactItem
+                        @key="contact"
+                        Contact="@contact"
+                        DisableLink="@DisableLinks"
+                        HideEnding="@HideItemEnding"/>
+                }
             </div>
         </Tab>;
 }
 
-@if (m.PinnedContacts.Count + m.UnpinnedContacts.Count != 0) {
-    <div class="contacts">
-        <TabPanel
-            BottomHill="true"
-            Class="overflow-y-hidden"
-            TabsClass="left-panel-tabs"
-            ActiveTabChanged="OnActiveTabChanged">
+<div class="bg-red-100">
+    @foreach (var contact in m.SelectedContacts) {
+        <div class="bg-red-300 rounded-full px-2 mx-2">
+            @contact.Account?.Avatar.Name
+        </div>
+    }
+</div>
 
-            @RenderTab(TabId.Recent, "Recent")
-            @RenderTab(TabId.All, "A-Z")
-        </TabPanel>
-    </div>
-}
+<div class="-flex-y w-full h-full">
+    <TabPanel
+        BottomHill="true"
+        Class="@panelHeaderCls"
+        TabsClass="left-panel-tabs"
+        ActiveTabChanged="OnActiveTabChanged">
+
+        @RenderTab(TabId.Recent, "Recent")
+        @RenderTab(TabId.All, "A-Z")
+        @* @RenderTab(ContactTab.Favorites, "Favorites") *@
+    </TabPanel>
+</div>
 
 @code{
     private TabId _activeTabId;
@@ -38,7 +53,10 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private IRecentEntries RecentEntries { get; init; } = null!;
+
+    [Parameter] public bool HideHeader { get; set; }
+    [Parameter] public bool HideItemEnding { get; set; }
+    [Parameter] public bool DisableLinks { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -55,49 +73,31 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var activeContactId = GetContactId(selectedChatId);
+            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
+            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
             contacts = (
                 from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Avatar.Name)
-                where rank > 0 || contact.TargetUserId == activeContactId
+                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
+                where rank > 0 || ReferenceEquals(selectedContact, contact)
                 orderby rank descending
                 select contact
                 ).ToList();
         }
-
-        var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
-        var pinnedContacts = contacts
-            .Where(c => pinnedChatIds.Contains(c.GetFullPeerChatId()))
-            .ToList();
-        var unpinnedContacts = contacts
-            .Where(c => !pinnedChatIds.Contains(c.GetFullPeerChatId()))
-            .ToList();
+        var selected = new List<Contact>();
 
         return new Model {
-            PinnedContacts = pinnedContacts,
-            UnpinnedContacts = unpinnedContacts,
+            Contacts = contacts,
+            SelectedContacts = selected,
         };
-
-        Symbol GetContactId(string chatId) {
-            var targetUserId = ParsedChatId.TryParse(chatId, out var parsedChatId)
-                ? parsedChatId.GetPeerChatTargetUserId(account.User.Id)
-                : Symbol.Empty;
-            return contacts.All(c => c.TargetUserId != targetUserId)
-                ? Symbol.Empty
-                : // No active contact in the current group
-                targetUserId;
-        }
     }
 
     private async Task<List<Contact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
-        var contacts = await Contacts.ListOwn(Session, cancellationToken);
+        var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
         return tabId switch {
-            TabId.All => contacts.ToList(),
-            TabId.Recent => await RecentEntries
-                .OrderByRecency(Session, contacts, RecencyScope.Contact, Constants.Contact.MaxRecentContacts, cancellationToken)
-                .ConfigureAwait(false), // Ok here
+            TabId.All => contacts.OrderBy(c => c.Account!.Avatar.Name).ToList(),
+            TabId.Recent => contacts.OrderByDescending(c => c.TouchedAt).ToList(),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
-            };
+        };
     }
 
     private void OnActiveTabChanged(Tab? tab) {
@@ -111,13 +111,17 @@
         All,
     }
 
+    private void AddContactToSelected(Contact contact) {
+
+    }
+
     public sealed record Model {
         public static Model None { get; } = new() {
-            PinnedContacts = new List<Contact>(),
-            UnpinnedContacts = new List<Contact>(),
+            Contacts = new List<Contact>(),
+            SelectedContacts = new List<Contact>(),
         };
 
-        public List<Contact> PinnedContacts { get; init; } = null!;
-        public List<Contact> UnpinnedContacts { get; init; } = null!;
+        public List<Contact> Contacts { get; init; } = null!;
+        public List<Contact> SelectedContacts { get; init; } = null!;
     }
 }

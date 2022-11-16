@@ -1,0 +1,66 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<CreationPanelContactItem.Model>
+@{
+    var m = State.ValueOrDefault;
+    if (m is null)
+        return;
+    var url = $"/chat/{m.ShortChatId.UrlEncode()}";
+
+    RenderFragment RenderItem(bool activeLink)
+        => @<div class="creation-panel-contact-item @(activeLink ? "" : "unfocusable")">
+               <div class="flex-x w-full items-center gap-x-2">
+                   <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
+                   <span class="text-ellipsis whitespace-nowrap overflow-hidden">
+                       <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
+                   </span>
+                   <span>@_isSelected</span>
+               </div>
+               @if (!HideEnding) {
+                   <div class="flex-x justify-center min-w-4">
+                       <Checkbox Id="@($"creation-panel-contact-{Contact.Id.OtherId}")" Checked="@m.IsSelected" Change="@OnSelect"/>
+                   </div>
+               }
+            </div>;
+}
+
+@if (DisableLink) {
+    <div>
+        @RenderItem(false)
+    </div>
+} else {
+    <a class="unfocusable cursor-pointer" data-href="@url">
+        @RenderItem(true)
+    </a>
+}
+
+@code {
+    private bool _isSelected;
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
+    [Parameter] public bool DisableLink { get; set; }
+    [Parameter] public bool HideEnding { get; set; }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
+        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
+        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);
+        var isOnline = presence is Presence.Online or Presence.Recording;
+        var selected = _isSelected;
+
+        return new(
+            fullChatId,
+            shortChatId,
+            selected);
+    }
+
+    private void OnSelect() {
+
+    }
+
+    public record Model(
+        string FullChatId,
+        string ShortChatId,
+        bool IsSelected);
+}

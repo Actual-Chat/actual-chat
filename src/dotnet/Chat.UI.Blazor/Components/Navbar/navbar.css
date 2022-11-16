@@ -82,8 +82,14 @@
 .navbar-item:hover {
     @apply bg-round-hover;
 }
+.navbar-item:active {
+    @apply bg-transparent border-x border-transparent;
+}
 .navbar-item.active {
     @apply bg-selected;
+}
+.navbar-item.active:active {
+    @apply border-0;
 }
 
 .active-chats .navbar-subgroup .pin-toggle,
