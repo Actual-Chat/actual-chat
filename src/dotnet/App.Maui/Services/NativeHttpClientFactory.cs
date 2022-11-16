@@ -11,7 +11,6 @@ namespace ActualChat.App.Maui.Services;
 
 public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageHandlerFactory
 {
-    private readonly ConcurrentDictionary<string, HttpClient> _clients = new ();
     private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new ();
 
     private IServiceProvider Services { get; }
@@ -30,9 +29,9 @@ public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageH
     }
 
     public HttpClient CreateClient(string name)
-        => _clients.GetOrAdd(
-            name,
-            name1 => ConfigureClient(new HttpClient(CreateHandler(name1), false), name1));
+        // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.net.http.ihttpclientfactory.createclient?view=dotnet-plat-ext-6.0#remarks
+        => ConfigureClient(new HttpClient(CreateHandler(name), false), name);
 
     public HttpMessageHandler CreateHandler(string name)
         => _messageHandlers.GetOrAdd(name, name1 => {
