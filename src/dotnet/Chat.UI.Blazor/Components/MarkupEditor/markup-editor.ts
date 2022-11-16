@@ -68,6 +68,7 @@ export class MarkupEditor {
         this.contentDiv.addEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.addEventListener("input", this.onInput);
         document.addEventListener("selectionchange", this.onSelectionChange);
+        document.addEventListener("click", this.onDocumentClick);
 
         if (autofocus)
             this.focus();
@@ -83,6 +84,7 @@ export class MarkupEditor {
         this.contentDiv.removeEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.removeEventListener("input", this.onInput);
         document.removeEventListener("selectionchange", this.onSelectionChange);
+        document.removeEventListener("click", this.onDocumentClick);
     }
 
     public transaction(action: () => void): void {
@@ -296,6 +298,18 @@ export class MarkupEditor {
     private onSelectionChange = () => {
         this.fixSelection();
         this.updateListUIThrottled();
+    };
+
+    private onDocumentClick = (event: Event): void => {
+        if (!(event.target instanceof Element))
+            return;
+        const closestElement = event.target.closest('[data-editor-trigger]');
+        if (!(closestElement instanceof HTMLElement))
+            return;
+        const trigger = closestElement.dataset['editorTrigger'];
+        if (trigger !== 'true')
+            return;
+        focusAndOpenKeyboard(this.editorDiv, 300);
     };
 
     private onBeforeInput = (e: InputEvent) => {
@@ -652,4 +666,20 @@ function cleanPastedText(text: string) : string {
 
 function normalize(text: string) : string {
     return text.normalize().replace(CrlfRe, "\n");
+}
+
+function focusAndOpenKeyboard(el: HTMLDivElement, timeout: number) {
+    const tempElement = document.createElement('input');
+    tempElement.style.position = 'absolute';
+    tempElement.style.top = (el.offsetTop + 7) + 'px';
+    tempElement.style.left = el.offsetLeft + 'px';
+    tempElement.style.height = '0';
+    tempElement.style.opacity = '0';
+    document.body.appendChild(tempElement);
+    tempElement.focus();
+    setTimeout(function() {
+        el.focus();
+        el.click();
+        document.body.removeChild(tempElement);
+    }, timeout);
 }
