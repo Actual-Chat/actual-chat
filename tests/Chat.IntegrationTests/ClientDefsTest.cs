@@ -49,13 +49,13 @@ public class ClientDefsTest : AppHostTestBase
                         if (IsCommandHandler(method)) {
                             var postAttribute = clientDefMethod.GetCustomAttribute<PostAttribute>()
                                 ?? throw new Exception($"{clientDef}.{clientDefMethod.Name} does not have PostAttribute.");
-                            if (!string.Equals(postAttribute.Path, clientDefMethod.Name, StringComparison.Ordinal))
+                            if (!OrdinalEquals(postAttribute.Path, clientDefMethod.Name))
                                 throw new Exception($"{clientDef}.{clientDefMethod.Name}: Path of PostAttribute does not match method name.");
                         }
                         else if (IsComputeMethod(method)) {
                             var getAttribute = clientDefMethod.GetCustomAttribute<GetAttribute>()
                                 ?? throw new Exception($"{clientDef}.{clientDefMethod.Name} does not have GetAttribute");
-                            if (!string.Equals(getAttribute.Path, clientDefMethod.Name, StringComparison.Ordinal))
+                            if (!OrdinalEquals(getAttribute.Path, clientDefMethod.Name))
                                 throw new Exception($"{clientDef}.{clientDefMethod.Name}: GetAttribute path does not match method name.");
                         }
 
@@ -82,13 +82,13 @@ public class ClientDefsTest : AppHostTestBase
         private static Dictionary<string, Type> GetClientDefMap()
         {
             var clientAssemblies = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(x => x.GetName().Name!.StartsWith("ActualChat", StringComparison.Ordinal)
-                    && x.GetName().Name!.EndsWith(".Client", StringComparison.Ordinal))
+                .Where(x => x.GetName().Name.OrdinalStartsWith("ActualChat")
+                    && x.GetName().Name.OrdinalEndsWith(".Client"))
                 .ToList();
  #pragma warning disable IL2026
             var clientDefMap = clientAssemblies.SelectMany(x => x.GetTypes())
  #pragma warning restore IL2026
-                .Where(x => x.IsInterface && x.Name.EndsWith("ClientDef", StringComparison.Ordinal))
+                .Where(x => x.IsInterface && x.Name.OrdinalEndsWith("ClientDef"))
                 .ToDictionary(x => x.Name, StringComparer.Ordinal);
             return clientDefMap;
         }

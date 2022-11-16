@@ -16,7 +16,7 @@ public class NotificationNavigationHandler
     public Task Handle(string url)
     {
         var origin = UrlMapper.BaseUrl.TrimEnd('/');
-        if (url.IsNullOrEmpty() || !url.StartsWith(origin, StringComparison.Ordinal))
+        if (url.IsNullOrEmpty() || !url.OrdinalStartsWith(origin))
             return Task.CompletedTask;
 
         var chatPageRe = new Regex($"^{Regex.Escape(origin)}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");

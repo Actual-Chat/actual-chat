@@ -43,7 +43,7 @@ public record Emoji(string Code, string Name)
     {
         if (ReferenceEquals(null, other)) return false;
         if (ReferenceEquals(this, other)) return true;
-        return string.Equals(Code, other.Code, StringComparison.Ordinal);
+        return OrdinalEquals(Code, other.Code);
     }
 
     public override int GetHashCode()

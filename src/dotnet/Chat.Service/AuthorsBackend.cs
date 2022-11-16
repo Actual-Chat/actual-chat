@@ -58,7 +58,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (userId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
             return null;
 
-        if (string.Equals(userId, UserConstants.Walle.UserId, StringComparison.Ordinal))
+        if (OrdinalEquals(userId, UserConstants.Walle.UserId))
             return AuthorExt.GetWalle(chatId);
 
         AuthorFull? author;
