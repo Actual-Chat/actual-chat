@@ -204,6 +204,13 @@
 .active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
+.all-chats .navbar-item.active {
+    @apply bg-transparent;
+}
+.all-chats .navbar-item:hover,
+.all-chats .navbar-item.active:hover {
+    @apply bg-round-hover;
+}
 
 .chat-footer {
     @apply flex justify-center items-center w-full h-full bg-01;

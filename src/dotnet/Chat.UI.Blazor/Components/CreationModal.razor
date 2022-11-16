@@ -1,5 +1,6 @@
 @using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
+@using ActualChat.Contacts
 @implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
@@ -50,7 +51,7 @@
                         </Icon>
                     </CreationButton>
                 </div>
-                <CreationPanelContacts/>
+                <CreationPanelContacts HideItemEnding="true"/>
             </div>
         } else if (ModalModel.PageNumber == 2) {
             <div class="creation-panel">
@@ -61,7 +62,7 @@
                         <i class="icon-close text-2xl md:text-xl font-medium"></i>
                     </ButtonRound>
                 </div>
-                <div class="mb-4 px-2">
+                <div class="px-2">
                     <SearchBox
                         @ref="_searchBoxRef"
                         Class="mt-1"
@@ -69,7 +70,7 @@
                         MaxLength="@Constants.Chat.MaxSearchFilterLength"
                         TextChanged="@OnFilter"/>
                 </div>
-                <CreationPanelContacts/>
+                <CreationPanelContacts HideHeader="true" DisableLinks="true"/>
             </div>
         } else if (ModalModel.PageNumber == 3) {
             <div class="creation-panel">
@@ -147,29 +148,35 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] SelectedContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private CancellationTokenSource DisposeTokenSource { get; }
+    private CancellationToken DisposeToken { get; }
+
+    public CreationModal()
+    {
+        DisposeTokenSource = new();
+        DisposeToken = DisposeTokenSource.Token;
+    }
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
         _form = new(ComponentIdGenerator);
 
-        var contacts = await Contacts.ListOwn(Session, default);
-        var resolvedContacts = await contacts
-            .Select(async contact => {
-    // Default scheduler is used from here (in this block)
-                var account = await Accounts.Get(Session, contact.TargetUserId, default).ConfigureAwait(false);
-                if (account == null)
-                    return null;
-
-                var presence = await UserPresences.Get(contact.TargetUserId, default).ConfigureAwait(false);
+        var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
+        var contacts = await userContacts
+            .Select(async c => {
+                // Fine to use ConfigureAwait(false) here
+                var account = c.Account!;
+                var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
                 return new Contact() {
                     Account = account,
+                    Presence = presence,
                 };
             })
             .Collect();
 
-        AllContacts = resolvedContacts
-            .SkipNullItems()
+        AllContacts = contacts
             .OrderBy(x => x.Account.Avatar.Name)
             .ToArray();
         FilteredContacts = AllContacts;
@@ -181,10 +188,6 @@
             : AllContacts
                 .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
                 .ToArray();
-    }
-
-    private sealed class Contact {
-        public Account Account { get; init;} = null!;
     }
 
     private void OnClose()
@@ -219,7 +222,7 @@
             Nav.NavigateTo(Links.ChatPage(chat.Id));
         }
         catch {
-    // Intended: command errors are shown in the UI anyway
+        // Intended: command errors are shown in the UI anyway
         }
     }
 
@@ -241,4 +244,11 @@
     }
 
     public sealed record Model(int PageNumber);
+
+
+    private sealed class Contact {
+        public Account Account { get; init; } = null!;
+        public Presence Presence { get; init; }
+        public bool IsSelected { get; set; }
+    }
 }

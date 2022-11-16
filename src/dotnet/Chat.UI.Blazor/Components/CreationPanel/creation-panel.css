@@ -49,3 +49,36 @@
 .creation-modal .btn-group .btn {
     @apply min-w-0 max-w-none;
 }
+
+.creation-panel .navbar-item-ending {
+    @apply hidden;
+}
+
+.creation-panel .navbar-item,
+.creation-panel .navbar-item * {
+    @apply cursor-pointer;
+}
+.creation-panel .tab-panel-tabs {
+    /*@apply hidden;*/
+}
+
+.creation-panel-contact-list {
+    @apply flex-y custom-scrollbar;
+}
+.creation-panel-contact-item {
+    @apply flex-x items-center px-2 py-1 rounded-md;
+}
+.creation-panel-contact-item,
+.creation-panel-contact-item * {
+    @apply cursor-pointer;
+}
+.creation-panel-contact-item.unfocusable,
+.creation-panel-contact-item.unfocusable * {
+    @apply cursor-default;
+}
+.creation-panel-contact-item:hover {
+    @apply bg-secondary;
+}
+.creation-panel-contact-item.unfocusable:hover {
+    @apply bg-transparent;
+}
