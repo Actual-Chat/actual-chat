@@ -200,7 +200,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         entry?.Content.Should().Be(expected);
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ObserveTest1()
     {
         using var appHost = await NewAppHost();
