@@ -231,8 +231,10 @@ export class VirtualList implements VirtualListAccessor {
                 const key = getItemKey(itemRef);
                 const countAs = getItemCountAs(itemRef);
 
-                if (this.items.hasOwnProperty(key))
+                if (this.items.hasOwnProperty(key)) {
+                    itemRef.classList.remove('new');
                     continue;
+                }
 
                 this.items[key] = {
                     size: -1,
@@ -265,13 +267,20 @@ export class VirtualList implements VirtualListAccessor {
             }
         }
 
-        const rs = this.getRenderState();
-        if (rs) {
-            void this.onRenderEnd(rs);
-        }
-        else {
-            this._isRendering = false;
-        }
+        requestAnimationFrame(time => {
+            // make rendered items visible
+            for (const itemRef of this.getNewItemRefs()) {
+                itemRef.classList.remove('new');
+            }
+
+            const rs = this.getRenderState();
+            if (rs) {
+                void this.onRenderEnd(rs);
+            }
+            else {
+                this._isRendering = false;
+            }
+        });
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
@@ -447,7 +456,7 @@ export class VirtualList implements VirtualListAccessor {
                     if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
                         debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`);
                         // debug helper
-                        //pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                        // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
                         this._ref.scrollTop -= dPivotOffset;
                     } else {
                         debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ${pivotOffset} ~ ${itemRect.top}`);
@@ -469,7 +478,7 @@ export class VirtualList implements VirtualListAccessor {
     private updateClientSideStateThrottled = throttle(() => this.updateClientSideState(), UpdateClientSideStateInterval, 'delayHead');
     private updateClientSideState = serialize(async () => {
         const rs = this.renderState;
-        if (this._isDisposed)
+        if (this._isDisposed || this._isRendering)
             return;
 
         // Do not update client state when we haven't completed rendering for the first time
