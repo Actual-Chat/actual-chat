@@ -24,10 +24,12 @@ public static class CommandExt
         var commandContext = CommandContext.GetCurrent();
         var provider = commandContext.Services.GetRequiredService<ICommandQueues>();
         var queue1 = provider.Get(queueRef1);
-        var queue2 = provider.Get(queueRef2);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        // var queue2 = provider.Get(queueRef2);
         var task1 = queue1.Enqueue(command, cancellationToken);
-        var task2 = queue2.Enqueue(command, cancellationToken);
-        return Task.WhenAll(task1, task2);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        // var task2 = queue2.Enqueue(command, cancellationToken);
+        return Task.WhenAll(task1/*, task2*/);
     }
 
     public static Task Enqueue(
@@ -40,15 +42,18 @@ public static class CommandExt
         var commandContext = CommandContext.GetCurrent();
         var provider = commandContext.Services.GetRequiredService<ICommandQueues>();
         var queue1 = provider.Get(queueRef1);
-        var queue2 = provider.Get(queueRef2);
-        var queue3 = provider.Get(queueRef3);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        // var queue2 = provider.Get(queueRef2);
+        // var queue3 = provider.Get(queueRef3);
         var task1 = queue1.Enqueue(command, cancellationToken);
-        var task2 = queue2.Enqueue(command, cancellationToken);
-        var task3 = queue3.Enqueue(command, cancellationToken);
-        return Task.WhenAll(task1, task2, task3);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        // var task2 = queue2.Enqueue(command, cancellationToken);
+        // var task3 = queue3.Enqueue(command, cancellationToken);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        return Task.WhenAll(task1/*, task2, task3*/);
     }
 
-    public static async Task Enqueue(
+    public static Task Enqueue(
         this ICommand command,
         CancellationToken cancellationToken,
         params QueueRef[] queueRefs)
@@ -58,8 +63,12 @@ public static class CommandExt
 
         var commandContext = CommandContext.GetCurrent();
         var provider = commandContext.Services.GetRequiredService<ICommandQueues>();
-        var tasks = queueRefs.Select(queueRef => provider.Get(queueRef).Enqueue(command, cancellationToken));
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        // TODO(AK): remove this duplicates in command handler invocation is fixed
+        return provider.Get(queueRefs[0]).Enqueue(command, cancellationToken);
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        // var tasks = queueRefs.Select(queueRef => provider.Get(queueRef).Enqueue(command, cancellationToken));
+        // return Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public static void EnqueueOnCompletion(this ICommand command, QueueRef queueRef)
@@ -85,7 +94,8 @@ public static class CommandExt
 
         var operationItems = GetOperation(commandContext).Items;
         var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
-        list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2));
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        list = list.Add(new(command, queueRef1))/*.Add(new(command, queueRef2))*/;
         operationItems.Set(list);
     }
 
@@ -101,7 +111,8 @@ public static class CommandExt
 
         var operationItems = GetOperation(commandContext).Items;
         var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
-        list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2)).Add(new(command, queueRef3));
+        // TODO(AK): uncomment when duplicates in command handler invocation is fixed
+        list = list.Add(new(command, queueRef1))/*.Add(new(command, queueRef2)).Add(new(command, queueRef3))*/;
         operationItems.Set(list);
     }
 
