@@ -33,29 +33,32 @@
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     [JSInvokable]
     public Task RenderMenu(string menuRef, string id, bool isHoverMenu) {
-        var parsedMenuRef = MenuRef.Parse(menuRef);
-        var model = new Model(
-            id,
-            parsedMenuRef.MenuType,
-            new Dictionary<string, object>() {
-                { nameof(MenuBase.Id), id },
-                { nameof(MenuBase.Arguments), parsedMenuRef.Arguments },
-            },
-            isHoverMenu);
-        _menus.Add(model);
-        StateHasChanged();
+        if (isHoverMenu)
+            RenderMenuInternal(menuRef, id, isHoverMenu);
+        else
+            HistoryUI.NavigateTo(
+            () => RenderMenuInternal(menuRef, id, isHoverMenu),
+            () => HideMenuInternal(id));
         return Task.CompletedTask;
     }
 
     [JSInvokable]
     public Task HideMenu(string id) {
-        _menus.RemoveAll(x => x.Id == id);
-        StateHasChanged();
+        var menu = _menus.LastOrDefault(x => x.Id == id);
+        if (menu != null) {
+            if (menu.IsHoverMenu)
+                HideMenuInternal(id);
+            else if (menu == _menus.LastOrDefault(x => !x.IsHoverMenu))
+                HistoryUI.GoBack();
+            else
+                HideMenuInternal(id);
+        }
         return Task.CompletedTask;
     }
 
@@ -76,6 +79,28 @@
         _jsRef = null!;
         _blazorRef.DisposeSilently();
         _blazorRef = null!;
+    }
+
+     private void RenderMenuInternal(string menuRef, string id, bool isHoverMenu)
+    {
+        var parsedMenuRef = MenuRef.Parse(menuRef);
+        var model = new Model(
+            id,
+            parsedMenuRef.MenuType,
+            new Dictionary<string, object>()
+            {
+                {nameof(MenuBase.Id), id},
+                {nameof(MenuBase.Arguments), parsedMenuRef.Arguments},
+            },
+            isHoverMenu);
+        _menus.Add(model);
+        StateHasChanged();
+    }
+
+    private void HideMenuInternal(string id)
+    {
+        _menus.RemoveAll(x => x.Id == id);
+        StateHasChanged();
     }
 
     private string GetMenuCssClass(Model menu) {
