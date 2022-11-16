@@ -13,7 +13,7 @@
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
 .ac-menu.mobile {
-    @apply !left-1 !top-auto right-1 bottom-0 rounded-bl-none rounded-br-none;
+    @apply !left-5 !top-auto right-5 bottom-4 p-2;
 }
 .ac-menu-hover {
     @apply hidden absolute bg-01 rounded-full p-1 border border-bg-03 pointer-events-auto z-menu-hover;
@@ -29,6 +29,9 @@
 .ac-menu-item {
     @apply flex min-w-[120px] p-[6px] rounded-xl h-10 whitespace-nowrap hover:bg-round-hover text-02 cursor-pointer whitespace-nowrap;
 }
+.mobile .ac-menu-item {
+    @apply h-12;
+}
 .ac-menu-separator {
     @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
 }
@@ -43,9 +46,6 @@
 }
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
-}
-.mobile .ac-menu-text {
-    @apply text-xl;
 }
 .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
