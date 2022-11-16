@@ -6,6 +6,7 @@ public class NavbarUI
 {
     private BrowserInfo BrowserInfo { get; }
     private ChatUI ChatUI { get; }
+    private ContactUI ContactUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
     public bool IsVisible { get; private set; }
@@ -15,13 +16,15 @@ public class NavbarUI
     public event EventHandler? ActiveGroupChanged;
     public event EventHandler? VisibilityChanged;
 
-    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI, NavigationManager nav, ChatUI chatUI)
+    public NavbarUI(IServiceProvider services)
     {
-        BrowserInfo = browserInfo;
-        ChatUI = chatUI;
-        HistoryUI = historyUI;
-        Nav = nav;
-        historyUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
+        ChatUI = services.GetRequiredService<ChatUI>();
+        ContactUI = services.GetRequiredService<ContactUI>();
+        HistoryUI = services.GetRequiredService<HistoryUI>();
+        Nav = services.GetRequiredService<NavigationManager>();
+
+        HistoryUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
             IsVisible = ShouldShowNavbar();
     }
@@ -50,7 +53,7 @@ public class NavbarUI
         if (visible)
             _ = HistoryUI.GoBack();
         else {
-            var selectedChatId = ChatUI.SelectedContact.Value;
+            var selectedChatId = ContactUI.SelectedContactId.Value.ChatId;
             if (!selectedChatId.IsEmpty)
                 Nav.NavigateTo(Links.ChatPage(selectedChatId));
         }

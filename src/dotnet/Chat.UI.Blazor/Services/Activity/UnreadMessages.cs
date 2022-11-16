@@ -75,7 +75,7 @@ public class UnreadMessages : WorkerBase
         var cContactIds = await Computed.Capture(() => Contacts.ListIds(Session, cancellationToken)).ConfigureAwait(false);
         var changes = cContactIds.Changes(cancellationToken).ConfigureAwait(false);
         await foreach (var c in changes) {
-            var chatIds = c.Value.Select(cid => cid.GetChatId()).ToList();
+            var chatIds = c.Value.Select(cid => cid.ChatId).ToList();
             var removedChatIds = _leases.Keys.Except(chatIds);
             var addedChatIds = chatIds.Except(_leases.Keys);
 

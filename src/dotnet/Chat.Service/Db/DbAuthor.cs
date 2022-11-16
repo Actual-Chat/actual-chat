@@ -25,7 +25,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public List<DbAuthorRole> Roles { get; } = new();
 
     public static string ComposeId(ChatId chatId, long localId)
-        => new AuthorId(chatId, localId, SkipValidation.Instance).Id;
+        => new AuthorId(chatId, localId, Parse.None).Id;
 
     public AuthorFull ToModel()
     {
@@ -33,7 +33,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Id = new AuthorId(Id),
             Version = Version,
             IsAnonymous = IsAnonymous,
-            UserId = new UserId(UserId ?? Symbol.Empty, SkipValidation.Instance),
+            UserId = new UserId(UserId ?? Symbol.Empty, Parse.None),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
             RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToImmutableArray(),

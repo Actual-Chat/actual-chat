@@ -312,7 +312,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatEntry = new ChatEntry {
-            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, SkipValidation.Instance),
+            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, Parse.None),
             AuthorId = author.Id,
             Content = text,
             RepliedChatEntryId = repliedChatEntryId.IsSome(out var v) ? v : null,

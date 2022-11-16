@@ -92,12 +92,13 @@
     private SyncedStateLease<long?>? ReadState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ContactUI ContactUI { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -221,7 +222,10 @@
     // Event handlers
 
     private async Task OnOpenPrevious() {
-        var chatId = ChatUI.SelectedContact.Value.GetChatId();
+        var chatId = ContactUI.SelectedContactId.Value.ChatId;
+        if (chatId.IsEmpty)
+            return;
+
         var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         if (author == null)
             return;

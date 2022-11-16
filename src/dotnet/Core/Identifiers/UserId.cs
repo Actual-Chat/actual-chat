@@ -7,7 +7,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IParsable<UserId>, IRequirementTarget, ICanBeEmpty
+public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IRequirementTarget, ICanBeEmpty
 {
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
@@ -25,14 +25,15 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IParsab
     public bool IsGuestId => !IsEmpty && Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
-        => new(IdGenerator.Next(), SkipValidation.Instance);
+        => new(IdGenerator.Next(), ActualChat.Parse.None);
     public static UserId NewGuest()
-        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), SkipValidation.Instance);
+        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), ActualChat.Parse.None);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public UserId(Symbol id) => this = Parse(id);
     public UserId(string id) => this = Parse(id);
-    public UserId(Symbol id, SkipValidation _) => Id = id;
+    public UserId(Symbol id, SkipParseTag _) => Id = id;
+    public UserId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
     // Conversion
 
@@ -51,13 +52,11 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IParsab
 
     // Parsing
 
-    public static UserId Parse(string s, IFormatProvider? provider)
-        => Parse(s);
     public static UserId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>();
+    public static UserId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out UserId result)
-        => TryParse(s, out result);
     public static bool TryParse(string? s, out UserId result)
     {
         result = default;
@@ -73,7 +72,7 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IParsab
             }
         }
 
-        result = new UserId(s, SkipValidation.Instance);
+        result = new UserId(s, ActualChat.Parse.None);
         return true;
     }
 }

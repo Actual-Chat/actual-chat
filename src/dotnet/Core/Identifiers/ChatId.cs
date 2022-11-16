@@ -5,7 +5,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirementTarget, ICanBeEmpty
+public readonly struct ChatId : IEquatable<ChatId>, IRequirementTarget, ICanBeEmpty
 {
     public static readonly string PeerChatIdPrefix = "p-";
 
@@ -27,15 +27,16 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ChatId(Symbol id) => this = Parse(id);
     public ChatId(string id) => this = Parse(id);
+    public ChatId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
-    public ChatId(UserId userId1, UserId userId2, SkipValidation _)
+    public ChatId(UserId userId1, UserId userId2, SkipParseTag _)
     {
         Kind = ChatKind.Peer;
         (UserId1, UserId2) = (userId1, userId2).Sort();
         Id = $"{PeerChatIdPrefix}{UserId1.Value}-{UserId2.Value}";
     }
 
-    public ChatId(Symbol id, UserId userId1, UserId userId2, SkipValidation _)
+    public ChatId(Symbol id, UserId userId1, UserId userId2, SkipParseTag _)
     {
         Id = id;
         UserId1 = userId1;
@@ -110,6 +111,8 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
         => Parse(s);
     public static ChatId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
+    public static ChatId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? id, IFormatProvider? provider, out ChatId result)
         => TryParse(id, out result);
@@ -126,7 +129,7 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
             foreach (var c in s)
                 if (!(char.IsLetterOrDigit(c) || c == '-'))
                     return false;
-            result = new ChatId(s, default, default, SkipValidation.Instance);
+            result = new ChatId(s, default, default, ActualChat.Parse.None);
             return true;
         }
 
@@ -139,7 +142,7 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
             if (!UserId.TryParse(tail.ToString(), out var otherUserId))
                 return false;
             var (userId1, userId2) = (ownUserId, otherUserId).Sort();
-            result = new ChatId(s, userId1, userId2, SkipValidation.Instance);
+            result = new ChatId(s, userId1, userId2, ActualChat.Parse.None);
             return true;
         }
 
@@ -149,7 +152,7 @@ public readonly struct ChatId : IEquatable<ChatId>, IParsable<ChatId>, IRequirem
                 return false;
             if (!UserId.TryParse(tail[(dashIndex + 1)..].ToString(), out var userId2))
                 return false;
-            result = new ChatId(s, userId1, userId2, SkipValidation.Instance);
+            result = new ChatId(s, userId1, userId2, ActualChat.Parse.None);
             return true;
         }
     }

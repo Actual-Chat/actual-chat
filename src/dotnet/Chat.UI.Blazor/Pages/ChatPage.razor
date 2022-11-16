@@ -123,8 +123,8 @@
         }
 
         // parsedChatId is either (valid & not short) or invalid at this point
-        if (parsedChatId.IsValid && ChatUI.SelectedContact.Value != parsedChatId.Id) {
-            ChatUI.SelectedContact.Value = parsedChatId.Id;
+        if (parsedChatId.IsValid && ChatUI.SelectedContactId.Value != parsedChatId.Id) {
+            ChatUI.SelectedContactId.Value = parsedChatId.Id;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);

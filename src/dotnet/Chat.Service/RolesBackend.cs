@@ -92,12 +92,12 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
         string chatId, string roleId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -109,7 +109,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             .Select(ar => ar.DbAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var authorIds = dbAuthorIds.Select(id => (Symbol)id).ToImmutableArray();
+        var authorIds = dbAuthorIds.Select(id => new AuthorId(id)).ToImmutableArray();
         return authorIds;
     }
 
@@ -143,7 +143,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             var localId = await DbRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new RoleId(chatId, localId, SkipValidation.Instance).Id;
+            roleId = new RoleId(chatId, localId, Parse.None).Id;
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };

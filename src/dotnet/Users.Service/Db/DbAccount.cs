@@ -16,7 +16,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AccountFull ToModel(AccountFull model)
         => model with {
-            Id = Id,
+            Id = new UserId(Id),
             Status = Status,
             Version = Version,
         };

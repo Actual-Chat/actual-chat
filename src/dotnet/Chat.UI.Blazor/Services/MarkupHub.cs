@@ -10,7 +10,7 @@ public class MarkupHub : IHasServices
     private MarkupEditorHtmlConverter? _markupEditorHtmlConverter;
 
     public IServiceProvider Services { get; }
-    public Symbol ChatId { get; set; } = Symbol.Empty;
+    public ChatId ChatId { get; set; }
 
     public MarkupEditorHtmlConverter MarkupEditorHtmlConverter
         => _markupEditorHtmlConverter ??= new(this);

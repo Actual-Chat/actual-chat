@@ -34,11 +34,11 @@ public class AuthorsController : ControllerBase, IAuthors
         => Service.GetAccount(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
         => Service.ListUserIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]

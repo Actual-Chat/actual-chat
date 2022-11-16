@@ -45,9 +45,9 @@ public class Contacts : IContacts
         var parsedChatId = new ChatId(chatId);
         ContactId id;
         if (parsedChatId.IsPeerChatId(ownerId, out var userId))
-            id = new ContactId(ownerId, userId, SkipValidation.Instance);
+            id = new ContactId(ownerId, userId, Parse.None);
         else if (parsedChatId.IsGroupChatId())
-            id = new ContactId(ownerId, parsedChatId, SkipValidation.Instance);
+            id = new ContactId(ownerId, parsedChatId, Parse.None);
         else
             return null;
 
@@ -65,7 +65,7 @@ public class Contacts : IContacts
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         var ownerId = account.Id;
 
-        var id = new ContactId(ownerId, new UserId(userId), SkipValidation.Instance);
+        var id = new ContactId(ownerId, new UserId(userId), Parse.None);
         var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;

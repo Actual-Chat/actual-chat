@@ -84,7 +84,7 @@
     }
 
     private void EditAvatar(string avatarId, string title) {
-        ModalUI.Show(new OwnAvatarEditorModal.Model(avatarId, ChatId, title));
+        ModalUI.Show(new OwnAvatarEditorModal.Model(avatarId, new ChatId(ChatId), title));
     }
 
     private async Task SetDefaultAvatar(string avatarId) {

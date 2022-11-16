@@ -13,13 +13,13 @@ public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<
     [DataMember] public ChatEntryId Id { get; init; }
     [DataMember] public long Version { get; init; }
     [DataMember] public bool IsRemoved { get; init; }
-    [DataMember] public Symbol AuthorId { get; init; }
+    [DataMember] public AuthorId AuthorId { get; init; }
     [DataMember] public Moment BeginsAt { get; init; }
     [DataMember] public Moment? ClientSideBeginsAt { get; init; }
     [DataMember] public Moment? EndsAt { get; init; }
     [DataMember] public Moment? ContentEndsAt { get; init; }
     [DataMember] public string Content { get; init; } = "";
-    [DataMember] public ServiceEntryDetails? ServiceEntry { get; init; }
+    [DataMember] public SystemEntryContent? ServiceEntry { get; init; }
     [DataMember] public bool HasReactions { get; init; }
     [DataMember] public Symbol StreamId { get; init; } = "";
     [DataMember] public long? AudioEntryId { get; init; }

@@ -39,7 +39,7 @@
         if (await ChatUI.IsRecording(Chat.Id))
             return Model.None;
 
-        var recordingChatId = await ChatUI.RecordingChatId();
+        var recordingChatId = await ChatUI.GetRecordingChatId();
         if (recordingChatId.IsEmpty)
             return Model.None;
 

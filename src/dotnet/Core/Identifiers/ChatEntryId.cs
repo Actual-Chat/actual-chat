@@ -4,7 +4,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IParsable<ChatEntryId>, IRequirementTarget, ICanBeEmpty
+public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IRequirementTarget, ICanBeEmpty
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -26,8 +26,9 @@ public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IParsable<ChatEntr
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ChatEntryId(Symbol id) => Parse(id);
     public ChatEntryId(string id) => Parse(id);
+    public ChatEntryId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
-    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, SkipValidation _)
+    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseTag _)
     {
         Id = id;
         ChatId = chatId;
@@ -35,7 +36,7 @@ public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IParsable<ChatEntr
         LocalId = localId;
     }
 
-    public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, SkipValidation _)
+    public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseTag _)
     {
         Id = Invariant($"{chatId}:{entryKind:D}:{localId}");
         ChatId = chatId;
@@ -58,13 +59,11 @@ public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IParsable<ChatEntr
 
     // Parsing
 
-    public static ChatEntryId Parse(string s, IFormatProvider? provider)
-        => Parse(s);
     public static ChatEntryId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>();
+    public static ChatEntryId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out ChatEntryId result)
-        => TryParse(s, out result);
     public static bool TryParse(string? s, out ChatEntryId result)
     {
         result = default;
@@ -90,7 +89,7 @@ public readonly struct ChatEntryId : IEquatable<ChatEntryId>, IParsable<ChatEntr
         if (!long.TryParse(sLocalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new ChatEntryId(s, chatId, entryKind, localId, SkipValidation.Instance);
+        result = new ChatEntryId(s, chatId, entryKind, localId, ActualChat.Parse.None);
         return true;
     }
 }

@@ -4,7 +4,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct AuthorId : IEquatable<AuthorId>, IParsable<AuthorId>, IRequirementTarget, ICanBeEmpty
+public readonly struct AuthorId : IEquatable<AuthorId>, IRequirementTarget, ICanBeEmpty
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -24,15 +24,16 @@ public readonly struct AuthorId : IEquatable<AuthorId>, IParsable<AuthorId>, IRe
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public AuthorId(Symbol id) => Parse(id);
     public AuthorId(string id) => Parse(id);
+    public AuthorId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
-    public AuthorId(Symbol id, ChatId chatId, long localId, SkipValidation _)
+    public AuthorId(Symbol id, ChatId chatId, long localId, SkipParseTag _)
     {
         Id = id;
         ChatId = chatId;
         LocalId = localId;
     }
 
-    public AuthorId(ChatId chatId, long localId, SkipValidation _)
+    public AuthorId(ChatId chatId, long localId, SkipParseTag _)
     {
         Id = $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
         ChatId = chatId;
@@ -55,13 +56,11 @@ public readonly struct AuthorId : IEquatable<AuthorId>, IParsable<AuthorId>, IRe
 
     // Parsing
 
-    public static AuthorId Parse(string s, IFormatProvider? provider)
-        => Parse(s);
     public static AuthorId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>();
+    public static AuthorId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out AuthorId result)
-        => TryParse(s, out result);
     public static bool TryParse(string? s, out AuthorId result)
     {
         result = default;
@@ -79,7 +78,7 @@ public readonly struct AuthorId : IEquatable<AuthorId>, IParsable<AuthorId>, IRe
         if (!long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new AuthorId(s, chatId, localId, SkipValidation.Instance);
+        result = new AuthorId(s, chatId, localId, ActualChat.Parse.None);
         return true;
     }
 }

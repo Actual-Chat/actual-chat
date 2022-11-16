@@ -21,7 +21,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         await using var _ = dbContext.ConfigureAwait(false);
 
         var admin = await dbContext.Users
-            .Get(UserConstants.Admin.UserId, cancellationToken)
+            .Get(Constants.User.Admin.UserId, cancellationToken)
             .ConfigureAwait(false);
         var isNewDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || admin is null);
         if (isNewDb) {
@@ -31,13 +31,13 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
             // Creating admin user
-            var adminIdentity = new UserIdentity("internal", UserConstants.Admin.UserId);
+            var adminIdentity = new UserIdentity("internal", Constants.User.Admin.UserId);
             dbContext.Users.Add(new DbUser() {
-                Id = UserConstants.Admin.UserId,
-                Name = UserConstants.Admin.Name,
+                Id = Constants.User.Admin.UserId,
+                Name = Constants.User.Admin.Name,
                 Identities = {
                     new DbUserIdentity<string>() {
-                        DbUserId = UserConstants.Admin.UserId,
+                        DbUserId = Constants.User.Admin.UserId,
                         Id = adminIdentity.Id,
                         Secret = "",
                     },
@@ -45,14 +45,14 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             });
             var avatarId = Ulid.NewUlid().ToString();
             dbContext.Accounts.Add(new DbAccount {
-                Id = UserConstants.Admin.UserId,
+                Id = Constants.User.Admin.UserId,
                 Status = AccountStatus.Active,
             });
             dbContext.Avatars.Add(new DbAvatar() {
                 Id = avatarId,
-                PrincipalId = UserConstants.Admin.UserId,
-                Name = UserConstants.Admin.Name,
-                Picture = UserConstants.Admin.Picture,
+                PrincipalId = Constants.User.Admin.UserId,
+                Name = Constants.User.Admin.Name,
+                Picture = Constants.User.Admin.Picture,
             });
 
             try {
@@ -66,13 +66,12 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
-            var adminUser = await authBackend.GetUser(default, UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
+            var adminUser = await authBackend.GetUser(default, Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw StandardError.Internal("Failed to locate 'admin' user.");
             await commander.Call(
                     new SignInCommand(session, adminUser, adminUser.Identities.Keys.Single()),
                     cancellationToken)
                 .ConfigureAwait(false);
-            UserConstants.Admin.Session = session;
 
             // Setting default avatar for admin
             var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();

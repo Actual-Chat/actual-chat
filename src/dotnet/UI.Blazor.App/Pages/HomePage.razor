@@ -31,12 +31,12 @@
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ContactUI ContactUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
-    protected override Task OnInitializedAsync() => ChatUI.SelectedContact.WhenRead;
+    protected override Task OnInitializedAsync() => ContactUI.SelectedContactId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = Model.Loading };

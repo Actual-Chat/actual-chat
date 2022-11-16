@@ -4,7 +4,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, IRequirementTarget, ICanBeEmpty
+public readonly struct ContactId : IEquatable<ContactId>, IRequirementTarget, ICanBeEmpty
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -15,9 +15,9 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public UserId OwnerId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public UserId UserId { get; }
+    public ChatId ChatId { get; } // Must be set even for user contacts
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatId ChatId { get; }
+    private UserId UserId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -28,17 +28,18 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ContactId(Symbol id) => this = Parse(id);
     public ContactId(string id) => this = Parse(id);
+    public ContactId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
-    public ContactId(Symbol id, UserId ownerId, UserId userId, SkipValidation _)
+    public ContactId(Symbol id, UserId ownerId, UserId userId, SkipParseTag _)
     {
         Id = id;
         Kind = ContactKind.User;
         OwnerId = ownerId;
         UserId = userId;
-        ChatId = default;
+        ChatId = new ChatId(OwnerId, userId, ActualChat.Parse.None);
     }
 
-    public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipValidation _)
+    public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipParseTag _)
     {
         Id = id;
         Kind = ContactKind.Chat;
@@ -47,16 +48,16 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
         ChatId = chatId;
     }
 
-    public ContactId(UserId ownerId, UserId userId, SkipValidation _)
+    public ContactId(UserId ownerId, UserId userId, SkipParseTag _)
     {
         Id = $"{ownerId} u:{userId}";
         Kind = ContactKind.User;
         OwnerId = ownerId;
         UserId = userId;
-        ChatId = default;
+        ChatId = new ChatId(OwnerId, userId, ActualChat.Parse.None);
     }
 
-    public ContactId(UserId ownerId, ChatId chatId, SkipValidation _)
+    public ContactId(UserId ownerId, ChatId chatId, SkipParseTag _)
     {
         Id = $"{ownerId} c:{chatId}";
         Kind = ContactKind.Chat;
@@ -71,26 +72,14 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
         return Kind == ContactKind.User;
     }
 
-    public bool IsChatContact(out ChatId chatId)
-    {
-        chatId = ChatId;
-        return Kind == ContactKind.User;
-    }
+    public bool IsChatContact()
+        => Kind == ContactKind.Chat;
 
     // Conversion
 
     public override string ToString() => Value;
     public static implicit operator Symbol(ContactId source) => source.Id;
     public static implicit operator string(ContactId source) => source.Value;
-
-    public ChatId GetChatId()
-    {
-        if (IsChatContact(out var chatId))
-            return chatId;
-        if (IsUserContact(out var userId))
-            return new ChatId(OwnerId, userId, SkipValidation.Instance);
-        return default;
-    }
 
     // Equality
 
@@ -102,13 +91,11 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
 
     // Parsing
 
-    public static ContactId Parse(string s, IFormatProvider? provider)
-        => Parse(s);
     public static ContactId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>();
+    public static ContactId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out ContactId result)
-        => TryParse(s, out result);
     public static bool TryParse(string? s, out ContactId result)
     {
         result = default;
@@ -127,12 +114,12 @@ public readonly struct ContactId : IEquatable<ContactId>, IParsable<ContactId>, 
         case 'u':
             if (!UserId.TryParse(s[(spaceIndex + 3)..], out var userId))
                 return false;
-            result = new ContactId(s, ownerId, userId, SkipValidation.Instance);
+            result = new ContactId(s, ownerId, userId, ActualChat.Parse.None);
             return true;
         case 'c':
             if (!ChatId.TryParse(s[(spaceIndex + 3)..], out var chatId))
                 return false;
-            result = new ContactId(s, ownerId, chatId, SkipValidation.Instance);
+            result = new ContactId(s, ownerId, chatId, ActualChat.Parse.None);
             return true;
         }
         return false;

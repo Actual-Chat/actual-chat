@@ -20,7 +20,7 @@
                 <AuthorBadge
                     Id="@authorId"
                     ShowsPresence="true"
-                    Click="() => OnAuthorClick(Chat.Id, authorId)"
+                    Click="() => OnAuthorClick(authorId)"
                     TextClass="font-medium text-02 select-none"/>
             }
         }
@@ -29,7 +29,7 @@
             <AuthorBadge
                 Id="@authorId"
                 ShowsPresence="true"
-                Click="() => OnAuthorClick(Chat.Id, authorId)"
+                Click="() => OnAuthorClick(authorId)"
                 TextClass="font-medium text-02 select-none"/>
         }
     </div>
@@ -73,15 +73,15 @@
         };
     }
 
-    private void OnAuthorClick(ChatId chatId, AuthorId authorId)
-        => ModalUI.Show(new AuthorModal.Model(chatId, authorId));
+    private void OnAuthorClick(AuthorId authorId)
+        => ModalUI.Show(new AuthorModal.Model(authorId));
 
     private void OnSelfClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
 
     public sealed class Model {
         public static Model None { get; } = new();
-        public ImmutableArray<Symbol> ActiveAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
-        public ImmutableArray<Symbol> OfflineAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
+        public ImmutableArray<AuthorId> ActiveAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
+        public ImmutableArray<AuthorId> OfflineAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
     }
 }

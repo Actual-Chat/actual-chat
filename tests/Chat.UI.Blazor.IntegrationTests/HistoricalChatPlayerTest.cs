@@ -19,7 +19,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         _appHost = await NewAppHost();
         _tester = _appHost.NewBlazorTester();
-        _user = await _tester.SignIn(new User(UserConstants.Admin.Name), default);
+        _user = await _tester.SignIn(new User(Constants.User.Admin.Name), default);
     }
 
     public override async Task DisposeAsync()

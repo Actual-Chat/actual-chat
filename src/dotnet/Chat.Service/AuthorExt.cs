@@ -1,20 +1,19 @@
-using ActualChat.Chat.Db;
 using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
 public static class AuthorExt
 {
-    public static Symbol GetWalleId(Symbol chatId)
-        => DbAuthor.ComposeId(chatId, Constants.Chat.WalleAuthorLocalId);
+    public static AuthorId GetWalleId(ChatId chatId)
+        => new(chatId, Constants.User.Walle.AuthorLocalId, Parse.None);
 
-    public static AuthorFull GetWalle(Symbol chatId)
+    public static AuthorFull GetWalle(ChatId chatId)
         => new () {
             Id = GetWalleId(chatId),
-            UserId = UserConstants.Walle.UserId,
+            UserId = Constants.User.Walle.UserId,
             Avatar = new AvatarFull {
-                Name = UserConstants.Walle.Name,
-                Picture = UserConstants.Walle.Picture,
+                Name = Constants.User.Walle.Name,
+                Picture = Constants.User.Walle.Picture,
             },
         };
 }

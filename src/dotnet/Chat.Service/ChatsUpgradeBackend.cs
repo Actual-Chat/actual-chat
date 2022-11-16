@@ -173,7 +173,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
         UserId creatorId = default;
-        var adminUser = await AccountsBackend.Get(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false);
+        var adminUser = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
         if (adminUser != null)
             creatorId = adminUser.Id;
 

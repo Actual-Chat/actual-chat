@@ -258,7 +258,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (change.IsCreate(out var update)) {
             if (chatId.IsEmpty)
                 chatId = new ChatId(DbChat.IdGenerator.Next());
-            else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.PredefinedChatIds.Contains(chatId))
+            else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
 
             chat = new Chat() {
@@ -461,12 +461,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var createServiceEntryCommand = new IChatsBackend.UpsertEntryCommand(new ChatEntry {
             AuthorId = AuthorExt.GetWalleId(author.ChatId),
             ServiceEntry = new () {
-                MembersChange = new () {
+                MembersChanged = new () {
                     AuthorId = author.Id,
                     HasLeft = author.HasLeft,
                 },
             },
-            ChatId = author.ChatId,
         });
         await Commander.Call(createServiceEntryCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -542,7 +541,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         DbChatEntry dbEntry;
         if (isNew) {
             var localId = await DbNextLocalId(dbContext, entry.ChatId, entryKind, cancellationToken).ConfigureAwait(false);
-            entryId = new ChatEntryId(chatId, entryKind, localId, SkipValidation.Instance);
+            entryId = new ChatEntryId(chatId, entryKind, localId, Parse.None);
             entry = entry with {
                 Id = entryId,
                 Version = VersionGenerator.NextVersion(),

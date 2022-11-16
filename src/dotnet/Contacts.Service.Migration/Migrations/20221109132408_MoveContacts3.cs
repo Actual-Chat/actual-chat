@@ -38,7 +38,7 @@ namespace ActualChat.Contacts.Migrations
                 var ownerId = new UserId(oc.OwnerUserId);
                 var userId = new UserId(oc.TargetUserId);
                 var c = new DbContact() {
-                    Id = new ContactId(ownerId, userId, SkipValidation.Instance),
+                    Id = new ContactId(ownerId, userId, Parse.None),
                     Version = oc.Version,
                     OwnerId = oc.OwnerUserId,
                     UserId = oc.TargetUserId,

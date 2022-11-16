@@ -13,7 +13,7 @@
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is {Length: 2}) {
-            var chatId = Arguments[0];
+            var chatId = new ChatId(Arguments[0]);
             var entryId = long.Parse(Arguments[1]);
             var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
             var chatEntry = await reader.Get(entryId, CancellationToken.None);

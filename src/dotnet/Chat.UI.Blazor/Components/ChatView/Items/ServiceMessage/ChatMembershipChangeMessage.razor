@@ -2,11 +2,11 @@
 @{
     var action = Details.HasLeft ? "left" : "joined";
 }
-<AuthorName AuthorId="@Details.AuthorId" Class="service-message-author-name"/><span> @action the chat</span>
+<AuthorName Id="@Details.AuthorId" Class="service-message-author-name"/><span> @action the chat</span>
 
 @code {
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
-    private MembersChangeEntryDetails Details => Message.Entry.ServiceEntry!.MembersChange!;
+    private MembersChanged Details => Message.Entry.ServiceEntry!.MembersChanged!;
 }

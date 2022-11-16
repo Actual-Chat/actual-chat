@@ -25,7 +25,7 @@ public class RolesController : ControllerBase, IRoles
         => Service.List(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, roleId, cancellationToken);
 
     // Commands

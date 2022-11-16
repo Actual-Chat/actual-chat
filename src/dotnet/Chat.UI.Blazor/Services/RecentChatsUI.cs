@@ -11,6 +11,7 @@ public class RecentChatsUI : WorkerBase
     private IChats Chats { get; }
     private UnreadMessages UnreadMessages { get; }
     private ChatUI ChatUI { get; }
+    private ContactUI ContactUI { get; }
 
     public RecentChatsUI(IServiceProvider services)
     {
@@ -19,6 +20,7 @@ public class RecentChatsUI : WorkerBase
         Chats = services.GetRequiredService<IChats>();
         UnreadMessages = services.GetRequiredService<UnreadMessages>();
         ChatUI = services.GetRequiredService<ChatUI>();
+        ContactUI = services.GetRequiredService<ContactUI>();
         Start();
     }
 
@@ -29,9 +31,8 @@ public class RecentChatsUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<Chat?> GetSelectedChat(CancellationToken cancellationToken)
     {
-        var selectedChatId = await ChatUI.SelectedContact.Use(cancellationToken).ConfigureAwait(false);
-        if (!ChatId.TryParse(selectedChatId, out _))
-            selectedChatId = Symbol.Empty;
+        var selectedContactId = await ContactUI.SelectedContactId.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = selectedContactId.ChatId;
         if (selectedChatId.IsEmpty)
             return null;
 

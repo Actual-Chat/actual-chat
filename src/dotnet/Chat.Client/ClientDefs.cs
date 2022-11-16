@@ -80,9 +80,9 @@ public interface IAuthorsClientDef
     Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
 
     [Get(nameof(ListAuthorIds))]
-    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListUserIds))]
-    Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(Session session, string chatId, string authorId, CancellationToken cancellationToken);
@@ -104,7 +104,7 @@ public interface IRolesClientDef
     [Get(nameof(List))]
     Task<ImmutableArray<Role>> List(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
-    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
     Task<Role> Change([Body] IRoles.ChangeCommand command, CancellationToken cancellationToken);

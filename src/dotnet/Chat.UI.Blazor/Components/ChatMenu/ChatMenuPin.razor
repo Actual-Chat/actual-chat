@@ -12,6 +12,7 @@
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ContactUI ContactUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 

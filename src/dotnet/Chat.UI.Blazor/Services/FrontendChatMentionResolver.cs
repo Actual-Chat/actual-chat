@@ -8,7 +8,7 @@ public class FrontendChatMentionResolver : IChatMentionResolver
     private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
 
-    public Symbol ChatId { get; set; }
+    public ChatId ChatId { get; set; }
 
     public FrontendChatMentionResolver(IServiceProvider services)
     {

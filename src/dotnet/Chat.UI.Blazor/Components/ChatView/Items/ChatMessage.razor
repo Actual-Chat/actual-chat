@@ -52,7 +52,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="flex-x items-baseline header chat-message-header ml-1">
-                        <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" />
+                        <AuthorName Id="@entry.AuthorId" Class="chat-message-author-name" />
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@

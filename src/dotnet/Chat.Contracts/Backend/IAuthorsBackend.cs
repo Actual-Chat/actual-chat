@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
 public interface IAuthorsBackend : IComputeService
@@ -9,9 +7,9 @@ public interface IAuthorsBackend : IComputeService
     [ComputeMethod]
     Task<AuthorFull?> GetByUserId(string chatId, string userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(string chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListUserIds(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<UserId>> ListUserIds(string chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
 

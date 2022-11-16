@@ -102,25 +102,25 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<UserId>.Empty;
 
         return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
     }

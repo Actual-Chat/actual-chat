@@ -112,7 +112,7 @@
         if (firstUnreadChatId.IsEmpty)
             return;
 
-        if (firstUnreadChatId == ChatUI.SelectedContact.Value)
+        if (firstUnreadChatId == ChatUI.SelectedContactId.Value)
             return;
 
         Nav.NavigateTo(Links.ChatPage(firstUnreadChatId));

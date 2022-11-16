@@ -13,8 +13,8 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(Kind), nameof(Version))]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<ServiceEntryDetails> ServiceEntrySerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<ServiceEntryDetails>();
+    private static ITextSerializer<SystemEntryContent> ServiceEntrySerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<SystemEntryContent>();
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;
@@ -70,12 +70,12 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
     {
         var chatId = new ChatId(ChatId);
-        var id = new ChatEntryId(Id, chatId, Kind, LocalId, SkipValidation.Instance);
+        var id = new ChatEntryId(Id, chatId, Kind, LocalId, Parse.None);
         return new () {
             Id = id,
             Version = Version,
             IsRemoved = IsRemoved,
-            AuthorId = AuthorId,
+            AuthorId = new AuthorId(AuthorId),
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt,
             EndsAt = EndsAt,

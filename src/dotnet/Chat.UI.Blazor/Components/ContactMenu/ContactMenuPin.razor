@@ -25,7 +25,7 @@
 }
 
 @code {
-    private string ContactChatId => Contact.Id.GetChatId();
+    private string ContactChatId => Contact.Id.ChatId;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 

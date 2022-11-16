@@ -50,12 +50,12 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
         Session session, string chatId, string roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         // If we're here, current user is either admin or is in owner role
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);

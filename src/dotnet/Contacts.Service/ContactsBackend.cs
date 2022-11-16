@@ -29,10 +29,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var contact = dbContact?.ToModel();
         if (contact is not { Id.IsEmpty: false })
             return null;
-        if (contact.Id.OwnerId != ownerId)
+        if (contact.Id.OwnerId != (Symbol)ownerId)
             return null;
 
-        var chatId = contact.Id.GetChatId();
+        var chatId = contact.ChatId;
         var chatTask = ChatsBackend.Get(chatId, cancellationToken);
         if (contact.Id.IsUserContact(out var userId)) {
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
@@ -50,18 +50,14 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             contact = contact with {
                 Account = account,
                 Chat = chat,
-                ChatId = chatId,
             };
         }
-        else if (contact.Id.IsChatContact(out _)) {
+        else if (contact.Id.IsChatContact()) {
             var chat = await chatTask.ConfigureAwait(false);
             if (chat == null)
-                return null;
+                return null; // We don't return Chat contacts w/ null Chat
 
-            contact = contact with {
-                Chat = chat,
-                ChatId = chatId,
-            };
+            contact = contact with { Chat = chat };
         }
         else
             return null;
@@ -79,9 +75,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var parsedChatId = new ChatId(chatId);
         ContactId id;
         if (parsedChatId.IsPeerChatId(parsedOwnerId, out var userId))
-            id = new ContactId(parsedOwnerId, userId, SkipValidation.Instance);
+            id = new ContactId(parsedOwnerId, userId, Parse.None);
         else if (parsedChatId.IsGroupChatId())
-            id = new ContactId(parsedOwnerId, parsedChatId, SkipValidation.Instance);
+            id = new ContactId(parsedOwnerId, parsedChatId, Parse.None);
         else
             return null;
 
@@ -96,7 +92,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var parsedOwnerId = new UserId(ownerId);
         var parsedUserId = new UserId(userId);
-        var id = new ContactId(parsedOwnerId, parsedUserId, SkipValidation.Instance);
+        var id = new ContactId(parsedOwnerId, parsedUserId, Parse.None);
         return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -131,7 +127,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var parsedOwnerId = new UserId(ownerId);
         var parsedUserId = new UserId(userId);
-        var id = new ContactId(parsedOwnerId, parsedUserId, SkipValidation.Instance);
+        var id = new ContactId(parsedOwnerId, parsedUserId, Parse.None);
         var command = new IContactsBackend.ChangeCommand(id, null, new Change<Contact> {
             Create = new Contact { Id = id },
         });
@@ -249,9 +245,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         ContactId id;
         if (chatId.IsPeerChatId(userId, out var otherUserId))
-            id = new ContactId(userId, otherUserId, SkipValidation.Instance);
+            id = new ContactId(userId, otherUserId, Parse.None);
         else if (chatId.IsGroupChatId())
-            id = new ContactId(userId, chatId, SkipValidation.Instance);
+            id = new ContactId(userId, chatId, Parse.None);
         else {
             Log.LogWarning("Invalid event (unsupported ChatId kind): {Event}", @event);
             return;

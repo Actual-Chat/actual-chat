@@ -4,7 +4,7 @@ namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct PrincipalId : IEquatable<PrincipalId>, IParsable<PrincipalId>, IRequirementTarget, ICanBeEmpty
+public readonly struct PrincipalId : IEquatable<PrincipalId>, IRequirementTarget, ICanBeEmpty
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -24,8 +24,9 @@ public readonly struct PrincipalId : IEquatable<PrincipalId>, IParsable<Principa
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public PrincipalId(Symbol id) => this = Parse(id);
     public PrincipalId(string id) => this = Parse(id);
+    public PrincipalId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
 
-    public PrincipalId(AuthorId authorId, SkipValidation _)
+    public PrincipalId(AuthorId authorId, SkipParseTag _)
     {
         Id = authorId.Id;
         Kind = PrincipalKind.Author;
@@ -33,7 +34,7 @@ public readonly struct PrincipalId : IEquatable<PrincipalId>, IParsable<Principa
         UserId = default;
     }
 
-    public PrincipalId(UserId userId, SkipValidation _)
+    public PrincipalId(UserId userId, SkipParseTag _)
     {
         Id = userId.Id;
         Kind = PrincipalKind.Author;
@@ -69,21 +70,19 @@ public readonly struct PrincipalId : IEquatable<PrincipalId>, IParsable<Principa
 
     // Parsing
 
-    public static PrincipalId Parse(string s, IFormatProvider? provider)
-        => Parse(s);
     public static PrincipalId Parse(string s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId>();
+    public static PrincipalId ParseOrDefault(string s)
+        => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out PrincipalId result)
-        => TryParse(s, out result);
     public static bool TryParse(string? s, out PrincipalId result)
     {
         if (AuthorId.TryParse(s, out var authorId)) {
-            result = new PrincipalId(authorId, SkipValidation.Instance);
+            result = new PrincipalId(authorId, ActualChat.Parse.None);
             return true;
         }
         if (UserId.TryParse(s, out var userId)) {
-            result = new PrincipalId(userId, SkipValidation.Instance);
+            result = new PrincipalId(userId, ActualChat.Parse.None);
             return true;
         }
         result = default;
