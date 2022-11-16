@@ -64,24 +64,11 @@
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var isRecordingRequested = await ChatUI.IsRecording(ChatId);
+        var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
         // Default scheduler is used from here
-        var lastState = State.LatestNonErrorValue;
-        if (lastState == null)
-            return new (isRecordingRequested ? RecordingState.On : RecordingState.Off);
-
-        var recordingState = await AudioRecorder.State.Use(cancellationToken);
-        if (recordingState != null && recordingState.ChatId != ChatId)
-            return new (RecordingState.Off);
-
-        return (lastState.RecordingState, isRecordingRequested, recordingState?.IsRecording ?? false) switch  {
-            (RecordingState.OffToOn, false, false) => new (RecordingState.OnToOff),
-            (RecordingState.On, false, _) => new (RecordingState.OnToOff),
-            (RecordingState.OnToOff, false, false) => new (RecordingState.OnToOff),
-            (_, false, false) => new (RecordingState.Off),
-            (_, true, false) => new (RecordingState.OffToOn),
-            (_, _, true) => new (RecordingState.On),
-        };
+        if (State.LatestNonErrorValue == null)
+            return new (isRecording ? RecordingState.On : RecordingState.Off);
+        return new (isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);
     }
 
     private async Task OnClick() {
