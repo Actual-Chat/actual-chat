@@ -299,7 +299,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         var text = $"{emoji} to \"{GetText(entry, 30)}\"";
         var userIds = new[] { author.UserId };
-        await EnqueueMessageRelatedNotifications(entry, author, text, NotificationType.Reaction, userIds, cancellationToken)
+        await EnqueueMessageRelatedNotifications(entry, reactionAuthor, text, NotificationType.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -307,17 +307,17 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatEntry entry,
-        AuthorFull author,
+        AuthorFull changeAuthor,
         string text,
         NotificationType notificationType,
         IEnumerable<Symbol> userIds,
         CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        var title = GetTitle(chat, author);
-        var iconUrl = GetIconUrl(chat, author);
+        var title = GetTitle(chat, changeAuthor);
+        var iconUrl = GetIconUrl(chat, changeAuthor);
         var notificationTime = Clocks.CoarseSystemClock.Now;
-        var otherUserIds = author.UserId.IsEmpty ? userIds : userIds.Where(uid => uid != author.UserId);
+        var otherUserIds = changeAuthor.UserId.IsEmpty ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
             var notificationEntry = new NotificationEntry(
@@ -327,7 +327,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 text,
                 iconUrl,
                 notificationTime) {
-                Message = new MessageNotificationEntry(entry.ChatId, entry.Id, author.Id),
+                Message = new MessageNotificationEntry(entry.ChatId, entry.Id, changeAuthor.Id),
             };
             await new INotificationsBackend.NotifyUserCommand(otherUserId, notificationEntry)
                 .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
