@@ -691,10 +691,10 @@ export class VirtualList implements VirtualListAccessor {
         if (loadEnd > alreadyLoaded.End && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.End;
         const isScrollingUp = alreadyLoaded.Start - loadStart > loadEnd - alreadyLoaded.End;
-        let bufferZoneSize = loadZoneSize * 2;
+        let bufferZoneSize = loadZoneSize * 3;
         if (needsMoreAndMore) {
             const loadMore = loadZoneSize * 2;
-            bufferZoneSize *= 3;
+            bufferZoneSize *= 4;
             if (isScrollingUp) {
                 // try to load more in the direction of scrolling
                 loadStart -= loadMore;
