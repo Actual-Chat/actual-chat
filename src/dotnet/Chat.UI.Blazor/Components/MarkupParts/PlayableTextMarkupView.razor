@@ -12,13 +12,15 @@
         null => "",
         _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
         };
+    var playOnClickIsEnabled = !ScreenSize.IsNarrow();
+    var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
-<span class="playable-text-markup @colorCls">
+<span class="@containerCls @colorCls">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
-        @if (ScreenSize.IsNarrow()) {
+        @if (!playOnClickIsEnabled) {
             <span class="@cls">@word.Value</span>
         } else {
             <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
