@@ -10,6 +10,9 @@ public class HistoryUI
     private PendingHistoryItem? _pendingHistoryItem;
     private IJSObjectReference? _jsRef;
     private int _historyIndex;
+    private readonly string _initialLocation;
+    private bool _rewriteInitialLocation;
+    private TaskSource<Unit> _initTaskSource;
 
     private IJSRuntime JS { get; }
     private ILogger<HistoryUI> Log { get; }
@@ -30,6 +33,7 @@ public class HistoryUI
         Nav = nav;
 
         IsInitialLocation = true;
+        _initialLocation = Nav.GetRelativePath();
         _historyIndex = 0;
         _history.Add(new HistoryItem(Nav.Uri, ""));
         Log.LogDebug("Initial location: '{Location}'", Nav.Uri);
@@ -43,7 +47,21 @@ public class HistoryUI
     }
 
     private async Task Initialize()
-        => _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
+    {
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
+
+        var relativeUri = Nav.GetRelativePath();
+        var isHomePage = Links.Equals(relativeUri, "/");
+        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(""));
+        if (!isHomePage && !isChatsRootPage) {
+            _rewriteInitialLocation = true;
+            _initTaskSource = TaskSource.New<Unit>(true);
+            Log.LogDebug("Rewrite initial location from '{InitialLocation}'", relativeUri);
+            Nav.NavigateTo(Links.ChatPage(""), false, true);
+            await _initTaskSource.Task.ConfigureAwait(true);
+            _initTaskSource = TaskSource<Unit>.Empty;
+        }
+    }
 
     public Task GoBack()
         => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
@@ -62,10 +80,23 @@ public class HistoryUI
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        IsInitialLocation = false;
+        Log.LogDebug("Location changed: '{Location}', State: '{State}'", e.Location, e.HistoryEntryState);
 
-        var location = e.Location;
-        Log.LogDebug("Location changed: '{Location}', State: '{State}'", location, e.HistoryEntryState);
+        if (_rewriteInitialLocation) {
+            _rewriteInitialLocation = false;
+            Nav.NavigateTo(_initialLocation);
+            return;
+        }
+
+        // TODO(DF): in windows chrome I have an issue.
+        // After initial location rewritten clicking on back button in chrome
+        // redirects to 'chrome://new-tab-page/' and not to '/chats/'.
+        // While calling 'history.back()' works as expected.
+
+        if (!_initTaskSource.IsEmpty)
+            _initTaskSource.TrySetResult(default);
+
+        IsInitialLocation = false;
 
         var state = GetState(e.HistoryEntryState);
         OnLocationChanged(e.Location, state);
