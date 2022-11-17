@@ -13,22 +13,26 @@
              Title="@title" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y my-2">
-                @foreach (var contact in m.Contacts) {
+                @foreach (var contact in m.ContactStatuses) {
                     <CreationPanelContactItem
                         @key="contact"
-                        Contact="@contact"
+                        Contact="@contact.Contact"
                         DisableLink="@DisableLinks"
-                        HideEnding="@HideItemEnding"/>
+                        HideEnding="@HideItemEnding"
+                        IsSelected="@contact.IsSelected"
+                        OnSelect="@(() => AddContactToSelected(contact.Contact))"/>
                 }
             </div>
         </Tab>;
 }
 
 <div class="bg-red-100">
-    @foreach (var contact in m.SelectedContacts) {
-        <div class="bg-red-300 rounded-full px-2 mx-2">
-            @contact.Account?.Avatar.Name
-        </div>
+    @foreach (var contactStatuses in m.ContactStatuses) {
+        if (contactStatuses.IsSelected) {
+            <div class="bg-red-300 rounded-full px-2 mx-2">
+                @contactStatuses.Contact.Account?.Avatar.Name
+            </div>
+        }
     }
 </div>
 
@@ -57,6 +61,7 @@
     [Parameter] public bool HideHeader { get; set; }
     [Parameter] public bool HideItemEnding { get; set; }
     [Parameter] public bool DisableLinks { get; set; }
+    [Parameter] public bool ShowOnlySelected { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -83,11 +88,25 @@
                 select contact
                 ).ToList();
         }
-        var selected = new List<Contact>();
+        var selected = State.LatestNonErrorValue.ContactStatuses;
+        if (selected.Count == 0 && contacts.Count != 0) {
+            foreach (var contact in contacts) {
+                selected.Add(new Status() {
+                    Contact = contact,
+                });
+            }
+        }
+        if (selected.Count < contacts.Count) {
+            for (int i = selected.Count; i < contacts.Count; i++) {
+                selected.Add(new Status() {
+                    Contact = contacts[i],
+                });
+            }
+        }
 
         return new Model {
             Contacts = contacts,
-            SelectedContacts = selected,
+            ContactStatuses = selected,
         };
     }
 
@@ -112,16 +131,33 @@
     }
 
     private void AddContactToSelected(Contact contact) {
+        var m = State.LatestNonErrorValue;
+        var contacts = m.Contacts;
+        var statuses = m.ContactStatuses;
+        for (int i = 0; i < contacts.Count; i++) {
+            var status = statuses[i];
+            if (status.Contact != contacts[i]) {
+                status.Contact = contacts[i];
+            }
+            if (status.Contact == contact) {
+                status.IsSelected = !status.IsSelected;
+            }
+        }
+        StateHasChanged();
+    }
 
+    public class Status {
+        public Contact Contact { get; set; } = null!;
+        public bool IsSelected { get; set; }
     }
 
     public sealed record Model {
         public static Model None { get; } = new() {
-            Contacts = new List<Contact>(),
-            SelectedContacts = new List<Contact>(),
+            Contacts = new (),
+            ContactStatuses = new(),
         };
 
         public List<Contact> Contacts { get; init; } = null!;
-        public List<Contact> SelectedContacts { get; init; } = null!;
+        public List<Status> ContactStatuses { get; init; } = null!;
     }
 }
