@@ -15,10 +15,18 @@
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     var session = ServerAuthHelper.Session;
-    var blazorUtilsVersion = HostInfo.IsDevelopmentInstance ? "" : "." + typeof(ComponentsWebAssemblyApplicationBuilderExtensions).Assembly.GetInformationalVersion().RequireNonEmpty("blazor extensions assembly version");
+    var blazorUtilsVersion = GetBlazorJsVersion();
     Layout = null;
     // TODO: add HeadOutlet component (to edit <head>)
     // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
+
+    string GetBlazorJsVersion()
+    {
+        if (HostInfo.IsDevelopmentInstance)
+            return "";
+        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions).Assembly.GetInformationalVersion().RequireNonEmpty("blazor extensions assembly version");
+        return $".{version.GetMD5HashCode().ToLower()}";
+    }
 }
 
 <!DOCTYPE html>
