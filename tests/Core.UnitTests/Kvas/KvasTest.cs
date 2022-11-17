@@ -47,7 +47,7 @@ public class KvasTest : TestBase
         results.All(x => x == "a").Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task StoredStateTest()
     {
         var kvasBackend = new TestBatchingKvasBackend() { Out = Out };
