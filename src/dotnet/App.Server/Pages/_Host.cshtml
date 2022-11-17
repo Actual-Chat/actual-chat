@@ -4,6 +4,7 @@
 @using ActualChat.Hosting
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
+
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
 @inject HostInfo HostInfo
@@ -14,6 +15,7 @@
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     var session = ServerAuthHelper.Session;
+    var blazorUtilsVersion = HostInfo.IsDevelopmentInstance ? "" : "." + typeof(ComponentsWebAssemblyApplicationBuilderExtensions).Assembly.GetInformationalVersion().RequireNonEmpty("blazor extensions assembly version");
     Layout = null;
     // TODO: add HeadOutlet component (to edit <head>)
     // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
@@ -132,7 +134,7 @@
 
     <script src="/dist/bundle.js"></script>
     @if (isServerSideBlazor) {
-        <script src="_framework/blazor.server.js" autostart="false"></script>
+        <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
         <script>
             (function () {
                 async function attemptReload() {
@@ -167,7 +169,7 @@
             </script>
     }
     else {
-        <script src="_framework/blazor.webassembly.js"></script>
+        <script src="_framework/blazor.webassembly@(blazorUtilsVersion).js"></script>
     }
 
     <script>
