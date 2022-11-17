@@ -12,7 +12,8 @@
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
         <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.CompositeId, reaction.Emoji))"
-            data-menu-trigger="@MenuTriggers.RightClick.Format()">
+            data-menu-trigger="@MenuTriggers.RightClick.Format()"
+            data-menu-position="@(FloatingPosition.Right.ToPositionString())">
             <EmojiIcon Code="@reaction.Emoji" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
