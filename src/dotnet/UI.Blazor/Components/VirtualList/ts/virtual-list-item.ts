@@ -11,6 +11,6 @@ export class VirtualListItem {
     public size?: number;
 
     get isMeasured(): boolean {
-        return (this.size ?? -1) >= 0;
+        return (this.size ?? -1) >= 0 && this.range != null;
     }
 }
