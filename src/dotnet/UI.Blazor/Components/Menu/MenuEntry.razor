@@ -3,7 +3,7 @@
 <li @onclick="OnClick"
     class="ac-menu-item @Class"
     data-tooltip="@Tooltip"
-    data-editor-trigger="@(TriggerEditor ? "true" : "false")"
+    data-editor-trigger="@(TriggerEditor.ToString())"
     data-tooltip-position="@(FloatingPosition.ToPositionString())">
     <div class="ac-menu-content">
         <div class="ac-menu-icon">

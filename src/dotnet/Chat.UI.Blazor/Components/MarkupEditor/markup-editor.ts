@@ -307,7 +307,7 @@ export class MarkupEditor {
         if (!(closestElement instanceof HTMLElement))
             return;
         const trigger = closestElement.dataset['editorTrigger'];
-        if (trigger !== 'true')
+        if (trigger !== 'True')
             return;
         focusAndOpenKeyboard(this.editorDiv, 300);
     };
