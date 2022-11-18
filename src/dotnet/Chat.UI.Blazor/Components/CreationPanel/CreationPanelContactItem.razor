@@ -6,8 +6,10 @@
     if (m is null)
         return;
     var url = $"/chat/{m.ShortChatId.UrlEncode()}";
+    bool activeLink = PageNumber == 1;
+    bool showEnding = PageNumber == 2;
 
-    RenderFragment RenderItem(bool activeLink)
+    RenderFragment RenderItem()
         => @<div class="creation-panel-contact-item @(activeLink ? "" : "unfocusable")">
                <div class="flex-x w-full items-center gap-x-2">
                    <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
@@ -15,7 +17,7 @@
                        <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
                    </span>
                </div>
-               @if (!HideEnding) {
+               @if (showEnding) {
                    <div class="flex-x justify-center min-w-4">
                        <Checkbox
                            Id="@($"creation-panel-contact-{Contact.Id.OtherId}")"
@@ -23,16 +25,16 @@
                            Change="@OnSelect"/>
                    </div>
                }
-            </div>;
+           </div>;
 }
 
 @if (DisableLink) {
     <div>
-        @RenderItem(false)
+        @RenderItem()
     </div>
 } else {
     <a class="unfocusable cursor-pointer" data-href="@url">
-        @RenderItem(true)
+        @RenderItem()
     </a>
 }
 
@@ -40,8 +42,8 @@
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
+    [Parameter] public int PageNumber { get; set; }
     [Parameter] public bool DisableLink { get; set; }
-    [Parameter] public bool HideEnding { get; set; }
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public EventCallback OnSelect { get; set; }
 

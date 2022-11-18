@@ -82,3 +82,6 @@
 .creation-panel-contact-item.unfocusable:hover {
     @apply bg-transparent;
 }
+.selected-contact {
+    @apply max-w-32 px-2 my-0.5 overflow-hidden truncate bg-03 rounded-full;
+}
