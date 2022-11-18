@@ -1,5 +1,5 @@
 import './virtual-list.css';
-import { delayAsync, throttle, serialize, PromiseSource } from 'promises';
+import { delayAsync, throttle, serialize, PromiseSource, debounce } from 'promises';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -17,7 +17,7 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const UpdateClientSideStateInterval: number = 125;
+const UpdateViewportInterval: number = 125;
 const UpdateVisibleKeysInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
@@ -27,6 +27,8 @@ const MaxExpandBy: number = 320;
 const RenderTimeout: number = 640;
 const UpdateTimeout: number = 1200;
 const DefaultLoadZone: number = 2000;
+const ScrollDebounce: number = 600;
+const SkeletonDetectionBoundary: number = 300;
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -42,7 +44,9 @@ export class VirtualList {
     private readonly _sizeObserver: ResizeObserver;
     private readonly _visibilityObserver: IntersectionObserver;
     private readonly _scrollPivotObserver: IntersectionObserver;
-    private readonly _skeletonObserver: IntersectionObserver;
+    private readonly _skeletonObserver0: IntersectionObserver;
+    private readonly _skeletonObserver1: IntersectionObserver;
+    private readonly _skeletonObserver2: IntersectionObserver;
     private readonly _ironPantsIntervalHandle: number;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
@@ -58,7 +62,9 @@ export class VirtualList {
 
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
+    private _isScrolling: boolean = false;
     private _scrollTime: number | null = null;
+    private _scrollDirection: 'up' | 'down' | 'none' = 'none';
 
     private _query: VirtualListDataQuery = VirtualListDataQuery.None;
     private _lastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
@@ -66,12 +72,9 @@ export class VirtualList {
 
     private _renderState: VirtualListRenderState;
     private _orderedItems: VirtualListItem[] = [];
-    private _itemRange: NumberRange | null = null;
-    private _viewport: NumberRange | null = null;
-
-    public get loadZoneSize() {
-        return (this._viewport?.size ?? DefaultLoadZone) * 2;
-    }
+    private _itemRange: NumberRange = new NumberRange(0,0);
+    private _viewport: NumberRange = new NumberRange(0,0);
+    private _shouldRecalculateItemRange: boolean = true;
 
     public static create(
         ref: HTMLElement,
@@ -110,7 +113,7 @@ export class VirtualList {
         this._sizeObserver = new ResizeObserver(this.onResize);
         // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
         // Trigger callbacks as early as it can on any intersection change, even 1 percent
-        const visibilityThresholds = [...Array(100).keys() ].map(i => i / 100);
+        const visibilityThresholds = [...Array(101).keys() ].map(i => i / 100);
         this._visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
             {
@@ -129,18 +132,35 @@ export class VirtualList {
             this.onScrollPivotVisibilityChange,
             {
                 root: this._ref,
-                // Track pivot positions near center of the virtual list viewport.
-                rootMargin: '-30%',
+                // track fully visible items
+                rootMargin: `${VisibilityEpsilon}px`,
                 // Receive callback on any intersection change, even 1 percent.
                 threshold: visibilityThresholds,
             });
-        this._skeletonObserver = new IntersectionObserver(
+        this._skeletonObserver0 = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
             {
                 root: this._ref,
-                // Extend visibility outside of the viewport by 1/2 of loadzone
-                rootMargin: `${Math.round(this.loadZoneSize/2)}px`,
+                // Extend visibility outside of the viewport
+                rootMargin: `-5px`,
                 threshold: visibilityThresholds,
+            });
+        this._skeletonObserver1 = new IntersectionObserver(
+            this.onSkeletonVisibilityChange,
+            {
+                root: this._ref,
+                // Extend visibility outside of the viewport
+                rootMargin: `${SkeletonDetectionBoundary}px`,
+                threshold: visibilityThresholds,
+            });
+        this._skeletonObserver2 = new IntersectionObserver(
+            this.onSkeletonVisibilityChange,
+            {
+                root: this._ref,
+                // Extend visibility outside of the viewport
+                rootMargin: `${2*SkeletonDetectionBoundary}px`,
+                threshold: visibilityThresholds,
+
             });
 
         this._ironPantsIntervalHandle = self.setInterval(this.onIronPantsHandle, IronPantsHandlePeriod);
@@ -148,8 +168,12 @@ export class VirtualList {
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
 
-        this._skeletonObserver.observe(this._spacerRef);
-        this._skeletonObserver.observe(this._endSpacerRef);
+        this._skeletonObserver0.observe(this._spacerRef);
+        this._skeletonObserver0.observe(this._endSpacerRef);
+        this._skeletonObserver1.observe(this._spacerRef);
+        this._skeletonObserver1.observe(this._endSpacerRef);
+        this._skeletonObserver2.observe(this._spacerRef);
+        this._skeletonObserver2.observe(this._endSpacerRef);
 
         this._items = new Map<string, VirtualListItem>();
         this._renderState = {
@@ -173,7 +197,9 @@ export class VirtualList {
         this._isDisposed = true;
         this._abortController.abort();
         this._renderEndObserver.disconnect();
-        this._skeletonObserver.disconnect();
+        this._skeletonObserver0.disconnect();
+        this._skeletonObserver1.disconnect();
+        this._skeletonObserver2.disconnect();
         this._visibilityObserver.disconnect();
         this._scrollPivotObserver.disconnect();
         this._sizeObserver.disconnect();
@@ -187,10 +213,10 @@ export class VirtualList {
         return this._unmeasuredItems.size > 0 || !this._orderedItems;
     }
 
-    public get fullRange(): NumberRange| null {
-        return this._itemRange
-               ? new NumberRange(this._itemRange.Start -  this._renderState.spacerSize, this._itemRange.End + this._renderState.endSpacerSize)
-               : null;
+    private get fullRange(): NumberRange {
+        return new NumberRange(
+            this._itemRange.Start - this._renderState.spacerSize,
+            this._itemRange.End + this._renderState.endSpacerSize);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -198,8 +224,8 @@ export class VirtualList {
         this._isRendering = true;
         debugLog?.log(`maybeOnRenderEnd: `, mutations.length);
 
-        // reset item range as we've got new items
-        this._itemRange = null;
+        // request recalculation of the item range as we've got new items
+        this._shouldRecalculateItemRange = true;
         this._whenRenderCompleted?.resolve(undefined);
         this._whenRenderCompleted = new PromiseSource<void>();
 
@@ -305,9 +331,12 @@ export class VirtualList {
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
         if (lastItemWasMeasured)
             this.updateViewportThrottled();
+
+        // recalculate item range as some elements were updated
+        this._shouldRecalculateItemRange = true;
     }
 
-    private onItemVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+    private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
         let hasChanged = false;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
@@ -381,8 +410,17 @@ export class VirtualList {
             isNearSkeleton ||= entry.isIntersecting
                 && entry.boundingClientRect.height > EdgeEpsilon;
         }
-        this._isNearSkeleton = isNearSkeleton;
-        console.warn("skeleton triggered");
+        if (isNearSkeleton)
+            this._isNearSkeleton = isNearSkeleton;
+        else
+            this.turnOffIsNearSkeletonDebounced();
+        // debug helper
+        // console.warn("skeleton triggered");
+    }
+
+    private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce, true);
+    private turnOffIsNearSkeleton() {
+        this._isNearSkeleton = false;
     }
 
     private getRenderState(): VirtualListRenderState | null {
@@ -451,6 +489,10 @@ export class VirtualList {
                 }
             }
             else if (this._pivots?.length) {
+                // do not resync if the skeletons are far away
+                if (!this._isNearSkeleton && this._scrollDirection !== 'down')
+                    return;
+
                 for (const pivot of this._pivots) {
                     // resync scroll to make pivot ref position the same within viewport
                     const pivotRef = this.getItemRef(pivot.itemKey);
@@ -474,8 +516,21 @@ export class VirtualList {
             }
         } finally {
             this._isRendering = false;
-            this._whenRenderCompleted?.resolve(undefined)
-            this._whenUpdateCompleted?.resolve(undefined)
+            this._whenRenderCompleted?.resolve(undefined);
+            this._whenUpdateCompleted?.resolve(undefined);
+
+            // skeleton time to time become visible after render and scroll
+            const isNearSkeleton =
+                this._renderState.spacerSize > 0 && this._viewport.Start - this._itemRange.Start < 2 * SkeletonDetectionBoundary
+                || this._renderState.endSpacerSize > 0 && this._itemRange.End - this._viewport.End < 2 * SkeletonDetectionBoundary;
+            // only turn this flag on, will be cleared off with debounce at onSkeletonVisibilityChange
+            if (isNearSkeleton) {
+                this._isNearSkeleton = isNearSkeleton;
+                console.warn("manual near skeleton");
+            }
+            else {
+                this.turnOffIsNearSkeletonDebounced();
+            }
 
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
@@ -483,7 +538,7 @@ export class VirtualList {
         }
     }
 
-    private updateViewportThrottled = throttle(() => this.updateViewport(), UpdateClientSideStateInterval, 'delayHead');
+    private updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'default');
     private updateViewport = serialize(async () => {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
@@ -526,6 +581,11 @@ export class VirtualList {
 
         debugLog?.log(`updateViewport: `, viewport);
 
+        if (viewport.Start < this._viewport.Start)
+            this._scrollDirection = 'up';
+        else
+            this._scrollDirection = 'down';
+
         this._viewport = viewport;
         await this.requestData();
     }, 2);
@@ -557,16 +617,24 @@ export class VirtualList {
             this.onItemVisibilityChange(intersections, this._visibilityObserver);
         }
         if (this._isNearSkeleton) {
-            void this.updateViewport();
+            void this.updateViewportThrottled();
         }
     }
 
     private onScroll = (): void => {
-        if (this._isRendering || this._isDisposed) {
+        this._isScrolling = true;
+        this.turnOffIsScrollingDebounced();
+        if (this._isRendering || this._isDisposed)
             return;
-        }
+
         this.updateViewportThrottled();
     };
+
+    private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce, true);
+    private turnOffIsScrolling() {
+        this._isScrolling = false;
+        this._scrollDirection = 'none';
+    }
 
     private getNewItemRefs(): IterableIterator<HTMLElement> {
         // getElementsByClassName is faster than querySelectorAll
@@ -648,12 +716,10 @@ export class VirtualList {
         return false;
     }
 
-    private ensureItemRangeCalculated(): void {
+    private ensureItemRangeCalculated(): boolean {
         const orderedItems = this._orderedItems;
-        if (this.hasUnmeasuredItems)
-            return;
-        // if (this._itemRange)
-        //     return;
+        if (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange.size > 0))
+            return false;
 
         let cornerStoneItemIndex = orderedItems.length - 1;
         let cornerStoneItem = orderedItems[cornerStoneItemIndex];
@@ -685,6 +751,9 @@ export class VirtualList {
         this._itemRange = new NumberRange(
             orderedItems[0].range.Start,
             orderedItems[0].range.Start + orderedItems.map(it => it.size).reduce((sum, curr) => sum + curr, 0));
+
+        this._shouldRecalculateItemRange = false;
+        return true;
     }
 
     private async requestData(): Promise<void> {
@@ -692,9 +761,11 @@ export class VirtualList {
             return;
 
         this._query = this.getDataQuery();
-        if (this._query.isSimilarTo(this._lastQuery, this._viewport))
+        if (this._query === this._lastQuery)
             return;
-        if(this._query.isNone)
+        if (this._query.isSimilarTo(this._lastQuery, this._viewport) && !this._isNearSkeleton)
+            return;
+        if (this._query.isNone)
             return;
 
         debugLog?.log(`requestData: query:`, this._query);
@@ -709,40 +780,22 @@ export class VirtualList {
     }
 
     private getDataQuery(): VirtualListDataQuery {
-        // data chunk has already been requested in less a second
-        // probably we are scrolling intensively
-        const needsMoreAndMore = Date.now() - this._lastQueryTime < 1000;
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
         const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
         const viewport = this._viewport;
         const alreadyLoaded = this._itemRange;
-        if (!viewport || !alreadyLoaded)
+        if (viewport.size == 0 || alreadyLoaded.size == 0)
             return this._lastQuery;
 
-        const loadZoneSize = this.loadZoneSize;
+        const loadZoneSize = viewport.size * 3;
         let loadStart = viewport.Start - loadZoneSize;
         if (loadStart < alreadyLoaded.Start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.Start;
         let loadEnd = viewport.End + loadZoneSize;
         if (loadEnd > alreadyLoaded.End && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.End;
-        const isScrollingUp = alreadyLoaded.Start - loadStart > loadEnd - alreadyLoaded.End;
         let bufferZoneSize = loadZoneSize * 3;
-        if (needsMoreAndMore) {
-            const loadMore = loadZoneSize * 2;
-            bufferZoneSize *= 4;
-            if (isScrollingUp) {
-                // try to load more in the direction of scrolling
-                loadStart -= loadMore;
-                debugLog?.log(`getDataQuery: extend load zone start`, loadMore);
-            }
-            else {
-                // try to load more in the direction of scrolling
-                loadEnd += loadMore;
-                debugLog?.log(`getDataQuery: extend load zone end`, loadMore);
-            }
-        }
         const loadZone = new NumberRange(loadStart, loadEnd);
         const bufferZone = new NumberRange(
             viewport.Start - bufferZoneSize,

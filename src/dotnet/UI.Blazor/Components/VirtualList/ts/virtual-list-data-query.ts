@@ -30,7 +30,7 @@ export class VirtualListDataQuery
         if (intersection.isEmpty)
             return false;
 
-        return !(Math.abs(this.virtualRange.Start - intersection.Start) > viewportSize)
-            && !(Math.abs(this.virtualRange.Start - intersection.End) > viewportSize);
+        return !(Math.abs(this.virtualRange.Start - intersection.Start) > viewportSize / 2)
+            && !(Math.abs(this.virtualRange.Start - intersection.End) > viewportSize / 2);
     }
 }
