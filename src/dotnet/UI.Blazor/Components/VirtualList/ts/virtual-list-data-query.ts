@@ -1,28 +1,36 @@
-import { Range} from './range';
+import { NumberRange, Range } from './range';
 
 export class VirtualListDataQuery
 {
     public static None: VirtualListDataQuery = new VirtualListDataQuery();
 
-    public inclusiveRange?: Range<string> = null;
     public expandStartBy: number = 0;
     public expandEndBy: number = 0;
 
-    constructor(inclusiveRange?: Range<string>) {
-         this.inclusiveRange = inclusiveRange;
-    }
+    constructor(public keyRange?: Range<string>, public virtualRange?: NumberRange)
+    { }
 
     public get isNone(): boolean {
         return this === VirtualListDataQuery.None;
     }
 
-    public isSimilarTo(other: VirtualListDataQuery): boolean
+    public isSimilarTo(other: VirtualListDataQuery, viewport?: NumberRange): boolean
     {
         if (this === other)
             return true;
 
-        const epsilon: number = 10;
-        return !(Math.abs(this.expandStartBy - other.expandStartBy) > epsilon)
-            && !(Math.abs(this.expandEndBy - other.expandEndBy) > epsilon);
+        if (!this.virtualRange || !other.virtualRange)
+            return false;
+
+        if (!viewport)
+            return false;
+
+        const viewportSize = viewport.size;
+        const intersection = this.virtualRange.intersectWith(other.virtualRange);
+        if (intersection.isEmpty)
+            return false;
+
+        return !(Math.abs(this.virtualRange.Start - intersection.Start) > viewportSize)
+            && !(Math.abs(this.virtualRange.Start - intersection.End) > viewportSize);
     }
 }

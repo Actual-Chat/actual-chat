@@ -19,10 +19,10 @@
             ? 0
             : SpacerSize;
     var startExpansion = Data.Items
-        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.Start) < 0)
+        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
         .Sum(i => i.CountAs);
     var endExpansion = Data.Items
-        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.End) <= 0)
+        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
         .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
