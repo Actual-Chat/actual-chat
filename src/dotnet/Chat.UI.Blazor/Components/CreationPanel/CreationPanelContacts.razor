@@ -1,117 +1,68 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<CreationPanelContacts.Model>
 
 @{
-    var m = State.LatestNonErrorValue;
     var panelHeaderCls = "overflow-y-hidden";
-    if (HideHeader)
+    var countCls = "hidden";
+    var onlySelected = false;
+    if (PageNumber != 1) {
         panelHeaderCls += " hide-header";
+    }
+    if (PageNumber == 3) {
+        countCls = "";
+        onlySelected = true;
+    }
+    bool disableLink = PageNumber != 1;
 
     RenderFragment RenderTab(TabId tabId, string title) =>
         @<Tab
              Title="@title" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
-            <div class="h-full flex-y my-2">
-                @foreach (var contact in m.ContactStatuses) {
-                    <CreationPanelContactItem
-                        @key="contact"
-                        Contact="@contact.Contact"
-                        DisableLink="@DisableLinks"
-                        HideEnding="@HideItemEnding"
-                        IsSelected="@contact.IsSelected"
-                        OnSelect="@(() => AddContactToSelected(contact.Contact))"/>
-                }
-            </div>
+                <div class="h-full flex-y my-2">
+                    @foreach (var contact in ListContacts(tabId, onlySelected)) {
+                        var isSelected = SelectedContacts.Contains(contact);
+                        <CreationPanelContactItem
+                            @key="contact"
+                            Contact="@contact"
+                            IsSelected="@isSelected"
+                            DisableLink="@disableLink"
+                            PageNumber="@PageNumber"
+                            OnSelect="@(() => OnAddContact.InvokeAsync(contact))"/>
+                    }
+                </div>
         </Tab>;
 }
-
-<div class="bg-red-100">
-    @foreach (var contactStatuses in m.ContactStatuses) {
-        if (contactStatuses.IsSelected) {
-            <div class="bg-red-300 rounded-full px-2 mx-2">
-                @contactStatuses.Contact.Account?.Avatar.Name
-            </div>
-        }
-    }
-</div>
 
 <div class="-flex-y w-full h-full">
     <TabPanel
         BottomHill="true"
         Class="@panelHeaderCls"
-        TabsClass="left-panel-tabs"
-        ActiveTabChanged="OnActiveTabChanged">
+        TabsClass="left-panel-tabs">
 
         @RenderTab(TabId.Recent, "Recent")
         @RenderTab(TabId.All, "A-Z")
         @* @RenderTab(ContactTab.Favorites, "Favorites") *@
     </TabPanel>
+    <div class="font-medium @countCls">
+        4 Members
+    </div>
 </div>
 
 @code{
-    private TabId _activeTabId;
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
-    [Parameter] public bool HideHeader { get; set; }
-    [Parameter] public bool HideItemEnding { get; set; }
-    [Parameter] public bool DisableLinks { get; set; }
+    [Parameter] public int PageNumber { get; set; }
     [Parameter] public bool ShowOnlySelected { get; set; }
+    [Parameter] public Contact[] AllContacts { get; set; } = null!;
+    [Parameter] public Contact[] SelectedContacts { get; set; } = null!;
+    [Parameter] public EventCallback<Contact> OnAddContact { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        if (!account.IsActive())
-            return Model.None;
-
-        var contacts = await ListContacts(_activeTabId, cancellationToken);
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
-        if (!searchPhrase.IsEmpty) {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
-            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
-            contacts = (
-                from contact in contacts
-                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
-                where rank > 0 || ReferenceEquals(selectedContact, contact)
-                orderby rank descending
-                select contact
-                ).ToList();
-        }
-        var selected = State.LatestNonErrorValue.ContactStatuses;
-        if (selected.Count == 0 && contacts.Count != 0) {
-            foreach (var contact in contacts) {
-                selected.Add(new Status() {
-                    Contact = contact,
-                });
-            }
-        }
-        if (selected.Count < contacts.Count) {
-            for (int i = selected.Count; i < contacts.Count; i++) {
-                selected.Add(new Status() {
-                    Contact = contacts[i],
-                });
-            }
-        }
-
-        return new Model {
-            Contacts = contacts,
-            ContactStatuses = selected,
-        };
-    }
-
-    private async Task<List<Contact>> ListContacts(TabId tabId, CancellationToken cancellationToken) {
-        var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
+    private List<Contact> ListContacts(TabId tabId, bool onlySelected) {
+        var contacts = onlySelected ? SelectedContacts : AllContacts;
         return tabId switch {
             TabId.All => contacts.OrderBy(c => c.Account!.Avatar.Name).ToList(),
             TabId.Recent => contacts.OrderByDescending(c => c.TouchedAt).ToList(),
@@ -119,45 +70,19 @@
         };
     }
 
-    private void OnActiveTabChanged(Tab? tab) {
-        if (!Enum.TryParse(tab?.Id ?? "", out _activeTabId))
-            _activeTabId = default;
-        _ = State.Recompute();
-    }
-
     public enum TabId {
         Recent,
         All,
     }
 
-    private void AddContactToSelected(Contact contact) {
-        var m = State.LatestNonErrorValue;
-        var contacts = m.Contacts;
-        var statuses = m.ContactStatuses;
-        for (int i = 0; i < contacts.Count; i++) {
-            var status = statuses[i];
-            if (status.Contact != contacts[i]) {
-                status.Contact = contacts[i];
-            }
-            if (status.Contact == contact) {
-                status.IsSelected = !status.IsSelected;
-            }
+    private void AddContactToSelected(Contact selectedContact) {
+        var selectedContacts = SelectedContacts.ToList();
+        if (selectedContacts.Contains(selectedContact)) {
+            selectedContacts.Remove(selectedContact);
+        } else {
+            selectedContacts.Add(selectedContact);
         }
+        SelectedContacts = selectedContacts.ToArray();
         StateHasChanged();
-    }
-
-    public class Status {
-        public Contact Contact { get; set; } = null!;
-        public bool IsSelected { get; set; }
-    }
-
-    public sealed record Model {
-        public static Model None { get; } = new() {
-            Contacts = new (),
-            ContactStatuses = new(),
-        };
-
-        public List<Contact> Contacts { get; init; } = null!;
-        public List<Status> ContactStatuses { get; init; } = null!;
     }
 }

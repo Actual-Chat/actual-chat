@@ -3,8 +3,11 @@
 @using ActualChat.Contacts
 @implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<CreationModal.ComputedModel>
 
 @{
+    var m = State.LatestNonErrorValue;
+
     RenderFragment RenderArrowBack()
         => @<ButtonRound Class="transparent" Click="GetPreviousPage">
                 <i class="icon-arrow-left text-2xl"></i>
@@ -16,63 +19,25 @@
 
 <CascadingValue Value="_enableIncompleteUI">
     <DialogFrame class="creation-modal" ShowMobileHeader="false">
-    <Body>
-        @if (ModalModel.PageNumber == 1) {
-            <div class="creation-panel">
-                <div class="header">
-                    @RenderArrowBack()
-                    @RenderTitle("Create")
-                    <ButtonRound Class="transparent">
-                        <i class="icon-search text-2xl md:text-xl font-medium"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="transparent" Click="OnClose">
-                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
-                    </ButtonRound>
-                </div>
-                <div class="creation-buttons">
-                    <CreationButton Title="New Group" OnClick="@GetNextPage">
-                        <Icon>
-                            <i class="icon-people text-2xl"></i>
-                        </Icon>
-                    </CreationButton>
-                    <CreationButton Title="New Channel">
-                        <Icon>
-                            <i class="icon-loudspeaker text-2xl"></i>
-                        </Icon>
-                    </CreationButton>
-                    <CreationButton Title="New Contact">
-                        <Icon>
-                            <i class="icon-person-add text-2xl"></i>
-                        </Icon>
-                    </CreationButton>
-                    <CreationButton Title="New Place">
-                        <Icon>
-                            <i class="icon-plus text-2xl"></i>
-                        </Icon>
-                    </CreationButton>
-                </div>
-                <CreationPanelContacts HideItemEnding="true"/>
-            </div>
-        } else if (ModalModel.PageNumber == 2) {
-            <div class="creation-panel">
-                <div class="header add-members">
-                    @RenderArrowBack()
-                    @RenderTitle("Add members")
-                    <ButtonRound Class="transparent" Click="OnClose">
-                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
-                    </ButtonRound>
-                </div>
-                <div class="px-2">
-                    <SearchBox
-                        @ref="_searchBoxRef"
-                        Class="mt-1"
-                        Placeholder="Type the username"
-                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                        TextChanged="@OnFilter"/>
-                </div>
-                <CreationPanelContacts HideHeader="true" DisableLinks="true"/>
-            </div>
-        } else if (ModalModel.PageNumber == 3) {
+        <Body>
+        @if (PageNumber == 1) {
+            <CreatePage
+                Title="Create"
+                AllContacts="@m.AllContacts.ToArray()"
+                SelectedContacts="@SelectedContacts"
+                OnCloseClick="@OnClose"
+                OnNextPageClick="GetNextPage"
+                OnPreviousPageClick="GetPreviousPage"/>
+        } else if (PageNumber == 2) {
+            <AddMembersPage
+                Title="Add members"
+                AllContacts="@m.AllContacts.ToArray()"
+                SelectedContacts="@SelectedContacts"
+                OnCloseClick="@OnClose"
+                OnNextPageClick="@GetNextPage"
+                OnPreviousPageClick="GetPreviousPage"
+                SearchBox="@_searchBoxRef"/>
+        } else if (PageNumber == 3) {
             <div class="creation-panel">
                 <div class="header add-members">
                     @RenderArrowBack()
@@ -91,29 +56,23 @@
                                 <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
                             </FormSection>
                         </div>
-
-                        <div class="font-medium">
-                            4 Members
-                        </div>
-
-                        <div class="flex-y gap-y-2 custom-scrollbar overflow-y-auto">
-                            @for (int i = 1; i < 16; i++) {
-                                <div class="min-h-12 rounded-lg bg-selected">
-                                    Contact @i
-                                </div>
-                            }
-                        </div>
                     </div>
                 </Form>
             </div>
         }
-    </Body>
+        <CreationPanelContacts
+            PageNumber="@PageNumber"
+            AllContacts="@m.AllContacts.ToArray()"
+            SelectedContacts="@SelectedContacts"
+            OnAddContact="AddContactToSelected"/>
+        </Body>
+
     <Buttons>
-        @if (ModalModel.PageNumber == 2) {
+        @if (PageNumber == 2) {
             <div class="btn-group">
                 <Button Type="@ButtonType.Button" Click="GetNextPage" Class="btn-primary">Next</Button>
             </div>
-        } else if (ModalModel.PageNumber == 3) {
+        } else if (PageNumber == 3) {
             <div class="btn-group">
                 @{
                     var submitClass = $"btn-primary {(!_form.Title.IsNullOrEmpty() ? "" : "disabled")}";
@@ -142,6 +101,8 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -150,6 +111,7 @@
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] SelectedContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private int PageNumber { get; set; } = 1;
     private CancellationTokenSource DisposeTokenSource { get; }
     private CancellationToken DisposeToken { get; }
 
@@ -164,43 +126,68 @@
         _form = new(ComponentIdGenerator);
 
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
-        var contacts = await userContacts
-            .Select(async c => {
-                // Fine to use ConfigureAwait(false) here
-                var account = c.Account!;
-                var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
-                return new Contact() {
-                    Account = account,
-                    Presence = presence,
-                };
-            })
-            .Collect();
-
-        AllContacts = contacts
-            .OrderBy(x => x.Account.Avatar.Name)
+        AllContacts = userContacts
+            .OrderBy(x => x.Account?.Avatar.Name)
             .ToArray();
         FilteredContacts = AllContacts;
     }
 
-    private void OnFilter(string filter) {
-        FilteredContacts = string.IsNullOrWhiteSpace(filter)
-            ? AllContacts.ToArray()
-            : AllContacts
-                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
-                .ToArray();
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        if (!account.IsActive())
+            return ComputedModel.None;
+
+        var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        if (!searchPhrase.IsEmpty) {
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
+            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
+            contacts = (
+                from contact in contacts
+                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
+                where rank > 0 || ReferenceEquals(selectedContact, contact)
+                orderby rank descending
+                select contact
+                ).ToList();
+        }
+        return new ComputedModel {
+            AllContacts = contacts,
+        };
     }
 
     private void OnClose()
         => ModalInstance.CloseAsync();
 
-    private void GetNextPage()
-        => ModalModel = new Model(ModalModel.PageNumber + 1);
+    private void GetNextPage() {
+        if (PageNumber >= 3) return;
+        PageNumber += 1;
+        StateHasChanged();
+    }
 
     private void GetPreviousPage() {
-        if (ModalModel.PageNumber > 1)
-            ModalModel = new Model(ModalModel.PageNumber - 1);
-        else
+        if (PageNumber > 1) {
+            PageNumber -= 1;
+            StateHasChanged();
+        } else
             OnClose();
+    }
+
+    private void AddContactToSelected(Contact selectedContact) {
+        var selectedContacts = SelectedContacts.ToList();
+        if (selectedContacts.Contains(selectedContact)) {
+            selectedContacts.Remove(selectedContact);
+        } else {
+            selectedContacts.Add(selectedContact);
+        }
+        SelectedContacts = selectedContacts.ToArray();
+        StateHasChanged();
     }
 
     private async Task OnCreate()
@@ -243,12 +230,13 @@
         }
     }
 
-    public sealed record Model(int PageNumber);
+    public sealed record Model();
 
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new() {
+            AllContacts = new (),
+        };
 
-    private sealed class Contact {
-        public Account Account { get; init; } = null!;
-        public Presence Presence { get; init; }
-        public bool IsSelected { get; set; }
+        public List<Contact> AllContacts { get; init; } = null!;
     }
 }
