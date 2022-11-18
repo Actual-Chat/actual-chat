@@ -168,7 +168,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ? new Range<long>(
                     chatIdRange.End - (2*PageSize),
                     chatIdRange.End)
-                : query.InclusiveRange
+                : query.KeyRange
                     .AsLongRange()
                     .ToExclusive()
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
