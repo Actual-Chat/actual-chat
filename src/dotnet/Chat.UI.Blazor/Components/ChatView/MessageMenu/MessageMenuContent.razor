@@ -12,6 +12,15 @@
     @if (showPlayButton) {
         <MessageMenuPlay Entry="@entry" IsMenu="true"/>
     }
+    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
+        <MenuEntry
+            OnClick="@(() => Edit(entry))"
+            Icon="icon-edit"
+            Class="important-item"
+            TriggerEditor="true"
+            Text="Edit">
+        </MenuEntry>
+    }
     @if (m.CanReply) {
         <MenuEntry
             OnClick="@(() => Reply(entry))"
@@ -37,14 +46,6 @@
         Icon="icon-link-2"
         Text="Copy message link">
     </MenuEntry>
-    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
-        <MenuEntry
-            OnClick="@(() => Edit(entry))"
-            Icon="icon-edit"
-            TriggerEditor="true"
-            Text="Edit">
-        </MenuEntry>
-    }
     @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
         <MenuEntrySeparator />
         <MenuEntry
