@@ -8,5 +8,5 @@
     @apply text-03 text-xs;
 }
 .image-attachment img.skeleton {
-    @apply bg-skeleton rounded-md animate-pulse bg-blue-500;
+    @apply bg-skeleton rounded-md animate-pulse;
 }
