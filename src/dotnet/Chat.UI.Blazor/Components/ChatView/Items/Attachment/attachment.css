@@ -7,6 +7,6 @@
 .file-attachment-size {
     @apply text-03 text-xs;
 }
-.message-attachment-image img.skeleton {
-    @apply bg-skeleton rounded-md animate-pulse;
+.image-attachment img.skeleton {
+    @apply bg-skeleton rounded-md animate-pulse bg-blue-500;
 }
