@@ -1,5 +1,9 @@
-.left-line {
-    @apply h-8 self-center rounded-lg;
-    min-width: 2px;
-    margin-right: 3px;
+.thin-left-panel {
+    @apply flex md:w-30 h-full flex-x bg-04 z-10 px-2 md:px-3
+}
+.thin-left-panel-space {
+    @apply flex grow h-full;
+}
+.thin-left-panel-content {
+    @apply flex h-full flex-y;
 }

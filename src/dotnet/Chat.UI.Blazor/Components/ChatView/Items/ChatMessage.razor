@@ -180,11 +180,7 @@
         if (Message.Entry.RepliedChatEntryId == null)
             return null;
 
-        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None);
-
-        // TODO: show 'message was deleted' if replied message was removed
-        if (repliedChatEntry == null)
-            return null;
+        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None) ?? new() { IsRemoved = true, ChatId = Message.Entry.ChatId};
 
         return new ChatMessageModel(repliedChatEntry) {
             IsBlockStart = true,

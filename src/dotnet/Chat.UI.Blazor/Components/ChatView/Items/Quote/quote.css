@@ -13,3 +13,6 @@
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-03 cursor-pointer;
 }
+.quoted-message-removed {
+    @apply italic h-6 cursor-default;
+}
