@@ -23,8 +23,7 @@
              src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
              onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
         <img id="@_cachedImgElementId"
-             width="@ModalModel.Width"
-             height="@ModalModel.Height"
+             style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
              src="@ModalModel.CachedImageUrl"
              alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
     </div>
