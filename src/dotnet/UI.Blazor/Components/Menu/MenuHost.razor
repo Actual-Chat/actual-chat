@@ -8,7 +8,10 @@
         @if (IsOverlayVisible) {
             <div class="ac-menu-overlay">
                 @foreach (var menu in _menus) {
-                    <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
+                    <div id="@menu.Id"
+                         @key="menu.Id"
+                         class="@(GetMenuCssClass(menu))"
+                         style="display: block;">
                         <ul class="ac-menu-list">
                             <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                         </ul>

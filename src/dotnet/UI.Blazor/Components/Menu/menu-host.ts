@@ -105,10 +105,20 @@ export class MenuHost implements Disposable {
         this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
     }
 
+    private hideOverlay(): void {
+        if (this.menus.length)
+            return;
+        const overlay = document.getElementsByClassName('ac-menu-overlay')[0] as HTMLElement;
+        if (!overlay)
+            return;
+        overlay.style.display = 'none';
+    }
+
     private hideMenu(menu: Menu): void {
         debugLog?.log(`hideMenu, menu:`, menu);
         if (menu.elementRef)
             menu.elementRef.style.display = 'none';
+        this.hideOverlay();
 
         this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
     }
