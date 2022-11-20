@@ -226,8 +226,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             try {
                 await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
                 var visibleKeys = await VisibleKeys.Use(cancellationToken);
-                if (visibleKeys.Count == 0)
+                if (visibleKeys.Count == 0) {
+                    ChatUI.VisibleIdRange.Value = new(0, 0);
                     continue;
+                }
 
                 var visibleEntryIds = visibleKeys
                     .Select(key =>
@@ -237,6 +239,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .Where(entryId => entryId.HasValue)
                     .Select(entryId => entryId!.Value)
                     .ToHashSet();
+                ChatUI.VisibleIdRange.Value = new (visibleEntryIds.Min(), visibleEntryIds.Max());
 
                 var maxVisibleEntryId = visibleEntryIds.Max();
                 var minVisibleEntryId = visibleEntryIds.Min();

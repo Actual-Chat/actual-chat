@@ -59,6 +59,12 @@
     </CascadingValue>
 </RenderIntoStack>
 
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubHeader">
+    <CascadingValue Value="chat">
+        <NavigateToEndSubHeader/>
+    </CascadingValue>
+</RenderIntoStack>
+
 <RenderIntoSlot Name="MainRightPanel">
     <CascadingValue Value="chat">
         <ChatRightPanel/>
@@ -124,6 +130,7 @@
 
         // parsedChatId is either (valid & not short) or invalid at this point
         if (parsedChatId.IsValid && ChatUI.SelectedChatId.Value != parsedChatId.Id) {
+            ChatUI.VisibleIdRange.Value = new(0, 0);
             ChatUI.SelectedChatId.Value = parsedChatId.Id;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;

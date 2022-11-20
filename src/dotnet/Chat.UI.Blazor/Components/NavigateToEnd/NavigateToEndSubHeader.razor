@@ -1,0 +1,44 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NavigateToEndSubHeader.Model>
+@{
+    var m = State.ValueOrDefault;
+    if (m is not { Show: true })
+        return;
+}
+
+<div class="navigate-to-end-sub-header">
+    <ButtonRound Tooltip="Navigate to the last message" Click="OnClick">
+        <i class="fa fa-angle-down"></i>
+    </ButtonRound>
+</div>
+
+@code {
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken);
+        var selectedChatId = Chat.Id;
+        if (visibleRange.IsEmpty)
+            return new(false);
+
+        var summary = await Chats.GetSummary(Session, selectedChatId, cancellationToken);
+        var lastEntryId = summary?.LastTextEntry?.Id ?? 0;
+        if (lastEntryId <= visibleRange.End)
+            return new(false);
+
+        return new(true, lastEntryId);
+    }
+
+    public record Model(bool Show, long LastEntryId = 0);
+
+    private async Task OnClick() {
+        var entryId = State.Value.LastEntryId;
+        await UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
+        ChatUI.HighlightedChatEntryId.Value = entryId;
+    }
+}
