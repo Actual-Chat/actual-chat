@@ -1,0 +1,10 @@
+.navigate-to-end-sub-header {
+    @apply relative;
+}
+.navigate-to-end-sub-header .btn.btn-round {
+    @apply absolute bottom-0 right-3 z-10;
+    @apply flex items-center justify-center;
+}
+.navigate-to-end-sub-header .btn.btn-round .btn-content {
+    @apply font-bold text-4xl;
+}
