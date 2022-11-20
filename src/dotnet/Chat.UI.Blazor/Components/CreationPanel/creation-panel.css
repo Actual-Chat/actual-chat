@@ -83,5 +83,21 @@
     @apply bg-transparent;
 }
 .selected-contact {
-    @apply max-w-32 px-2 my-0.5 overflow-hidden truncate bg-03 rounded-full;
+    @apply flex-x items-center my-0.5 bg-03 rounded-full;
+}
+.selected-contact,
+.selected-contact * {
+    @apply cursor-pointer;
+}
+.remove-contact-icon {
+    @apply items-center rounded-full bg-transparent w-6 h-6 hidden;
+}
+.selected-contact:hover {
+    @apply bg-error text-04;
+}
+.selected-contact:hover .remove-contact-icon {
+    @apply flex;
+}
+.selected-contact:hover .author-avatar-badge {
+    @apply hidden;
 }
