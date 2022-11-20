@@ -13,6 +13,7 @@
         onlySelected = true;
     }
     bool disableLink = PageNumber != 1;
+    var count = SelectedContacts.Length;
 
     RenderFragment RenderTab(TabId tabId, string title) =>
         @<Tab
@@ -43,8 +44,8 @@
         @RenderTab(TabId.All, "A-Z")
         @* @RenderTab(ContactTab.Favorites, "Favorites") *@
     </TabPanel>
-    <div class="font-medium @countCls">
-        4 Members
+    <div class="font-medium px-4 @countCls">
+        @(count > 1 ? $"{count} Members" : $"{count} Member")
     </div>
 </div>
 

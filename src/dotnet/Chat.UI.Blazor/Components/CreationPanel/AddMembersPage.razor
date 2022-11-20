@@ -13,9 +13,15 @@
     </div>
     <div class="flex-x flex-wrap gap-x-2 w-full px-2">
         @foreach (var contact in SelectedContacts) {
-            <div class="selected-contact">
-                @contact.Account?.Avatar.Name
-            </div>
+            <btn class="selected-contact" @onclick="@(() => OnRemoveContact.InvokeAsync(contact))">
+                <div class="remove-contact-icon">
+                    <i class="icon-close text-04 text-2xl pl-0.5"></i>
+                </div>
+                <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Account?.Avatar"/>
+                <div class="pl-1 pr-2 max-w-32 overflow-hidden truncate">
+                    @contact.Account?.Avatar.Name
+                </div>
+            </btn>
         }
     </div>
     <div class="px-2">
@@ -38,7 +44,7 @@
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback OnNextPageClick { get; set; }
     [Parameter] public EventCallback OnPreviousPageClick { get; set; }
-    [Parameter] public EventCallback<Contact> OnAddContact { get; set; }
+    [Parameter] public EventCallback<Contact> OnRemoveContact { get; set; }
     [Parameter] public SearchBox SearchBox { get; set; } = null!;
 
     private void OnFilter(string filter) {

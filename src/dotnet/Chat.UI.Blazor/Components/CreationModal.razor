@@ -36,7 +36,8 @@
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
                 OnPreviousPageClick="GetPreviousPage"
-                SearchBox="@_searchBoxRef"/>
+                SearchBox="@_searchBoxRef"
+                OnRemoveContact="@RemoveFromSelected"/>
         } else if (PageNumber == 3) {
             <div class="creation-panel">
                 <div class="header add-members">
@@ -47,16 +48,16 @@
                     </ButtonRound>
                 </div>
 
-                <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnCreate" Id="@_form.FormId" Class="px-2">
+                <Form @ref="@_formRef" Model="@_form" Id="@_form.FormId" Class="px-2">
                     <DataAnnotationsValidator/>
-                    <div class="flex-y grow max-h-128 overflow-y-auto">
-                        <div class="flex-x gap-x-2 items-center pb-4">
-                            <AnonymousIcon Class="w-30 h-30 mx-2"></AnonymousIcon>
-                            <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2">
-                                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
-                            </FormSection>
+                        <div class="flex-y grow max-h-128 overflow-y-auto">
+                            <div class="flex-x gap-x-2 items-center pb-4">
+                                <AnonymousIcon Class="w-30 h-30 mx-2"></AnonymousIcon>
+                                <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2" IsRequired="true">
+                                    <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
+                                </FormSection>
+                            </div>
                         </div>
-                    </div>
                 </Form>
             </div>
         }
@@ -75,7 +76,7 @@
         } else if (PageNumber == 3) {
             <div class="btn-group">
                 @{
-                    var submitClass = $"btn-primary {(!_form.Title.IsNullOrEmpty() ? "" : "disabled")}";
+                    var submitClass = $"btn-primary {(_formRef != null && _formRef.IsValid ? "" : "disabled")}";
                 }
                 <Button Type="@ButtonType.Button" Click="OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
             </div>
@@ -190,6 +191,14 @@
         StateHasChanged();
     }
 
+    private void RemoveFromSelected(Contact selectedContact) {
+        var selectedContacts = SelectedContacts.ToList();
+        if (!selectedContacts.Contains(selectedContact)) return;
+        selectedContacts.Remove(selectedContact);
+        SelectedContacts = selectedContacts.ToArray();
+        StateHasChanged();
+    }
+
     private async Task OnCreate()
     {
         var command = new IChats.ChangeCommand(Session, "", null, new() {
@@ -230,7 +239,7 @@
         }
     }
 
-    public sealed record Model();
+    public sealed record Model;
 
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new() {
