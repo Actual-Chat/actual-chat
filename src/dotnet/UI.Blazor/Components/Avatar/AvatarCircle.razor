@@ -36,7 +36,10 @@
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
-        _avatarPictureUrl = UrlMapper.ContentUrl(Avatar.Picture);
+        var avatarPicture = Avatar.Picture.IsNullOrEmpty()
+            ? DefaultUserPicture.GetAvataaar(Avatar.Id.ToString().GetMD5HashCode())
+            : Avatar.Picture;
+        _avatarPictureUrl = UrlMapper.ContentUrl(avatarPicture);
     }
 
     private string GetSizeClass() {
