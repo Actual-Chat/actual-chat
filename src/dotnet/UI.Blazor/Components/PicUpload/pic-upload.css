@@ -6,7 +6,7 @@
 }
 
 .pic-upload-picker {
-    @apply invisible absolute w-20 h-20 top-0 left-0 rounded-full;
+    @apply invisible absolute top-0 left-0 rounded-full;
     @apply rounded-full bg-gradient-to-t from-logo-01 via-logo-03 to-logo-02;
 }
 .pic-upload-picker,
@@ -26,4 +26,48 @@
 
 .pic-upload-drop-zone-hover {
     border-style: solid;
+}
+
+.pic-size-4 {
+    @apply w-4 h-4 min-w-4 min-h-4 max-w-4 max-h-4;
+}
+
+.pic-size-5 {
+    @apply w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5;
+}
+
+.pic-size-6 {
+    @apply w-6 h-6 min-w-6 min-h-6 max-w-6 max-h-6;
+}
+
+.pic-size-7 {
+    @apply w-7 h-7 min-w-7 min-h-7 max-w-7 max-h-7;
+}
+
+.pic-size-8 {
+    @apply w-8 h-8 min-w-8 min-h-8 max-w-8 max-h-8;
+}
+
+.pic-size-9 {
+    @apply w-9 h-9 min-w-9 min-h-9 max-w-9 max-h-9;
+}
+
+.pic-size-10 {
+    @apply w-10 h-10 min-w-10 min-h-10 max-w-10 max-h-10;
+}
+
+.pic-size-12 {
+    @apply w-12 h-12 min-w-12 min-h-12 max-w-12 max-h-12;
+}
+
+.pic-size-16 {
+    @apply w-16 h-16 min-w-16 min-h-16 max-w-16 max-h-16;
+}
+
+.pic-size-20 {
+    @apply w-20 h-20 min-w-20 min-h-20 max-w-20 max-h-20 text-2xl;
+}
+
+.pic-size-30 {
+    @apply w-30 h-30 min-w-30 min-h-30 max-w-30 max-h-30 text-2xl;
 }
