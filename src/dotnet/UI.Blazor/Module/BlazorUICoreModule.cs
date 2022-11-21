@@ -86,6 +86,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<HistoryUI>();
         services.AddScoped<ModalUI>();
         services.AddScoped<FocusUI>();
+        services.AddScoped<Vibration>();
         services.AddScoped<KeepAwakeUI>();
         services.AddScoped<UserActivityUI>();
         services.AddTransient<EscapistSubscription>();
