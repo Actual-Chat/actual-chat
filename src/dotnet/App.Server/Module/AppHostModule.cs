@@ -143,7 +143,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication();
-        fusion.AddLocalCommandScheduler();
 
         // Web
         var dataProtection = Settings.DataProtection.NullIfEmpty()

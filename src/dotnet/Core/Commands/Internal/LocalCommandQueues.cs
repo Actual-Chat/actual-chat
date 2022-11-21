@@ -2,11 +2,14 @@ namespace ActualChat.Commands.Internal;
 
 public class LocalCommandQueues : ICommandQueues
 {
-    private LocalCommandQueue CommandQueue { get; }
+    private readonly ConcurrentDictionary<string, LocalCommandQueue> _queues = new (StringComparer.Ordinal);
 
-    public LocalCommandQueues(LocalCommandQueue commandQueue)
-        => CommandQueue = commandQueue;
+    public LocalCommandQueues()
+    { }
 
     public ICommandQueue Get(QueueRef queueRef)
-        => CommandQueue;
+        => _queues.GetOrAdd(queueRef.Name, _ => new LocalCommandQueue());
+
+    public ICommandQueueReader Reader(string queueName, string shardIdentifier)
+        => new LocalCommandQueueReader(_queues.GetOrAdd(queueName, _ => new LocalCommandQueue()));
 }

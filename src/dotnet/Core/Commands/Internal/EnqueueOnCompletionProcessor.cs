@@ -54,9 +54,11 @@ public class EnqueueOnCompletionProcessor : IOperationCompletionListener
             result.AddRange(entries);
 
         var nestedCommandEntries = operationItems.Get<ImmutableList<NestedCommandEntry>>();
-        if (nestedCommandEntries != null && nestedCommandEntries.Count != 0)
-            foreach (var nestedCommandEntry in nestedCommandEntries)
-                CollectEnqueueOnCompletionEntries(nestedCommandEntry.Items, result);
+        if (nestedCommandEntries == null || nestedCommandEntries.Count == 0)
+            return result;
+
+        foreach (var nestedCommandEntry in nestedCommandEntries)
+            CollectEnqueueOnCompletionEntries(nestedCommandEntry.Items, result);
 
         return result;
     }
