@@ -1,14 +1,15 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<SingleChatPlaybackState>
+@inherits ComputedStateComponent<PlaybackToggle.Model>
 @{
     var m = State.LatestNonErrorValue;
-    if (m.ChatId.IsEmpty)
+    var playbackState = m.PlaybackState;
+    if (playbackState.ChatId.IsEmpty)
         return; // Not computed yet
 
-    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"{(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var playingHistoricalClass = playbackState.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"{(playbackState.IsListening ? "on" : "off")} {playingHistoricalClass}";
     var lastRenderedState = _lastRenderedState ?? m;
-    var isListeningChange = (lastRenderedState.IsListening, m.IsListening);
+    var isListeningChange = (lastRenderedState.PlaybackState.IsListening, playbackState.IsListening);
     var wrapperCls = isListeningChange switch {
         (false, true) => "listen-off-to-on",
         (true, false) => "listen-on-to-off",
@@ -16,34 +17,50 @@
         (_, true) => "listen-on",
     };
     _lastRenderedState = m;
+    var loadBtnCls = "loud-btn " + (m.IsSpeakerOn ? "on" : "off");
 }
 
 <div class="@wrapperCls playback-wrapper">
     <ButtonRound Click="@OnListenClick" Class="@cls">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
-    <ButtonRound Click="@OnListenClick" Class="loud-btn">
+    <ButtonRound Click="@OnChangeAudioOutputClick" Class="@loadBtnCls">
         <i class="icon-volume-up text-2xl"></i>
     </ButtonRound>
 </div>
 
 @code {
-    private SingleChatPlaybackState? _lastRenderedState;
+    private Model? _lastRenderedState;
+    private int _index;
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
     private void OnListenClick()
-        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.PlaybackState.IsListening);
 
-    protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = SingleChatPlaybackState.None,
+            InitialValue = Model.None,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetPlaybackState(ChatId, cancellationToken);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var playbackState = await ChatUI.GetPlaybackState(ChatId, cancellationToken);
+        var isSpeakerOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(playbackState, isSpeakerOn);
+    }
+
+    private void OnChangeAudioOutputClick()
+    {
+        AudioOutputController.SwitchSpeakerphone();
+    }
+
+    public record Model(SingleChatPlaybackState PlaybackState, bool IsSpeakerOn)
+    {
+        public static readonly Model None = new (SingleChatPlaybackState.None, true);
+    }
 }
