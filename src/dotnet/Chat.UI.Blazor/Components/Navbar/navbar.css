@@ -1,11 +1,5 @@
-.navbar-navigation-button.btn .btn-content {
-    @apply w-12 h-12 p-1 justify-center rounded-lg bg-03 text-primary;
-}
-.navbar-navigation-button.btn:hover .btn-content {
-    @apply bg-02;
-}
-.navbar-navigation-button.btn.on .btn-content {
-    @apply bg-01;
+.navbar-navigation-button {
+    @apply p-1 justify-center !bg-white rounded-lg !w-12 !h-12;
 }
 
 .navbar-group-toggle-chats-badge {
