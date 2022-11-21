@@ -5,6 +5,7 @@ import { empty, skipWhile, combineLatestWith, fromEvent, map, of, Subject, switc
 import { computePosition, flip, Middleware, offset, Placement, shift, ReferenceElement, VirtualElement } from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
 import screenSize from '../../Services/ScreenSize/screen-size';
+import { Vibration } from '../../Services/Vibration/vibration';
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MenuHost';
@@ -178,6 +179,7 @@ export class MenuHost implements Disposable {
             )
             .subscribe((eventData: EventData) => {
                 this.renderMenu(eventData);
+                Vibration.vibrate();
             });
 
         fromEvent(document, 'mouseover')
