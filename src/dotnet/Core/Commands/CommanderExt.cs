@@ -4,7 +4,7 @@ namespace ActualChat.Commands;
 
 public static class CommanderExt
 {
-    public static CommanderBuilder AddLocalEventHandlers(this CommanderBuilder builder)
+    public static CommanderBuilder AddEventHandlers(this CommanderBuilder builder)
     {
         var eventCommandHandlerResolverDescriptor = new ServiceDescriptor(typeof(ICommandHandlerResolver),
             typeof(EventCommandHandlerResolver),

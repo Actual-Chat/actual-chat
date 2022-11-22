@@ -42,7 +42,7 @@ public class NotificationModule : HostModule<NotificationSettings>
 
         // Commander & Fusion
         var commander = services.AddCommander()
-            .AddLocalEventHandlers();
+            .AddEventHandlers();
         commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
