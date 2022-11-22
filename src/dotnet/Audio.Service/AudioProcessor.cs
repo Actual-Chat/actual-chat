@@ -74,8 +74,6 @@ public sealed class AudioProcessor : IAudioProcessor
             var language = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
             var languages = ImmutableArray.Create(language);
 
-            var account = await Accounts.GetOwn(record.Session, cancellationToken).ConfigureAwait(false);
-            var identity = account?.Id ?? record.Session.Id;
             var author = await AuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             var audio = new AudioSource(
@@ -111,7 +109,7 @@ public sealed class AudioProcessor : IAudioProcessor
                 cancellationToken);
 
             var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(identity, openSegment, audioEntryTask, cancellationToken),
+                () => TranscribeAudio(record.ChatId, openSegment, audioEntryTask, cancellationToken),
                 Log,
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);

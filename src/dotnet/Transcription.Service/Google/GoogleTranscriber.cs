@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Module;
 using Google.Api.Gax;
@@ -10,7 +11,8 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {
-    private readonly Lazy<Task<Location>> _location;
+    private static readonly Regex _invalidCharsRe = new ("[^a-z0-9-]",RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private readonly Lazy<Task<string>> _projectId;
 
     private CoreSettings CoreSettings { get; }
     private IMemoryCache Cache { get; }
@@ -25,7 +27,7 @@ public class GoogleTranscriber : ITranscriber
         Cache = cache;
         Log = log ?? NullLogger<GoogleTranscriber>.Instance;
         #pragma warning disable VSTHRD011
-        _location = new Lazy<Task<Location>>(BackgroundTask.Run(LoadLocation));
+        _projectId = new Lazy<Task<string>>(BackgroundTask.Run(LoadProjectId));
     }
 
     public IAsyncEnumerable<Transcript> Transcribe(
@@ -34,7 +36,8 @@ public class GoogleTranscriber : ITranscriber
         AudioSource audioSource,
         CancellationToken cancellationToken)
     {
-        var recognizerId = transcriberKey.Value;
+        var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
+        var recognizerId = $"r-{prefix}-{options.Language.ToLowerInvariant()}";
         var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
         var process = new GoogleTranscriberProcess(recognizerTask, options, audioSource, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
@@ -45,16 +48,16 @@ public class GoogleTranscriber : ITranscriber
             var recognizer = await Cache.GetOrCreateAsync(recognizerId1,
             async entry => {
                 var speechClient = await new SpeechClientBuilder().BuildAsync(cancellationToken1).ConfigureAwait(false);
-                var location = await _location.Value;
+                var projectId = await _projectId.Value.ConfigureAwait(false);
 
-                var parent = $"projects/{location.ProjectId}/locations/global";
+                var parent = $"projects/{projectId}/locations/global";
                 var recognizerName = $"{parent}/recognizers/{recognizerId}";
                 try {
                     var existingRecognizer = await speechClient.GetRecognizerAsync(
                         new GetRecognizerRequest {
                             Name = recognizerName,
                         },
-                        cancellationToken1);
+                        cancellationToken1).ConfigureAwait(false);
                     if (existingRecognizer.ExpireTime != null)
                         entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
                     if (existingRecognizer.State == Recognizer.Types.State.Active)
@@ -76,7 +79,7 @@ public class GoogleTranscriber : ITranscriber
                                     MaxAlternatives = 1,
                                     DiarizationConfig = new SpeakerDiarizationConfig {
                                         MinSpeakerCount = 1,
-                                        MaxSpeakerCount = options1.MaxSpeakerCount ?? 5,
+                                        MaxSpeakerCount = options1.MaxSpeakerCount ?? 1,
                                     },
                                     EnableSpokenPunctuation = true,
                                     EnableSpokenEmojis = true,
@@ -89,13 +92,16 @@ public class GoogleTranscriber : ITranscriber
                             },
                         },
                     },
-                    CallSettings.FromCancellationToken(cancellationToken));
-                    // new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(10)), null, null, WriteOptions.Default, null));
+                    // CallSettings.FromCancellationToken(cancellationToken));
+                    new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, WriteOptions.Default, null))
+                    .ConfigureAwait(false);
 
-                var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync();
+                var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
                 var newRecognizer = completedNewRecognizerOperation.Result;
                 if (newRecognizer.ExpireTime != null)
                     entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
+                // let's wait for some time while the recognizer become operational
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
                 return newRecognizer!;
             });
 
@@ -103,17 +109,15 @@ public class GoogleTranscriber : ITranscriber
         }
     }
 
-    private async Task<Location> LoadLocation()
+    private async Task<string> LoadProjectId()
     {
-        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty() && !CoreSettings.GoogleRegionId.IsNullOrEmpty())
-            return new Location(CoreSettings.GoogleProjectId, CoreSettings.GoogleRegionId);
+        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
+            return CoreSettings.GoogleProjectId;
 
         var platform = await Platform.InstanceAsync().ConfigureAwait(false);
         if (platform?.GaeDetails == null)
             throw StandardError.NotSupported<GoogleTranscriber>(
-                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}/{nameof(CoreSettings.GoogleRegionId)}");
-        return new Location(platform.ProjectId, platform.GkeDetails.Location);
+                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
+        return platform.ProjectId;
     }
-
-    private record Location(string ProjectId, string RegionId);
 }
