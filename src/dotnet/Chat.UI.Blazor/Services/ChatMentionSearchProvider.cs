@@ -7,9 +7,9 @@ public class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
     private Session Session { get; }
     private IChats Chats { get; }
 
-    public string ChatId { get; }
+    public ChatId ChatId { get; }
 
-    public ChatMentionSearchProvider(IServiceProvider services, string chatId)
+    public ChatMentionSearchProvider(IServiceProvider services, ChatId chatId)
     {
         Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();

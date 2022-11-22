@@ -2,12 +2,12 @@ using System.Numerics;
 
 namespace ActualChat.Mathematics;
 
-public static class MaybeTrimmedExt
+public static class TrimmedExt
 {
-    public static MaybeTrimmed<T> Sum<T>(this IEnumerable<MaybeTrimmed<T>> values)
+    public static Trimmed<T> Sum<T>(this IEnumerable<Trimmed<T>> values)
         where T : IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
     {
-        var sum = default(MaybeTrimmed<T>);
+        var sum = default(Trimmed<T>);
         foreach (var value in values) {
             sum += value;
             if (sum.IsTrimmed)

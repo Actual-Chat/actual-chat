@@ -9,15 +9,15 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ContactUI
 {
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+    private ChatUI? _chatUI;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IChats Chats { get; }
     private IContacts Contacts { get; }
-    private UnreadMessages UnreadMessages { get; }
+    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private MomentClockSet Clocks { get; }
-
     private Moment Now => Clocks.SystemClock.Now;
 
     public IStoredState<ContactId> SelectedContactId { get; }
@@ -30,7 +30,6 @@ public class ContactUI
         Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
         Contacts = services.GetRequiredService<IContacts>();
-        UnreadMessages = services.GetRequiredService<UnreadMessages>();
         Clocks = services.Clocks();
 
         var localSettings = services.LocalSettings();
@@ -51,6 +50,25 @@ public class ContactUI
     public virtual Task<bool> IsPinned(ContactId contactId)
         => Task.FromResult(PinnedContacts.Value.Contains(contactId));
 
+    public Task<ChatState?> GetState(ContactId contactId, CancellationToken cancellationToken)
+        => ChatUI.GetState(contactId.ChatId, cancellationToken); // Just a shortcut
+
+    [ComputeMethod]
+    public virtual async Task<ImmutableList<ChatState>> ListStates(CancellationToken cancellationToken)
+    {
+        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        var chats = await contactIds
+            .Select(contactId => GetState(contactId, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        var result = chats
+            .SkipNullItems()
+            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
+            .ToImmutableList();
+        return result;
+    }
+
     public ValueTask Pin(ContactId contactId) => SetPinState(contactId, true);
     public ValueTask Unpin(ContactId contactId) => SetPinState(contactId, false);
 
@@ -67,26 +85,6 @@ public class ContactUI
     }
 
     // Protected & private methods
-
-    [ComputeMethod]
-    protected virtual async Task<ImmutableList<ContactSummary>> ListSummaries(CancellationToken cancellationToken)
-    {
-        var contacts = await Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
-        var summaries = await contacts
-            .Select(async c => {
-                var hasMentions = await UnreadMessages.HasMentions(c.ChatId, cancellationToken).ConfigureAwait(false);
-                var unreadMessageCount = await UnreadMessages.GetCount(c.ChatId, cancellationToken).ConfigureAwait(false);
-                return new ContactSummary(c, hasMentions, unreadMessageCount);
-            })
-            .Collect()
-            .ConfigureAwait(false);
-
-        var result = summaries
-            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
-            .Select(c => c.Contact)
-            .ToImmutableList();
-        return result;
-    }
 
     private async ValueTask UpdatePinnedContacts(
         Func<ImmutableHashSet<PinnedContact>, ImmutableHashSet<PinnedContact>> updater,

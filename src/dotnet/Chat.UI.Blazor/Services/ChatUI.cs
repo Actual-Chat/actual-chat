@@ -1,3 +1,4 @@
+using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
@@ -9,24 +10,28 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ChatUI
 {
+    public const int MaxUnreadChatCount = 100;
     public const int MaxActiveChatCount = 3;
 
     private ChatPlayers? _chatPlayers;
+    private ContactUI? _contactUI;
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
-    private readonly IUpdateDelayer _lastReadEntryStatesUpdateDelayer;
+    private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
+    private IAccounts Accounts { get; }
     private IChats Chats { get; }
+    private IContacts Contacts { get; }
     private IReadPositions ReadPositions { get; }
+    private IMentions Mentions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private ContactUI ContactUI { get; }
+    private ContactUI ContactUI => _contactUI ??= Services.GetRequiredService<ContactUI>();
     private ModalUI ModalUI { get; }
     private MomentClockSet Clocks { get; }
     private UICommander UICommander { get; }
-
     private Moment Now => Clocks.SystemClock.Now;
 
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
@@ -38,9 +43,11 @@ public class ChatUI
         Services = services;
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
+        Accounts = services.GetRequiredService<IAccounts>();
         Chats = services.GetRequiredService<IChats>();
+        Contacts = services.GetRequiredService<IContacts>();
         ReadPositions = services.GetRequiredService<IReadPositions>();
-        ContactUI = services.GetRequiredService<ContactUI>();
+        Mentions = services.GetRequiredService<IMentions>();
         ModalUI = services.GetRequiredService<ModalUI>();
         Clocks = services.Clocks();
         UICommander = services.UICommander();
@@ -55,11 +62,54 @@ public class ChatUI
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<ChatEntryId>();
 
-        // Read entry states from other windows / devices aren't delayed
-        _lastReadEntryStatesUpdateDelayer = FixedDelayer.Instant;
+        // Read entry states from other windows / devices are delayed by 1s
+        _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateReadState);
         var uiStateSync = services.GetRequiredService<UIStateSync>();
         uiStateSync.Start();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ChatState?> GetState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsEmpty)
+            return null;
+
+        var accountTask = Accounts.GetOwn(Session, cancellationToken);
+        var chatTask = Chats.Get(Session, chatId, cancellationToken);
+        var chatSummaryTask = Chats.GetSummary(Session, chatId, cancellationToken);
+        var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
+        var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
+
+        var isSelectedTask = IsSelected(chatId);
+        var isPinnedTask = IsPinned(chatId);
+        var isListeningTask = IsListening(chatId);
+        var isRecordingTask = IsRecording(chatId);
+
+        var account = await accountTask.ConfigureAwait(false);
+        if (account == null)
+            return null;
+
+        var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
+        var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
+
+        var chat = await chatTask.ConfigureAwait(false);
+        var chatSummary = await chatSummaryTask.ConfigureAwait(false);
+        if (chat == null || chatSummary == null)
+            return null;
+
+        var result = new ChatState() {
+            Chat = chat,
+            Summary = chatSummary,
+            Contact = contact,
+            LastMention = await lastMentionTask.ConfigureAwait(false),
+            ReadEntryId = await readEntryIdTask.ConfigureAwait(false),
+            IsSelected = await isSelectedTask.ConfigureAwait(false),
+            IsPinned = await isPinnedTask.ConfigureAwait(false),
+            IsListening = await isListeningTask.ConfigureAwait(false),
+            IsRecording = await isRecordingTask.ConfigureAwait(false),
+        };
+        return result;
     }
 
     [ComputeMethod]
@@ -115,6 +165,8 @@ public class ChatUI
         return listeningChatIds.Count > 0;
     }
 
+    // SetXxx & Add/RemoveXxx
+
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
         if (chatId.IsEmpty)
@@ -165,6 +217,8 @@ public class ChatUI
         return UpdateActiveChats(activeChats => activeChats.Remove(chatId));
     }
 
+    // Helpers
+
     public void ShowAuthorModal(AuthorId authorId)
         => ModalUI.Show(new AuthorModal.Model(authorId));
 
@@ -179,22 +233,32 @@ public class ChatUI
         return result;
     }
 
+    // Private methods
+
+    // TODO: Make it non-nullable?
+    private async ValueTask<long?> GetReadEntryId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        using var readEntryState = await LeaseReadState(chatId, cancellationToken).ConfigureAwait(false);
+        return await readEntryState.Use(cancellationToken).ConfigureAwait(false);
+    }
+
     private Task<ISyncedState<long?>> CreateReadState(Symbol chatId, CancellationToken cancellationToken)
-        => Task.FromResult(StateFactory.NewCustomSynced<long?>(
-            new(
+    {
+        var pChatId = new ChatId(chatId, ParseOptions.Skip);
+        return Task.FromResult(StateFactory.NewCustomSynced<long?>(
+            new (
                 // Reader
-                async ct => await ReadPositions.GetOwn(Session, chatId, ct).ConfigureAwait(false),
+                async ct => await ReadPositions.GetOwn(Session, pChatId, ct).ConfigureAwait(false),
                 // Writer
-                async (lastReadEntryId, ct) => {
-                    if (lastReadEntryId is not { } entryId)
+                async (readEntryId, ct) => {
+                    if (readEntryId is not { } entryId)
                         return;
 
-                    var command = new IReadPositions.SetCommand(Session, chatId, entryId);
+                    var command = new IReadPositions.SetCommand(Session, pChatId, entryId);
                     await UICommander.Run(command, ct);
-                }) { UpdateDelayer = _lastReadEntryStatesUpdateDelayer }
-            ));
-
-    // Private methods
+                }) { UpdateDelayer = _readStateUpdateDelayer }
+        ));
+    }
 
     private async ValueTask UpdateActiveChats(
         Func<ImmutableHashSet<ActiveChat>, ImmutableHashSet<ActiveChat>> updater,

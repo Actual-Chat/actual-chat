@@ -21,11 +21,13 @@ public class FrontendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        var targetId = mention.Id;
-        if (targetId.OrdinalHasPrefix("u:", out var userId))
-            throw StandardError.NotSupported("User mentions aren't supported yet.");
-        if (!targetId.OrdinalHasPrefix("a:", out var authorId))
-            authorId = targetId;
+        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
+            return null;
+
+        var authorId = new AuthorId(sAuthorId, ParseOptions.OrDefault);
+        if (authorId.IsEmpty)
+            return null;
+
         return await Authors.Get(Session, ChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 

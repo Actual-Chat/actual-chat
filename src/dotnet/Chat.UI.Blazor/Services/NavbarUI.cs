@@ -9,6 +9,7 @@ public class NavbarUI
     private ContactUI ContactUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
+
     public bool IsVisible { get; private set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
@@ -69,7 +70,7 @@ public class NavbarUI
     private bool ShouldShowNavbar()
     {
         var relativeUrl = Nav.GetRelativePath();
-        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(""));
+        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(default));
         return showNavbar;
     }
 

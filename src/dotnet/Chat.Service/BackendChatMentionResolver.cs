@@ -19,8 +19,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        var targetId = mention.Id;
-        if (!targetId.OrdinalHasPrefix("a:", out var sAuthorId))
+        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
             return null;
 
         var authorId = new AuthorId(sAuthorId, ParseOptions.OrDefault);

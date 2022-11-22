@@ -10,7 +10,7 @@ public static class ContactsExt
         this IContacts contacts,
         Session session,
         CancellationToken cancellationToken)
-        => contacts.ListContacts(session, c => c.Chat != null && c.Account == null, cancellationToken);
+        => contacts.ListContacts(session, c => c.Account == null, cancellationToken);
 
     public static ValueTask<List<Contact>> ListUserContacts(
         this IContacts contacts,

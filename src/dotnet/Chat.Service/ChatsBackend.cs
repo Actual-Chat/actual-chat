@@ -116,10 +116,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length > 0 ? tile.Entries[^1] : null;
-        return new ChatSummary() {
-            TextEntryIdRange = idRange,
-            LastTextEntry = lastEntry,
-        };
+        return new ChatSummary(chatId, idRange, lastEntry);
     }
 
     // [ComputeMethod]

@@ -15,7 +15,7 @@ public sealed record Contact : IHasId<ContactId>, IHasVersion<long>, IRequiremen
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsStored => Version == 0;
+    public bool IsStored => Version != 0;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public UserId OwnerId => Id.OwnerId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]

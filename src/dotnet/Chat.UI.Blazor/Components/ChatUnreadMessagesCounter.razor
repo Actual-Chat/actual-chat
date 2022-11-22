@@ -56,7 +56,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public MaybeTrimmed<int> Count { get; init; }
+        public Trimmed<int> Count { get; init; }
         public bool HasMentions { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
     }

@@ -59,7 +59,7 @@
         };
     }
 
-    public sealed record Model(MaybeTrimmed<int> Count = default, bool IsSubscribed = false) {
+    public sealed record Model(Trimmed<int> Count = default, bool IsSubscribed = false) {
         public static readonly Model None = new();
     }
 }
