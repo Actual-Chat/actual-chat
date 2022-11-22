@@ -122,14 +122,14 @@ public class GoogleTranscriberProcess : WorkerBase
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            // TODO(AK): ResultEndOffset is null!
             var resultEndOffset = results.First().ResultEndOffset;
-            if (resultEndOffset != null) {
-                var endTime = (float)resultEndOffset.ToTimeSpan().TotalSeconds;
-                transcript = State.AppendAlternative(text, endTime);
-                DebugLog?.LogDebug("Transcript={Transcript}", transcript);
-                Transcripts.Writer.TryWrite(transcript);
-            }
+            var endTime = resultEndOffset == null
+                ? null
+                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
+
+            transcript = State.AppendAlternative(text, endTime);
+            DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+            Transcripts.Writer.TryWrite(transcript);
         }
     }
 
@@ -141,7 +141,10 @@ public class GoogleTranscriberProcess : WorkerBase
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
 
         var alternative = result.Alternatives.Single();
-        var endTime = (float)result.ResultEndOffset.ToTimeSpan().TotalSeconds;
+        var resultEndOffset = result.ResultEndOffset;
+        var endTime = resultEndOffset == null
+            ? null
+            : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
         if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
             text = " " + text;
@@ -150,7 +153,9 @@ public class GoogleTranscriberProcess : WorkerBase
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
         foreach (var word in alternative.Words) {
-            var wordStartTime = (float)word.StartOffset.ToTimeSpan().TotalSeconds;
+            var wordStartTime = word.StartOffset == null
+                ? 0
+                : (float)word.StartOffset.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
             var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
@@ -173,7 +178,7 @@ public class GoogleTranscriberProcess : WorkerBase
         }
 
         var lastPoint = mapPoints[^1];
-        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime);
+        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime ?? mapPoints.Max(v => v.Y));
         if (Math.Abs(lastPoint.X - veryLastPoint.X) < 0.1)
             mapPoints[^1] = veryLastPoint;
         else

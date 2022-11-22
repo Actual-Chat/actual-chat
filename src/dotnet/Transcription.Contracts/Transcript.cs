@@ -172,11 +172,11 @@ public sealed class Transcript
         return diff;
     }
 
-    public Transcript WithSuffix(string suffix, float suffixEndTime, bool? suffixIsStable = null)
+    public Transcript WithSuffix(string suffix, float? suffixEndTime, bool? suffixIsStable = null)
     {
         var suffixTextToTimeMap = new LinearMap(
             new Vector2(TextRange.End, TimeRange.End),
-            new Vector2(TextRange.End + suffix.Length, suffixEndTime)
+            new Vector2(TextRange.End + suffix.Length, suffixEndTime ?? 0)
         ).TrySimplifyToPoint();
         return WithSuffix(suffix, suffixTextToTimeMap, suffixIsStable ?? IsStable);
     }
