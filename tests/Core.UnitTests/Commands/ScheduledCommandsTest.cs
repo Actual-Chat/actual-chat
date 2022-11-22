@@ -9,10 +9,11 @@ public class ScheduledCommandsTest: TestBase
     public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
     { }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task EnqueueEventOnCommandCompletion()
     {
         await using var services = new ServiceCollection()
+            .AddLogging()
             .AddFusion()
             .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
@@ -31,12 +32,13 @@ public class ScheduledCommandsTest: TestBase
         testService.ProcessedEvents.Count.Should().Be(1);
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task MultipleEventHandlersAreCalled()
     {
         await using var services = new ServiceCollection()
+            .AddLogging()
             .AddCommander()
-            .AddLocalEventHandlers()
+            .AddEventHandlers()
             .AddHandlers<DedicatedInterfaceEventHandler>()
             .Services
             .AddSingleton<DedicatedInterfaceEventHandler>()

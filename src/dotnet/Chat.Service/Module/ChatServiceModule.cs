@@ -61,7 +61,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // Commander & Fusion
         var commander = services.AddCommander()
-            .AddLocalEventHandlers();
+            .AddEventHandlers();
         commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
