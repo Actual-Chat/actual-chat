@@ -69,8 +69,6 @@ internal class AndroidAudioOutputController : IAudioOutputController
         if (_audioSwitch != null)
             return;
 
-        _audioSwitch = new AudioSwitch(Platform.AppContext, true, new FocusChangeListener());
-        _audioSwitch.Start(new StartupCallback());
         _audioManager = Platform.AppContext.GetSystemService(Context.AudioService) as AudioManager;
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
@@ -80,6 +78,8 @@ internal class AndroidAudioOutputController : IAudioOutputController
                 Log.Warn(AndroidConstants.LogTag, Java.Lang.Throwable.FromException(e), "Failed to add ModeChangedListener");
             }
         }
+        _audioSwitch = new AudioSwitch(Platform.AppContext, true, new FocusChangeListener());
+        _audioSwitch.Start(new StartupCallback());
         _whenInitializedSource.TrySetResult(default);
     }
 
