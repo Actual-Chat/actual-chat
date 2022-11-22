@@ -44,7 +44,7 @@
         };
     }
 
-    private async Task OnClose(string notificationId) {
+    private async Task OnClose(Symbol notificationId) {
         var command = new INotifications.HandleNotificationCommand(Session, notificationId);
         await UICommander.Run(command);
     }

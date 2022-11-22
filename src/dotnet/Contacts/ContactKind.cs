@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Contacts;
 
 public enum ContactKind
 {

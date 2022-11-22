@@ -6,19 +6,19 @@ public static class KvasExt
 {
     // UserChatSettings
 
-    public static async ValueTask<ChatNotificationMode> GetChatNotificationMode(this IKvas kvas, string chatId, CancellationToken cancellationToken)
+    public static async ValueTask<ChatNotificationMode> GetChatNotificationMode(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var chatUserSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return chatUserSettings.NotificationMode;
     }
 
-    public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, string chatId, CancellationToken cancellationToken)
+    public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
-    public static Task SetUserChatSettings(this IKvas kvas, string chatId, UserChatSettings value, CancellationToken cancellationToken)
+    public static Task SetUserChatSettings(this IKvas kvas, ChatId chatId, UserChatSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserChatSettings.GetKvasKey(chatId), value, cancellationToken);
 
     // UserAvatarSettings

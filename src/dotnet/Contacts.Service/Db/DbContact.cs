@@ -32,6 +32,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new() {
             Id = new ContactId(Id),
             Version = Version,
+            UserId = new UserId(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
         };
 
@@ -44,17 +45,9 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         var id = model.Id;
         Id = id;
-        OwnerId = id.OwnerId;
-        switch (id.Kind) {
-        case ContactKind.User:
-            UserId = id.OwnerId;
-            break;
-        case ContactKind.Chat:
-            ChatId = id.OwnerId;
-            break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(model));
-        }
+        OwnerId = model.OwnerId;
+        ChatId = model.ChatId.Value.NullIfEmpty();
+        UserId = model.UserId.Value.NullIfEmpty();
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

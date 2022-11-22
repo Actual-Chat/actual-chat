@@ -35,7 +35,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(
-        string chatId, string authorId,
+        ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
         if (!AuthorId.TryParse(authorId, out var parsedAuthorId))
@@ -49,7 +49,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return AuthorExt.GetWalle(parsedChatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
-        if (dbAuthor == null || !OrdinalEquals(dbAuthor.ChatId, chatId))
+        if (dbAuthor == null || !OrdinalEquals(dbAuthor.ChatId, chatId.Value))
             return null;
 
         var author = dbAuthor.ToModel();
@@ -59,16 +59,14 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetByUserId(
-        string chatId, string userId,
+        ChatId chatId, UserId userId,
         CancellationToken cancellationToken)
     {
-        if (userId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
+        if (chatId.IsEmpty || userId.IsEmpty)
             return null;
 
-        if (OrdinalEquals(userId, Constants.User.Walle.UserId.Value)) {
-            var parsedChatId = ChatId.ParseOrDefault(chatId);
-            return parsedChatId.IsEmpty ? null : AuthorExt.GetWalle(parsedChatId);
-        }
+        if (userId == Constants.User.Walle.UserId)
+            return AuthorExt.GetWalle(chatId);
 
         AuthorFull? author;
         { // Closes "using" block earlier
@@ -89,7 +87,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // Not a [ComputeMethod]!
-    public async Task<AuthorFull> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
+    public async Task<AuthorFull> GetOrCreate(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var author = await Frontend.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
@@ -98,7 +96,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var userId = account?.Id ?? default;
 
-        var command = new IAuthorsBackend.CreateCommand(new ChatId(chatId), userId, false);
+        var command = new IAuthorsBackend.CreateCommand(chatId, userId, false);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
@@ -111,21 +109,21 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // Not a [ComputeMethod]!
-    public async Task<AuthorFull> GetOrCreate(string chatId, string userId, CancellationToken cancellationToken)
+    public async Task<AuthorFull> GetOrCreate(ChatId chatId, UserId userId, CancellationToken cancellationToken)
     {
         var author = await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             return author;
 
-        var command = new IAuthorsBackend.CreateCommand(new ChatId(chatId), new UserId(userId), true);
+        var command = new IAuthorsBackend.CreateCommand(chatId, userId, true);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNullOrEmpty())
+        if (chatId.IsEmpty)
             return ImmutableArray<AuthorId>.Empty;
 
         var dbContext = CreateDbContext();
@@ -140,9 +138,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<UserId>> ListUserIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNullOrEmpty())
+        if (chatId.IsEmpty)
             return ImmutableArray<UserId>.Empty;
 
         var dbContext = CreateDbContext();

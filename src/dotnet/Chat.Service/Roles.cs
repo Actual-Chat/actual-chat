@@ -23,7 +23,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // [ComputeMethod]
     public virtual async Task<Role?> Get(
-        Session session, string chatId, string roleId, CancellationToken cancellationToken)
+        Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
@@ -35,7 +35,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Role>> List(
-        Session session, string chatId, CancellationToken cancellationToken)
+        Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -51,7 +51,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
-        Session session, string chatId, string roleId, CancellationToken cancellationToken)
+        Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
@@ -76,7 +76,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // Private methods
 
-    private async Task<bool> IsOwner(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task<bool> IsOwner(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })
@@ -93,7 +93,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         return true;
     }
 
-    private async Task RequireOwner(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task RequireOwner(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })

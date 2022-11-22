@@ -41,7 +41,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = sessionInfo.UserId;
+        var userId = new UserId(sessionInfo.UserId);
 
         if (Computed.IsInvalidating()) {
             InvalidatePresenceIfOffline(userId);
@@ -84,7 +84,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = sessionInfo.UserId;
+        var userId = new UserId(sessionInfo.UserId);
 
         new IServerKvas.MoveSessionKeysCommand(command.Session)
             .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
@@ -128,8 +128,8 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-        var userId = sessionInfo?.UserId;
-        if (userId == null)
+        var userId = new UserId(sessionInfo?.UserId, ParseOptions.OrDefault);
+        if (userId.IsEmpty)
             return;
 
         if (Computed.IsInvalidating()) {
@@ -146,10 +146,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
     // Private methods
 
-    private async Task UpdatePresence(
-        UsersDbContext dbContext,
-        string userId,
-        CancellationToken cancellationToken)
+    private async Task UpdatePresence(UsersDbContext dbContext, UserId userId, CancellationToken cancellationToken)
     {
         var dbUserPresence = await dbContext.UserPresences
             .ForUpdate()
@@ -162,7 +159,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;
     }
 
-    private void InvalidatePresenceIfOffline(string userId)
+    private void InvalidatePresenceIfOffline(UserId userId)
     {
         var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
         if (c == null || c.IsInvalidated())

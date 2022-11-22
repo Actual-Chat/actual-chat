@@ -19,7 +19,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(string entryId, string authorId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -31,14 +31,14 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> List(
-        string entryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
-            .Where(x => x.EntryId == entryId && x.Count > 0)
+            .Where(x => x.EntryId == entryId.Value && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbReactionSummaries.Select(x => x.ToModel()).ToImmutableArray();
@@ -48,16 +48,16 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     public virtual async Task React(IReactionsBackend.ReactCommand command, CancellationToken cancellationToken)
     {
         var reaction = command.Reaction;
-        var chatEntryId = reaction.EntryId;
-        var chatId = chatEntryId.ChatId;
+        var entryId = reaction.EntryId;
+        var chatId = entryId.ChatId;
         var authorId = reaction.AuthorId;
         if (Computed.IsInvalidating()) {
-            _ = List(chatEntryId, default);
-            _ = Get(chatEntryId, authorId, default);
+            _ = List(entryId, default);
+            _ = Get(entryId, authorId, default);
             return;
         }
 
-        var entry = await GetChatEntry(chatEntryId, cancellationToken).Require().ConfigureAwait(false);
+        var entry = await GetChatEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -65,7 +65,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbReaction = await dbContext.Reactions
-            .Get(DbReaction.ComposeId(chatEntryId, authorId), cancellationToken)
+            .Get(DbReaction.ComposeId(entryId, authorId), cancellationToken)
             .ConfigureAwait(false);
         var needsHasReactionsUpdate = true;
         var changeKind = ChangeKind.Create;
@@ -108,7 +108,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
         ValueTask<DbReactionSummary?> GetDbSummary(string emoji)
         {
-            var id = DbReactionSummary.ComposeId(chatEntryId, emoji);
+            var id = DbReactionSummary.ComposeId(entryId, emoji);
             return dbContext.ReactionSummaries.Get(id, cancellationToken);
         }
 
@@ -120,7 +120,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
             if (dbSummary == null) {
                 dbSummary = new DbReactionSummary(new ReactionSummary {
-                    EntryId = chatEntryId,
+                    EntryId = entryId,
                     FirstAuthorIds = ImmutableList.Create(authorId),
                     Emoji = emoji,
                     Count = 1,
@@ -147,7 +147,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         async Task UpdateHasReactions()
         {
             var hasReactionsAfter = await dbContext.ReactionSummaries
-                .AnyAsync(x => x.EntryId == chatEntryId.Value && x.Count > 0, cancellationToken)
+                .AnyAsync(x => x.EntryId == entryId.Value && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
             entry = entry with { HasReactions = hasReactionsAfter };
             entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);

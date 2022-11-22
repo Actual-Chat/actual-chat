@@ -22,10 +22,9 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Role?> Get(string chatId, string roleId, CancellationToken cancellationToken)
+    public virtual async Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
-        var parsedRoleId = new RoleId(roleId);
-        if (parsedRoleId.ChatId.Value != chatId)
+        if (roleId.ChatId != chatId)
             return null;
 
         var dbRole = await DbRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
@@ -33,7 +32,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Role>> List(string chatId, string authorId,
+    public virtual async Task<ImmutableArray<Role>> List(ChatId chatId, AuthorId authorId,
         bool isAuthenticated, bool isAnonymous,
         CancellationToken cancellationToken)
     {
@@ -72,7 +71,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Role>> ListSystem(
-        string chatId, CancellationToken cancellationToken)
+        ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -93,7 +92,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
-        string chatId, string roleId, CancellationToken cancellationToken)
+        ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -143,7 +142,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             var localId = await DbRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new RoleId(chatId, localId, Parse.None).Id;
+            roleId = new RoleId(chatId, localId, ParseOptions.Skip).Id;
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };

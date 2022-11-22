@@ -2,6 +2,6 @@ namespace ActualChat;
 
 public enum ChatKind
 {
-    Group,
+    Group = 0,
     Peer,
 }

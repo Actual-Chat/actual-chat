@@ -18,31 +18,31 @@ public class AuthorsController : ControllerBase, IAuthors
     }
 
     [HttpGet, Publish]
-    public Task<Author?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
         => Service.Get(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.GetOwn(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
         => Service.GetFull(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
         => Service.GetAccount(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListUserIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken)
+    public Task<Presence> GetAuthorPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
         => Service.GetAuthorPresence(session, chatId, authorId, cancellationToken);
 
     // Commands

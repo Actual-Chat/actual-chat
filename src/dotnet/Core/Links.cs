@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public static class Links
 {
-    public static string ChatPage(string chatId, long? entryId = null)
+    public static string ChatPage(ChatId chatId, long? entryId = null)
         => entryId.HasValue
             ? $"/chat/{chatId}#{entryId}"
             : $"/chat/{chatId}";

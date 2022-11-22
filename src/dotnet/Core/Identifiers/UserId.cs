@@ -3,11 +3,9 @@ using Stl.Generators;
 
 namespace ActualChat;
 
-#pragma warning disable MA0011
-
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IRequirementTarget, ICanBeEmpty
+public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
 {
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
@@ -25,15 +23,15 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IRequir
     public bool IsGuestId => !IsEmpty && Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
-        => new(IdGenerator.Next(), ActualChat.Parse.None);
+        => new(IdGenerator.Next(), ParseOptions.Skip);
     public static UserId NewGuest()
-        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), ActualChat.Parse.None);
+        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), ParseOptions.Skip);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public UserId(Symbol id) => this = Parse(id);
-    public UserId(string id) => this = Parse(id);
-    public UserId(Symbol id, SkipParseTag _) => Id = id;
-    public UserId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
+    public UserId(string? id) => this = Parse(id);
+    public UserId(Symbol id, SkipParseOption _) => Id = id;
+    public UserId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
 
     // Conversion
 
@@ -52,9 +50,9 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IRequir
 
     // Parsing
 
-    public static UserId Parse(string s)
+    public static UserId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>();
-    public static UserId ParseOrDefault(string s)
+    public static UserId ParseOrDefault(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out UserId result)
@@ -63,16 +61,17 @@ public readonly struct UserId : IEquatable<UserId>, IComparable<UserId>, IRequir
         if (s == null || s.Length < 3) // Tests may use some accounts with short Ids + there is "admin"
             return false;
 
+        var alphabet = Alphabet.AlphaNumeric;
         for (var i = 0; i < s.Length; i++) {
             var c = s[i];
-            if (!char.IsLetterOrDigit(c)) {
+            if (!alphabet.IsMatch(c)) {
                 if (c == GuestIdPrefixChar && i == 0)
                     continue; // GuestId
                 return false;
             }
         }
 
-        result = new UserId(s, ActualChat.Parse.None);
+        result = new UserId(s, ParseOptions.Skip);
         return true;
     }
 }

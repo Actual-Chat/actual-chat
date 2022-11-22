@@ -83,7 +83,7 @@
         EditAvatar(avatar.Id, "Add avatar");
     }
 
-    private void EditAvatar(string avatarId, string title) {
+    private void EditAvatar(Symbol avatarId, string title) {
         ModalUI.Show(new OwnAvatarEditorModal.Model(avatarId, new ChatId(ChatId), title));
     }
 

@@ -15,7 +15,7 @@ public class MentionsController : ControllerBase, IMentions
     [HttpGet, Publish]
     public Task<Mention?> GetLastOwn(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
         => Service.GetLastOwn(session, chatId, cancellationToken);
 }

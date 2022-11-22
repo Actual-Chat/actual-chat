@@ -1,26 +1,24 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
-public partial interface IChatsBackend : IComputeService
+public interface IChatsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatSummary?> GetSummary(
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<AuthorRules> GetRules(
-        string chatId,
-        string principalId,
+        ChatId chatId,
+        PrincipalId principalId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<long> GetEntryCount(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long>? idTileRange,
         bool includeRemoved,
@@ -28,7 +26,7 @@ public partial interface IChatsBackend : IComputeService
 
     [ComputeMethod]
     Task<ChatTile> GetTile(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
@@ -37,7 +35,7 @@ public partial interface IChatsBackend : IComputeService
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod]
     Task<Range<long>> GetIdRange(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         bool includeRemoved,
         CancellationToken cancellationToken);
@@ -56,7 +54,7 @@ public partial interface IChatsBackend : IComputeService
         [property: DataMember] ChatId ChatId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatDiff> Change,
-        [property: DataMember] UserId CreatorUserId = default
+        [property: DataMember] UserId OwnerId = default
     ) : ICommand<Chat>, IBackendCommand;
 
     [DataContract]

@@ -1,23 +1,17 @@
 namespace ActualChat;
 
-#pragma warning disable MA0011
-
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ContactId : IEquatable<ContactId>, IRequirementTarget, ICanBeEmpty
+public readonly struct ContactId : ISymbolIdentifier<ContactId>
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
     // Set on deserialization
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ContactKind Kind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public UserId OwnerId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatId ChatId { get; } // Must be set even for user contacts
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    private UserId UserId { get; }
+    public ChatId ChatId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -28,52 +22,21 @@ public readonly struct ContactId : IEquatable<ContactId>, IRequirementTarget, IC
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ContactId(Symbol id) => this = Parse(id);
     public ContactId(string id) => this = Parse(id);
-    public ContactId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
+    public ContactId(string id, ParseOrDefaultOption _) => ParseOrDefault(id);
 
-    public ContactId(Symbol id, UserId ownerId, UserId userId, SkipParseTag _)
+    public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipParseOption _)
     {
         Id = id;
-        Kind = ContactKind.User;
         OwnerId = ownerId;
-        UserId = userId;
-        ChatId = new ChatId(OwnerId, userId, ActualChat.Parse.None);
-    }
-
-    public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipParseTag _)
-    {
-        Id = id;
-        Kind = ContactKind.Chat;
-        OwnerId = ownerId;
-        UserId = default;
         ChatId = chatId;
     }
 
-    public ContactId(UserId ownerId, UserId userId, SkipParseTag _)
+    public ContactId(UserId ownerId, ChatId chatId, SkipParseOption _)
     {
-        Id = $"{ownerId} u:{userId}";
-        Kind = ContactKind.User;
+        Id = $"{ownerId} {chatId}";
         OwnerId = ownerId;
-        UserId = userId;
-        ChatId = new ChatId(OwnerId, userId, ActualChat.Parse.None);
-    }
-
-    public ContactId(UserId ownerId, ChatId chatId, SkipParseTag _)
-    {
-        Id = $"{ownerId} c:{chatId}";
-        Kind = ContactKind.Chat;
-        OwnerId = ownerId;
-        UserId = default;
         ChatId = chatId;
     }
-
-    public bool IsUserContact(out UserId userId)
-    {
-        userId = UserId;
-        return Kind == ContactKind.User;
-    }
-
-    public bool IsChatContact()
-        => Kind == ContactKind.Chat;
 
     // Conversion
 
@@ -91,9 +54,9 @@ public readonly struct ContactId : IEquatable<ContactId>, IRequirementTarget, IC
 
     // Parsing
 
-    public static ContactId Parse(string s)
+    public static ContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>();
-    public static ContactId ParseOrDefault(string s)
+    public static ContactId ParseOrDefault(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out ContactId result)
@@ -103,25 +66,15 @@ public readonly struct ContactId : IEquatable<ContactId>, IRequirementTarget, IC
             return false;
 
         var spaceIndex = s.IndexOf(' ');
-        if (spaceIndex <= 0 || spaceIndex + 3 >= s.Length)
-            return false;
-        if (s[spaceIndex + 2] != ':')
-            return false;
-        if (!UserId.TryParse(s[..spaceIndex], out var ownerId))
+        if (spaceIndex <= 0)
             return false;
 
-        switch (s[spaceIndex + 1]) {
-        case 'u':
-            if (!UserId.TryParse(s[(spaceIndex + 3)..], out var userId))
-                return false;
-            result = new ContactId(s, ownerId, userId, ActualChat.Parse.None);
-            return true;
-        case 'c':
-            if (!ChatId.TryParse(s[(spaceIndex + 3)..], out var chatId))
-                return false;
-            result = new ContactId(s, ownerId, chatId, ActualChat.Parse.None);
-            return true;
-        }
-        return false;
+        if (!UserId.TryParse(s[..spaceIndex], out var ownerId))
+            return false;
+        if (!ChatId.TryParse(s[(spaceIndex + 1)..], out var chatId))
+            return false;
+
+        result = new ContactId(s, ownerId, chatId, ParseOptions.Skip);
+        return true;
     }
 }

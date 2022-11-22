@@ -33,7 +33,7 @@ internal class Invites : IInvites
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Invite>> ListChatInvites(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
         await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -78,7 +78,7 @@ internal class Invites : IInvites
         => Accounts.GetOwn(session, cancellationToken)
             .Require(AccountFull.MustBeAdmin);
 
-    private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Invite);

@@ -21,52 +21,13 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
     {
-        var contactId = new ContactId(id);
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null || account.Id != contactId.OwnerId)
             return null;
 
-        var contact = await Backend.Get(account.Id, id, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var ownerId = account.Id;
-
-        var parsedChatId = new ChatId(chatId);
-        ContactId id;
-        if (parsedChatId.IsPeerChatId(ownerId, out var userId))
-            id = new ContactId(ownerId, userId, Parse.None);
-        else if (parsedChatId.IsGroupChatId())
-            id = new ContactId(ownerId, parsedChatId, Parse.None);
-        else
-            return null;
-
-        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var ownerId = account.Id;
-
-        var id = new ContactId(ownerId, new UserId(userId), Parse.None);
-        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
+        var contact = await Backend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
 

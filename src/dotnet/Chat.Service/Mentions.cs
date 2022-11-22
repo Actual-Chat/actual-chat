@@ -16,7 +16,7 @@ internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLastOwn(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);

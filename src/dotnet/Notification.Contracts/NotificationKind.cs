@@ -1,6 +1,6 @@
 namespace ActualChat.Notification;
 
-public enum NotificationType
+public enum NotificationKind
 {
     Message = 1,
     Reply,

@@ -159,7 +159,7 @@ public class AudioProcessorTest : AppHostTestBase
         AudioProcessor audioProcessor,
         ILogger log,
         Session session,
-        string chatId,
+        ChatId chatId,
         string fileName = "file.webm",
         bool webMStream = true)
     {

@@ -65,7 +65,7 @@
                 OwnAccount = ownAccount,
             };
 
-        var contactId = new ContactId(ownAccount.Id, account.Id, Parse.None);
+        var contactId = new ContactId(ownAccount.Id, account.Id, ParseOptions.Skip);
         var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
         var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {

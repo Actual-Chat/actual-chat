@@ -21,24 +21,21 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => _modifiedAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public static string ComposeId(string chatEntryId, string authorId)
-        => $"{chatEntryId}:{authorId}";
+    public static string ComposeId(ChatEntryId entryId, AuthorId authorId)
+        => $"{entryId}:{authorId}";
 
     public DbReaction() { }
     public DbReaction(Reaction model) => UpdateFrom(model);
 
     public Reaction ToModel()
-    {
-        var chatEntryId = new ChatEntryId(EntryId);
-        return new () {
+        => new () {
             Id = Id,
             Version = Version,
-            AuthorId = AuthorId,
-            EntryId = chatEntryId,
+            AuthorId = new AuthorId(AuthorId),
+            EntryId = new ChatEntryId(EntryId),
             Emoji = Emoji,
             ModifiedAt = ModifiedAt,
         };
-    }
 
     public void UpdateFrom(Reaction model)
     {

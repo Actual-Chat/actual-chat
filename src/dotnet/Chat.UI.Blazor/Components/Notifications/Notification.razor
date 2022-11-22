@@ -70,9 +70,9 @@
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notification = NotificationEntry;
-        var chatId = notification.Message?.ChatId ?? notification.Chat?.ChatId ?? Symbol.Empty;
-        var entryId = notification.Message?.EntryId;
-        var authorId = notification.Message?.AuthorId ?? Symbol.Empty;
+        var chatId = notification.ChatEntryNotification?.ChatId ?? notification.ChatNotification?.ChatId ?? Symbol.Empty;
+        var entryId = notification.ChatEntryNotification?.EntryId;
+        var authorId = notification.ChatEntryNotification?.AuthorId ?? Symbol.Empty;
         var author = null as Author;
         if (!chatId.IsEmpty) {
             // TODO(AK): Unread message counter

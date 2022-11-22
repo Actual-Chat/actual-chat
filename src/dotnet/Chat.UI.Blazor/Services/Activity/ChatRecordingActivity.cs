@@ -6,9 +6,9 @@ public interface IChatRecordingActivity : IDisposable
     ChatId ChatId { get; }
 
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
-    Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
     // NOTE(AY): authorId is string to avoid boxing in [ComputeMethod]
-    Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken);
+    Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken);
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
@@ -36,11 +36,11 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         => Task.FromResult(_activeEntries);
 
     [ComputeMethod]
-    public virtual Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken)
+    public virtual Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
 
     [ComputeMethod]
-    public virtual Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken)
+    public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
     {
         var sAuthorId = (Symbol)authorId;
         return Task.FromResult(_activeEntries.Any(e => e.AuthorId == sAuthorId));

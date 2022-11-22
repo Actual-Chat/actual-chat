@@ -17,7 +17,7 @@ public class ReadPositions: DbServiceBase<UsersDbContext>, IReadPositions
     }
 
     // [ComputeMethod]
-    public virtual async Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)

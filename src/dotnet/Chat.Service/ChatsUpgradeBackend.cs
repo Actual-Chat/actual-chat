@@ -57,8 +57,8 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var chat = dbChat.ToModel();
         if (chat.Id.IsPeerChatId(out var userId1, out var userId2)) {
             // Peer chat
-            var ownerUserIds = new[] { userId1.Value, userId2.Value };
-            await ownerUserIds
+            var ownerIds = new[] { userId1, userId2 };
+            await ownerIds
                 .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect(0)
                 .ConfigureAwait(false);
@@ -88,13 +88,13 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var ownerUserIds = dbChat.Owners.Select(o => o.DbUserId).ToArray();
-            var ownerAuthors = await ownerUserIds
+            var ownerIds = dbChat.Owners.Select(o => new UserId(o.DbUserId)).ToArray();
+            var ownerAuthors = await ownerIds
                 .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
 
-            if (ownerUserIds.Length > 0) {
+            if (ownerIds.Length > 0) {
                 var dbOwnerRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Owner);
                 if (dbOwnerRole == null) {
                     var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
@@ -162,7 +162,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
         CancellationToken cancellationToken)
     {
-        var chatId = new ChatId(Constants.Chat.AnnouncementsChatId);
+        var chatId = Constants.Chat.AnnouncementsChatId;
         if (Computed.IsInvalidating()) {
             _ = Backend.Get(chatId, default);
             return default!;
@@ -209,7 +209,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
             Create = new ChatDiff {
-                Kind = ChatKind.Group,
                 Title = "Actual.chat Announcements",
                 IsPublic = true,
             },

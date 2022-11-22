@@ -31,7 +31,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToImmutableList();
     }
 
-    public string GetUserPrefix(string userId)
+    public string GetUserPrefix(UserId userId)
         => $"u/{userId}/";
 
     public string GetSessionPrefix(Session session)

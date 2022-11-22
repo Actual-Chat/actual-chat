@@ -70,8 +70,6 @@ public class RecentChatsUI : WorkerBase
         var contacts = await Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
         var contactsWithMentions = (await contacts
             .Select(async c => {
-                if (c.Chat == null)
-                    return (Contact: c, HasMentions: false);
                 var hasMentions = await UnreadMessages.HasMentions(c.ChatId, cancellationToken).ConfigureAwait(false);
                 return (Contact: c, HasMentions: hasMentions);
             })

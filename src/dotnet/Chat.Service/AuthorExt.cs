@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 public static class AuthorExt
 {
     public static AuthorId GetWalleId(ChatId chatId)
-        => new(chatId, Constants.User.Walle.AuthorLocalId, Parse.None);
+        => new(chatId, Constants.User.Walle.AuthorLocalId, ParseOptions.Skip);
 
     public static AuthorFull GetWalle(ChatId chatId)
         => new () {

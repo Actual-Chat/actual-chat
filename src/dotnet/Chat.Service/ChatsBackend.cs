@@ -42,9 +42,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNullOrEmpty())
+        if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(chatId);
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
@@ -52,14 +52,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
-        string chatId,
-        string principalId,
+        ChatId chatId,
+        PrincipalId principalId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ChatId(chatId);
-        var parsedPrincipalId = new PrincipalId(principalId);
-        if (parsedChatId.Kind == ChatKind.Peer) // We don't use actual roles to determine rules in this case
-            return await GetPeerChatRules(parsedChatId, parsedPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (chatId.Kind == ChatKind.Peer) // We don't use actual roles to determine rules in this case
+            return await GetPeerChatRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
 
         // Group chat
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -68,12 +66,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         AuthorFull? author = null;
         AccountFull? account = null;
-        if (parsedPrincipalId.IsUser(out var userId)) {
+        if (principalId.IsUser(out var userId)) {
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             if (account != null)
                 author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         }
-        else if (parsedPrincipalId.IsAuthor(out var authorId)) {
+        else if (principalId.IsAuthor(out var authorId)) {
             author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (author != null)
                 account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
@@ -107,10 +105,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // [ComputeMethod]
     public virtual async Task<ChatSummary?> GetSummary(
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var parsedChatId = new ChatId(chatId);
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
@@ -127,7 +124,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long>? idTileRange,
         bool includeRemoved,
@@ -154,7 +151,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         bool includeRemoved,
         CancellationToken cancellationToken)
@@ -179,7 +176,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
@@ -240,7 +237,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         IChatsBackend.ChangeCommand command,
         CancellationToken cancellationToken)
     {
-        var (chatId, expectedVersion, change, creatorUserId) = command;
+        var (chatId, expectedVersion, change, ownerId) = command;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -259,38 +256,41 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             if (chatId.IsEmpty)
                 chatId = new ChatId(DbChat.IdGenerator.Next());
             else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
-                throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat Id.");
 
-            chat = new Chat() {
+            chat = ApplyDiff(new Chat() {
                 Id = chatId,
-                Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
-            };
-            chat = DiffEngine.Patch(chat, update);
-            if (chat.Kind is not ChatKind.Peer && chat.Title.IsNullOrEmpty())
-                throw new ValidationException("Chat title cannot be empty.");
+            }, update);
 
             dbChat = new DbChat(chat);
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            if (chatId.IsPeerChatId(out var userId1, out var userId2)) {
+            if (chatId.Kind == ChatKind.Peer) {
                 // Peer chat
-                creatorUserId.RequireEmpty();
-                var ownerUserIds = new[] { userId1.Value, userId2.Value };
-                await ownerUserIds
+                ownerId.RequireEmpty();
+                if (!PeerChatId.TryParse(chatId, out var userIds))
+                    throw new ArgumentOutOfRangeException(nameof(command), "Invalid peer chat Id.");
+
+                // Creating authors
+                await userIds
+                    .ToArray()
                     .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
+
+                // Creating contacts
+                var (userId1, userId2) = userIds;
                 var contact1Task = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
                 var contact2Task = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
                 await Task.WhenAll(contact1Task, contact2Task).ConfigureAwait(false);
             }
             else {
                 // Group chat
-                creatorUserId = creatorUserId.RequireNonEmpty("Command.CreatorUserId");
+                ownerId = ownerId.RequireNonEmpty("Command.OwnerId");
                 var author = await AuthorsBackend
-                    .GetOrCreate(chatId, creatorUserId, cancellationToken)
+                    .GetOrCreate(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
                 var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
@@ -318,20 +318,13 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             }
         }
         else if (change.IsUpdate(out update)) {
+            ownerId.RequireEmpty();
+
             dbChat = await dbContext.Chats
                 .Get(chatId, cancellationToken)
                 .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
-            chat = dbChat.ToModel();
-            if ((update.Kind ?? chat.Kind) != chat.Kind)
-                throw StandardError.Constraint("Chat type cannot be changed.");
-
-            chat = chat with {
-                Version = VersionGenerator.NextVersion(chat.Version),
-            };
-            chat = DiffEngine.Patch(chat, update);
-            if (chat.Kind is not ChatKind.Peer && chat.Title.IsNullOrEmpty())
-                throw new ValidationException("Chat title cannot be empty.");
+            chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
         else
@@ -341,6 +334,29 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
+
+        Chat ApplyDiff(Chat originalChat, ChatDiff? diff)
+        {
+            // Update
+            var newChat = DiffEngine.Patch(originalChat, diff) with {
+                Version = VersionGenerator.NextVersion(originalChat.Version),
+            };
+
+            // Validation
+            switch (newChat.Kind) {
+            case ChatKind.Group:
+                if (newChat.Title.IsNullOrEmpty())
+                    throw StandardError.Constraint("Group chat title cannot be empty.");
+                break;
+            case ChatKind.Peer:
+                if (!newChat.Title.IsNullOrEmpty())
+                    throw StandardError.Constraint("Peer chat title must be empty.");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
+            }
+            return newChat;
+        }
     }
 
     // [CommandHandler]
@@ -474,7 +490,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     [ComputeMethod]
     protected virtual async Task<long> GetMinId(
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
@@ -489,7 +505,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             .ConfigureAwait(false);
     }
 
-    protected void InvalidateTiles(string chatId, ChatEntryKind entryKind, long entryId, ChangeKind changeKind)
+    protected void InvalidateTiles(ChatId chatId, ChatEntryKind entryKind, long entryId, ChangeKind changeKind)
     {
         // Invalidate global entry counts
         switch (changeKind) {
@@ -541,7 +557,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         DbChatEntry dbEntry;
         if (isNew) {
             var localId = await DbNextLocalId(dbContext, entry.ChatId, entryKind, cancellationToken).ConfigureAwait(false);
-            entryId = new ChatEntryId(chatId, entryKind, localId, Parse.None);
+            entryId = new ChatEntryId(chatId, entryKind, localId, ParseOptions.Skip);
             entry = entry with {
                 Id = entryId,
                 Version = VersionGenerator.NextVersion(),
@@ -573,7 +589,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // Private / internal methods
 
-    private async Task JoinAnnouncementsChat(string userId, CancellationToken cancellationToken)
+    private async Task JoinAnnouncementsChat(UserId userId, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
         var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
@@ -588,7 +604,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task JoinDefaultChatIfAdmin(string userId, CancellationToken cancellationToken)
+    private async Task JoinDefaultChatIfAdmin(UserId userId, CancellationToken cancellationToken)
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account == null || !account.IsAdmin)
@@ -600,14 +616,14 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AddOwner(string chatId, Author author, CancellationToken cancellationToken)
+    private async Task AddOwner(ChatId chatId, Author author, CancellationToken cancellationToken)
     {
         var ownerRole = await RolesBackend.GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .ConfigureAwait(false);
         if (ownerRole == null)
             return;
 
-        var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(new ChatId(chatId),
+        var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId,
             ownerRole.Id,
             null,
             new Change<RoleDiff> {
@@ -622,7 +638,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     internal Task<long> DbNextLocalId(
         ChatDbContext dbContext,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         CancellationToken cancellationToken)
         => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryKind), cancellationToken);
@@ -650,7 +666,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else
             return AuthorRules.None(chatId);
 
-        if (!chatId.IsPeerChatId(account.Id, out var otherUserId))
+        var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
+        if (otherUserId.IsEmpty)
             return AuthorRules.None(chatId);
 
         var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
@@ -662,17 +679,14 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task<Chat> GetOrCreatePeerChat(ChatId chatId, CancellationToken cancellationToken)
     {
-        chatId.RequirePeerChatId();
+        if (chatId.Kind != ChatKind.Peer)
+            throw new ArgumentOutOfRangeException(nameof(chatId), "Peer chat Id is expected here.");
 
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat != null)
             return chat;
 
-        var command = new IChatsBackend.ChangeCommand(chatId, null, new() {
-            Create = new ChatDiff() {
-                Kind = ChatKind.Peer,
-            },
-        });
+        var command = new IChatsBackend.ChangeCommand(chatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }

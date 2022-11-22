@@ -2,6 +2,11 @@ namespace ActualChat;
 
 public static class ValueTupleExt
 {
+    public static T[] ToArray<T>(this (T, T) source)
+        => new [] { source.Item1, source.Item2 };
+    public static T[] ToArray<T>(this (T, T, T) source)
+        => new [] { source.Item1, source.Item2, source.Item3 };
+
     public static T OtherThan<T>(this (T, T) source, T value)
         where T : IEquatable<T>
     {

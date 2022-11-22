@@ -5,9 +5,9 @@ public interface IAccounts : IComputeService
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken);
+    Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);

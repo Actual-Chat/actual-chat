@@ -1,24 +1,27 @@
+using System.Numerics;
+
 namespace ActualChat.Mathematics;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct MaybeTrimmed<T>(
-    T Value,
-    bool IsTrimmed = false)
-    where T : notnull
+[DataContract]
+public readonly record struct MaybeTrimmed<T>
+    : IAdditionOperators<MaybeTrimmed<T>, MaybeTrimmed<T>, MaybeTrimmed<T>>, IComparable<MaybeTrimmed<T>>
+    where T : IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
 {
-    public MaybeTrimmed(T value, T maxValue) : this(value)
-    {
-        if (Comparer<T>.Default.Compare(value, maxValue) < 0)
-            return;
+    [DataMember] public T Value { get; }
+    [DataMember] public T? TrimmedAt { get; }
 
-        Value = maxValue;
-        IsTrimmed = true;
-    }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsTrimmed => TrimmedAt is { } t && EqualityComparer<T>.Default.Equals(Value, t);
 
-    public void Deconstruct(out T value, out bool isTrimmed)
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public MaybeTrimmed(T value, T? trimmedAt)
     {
-        value = Value;
-        isTrimmed = IsTrimmed;
+        TrimmedAt = trimmedAt;
+        if (trimmedAt == null)
+            Value = value;
+        else
+            Value = Comparer<T>.Default.Compare(value, trimmedAt) < 0 ? value : trimmedAt;
     }
 
     public override string ToString()
@@ -26,9 +29,19 @@ public readonly record struct MaybeTrimmed<T>(
     public string Format(string trimmedSuffix = "+")
         => Invariant($"{Value}{(IsTrimmed ? trimmedSuffix : "")}");
 
-    public static implicit operator MaybeTrimmed<T>(T value) => new(value);
-    public static implicit operator MaybeTrimmed<T>((T Value, bool IsTrimmed) source)
-        => new(source.Value, source.IsTrimmed);
-    public static implicit operator MaybeTrimmed<T>((T Value, T MaxValue) source)
-        => new(source.Value, source.MaxValue);
+    public static implicit operator MaybeTrimmed<T>((T Value, T TrimValue) source)
+        => new(source.Value, source.TrimValue);
+
+    public static MaybeTrimmed<T> operator +(MaybeTrimmed<T> left, MaybeTrimmed<T> right)
+    {
+        var minTrimmedAt = left.TrimmedAt;
+        if (minTrimmedAt == null)
+            minTrimmedAt = right.TrimmedAt;
+        else if (right.TrimmedAt is { } rightTrimmedAt)
+            minTrimmedAt = Comparer<T>.Default.Compare(minTrimmedAt, rightTrimmedAt) < 0 ? minTrimmedAt : rightTrimmedAt;
+        return new (left.Value + right.Value, minTrimmedAt);
+    }
+
+    public int CompareTo(MaybeTrimmed<T> other)
+        => Comparer<T>.Default.Compare(Value, other.Value);
 }

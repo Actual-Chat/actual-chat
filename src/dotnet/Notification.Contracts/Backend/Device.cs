@@ -1,3 +1,8 @@
 namespace ActualChat.Notification.Backend;
 
-public record Device(string DeviceId, DeviceType DeviceType, Moment CreatedAt, Moment? AccessedAt);
+[DataContract]
+public sealed record Device(
+    [property: DataMember] Symbol DeviceId,
+    [property: DataMember] DeviceType DeviceType,
+    [property: DataMember] Moment CreatedAt,
+    [property: DataMember] Moment? AccessedAt);

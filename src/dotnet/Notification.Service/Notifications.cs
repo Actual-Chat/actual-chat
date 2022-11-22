@@ -19,7 +19,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(
+    public virtual async Task<ImmutableArray<Symbol>> ListRecentNotificationIds(
         Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
@@ -28,7 +28,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
     // [ComputeMethod]
     public virtual async Task<NotificationEntry> GetNotification(
-        Session session, string notificationId, CancellationToken cancellationToken)
+        Session session, Symbol notificationId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
         return await Backend.GetNotification(account.Id, notificationId, cancellationToken).ConfigureAwait(false);
@@ -68,7 +68,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = Backend.ListDevices(device.UserId, default);
+                _ = Backend.ListDevices(new UserId(device.UserId), default);
             return;
         }
 

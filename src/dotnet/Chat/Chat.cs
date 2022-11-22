@@ -24,7 +24,6 @@ public sealed record Chat : IHasId<ChatId>, IRequirementTarget
 public sealed record ChatDiff : RecordDiff
 {
     [DataMember] public string? Title { get; init; }
-    [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
     [DataMember] public string? Picture { get; init; }
 }

@@ -1,7 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Mathematics.Internal;
-using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.IO;
 
@@ -14,7 +13,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         Log.LogInformation("Generating initial DB content...");
 
         // Creating "The Actual One" chat
-        var defaultChatId = new ChatId(Constants.Chat.DefaultChatId);
+        var defaultChatId = Constants.Chat.DefaultChatId;
         var adminUserId = Constants.User.Admin.UserId;
         var dbChat = new DbChat {
             Id = defaultChatId,
@@ -75,11 +74,11 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     private async Task AddAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
-        var defaultChatId = new ChatId(Constants.Chat.DefaultChatId);
+        var chatId = Constants.Chat.DefaultChatId;
         for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbAuthor {
-                Id = DbAuthor.ComposeId(defaultChatId, i + 1),
-                ChatId = defaultChatId,
+                Id = DbAuthor.ComposeId(chatId, i + 1),
+                ChatId = chatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
                 IsAnonymous = false,
@@ -140,9 +139,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
             lastBeginsAt = lastEndsAt;
             var localId = await chats
-                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
+                .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
-            var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, Parse.None);
+            var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, ParseOptions.Skip);
             var entry = new DbChatEntry {
                 Id = id.Value,
                 Kind = ChatEntryKind.Text,
@@ -167,9 +166,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastEndsAt = lastBeginsAt + duration;
 
             var localId = await chats
-                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Audio, cancellationToken)
+                .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
                 .ConfigureAwait(false);
-            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, Parse.None);
+            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, ParseOptions.Skip);
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
             var audioEntry = new DbChatEntry {
@@ -186,9 +185,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             dbContext.Add(audioEntry);
 
             localId = await chats
-                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
+                .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
-            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, Parse.None);
+            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, ParseOptions.Skip);
             var textEntry = new DbChatEntry {
                 Id = id.Value,
                 ChatId = dbChat.Id,
@@ -220,9 +219,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
             var localId = await chats
-                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Audio, cancellationToken)
+                .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
                 .ConfigureAwait(false);
-            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, Parse.None);
+            var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, ParseOptions.Skip);
             var audioEntry = new DbChatEntry {
                 Id = id.Value,
                 ChatId = dbChat.Id,
@@ -237,9 +236,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             dbContext.Add(audioEntry);
 
             localId = await chats
-                .DbNextLocalId(dbContext, dbChat.Id, ChatEntryKind.Text, cancellationToken)
+                .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
                 .ConfigureAwait(false);
-            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, Parse.None);
+            id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, ParseOptions.Skip);
             var textEntry = new DbChatEntry {
                 Id = id,
                 ChatId = dbChat.Id,

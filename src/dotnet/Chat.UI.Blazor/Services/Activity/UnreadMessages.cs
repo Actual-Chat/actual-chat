@@ -7,7 +7,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class UnreadMessages : WorkerBase
 {
-    private const int MaxUnreadChatCount = 99;
     private readonly Dictionary<ChatId, SharedResourcePool<ChatId, ChatUnreadMessages>.Lease> _leases = new (); // caching leases to prevent UnreadMessages recreation
     private readonly SharedResourcePool<ChatId, ChatUnreadMessages> _pool;
 
@@ -44,7 +43,7 @@ public class UnreadMessages : WorkerBase
 
     public async Task<MaybeTrimmed<int>> GetUnreadChatCount(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
     {
-        var counts = await GetCounts(chatIds, cancellationToken);
+        var counts = await GetCounts(chatIds, cancellationToken).ConfigureAwait(false);
         var count = counts.Sum(x => x.Value > 0 ? 1 : 0);
         return (count, MaxUnreadChatCount);
     }
@@ -52,7 +51,7 @@ public class UnreadMessages : WorkerBase
     public async Task<MaybeTrimmed<int>> GetCount(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
     {
         var counts = await GetCounts(chatIds, cancellationToken);
-        return counts.Sum(ChatUnreadMessages.MaxCount);
+        return counts.Sum();
     }
 
     public async Task<MaybeTrimmed<int>> GetCount(ChatId chatId, CancellationToken cancellationToken)
@@ -67,8 +66,7 @@ public class UnreadMessages : WorkerBase
         return await unreadMessages.Resource.HasMentions(cancellationToken);
     }
 
-    private Task<List<MaybeTrimmed<int>>> GetCounts(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
-        => chatIds.Select(x => GetCount(x, cancellationToken)).Collect();
+    // Protected & private methods
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
@@ -91,6 +89,9 @@ public class UnreadMessages : WorkerBase
                 _leases.Add(lease.Key, lease);
         }
     }
+
+    private Task<List<MaybeTrimmed<int>>> GetCounts(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
+        => chatIds.Select(x => GetCount(x, cancellationToken)).Collect();
 
     private Task<ChatUnreadMessages> CreateChatUnreadMessages(ChatId chatId, CancellationToken cancellationToken)
         => Task.FromResult(ChatUnreadMessagesFactory.Get(chatId));

@@ -14,6 +14,8 @@ public class ContactUI
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IChats Chats { get; }
+    private IContacts Contacts { get; }
+    private UnreadMessages UnreadMessages { get; }
     private MomentClockSet Clocks { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
@@ -27,6 +29,8 @@ public class ContactUI
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
+        Contacts = services.GetRequiredService<IContacts>();
+        UnreadMessages = services.GetRequiredService<UnreadMessages>();
         Clocks = services.Clocks();
 
         var localSettings = services.LocalSettings();
@@ -62,7 +66,27 @@ public class ContactUI
             );
     }
 
-    // Private methods
+    // Protected & private methods
+
+    [ComputeMethod]
+    protected virtual async Task<ImmutableList<ContactSummary>> ListSummaries(CancellationToken cancellationToken)
+    {
+        var contacts = await Contacts.ListContacts(Session, cancellationToken).ConfigureAwait(false);
+        var summaries = await contacts
+            .Select(async c => {
+                var hasMentions = await UnreadMessages.HasMentions(c.ChatId, cancellationToken).ConfigureAwait(false);
+                var unreadMessageCount = await UnreadMessages.GetCount(c.ChatId, cancellationToken).ConfigureAwait(false);
+                return new ContactSummary(c, hasMentions, unreadMessageCount);
+            })
+            .Collect()
+            .ConfigureAwait(false);
+
+        var result = summaries
+            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
+            .Select(c => c.Contact)
+            .ToImmutableList();
+        return result;
+    }
 
     private async ValueTask UpdatePinnedContacts(
         Func<ImmutableHashSet<PinnedContact>, ImmutableHashSet<PinnedContact>> updater,

@@ -17,11 +17,11 @@ public class NotificationsController : ControllerBase, INotifications
     }
 
     [HttpGet, Publish]
-    public Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
+    public Task<NotificationEntry> GetNotification(Session session, Symbol notificationId, CancellationToken cancellationToken)
         => Service.GetNotification(session, notificationId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Symbol>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
         => Service.ListRecentNotificationIds(session, cancellationToken);
 
     [HttpPost]

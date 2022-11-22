@@ -1,10 +1,8 @@
-namespace ActualChat.Chat;
-
-#pragma warning disable MA0011
+namespace ActualChat;
 
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct RoleId : IEquatable<RoleId>, IRequirementTarget, ICanBeEmpty
+public readonly struct RoleId : ISymbolIdentifier<RoleId>
 {
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -23,17 +21,17 @@ public readonly struct RoleId : IEquatable<RoleId>, IRequirementTarget, ICanBeEm
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public RoleId(Symbol id) => Parse(id);
-    public RoleId(string id) => Parse(id);
-    public RoleId(string id, ParseOrDefaultTag _) => ParseOrDefault(id);
+    public RoleId(string? id) => Parse(id);
+    public RoleId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
 
-    public RoleId(Symbol id, ChatId chatId, long localId, SkipParseTag _)
+    public RoleId(Symbol id, ChatId chatId, long localId, SkipParseOption _)
     {
         Id = id;
         ChatId = chatId;
         LocalId = localId;
     }
 
-    public RoleId(ChatId chatId, long localId, SkipParseTag _)
+    public RoleId(ChatId chatId, long localId, SkipParseOption _)
     {
         Id = $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
         ChatId = chatId;
@@ -58,9 +56,9 @@ public readonly struct RoleId : IEquatable<RoleId>, IRequirementTarget, ICanBeEm
 
     // Parsing
 
-    public static RoleId Parse(string s)
+    public static RoleId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>();
-    public static RoleId ParseOrDefault(string s)
+    public static RoleId ParseOrDefault(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out RoleId result)
@@ -80,7 +78,7 @@ public readonly struct RoleId : IEquatable<RoleId>, IRequirementTarget, ICanBeEm
         if (!long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new RoleId(s, chatId, localId, ActualChat.Parse.None);
+        result = new RoleId(s, chatId, localId, ParseOptions.Skip);
         return true;
     }
 }

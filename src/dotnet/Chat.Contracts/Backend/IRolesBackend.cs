@@ -3,16 +3,16 @@ namespace ActualChat.Chat;
 public interface IRolesBackend : IComputeService
 {
     [ComputeMethod]
-    Task<Role?> Get(string chatId, string roleId, CancellationToken cancellationToken);
+    Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(string chatId, string authorId,
+    Task<ImmutableArray<Role>> List(ChatId chatId, AuthorId authorId,
         bool isAuthenticated, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Role>> ListSystem(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(string chatId, string roleId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> Change(ChangeCommand command, CancellationToken cancellationToken);

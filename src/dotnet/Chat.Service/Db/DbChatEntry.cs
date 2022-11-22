@@ -70,7 +70,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
     {
         var chatId = new ChatId(ChatId);
-        var id = new ChatEntryId(Id, chatId, Kind, LocalId, Parse.None);
+        var id = new ChatEntryId(Id, chatId, Kind, LocalId, ParseOptions.Skip);
         return new () {
             Id = id,
             Version = Version,

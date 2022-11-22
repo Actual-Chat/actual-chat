@@ -124,7 +124,7 @@ public class ServerKvas : IServerKvas
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user != null ? Backend.GetUserPrefix(user.Id) : null;
+        return user != null ? Backend.GetUserPrefix(new UserId(user.Id)) : null;
     }
 
     private string GetSessionPrefix(Session session)

@@ -12,7 +12,7 @@ public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
         => DbUserPresenceResolver = services.DbEntityResolver<string, DbUserPresence>();
 
     [ComputeMethod(AutoInvalidationDelay = 61)]
-    public virtual async Task<Presence> Get(string userId, CancellationToken cancellationToken)
+    public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
     {
         var dbUserPresence = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         if (dbUserPresence == null)

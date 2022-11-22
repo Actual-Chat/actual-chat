@@ -25,14 +25,14 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     }
 
     // [ComputeMethod]
-    public virtual async Task<Account?> Get(Session session, string userId, CancellationToken cancellationToken)
+    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
         return account;
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull?> GetFull(Session session, string userId, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
         await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);

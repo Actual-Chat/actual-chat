@@ -281,7 +281,7 @@ public class ChatEntryReaderTest : AppHostTestBase
     private async Task CreateChatEntries(
         IChats chats,
         Session session,
-        string chatId,
+        ChatId chatId,
         int count)
     {
         var phrases = new[] {

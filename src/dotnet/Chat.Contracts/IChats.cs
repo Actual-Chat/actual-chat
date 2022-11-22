@@ -3,24 +3,24 @@ namespace ActualChat.Chat;
 public interface IChats : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AuthorRules> GetRules(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatSummary?> GetSummary(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
     Task<long> GetEntryCount(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
@@ -30,7 +30,7 @@ public interface IChats : IComputeService
     [ComputeMethod(MinCacheDuration = 60)]
     Task<Range<long>> GetIdRange(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         CancellationToken cancellationToken);
 
@@ -38,24 +38,24 @@ public interface IChats : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<ChatTile> GetTile(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken);
+    Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken);
+    Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
 
     Task<ChatEntry?> FindNext(
         Session session,
-        string chatId,
+        ChatId chatId,
         long? startEntryId,
         string text,
         CancellationToken cancellationToken);

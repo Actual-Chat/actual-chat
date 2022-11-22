@@ -33,7 +33,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
     // [ComputeMethod]
     public virtual async Task<Author?> Get(
-        Session session, string chatId, string authorId,
+        Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
         var canRead = await CanRead(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetOwn(
-        Session session, string chatId,
+        Session session, ChatId chatId,
         CancellationToken cancellationToken)
     {
         // This method is used by Chats.GetRules, etc., so it shouldn't check
@@ -59,7 +59,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var kvas = ServerKvas.GetClient(session);
         var settings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
         var authorId = settings.Chats.GetValueOrDefault(chatId);
-        if (authorId.IsNullOrEmpty())
+        if (authorId.IsEmpty)
             return null;
 
         return await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -67,14 +67,15 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetFull(
-        Session session, string chatId, string authorId,
+        Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
         var ownAuthor = await GetOwn(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         if (ownAuthor.Id == authorId)
             return ownAuthor;
 
-        var rules = await ChatsBackend.GetRules(chatId, ownAuthor.Id, cancellationToken).ConfigureAwait(false);
+        var principalId = new PrincipalId(ownAuthor.Id, ParseOptions.Skip);
+        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.Has(ChatPermissions.EditRoles))
             return null;
 
@@ -83,7 +84,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
     // [ComputeMethod]
     public virtual async Task<Account?> GetAccount(
-        Session session, string chatId, string authorId,
+        Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
         // In fact, de-anonymizes the author
@@ -102,7 +103,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
@@ -116,7 +117,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account == null)
@@ -128,8 +129,8 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     // [ComputeMethod]
     public virtual async Task<Presence> GetAuthorPresence(
         Session session,
-        string chatId,
-        string authorId,
+        ChatId chatId,
+        AuthorId authorId,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -142,7 +143,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author.IsAnonymous || author.UserId.IsEmpty)
             return Presence.Unknown; // Important: we shouldn't report anonymous author presence
 
-        return await UserPresences.Get(author.UserId.Value, cancellationToken).ConfigureAwait(false);
+        return await UserPresences.Get(author.UserId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -178,7 +179,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
     // Private methods
 
-    private async ValueTask<bool> CanRead(Session session, string chatId, CancellationToken cancellationToken)
+    private async ValueTask<bool> CanRead(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)

@@ -5,7 +5,7 @@ public static class ChatsExt
     public static async ValueTask<bool> HasPermissions(
         this IChats chats,
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatPermissions required,
         CancellationToken cancellationToken)
     {
@@ -22,7 +22,7 @@ public static class ChatsExt
     public static async ValueTask RequirePermissions(
         this IChats chats,
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatPermissions required,
         CancellationToken cancellationToken)
     {

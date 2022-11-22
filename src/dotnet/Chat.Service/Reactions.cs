@@ -16,14 +16,13 @@ internal class Reactions : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(Session session, string entryId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken)
     {
-        var parsedChatEntryId = new ChatEntryId(entryId);
-        var chatAuthor = await Authors.GetOwn(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await Authors.GetOwn(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
             return null;
 
-        var chatRules = await Chats.GetRules(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+        var chatRules = await Chats.GetRules(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         return await Backend.Get(entryId, chatAuthor.Id, cancellationToken).ConfigureAwait(false);
     }
@@ -31,13 +30,12 @@ internal class Reactions : IReactions
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
-        Symbol chatEntryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
-        var parsedChatEntryId = new ChatEntryId(chatEntryId);
-        var chatRules = await Chats.GetRules(session, parsedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
+        var chatRules = await Chats.GetRules(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.List(chatEntryId, cancellationToken).ConfigureAwait(false);
+        return await Backend.List(entryId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

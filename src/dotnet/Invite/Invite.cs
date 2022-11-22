@@ -47,6 +47,6 @@ public sealed record InviteDetails
     }
 }
 
-public record ChatInviteDetails(Symbol ChatId);
+public record ChatInviteDetails(ChatId ChatId);
 
 public record UserInviteDetails;

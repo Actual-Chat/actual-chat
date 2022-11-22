@@ -3,7 +3,7 @@
 public interface IAvatarsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<AvatarFull?> Get(string avatarId, CancellationToken cancellationToken);
+    Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<AvatarFull> Change(ChangeCommand command, CancellationToken cancellationToken);

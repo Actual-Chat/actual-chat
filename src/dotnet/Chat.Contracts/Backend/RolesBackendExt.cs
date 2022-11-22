@@ -4,7 +4,7 @@ public static class RolesBackendExt
 {
     public static async Task<Role?> GetSystem(
         this IRolesBackend rolesBackend,
-        string chatId,
+        ChatId chatId,
         SystemRole systemRole,
         CancellationToken cancellationToken)
     {

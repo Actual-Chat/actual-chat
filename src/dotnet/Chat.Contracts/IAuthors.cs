@@ -5,21 +5,21 @@ namespace ActualChat.Chat;
 public interface IAuthors : IComputeService
 {
     [ComputeMethod]
-    Task<Author?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<UserId>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Presence> GetAuthorPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     // Commands
 

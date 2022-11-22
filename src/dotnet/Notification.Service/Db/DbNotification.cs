@@ -14,11 +14,11 @@ public class DbNotification : IHasId<string>, IRequirementTarget
 
     [Key] public string Id { get; set; } = null!;
     public string UserId { get; set; } = null!;
-    public NotificationType NotificationType { get; set; }
+    public NotificationKind Kind { get; set; }
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? ChatId { get; set; }
-    public long? ChatEntryId { get; set; }
+    public string? ChatEntryId { get; set; }
     public string? AuthorId { get; set; }
     public string IconUrl { get; set; } = null!;
     [NotMapped] public bool IsActive => _handledAt != null;

@@ -25,6 +25,6 @@ public class ChatRecordingActivityReplica : IChatRecordingActivity
     public Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken)
         => _source.GetActiveAuthorIds(cancellationToken);
 
-    public Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken)
+    public Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
         => _source.IsAuthorActive(authorId, cancellationToken);
 }

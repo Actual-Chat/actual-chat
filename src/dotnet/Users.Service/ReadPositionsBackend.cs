@@ -13,7 +13,7 @@ public class ReadPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositions
         => DbReadPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbReadPosition>>();
 
     // [ComputeMethod]
-    public virtual async Task<long?> Get(string userId, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<long?> Get(UserId userId, ChatId chatId, CancellationToken cancellationToken)
     {
         var id = DbReadPosition.ComposeId(userId, chatId);
         var dbReadPosition = await DbReadPositionResolver.Get(id, cancellationToken).ConfigureAwait(false);

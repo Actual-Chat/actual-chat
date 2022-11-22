@@ -31,18 +31,35 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var isPeerChat = new ChatId(chatId).Kind == ChatKind.Peer;
-        return isPeerChat
-            ? await GetPeerChat(session, chatId, cancellationToken).ConfigureAwait(false)
-            : await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        // Special case: peer chat
+        if (chatId.Kind == ChatKind.Peer) {
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return null;
+
+            var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
+            if (otherUserId.IsEmpty)
+                return null;
+
+            var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
+            var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+            return contact?.Chat;
+        }
+
+        // Group chat
+        var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        if (!canRead)
+            return null;
+
+        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
@@ -54,7 +71,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
@@ -67,7 +84,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
         Session session,
-        string chatId,
+        ChatId chatId,
         ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
@@ -78,7 +95,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -88,7 +105,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<ChatSummary?> GetSummary(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
         var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
@@ -99,14 +116,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> HasInvite(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var value = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
         return value.HasValue;
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> CanJoin(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
@@ -121,7 +138,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         await this.RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -138,7 +155,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // Not a [ComputeMethod]!
     public virtual async Task<ChatEntry?> FindNext(
         Session session,
-        string chatId,
+        ChatId chatId,
         long? startEntryId,
         string text,
         CancellationToken cancellationToken)
@@ -172,7 +189,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 .Require(AccountFull.MustBeActive)
                 .ConfigureAwait(false);
             changeCommand = changeCommand with {
-                CreatorUserId = account.Id,
+                OwnerId = account.Id,
             };
         }
         if (change.Update.HasValue)
@@ -249,49 +266,22 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await Commander.Call(leaveAuthorCommand, cancellationToken).ConfigureAwait(false);
     }
 
-    // Protected methods
-
-    [ComputeMethod]
-    protected virtual async Task<Chat?> GetGroupChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
-            return null;
-
-        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<Chat?> GetPeerChat(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var parsedChatId = new ChatId(chatId);
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return null;
-
-        if (!parsedChatId.IsPeerChatId(account.Id, out var otherUserId))
-            return null;
-
-        var contact = await ContactsBackend.GetForUser(account.Id, otherUserId, cancellationToken).ConfigureAwait(false);
-        return contact?.Chat;
-    }
-
     // Private methods
 
-    public virtual async Task<Symbol> GetOwnPrincipalId(
-        Session session, string chatId,
+    public virtual async Task<PrincipalId> GetOwnPrincipalId(
+        Session session, ChatId chatId,
         CancellationToken cancellationToken)
     {
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
-            return author.Id;
+            return new PrincipalId(author.Id, ParseOptions.Skip);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return account?.Id ?? Symbol.Empty;
+        return account != null ? new PrincipalId(account.Id, ParseOptions.Skip) : default;
     }
 
     private async Task<ChatEntry> GetChatEntry(
-        Session session, string chatId, long localId, ChatEntryKind kind,
+        Session session, ChatId chatId, long localId, ChatEntryKind kind,
         CancellationToken cancellationToken)
     {
         var idTile = IdTileStack.FirstLayer.GetTile(localId);
@@ -312,7 +302,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatEntry = new ChatEntry {
-            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, Parse.None),
+            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, ParseOptions.Skip),
             AuthorId = author.Id,
             Content = text,
             RepliedChatEntryId = repliedChatEntryId.IsSome(out var v) ? v : null,
@@ -366,7 +356,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ChatEntry> RemoveChatEntry(Session session, string chatId, long entryId, ChatEntryKind kind, CancellationToken cancellationToken)
+    private async Task<ChatEntry> RemoveChatEntry(Session session, ChatId chatId, long entryId, ChatEntryKind kind, CancellationToken cancellationToken)
     {
         var chatEntry = await GetChatEntry(session, chatId, entryId, kind, cancellationToken).ConfigureAwait(false);
 
@@ -380,11 +370,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return chatEntry;
     }
 
-    private async Task JoinChat(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task JoinChat(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author.HasLeft) {
-            var command = new IAuthorsBackend.ChangeHasLeftCommand(new ChatId(chatId), author.Id, false);
+            var command = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, false);
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         }
         var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);

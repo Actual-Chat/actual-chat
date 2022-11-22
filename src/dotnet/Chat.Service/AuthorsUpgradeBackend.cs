@@ -19,10 +19,10 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
         Backend = services.GetRequiredService<IAuthorsBackend>();
     }
 
-    public async Task<List<Symbol>> ListChatIds(string userId, CancellationToken cancellationToken)
+    public async Task<List<ChatId>> ListChatIds(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsNullOrEmpty())
-            return new List<Symbol>();
+        if (userId.IsEmpty)
+            return new List<ChatId>();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -32,10 +32,10 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
             .Select(a => a.ChatId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return chatIds.Select(id => (Symbol)id).ToList();
+        return chatIds.Select(id => new ChatId(id)).ToList();
     }
 
-    public async Task<List<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
+    public async Task<List<ChatId>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account != null)
@@ -47,6 +47,6 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
         var chatIds = chats.Keys.AsEnumerable();
         if (!chats.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
             chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
-        return chatIds.Select(id => (Symbol)id).ToList();
+        return chatIds.Select(id => new ChatId(id)).ToList();
     }
 }

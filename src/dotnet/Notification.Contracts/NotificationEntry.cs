@@ -1,18 +1,29 @@
 namespace ActualChat.Notification;
 
+[DataContract]
 public record NotificationEntry(
-    Symbol Id,
-    NotificationType Type,
-    string Title,
-    string Content,
-    string IconUrl,
-    Moment NotificationTime
+    [property: DataMember] Symbol Id,
+    [property: DataMember] NotificationKind Kind,
+    [property: DataMember] string Title,
+    [property: DataMember] string Content,
+    [property: DataMember] string IconUrl,
+    [property: DataMember] Moment NotificationTime
     ) : IHasId<Symbol>, IRequirementTarget
 {
-    public ChatNotificationEntry? Chat { get; init; }
-    public MessageNotificationEntry? Message { get; init; }
+    [DataMember] public ChatNotification? ChatNotification { get; init; }
+    [DataMember] public ChatEntryNotification? ChatEntryNotification { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => ChatNotification?.ChatId ?? ChatEntryNotification?.EntryId.ChatId ?? default(ChatId);
 }
 
-public record MessageNotificationEntry(Symbol ChatId, long EntryId, string AuthorId);
+[DataContract]
+public record ChatNotification(
+    [property: DataMember] ChatId ChatId
+    ) : IRequirementTarget;
 
-public record ChatNotificationEntry(Symbol ChatId);
+[DataContract]
+public record ChatEntryNotification(
+    [property: DataMember] ChatEntryId EntryId,
+    [property: DataMember] AuthorId AuthorId
+    ) : IRequirementTarget;

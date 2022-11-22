@@ -67,7 +67,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         newMoment.Should().Be(yesterday.AddSeconds(5).ToMoment());
     }
 
-    private static DbAuthor AddAuthor(ChatDbContext dbContext,  string chatId, string userId)
+    private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, string userId)
     {
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(chatId, 1),
@@ -101,7 +101,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         return dbChat;
     }
 
-    private static void AddAudioEntry(ChatDbContext dbContext, string chatId, string authorId, ref long entryId, DateTime beginsAt, TimeSpan duration)
+    private static void AddAudioEntry(ChatDbContext dbContext, ChatId chatId, AuthorId authorId, ref long entryId, DateTime beginsAt, TimeSpan duration)
     {
         var audioEntry = new DbChatEntry {
             Id = DbChatEntry.ComposeId(chatId, ChatEntryKind.Audio, entryId),
