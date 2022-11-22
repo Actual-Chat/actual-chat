@@ -16,7 +16,7 @@
             <div class="text-01 text-title-1 truncate">
                 @m.Title
             </div>
-            <div class="text-03 text-base">
+            <div class="text-03 text-caption-2">
                 @(m.IsPublic ? "Public" : "Private")
             </div>
         </div>
@@ -32,7 +32,7 @@
                 <div class="text-01 text-headline-1 truncate">
                     @m.PublicUrlTitle
                 </div>
-                <div class="text-03 text-base">
+                <div class="text-03 text-caption-2">
                     Public join link
                 </div>
             </div>
@@ -49,7 +49,7 @@
             <div class="text-01 text-headline-1 truncate">
                 Notifications
             </div>
-            <div class="text-03 text-base">
+            <div class="text-03 text-caption-2">
                 @(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")
             </div>
         </div>
