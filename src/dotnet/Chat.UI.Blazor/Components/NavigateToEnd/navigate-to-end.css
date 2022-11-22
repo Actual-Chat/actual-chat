@@ -2,7 +2,7 @@
     @apply relative;
 }
 .navigate-to-end-sub-header .btn.btn-round {
-    @apply absolute bottom-2 md:bottom-0 right-3 z-10;
+    @apply absolute bottom-3 md:bottom-0 right-3 z-10;
     @apply flex items-center justify-center shadow-scrollbar shadow-sm md:shadow-none;
 }
 .navigate-to-end-sub-header .btn.btn-round .btn-content {
