@@ -11,8 +11,17 @@ public class LocalCommandQueueReader : ICommandQueueReader
         => CommandQueue.Commands.Reader.ReadAllAsync(cancellationToken);
 
     public Task Ack(IQueuedCommand queuedCommand, CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    {
+        CommandQueue.SetCompleted(queuedCommand);
+        return Task.CompletedTask;
+    }
 
     public Task NAck(IQueuedCommand queuedCommand, bool requeue, Exception? exception, CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    {
+        if (!requeue)
+            return Task.CompletedTask;
+
+        CommandQueue.SetFailed(queuedCommand);
+        return CommandQueue.Enqueue(queuedCommand, cancellationToken);
+    }
 }

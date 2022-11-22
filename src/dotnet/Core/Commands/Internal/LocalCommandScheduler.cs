@@ -4,6 +4,7 @@ public class LocalCommandScheduler : WorkerBase
 {
     private readonly string _queueName;
     private readonly int _degreeOfParallelism;
+    private readonly Action<string> _dispose;
 
     private ICommandQueues CommandQueues { get; }
     private ICommander Commander { get; }
@@ -12,10 +13,12 @@ public class LocalCommandScheduler : WorkerBase
     public LocalCommandScheduler(
         string queueName,
         int degreeOfParallelism,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        Action<string> dispose)
     {
         _queueName = queueName;
         _degreeOfParallelism = degreeOfParallelism;
+        _dispose = dispose;
         CommandQueues = serviceProvider.GetRequiredService<ICommandQueues>();
         Commander = serviceProvider.GetRequiredService<ICommander>();
         Log = serviceProvider.GetRequiredService<ILogger<LocalCommandScheduler>>();
@@ -47,6 +50,12 @@ public class LocalCommandScheduler : WorkerBase
                     await queueReader.NAck(queuedCommand, true, e, cancellationToken1).ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
+    }
+
+    protected override Task DisposeAsyncCore()
+    {
+        _dispose(_queueName);
+        return base.DisposeAsyncCore();
     }
 }
 
