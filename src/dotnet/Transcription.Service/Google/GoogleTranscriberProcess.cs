@@ -97,9 +97,6 @@ public class GoogleTranscriberProcess : WorkerBase
     private void ProcessResponse(StreamingRecognizeResponse response)
     {
         DebugLog?.LogDebug("Response={Response}", response);
-        // var error = response.Error;
-        // if (error != null)
-        //     throw new TranscriptionException($"G{error.Code:D}", error.Message);
 
         Transcript transcript;
         var results = response.Results;
