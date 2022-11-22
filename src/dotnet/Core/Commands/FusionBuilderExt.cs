@@ -22,7 +22,8 @@ public static class FusionBuilderExt
         services.AddHostedService<LocalCommandScheduler>(sp => new LocalCommandScheduler(
             queueRef.Name,
             degreeOfParallelism,
-            sp));
+            sp,
+            name => _registrations.TryRemove(name, out _)));
 
         return fusion;
     }
