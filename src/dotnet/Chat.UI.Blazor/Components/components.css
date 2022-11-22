@@ -131,7 +131,7 @@
     @apply min-w-0 min-h-0 p-0 rounded-lg;
 }
 .left-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-03;
+    @apply text-02;
 }
 .left-panel-tabs .tab-btn:hover .btn-content {
     @apply bg-round-hover text-primary;
