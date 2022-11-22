@@ -8,7 +8,7 @@
 
 <div class="flex flex-col w-full h-full px-5 py-3 people-tab">
     <div class="flex-auto flex-y gap-y-1">
-        <div class="text-02">Active — @m.ActiveAuthorIds.Length</div>
+        <div class="text-caption-1 text-02">Active — @m.ActiveAuthorIds.Length</div>
         @foreach (var authorId in m.ActiveAuthorIds) {
             @if (authorId == _ownAuthor?.Id) {
                 <AuthorBadge
@@ -24,7 +24,7 @@
                     TextClass="font-medium text-02 select-none"/>
             }
         }
-        <div class="text-02">Offline — @m.OfflineAuthorIds.Length</div>
+        <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Length</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
             <AuthorBadge
                 AuthorId="@authorId"
