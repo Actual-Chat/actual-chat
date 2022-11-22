@@ -214,6 +214,8 @@ export class MenuHost implements Disposable {
     ): EventData | undefined {
         if (!(event.target instanceof Element))
             return undefined;
+        if (event.target.nodeName === 'IMG')
+            return undefined;
         debugLog?.log(
             `mapEvent: event:`, event,
             `, triggers:`, triggers,
