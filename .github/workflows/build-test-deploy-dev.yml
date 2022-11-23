@@ -221,6 +221,7 @@ jobs:
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
           DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
