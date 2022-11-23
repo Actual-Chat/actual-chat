@@ -159,6 +159,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 if (!_fullyVisibleEntryIds.Contains(navigateToEntryId.Value))
                     mustScrollToEntry = true;
             }
+        var scrollToKey = mustScrollToEntry
+            ? entryId.ToString(CultureInfo.InvariantCulture)
+            : null;
+
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
             ? new Range<long>(
@@ -170,7 +174,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     chatIdRange.End)
                 : query.KeyRange
                     .AsLongRange()
-                    .ToExclusive()
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
         var adjustedRange = queryRange.Clamp(chatIdRange);
@@ -184,6 +187,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => adjustedRange,
         };
 
+        var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
+        var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
+        var oldRange =  oldData.Query.IsNone
+            ? new Range<long>(0,0)
+            : oldData.Query.KeyRange
+                .AsLongRange()
+                .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
+
+        if (oldRange.Contains(extendedRange)
+            && scrollToKey == oldData.ScrollToKey
+            && hasVeryFirstItem == oldData.HasVeryFirstItem
+            && hasVeryLastItem == oldData.HasVeryLastItem)
+            return oldData;
+
         var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
@@ -194,8 +211,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 
-        var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
-        var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
@@ -203,9 +218,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasVeryFirstItem,
             hasVeryLastItem,
             TimeZoneConverter);
-        var scrollToKey = mustScrollToEntry
-            ? entryId.ToString(CultureInfo.InvariantCulture)
-            : null;
+
         var result = VirtualListData.New(
             new VirtualListDataQuery(extendedRange.AsStringRange()),
             chatMessages,
