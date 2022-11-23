@@ -115,7 +115,7 @@ public class GoogleTranscriber : ITranscriber
             return CoreSettings.GoogleProjectId;
 
         var platform = await Platform.InstanceAsync().ConfigureAwait(false);
-        if (platform?.GaeDetails == null)
+        if (platform?.ProjectId == null)
             throw StandardError.NotSupported<GoogleTranscriber>(
                 $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
         return platform.ProjectId;
