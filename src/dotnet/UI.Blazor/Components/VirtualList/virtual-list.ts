@@ -72,8 +72,8 @@ export class VirtualList {
 
     private _renderState: VirtualListRenderState;
     private _orderedItems: VirtualListItem[] = [];
-    private _itemRange: NumberRange = new NumberRange(0,0);
-    private _viewport: NumberRange = new NumberRange(0,0);
+    private _itemRange: NumberRange | null = null;
+    private _viewport: NumberRange | null = null;
     private _shouldRecalculateItemRange: boolean = true;
 
     public static create(
@@ -213,10 +213,12 @@ export class VirtualList {
         return this._unmeasuredItems.size > 0 || !this._orderedItems;
     }
 
-    private get fullRange(): NumberRange {
-        return new NumberRange(
-            this._itemRange.Start - this._renderState.spacerSize,
-            this._itemRange.End + this._renderState.endSpacerSize);
+    private get fullRange(): NumberRange | null {
+        return this._itemRange == null
+            ? null
+            : new NumberRange(
+                this._itemRange.Start - this._renderState.spacerSize,
+                this._itemRange.End + this._renderState.endSpacerSize);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -520,16 +522,18 @@ export class VirtualList {
             this._whenUpdateCompleted?.resolve(undefined);
 
             // skeleton time to time become visible after render and scroll
-            const isNearSkeleton =
-                this._renderState.spacerSize > 0 && this._viewport.Start - this._itemRange.Start < 2 * SkeletonDetectionBoundary
-                || this._renderState.endSpacerSize > 0 && this._itemRange.End - this._viewport.End < 2 * SkeletonDetectionBoundary;
-            // only turn this flag on, will be cleared off with debounce at onSkeletonVisibilityChange
-            if (isNearSkeleton) {
-                this._isNearSkeleton = isNearSkeleton;
-                console.warn("manual near skeleton");
-            }
-            else {
-                this.turnOffIsNearSkeletonDebounced();
+            if (this._itemRange && this._viewport) {
+                const isNearSkeleton =
+                    this._renderState.spacerSize > 0 && this._viewport.Start - this._itemRange.Start < 2 * SkeletonDetectionBoundary
+                    || this._renderState.endSpacerSize > 0 && this._itemRange.End - this._viewport.End < 2 * SkeletonDetectionBoundary;
+                // only turn this flag on, will be cleared off with debounce at onSkeletonVisibilityChange
+                if (isNearSkeleton) {
+                    this._isNearSkeleton = isNearSkeleton;
+                    console.warn("manual near skeleton");
+                }
+                else {
+                    this.turnOffIsNearSkeletonDebounced();
+                }
             }
 
             // trigger update only for first render to load data if needed
@@ -572,8 +576,9 @@ export class VirtualList {
                 const scrollTop = this.getVirtualScrollTop();
                 const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
                 let viewport: NumberRange | null = null;
-                if (this.fullRange != null) {
-                    viewport = clientViewport.fitInto(this.fullRange);
+                const fullRange = this.fullRange;
+                if (fullRange != null) {
+                    viewport = clientViewport.fitInto(fullRange);
                 }
                 resolve(viewport);
             });
@@ -581,10 +586,12 @@ export class VirtualList {
 
         debugLog?.log(`updateViewport: `, viewport);
 
-        if (viewport.Start < this._viewport.Start)
-            this._scrollDirection = 'up';
-        else
-            this._scrollDirection = 'down';
+        if (this._viewport && viewport) {
+            if (viewport.Start < this._viewport.Start)
+                this._scrollDirection = 'up';
+            else
+                this._scrollDirection = 'down';
+        }
 
         this._viewport = viewport;
         await this.requestData();
@@ -718,7 +725,7 @@ export class VirtualList {
 
     private ensureItemRangeCalculated(): boolean {
         const orderedItems = this._orderedItems;
-        if (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange.size > 0))
+        if (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange))
             return false;
 
         let cornerStoneItemIndex = orderedItems.length - 1;
@@ -757,7 +764,7 @@ export class VirtualList {
     }
 
     private async requestData(): Promise<void> {
-        if (this._isRendering)
+        if (this._isRendering || !this._viewport || !this._itemRange)
             return;
 
         this._query = this.getDataQuery();
@@ -785,7 +792,7 @@ export class VirtualList {
         const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
         const viewport = this._viewport;
         const alreadyLoaded = this._itemRange;
-        if (viewport.size == 0 || alreadyLoaded.size == 0)
+        if (!viewport || !alreadyLoaded)
             return this._lastQuery;
 
         const loadZoneSize = viewport.size * 3;
