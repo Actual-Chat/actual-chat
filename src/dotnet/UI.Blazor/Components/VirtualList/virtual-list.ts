@@ -288,30 +288,28 @@ export class VirtualList {
             }
         }
 
-        requestAnimationFrame(time => {
-            // make rendered items visible
-            const orderedItems = new Array<VirtualListItem>();
-            for (const itemRef of this.getNewItemRefs()) {
-                itemRef.classList.remove('new');
+        // make rendered items visible
+        const orderedItems = new Array<VirtualListItem>();
+        for (const itemRef of this.getNewItemRefs()) {
+            itemRef.classList.remove('new');
+        }
+        // store item order
+        for (const itemRef of this.getAllItemRefs()) {
+            const key = getItemKey(itemRef);
+            const item = this._items.get(key);
+            if (item) {
+                orderedItems.push(item);
             }
-            // store item order
-            for (const itemRef of this.getAllItemRefs()) {
-                const key = getItemKey(itemRef);
-                const item = this._items.get(key);
-                if (item) {
-                    orderedItems.push(item);
-                }
-            }
-            this._orderedItems = orderedItems;
+        }
+        this._orderedItems = orderedItems;
 
-            const rs = this.getRenderState();
-            if (rs) {
-                void this.onRenderEnd(rs);
-            }
-            else {
-                this._isRendering = false;
-            }
-        });
+        const rs = this.getRenderState();
+        if (rs) {
+            void this.onRenderEnd(rs);
+        }
+        else {
+            this._isRendering = false;
+        }
     };
 
     private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
