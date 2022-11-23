@@ -529,7 +529,8 @@ export class VirtualList {
                 // only turn this flag on, will be cleared off with debounce at onSkeletonVisibilityChange
                 if (isNearSkeleton) {
                     this._isNearSkeleton = isNearSkeleton;
-                    console.warn("manual near skeleton");
+                    // debug helper
+                    // console.warn("manual near skeleton");
                 }
                 else {
                     this.turnOffIsNearSkeletonDebounced();
@@ -573,7 +574,8 @@ export class VirtualList {
         const viewport = await new Promise<NumberRange | null>(resolve => {
             requestAnimationFrame(time => {
                 const viewportHeight = this._ref.clientHeight;
-                const scrollTop = this.getVirtualScrollTop();
+                const scrollHeight = this._ref.scrollHeight;
+                const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
                 const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
                 let viewport: NumberRange | null = null;
                 const fullRange = this.fullRange;
@@ -690,16 +692,6 @@ export class VirtualList {
             && itemRect.height > 0;
     }
 
-    private getVirtualScrollTop(): number {
-        const scrollHeight = this._ref.scrollHeight;
-        const spacerHeight = this._spacerRef.clientHeight;
-        let scrollTop = this._ref.scrollTop;
-        const viewportHeight = this._ref.clientHeight;
-        scrollTop += scrollHeight - viewportHeight;
-        scrollTop -= spacerHeight;
-        return scrollTop;
-    }
-
     private scrollTo(
         itemRef?: HTMLElement,
         useSmoothScroll: boolean = false,
@@ -768,9 +760,7 @@ export class VirtualList {
             return;
 
         this._query = this.getDataQuery();
-        if (this._query === this._lastQuery)
-            return;
-        if (this._query.isSimilarTo(this._lastQuery, this._viewport) && !this._isNearSkeleton)
+        if (!this.dataRequestIsRequired(this._query) && !this._isNearSkeleton)
             return;
         if (this._query.isNone)
             return;
@@ -784,6 +774,28 @@ export class VirtualList {
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
         this._lastQueryTime = Date.now();
+    }
+
+    private dataRequestIsRequired(query: VirtualListDataQuery): boolean
+    {
+        const currentItemRange = this._itemRange;
+        const queryItemRange = query.virtualRange;
+        if (!currentItemRange || !queryItemRange)
+            return false;
+
+        if (!this._viewport)
+            return false;
+
+        if (this._query === query)
+            return false;
+
+        const viewportSize = this._viewport.size;
+        const intersection = currentItemRange.intersectWith(queryItemRange);
+        if (intersection.isEmpty)
+            return true;
+
+        return (Math.abs(queryItemRange.Start - intersection.Start) > viewportSize / 2)
+            || (Math.abs(queryItemRange.End - intersection.End) > viewportSize / 2);
     }
 
     private getDataQuery(): VirtualListDataQuery {
