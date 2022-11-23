@@ -466,6 +466,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var (author, _) = @event;
+        if (author.ChatId == Constants.Chat.AnnouncementsChatId)
+            return;
 
         var createServiceEntryCommand = new IChatsBackend.UpsertEntryCommand(new ChatEntry {
             AuthorId = AuthorExt.GetWalleId(author.ChatId),
