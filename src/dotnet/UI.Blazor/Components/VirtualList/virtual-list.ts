@@ -383,7 +383,8 @@ export class VirtualList {
                 if (location.hash !== '' && timeSinceLastScroll > 3000) {
                     const scrollToKey = location.hash.substring(1);
                     if (!this._visibleItems.has(scrollToKey)) {
-                        history.pushState('', document.title, location.pathname + location.search);
+                        const currentState = history.state;
+                        history.pushState(currentState, document.title, location.pathname + location.search);
                     }
                 }
             }
