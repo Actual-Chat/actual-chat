@@ -197,6 +197,23 @@ export class MenuHost implements Disposable {
                 this.renderMenu(eventData);
             });
 
+        fromEvent(document, 'touchend')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter((event: TouchEvent) => {
+                    if (!(event.target instanceof Element))
+                        return false;
+                    const isOverlayClicked = event.target.classList.contains('ac-menu-overlay');
+                    if (isOverlayClicked)
+                        return true;
+                    const isMenuClicked = event.target.closest('.ac-menu, .ac-menu-hover') != null;
+                    return isMenuClicked;
+                }),
+            )
+            .subscribe(() => {
+                this.hideAllMenus();
+            });
+
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
