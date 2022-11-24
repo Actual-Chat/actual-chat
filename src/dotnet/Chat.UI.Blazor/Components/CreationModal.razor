@@ -50,14 +50,22 @@
 
                 <Form @ref="@_formRef" Model="@_form" Id="@_form.FormId" Class="px-2">
                     <DataAnnotationsValidator/>
-                        <div class="flex-y grow max-h-128 overflow-y-auto">
-                            <div class="flex-x gap-x-2 items-center pb-4">
-                                <AnonymousIcon Class="w-30 h-30 mx-2"></AnonymousIcon>
-                                <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2" IsRequired="true">
-                                    <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
-                                </FormSection>
-                            </div>
+                    <div class="flex-y grow max-h-128 overflow-y-auto">
+                        <div class="flex-x gap-x-2 items-center pb-4">
+                            <AnonymousIcon Class="w-30 h-30 mx-2"></AnonymousIcon>
+                            <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2" IsRequired="true">
+                                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
+                            </FormSection>
                         </div>
+                    </div>
+                    <RenderIntoSlot Name="NewGroupFormButton">
+                        <div class="btn-group">
+                            @{
+                                var submitClass = $"btn-primary {(_formRef != null && _formRef.IsValid ? "" : "disabled")}";
+                            }
+                            <Button Type="@ButtonType.Button" Click="OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
+                        </div>
+                    </RenderIntoSlot>
                 </Form>
             </div>
         }
@@ -65,7 +73,7 @@
             PageNumber="@PageNumber"
             AllContacts="@m.AllContacts.ToArray()"
             SelectedContacts="@SelectedContacts"
-            OnAddContact="AddContactToSelected"/>
+            OnAddContact="@AddContactToSelected"/>
         </Body>
 
     <Buttons>
@@ -74,12 +82,7 @@
                 <Button Type="@ButtonType.Button" Click="GetNextPage" Class="btn-primary">Next</Button>
             </div>
         } else if (PageNumber == 3) {
-            <div class="btn-group">
-                @{
-                    var submitClass = $"btn-primary {(_formRef != null && _formRef.IsValid ? "" : "disabled")}";
-                }
-                <Button Type="@ButtonType.Button" Click="OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
-            </div>
+            <RenderSlot Name="NewGroupFormButton"/>
         }
     </Buttons>
     </DialogFrame>
