@@ -1,8 +1,17 @@
-import './menu.css'
+import './menu.css';
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
-import { empty, skipWhile, combineLatestWith, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
-import { computePosition, flip, Middleware, offset, Placement, shift, ReferenceElement, VirtualElement } from '@floating-ui/dom';
+import { combineLatestWith, empty, filter, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
+import {
+    computePosition,
+    flip,
+    Middleware,
+    offset,
+    Placement,
+    ReferenceElement,
+    shift,
+    VirtualElement,
+} from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
 import screenSize from '../../Services/ScreenSize/screen-size';
 import { Vibration } from '../../Services/Vibration/vibration';
