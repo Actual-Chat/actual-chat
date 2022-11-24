@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <li @onclick="OnClick"
+    @ontouchend="OnClick"
     class="ac-menu-item @Class"
     data-tooltip="@Tooltip"
     data-editor-trigger="@(TriggerEditor.ToString())"
