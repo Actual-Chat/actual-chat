@@ -158,7 +158,7 @@ export class MenuHost implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 combineLatestWith(screenSize.size$),
-                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
                 switchMap((eventData: EventData | undefined) => {
@@ -186,7 +186,7 @@ export class MenuHost implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 combineLatestWith(screenSize.size$),
-                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),
                 switchMap((eventData: EventData | undefined) => {
@@ -217,9 +217,7 @@ export class MenuHost implements Disposable {
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
-                if (this.menus.length) {
-                    this.hideMenu(this.menus.pop());
-                }
+                this.hideAllMenus();
             });
     }
 
