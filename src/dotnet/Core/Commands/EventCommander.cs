@@ -2,6 +2,8 @@ namespace ActualChat.Commands;
 
 public class EventCommander : ICommander
 {
+    private readonly ConcurrentLruCache<ICommand, ICommand> _duplicateCache = new (128);
+
     private ILogger Log { get; init; }
     private IEventHandlerResolver EventHandlerResolver { get; }
 
@@ -18,11 +20,18 @@ public class EventCommander : ICommander
 
     public Task Run(CommandContext context, CancellationToken cancellationToken = default)
     {
+        var command = context.UntypedCommand;
+
+        // skip duplicates
+        if (!_duplicateCache.TryAdd(command, command)) {
+            context.TryComplete(cancellationToken);
+            return context.DisposeSilentlyAsync().AsTask();
+        }
+
         // Task.Run is used to call RunInternal to make sure parent
         // task's ExecutionContext won't be "polluted" by temp.
         // change of CommandContext.Current (via AsyncLocal).
         using var _ = context.IsOutermost ? ExecutionContextExt.SuppressFlow() : default;
-        var command = context.UntypedCommand;
         var handlerBatches = EventHandlerResolver.GetEventHandlers(command.GetType());
         if (handlerBatches.Count <= 1) {
             context.ExecutionState = new CommandExecutionState(handlerBatches.FirstOrDefault(Array.Empty<CommandHandler>()));

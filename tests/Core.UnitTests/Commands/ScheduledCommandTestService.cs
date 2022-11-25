@@ -28,6 +28,17 @@ public class ScheduledCommandTestService
         return Task.CompletedTask;
     }
 
+    [CommandHandler]
+    public virtual Task ProcessTestCommand3(TestCommand3 command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask;
+
+        new TestEvent(null).EnqueueOnCompletion(Queues.Default, Queues.Chats);
+        new TestEvent2().EnqueueOnCompletion(Queues.Default, Queues.Users);
+        return Task.CompletedTask;
+    }
+
     [EventHandler]
     public virtual async Task ProcessTestEvent(TestEvent @event, CancellationToken cancellationToken)
     {
