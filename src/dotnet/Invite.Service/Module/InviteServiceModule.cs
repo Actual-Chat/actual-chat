@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Commands;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Backend;
@@ -49,6 +50,8 @@ public class InviteServiceModule : HostModule<InviteSettings>
             return false;
         });
         var fusion = services.AddFusion();
+        fusion.AddLocalCommandScheduler(Queues.Users);
+        commander.AddEventHandlers();
 
         // Module's own services
         fusion.AddComputeService<IInvites, Invites>();

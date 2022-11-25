@@ -76,6 +76,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
         });
         var fusion = services.AddFusion();
+        fusion.AddLocalCommandScheduler(Queues.Chats);
+        commander.AddEventHandlers();
 
         // Chats
         fusion.AddComputeService<IChats, Chats>();
