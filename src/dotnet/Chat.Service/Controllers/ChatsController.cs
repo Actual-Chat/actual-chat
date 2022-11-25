@@ -1,4 +1,3 @@
-using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 
@@ -89,10 +88,6 @@ public class ChatsController : ControllerBase, IChats
             cancellationToken);
 
     // Commands
-
-    [HttpPost]
-    public Task AddMembers([FromBody] IChats.AddMembersCommand command, CancellationToken cancellationToken)
-        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task<Chat> Change([FromBody] IChats.ChangeCommand command, CancellationToken cancellationToken)

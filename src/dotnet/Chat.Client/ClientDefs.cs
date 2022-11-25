@@ -54,8 +54,6 @@ public interface IChatsClientDef
     [Get(nameof(FindNext))]
     Task<ChatEntry?> FindNext(Session session, string chatId, long? startEntryId, string text, CancellationToken cancellationToken);
 
-    [Post(nameof(AddMembers))]
-    Task AddMembers([Body] IChats.AddMembersCommand command, CancellationToken cancellationToken);
     [Post(nameof(Change))]
     Task<Chat> Change([Body] IChats.ChangeCommand command, CancellationToken cancellationToken);
     [Post(nameof(Join))]
