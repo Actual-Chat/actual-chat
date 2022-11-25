@@ -9,7 +9,7 @@
     var m = State.LatestNonErrorValue;
 
     RenderFragment RenderArrowBack()
-        => @<ButtonRound Class="transparent" Click="GetPreviousPage">
+        => @<ButtonRound Class="transparent" Click="@GetPreviousPage">
                 <i class="icon-arrow-left text-2xl"></i>
             </ButtonRound>;
 
@@ -26,8 +26,8 @@
                 AllContacts="@m.AllContacts.ToArray()"
                 SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
-                OnNextPageClick="GetNextPage"
-                OnPreviousPageClick="GetPreviousPage"/>
+                OnNextPageClick="@GetNextPage"
+                OnPreviousPageClick="@GetPreviousPage"/>
         } else if (PageNumber == 2) {
             <AddMembersPage
                 Title="Add members"
@@ -35,7 +35,7 @@
                 SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
-                OnPreviousPageClick="GetPreviousPage"
+                OnPreviousPageClick="@GetPreviousPage"
                 SearchBox="@_searchBoxRef"
                 OnRemoveContact="@RemoveFromSelected"/>
         } else if (PageNumber == 3) {
@@ -43,7 +43,7 @@
                 <div class="header add-members">
                     @RenderArrowBack()
                     @RenderTitle("New Group")
-                    <ButtonRound Class="transparent" Click="OnClose">
+                    <ButtonRound Class="transparent" Click="@OnClose">
                         <i class="icon-close text-2xl md:text-xl font-medium"></i>
                     </ButtonRound>
                 </div>
@@ -61,9 +61,9 @@
                     <RenderIntoSlot Name="NewGroupFormButton">
                         <div class="btn-group">
                             @{
-                                var submitClass = $"btn-primary {(_formRef != null && _formRef.IsValid ? "" : "disabled")}";
+                                var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
                             }
-                            <Button Type="@ButtonType.Button" Click="OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
+                            <Button Type="@ButtonType.Button" Click="@OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
                         </div>
                     </RenderIntoSlot>
                 </Form>
@@ -79,7 +79,7 @@
     <Buttons>
         @if (PageNumber == 2) {
             <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="GetNextPage" Class="btn-primary">Next</Button>
+                <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
             </div>
         } else if (PageNumber == 3) {
             <RenderSlot Name="NewGroupFormButton"/>
@@ -212,11 +212,18 @@
             },
         });
         try {
-            var (chat, error) = await UICommander.Run(command);
+            var (chat, error) = await UICommander.Run(command, default);
             if (error != null)
                 return;
 
             chat = chat.Require();
+            if (SelectedContacts.Length > 0) {
+                var addMembersCommand = new IChats.AddMembersCommand(Session, chat.Id, SelectedContacts.ToImmutableArray());
+                var (_, error2) = await UICommander.Run(addMembersCommand, default);
+                if (error2 != null)
+                    return;
+            }
+
             await ModalInstance.CloseAsync();
             Nav.NavigateTo(Links.ChatPage(chat.Id));
         }
