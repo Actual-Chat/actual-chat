@@ -8,6 +8,7 @@ public class LocalCommandScheduler : WorkerBase
 
     private ICommandQueues CommandQueues { get; }
     private ICommander Commander { get; }
+    private EventCommander EventCommander { get; }
     private ILogger<LocalCommandScheduler> Log { get; }
 
     public LocalCommandScheduler(
@@ -21,6 +22,7 @@ public class LocalCommandScheduler : WorkerBase
         _dispose = dispose;
         CommandQueues = serviceProvider.GetRequiredService<ICommandQueues>();
         Commander = serviceProvider.GetRequiredService<ICommander>();
+        EventCommander = serviceProvider.GetRequiredService<EventCommander>();
         Log = serviceProvider.GetRequiredService<ILogger<LocalCommandScheduler>>();
     }
 
@@ -36,7 +38,10 @@ public class LocalCommandScheduler : WorkerBase
             },
             async (queuedCommand, cancellationToken1) => {
                 try {
-                    await Commander.Run(queuedCommand.Command, true, cancellationToken1).ConfigureAwait(false);
+                    if (queuedCommand.Command is IEvent)
+                        await EventCommander.Run(queuedCommand.Command, true, cancellationToken1).ConfigureAwait(false);
+                    else
+                        await Commander.Run(queuedCommand.Command, true, cancellationToken1).ConfigureAwait(false);
                     await queueReader.Ack(queuedCommand, cancellationToken1).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException e)
