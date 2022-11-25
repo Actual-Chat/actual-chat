@@ -1,3 +1,5 @@
+using ActualChat.Contacts;
+
 namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
@@ -63,6 +65,8 @@ public interface IChats : IComputeService
     // Commands
 
     [CommandHandler]
+    Task AddMembers(AddMembersCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task<Chat> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Unit> Join(JoinCommand command, CancellationToken cancellationToken);
@@ -92,6 +96,13 @@ public interface IChats : IComputeService
     public sealed record LeaveCommand(
         [property: DataMember] Session Session,
         [property: DataMember] Symbol ChatId
+    ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record AddMembersCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] Symbol ChatId,
+        [property: DataMember] ImmutableArray<Contact> Contacts
     ) : ISessionCommand<Unit>;
 
     [DataContract]

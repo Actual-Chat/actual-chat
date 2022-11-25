@@ -1,3 +1,5 @@
+using ActualChat.Contacts;
+
 namespace ActualChat.Chat;
 
 public partial interface IChatsBackend : IComputeService

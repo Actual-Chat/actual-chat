@@ -91,6 +91,10 @@ public class ChatsController : ControllerBase, IChats
     // Commands
 
     [HttpPost]
+    public Task AddMembers([FromBody] IChats.AddMembersCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
     public Task<Chat> Change([FromBody] IChats.ChangeCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 

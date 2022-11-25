@@ -159,6 +159,27 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
+    public virtual async Task AddMembers(IChats.AddMembersCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, contacts) = command;
+        await this.RequirePermissions(session, chatId, ChatPermissions.EditProperties, cancellationToken).ConfigureAwait(false);
+
+        foreach (var contact in contacts) {
+            var account = contact.Account;
+            if (account == null) continue;
+            var userId = account.Id;
+            var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+            if (author.HasLeft) {
+                var addCommand = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, false);
+                await Commander.Call(addCommand, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // [CommandHandler]
     public virtual async Task<Chat> Change(IChats.ChangeCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -196,7 +217,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return default;
     }
 
-    // [CommandHandler]
     public virtual Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
