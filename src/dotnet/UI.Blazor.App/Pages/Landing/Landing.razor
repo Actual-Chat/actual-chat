@@ -1,4 +1,4 @@
-@page "/start"
+@namespace ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using System.Security.Cryptography
@@ -28,7 +28,7 @@
                 <div class="text-04 font-medium px-8">
                     For business
                 </div>
-                <div class="flex-x gap-x-4 items-center rounded-full text-04 font-semibold border border-bg-01 px-2 py-1">
+                <div class="flex-x h-12 gap-x-4 items-center rounded-full border border-bg-01 px-2 py-1 text-04 font-semibold">
                     <div>
                         Sign in with
                     </div>
@@ -49,7 +49,7 @@
                             </defs>
                         </svg>
                     </ButtonRound>
-                    @* @if (m.EnableIncompleteUI) { *@
+                    @if (m.EnableIncompleteUI) {
                         <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
                             <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M24 12C24 5.36889 18.6311 0 12 0C5.36889 0 0 5.36889 0 12C0 17.9911 4.39111 22.9511 10.1333 23.8578V15.4667H7.07556V12H10.1333V9.35111C10.1333 6.34667 11.9111 4.69333 14.6489 4.69333C15.9644 4.69333 17.3333 4.92444 17.3333 4.92444V7.87556H15.8222C14.3289 7.87556 13.8667 8.8 13.8667 9.74222V12H17.1911L16.6578 15.4667H13.8667V23.8578C19.6089 22.9511 24 17.9911 24 12Z" fill="#1677F0"/>
@@ -69,7 +69,7 @@
                                 </defs>
                             </svg>
                         </ButtonRound>
-                    @* } *@
+                    }
                 </div>
             </div>
         </div>
@@ -81,7 +81,7 @@
                     <div class="py-8 text-xl">We want to redefine the meaning of "Chat". Actually.</div>
                 </div>
                 <div>
-                    <div class="flex-x gap-x-4 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
+                    <div class="flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
                         <div>
                             Sign in with
                         </div>
@@ -102,7 +102,7 @@
                                 </defs>
                             </svg>
                         </ButtonRound>
-                        @* @if (m.EnableIncompleteUI) { *@
+                        @if (m.EnableIncompleteUI) {
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
                                 <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M24 12C24 5.36889 18.6311 0 12 0C5.36889 0 0 5.36889 0 12C0 17.9911 4.39111 22.9511 10.1333 23.8578V15.4667H7.07556V12H10.1333V9.35111C10.1333 6.34667 11.9111 4.69333 14.6489 4.69333C15.9644 4.69333 17.3333 4.92444 17.3333 4.92444V7.87556H15.8222C14.3289 7.87556 13.8667 8.8 13.8667 9.74222V12H17.1911L16.6578 15.4667H13.8667V23.8578C19.6089 22.9511 24 17.9911 24 12Z" fill="#1677F0"/>
@@ -122,7 +122,7 @@
                                     </defs>
                                 </svg>
                             </ButtonRound>
-                        @* } *@
+                        }
                     </div>
                 </div>
             </div>
@@ -151,11 +151,28 @@
     </div>
 
     <div class="page page-4 overflow-y-hidden" id="landing-page-4">
-        <div class="flex w-full h-40 py-12 px-16 items-center">
-            <img src="/landing/p4-header.png" alt="header">
+        <div class="flex w-full h-40 py-12 px-16 items-center justify-center">
+            <div class="text-5xl font-semibold">We believe communication must be...</div>
         </div>
-        <div class="flex px-16 h-full overflow-hidden bg-[#EEEEF6]">
-            <img src="/landing/p4-body.png" alt="body">
+        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
+            <div class="w-1/2 p-16 pb-24 pr-6">
+                <div class="w-full h-full bg-[#CBCBD1]">
+
+                </div>
+            </div>
+            <div class="flex-y w-1/2 p-16 pb-24 pl-6">
+                <div class="text-7xl font-semibold">Stressless</div>
+                <ul class="list-disc m-8">
+                    <li>
+                        76% of millennials and 40% of baby boomers experience anxiety when the phone rings, leading to 61% of the millennials avoiding calls
+                    </li>
+                    <li>
+                        Miillennials and Gen-Z also find calls rude and anxiety-inducing. 81% of respondents admit that they often experience anxiety when talking to someone on the phone. Most, if not all, even need to work up the courage to press the Call button.
+                    </li>
+                    <li>Believe it or not, but there is no “Call” button in Actual.chat :)</li>
+                </ul>
+            </div>
+            @* <img src="/landing/p4-body.png" alt="body"> *@
         </div>
     </div>
 </div>

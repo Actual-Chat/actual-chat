@@ -11,7 +11,11 @@
         return;
     if (ReferenceEquals(account, AccountFull.None)) { // Loaded, but user doesn't have an account
         _signInHasRequested = true;
-        <Welcome/>
+        if (_enableIncompleteUI) {
+            <Landing/>
+        } else {
+            <Welcome/>
+        }
         return;
     }
 
@@ -26,6 +30,7 @@
 @code {
     private bool _navigated;
     private bool _signInHasRequested;
+    private bool _enableIncompleteUI;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
@@ -35,6 +40,7 @@
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
@@ -43,6 +49,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
         var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
         var link = "";
         if (HistoryUI.IsInitialLocation || _signInHasRequested) {
