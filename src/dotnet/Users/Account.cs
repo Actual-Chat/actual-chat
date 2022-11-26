@@ -1,18 +1,36 @@
+using ActualChat.Comparison;
+using Stl.Versioning;
+
 namespace ActualChat.Users;
 
 [DataContract]
 public record Account(
-    [property: DataMember] UserId Id
-) : IHasId<UserId>, IRequirementTarget
+    [property: DataMember] UserId Id,
+    [property: DataMember] long Version = 0
+) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
+    public static IEqualityComparer<Account> EqualityComparer { get; } =
+        VersionBasedEqualityComparer<Account, UserId>.Instance;
+
     public static Account None => AccountFull.None;
-    public static Account Loading => AccountFull.Loading; // Should differ by ref. from None
+    public static Account Loading => AccountFull.Loading;
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
-        new(() => StandardError.Account.None()),
+        new(() => StandardError.NotFound<Account>()),
         (Account? a) => a is { Id.IsEmpty: false });
+    public static Requirement<Account> MustNotBeGuest { get; } = Requirement.New(
+        new(() => StandardError.Account.Guest()),
+        (Account? a) => a?.IsGuest == false);
 
-    [DataMember] public long Version { get; init; }
     [DataMember] public AccountStatus Status { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Populated only on reads
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsGuest => Id.IsGuestId;
+
+    // This record relies on version-based equality
+    public virtual bool Equals(Account? other)
+        => EqualityComparer.Equals(this, other);
+    public override int GetHashCode()
+        => EqualityComparer.GetHashCode(this);
 }

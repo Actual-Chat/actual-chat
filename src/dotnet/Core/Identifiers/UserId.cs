@@ -20,7 +20,7 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsGuestId => !IsEmpty && Value[0] == GuestIdPrefixChar;
+    public bool IsGuestId => IsEmpty || Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
         => new(IdGenerator.Next(), ParseOptions.Skip);

@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 [DataContract]
 public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<long>, IRequirementTarget
 {
-    private static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
+    public static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
         VersionBasedEqualityComparer<ChatEntry, long>.Instance;
 
     long IHasId<long>.Id => LocalId;

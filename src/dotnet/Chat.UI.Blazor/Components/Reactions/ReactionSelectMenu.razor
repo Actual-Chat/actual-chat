@@ -12,7 +12,7 @@
         if (Arguments is { Length: 1 }) {
             var chatEntryId = new ChatEntryId(Arguments[0]);
             var reader = Chats.NewEntryReader(Session, chatEntryId.ChatId, ChatEntryKind.Text);
-            _entry = await reader.Get(chatEntryId.EntryId, CancellationToken.None).Require();
+            _entry = await reader.Get(chatEntryId.LocalId, CancellationToken.None).Require();
         }
     }
 }

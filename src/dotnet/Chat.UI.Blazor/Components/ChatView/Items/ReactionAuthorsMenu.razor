@@ -11,17 +11,17 @@
 </ul>
 
 @code {
-    private ImmutableList<Symbol> _firstAuthorIds = ImmutableList<Symbol>.Empty;
+    private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
     private string _emoji = "";
     [Inject] private IReactions Reactions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is {Length: 2}) {
-            var chatEntryId = Arguments[0];
+            var chatEntryId = new ChatEntryId(Arguments[0]);
             _emoji = Arguments[1];
             var summaries = await Reactions.ListSummaries(Session, chatEntryId, CancellationToken.None).ConfigureAwait(false);
-            var summary = summaries.FirstOrDefault(x => x.Emoji == _emoji);
+            var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
             if (summary == null)
                 return;
 

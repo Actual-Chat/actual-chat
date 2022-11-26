@@ -25,20 +25,17 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull?> Get(string id, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
     {
-        var userId = new UserId(id);
-
         // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(default, id, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
         if (user == null)
             return null;
 
-        var dbAccount = await DbAccountResolver.Get(id, cancellationToken).Require().ConfigureAwait(false);
-        var account = new AccountFull(userId, user) {
-            IsAdmin = IsAdmin(user),
-        };
-        account = dbAccount.ToModel(account);
+        var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        var account = dbAccount.ToModel();
+        if (IsAdmin(user))
+            account = account with { IsAdmin = true };
 
         // Adding Avatar
         var kvas = ServerKvasBackend.GetUserClient(account);

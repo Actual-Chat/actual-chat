@@ -7,18 +7,21 @@ public record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementT
 {
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public long Version { get; init; }
-    [DataMember] public Symbol EntryId { get; init; } = "";
-    [DataMember] public string Emoji { get; init; } = "";
+    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public Symbol EmojiId { get; init; }
     [DataMember] public long Count { get; init; }
+
+    // Set on reads
     public ImmutableList<AuthorId> FirstAuthorIds { get; init; } = ImmutableList<AuthorId>.Empty;
 
-    public ReactionSummary Increase()
-        => this with { Count = Count + 1 };
-    public ReactionSummary Decrease()
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Emoji Emoji => Emoji.Get(EmojiId);
+
+    public ReactionSummary IncrementCount(long diff = 1)
     {
-        var result = this with { Count = Count - 1 };
+        var result = this with { Count = Count + diff };
         if (result.Count < 0)
-            throw StandardError.Constraint("Summary cannot have negative reactions count");
+            throw StandardError.Constraint("Summary cannot have negative reaction count.");
         return result;
     }
 

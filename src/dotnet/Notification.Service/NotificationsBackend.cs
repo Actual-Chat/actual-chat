@@ -306,7 +306,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
-        var text = $"{reaction.Emoji} to \"{GetText(entry, 30)}\"";
+        var text = $"{reaction.EmojiId} to \"{GetText(entry, 30)}\"";
         var userIds = new[] { author.UserId };
         await EnqueueMessageRelatedNotifications(entry, author, text, NotificationKind.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);

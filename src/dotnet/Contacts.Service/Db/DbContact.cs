@@ -44,6 +44,8 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             return; // Only Version & TouchedAt can be changed for already existing contacts
 
         var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+
         Id = id;
         OwnerId = model.OwnerId;
         ChatId = model.ChatId.Value.NullIfEmpty();

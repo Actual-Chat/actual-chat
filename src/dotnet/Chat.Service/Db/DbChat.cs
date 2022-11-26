@@ -33,9 +33,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public List<DbChatOwner> Owners { get; set; } = new();
 
     public Chat ToModel()
-        => new() {
-            Id = new ChatId(Id),
-            Version = Version,
+        => new(new ChatId(Id), Version) {
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
@@ -44,7 +42,10 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(Chat model)
     {
-        Id = model.Id.Value;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+
+        Id = id;
         Version = model.Version;
         Title = model.Title;
         CreatedAt = model.CreatedAt;

@@ -33,7 +33,10 @@ public class DbMention : IHasId<string>, IRequirementTarget
 
     public void UpdateFrom(Mention model)
     {
-        Id = ComposeId(model.EntryId, model.MentionId);
+        var id = ComposeId(model.EntryId, model.MentionId);
+        this.RequireSameOrEmptyId(id);
+
+        Id = id;
         ChatId = model.ChatId;
         MentionId = model.MentionId;
         EntryId = model.EntryId.LocalId;

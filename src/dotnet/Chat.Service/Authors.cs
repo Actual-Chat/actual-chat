@@ -36,8 +36,8 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        var canRead = await CanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
             return null;
 
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -88,8 +88,8 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         CancellationToken cancellationToken)
     {
         // In fact, de-anonymizes the author
-        var canRead = await CanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
             return null;
 
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -166,26 +166,13 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, avatarId) = command;
-        var canRead = await CanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
-            return;
+        await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return;
 
         var setAvatarCommand = new IAuthorsBackend.SetAvatarCommand(chatId, author.Id, avatarId);
         await Commander.Call(setAvatarCommand, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    // Private methods
-
-    private async ValueTask<bool> CanRead(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return false;
-
-        var canRead = await Chats.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead;
     }
 }

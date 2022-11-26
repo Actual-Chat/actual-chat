@@ -8,7 +8,7 @@
 }
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
-        <EmojiIcon Code="@Emoji.ThumbsUp.Code" class="w-5 h-5"/>
+        <EmojiIcon Id="@Emoji.ThumbsUp.Id" class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply) {
         <ButtonRound
@@ -63,7 +63,7 @@
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
             EntryId = Message.Entry.Id,
-            Emoji = Emoji.ThumbsUp,
+            EmojiId = Emoji.ThumbsUp,
         }));
     }
 

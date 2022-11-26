@@ -29,8 +29,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AuthorFull ToModel()
     {
-        var result = new AuthorFull() {
-            Id = new AuthorId(Id),
+        var result = new AuthorFull(new AuthorId(Id), Version) {
             Version = Version,
             IsAnonymous = IsAnonymous,
             UserId = new UserId(UserId ?? Symbol.Empty, ParseOptions.Skip),

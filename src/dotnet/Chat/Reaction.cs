@@ -8,6 +8,9 @@ public record Reaction : IHasId<Symbol>, IRequirementTarget
     [DataMember] public long Version { get; init; }
     [DataMember] public AuthorId AuthorId { get; init; }
     [DataMember] public ChatEntryId EntryId { get; init; }
-    [DataMember] public string Emoji { get; init; } = "";
+    [DataMember] public Symbol EmojiId { get; init; }
     [DataMember] public Moment ModifiedAt { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Emoji Emoji => Emoji.Get(EmojiId);
 }

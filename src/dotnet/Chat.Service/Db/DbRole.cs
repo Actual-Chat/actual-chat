@@ -66,6 +66,8 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Role model)
     {
         var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+
         Id = id;
         ChatId = id.ChatId;
         LocalId = id.LocalId;

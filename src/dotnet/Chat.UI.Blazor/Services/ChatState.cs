@@ -9,8 +9,8 @@ public sealed record ChatState
     private bool? _hasMentions;
     private Trimmed<int>? _unreadMessageCount;
 
-    public Chat Chat { get; init; }
-    public ChatSummary Summary { get; init; }
+    public Chat Chat { get; init; } = null!;
+    public ChatSummary Summary { get; init; } = null!;
     public Contact? Contact { get; init; }
     public Mention? LastMention { get; init; }
     public long? ReadEntryId { get; init; }

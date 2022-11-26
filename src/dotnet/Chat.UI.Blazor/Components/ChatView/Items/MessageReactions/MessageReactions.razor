@@ -9,11 +9,11 @@
 }
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
-        var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
-        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
-            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.Emoji))"
+        var ownReactionClass = m.OwnReaction?.EmojiId == reaction.EmojiId ? "message-reactions-reaction-own" : "";
+        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.EmojiId)"
+            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.EmojiId))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()">
-            <EmojiIcon Code="@reaction.Emoji" class="w-4 h-4"/>
+            <EmojiIcon Id="@reaction.EmojiId" class="w-4 h-4"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
@@ -51,10 +51,10 @@
         return new Model(true, summaries, ownReaction);
     }
 
-    private Task ToggleReaction(string emoji) {
+    private Task ToggleReaction(Symbol emojiId) {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
             EntryId = ChatEntry.Id,
-            Emoji = emoji,
+            EmojiId = emojiId,
         }));
     }
 

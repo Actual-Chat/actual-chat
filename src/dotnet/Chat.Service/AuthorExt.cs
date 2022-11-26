@@ -8,8 +8,7 @@ public static class AuthorExt
         => new(chatId, Constants.User.Walle.AuthorLocalId, ParseOptions.Skip);
 
     public static AuthorFull GetWalle(ChatId chatId)
-        => new () {
-            Id = GetWalleId(chatId),
+        => new (GetWalleId(chatId)) {
             UserId = Constants.User.Walle.UserId,
             Avatar = new AvatarFull {
                 Name = Constants.User.Walle.Name,

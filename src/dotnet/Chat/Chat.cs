@@ -3,18 +3,22 @@
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record Chat : IHasId<ChatId>, IRequirementTarget
+public sealed record Chat(
+    [property: DataMember] ChatId Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<ChatId>, IRequirementTarget
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
         (Chat? c) => c is { Id.IsEmpty: false });
 
-    [DataMember] public ChatId Id { get; init; }
-    [DataMember] public long Version { get; init; }
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
     [DataMember] public string Picture { get; init; } = "";
+
+    // Set by front-end only
+    [DataMember] public AuthorRules Rules { get; init; } = AuthorRules.None(Id);
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;

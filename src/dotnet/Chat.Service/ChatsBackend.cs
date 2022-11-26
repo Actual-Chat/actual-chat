@@ -255,8 +255,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat Id.");
 
-            chat = ApplyDiff(new Chat() {
-                Id = chatId,
+            chat = ApplyDiff(new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
             }, update);
 

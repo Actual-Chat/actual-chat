@@ -11,7 +11,7 @@
         @ChildContent
     </ChildContent>
     <ErrorContent>
-        @if (context.Errors.Any(e => e is NoAccountException)) {
+        @if (context.Errors.Any(e => e is GuestAccountException)) {
             <SignInBlock/>
         } else if (context.Errors.Any(e => e is SuspendedAccountException)) {
             <SignOutBlock>

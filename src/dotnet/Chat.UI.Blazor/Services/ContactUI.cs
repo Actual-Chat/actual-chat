@@ -42,6 +42,9 @@ public class ContactUI
             });
     }
 
+    public Task<ChatState?> GetState(ContactId contactId, CancellationToken cancellationToken)
+        => ChatUI.GetState(contactId.ChatId, cancellationToken); // Just a shortcut
+
     [ComputeMethod]
     public virtual Task<bool> IsSelected(ContactId contactId)
         => Task.FromResult(SelectedContactId.Value.Id == contactId);
@@ -49,9 +52,6 @@ public class ContactUI
     [ComputeMethod]
     public virtual Task<bool> IsPinned(ContactId contactId)
         => Task.FromResult(PinnedContacts.Value.Contains(contactId));
-
-    public Task<ChatState?> GetState(ContactId contactId, CancellationToken cancellationToken)
-        => ChatUI.GetState(contactId.ChatId, cancellationToken); // Just a shortcut
 
     [ComputeMethod]
     public virtual async Task<ImmutableList<ChatState>> ListStates(CancellationToken cancellationToken)

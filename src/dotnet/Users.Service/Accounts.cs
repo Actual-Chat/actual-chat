@@ -21,7 +21,8 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         if (user == null)
             return null;
 
-        return await Backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+        var userId = new UserId(user.Id);
+        return await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

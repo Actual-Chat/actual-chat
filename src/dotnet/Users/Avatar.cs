@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 [DataContract]
 public record Avatar : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    private static IEqualityComparer<Avatar> EqualityComparer { get; } =
+    public static IEqualityComparer<Avatar> EqualityComparer { get; } =
         VersionBasedEqualityComparer<Avatar, Symbol>.Instance;
     public static Requirement<Avatar> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),

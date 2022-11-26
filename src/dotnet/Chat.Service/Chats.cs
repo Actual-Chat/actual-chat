@@ -49,11 +49,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
 
         // Group chat
-        var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
+        var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
             return null;
 
-        return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead())
+            return null;
+
+        chat = chat with { Rules = rules };
+        return chat;
     }
 
     // [ComputeMethod]
@@ -64,7 +69,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -76,7 +81,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetEntryCount(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -88,7 +93,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         return await Backend.GetIdRange(chatId, entryKind, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -99,7 +104,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanRead() && chatId.Kind != ChatKind.Peer) {
+            // Has invite = same as having read permission
+            var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (hasInvite)
+                rules = rules with { Permissions = (rules.Permissions | ChatPermissions.Read).AddImplied() };
+        }
+        return rules;
     }
 
     // [ComputeMethod]
@@ -108,8 +120,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var canRead = await this.HasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
+        if (chat == null)
             return null;
 
         return await Backend.GetSummary(chatId, cancellationToken).ConfigureAwait(false);
@@ -140,7 +152,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
             .Select(id => Authors.Get(session, chatId, id, cancellationToken))
@@ -182,6 +194,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, expectedVersion, change) = command;
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
@@ -193,8 +206,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             };
         }
         if (change.Update.HasValue)
-            await this.RequirePermissions(session, chatId, ChatPermissions.EditProperties, cancellationToken).ConfigureAwait(false);
-        var chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+            chat.Rules.Permissions.Require(ChatPermissions.EditProperties);
+
+        chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }
 
@@ -252,11 +266,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId) = command;
-        await this.RequirePermissions(session, chatId, ChatPermissions.Leave, cancellationToken).ConfigureAwait(false);
 
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;
+
+        chat.Rules.Permissions.Require(ChatPermissions.Leave);
 
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
@@ -298,7 +313,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var (session, chatId, _, text, repliedChatEntryId) = command;
         // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
         // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
-        await this.RequirePermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatEntry = new ChatEntry {
@@ -391,7 +407,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Session session,
         CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         if (chatEntry.IsRemoved)
             throw StandardError.NotFound<ChatEntry>();
@@ -409,7 +426,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Session session,
         CancellationToken cancellationToken)
     {
-        await this.RequirePermissions(session, chatEntry.ChatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         if (chatEntry.IsRemoved)
             throw StandardError.NotFound<ChatEntry>();

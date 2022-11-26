@@ -3,14 +3,14 @@ namespace ActualChat.Users;
 [DataContract]
 public sealed record AccountFull(
     UserId Id,
-    [property: DataMember] User User
-    ) : Account(Id)
+    long Version = 0
+    ) : Account(Id, Version)
 {
-    public static new AccountFull None { get; } = new(default, User.NewGuest()) { Avatar = Avatar.None };
-    public static new AccountFull Loading { get; } = new(default, User.NewGuest()) { Avatar = Avatar.Loading }; // Should differ by ref. from None
+    public static new AccountFull None { get; } = new(User.NewGuest(), 0) { Avatar = Avatar.None };
+    public static new AccountFull Loading { get; } = new(User.NewGuest(), 1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
-        new(() => StandardError.Account.None()),
+        new(() => StandardError.NotFound<Account>()),
         (AccountFull? a) => a != null);
     public static Requirement<AccountFull> MustBeAdmin { get; } = MustExist & Requirement.New(
         new(() => StandardError.Account.NonAdmin()),
@@ -23,5 +23,16 @@ public sealed record AccountFull(
         (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin));
     public static Requirement<AccountFull> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
 
+    [DataMember] public User User { get; init; }
     [DataMember] public bool IsAdmin { get; init; }
+
+    public AccountFull(User user, long version = 0)
+        : this(new UserId(user.Id, ParseOptions.Skip), version)
+        => User = user;
+
+    // This record relies on version-based equality
+    public bool Equals(AccountFull? other)
+        => EqualityComparer.Equals(this, other);
+    public override int GetHashCode()
+        => EqualityComparer.GetHashCode(this);
 }

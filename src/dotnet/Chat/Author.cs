@@ -5,19 +5,20 @@ using Stl.Versioning;
 namespace ActualChat.Chat;
 
 [DataContract]
-public record Author : IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
+public record Author(
+    [property: DataMember] AuthorId Id,
+    [property: DataMember] long Version = 0
+    ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
-    private static IEqualityComparer<Author> EqualityComparer { get; } =
+    public static IEqualityComparer<Author> EqualityComparer { get; } =
         VersionBasedEqualityComparer<Author, AuthorId>.Instance;
     public static Requirement<Author> MustExist { get; } = Requirement.New(
         new(() => StandardError.Author.Unavailable()),
         (Author? a) => a is { Id.IsEmpty: false });
 
-    public static Author None { get; } = new() { Avatar = Avatar.None };
-    public static Author Loading { get; } = new() { Avatar = Avatar.Loading }; // Should differ by ref. from None
+    public static Author None { get; } = AuthorFull.None;
+    public static Author Loading { get; } = AuthorFull.Loading;
 
-    [DataMember] public AuthorId Id { get; init; }
-    [DataMember] public long Version { get; init; }
     [DataMember] public Symbol AvatarId { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Auto-populated
     [DataMember] public bool IsAnonymous { get; init; }

@@ -38,16 +38,17 @@ public class AppServerAuthHelper : ServerAuthHelper
         var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
         var options = sessionInfo?.Options ?? ImmutableOptionSet.Empty;
         if ((sessionInfo?.UserId ?? "").Length == 0) { // Unauthenticated
-            GuestId? guestId = null;
+            GuestIdOption? guestIdOption = null;
             try {
-                guestId = options.Get<GuestId>();
+                guestIdOption = options.Get<GuestIdOption>();
             }
             catch {
                 // Intended: GuestId type was changed, so it might throw an error
             }
-            if (guestId is not { UserId.IsGuestId: true }) // No GuestId
+            var guestId = guestIdOption?.GuestId ?? default;
+            if (guestId.IsEmpty || !guestId.IsGuestId) // No GuestId
                 setupSessionCommand = setupSessionCommand with {
-                    Options = ImmutableOptionSet.Empty.Set(new GuestId(UserId.NewGuest())),
+                    Options = ImmutableOptionSet.Empty.Set(new GuestIdOption(UserId.NewGuest())),
                 };
         }
         return Commander.Call(setupSessionCommand, true, cancellationToken);

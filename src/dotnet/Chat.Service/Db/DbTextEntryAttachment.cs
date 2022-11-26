@@ -42,7 +42,10 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public void UpdateFrom(TextEntryAttachment model)
     {
         var entryId = model.EntryId;
-        Id = ComposeId(entryId, model.Index);
+        var id = ComposeId(entryId, model.Index);
+        this.RequireSameOrEmptyId(id);
+
+        Id = id;
         Version = model.Version;
         EntryId = entryId;
         Index = model.Index;

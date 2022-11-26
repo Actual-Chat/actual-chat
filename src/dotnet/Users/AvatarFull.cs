@@ -1,11 +1,7 @@
-using ActualChat.Comparison;
-
 namespace ActualChat.Users;
 
 public sealed record AvatarFull : Avatar
 {
-    private static IEqualityComparer<AvatarFull> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<AvatarFull, Symbol>.Instance;
     public static new Requirement<AvatarFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),
         (AvatarFull? a) => a is { Id.IsEmpty : false });

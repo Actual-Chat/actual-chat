@@ -17,7 +17,7 @@
 <h3 class="section border-0">Session</h3>
 <ul>
     <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
-    <li><code>SessionInfo.Options.GuestId</code>: <b><code>@(m.SessionInfo?.Options.GetOrDefault<GuestId>())</code></b></li>
+    <li><code>SessionInfo.Options.GuestId</code>: <b><code>@(m.SessionInfo?.Options.GetOrDefault<GuestIdOption>())</code></b></li>
     <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 

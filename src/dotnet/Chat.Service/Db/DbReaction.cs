@@ -13,8 +13,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [ConcurrencyCheck] public long Version { get; set; }
     public string AuthorId { get; set; } = "";
     public string EntryId { get; set; } = "";
-
-    public string Emoji { get; set; } = "";
+    public string EmojiId { get; set; } = "";
 
     public DateTime ModifiedAt {
         get => _modifiedAt.DefaultKind(DateTimeKind.Utc);
@@ -33,17 +32,20 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Version = Version,
             AuthorId = new AuthorId(AuthorId),
             EntryId = new ChatEntryId(EntryId),
-            Emoji = Emoji,
+            EmojiId = EmojiId,
             ModifiedAt = ModifiedAt,
         };
 
     public void UpdateFrom(Reaction model)
     {
-        Id = ComposeId(model.EntryId, model.AuthorId);
+        var id = ComposeId(model.EntryId, model.AuthorId);
+        this.RequireSameOrEmptyId(id);
+
+        Id = id;
         Version = model.Version;
         AuthorId = model.AuthorId;
         EntryId = model.EntryId;
-        Emoji = model.Emoji;
+        EmojiId = model.EmojiId;
         ModifiedAt = model.ModifiedAt;
     }
 }

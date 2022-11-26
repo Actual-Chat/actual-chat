@@ -6,11 +6,11 @@
 <ul class="reaction-select @Class">
     @foreach (var emoji in _emojis) {
         <MenuEntry
-            OnClick="_ => React(emoji.Code)"
+            OnClick="_ => React(emoji.Id)"
             Class="reaction-select-reaction"
             Tooltip="@emoji.Name">
             <IconContent>
-                <EmojiIcon Code="@emoji.Code" class="@ReactionClass"/>
+                <EmojiIcon Id="@emoji.Id" class="@ReactionClass"/>
             </IconContent>
         </MenuEntry>
     }
@@ -38,9 +38,10 @@
         _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
     }
 
-    private Task React(string emoji) {
+    private Task React(Symbol emojiId) {
         var command = new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = ChatEntry.ChatId, EntryLocalId = ChatEntry.Id, Emoji = emoji,
+            EntryId = ChatEntry.Id,
+            EmojiId = emojiId,
         });
         return UICommander.Run(command);
     }

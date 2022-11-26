@@ -52,9 +52,6 @@ internal class Reactions : IReactions
         if (author == null)
             return;
 
-        if (!Emoji.IsAllowed(reaction.Emoji))
-            throw StandardError.Constraint($"Emoji '{reaction.Emoji}' is not correct for reaction.");
-
         reaction = reaction with { AuthorId = author.Id };
         await Commander.Call(new IReactionsBackend.ReactCommand(reaction), cancellationToken).ConfigureAwait(false);
     }
