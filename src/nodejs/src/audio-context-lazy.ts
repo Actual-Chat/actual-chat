@@ -50,8 +50,8 @@ async function resume(audioContext: AudioContext, force = false) : Promise<void>
         }
         if (!result)
             throw new Error(`${LogScope}: Couldn't resume AudioContext.`);
-        debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
     }
+    debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
 }
 
 async function warmup(audioContext: AudioContext): Promise<AudioContext> {
