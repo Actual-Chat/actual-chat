@@ -8,6 +8,32 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
 }
 
+export class AsyncLock
+{
+    private _promise : Promise<Unit>;
+
+    constructor () {
+        this._promise = Promise.resolve(Unit.Instance);
+    }
+
+    public async lock<T>(job : () => Promise<T>) : Promise<T> {
+        await this._promise;
+        const task = new PromiseSource<Unit>();
+        this._promise = task;
+        try {
+            return await job();
+        }
+        finally {
+            task.resolve(Unit.Instance);
+        }
+    }
+}
+
+class Unit
+{
+    static Instance = new Unit();
+}
+
 export class PromiseSource<T> implements Promise<T> {
     public resolve: (T) => void;
     public reject: (any) => void;
