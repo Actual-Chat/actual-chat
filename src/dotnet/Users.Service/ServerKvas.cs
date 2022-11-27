@@ -101,60 +101,68 @@ public class ServerKvas : IServerKvas
     }
 
     // [CommandHandler]
-    public virtual async Task MoveSessionKeys(IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task MigrateGuestKeys(IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
         var session = command.Session;
         var userPrefix = await GetUserPrefix(session, cancellationToken).ConfigureAwait(false);
-        if (userPrefix == null)
+        if (userPrefix.IsNullOrEmpty())
             return;
 
-        var sessionPrefix = GetSessionPrefix(session);
-        await TryMoveToUser(sessionPrefix, userPrefix, cancellationToken).ConfigureAwait(false);
+        var guestPrefix = await GetGuestPrefix(session, cancellationToken).ConfigureAwait(false);
+        if (guestPrefix.IsNullOrEmpty())
+            return;
+
+        await TryMigrateKeys(guestPrefix, userPrefix, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
     private async ValueTask<string> GetPrefix(Session session, CancellationToken cancellationToken)
         => await GetUserPrefix(session, cancellationToken).ConfigureAwait(false)
-            ?? GetSessionPrefix(session);
+            ?? await GetGuestPrefix(session, cancellationToken).ConfigureAwait(false)
+            ?? "";
 
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user != null ? Backend.GetUserPrefix(new UserId(user.Id)) : null;
+        return user == null ? null : Backend.GetUserPrefix(new UserId(user.Id));
     }
 
-    private string GetSessionPrefix(Session session)
-        => Backend.GetSessionPrefix(session);
+    private async ValueTask<string?> GetGuestPrefix(Session session, CancellationToken cancellationToken)
+    {
+        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var guestId = sessionInfo.GetGuestId();
+        return guestId.IsEmpty ? null : Backend.GetUserPrefix(guestId);
+    }
 
-    private async ValueTask<Dictionary<string, string>?> TryMoveToUser(
-        string sessionPrefix,
-        string userPrefix,
+    private async ValueTask<Dictionary<string, string>?> TryMigrateKeys(
+        string fromPrefix,
+        string toPrefix,
         CancellationToken cancellationToken)
     {
-        var sessionKeys = await Backend.List(sessionPrefix, cancellationToken).ConfigureAwait(false);
-        if (sessionKeys.Count == 0)
+        var keys = await Backend.List(fromPrefix, cancellationToken).ConfigureAwait(false);
+        if (keys.Count == 0)
             return null;
 
         using var _ = Computed.SuspendDependencyCapture();
         var movedKeys = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var (key, value) in sessionKeys) {
-            var userValue = await Backend.Get(userPrefix, key, cancellationToken).ConfigureAwait(false);
+        foreach (var (key, value) in keys) {
+            var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
             if (userValue == null)
                 movedKeys[key] = value;
         }
 
         // Create missing keys in userPrefix
         await Commander.Call(
-            new IServerKvasBackend.SetManyCommand(userPrefix, movedKeys.Select(kv => (kv.Key, (string?) kv.Value)).ToArray()),
+            new IServerKvasBackend.SetManyCommand(toPrefix, movedKeys.Select(kv => (kv.Key, (string?) kv.Value)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
         // Remove all keys in sessionPrefix
         await Commander.Call(
-            new IServerKvasBackend.SetManyCommand(sessionPrefix, sessionKeys.Select(kv => (kv.Key, (string?) null)).ToArray()),
+            new IServerKvasBackend.SetManyCommand(fromPrefix, keys.Select(kv => (kv.Key, (string?) null)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
 

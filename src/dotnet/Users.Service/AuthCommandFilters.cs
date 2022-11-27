@@ -86,7 +86,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = new UserId(sessionInfo.UserId);
 
-        new IServerKvas.MoveSessionKeysCommand(command.Session)
+        new IServerKvas.MigrateGuestKeysCommand(command.Session)
             .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
 
         var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler

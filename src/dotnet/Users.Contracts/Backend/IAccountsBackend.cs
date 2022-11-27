@@ -10,6 +10,7 @@ public interface IAccountsBackend : IComputeService
 
     [DataContract]
     public sealed record UpdateCommand(
-        [property: DataMember] AccountFull Account
+        [property: DataMember] AccountFull Account,
+        [property: DataMember] long? ExpectedVersion
         ) : ICommand<Unit>, IBackendCommand;
 }

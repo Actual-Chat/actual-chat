@@ -11,6 +11,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
+    private IAuth Auth { get; }
     private IAuthBackend AuthBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
@@ -18,6 +19,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     public AccountsBackend(IServiceProvider services) : base(services)
     {
+        Auth = services.GetRequiredService<IAuth>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
@@ -27,15 +29,26 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
     {
-        // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
-        if (user == null)
+        if (userId.IsEmpty)
             return null;
 
-        var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).Require().ConfigureAwait(false);
-        var account = dbAccount.ToModel();
-        if (IsAdmin(user))
-            account = account with { IsAdmin = true };
+        // We _must_ have a dependency on AuthBackend.GetUser here
+        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
+        AccountFull? account;
+        if (user == null) {
+            account = GetGuestAccount(userId);
+            if (account == null)
+                return null;
+        }
+        else {
+            var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+            account = dbAccount?.ToModel();
+            if (account == null)
+                return null;
+
+            if (IsAdmin(user))
+                account = account with { IsAdmin = true };
+        }
 
         // Adding Avatar
         var kvas = ServerKvasBackend.GetUserClient(account);
@@ -58,7 +71,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         IAccountsBackend.UpdateCommand command,
         CancellationToken cancellationToken)
     {
-        var account = command.Account;
+        var (account, expectedVersion) = command;
         if (Computed.IsInvalidating()) {
             _ = Get(account.Id, default);
             return;
@@ -68,8 +81,9 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccount = await dbContext.Accounts.ForUpdate()
-            .SingleAsync(a => a.Id == account.Id.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.Id == account.Id.Value, cancellationToken)
             .ConfigureAwait(false);
+        dbAccount = dbAccount.RequireVersion(expectedVersion);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -99,7 +113,18 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private static bool HasIdentity(User user, string provider)
         => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
 
-    private AvatarFull GetDefaultAvatar(AccountFull account)
+    private static AccountFull? GetGuestAccount(UserId userId)
+    {
+        if (userId.IsEmpty || !userId.IsGuestId)
+            return null;
+
+        var name = RandomNameGenerator.Default.Generate(userId);
+        var user = new User(userId, name);
+        var account = new AccountFull(user);
+        return account;
+    }
+
+    private static AvatarFull GetDefaultAvatar(AccountFull account)
         => new() {
             Id = default,
             PrincipalId = account.Id,

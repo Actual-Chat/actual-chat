@@ -15,6 +15,7 @@ public interface IAccounts : IComputeService
     [DataContract]
     public sealed record UpdateCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] AccountFull Account
+        [property: DataMember] AccountFull Account,
+        [property: DataMember] long? ExpectedVersion
         ) : ISessionCommand<Unit>;
 }

@@ -16,6 +16,6 @@
     private async Task OnStatusSelected(AccountStatus newStatus) {
         var account = await Accounts.GetOwn(Session, default).Require();
         var updatedAccount = account with { Status = newStatus };
-        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
+        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount, account.Version));
     }
 }

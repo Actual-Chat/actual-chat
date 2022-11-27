@@ -273,10 +273,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAuthor = await dbContext.Authors
-            .ForUpdate()
+        var dbAuthor = await dbContext.Authors.ForUpdate()
             .Include(a => a.Roles)
-            .SingleAsync(a => a.Id == authorId.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.Id == authorId.Value, cancellationToken)
+            .Require()
             .ConfigureAwait(false);
         if (dbAuthor.HasLeft == hasLeft)
             return dbAuthor.ToModel();
@@ -313,9 +313,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAuthor = await dbContext.Authors
+        var dbAuthor = await dbContext.Authors.ForUpdate()
             .Include(a => a.Roles)
-            .SingleAsync(a => a.Id == authorId.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.Id == authorId.Value, cancellationToken)
+            .Require()
             .ConfigureAwait(false);
         dbAuthor.AvatarId = avatarId;
         dbAuthor.Version = VersionGenerator.NextVersion(dbAuthor.Version);

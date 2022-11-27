@@ -36,17 +36,9 @@ public class AppServerAuthHelper : ServerAuthHelper
         CancellationToken cancellationToken)
     {
         var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
-        var options = sessionInfo?.Options ?? ImmutableOptionSet.Empty;
         if ((sessionInfo?.UserId ?? "").Length == 0) { // Unauthenticated
-            GuestIdOption? guestIdOption = null;
-            try {
-                guestIdOption = options.Get<GuestIdOption>();
-            }
-            catch {
-                // Intended: GuestId type was changed, so it might throw an error
-            }
-            var guestId = guestIdOption?.GuestId ?? default;
-            if (guestId.IsEmpty || !guestId.IsGuestId) // No GuestId
+            var guestId = sessionInfo.GetGuestId();
+            if (guestId.IsEmpty) // No GuestId
                 setupSessionCommand = setupSessionCommand with {
                     Options = ImmutableOptionSet.Empty.Set(new GuestIdOption(UserId.NewGuest())),
                 };

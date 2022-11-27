@@ -113,13 +113,13 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
-        var userInviteDetails = invite.Details?.User;
+        var userInviteDetails = invite.Details.User;
         if (userInviteDetails != null) {
             if (account.Status == AccountStatus.Suspended)
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
                 throw StandardError.StateTransition("Your account is already active.");
-            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active })
+            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 

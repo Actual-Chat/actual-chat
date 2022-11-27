@@ -18,10 +18,15 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     public virtual async Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return null;
+        UserId userId;
+        if (user == null) {
+            var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+            userId = sessionInfo.GetGuestId();
+        }
+        else {
+            userId = new UserId(user.Id);
+        }
 
-        var userId = new UserId(user.Id);
         return await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -46,10 +51,10 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, account) = command;
+        var (session, account, expectedVersion) = command;
 
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new IAccountsBackend.UpdateCommand(command.Account), cancellationToken)
+        await Commander.Call(new IAccountsBackend.UpdateCommand(account, expectedVersion), cancellationToken)
             .ConfigureAwait(false);
     }
 }

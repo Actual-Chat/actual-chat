@@ -14,6 +14,9 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     // [ComputeMethod]
     public virtual async Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default)
     {
+        if (prefix.IsNullOrEmpty())
+            return null;
+
         var dbKvasEntry = await DbKvasEntryResolver.Get(prefix + key, cancellationToken).ConfigureAwait(false);
         return dbKvasEntry?.Value;
     }
@@ -21,6 +24,9 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     // [ComputeMethod]
     public virtual async Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default)
     {
+        if (prefix.IsNullOrEmpty())
+            return ImmutableList<(string Key, string Value)>.Empty;
+
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -32,10 +38,14 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     }
 
     public string GetUserPrefix(UserId userId)
-        => $"u/{userId}/";
+    {
+        if (userId.IsEmpty)
+            return "";
 
-    public string GetSessionPrefix(Session session)
-        => $"s/{session.Id.Value}/";
+        return userId.IsGuestId
+            ? $"g/{userId}/"
+            : $"u/{userId}/";
+    }
 
     // Command handlers
 
@@ -43,6 +53,9 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
     {
         var prefix = command.Prefix;
+        if (prefix.IsNullOrEmpty())
+            return;
+
         if (Computed.IsInvalidating()) {
             foreach (var (key, _) in command.Items)
                 _ = Get(prefix, key, default);

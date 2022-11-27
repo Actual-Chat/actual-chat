@@ -55,7 +55,7 @@ public class UserStatusTest : AppHostTestBase
         };
         foreach (var newStatus in newStatuses) {
             var newAccount = account with { Status = newStatus };
-            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount));
+            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount, account.Version));
 
             // assert
             account = await RequireAccount();

@@ -59,6 +59,6 @@ public interface IServerKvasClientDef
     Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
     [Post(nameof(SetMany))]
     Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
-    [Post(nameof(MoveSessionKeys))]
-    Task MoveSessionKeys([Body] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default);
+    [Post(nameof(MigrateGuestKeys))]
+    Task MigrateGuestKeys([Body] IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default);
 }
