@@ -38,18 +38,14 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        if (!AuthorId.TryParse(authorId, out var parsedAuthorId))
-            return null;
-        if (!ChatId.TryParse(chatId, out var parsedChatId))
-            return null;
-        if (parsedAuthorId.ChatId != parsedChatId)
+        if (chatId.IsEmpty || authorId.IsEmpty || authorId.ChatId != chatId)
             return null;
 
-        if (parsedAuthorId == AuthorExt.GetWalleId(parsedChatId))
-            return AuthorExt.GetWalle(parsedChatId);
+        if (authorId == AuthorExt.GetWalleId(chatId))
+            return AuthorExt.GetWalle(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
-        if (dbAuthor == null || !OrdinalEquals(dbAuthor.ChatId, chatId.Value))
+        if (dbAuthor == null)
             return null;
 
         var author = dbAuthor.ToModel();
@@ -90,13 +86,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public async Task<AuthorFull> GetOrCreate(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var author = await Frontend.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author != null)
+        if (author.IsStored())
             return author;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var userId = account?.Id ?? default;
 
-        var command = new IAuthorsBackend.CreateCommand(chatId, userId, false);
+        var command = new IAuthorsBackend.CreateCommand(chatId, userId);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
 
         if (account == null) {
@@ -112,10 +108,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public async Task<AuthorFull> GetOrCreate(ChatId chatId, UserId userId, CancellationToken cancellationToken)
     {
         var author = await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
-        if (author != null)
+        if (author.IsStored())
             return author;
 
-        var command = new IAuthorsBackend.CreateCommand(chatId, userId, true);
+        var command = new IAuthorsBackend.CreateCommand(chatId, userId);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
         return author;
     }
@@ -157,27 +153,31 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [CommandHandler]
     public virtual async Task<AuthorFull> Create(IAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, userId, requireAccount) = command;
+        var (chatId, userId) = command;
+        if (chatId.IsEmpty || userId.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(command));
+
         if (Computed.IsInvalidating()) {
-            if (!userId.IsEmpty) {
-                _ = GetByUserId(chatId, userId, default);
-                _ = ListUserIds(chatId, default);
-            }
+            _ = GetByUserId(chatId, userId, default);
+            _ = ListUserIds(chatId, default);
             _ = ListAuthorIds(chatId, default);
             return default!;
         }
 
         AvatarFull? newAvatar = null;
-        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        DbAuthor? dbAuthor;
-        if (account == null) {
-            if (requireAccount)
-                throw StandardError.Constraint("Can't create unauthenticated author here.");
+        var dbAuthor = await dbContext.Authors.ForUpdate()
+            .Include(a => a.Roles)
+            .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbAuthor != null)
+            return dbAuthor.ToModel(); // Already exist, so we don't recreate one
 
+        if (account.IsGuest) {
             // We're creating an author for unregistered user here,
             // so we have to create a new random avatar
             var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
@@ -192,35 +192,19 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             newAvatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
-        if (newAvatar != null) {
-            // We're creating an author for unregistered user
-            dbAuthor = new() {
-                AvatarId = newAvatar.Id,
-                IsAnonymous = true,
-            };
-        }
-        else {
-            // We're creating an author for registered user,
-            // so it makes sense to check if such an author already exists
-            dbAuthor = await dbContext.Authors
-                .Include(a => a.Roles)
-                .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
-                .ConfigureAwait(false);
-            if (dbAuthor != null)
-                return dbAuthor.ToModel(); // Already exist, so we don't recreate one
-
-            dbAuthor = new DbAuthor() {
-                IsAnonymous = false,
-            };
-        }
-
-        dbAuthor.ChatId = chatId;
-        dbAuthor.LocalId = await DbAuthorLocalIdGenerator
+        var localId = await DbAuthorLocalIdGenerator
             .Next(dbContext, chatId, cancellationToken)
             .ConfigureAwait(false);
-        dbAuthor.Id = DbAuthor.ComposeId(chatId, dbAuthor.LocalId);
-        dbAuthor.Version = VersionGenerator.NextVersion();
-        dbAuthor.UserId = account?.Id;
+        var id = DbAuthor.ComposeId(chatId, localId);
+        dbAuthor = new() {
+            Id = id,
+            Version = VersionGenerator.NextVersion(),
+            ChatId = chatId,
+            LocalId = localId,
+            UserId = account.Id,
+            AvatarId = newAvatar?.Id,
+            IsAnonymous = true,
+        };
         dbContext.Add(dbAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

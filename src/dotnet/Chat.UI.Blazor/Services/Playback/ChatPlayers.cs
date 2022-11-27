@@ -149,6 +149,7 @@ public class ChatPlayers : WorkerBase
         this.ThrowIfDisposedOrDisposing();
         if (chatId.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(chatId));
+
         ChatPlayer newPlayer;
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));

@@ -64,17 +64,23 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat == null)
             return AuthorRules.None(chatId);
 
-        AuthorFull? author = null;
-        AccountFull? account = null;
+        AuthorFull? author;
+        AccountFull? account;
         if (principalId.IsUser(out var userId)) {
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account != null)
-                author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+
+            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         }
         else if (principalId.IsAuthor(out var authorId)) {
             author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-            if (author != null)
-                account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (author == null)
+                return AuthorRules.None(chatId);
+
+            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
         }
         else
             return AuthorRules.None(chatId);
@@ -82,10 +88,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var roles = ImmutableArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
-            var isAuthenticated = account != null;
+            var isGuest = account.IsGuest;
             var isAnonymous = author is { IsAnonymous: true };
             roles = await RolesBackend
-                .List(chatId, author!.Id, isAuthenticated, isAnonymous, cancellationToken)
+                .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
                 .ConfigureAwait(false);
         }
         var permissions = roles.ToPermissions();
@@ -361,7 +367,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var entry = command.Entry;
-        var changeKind = entry.LocalId == 0 ? ChangeKind.Create : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
+        var changeKind = entry.LocalId == 0
+            ? ChangeKind.Create
+            : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
         var chatId = entry.ChatId;
         var context = CommandContext.GetCurrent();
 
@@ -655,6 +663,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (author == null)
                 return AuthorRules.None(chatId);
+
             account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
             if (account == null)
                 return AuthorRules.None(chatId);
@@ -679,7 +688,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             throw new ArgumentOutOfRangeException(nameof(chatId), "Peer chat Id is expected here.");
 
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat != null)
+        if (chat.IsStored())
             return chat;
 
         var command = new IChatsBackend.ChangeCommand(chatId, null, new() { Create = new ChatDiff() });

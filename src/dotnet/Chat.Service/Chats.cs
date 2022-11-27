@@ -33,25 +33,32 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        // Special case: peer chat
+        Contact? contact = null;
         if (chatId.Kind == ChatKind.Peer) {
-            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            if (account == null)
+            var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (ownAccount == null)
                 return null;
 
-            var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
-            if (otherUserId.IsEmpty)
+            var userId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(ownAccount.Id);
+            if (userId.IsEmpty)
                 return null;
 
-            var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
-            var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-            return contact?.Chat;
+            var contactId = new ContactId(ownAccount.Id, chatId, ParseOptions.Skip);
+            contact = await ContactsBackend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+            if (contact == null)
+                return null;
         }
 
-        // Group chat
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
+        if (chat == null) {
+            if (contact?.Account == null)
+                return null;
+
+            chat = new Chat(chatId) {
+                Title = contact.Account.Avatar.Name,
+                Picture = contact.Account.Avatar.Picture,
+            };
+        }
 
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())

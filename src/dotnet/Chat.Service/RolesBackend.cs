@@ -32,8 +32,9 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Role>> List(ChatId chatId, AuthorId authorId,
-        bool isAuthenticated, bool isAnonymous,
+    public virtual async Task<ImmutableArray<Role>> List(
+        ChatId chatId, AuthorId authorId,
+        bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken)
     {
         // No need to call PseudoList - it's called by ListSystem anyway
@@ -62,9 +63,9 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         bool IsInSystemRole(Role role)
             => role.SystemRole switch {
                 SystemRole.Anyone => true,
-                SystemRole.Unauthenticated => !isAuthenticated,
-                SystemRole.Regular => isAuthenticated && !isAnonymous,
-                SystemRole.Anonymous => isAuthenticated && isAnonymous,
+                SystemRole.Guest => isGuest,
+                SystemRole.Regular => !isGuest && !isAnonymous,
+                SystemRole.Anonymous => !isGuest && isAnonymous,
                 _ => false,
             };
     }

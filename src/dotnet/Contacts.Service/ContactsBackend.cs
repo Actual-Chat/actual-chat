@@ -27,10 +27,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return null;
 
         var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
-        var contact = dbContact?.ToModel() ?? new Contact() {
-            Id = contactId,
-            // IsStored = false, i.e. fake contact
-        };
+        var contact = dbContact?.ToModel()
+            ?? new Contact(contactId); // A fake contact
 
         var chatId = contact.ChatId;
         if (chatId.Kind == ChatKind.Peer) {
@@ -42,23 +40,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             if (account == null)
                 return null;
 
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false)
-                ?? new Chat.Chat() { Id = chatId };
-            chat = chat with {
-                Title = account.Avatar.Name,
-                Picture = account.Avatar.Picture,
-            };
-            contact = contact with {
-                Account = account,
-                Chat = chat,
-            };
-        }
-        else {
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null)
-                return null; // We don't return Chat contacts w/ null Chat
-
-            contact = contact with { Chat = chat };
+            contact = contact with { Account = account.ToAccount() };
         }
 
         return contact;
@@ -109,13 +91,13 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     public async Task<Contact> GetOrCreateUserContact(UserId ownerId, UserId userId, CancellationToken cancellationToken)
     {
         var contact = await GetForUser(ownerId, userId, cancellationToken).ConfigureAwait(false);
-        if (contact != null)
+        if (contact.IsStored())
             return contact;
 
         var peerChatId = PeerChatId.New(ownerId, userId);
         var contactId = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
         var command = new IContactsBackend.ChangeCommand(contactId, null, new Change<Contact> {
-            Create = new Contact { Id = contactId },
+            Create = new Contact(contactId),
         });
 
         contact = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
@@ -231,7 +213,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var contactId = new ContactId(userId, chatId, ParseOptions.Skip);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-        var hasNoStoredContact = contact is not { IsStored: true };
+        var hasNoStoredContact = contact is not { IsVirtual: true };
         if (author.HasLeft == hasNoStoredContact)
             return; // No need to make any changes
 

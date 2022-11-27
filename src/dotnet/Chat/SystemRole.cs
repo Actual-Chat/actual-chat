@@ -6,7 +6,7 @@ public enum SystemRole
 {
     None = 0,
     Anyone = 11, // Any author
-    Unauthenticated = Anyone + 2, // Unauthenticated authors in public chats
+    Guest = Anyone + 2, // Unauthenticated accounts in public chats
     Regular = Anyone + 4, // Regular author
     Anonymous = Anyone + 4 + 8, // Anonymous author
     Owner = 101,

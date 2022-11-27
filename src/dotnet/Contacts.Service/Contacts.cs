@@ -23,16 +23,20 @@ public class Contacts : IContacts
     // [ComputeMethod]
     public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null || account.Id != contactId.OwnerId)
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount == null || ownAccount.Id != contactId.OwnerId)
             return null;
 
-        var contact = await Backend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
 
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
+        var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null; // We don't return Chat contacts w/ null Chat
+
+        contact = contact with { Chat = chat };
+        return contact;
     }
 
     // [ComputeMethod]

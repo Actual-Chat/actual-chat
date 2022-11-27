@@ -6,8 +6,9 @@ public interface IRolesBackend : IComputeService
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(ChatId chatId, AuthorId authorId,
-        bool isAuthenticated, bool isAnonymous,
+    Task<ImmutableArray<Role>> List(
+        ChatId chatId, AuthorId authorId,
+        bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);

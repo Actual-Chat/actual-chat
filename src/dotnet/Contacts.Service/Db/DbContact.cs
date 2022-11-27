@@ -29,9 +29,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => UpdateFrom(contact);
 
     public Contact ToModel()
-        => new() {
-            Id = new ContactId(Id),
-            Version = Version,
+        => new(new ContactId(Id), Version) {
             UserId = new UserId(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
         };

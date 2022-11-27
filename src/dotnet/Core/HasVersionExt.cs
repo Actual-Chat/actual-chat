@@ -1,9 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
 using Stl.Versioning;
 
 namespace ActualChat;
 
 public static class HasVersionExt
 {
+    public static bool IsStored<TEntity>([NotNullWhen(true)] this TEntity? entity)
+        where TEntity : IHasVersion<long>
+        => entity != null && entity.Version != 0;
+
     public static TEntity RequireVersion<TEntity>(this TEntity? entity, long? expectedVersion)
         where TEntity : IHasVersion<long>
     {

@@ -7,7 +7,6 @@ namespace ActualChat.Chat;
 public class Roles : DbServiceBase<ChatDbContext>, IRoles
 {
     private IAccounts Accounts { get; }
-    private IChats Chats { get; }
     private IChatsBackend ChatsBackend { get; }
     private IAuthors Authors { get; }
     private IRolesBackend Backend { get; }
@@ -15,7 +14,6 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     public Roles(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         Authors = services.GetRequiredService<IAuthors>();
         Backend = services.GetRequiredService<IRolesBackend>();

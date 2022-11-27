@@ -1,4 +1,6 @@
-﻿#pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
+﻿using Stl.Versioning;
+
+#pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
 
 namespace ActualChat.Chat;
 
@@ -6,7 +8,7 @@ namespace ActualChat.Chat;
 public sealed record Chat(
     [property: DataMember] ChatId Id,
     [property: DataMember] long Version = 0
-    ) : IHasId<ChatId>, IRequirementTarget
+    ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
@@ -17,8 +19,8 @@ public sealed record Chat(
     [DataMember] public bool IsPublic { get; init; }
     [DataMember] public string Picture { get; init; } = "";
 
-    // Set by front-end only
-    [DataMember] public AuthorRules Rules { get; init; } = AuthorRules.None(Id);
+    // Populated only on front-end
+    [DataMember] public AuthorRules Rules { get; init; } = null!;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;

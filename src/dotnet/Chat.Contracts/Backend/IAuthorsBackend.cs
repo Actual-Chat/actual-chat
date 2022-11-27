@@ -28,8 +28,7 @@ public interface IAuthorsBackend : IComputeService
     [DataContract]
     public sealed record CreateCommand(
         [property: DataMember] ChatId ChatId,
-        [property: DataMember] UserId UserId,
-        [property: DataMember] bool RequireAccount
+        [property: DataMember] UserId UserId
         ) : ICommand<AuthorFull>, IBackendCommand;
 
     [DataContract]

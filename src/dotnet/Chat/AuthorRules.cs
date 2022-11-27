@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 [DataContract]
 public sealed record AuthorRules(
     [property: DataMember] Symbol ChatId,
-    [property: DataMember] AuthorFull Author,
+    [property: DataMember] AuthorFull? Author,
     [property: DataMember] AccountFull Account,
     [property: DataMember] ChatPermissions Permissions = 0
     ) : IRequirementTarget

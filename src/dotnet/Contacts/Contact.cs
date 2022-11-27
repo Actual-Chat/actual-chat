@@ -4,10 +4,11 @@ using Stl.Versioning;
 namespace ActualChat.Contacts;
 
 [DataContract]
-public sealed record Contact : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
+public sealed record Contact(
+    [property: DataMember] ContactId Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember] public ContactId Id { get; init; }
-    [DataMember] public long Version { get; init; }
     [DataMember] public UserId UserId { get; init; }
     [DataMember] public Moment TouchedAt { get; init; }
 
@@ -15,16 +16,14 @@ public sealed record Contact : IHasId<ContactId>, IHasVersion<long>, IRequiremen
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsStored => Version != 0;
+    public bool IsVirtual => Version == 0;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public UserId OwnerId => Id.OwnerId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId => Id.ChatId;
 
-    // The following properties are populated only on reads
+    // Populated on backend on reads
     [DataMember] public Account? Account { get; init; }
+    // Populated on front-end on reads
     [DataMember] public Chat.Chat Chat { get; init; } = null!;
-
-    public Contact() { }
-    public Contact(ContactId id) => Id = id;
 }
