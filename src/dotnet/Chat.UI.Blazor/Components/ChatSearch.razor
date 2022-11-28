@@ -1,11 +1,14 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
 @if (!_isSearchEnabled) {
     return;
 }
 
-<SearchBox
+<ChatSearchBox
     Placeholder="Search in this chat..."
     IsCollapsed="true"
     ShowSpinner="true"
+    ShowClose="true"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     Triggered="OnSearchTriggered"
     Cancelled="OnSearchCancelled"/>
