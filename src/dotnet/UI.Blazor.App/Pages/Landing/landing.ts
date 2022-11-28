@@ -48,22 +48,22 @@ export class Landing {
 
     private getScrollDirectionInternal = ((event: WheelEvent & { target: Element; }) => {
         let page = this.pages[this.currentPageNumber];
-        if (event.deltaY > 0
-            && this.currentPageNumber < Object.keys(this.pages).length) {
+        if (event.deltaY > 0) {
             // scroll down
-            if (page.classList.contains('page-scrolling')
+            if ((this.currentPageNumber <= Object.keys(this.pages).length)
+                && (page.classList.contains('page-scrolling'))
                 && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
                 this.scrollToPageEnd(page);
-            } else {
+            } else if (this.currentPageNumber < Object.keys(this.pages).length) {
                 this.scrollToNextPage();
             }
-        } else if (event.deltaY < 0
-            && this.currentPageNumber > 1) {
+        } else if (event.deltaY < 0) {
             // scroll up
-            if (page.classList.contains('page-scrolling')
+            if (this.currentPageNumber >= 1
+                && page.classList.contains('page-scrolling')
                 && Math.abs(page.getBoundingClientRect().top) > 100) {
                 this.scrollToPageStart(page);
-            } else {
+            } else if (this.currentPageNumber > 1) {
                 this.scrollToPreviousPage();
             }
         } else this.getPageData();
@@ -77,9 +77,10 @@ export class Landing {
     private getDownClickThrottled = debounce(
         (page: HTMLElement) => {
             if (page.classList.contains('page-scrolling')
+                && this.currentPageNumber <= Object.keys(this.pages).length
                 && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
                 this.scrollToPageEnd(page);
-            } else {
+            } else if (this.currentPageNumber < Object.keys(this.pages).length) {
                 this.scrollToNextPage();
             }
         }, 300, true);
@@ -87,9 +88,10 @@ export class Landing {
     private getUpClickThrottled = debounce(
         (page: HTMLElement) => {
             if (page.classList.contains('page-scrolling')
+                && this.currentPageNumber >= 1
                 && Math.abs(page.getBoundingClientRect().top) > 100) {
                 this.scrollToPageStart(page);
-            } else {
+            } else if (this.currentPageNumber > 1) {
                 this.scrollToPreviousPage();
             }
         }, 300, true);
@@ -97,11 +99,11 @@ export class Landing {
     private onUpOrDownClick = ((event: KeyboardEvent & { target: Element; }) => {
         if (document.activeElement === document.querySelector('body')) {
             let page = this.pages[this.currentPageNumber] as HTMLElement;
-            if (event.keyCode == 40 && this.currentPageNumber < Object.keys(this.pages).length) {
+            if (event.keyCode == 40) {
                 // scroll down
                 this.preventEvent(event);
                 this.getDownClickThrottled(page);
-            } else if (event.keyCode == 38 && this.currentPageNumber > 1) {
+            } else if (event.keyCode == 38) {
                 // scroll up
                 this.preventEvent(event);
                 this.getUpClickThrottled(page);
