@@ -11,7 +11,7 @@
         return;
     if (ReferenceEquals(account, AccountFull.None)) { // Loaded, but user doesn't have an account
         _signInHasRequested = true;
-        if (_enableIncompleteUI) {
+        if (!_enableIncompleteUI) {
             <Landing/>
         } else {
             <Welcome/>
