@@ -19,15 +19,15 @@
                 FloatingPosition="FloatingPosition.Bottom">
                 <i class="icon-search text-2xl font-medium"></i>
             </ButtonRound>
-            <input
+            <TextInput
                 @ref="_inputRef"
-                type="text"
-                class="w-full dialog-unstyled"
-                placeholder="@Placeholder"
-                maxlength="@MaxLength"
-                tabindex="@TabIndex"
-                @oninput="OnInput"
-                @onkeyup="OnKeyUp"/>
+                Class="w-full"
+                Placeholder="@Placeholder"
+                MaxLength="@MaxLength"
+                TabIndex="@TabIndex"
+                TextChanged="OnInput"
+                KeyUp="OnKeyUp">
+            </TextInput>
             @if (ShowSpinner && _isBusy) {
                 <div style="border-top-color:transparent"
                      class="search-box-spinner">
@@ -51,11 +51,8 @@
     private string _text = "";
     private bool? _isCollapsed;
     private bool _needsFocus;
-    private ElementReference _inputRef;
+    private TextInput _inputRef;
     private bool _isBusy;
-
-    [Inject] private FocusUI FocusUI { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
@@ -82,7 +79,7 @@
     }
 
     public ValueTask Focus()
-        => FocusUI.Focus(_inputRef);
+        => _inputRef.FocusAsync();
 
     public async Task Cancel()
     {
@@ -93,8 +90,8 @@
         await Cancelled.InvokeAsync();
     }
 
-    private async Task OnInput(ChangeEventArgs e) {
-        _text = e.Value?.ToString() ?? "";
+    private async Task OnInput(string text) {
+        _text = text;
         await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
     }
 
