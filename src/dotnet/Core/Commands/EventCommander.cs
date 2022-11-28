@@ -1,8 +1,11 @@
+using Stl.Collections.Slim;
+
 namespace ActualChat.Commands;
 
 public class EventCommander : ICommander
 {
-    private readonly ConcurrentLruCache<ICommand, ICommand> _duplicateCache = new (128);
+    private readonly ConcurrentLruCache<ICommand, ICommand> _duplicateCache =
+        new (128, 0, ReferenceEqualityComparer<ICommand>.Instance);
 
     private ILogger Log { get; init; }
     private IEventHandlerResolver EventHandlerResolver { get; }

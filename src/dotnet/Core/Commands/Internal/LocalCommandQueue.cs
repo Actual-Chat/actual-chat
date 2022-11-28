@@ -1,9 +1,15 @@
+using Stl.Collections.Slim;
+
 namespace ActualChat.Commands.Internal;
 
 public class LocalCommandQueue : ICommandQueue
 {
-    private readonly ConcurrentLruCache<ICommand, ICommand> _duplicateCache = new (128);
-    private readonly ConcurrentLruCache<ICommand, IQueuedCommand> _completedCache = new (16);
+    private readonly ConcurrentLruCache<ICommand, ICommand> _duplicateCache =
+        new (128, 0, ReferenceEqualityComparer<ICommand>.Instance);
+
+    private readonly ConcurrentLruCache<ICommand, IQueuedCommand> _completedCache =
+        new (16, 0, ReferenceEqualityComparer<ICommand>.Instance);
+
     private volatile int _completedCommandCount;
 
     public Channel<IQueuedCommand> Commands { get; }
