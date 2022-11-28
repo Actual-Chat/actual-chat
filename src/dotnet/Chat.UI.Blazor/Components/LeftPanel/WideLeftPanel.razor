@@ -66,8 +66,9 @@
     private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
         => InvokeAsync(StateHasChanged);
 
-    private Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
-        _searchBoxRef?.Cancel();
-        return Task.CompletedTask;
+    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null) {
+            await _searchBoxRef.Cancel();
+        }
     }
 }
