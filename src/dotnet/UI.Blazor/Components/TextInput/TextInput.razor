@@ -9,7 +9,8 @@
     class="@Class"
     placeholder="@Placeholder"
     maxlength="@MaxLength"
-    tabindex="@TabIndex" />
+    tabindex="@TabIndex"
+    @onkeyup="OnKeyUp"/>
 
 @code {
     private bool NeedsRender { get; set; } = true;
@@ -27,6 +28,7 @@
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string TabIndex { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> KeyUp { get; set; }
 
     protected override bool ShouldRender() {
         if (!NeedsRender)
@@ -69,4 +71,7 @@
         Text = text;
         return TextChanged.InvokeAsync(text);
     }
+
+    private Task OnKeyUp(KeyboardEventArgs e)
+        => KeyUp.InvokeAsync(e);
 }
