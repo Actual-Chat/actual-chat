@@ -5,7 +5,7 @@ public static class DefaultUserPicture
     public const int DefaultSize = 160;
 
     public static string Get(User user, int size = DefaultSize)
-        => GetGravatar(user, size) ?? GetAvataaar(user.Name.GetMD5HashCode());
+        => GetGravatar(user, size) ?? GetAvataaar(user.Name.GetSHA1HashCode());
 
     public static string Get(User? user, string hash, int size = DefaultSize)
         => GetGravatar(user, size) ?? GetAvataaar(hash);
@@ -21,7 +21,7 @@ public static class DefaultUserPicture
         if (email.IsNullOrEmpty())
             return null;
 
-        var hash = email.GetMD5HashCode().ToLowerInvariant();
+        var hash = email.GetSHA1HashCode().ToLowerInvariant();
         return $"https://www.gravatar.com/avatar/{hash}?s={size}";
     }
 

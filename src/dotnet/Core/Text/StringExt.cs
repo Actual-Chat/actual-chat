@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
@@ -128,5 +129,14 @@ public static class StringExt
 
         port = portValue;
         return true;
+    }
+
+    // ReSharper disable once InconsistentNaming
+    public static string GetSHA1HashCode(this string input)
+    {
+        using var sha1 = System.Security.Cryptography.SHA1.Create();
+        var inputBytes = Encoding.ASCII.GetBytes(input);
+        var hashBytes = sha1.ComputeHash(inputBytes);
+        return Convert.ToHexString(hashBytes);
     }
 }
