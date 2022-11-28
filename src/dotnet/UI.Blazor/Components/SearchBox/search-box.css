@@ -1,25 +1,15 @@
 .search-box {
     @apply w-full;
 }
-.search-box input {
-    @apply h-10 rounded-full pl-10 pr-4 text-left bg-04;
-}
-.dialog-body .search-box input {
-    @apply bg-02;
-}
-.search-box input::placeholder {
-    @apply text-left;
-}
-/*.search-box input::*/
-.search-box .btn.btn-round {
-    @apply w-10 h-10 absolute left-0 self-center;
-}
-.search-box .btn.btn-round .btn-content {
-    @apply bg-transparent text-icons-01;
-}
 .search-box label {
     @apply relative flex-x;
 }
-.search-box-spinner {
-    @apply absolute right-0 mr-2 self-center w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5 border-2 border-icons-01 border-dashed rounded-full animate-spin;
+.search-box i {
+    @apply flex text-icons-01 w-10 h-10 absolute items-center justify-center;
+}
+.search-box input {
+    @apply h-10 rounded-full pl-10 pr-4 text-left bg-04;
+}
+.search-box input::placeholder {
+    @apply text-left;
 }
