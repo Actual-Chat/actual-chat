@@ -1,6 +1,7 @@
 .message-wrapper {
     @apply flex-x relative w-full select-none md:select-auto;
     @apply border-l-2 border-bg-01;
+    transform: translateZ(0);
 }
 .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;

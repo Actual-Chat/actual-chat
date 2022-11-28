@@ -39,8 +39,8 @@
     var items = Data.Items;
     LastData = Data;
     var itemClassBase = Data.Query.IsNone
-        ? "item flex-none"
-        : "item flex-none new";
+        ? "item"
+        : "item new";
 }
 
 <div @ref="Ref"
@@ -67,7 +67,7 @@
         class="@flexClass virtual-container">
         @foreach (var item in items) {
             var itemClass = visibleKeys.Contains(item.Key)
-                ? "item flex-none"
+                ? "item"
                 : itemClassBase;
             @if (item.CountAs != 1) {
                 <li @key="item.Key"

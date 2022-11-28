@@ -246,7 +246,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     let timeoutPromise: PromiseSource<void> | null = null;
 
     const reset = (newLastCallTime: number) => {
-        timeoutPromise?.reject(undefined);
+        timeoutPromise?.clearTimeout();
         timeoutPromise = lastCall = null;
         lastCallTime = newLastCallTime;
     }

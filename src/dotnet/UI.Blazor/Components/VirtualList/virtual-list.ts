@@ -1,5 +1,5 @@
 import './virtual-list.css';
-import { delayAsync, throttle, serialize, PromiseSource, debounce } from 'promises';
+import { throttle, serialize, PromiseSource, debounce } from 'promises';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -24,11 +24,8 @@ const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 320;
-const RenderTimeout: number = 640;
-const UpdateTimeout: number = 1200;
-const DefaultLoadZone: number = 2000;
 const ScrollDebounce: number = 600;
-const SkeletonDetectionBoundary: number = 300;
+const SkeletonDetectionBoundary: number = 200;
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -411,12 +408,15 @@ export class VirtualList {
             isNearSkeleton ||= entry.isIntersecting
                 && entry.boundingClientRect.height > EdgeEpsilon;
         }
-        if (isNearSkeleton)
+        if (isNearSkeleton) {
             this._isNearSkeleton = isNearSkeleton;
+            // reset turn off attempt
+            this.turnOffIsNearSkeletonDebounced.reset();
+        }
         else
             this.turnOffIsNearSkeletonDebounced();
         // debug helper
-        // console.warn("skeleton triggered");
+        // console.warn("skeleton triggered", isNearSkeleton);
     };
 
     private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce, true);
@@ -519,22 +519,6 @@ export class VirtualList {
             this._isRendering = false;
             this._whenRenderCompleted?.resolve(undefined);
             this._whenUpdateCompleted?.resolve(undefined);
-
-            // skeleton time to time become visible after render and scroll
-            if (this._itemRange && this._viewport) {
-                const isNearSkeleton =
-                    this._renderState.spacerSize > 0 && this._viewport.Start - this._itemRange.Start < 2 * SkeletonDetectionBoundary
-                    || this._renderState.endSpacerSize > 0 && this._itemRange.End - this._viewport.End < 2 * SkeletonDetectionBoundary;
-                // only turn this flag on, will be cleared off with debounce at onSkeletonVisibilityChange
-                if (isNearSkeleton) {
-                    this._isNearSkeleton = isNearSkeleton;
-                    // debug helper
-                    // console.warn("manual near skeleton");
-                }
-                else {
-                    this.turnOffIsNearSkeletonDebounced();
-                }
-            }
 
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
@@ -782,8 +766,8 @@ export class VirtualList {
         if (intersection.isEmpty)
             return true;
 
-        return (Math.abs(queryItemRange.Start - intersection.Start) > viewportSize / 2)
-            || (Math.abs(queryItemRange.End - intersection.End) > viewportSize / 2);
+        return intersection.Start - queryItemRange.Start > viewportSize
+            || queryItemRange.End - intersection.End > viewportSize;
     }
 
     private getDataQuery(): VirtualListDataQuery {
