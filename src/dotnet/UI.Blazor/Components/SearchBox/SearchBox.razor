@@ -2,138 +2,41 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-@if (_isCollapsed == true) {
-    <ButtonRound
-        Click="OnExpandClick"
-        Class="transparent"
-        Tooltip="@Placeholder"
-        FloatingPosition="FloatingPosition.Bottom">
+<div class="@Class search-box">
+    <label>
         <i class="icon-search text-2xl"></i>
-    </ButtonRound>
-} else {
-    <div class="@Class search-box">
-        <label>
-            <ButtonRound
-                Click="OnSearchButtonClick"
-                IsDisabled="!CanBeTriggered"
-                Tooltip="@Placeholder"
-                FloatingPosition="FloatingPosition.Bottom">
-                <i class="icon-search text-2xl font-medium"></i>
-            </ButtonRound>
-            <input
-                @ref="InputRef" type="text" class="w-full dialog-unstyled"
-                placeholder="@Placeholder"
-                value="@Text"
-                maxlength="@MaxLength"
-                tabindex="@TabIndex"
-                @oninput="OnInput"
-                @onkeyup="OnKeyUp"
-                @onblur="OnBlur"/>
-            @if (ShowSpinner && IsTriggerActive) {
-                <div style="border-top-color:transparent"
-                     class="search-box-spinner">
-                </div>
-            }
-        </label>
-    </div>
-}
+        <input
+            @ref="_inputRef"
+            value="@_text"
+            type="text"
+            class="w-full dialog-unstyled"
+            placeholder="@Placeholder"
+            maxlength="@MaxLength"
+            @oninput="OnInput"/>
+    </label>
+</div>
 
 @code {
     private string _text = "";
-    private bool? _isCollapsed;
-    private bool _needsFocus;
+    private ElementReference _inputRef;
 
-    [Inject] private FocusUI FocusUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
-    [Parameter] public EventCallback<string> Triggered { get; set; }
-    [Parameter] public EventCallback Cancelled { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public bool IsCollapsed { get; set; }
-    [Parameter] public bool ShowSpinner { get; set; }
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
-    [Parameter] public string TabIndex { get; set; } = "";
-
-    public ElementReference InputRef { get; private set; }
-    public bool IsTriggerActive { get; private set; }
-    public bool CanBeTriggered => !(IsTriggerActive || Text.IsNullOrEmpty());
-
-    public string Text {
-        get => _text;
-        set {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            if (value == _text)
-                return;
-
-            _text = value;
-            TextChanged.InvokeAsync(value);
-            StateHasChanged();
-        }
-    }
-
-    protected override void OnParametersSet() =>
-        _isCollapsed ??= IsCollapsed;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_needsFocus) {
-            await InputRef.FocusAsync();
-            _needsFocus = false;
-        }
-    }
-
-    // API
 
     public ValueTask Focus()
-        => FocusUI.Focus(InputRef);
+        => _inputRef.FocusAsync();
 
-    public async Task Cancel()
-    {
-        Text = "";
-        await Cancelled.InvokeAsync();
-
-        if (IsCollapsed)
-            _isCollapsed = true;
+    public void Cancel() {
+        _text = "";
+        StateHasChanged();
     }
-
-    // Event handlers
 
     private async Task OnInput(ChangeEventArgs e) {
         _text = e.Value?.ToString() ?? "";
         await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
-    }
-
-    private async Task OnKeyUp(KeyboardEventArgs e) {
-        if (e.Key == "Enter") {
-            if (!CanBeTriggered)
-                return;
-
-            try {
-                IsTriggerActive = true;
-                await Triggered.InvokeAsync(Text);
-            }
-            finally {
-                IsTriggerActive = false;
-            }
-        }
-        if (e.Key == "Escape" && e.HasNoModifier()) {
-            await Cancel();
-        }
-    }
-
-    private Task OnSearchButtonClick()
-        => Triggered.InvokeAsync(Text);
-
-    private void OnBlur() {
-        if (IsCollapsed)
-            _isCollapsed = true;
-    }
-
-    private void OnExpandClick() {
-        _isCollapsed = false;
-        _needsFocus = true;
     }
 }
