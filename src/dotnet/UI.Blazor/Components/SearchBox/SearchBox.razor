@@ -5,22 +5,18 @@
 <div class="@Class search-box">
     <label>
         <i class="icon-search text-2xl"></i>
-        <input
-            @ref="_inputRef"
-            value="@_text"
-            type="text"
-            class="w-full dialog-unstyled"
-            placeholder="@Placeholder"
-            maxlength="@MaxLength"
-            @oninput="OnInput"/>
+        <TextInput
+            @ref="InputRef"
+            Class="w-full"
+            Placeholder="@Placeholder"
+            MaxLength="@MaxLength"
+            TextChanged="OnInput">
+        </TextInput>
     </label>
 </div>
 
 @code {
-    private string _text = "";
-    private ElementReference _inputRef;
-
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    private TextInput InputRef { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
@@ -28,15 +24,11 @@
     [Parameter] public string Placeholder { get; set; } = "Search...";
 
     public ValueTask Focus()
-        => _inputRef.FocusAsync();
+        => InputRef.FocusAsync();
 
-    public void Cancel() {
-        _text = "";
-        StateHasChanged();
-    }
+    public ValueTask Cancel()
+        => InputRef.ClearAsync();
 
-    private async Task OnInput(ChangeEventArgs e) {
-        _text = e.Value?.ToString() ?? "";
-        await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
-    }
+    private Task OnInput(string text)
+        => TextChanged.InvokeAsync(text);
 }
