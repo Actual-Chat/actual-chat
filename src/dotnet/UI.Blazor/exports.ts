@@ -43,6 +43,7 @@ export * from './Components/Menu/menu-host';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
+export * from './Components/TextInput/text-input';
 export * from './Components/Tooltip/tooltip-host';
 export * from './Components/VirtualList/virtual-list';
 
