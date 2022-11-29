@@ -70,16 +70,16 @@
                 ? "item"
                 : itemClassBase;
             @if (item.CountAs != 1) {
-                <li @key="item.Key"
+                <li id="@item.Key"
+                    @key="item.Key"
                     class="@itemClass"
-                    data-key="@item.Key"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
-                <li @key="item.Key"
-                    class="@itemClass"
-                    data-key="@item.Key">
+                <li id="@item.Key"
+                    @key="item.Key"
+                    class="@itemClass">
                     @Item(item)
                 </li>
             }

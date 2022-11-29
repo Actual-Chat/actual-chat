@@ -728,7 +728,8 @@ export class VirtualList {
         if (key == null || key == '')
             return null;
 
-        return this._containerRef.querySelector(`:scope > .item[data-key="${key}"]`);
+        // return this._containerRef.querySelector(`:scope > .item[data-key="${key}"]`);
+        return document.getElementById(key);
     }
 
     private getFirstItemRef(): HTMLElement | null {
@@ -961,7 +962,8 @@ export class VirtualList {
 
 // Helper functions
 function getItemKey(itemRef?: HTMLElement): string | null {
-    return itemRef?.dataset['key'];
+    // return itemRef?.dataset['key'];
+    return itemRef?.id;
 }
 
 function getItemCountAs(itemRef?: HTMLElement): number | null {

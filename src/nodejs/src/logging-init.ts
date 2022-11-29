@@ -35,8 +35,7 @@ export function initLogging(Log: unknown) : void {
     // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    minLevels.set('VirtualList', LogLevel.Debug);
-    minLevels.set('VirtualListPlan', LogLevel.Debug);
+    minLevels.set('VirtualList', LogLevel.Info);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
 }
