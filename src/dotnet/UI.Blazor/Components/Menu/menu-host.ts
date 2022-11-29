@@ -166,6 +166,18 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
+            )
+            .subscribe((event: Event) => {
+                if (!(event.target instanceof Element))
+                    return undefined;
+                if (event.target.nodeName === 'IMG')
+                    return undefined;
+                event.preventDefault();
+            });
+
+        fromEvent(document, 'contextmenu')
+            .pipe(
+                takeUntil(this.disposed$),
                 combineLatestWith(screenSize.size$),
                 filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
