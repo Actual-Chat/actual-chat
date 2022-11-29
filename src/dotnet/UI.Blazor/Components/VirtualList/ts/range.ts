@@ -24,8 +24,12 @@ export class NumberRange extends Range<number> {
         return this.End - this.Start;
     }
 
-    public contains(containedRange: Range<number>): boolean {
-        return this.Start <= containedRange.Start && containedRange.End <= this.End
+    public contains(containedRange: Range<number>): boolean;
+    public contains(item: number): boolean;
+    public contains(item: Range<number> | number): boolean {
+        if (typeof item === 'number')
+            return this.Start <= item && item <= this.End;
+        return this.Start <= item.Start && item.End <= this.End;
     }
 
     public intersectWith(other: Range<number>): NumberRange {

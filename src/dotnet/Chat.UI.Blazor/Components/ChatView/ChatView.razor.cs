@@ -196,6 +196,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
 
         if (oldRange.Contains(extendedRange)
+            && oldRange.Size() - extendedRange.Size() < PageSize / 2
             && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
             && hasVeryFirstItem == oldData.HasVeryFirstItem
             && hasVeryLastItem == oldData.HasVeryLastItem)
