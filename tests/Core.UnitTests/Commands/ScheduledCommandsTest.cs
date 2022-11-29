@@ -60,9 +60,6 @@ public class ScheduledCommandsTest: TestBase
         await commander.Call(new TestCommand2());
 
         await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
-        // await Awaiter.WaitFor(() =>  testService.ProcessedEvents.Count == 3);
-
-        await Task.Delay(500);
 
         foreach (var @event in testService.ProcessedEvents)
             Out.WriteLine(@event.ToString());
@@ -95,7 +92,6 @@ public class ScheduledCommandsTest: TestBase
         await commander.Call(new TestCommand3());
 
         await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
-        await Task.Delay(500);
 
         foreach (var @event in testService.ProcessedEvents)
             Out.WriteLine(@event.ToString());
