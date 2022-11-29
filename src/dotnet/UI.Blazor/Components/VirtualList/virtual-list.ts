@@ -323,6 +323,7 @@ export class VirtualList {
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
+        const largeItemBecameVisible = new Array<HTMLElement>();
         let hasChanged = false;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
@@ -331,9 +332,11 @@ export class VirtualList {
                 hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
             }
-            else if (entry.intersectionRatio >= 0.4 && entry.isIntersecting) {
+            else if ((entry.intersectionRatio >= 0.4 || entry.intersectionRect.height > MinViewPortSize / 2) && entry.isIntersecting) {
                 hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
+                if (entry.boundingClientRect.height > MinViewPortSize / 4)
+                    largeItemBecameVisible.push(itemRef);
             }
 
             this._top = entry.rootBounds.top + VisibilityEpsilon;
@@ -371,6 +374,8 @@ export class VirtualList {
                         history.pushState(currentState, document.title, location.pathname + location.search);
                     }
                 }
+
+                this.forceRepaint(largeItemBecameVisible);
             }
 
             this.updateVisibleKeysThrottled();
@@ -465,7 +470,6 @@ export class VirtualList {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 }
             } else if (this._stickyEdge != null) {
-                console.warn('sticky!');
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                     ? this.getFirstItemKey()
@@ -599,6 +603,39 @@ export class VirtualList {
         return newItem;
     }
 
+    // force repaint to fix blank item rendering issue
+    private forceRepaintThrottled = throttle(() => this.forceRepaint(), UpdateVisibleKeysInterval, 'default');
+    private forceRepaint(items: HTMLElement[] | null = null): void {
+        if (items == null) {
+            const visibleItemRefs = new Array<HTMLElement>();
+            const visibleItems = this._visibleItems;
+            for (let itemKey of visibleItems) {
+                const itemRef = this.getItemRef(itemKey);
+                if (itemRef) {
+                    visibleItemRefs.push(itemRef);
+                }
+            }
+            items = visibleItemRefs;
+        }
+        else if (items.length <= 0)
+            return;
+
+        requestAnimationFrame(() => {
+            items.forEach(itemRef => {
+                // you can use scale(1) or translate(0, 0), etc
+                itemRef.style.setProperty('transform', 'translateZ(0)');
+            });
+
+            requestAnimationFrame(() => {
+                items.forEach(itemRef => {
+                    // this will remove the property 1 frame later
+                    itemRef.style.removeProperty('transform');
+                });
+            });
+        });
+    }
+
+
     // Event handlers
 
     private onIronPantsHandle = (): void => {
@@ -635,6 +672,8 @@ export class VirtualList {
     private turnOffIsScrolling() {
         this._isScrolling = false;
         this._scrollDirection = 'none';
+
+        this.forceRepaintThrottled();
         this.markItemsForRemoval();
     }
 
