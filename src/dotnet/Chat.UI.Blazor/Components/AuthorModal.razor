@@ -49,15 +49,12 @@
         if (AuthorId.IsEmpty)
             return ComputedModel.None;
 
-        var chatId = AuthorId.ChatId.Id;
+        var chatId = AuthorId.ChatId;
         var author = await Authors.Get(Session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return ComputedModel.None;
 
         var ownAccount = await Accounts.GetOwn(Session, default);
-        if (ownAccount == null)
-            return new ComputedModel() { Author = author };
-
         var account = await Authors.GetAccount(Session, ChatId, AuthorId, default);
         if (account == null)
             return new ComputedModel() {
@@ -65,7 +62,8 @@
                 OwnAccount = ownAccount,
             };
 
-        var contactId = new ContactId(ownAccount.Id, account.Id, ParseOptions.Skip);
+        var peerChatId = PeerChatId.New(ownAccount.Id, account.Id);
+        var contactId = new ContactId(ownAccount.Id, peerChatId, ParseOptions.Skip);
         var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
         var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {
@@ -105,7 +103,7 @@
         if (m.ContactId.IsEmpty || m.OwnAccount == null)
             return;
 
-        Nav.NavigateTo(Links.ChatPage(m.ContactId.ChatId.Shorten(m.OwnAccount.Id)));
+        Nav.NavigateTo(Links.ChatPage(m.ContactId.ChatId));
     }
 
     public sealed record ComputedModel {

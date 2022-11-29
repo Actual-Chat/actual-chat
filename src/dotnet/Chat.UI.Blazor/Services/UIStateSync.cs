@@ -15,7 +15,6 @@ public class UIStateSync : WorkerBase
     private AccountSettings? _accountSettings;
     private KeepAwakeUI? _keepAwakeUI;
     private ChatUI? _chatUI;
-    private ContactUI? _contactUI;
 
     private LanguageId? _lastRecordingLanguage;
     private Symbol _lastRecordingChatId;
@@ -82,7 +81,7 @@ public class UIStateSync : WorkerBase
 
     private async Task InvalidatePinnedContactDependencies(CancellationToken cancellationToken)
     {
-        var oldContacts = new HashSet<PinnedContact>();
+        var oldContacts = new HashSet<PinnedChat>();
         var changes = ContactUI.PinnedContacts.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cPinnedContacts in changes.ConfigureAwait(false)) {
             var newPinnedContacts = cPinnedContacts.Value.ToHashSet();
@@ -118,13 +117,13 @@ public class UIStateSync : WorkerBase
             using (Computed.Invalidate()) {
                 if (newRecordingContact != oldRecordingContact) {
                     _ = ChatUI.GetRecordingChatId();
-                    _ = ChatUI.IsRecording(oldRecordingContact.Id);
-                    _ = ChatUI.IsRecording(newRecordingContact.Id);
+                    _ = ChatUI.IsRecording(oldRecordingContact.ChatId);
+                    _ = ChatUI.IsRecording(newRecordingContact.ChatId);
                 }
                 if (changed.Count > 0) {
                     _ = ChatUI.GetListeningChatIds();
                     foreach (var c in changed)
-                        _ = ChatUI.IsListening(c.Id);
+                        _ = ChatUI.IsListening(c.ChatId);
                 }
             }
 

@@ -38,15 +38,6 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
     public async Task<List<ChatId>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account != null)
-            return await ListChatIds(account.Id, cancellationToken).ConfigureAwait(false);
-
-        var kvas = ServerKvas.GetClient(session);
-        var unregisteredAuthorSettings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
-        var chats = unregisteredAuthorSettings.Chats;
-        var chatIds = chats.Keys.AsEnumerable();
-        if (!chats.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
-            chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
-        return chatIds.Select(id => new ChatId(id)).ToList();
+        return await ListChatIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 }

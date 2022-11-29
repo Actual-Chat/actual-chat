@@ -6,7 +6,7 @@ namespace ActualChat.Mathematics;
 [DataContract]
 public readonly record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>, IComparable<Trimmed<T>>
-    where T : IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
+    where T : struct, IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
 {
     [DataMember] public T Value { get; }
     [DataMember] public T? Limit { get; }
@@ -18,10 +18,10 @@ public readonly record struct Trimmed<T>
     public Trimmed(T value, T? limit)
     {
         Limit = limit;
-        if (limit == null)
+        if (limit is not { } vLimit)
             Value = value;
         else
-            Value = Comparer<T>.Default.Compare(value, limit) < 0 ? value : limit;
+            Value = Comparer<T>.Default.Compare(value, vLimit) < 0 ? value : vLimit;
     }
 
     public override string ToString()
@@ -29,16 +29,18 @@ public readonly record struct Trimmed<T>
     public string Format(string trimmedSuffix = "+")
         => Invariant($"{Value}{(IsTrimmed ? trimmedSuffix : "")}");
 
+    public static implicit operator Trimmed<T>(T value)
+        => new(value, default);
     public static implicit operator Trimmed<T>((T Value, T TrimValue) source)
         => new(source.Value, source.TrimValue);
 
     public static Trimmed<T> operator +(Trimmed<T> left, Trimmed<T> right)
     {
         var minLimit = left.Limit;
-        if (minLimit == null)
+        if (minLimit is not { } vMinLimit)
             minLimit = right.Limit;
-        else if (right.Limit is { } rightTrimmedAt)
-            minLimit = Comparer<T>.Default.Compare(minLimit, rightTrimmedAt) < 0 ? minLimit : rightTrimmedAt;
+        else if (right.Limit is { } vRightLimit)
+            minLimit = Comparer<T>.Default.Compare(vMinLimit, vRightLimit) < 0 ? vMinLimit : vRightLimit;
         return new (left.Value + right.Value, minLimit);
     }
 

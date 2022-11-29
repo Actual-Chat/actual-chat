@@ -48,6 +48,8 @@ public sealed record ChatState
         }
     }
 
+    public bool HasMentionsOrUnreadMessages => HasMentions || UnreadMessageCount.Value > 0;
+
     // Equality must rely on Chat.Id only
     public bool Equals(ChatState? other)
         => other != null && Chat.Id.Equals(other.Chat.Id);

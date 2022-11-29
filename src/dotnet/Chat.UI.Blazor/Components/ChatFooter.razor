@@ -87,7 +87,7 @@
             <ChatMessageEditor/>
         } else if (m.CanJoin) {
             <div class="chat-footer">
-                @if (m.IsAuthenticated) {
+                @if (!m.IsGuest) {
                     <div>
                         <span class="inline-flex">To post or talk,</span>
                         <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
@@ -126,7 +126,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        string chatId = Chat.Id;
+        var chatId = Chat.Id;
         var (account, rules, canJoin) = await Accounts.GetOwn(Session, cancellationToken)
             .Join(
                 Chats.GetRules(Session, chatId, cancellationToken),
@@ -137,7 +137,7 @@
         return new () {
             CanPost = canPost,
             CanJoin = !canPost && canJoin,
-            IsAuthenticated = account != null,
+            IsGuest = account.IsGuest,
         };
     }
 
@@ -153,6 +153,6 @@
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
         public bool HasFooter => CanPost || CanJoin;
-        public bool IsAuthenticated { get; init; }
+        public bool IsGuest { get; init; }
     }
 }

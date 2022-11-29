@@ -8,9 +8,8 @@ public static class AccountsExt
         AccountFull? accessedAccount,
         CancellationToken cancellationToken)
     {
-        var ownAccount = await accounts.GetOwn(session, cancellationToken)
-            .Require(AccountFull.MustBeActive)
-            .ConfigureAwait(false);
+        var ownAccount = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
         if (ownAccount.Id != (accessedAccount?.Id ?? Symbol.Empty))
             ownAccount.Require(AccountFull.MustBeAdmin);
 
@@ -23,9 +22,8 @@ public static class AccountsExt
         AccountFull updatedAccount,
         CancellationToken cancellationToken)
     {
-        var ownAccount = await accounts.GetOwn(session, cancellationToken)
-            .Require(AccountFull.MustBeActive)
-            .ConfigureAwait(false);
+        var ownAccount = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
         if (ownAccount.Id != updatedAccount.Id)
             ownAccount.Require(AccountFull.MustBeAdmin);
         else {

@@ -19,8 +19,8 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
 
@@ -34,22 +34,21 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var countTask = UnreadMessages.GetCount(ChatId, cancellationToken);
-        var hasMentionsTask = UnreadMessages.HasMentions(ChatId, cancellationToken);
-        var getNotificationModeTask = AccountSettings.GetChatNotificationMode(ChatId, cancellationToken);
+        var chatId = new ChatId(ChatId);
+        var chatStateTask = ChatUI.GetState(chatId, cancellationToken);
+        var getUserChatSettings = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
 
         // ConfigureAwait(false) from here
-        var hasMentions = await hasMentionsTask.ConfigureAwait(false);
-        var count = await countTask.ConfigureAwait(false);
-        var notificationMode = await getNotificationModeTask.ConfigureAwait(false);
+        var chatState = await chatStateTask.ConfigureAwait(false);
+        var userChatSettings = await getUserChatSettings.ConfigureAwait(false);
 
-        if (!hasMentions && count == 0)
+        if (chatState is not { HasMentionsOrUnreadMessages: true })
             return Model.None;
 
         return new() {
-            Count = count,
-            HasMentions = hasMentions,
-            NotificationMode = notificationMode,
+            Count = chatState.UnreadMessageCount,
+            HasMentions = chatState.HasMentions,
+            NotificationMode = userChatSettings.NotificationMode,
         };
     }
 

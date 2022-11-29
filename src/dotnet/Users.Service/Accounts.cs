@@ -15,7 +15,7 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         UserId userId;
@@ -31,14 +31,14 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     }
 
     // [ComputeMethod]
-    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<Account> Get(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        return account;
+        return account.ToAccount();
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
         await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);

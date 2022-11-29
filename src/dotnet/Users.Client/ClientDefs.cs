@@ -7,11 +7,11 @@ namespace ActualChat.Users;
 public interface IAccountsClientDef
 {
     [Get(nameof(GetOwn))]
-    Task<AccountFull?> GetOwn(Session session, CancellationToken cancellationToken);
+    Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken);
     [Get(nameof(Get))]
-    Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);
+    Task<Account> Get(Session session, UserId userId, CancellationToken cancellationToken);
     [Get(nameof(GetFull))]
-    Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
+    Task<AccountFull> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
     Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
 }

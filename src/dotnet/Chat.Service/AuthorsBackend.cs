@@ -90,17 +90,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return author;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var userId = account?.Id ?? default;
-
-        var command = new IAuthorsBackend.CreateCommand(chatId, userId);
+        var command = new IAuthorsBackend.CreateCommand(chatId, account.Id);
         author = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
-
-        if (account == null) {
-            var kvas = ServerKvas.GetClient(session);
-            var settings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
-            settings = settings.WithChat(chatId, author.Id);
-            await kvas.SetUnregisteredUserSettings(settings, cancellationToken).ConfigureAwait(false);
-        }
         return author;
     }
 
@@ -165,7 +156,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         AvatarFull? newAvatar = null;
-        var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -322,12 +313,11 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 return WithAvatar(author, avatar);
         }
         var userId = author.UserId;
-        if (!userId.IsEmpty) {
-            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account != null)
-                return WithAvatar(author, account.Avatar);
-        }
-        return WithAvatar(author, GetDefaultAvatar(author));
+        if (userId.IsEmpty) // NOTE(AY): This is legacy branch, now we don't have such authors
+            return WithAvatar(author, GetDefaultAvatar(author));
+
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        return WithAvatar(author, account.Avatar);
 
         AuthorFull WithAvatar(AuthorFull a, Avatar avatar)
             => a with { Avatar = avatar };

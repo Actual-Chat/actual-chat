@@ -68,9 +68,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AccountFull? account;
         if (principalId.IsUser(out var userId)) {
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-
             author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         }
         else if (principalId.IsAuthor(out var authorId)) {
@@ -79,8 +76,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 return AuthorRules.None(chatId);
 
             account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
         }
         else
             return AuthorRules.None(chatId);
@@ -602,7 +597,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null || !account.IsAdmin)
+        if (!account.IsAdmin)
             return;
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
@@ -611,7 +606,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private async Task JoinDefaultChatIfAdmin(UserId userId, CancellationToken cancellationToken)
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account == null || !account.IsAdmin)
+        if (!account.IsAdmin)
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
@@ -654,29 +649,20 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         AuthorFull? author = null;
         AccountFull? account;
-        if (principalId.IsUser(out var userId)) {
+        if (principalId.IsUser(out var userId))
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-        }
         else if (principalId.IsAuthor(out var authorId)) {
             author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (author == null)
                 return AuthorRules.None(chatId);
 
             account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
         }
         else
             return AuthorRules.None(chatId);
 
         var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
         if (otherUserId.IsEmpty)
-            return AuthorRules.None(chatId);
-
-        var otherAccount = await AccountsBackend.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-        if (otherAccount == null)
             return AuthorRules.None(chatId);
 
         return new(chatId, author, account, ChatPermissions.Write.AddImplied());

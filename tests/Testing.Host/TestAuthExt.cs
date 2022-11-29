@@ -1,5 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.Commands.Internal;
+using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;
@@ -9,13 +10,13 @@ namespace ActualChat.Testing.Host;
 
 public static class TestAuthExt
 {
-    public static Task<User> SignIn(
+    public static Task<AccountFull> SignIn(
         this IWebTester tester,
         User user,
         CancellationToken cancellationToken = default)
         => tester.AppHost.SignIn(tester.Session, user, cancellationToken);
 
-    public static async Task<User> SignIn(
+    public static async Task<AccountFull> SignIn(
         this AppHost appHost,
         Session session,
         User user,
@@ -27,27 +28,21 @@ public static class TestAuthExt
 
         var services = appHost.Services;
         var commander = services.Commander();
-        var auth = services.GetRequiredService<IAuth>();
-        var authBackend = services.GetRequiredService<IAuthBackend>();
+        var accounts = services.GetRequiredService<IAccounts>();
 
         var command = new SignInCommand(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken)
-            .Require(SessionInfo.MustBeAuthenticated)
+        // Wait till the authentication happens
+        var cAccount = await Computed.Capture(() => accounts.GetOwn(session, cancellationToken)).ConfigureAwait(false);
+        cAccount = await cAccount
+            .Changes(cancellationToken)
+            .FirstAsync(c => c.Error == null, cancellationToken).AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
-        user = (await authBackend.GetUser(default, sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
 
-        // Let's wait a bit to ensure all invalidations go through
-        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
-
-        var localCommandQueue = services.GetRequiredService<LocalCommandQueue>();
-        while (localCommandQueue.Commands.Reader.TryPeek(out _))
-            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
-
-        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
-
-        return user;
+        var account = cAccount.Value;
+        return account;
     }
 
     public static Task SignOut(

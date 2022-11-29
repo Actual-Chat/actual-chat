@@ -15,7 +15,7 @@
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is {Length: > 0}) {
-            _chat = await Chats.Get(Session, Arguments[0], CancellationToken.None);
+            _chat = await Chats.Get(Session, new ChatId(Arguments[0]), CancellationToken.None);
         }
     }
 }

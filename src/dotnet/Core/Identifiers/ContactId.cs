@@ -21,6 +21,8 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ContactId(Symbol id) => this = Parse(id);
+    public ContactId(UserId ownerId, ChatId chatId) => Parse(Format(ownerId, chatId));
+    public ContactId(UserId ownerId, ChatId chatId, ParseOrDefaultOption _) => ParseOrDefault(Format(ownerId, chatId));
     public ContactId(string id) => this = Parse(id);
     public ContactId(string id, ParseOrDefaultOption _) => ParseOrDefault(id);
 
@@ -33,12 +35,15 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     public ContactId(UserId ownerId, ChatId chatId, SkipParseOption _)
     {
-        Id = $"{ownerId} {chatId}";
+        Id = Format(ownerId, chatId);
         OwnerId = ownerId;
         ChatId = chatId;
     }
 
     // Conversion
+
+    private static string Format(UserId ownerId, ChatId chatId)
+        => $"{ownerId} {chatId}";
 
     public override string ToString() => Value;
     public static implicit operator Symbol(ContactId source) => source.Id;

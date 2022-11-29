@@ -97,7 +97,6 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ContactUI ContactUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -222,7 +221,7 @@
     // Event handlers
 
     private async Task OnOpenPrevious() {
-        var chatId = ContactUI.SelectedContactId.Value.ChatId;
+        var chatId = ChatUI.SelectedChatId.Value;
         if (chatId.IsEmpty)
             return;
 

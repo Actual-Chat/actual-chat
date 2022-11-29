@@ -4,6 +4,13 @@ public static class PeerChatId
 {
     public static ChatId New(UserId userId1, UserId userId2)
     {
+        if (userId1.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(userId1));
+        if (userId2.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(userId2));
+        if (userId1 == userId2)
+            throw new ArgumentOutOfRangeException(nameof(userId2), "Both user IDs are the same.");
+
         (userId1, userId2) = (userId1, userId2).Sort();
         return new($"p-{userId1}-{userId2}", ParseOptions.Skip);
     }

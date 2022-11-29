@@ -27,10 +27,10 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull> Get(UserId userId, CancellationToken cancellationToken)
     {
         if (userId.IsEmpty)
-            return null;
+            throw new ArgumentOutOfRangeException(nameof(userId));
 
         // We _must_ have a dependency on AuthBackend.GetUser here
         var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
@@ -38,14 +38,11 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         if (user == null) {
             account = GetGuestAccount(userId);
             if (account == null)
-                return null;
+                throw new ArgumentOutOfRangeException(nameof(userId));
         }
         else {
             var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-            account = dbAccount?.ToModel();
-            if (account == null)
-                return null;
-
+            account = dbAccount.Require().ToModel();
             if (IsAdmin(user))
                 account = account with { IsAdmin = true };
         }

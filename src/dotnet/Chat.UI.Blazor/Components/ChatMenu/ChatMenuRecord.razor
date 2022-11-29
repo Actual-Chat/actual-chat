@@ -8,7 +8,7 @@
 
 @if (isRecording) {
     <MenuEntry
-        OnClick="@(_ => ChatUI.SetRecordingChatId(Symbol.Empty))"
+        OnClick="@(_ => ChatUI.SetRecordingChatId(default))"
         Class="@cls"
         Icon="icon-Stop-fill"
         Text="Stop talking">

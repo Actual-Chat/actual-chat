@@ -72,7 +72,7 @@
                 ).ToImmutableList();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedContacts.Use(cancellationToken);
+        var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedChats = chats
             .Where(c => pinnedChatIds.Contains(c.Id))
             .ToList();
@@ -112,7 +112,7 @@
         if (firstUnreadChatId.IsEmpty)
             return;
 
-        if (firstUnreadChatId == ChatUI.SelectedContactId.Value)
+        if (firstUnreadChatId == ChatUI.SelectedChatId.Value)
             return;
 
         Nav.NavigateTo(Links.ChatPage(firstUnreadChatId));

@@ -35,16 +35,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         Contact? contact = null;
         if (chatId.Kind == ChatKind.Peer) {
-            var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            if (ownAccount == null)
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
+            if (otherUserId.IsEmpty)
                 return null;
 
-            var userId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(ownAccount.Id);
-            if (userId.IsEmpty)
-                return null;
-
-            var contactId = new ContactId(ownAccount.Id, chatId, ParseOptions.Skip);
-            contact = await ContactsBackend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+            var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
+            contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
             if (contact == null)
                 return null;
         }
@@ -179,11 +176,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         string text,
         CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account is null)
-            return null;
-
         text.RequireMaxLength(Constants.Chat.MaxSearchFilterLength, "text.length");
+
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -205,9 +202,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
-            var account = await Accounts.GetOwn(session, cancellationToken)
-                .Require(AccountFull.MustBeActive)
-                .ConfigureAwait(false);
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            account.Require(AccountFull.MustBeActive);
             changeCommand = changeCommand with {
                 OwnerId = account.Id,
             };
@@ -299,7 +295,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return new PrincipalId(author.Id, ParseOptions.Skip);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return account != null ? new PrincipalId(account.Id, ParseOptions.Skip) : default;
+        return new PrincipalId(account.Id, ParseOptions.Skip);
     }
 
     private async Task<ChatEntry> GetChatEntry(

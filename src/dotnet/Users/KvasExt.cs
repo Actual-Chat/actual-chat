@@ -6,12 +6,6 @@ public static class KvasExt
 {
     // UserChatSettings
 
-    public static async ValueTask<ChatNotificationMode> GetChatNotificationMode(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var chatUserSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        return chatUserSettings.NotificationMode;
-    }
-
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
@@ -42,22 +36,4 @@ public static class KvasExt
 
     public static Task SetUserLanguageSettings(this IKvas kvas, UserLanguageSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserLanguageSettings.KvasKey, value, cancellationToken);
-
-    // UnregisteredUserSettings
-
-    public static async ValueTask<UnregisteredUserSettings> GetUnregisteredUserSettings(
-        this IKvas kvas,
-        CancellationToken cancellationToken)
-    {
-        var valueOpt = await kvas
-            .Get<UnregisteredUserSettings>(UnregisteredUserSettings.KvasKey, cancellationToken)
-            .ConfigureAwait(false);
-        return valueOpt.IsSome(out var value) ? value : new();
-    }
-
-    public static Task SetUnregisteredUserSettings(
-        this IKvas kvas,
-        UnregisteredUserSettings value,
-        CancellationToken cancellationToken)
-        => kvas.Set(UnregisteredUserSettings.KvasKey, value, cancellationToken);
 }

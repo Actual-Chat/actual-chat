@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 public interface IAccountsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
+    Task<AccountFull> Get(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);

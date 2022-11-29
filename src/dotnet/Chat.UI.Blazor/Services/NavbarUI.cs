@@ -6,7 +6,6 @@ public class NavbarUI
 {
     private BrowserInfo BrowserInfo { get; }
     private ChatUI ChatUI { get; }
-    private ContactUI ContactUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
 
@@ -21,7 +20,6 @@ public class NavbarUI
     {
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
         ChatUI = services.GetRequiredService<ChatUI>();
-        ContactUI = services.GetRequiredService<ContactUI>();
         HistoryUI = services.GetRequiredService<HistoryUI>();
         Nav = services.GetRequiredService<NavigationManager>();
 
@@ -54,7 +52,7 @@ public class NavbarUI
         if (visible)
             _ = HistoryUI.GoBack();
         else {
-            var selectedChatId = ContactUI.SelectedContactId.Value.ChatId;
+            var selectedChatId = ChatUI.SelectedChatId.Value;
             if (!selectedChatId.IsEmpty)
                 Nav.NavigateTo(Links.ChatPage(selectedChatId));
         }

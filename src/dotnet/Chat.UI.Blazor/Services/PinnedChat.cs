@@ -1,16 +1,14 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct ActiveChat(
+public readonly record struct PinnedChat(
     ChatId ChatId,
-    bool IsListening = false,
-    bool IsRecording = false,
     Moment Recency = default)
 {
-    public static implicit operator ActiveChat(ChatId chatId) => new(chatId);
+    public static implicit operator PinnedChat(ChatId chatId) => new(chatId);
 
     // Equality must rely on Id only
-    public bool Equals(ActiveChat other)
+    public bool Equals(PinnedChat other)
         => ChatId.Equals(other.ChatId);
     public override int GetHashCode()
         => ChatId.GetHashCode();
