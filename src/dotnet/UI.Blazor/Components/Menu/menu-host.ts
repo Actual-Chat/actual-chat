@@ -181,6 +181,9 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'long-press')
             .pipe(
                 takeUntil(this.disposed$),
+                combineLatestWith(screenSize.size$),
+                filter(([_, screenSize]) => screenSize === 'Small'),
+                map(([event, _]) => event),
                 map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
