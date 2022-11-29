@@ -189,18 +189,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
         var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
-        var oldRange =  oldData.Query.IsNone
-            ? new Range<long>(0,0)
-            : oldData.Query.KeyRange
-                .AsLongRange()
-                .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
+        // var oldRange =  oldData.Query.IsNone
+        //     ? new Range<long>(0,0)
+        //     : oldData.Query.KeyRange
+        //         .AsLongRange()
+        //         .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
 
-        if (oldRange.Contains(extendedRange)
-            && oldRange.Size() - extendedRange.Size() < PageSize / 2
-            && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
-            && hasVeryFirstItem == oldData.HasVeryFirstItem
-            && hasVeryLastItem == oldData.HasVeryLastItem)
-            return oldData;
+        // if (oldRange.Contains(extendedRange)
+        //     && oldRange.Size() - extendedRange.Size() < PageSize / 2
+        //     && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
+        //     && hasVeryFirstItem == oldData.HasVeryFirstItem
+        //     && hasVeryLastItem == oldData.HasVeryLastItem)
+        //     return oldData;
 
         var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
         var chatTiles = await idTiles
