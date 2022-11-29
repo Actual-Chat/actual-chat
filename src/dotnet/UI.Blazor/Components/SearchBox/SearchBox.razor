@@ -16,7 +16,7 @@
 </div>
 
 @code {
-    private TextInput InputRef { get; set; }
+    private TextInput InputRef { get; set; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }

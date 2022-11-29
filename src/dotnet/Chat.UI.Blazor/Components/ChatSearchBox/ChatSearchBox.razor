@@ -51,7 +51,7 @@
     private string _text = "";
     private bool? _isCollapsed;
     private bool _needsFocus;
-    private TextInput _inputRef;
+    private TextInput _inputRef = null!;
     private bool _isBusy;
 
     [Parameter] public string Class { get; set; } = "";
