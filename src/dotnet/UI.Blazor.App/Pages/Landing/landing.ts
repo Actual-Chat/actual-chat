@@ -23,7 +23,6 @@ export class Landing {
         this.getPageBottom();
         window.addEventListener('wheel', this.getScrollDirection, {passive: false, });
         window.addEventListener('keydown', this.onUpOrDownClick, {passive: false, });
-
     }
 
     private getPageData() {
