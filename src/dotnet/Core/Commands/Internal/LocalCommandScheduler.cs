@@ -46,7 +46,8 @@ public class LocalCommandScheduler : WorkerBase
                 }
                 catch (OperationCanceledException e)
                 {
-                    await queueReader.NAck(queuedCommand, true, e, cancellationToken1).ConfigureAwait(false);
+                    await queueReader.NAck(queuedCommand, false, e, default).ConfigureAwait(false);
+
                     if (cancellationToken1.IsCancellationRequested)
                         throw;
                 }
