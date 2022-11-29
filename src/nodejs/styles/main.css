@@ -195,4 +195,15 @@ input.input-underlined {
 .landing-auth-btn.btn.btn-round .btn-content {
     @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
 }
-
+.landing-header {
+    @apply absolute top-0 z-10 flex-x w-full py-2 px-16 items-center bg-transparent;
+}
+.landing-header.filled .light-icon {
+    @apply invisible;
+}
+.landing-header.filled .header-text {
+    @apply text-01 border-text-01;
+}
+.landing-header.blur-bg {
+    @apply backdrop-blur-2xl;
+}

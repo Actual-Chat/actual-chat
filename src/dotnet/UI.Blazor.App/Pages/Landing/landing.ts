@@ -10,6 +10,7 @@ export class Landing {
     private pageNumbers: {};
     private bottom: number;
     private currentPageNumber: number = 1;
+    private header: HTMLElement;
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
         return new Landing(landing, blazorRef);
@@ -18,6 +19,7 @@ export class Landing {
     constructor(landing: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.landing = landing;
         this.blazorRef = blazorRef;
+        this.header = this.landing.querySelector('.landing-header');
         this.bottom = window.innerHeight;
         this.getPageData();
         this.getPageBottom();
@@ -40,6 +42,24 @@ export class Landing {
         });
         this.pageNumbers = numbers;
         this.pageBottoms = bottoms;
+        this.setHeaderStyle();
+    }
+
+    private setHeaderStyle = () => {
+        let page = this.currentPageNumber;
+        let list = this.header.classList;
+        if (page == 1) {
+            list.remove('filled');
+        } else {
+            if (!list.contains('filled')) {
+                list.add('filled');
+            }
+        }
+        if (page == 7 || page == 8 || page == 9 || page == 11) {
+            list.add('blur-bg');
+        } else {
+            list.remove('blur-bg');
+        }
     }
 
     private getScrollDirectionThrottled = debounce(
@@ -117,7 +137,7 @@ export class Landing {
         this.currentPageNumber += 1;
         setTimeout(() => {
             this.getPageData();
-        }, 1000);
+        }, 500);
     }
 
     private scrollToPreviousPage() {
@@ -131,7 +151,7 @@ export class Landing {
         this.currentPageNumber -= 1;
         setTimeout(() => {
             this.getPageData();
-        }, 1000);
+        }, 500);
     }
 
     private scrollToPageEnd = (page: HTMLElement) =>
