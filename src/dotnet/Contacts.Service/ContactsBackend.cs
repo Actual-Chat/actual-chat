@@ -31,8 +31,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             ?? new Contact(contactId); // A fake contact
 
         var chatId = contact.ChatId;
-        if (chatId.Kind == ChatKind.Peer) {
-            var userId = PeerChatId.ParseOrDefault(chatId).OtherThan(ownerId);
+        if (chatId.IsPeerChatId(out var peerChatId)) {
+            var userId = peerChatId.OtherUserIdOrDefault(ownerId);
             if (userId.IsEmpty)
                 return null;
 
@@ -48,6 +48,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     {
         if (ownerId.IsEmpty || chatId.IsEmpty)
             return null;
+        if (chatId.IsPeerChatId(out var peerChatId) && peerChatId.OtherUserIdOrDefault(ownerId).IsEmpty)
+            return null;
 
         var contactId = new ContactId(ownerId, chatId, ParseOptions.Skip);
         return await Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
@@ -56,10 +58,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // [ComputeMethod]
     public virtual async Task<Contact?> GetForUser(UserId ownerId, UserId userId, CancellationToken cancellationToken)
     {
-        if (ownerId.IsEmpty || userId.IsEmpty)
+        var peerChatId = new PeerChatId(ownerId, userId, ParseOptions.OrDefault);
+        if (peerChatId.IsEmpty)
             return null;
 
-        var peerChatId = PeerChatId.New(ownerId, userId);
         var id = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
         return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
@@ -91,7 +93,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (contact.IsStored())
             return contact;
 
-        var peerChatId = PeerChatId.New(ownerId, userId);
+        var peerChatId = new PeerChatId(ownerId, userId);
         var contactId = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
         var command = new IContactsBackend.ChangeCommand(contactId, null, new Change<Contact> {
             Create = new Contact(contactId),

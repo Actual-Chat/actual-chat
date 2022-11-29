@@ -172,12 +172,17 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var hostInfo = Services.GetRequiredService<HostInfo>();
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
-        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
+        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         var creatorId = admin.Id;
 
         var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
         foreach (var userId in userIds) {
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                continue;
+
             var user = account.User;
             if (user.Claims.Count == 0)
                 continue;

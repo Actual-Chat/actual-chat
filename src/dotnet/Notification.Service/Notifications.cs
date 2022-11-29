@@ -22,7 +22,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task<ImmutableArray<Symbol>> ListRecentNotificationIds(
         Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -30,7 +30,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public virtual async Task<NotificationEntry> GetNotification(
         Session session, Symbol notificationId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await Backend.GetNotification(account.Id, notificationId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -74,8 +74,6 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

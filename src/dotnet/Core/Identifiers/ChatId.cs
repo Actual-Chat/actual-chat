@@ -4,8 +4,6 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatId : ISymbolIdentifier<ChatId>
 {
-    public static readonly string PeerChatIdPrefix = "p-";
-
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -15,7 +13,7 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatKind Kind => Value.OrdinalStartsWith(PeerChatIdPrefix) ? ChatKind.Peer : ChatKind.Group;
+    public ChatKind Kind => Value.OrdinalStartsWith(PeerChatId.IdPrefix) ? ChatKind.Peer : ChatKind.Group;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ChatId(Symbol id) => this = Parse(id);
@@ -27,11 +25,8 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
 
     public bool IsGroupChatId()
         => Kind == ChatKind.Group;
-
-    public bool IsPeerChatId(out (UserId UserId1, UserId UserId2) userIds)
-        => PeerChatId.TryParse(Value, out userIds);
-    public bool IsPeerChatId(out UserId userId1, out UserId userId2)
-        => PeerChatId.TryParse(Value, out userId1, out userId2);
+    public bool IsPeerChatId(out PeerChatId peerChatId)
+        => PeerChatId.TryParse(Value, out peerChatId);
 
     // Conversion
 
@@ -63,6 +58,12 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
             return false;
 
         result = new ChatId(s, ParseOptions.Skip);
+        if (result.Kind == ChatKind.Peer && !result.IsPeerChatId(out _)) {
+            // Invalid peer chat ID
+            result = default;
+            return false;
+        }
+
         return true;
     }
 }

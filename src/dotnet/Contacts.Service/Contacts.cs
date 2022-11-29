@@ -24,8 +24,8 @@ public class Contacts : IContacts
     public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
     {
         var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (ownAccount == null || ownAccount.Id != contactId.OwnerId)
-            return null;
+        if (ownAccount.Id != contactId.OwnerId)
+            throw Unauthorized();
 
         var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
@@ -45,9 +45,6 @@ public class Contacts : IContacts
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return ImmutableArray<ContactId>.Empty;
-
         var contactIds = await Backend.ListIds(account.Id, cancellationToken).ConfigureAwait(false);
         return contactIds;
     }
@@ -62,9 +59,9 @@ public class Contacts : IContacts
         id.RequireNonEmpty();
         change.RequireValid();
 
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)
-            throw StandardError.Unauthorized("Users can change only their own contacts.");
+            throw Unauthorized();
 
         return await Commander
             .Call(new IContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)
@@ -80,12 +77,17 @@ public class Contacts : IContacts
         var (session, id) = command;
         id.RequireNonEmpty();
 
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)
-            throw StandardError.Unauthorized("Users can change only their own contacts.");
+            throw Unauthorized();
 
         await Commander
             .Call(new IContactsBackend.TouchCommand(id), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    // Private methods
+
+    private static Exception Unauthorized()
+        => StandardError.Unauthorized("You can access only your own contacts");
 }

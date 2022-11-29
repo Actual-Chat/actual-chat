@@ -10,7 +10,7 @@
         PlayableTextColor.Cyan => "playable-text-color-cyan",
         PlayableTextColor.Green => "playable-text-color-green",
         null => "",
-        _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
+        _ => throw StandardError.Internal("Invalid Model.Color value."),
         };
 }
 <span class="playable-text-markup @colorCls">

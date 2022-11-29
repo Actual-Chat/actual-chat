@@ -53,19 +53,14 @@
                 RecordingChatUrl = Links.ChatPage(recordingChat.Id),
             };
 
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        if (account == null)
-            return Model.None;
-
-        var parsedChatId = new ChatId(recordingChat.Id);
         return new Model {
             RecordingChat = recordingChat,
-            RecordingChatUrl = Links.ChatPage(parsedChatId.Shorten(account.Id)),
+            RecordingChatUrl = Links.ChatPage(recordingChatId),
         };
     }
 
     private void OnStop()
-        => _ = ChatUI.SetRecordingChatId(Symbol.Empty);
+        => _ = ChatUI.SetRecordingChatId(default);
 
     public sealed record Model {
         public static Model None { get; } = new();

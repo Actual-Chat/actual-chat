@@ -118,9 +118,6 @@ public class ChatUI
         var isRecordingTask = IsRecording(chatId);
 
         var account = await accountTask.ConfigureAwait(false);
-        if (account == null)
-            return null;
-
         var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
         var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
 

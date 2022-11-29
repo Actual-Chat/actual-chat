@@ -101,45 +101,26 @@
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        if (chatId.IsNullOrEmpty()) {
+        var chatId = new ChatId(ChatId, ParseOptions.OrDefault);
+        if (chatId.IsEmpty) {
             var selectedChat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
             if (selectedChat != null)
                 chatId = selectedChat.Id;
         }
-
-        if (chatId.IsNullOrEmpty())
+        if (chatId.IsEmpty)
             return Model.None;
 
-        var accountTask = Accounts.GetOwn(Session, default);
-        var account = (AccountFull?) null;
-
-        var parsedChatId = new ChatId(chatId);
-        if (parsedChatId.Kind is ChatIdKind.PeerShort) {
-            account ??= await accountTask;
-            parsedChatId = account != null
-                ? ActualChat.Chat.ChatId.Format(account.Id, parsedChatId.UserId1)
-                : parsedChatId.ToInvalid();
-        }
-
-        // parsedChatId is either (valid & not short) or invalid at this point
-        if (parsedChatId.IsValid && ChatUI.SelectedChatId.Value != parsedChatId.Id) {
-            ChatUI.SelectedChatId.Value = parsedChatId.Id;
+        if (ChatUI.SelectedChatId.Value != chatId) {
+            ChatUI.SelectedChatId.Value = chatId;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
             _ = UICommander.RunNothing();
         }
 
-        account ??= await accountTask;
-        if (!parsedChatId.IsValid)
-            return new Model(parsedChatId, null, account); // Unavailable
-
-        var chat = await Chats.Get(Session, parsedChatId.Id, cancellationToken);
-        if (chat == null)
-            return new Model(parsedChatId, null, account); // Unavailable
-
-        var result = new Model(parsedChatId, chat, account);
+        var account = await Accounts.GetOwn(Session, default);
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var result = new Model(chatId, chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 

@@ -1,8 +1,47 @@
 namespace ActualChat;
 
-public static class PeerChatId
+[DataContract]
+[StructLayout(LayoutKind.Auto)]
+public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
-    public static ChatId New(UserId userId1, UserId userId2)
+    public static readonly string IdPrefix = "p-";
+
+    [DataMember(Order = 0)]
+    public Symbol Id { get; }
+
+    // Parsed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public UserId UserId1 { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public UserId UserId2 { get; }
+
+    // Computed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string Value => Id.Value;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsEmpty => Id.IsEmpty;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public (UserId UserId1, UserId UserId2) UserIds => (UserId1, UserId2);
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public PeerChatId(Symbol id) => this = Parse(id);
+    public PeerChatId(string? id) => this = Parse(id);
+    public PeerChatId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+
+    public PeerChatId(UserId userId1, UserId userId2, ParseOrDefaultOption _)
+    {
+        if (userId1.IsEmpty)
+            return;
+        if (userId2.IsEmpty)
+            return;
+        if (userId1 == userId2)
+            return;
+
+        (UserId1, UserId2) = (userId1, userId2).Sort();
+        Id = Format(UserId1, UserId2);
+    }
+
+    public PeerChatId(UserId userId1, UserId userId2)
     {
         if (userId1.IsEmpty)
             throw new ArgumentOutOfRangeException(nameof(userId1));
@@ -11,29 +50,58 @@ public static class PeerChatId
         if (userId1 == userId2)
             throw new ArgumentOutOfRangeException(nameof(userId2), "Both user IDs are the same.");
 
-        (userId1, userId2) = (userId1, userId2).Sort();
-        return new($"p-{userId1}-{userId2}", ParseOptions.Skip);
+        (UserId1, UserId2) = (userId1, userId2).Sort();
+        Id = Format(UserId1, UserId2);
     }
 
-    public static (UserId UserId1, UserId UserId2) Parse(string? s)
+    public PeerChatId(Symbol id, UserId userId1, UserId userId2, SkipParseOption _)
+    {
+        Id = id;
+        UserId1 = userId1;
+        UserId2 = userId2;
+    }
+
+    public void Deconstruct(out UserId userId1, out UserId userId2)
+    {
+        userId1 = UserId1;
+        userId2 = UserId2;
+    }
+
+    public UserId OtherUserId(UserId userId)
+        => (UserId1, UserId2).OtherThan(userId);
+    public UserId OtherUserIdOrDefault(UserId userId)
+        => (UserId1, UserId2).OtherThanOrDefault(userId);
+
+    // Conversion
+
+    public override string ToString() => Value;
+    public static implicit operator ChatId(PeerChatId source) => new(source.Id, ParseOptions.Skip);
+    public static implicit operator Symbol(PeerChatId source) => source.Id;
+    public static implicit operator string(PeerChatId source) => source.Value;
+
+    // Equality
+
+    public bool Equals(PeerChatId other) => Id == other.Id;
+    public override bool Equals(object? obj) => obj is PeerChatId other && Equals(other);
+    public override int GetHashCode() => Id.GetHashCode();
+    public static bool operator ==(PeerChatId left, PeerChatId right) => left.Equals(right);
+    public static bool operator !=(PeerChatId left, PeerChatId right) => !left.Equals(right);
+
+    private static string Format(UserId userId1, UserId userId2)
+        => $"{IdPrefix}{userId1}-{userId2}";
+
+    public static PeerChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
-    public static (UserId UserId1, UserId UserId2) ParseOrDefault(string? s)
+    public static PeerChatId ParseOrDefault(string? s)
         => TryParse(s, out var result) ? result : default;
 
-    public static bool TryParse(string? s, out UserId userId1, out UserId userId2)
-    {
-        var result = TryParse(s, out var userIds);
-        (userId1, userId2) = userIds;
-        return result;
-    }
-
-    public static bool TryParse(string? s, out (UserId UserId1, UserId UserId2) result)
+    public static bool TryParse(string? s, out PeerChatId result)
     {
         result = default;
         if (s.IsNullOrEmpty())
             return false;
 
-        if (!s.OrdinalStartsWith("p-"))
+        if (!s.OrdinalStartsWith(IdPrefix))
             return false;
 
         var tail = s.AsSpan(2);
@@ -45,8 +113,10 @@ public static class PeerChatId
             return false;
         if (!UserId.TryParse(tail[(dashIndex + 1)..].ToString(), out var userId2))
             return false;
+        if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
+            return false; // Wrong sort order
 
-        result = (userId1, userId2);
+        result = new PeerChatId((Symbol)s, userId1, userId2, ParseOptions.Skip);
         return true;
     }
 }

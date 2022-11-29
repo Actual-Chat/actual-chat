@@ -64,8 +64,8 @@ internal class Invites : IInvites
         if (Computed.IsInvalidating())
             return default!;
 
-        // Invites work only once you sign in
-        await Accounts.GetOwn(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
 
         var useCommand = new IInvitesBackend.UseCommand(command.Session, command.InviteId);
         var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
@@ -74,9 +74,11 @@ internal class Invites : IInvites
 
     // Assertions
 
-    private Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
-        => Accounts.GetOwn(session, cancellationToken)
-            .Require(AccountFull.MustBeAdmin);
+    private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeAdmin);
+    }
 
     private async Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
@@ -86,9 +88,9 @@ internal class Invites : IInvites
 
     private async Task<AccountFull> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken)
-            .Require(AccountFull.MustBeActive)
-            .ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
+        account.Require(AccountFull.MustBeActive);
 
         if (invite.Details.User != null) {
             if (!account.IsAdmin)

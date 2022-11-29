@@ -43,11 +43,11 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
         var link = "";
         if (HistoryUI.IsInitialLocation || _signInHasRequested) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
-                link = Links.ChatPage("");
+                link = Links.ChatPage(default);
             else {
                 var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
                 if (chat != null)

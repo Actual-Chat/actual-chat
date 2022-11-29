@@ -2,8 +2,8 @@
     case ChatKind.Group:
         <Pic Title="@Chat.Title" ContentId="@Chat.Picture" Size="@Size"/>
         break;
-    case ChatKind.Peer:
-        <AccountCircle ShowPresence="true" UserId="@_peerChatTargetUserId" Size="@Size"/>
+    case ChatKind.Peer when !_peerChatUserId.IsEmpty:
+        <AccountCircle ShowPresence="true" UserId="@_peerChatUserId" Size="@Size"/>
         break;
     default:
         <AvatarCircle Avatar="@Avatar.None" Size="@Size" />
@@ -11,7 +11,7 @@
 }
 
 @code {
-    private Symbol _peerChatTargetUserId;
+    private UserId _peerChatUserId;
 
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -22,17 +22,14 @@
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
 
     protected override async Task OnParametersSetAsync() {
-        _peerChatTargetUserId = await GetPeerChatTargetUserId();
+        _peerChatUserId = await GetPeerChatUserId();
     }
 
-    private async Task<Symbol> GetPeerChatTargetUserId() {
-        if (Chat.Kind != ChatKind.Peer)
-            return Symbol.Empty;
+    private async Task<UserId> GetPeerChatUserId() {
+        if (!Chat.Id.IsPeerChatId(out var peerChatId))
+            return default;
 
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
-        if (account is null)
-            return Symbol.Empty;
-
-        return new ChatId(Chat.Id).GetPeerChatTargetUserId(account.Id);
+        return peerChatId.OtherUserIdOrDefault(account.Id);
     }
 }

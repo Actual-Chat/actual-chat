@@ -42,8 +42,8 @@
 <UserPageLink/>
 
 @code {
-    [Inject] public Session Session { get; init; } = null!;
-    [Inject] public IAccounts Accounts { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -60,7 +60,11 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, UserId, cancellationToken);
+        var userId = new UserId(UserId, ParseOptions.OrDefault);
+        if (userId.IsEmpty)
+            return Model.None;
+
+        var account = await Accounts.Get(Session, userId, cancellationToken);
         if (account == null)
             return Model.None;
 
@@ -80,7 +84,7 @@
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var ownAccount = await Accounts.GetOwn(Session, default).Require();
+            var ownAccount = await Accounts.GetOwn(Session, default);
             var account = await Accounts.Get(Session, UserId, default).Require();
             var contactId = new ContactId(ownAccount.Id, account.Id, ContactKind.User);
             var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {

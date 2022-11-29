@@ -100,7 +100,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         }
 
         var session = command.Session;
-        var account = await Accounts.GetOwn(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

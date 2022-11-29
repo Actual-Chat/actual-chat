@@ -34,9 +34,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         Contact? contact = null;
-        if (chatId.Kind == ChatKind.Peer) {
+        if (chatId.IsPeerChatId(out var peerChatId)) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
+            var otherUserId = peerChatId.OtherUserIdOrDefault(account.Id);
             if (otherUserId.IsEmpty)
                 return null;
 

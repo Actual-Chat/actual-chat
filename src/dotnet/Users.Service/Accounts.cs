@@ -23,22 +23,22 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
             var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
             userId = sessionInfo.GetGuestId();
         }
-        else {
+        else
             userId = new UserId(user.Id);
-        }
 
-        return await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        return account;
     }
 
     // [ComputeMethod]
-    public virtual async Task<Account> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
         return account.ToAccount();
     }
 
     // [ComputeMethod]
-    public virtual async Task<AccountFull> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
     {
         var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
         await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);

@@ -56,8 +56,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
-        if (chatId.Kind == ChatKind.Peer) // We don't use actual roles to determine rules in this case
-            return await GetPeerChatRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (chatId.IsPeerChatId(out var peerChatId)) // We don't use actual roles to determine rules in this case
+            return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
         // Group chat
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -68,6 +68,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AccountFull? account;
         if (principalId.IsUser(out var userId)) {
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+
             author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
         }
         else if (principalId.IsAuthor(out var authorId)) {
@@ -76,6 +79,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 return AuthorRules.None(chatId);
 
             account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
         }
         else
             return AuthorRules.None(chatId);
@@ -254,7 +259,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             if (chatId.IsEmpty)
                 chatId = new ChatId(DbChat.IdGenerator.Next());
             else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
-                throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat Id.");
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
 
             chat = ApplyDiff(new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
@@ -264,26 +269,24 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            if (chatId.Kind == ChatKind.Peer) {
+            if (chatId.IsPeerChatId(out var peerChatId)) {
                 // Peer chat
                 ownerId.RequireEmpty();
-                if (!PeerChatId.TryParse(chatId, out var userIds))
-                    throw new ArgumentOutOfRangeException(nameof(command), "Invalid peer chat Id.");
 
                 // Creating authors
-                await userIds
+                await peerChatId.UserIds
                     .ToArray()
                     .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
 
                 // Creating contacts
-                var (userId1, userId2) = userIds;
+                var (userId1, userId2) = peerChatId.UserIds;
                 var contact1Task = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
                 var contact2Task = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
                 await Task.WhenAll(contact1Task, contact2Task).ConfigureAwait(false);
             }
-            else {
+            else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
                 ownerId = ownerId.RequireNonEmpty("Command.OwnerId");
                 var author = await AuthorsBackend
@@ -313,6 +316,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 });
                 await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
             }
+            else
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         }
         else if (change.IsUpdate(out update)) {
             ownerId.RequireEmpty();
@@ -597,7 +602,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
+        if (account is not { IsAdmin: true })
             return;
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
@@ -606,7 +611,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private async Task JoinDefaultChatIfAdmin(UserId userId, CancellationToken cancellationToken)
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
+        if (account is not { IsAdmin: true })
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
@@ -643,12 +648,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryKind), cancellationToken);
 
     private async Task<AuthorRules> GetPeerChatRules(
-        ChatId chatId,
+        PeerChatId chatId,
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
         AuthorFull? author = null;
-        AccountFull? account;
+        AccountFull? account = null;
         if (principalId.IsUser(out var userId))
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         else if (principalId.IsAuthor(out var authorId)) {
@@ -658,10 +663,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
             account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
         }
-        else
+        if (account == null)
             return AuthorRules.None(chatId);
 
-        var otherUserId = PeerChatId.ParseOrDefault(chatId).OtherThanOrDefault(account.Id);
+        var otherUserId = chatId.OtherUserIdOrDefault(account.Id);
         if (otherUserId.IsEmpty)
             return AuthorRules.None(chatId);
 

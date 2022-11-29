@@ -4,10 +4,14 @@ public sealed class UIEventHub
 {
     private readonly Dictionary<Type, ImmutableList<Delegate>> _handlers = new ();
 
-    private ILogger<UIEventHub> Log { get; }
+    private Dispatcher Dispatcher { get; }
+    private ILogger Log { get; }
 
-    public UIEventHub(ILogger<UIEventHub>? log = null)
-        => Log = log ?? NullLogger<UIEventHub>.Instance;
+    public UIEventHub(IServiceProvider services)
+    {
+        Log = services.LogFor(GetType());
+        Dispatcher = services.GetRequiredService<Dispatcher>();
+    }
 
     public void Subscribe<TEvent>(UIEventHandler<TEvent> handler)
         where TEvent: class, IUIEvent
@@ -39,15 +43,17 @@ public sealed class UIEventHub
             if (!_handlers.TryGetValue(typeof(TEvent), out eventHandlers))
                 return;
 
-        foreach (var eventHandler in eventHandlers) {
-            try {
-                if (eventHandler is UIEventHandler<TEvent> h)
-                    await h.Invoke(@event, cancellationToken).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(async () => {
+            foreach (var eventHandler in eventHandlers) {
+                try {
+                    if (eventHandler is UIEventHandler<TEvent> h)
+                        await h.Invoke(@event, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogError(e, "UI event handler failed");
+                }
             }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogError(e, "UI event handler failed");
-            }
-        }
+        });
     }
 
     public Task Publish<TEvent>(CancellationToken cancellationToken = default)

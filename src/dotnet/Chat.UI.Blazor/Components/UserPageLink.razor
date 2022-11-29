@@ -1,9 +1,6 @@
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.LatestNonErrorValue;
-    if (account == null)
-        return;
-
     var relativeUri = Links.UserPage(account.Id);
     var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
 }
@@ -20,9 +17,9 @@
     [Inject] public IAccounts Accounts { get; init; } = null!;
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
-    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, default);
 }

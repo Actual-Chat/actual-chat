@@ -50,9 +50,6 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, cancellationToken);
-        if (!account.IsActive())
-            return Model.None;
-
         var contacts = await ListContacts(_activeTabId, cancellationToken);
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {

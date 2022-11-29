@@ -42,9 +42,6 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     // Conversion
 
-    private static string Format(UserId ownerId, ChatId chatId)
-        => $"{ownerId} {chatId}";
-
     public override string ToString() => Value;
     public static implicit operator Symbol(ContactId source) => source.Id;
     public static implicit operator string(ContactId source) => source.Value;
@@ -58,6 +55,9 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
     public static bool operator !=(ContactId left, ContactId right) => !left.Equals(right);
 
     // Parsing
+
+    private static string Format(UserId ownerId, ChatId chatId)
+        => $"{ownerId} {chatId}";
 
     public static ContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>();
