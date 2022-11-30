@@ -51,7 +51,4 @@ public static class UIFeatures
 
     public class EnableChatMessageSearchUI : ExperimentalFeature
     { }
-
-    public class EnableMessageReactions : ExperimentalFeature
-    { }
 }

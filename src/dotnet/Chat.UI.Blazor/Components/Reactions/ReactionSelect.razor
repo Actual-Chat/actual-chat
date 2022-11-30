@@ -1,8 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@{
-    if (!_areReactionsEnabled)
-        return;
-}
+
 <ul class="reaction-select">
     @foreach (var emoji in _emojis) {
         <MenuEntry
@@ -17,7 +14,6 @@
 
 @code {
     private const int MaxReactionCount = 7;
-    private bool _areReactionsEnabled;
     private Emoji[] _emojis = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -25,10 +21,6 @@
     [Inject] private Features Features { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
-
-    protected override async Task OnInitializedAsync() {
-        _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
-    }
 
     protected override void OnParametersSet() {
         var skipCount = ShowDefaultReaction ? 0 : 1;
