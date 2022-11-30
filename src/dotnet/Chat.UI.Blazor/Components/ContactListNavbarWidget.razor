@@ -54,8 +54,7 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var selectedUserId = new ChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
-            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
+            var selectedContact = contacts.FirstOrDefault(c => c.ChatId == selectedChatId);
             contacts = (
                 from contact in contacts
                 let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)

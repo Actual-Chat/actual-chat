@@ -1,68 +1,109 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
-public partial struct LanguageId
+[DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<LanguageId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<LanguageId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<LanguageId>))]
+[StructLayout(LayoutKind.Auto)]
+public readonly struct LanguageId : ISymbolIdentifier<LanguageId>
 {
-    public static LanguageId English { get; } = new("en-US");
-    public static LanguageId French { get; } = new("fr-FR");
-    public static LanguageId German { get; } = new("de-DE");
-    public static LanguageId Russian { get; } = new("ru-RU");
-    public static LanguageId Spanish { get; } = new("es-ES");
-    public static LanguageId Ukrainian { get; } = new("uk-UA");
-    public static LanguageId Default { get; } = English;
+    public static LanguageId None { get; } = new("", "?", "Unknown", ParseOptions.Skip);
+    public static LanguageId English { get; } = new("en-US", "EN", "English", ParseOptions.Skip);
+    public static LanguageId French { get; } = new("fr-FR", "FR", "French", ParseOptions.Skip);
+    public static LanguageId German { get; } = new("de-DE", "DE", "German", ParseOptions.Skip);
+    public static LanguageId Russian { get; } = new("ru-RU", "RU", "Russian", ParseOptions.Skip);
+    public static LanguageId Spanish { get; } = new("es-ES", "ES", "Spanish", ParseOptions.Skip);
+    public static LanguageId Ukrainian { get; } = new("uk-UA", "UA", "Ukrainian", ParseOptions.Skip);
+    public static LanguageId Main { get; } = English;
 
-    public static LanguageId[] All { get; } = {
+    public static ImmutableArray<LanguageId> All { get; } = ImmutableArray.Create(
         English,
         French,
         German,
         Russian,
         Spanish,
-        Ukrainian,
-    };
-    public static readonly ImmutableDictionary<string, LanguageId> Map =
-            ImmutableDictionary<string, LanguageId>.Empty
-                .WithComparers(StringComparer.OrdinalIgnoreCase)
-                .SetItems(All.Select(x => KeyValuePair.Create(x.Shortcut, x)))
-                .SetItems(All.Select(x => KeyValuePair.Create(x.Value, x)));
+        Ukrainian
+    );
 
-    public bool IsValid
-        => Value switch {
-            "en-US" => true,
-            "fr-FR" => true,
-            "de-DE" => true,
-            "ru-RU" => true,
-            "es-ES" => true,
-            "uk-UA" => true,
-            _ => false,
-        };
+    private static readonly Dictionary<Symbol, LanguageId> ParsableIds =
+        All.Select(id => (Key: id.Id, Id: id))
+            .Concat(All.Select(id => (Key: (Symbol)id.Value.ToLowerInvariant(), Id: id)))
+            .Concat(All.Select(id => (Key: id.Shortcut, Id: id)))
+            .Concat(All.Select(id => (Key: (Symbol)id.Shortcut.Value.ToLowerInvariant(), Id: id)))
+            .DistinctBy(kv => kv.Key)
+            .ToDictionary(kv => kv.Key, kv => kv.Id);
 
-    public string Title
-        => Value switch {
-            "en-US" => "English",
-            "fr-FR" => "French",
-            "de-DE" => "German",
-            "ru-RU" => "Russian",
-            "es-ES" => "Spanish",
-            "uk-UA" => "Ukrainian",
-            _ => "Unknown",
-        };
+    private readonly LanguageInfo _info;
 
-    public string Shortcut
-        => Value switch {
-            "en-US" => "EN",
-            "fr-FR" => "FR",
-            "de-DE" => "DE",
-            "ru-RU" => "RU",
-            "es-ES" => "ES",
-            "uk-UA" => "UK",
-            _ => "?",
-        };
+    [DataMember(Order = 0)]
+    public Symbol Id => Info.Id;
 
-    public LanguageId RequireValid()
-        => IsValid ? this : throw InvalidLanguageIdError();
+    // Set on deserialization
+    private LanguageInfo Info => _info ?? None.Info;
+
+    // Computed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string Value => Id.Value;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsNone => Id.IsEmpty;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Symbol Shortcut => Info.Shortcut;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string Title => Info.Title;
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LanguageId(Symbol id)
+        => this = Parse(id);
+    public LanguageId(string? id)
+        => this = Parse(id);
+    public LanguageId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
+
+    private LanguageId(Symbol id, Symbol shortcut, string title, SkipParseOption _)
+        => _info = new LanguageInfo(id, shortcut, title);
 
     public LanguageId Or(LanguageId alternative)
-        => IsValid ? this : alternative;
+        => IsNone ? this : alternative;
 
-    private Exception InvalidLanguageIdError()
-        => new InvalidOperationException("Invalid LanguageId.");
+    // Conversion
+
+    public override string ToString() => Value;
+    public static implicit operator Symbol(LanguageId source) => source.Id;
+    public static implicit operator string(LanguageId source) => source.Value;
+
+    // Equality
+
+    public bool Equals(LanguageId other) => ReferenceEquals(Info, other.Info);
+    public override bool Equals(object? obj) => obj is LanguageId other && Equals(other);
+    public override int GetHashCode() => Id.GetHashCode();
+    public static bool operator ==(LanguageId left, LanguageId right) => left.Equals(right);
+    public static bool operator !=(LanguageId left, LanguageId right) => !left.Equals(right);
+
+    // Parsing
+
+    public static LanguageId Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<LanguageId>();
+    public static LanguageId ParseOrNone(string? s)
+        => TryParse(s, out var result) ? result : default;
+
+    public static bool TryParse(string? s, out LanguageId result)
+    {
+        s ??= "";
+        if (ParsableIds.TryGetValue(s, out result))
+            return true;
+        if (ParsableIds.TryGetValue(s.ToLowerInvariant(), out result))
+            return true;
+        return false;
+    }
+
+    // Nested types
+
+    [DataContract]
+    private sealed record LanguageInfo(
+        [property: DataMember] Symbol Id,
+        [property: DataMember] Symbol Shortcut,
+        [property: DataMember] string Title);
 }

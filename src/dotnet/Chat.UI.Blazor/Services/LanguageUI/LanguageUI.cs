@@ -54,7 +54,7 @@ public class LanguageUI
     {
         var languages = await GetClientLanguages(cancellationToken);
         return new () {
-            Primary = languages.Count > 0 ? languages[0] : LanguageId.Default,
+            Primary = languages.Count > 0 ? languages[0] : LanguageId.Main,
             Secondary = languages.Count > 1 ? (LanguageId?) languages[1] : null,
         };
     }

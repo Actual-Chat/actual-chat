@@ -19,7 +19,8 @@ public class RequireChat : RequirementComponent
             Log.LogWarning("Invalid ChatId");
             throw StandardError.Format<ChatId>();
         }
-        var chat = await Chats.Get(Session, chatId.Value, cancellationToken).ConfigureAwait(false);
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         return default;
     }

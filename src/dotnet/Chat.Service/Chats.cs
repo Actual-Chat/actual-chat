@@ -36,11 +36,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Contact? contact = null;
         if (chatId.IsPeerChatId(out var peerChatId)) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var otherUserId = peerChatId.OtherUserIdOrDefault(account.Id);
-            if (otherUserId.IsEmpty)
+            var otherUserId = peerChatId.UserIds.OtherThanOrDefault(account.Id);
+            if (otherUserId.IsNone)
                 return null;
 
-            var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
+            var contactId = new ContactId(account.Id, peerChatId, ParseOptions.Skip);
             contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
             if (contact == null)
                 return null;

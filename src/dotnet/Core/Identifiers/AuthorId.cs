@@ -1,9 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<AuthorId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<AuthorId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<AuthorId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
 {
+    public static AuthorId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -17,12 +25,15 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public AuthorId(Symbol id) => Parse(id);
-    public AuthorId(string? id) => Parse(id);
-    public AuthorId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public AuthorId(Symbol id)
+        => this = Parse(id);
+    public AuthorId(string? id)
+        => this = Parse(id);
+    public AuthorId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
 
     public AuthorId(Symbol id, ChatId chatId, long localId, SkipParseOption _)
     {
@@ -56,7 +67,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
 
     public static AuthorId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>();
-    public static AuthorId ParseOrDefault(string? s)
+    public static AuthorId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out AuthorId result)

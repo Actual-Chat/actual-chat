@@ -24,8 +24,8 @@ public class FrontendChatMentionResolver : IChatMentionResolver
         if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
             return null;
 
-        var authorId = new AuthorId(sAuthorId, ParseOptions.OrDefault);
-        if (authorId.IsEmpty)
+        var authorId = new AuthorId(sAuthorId, ParseOptions.OrNone);
+        if (authorId.IsNone)
             return null;
 
         return await Authors.Get(Session, ChatId, authorId, cancellationToken).ConfigureAwait(false);

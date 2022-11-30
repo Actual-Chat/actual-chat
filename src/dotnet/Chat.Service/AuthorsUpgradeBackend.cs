@@ -21,7 +21,7 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
 
     public async Task<List<ChatId>> ListChatIds(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsEmpty)
+        if (userId.IsNone)
             return new List<ChatId>();
 
         var dbContext = CreateDbContext();

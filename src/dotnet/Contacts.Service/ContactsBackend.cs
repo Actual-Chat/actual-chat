@@ -32,8 +32,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var chatId = contact.ChatId;
         if (chatId.IsPeerChatId(out var peerChatId)) {
-            var userId = peerChatId.OtherUserIdOrDefault(ownerId);
-            if (userId.IsEmpty)
+            var userId = peerChatId.UserIds.OtherThanOrDefault(ownerId);
+            if (userId.IsNone)
                 return null;
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
@@ -41,29 +41,6 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         }
 
         return contact;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetForChat(UserId ownerId, ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (ownerId.IsEmpty || chatId.IsEmpty)
-            return null;
-        if (chatId.IsPeerChatId(out var peerChatId) && peerChatId.OtherUserIdOrDefault(ownerId).IsEmpty)
-            return null;
-
-        var contactId = new ContactId(ownerId, chatId, ParseOptions.Skip);
-        return await Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetForUser(UserId ownerId, UserId userId, CancellationToken cancellationToken)
-    {
-        var peerChatId = new PeerChatId(ownerId, userId, ParseOptions.OrDefault);
-        if (peerChatId.IsEmpty)
-            return null;
-
-        var id = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
-        return await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -89,12 +66,12 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
     public async Task<Contact> GetOrCreateUserContact(UserId ownerId, UserId userId, CancellationToken cancellationToken)
     {
-        var contact = await GetForUser(ownerId, userId, cancellationToken).ConfigureAwait(false);
+        var peerChatId = new PeerChatId(ownerId, userId);
+        var contactId = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
+        var contact = await Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
         if (contact.IsStored())
             return contact;
 
-        var peerChatId = new PeerChatId(ownerId, userId);
-        var contactId = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
         var command = new IContactsBackend.ChangeCommand(contactId, null, new Change<Contact> {
             Create = new Contact(contactId),
         });
@@ -121,7 +98,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return default!;
         }
 
-        id.RequireNonEmpty();
+        id.Require();
         change.RequireValid();
         var dbId = id.Value;
 
@@ -207,7 +184,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var (author, _) = @event;
         var userId = author.UserId;
         var chatId = author.ChatId;
-        if (userId.IsEmpty) // We do nothing for anonymous authors for now
+        if (userId.IsNone) // We do nothing for anonymous authors for now
             return;
 
         var contactId = new ContactId(userId, chatId, ParseOptions.Skip);
@@ -235,10 +212,14 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var userId = author.UserId;
         var chatId = author.ChatId;
-        if (userId.IsEmpty) // We do nothing for anonymous authors for now
+        if (userId.IsNone) // We do nothing for anonymous authors for now
             return;
 
-        var contact = await GetForChat(userId, chatId, cancellationToken).ConfigureAwait(false);
+        var contactId = new ContactId(userId, chatId, ParseOptions.OrNone);
+        if (contactId.IsNone)
+            return;
+
+        var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return;
 

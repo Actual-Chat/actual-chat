@@ -5,8 +5,8 @@ namespace ActualChat;
 public static class ParseOptions
 {
     public static readonly SkipParseOption Skip = default;
-    public static readonly ParseOrDefaultOption OrDefault = default;
+    public static readonly ParseOrNoneOption OrNone = default;
 }
 
 public readonly struct SkipParseOption { }
-public readonly struct ParseOrDefaultOption { }
+public readonly struct ParseOrNoneOption { }

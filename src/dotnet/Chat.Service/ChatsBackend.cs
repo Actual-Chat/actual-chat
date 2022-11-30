@@ -44,7 +44,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(chatId);
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
@@ -256,7 +256,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         Chat chat;
         DbChat dbChat;
         if (change.IsCreate(out var update)) {
-            if (chatId.IsEmpty)
+            if (chatId.IsNone)
                 chatId = new ChatId(DbChat.IdGenerator.Next());
             else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -271,7 +271,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
             if (chatId.IsPeerChatId(out var peerChatId)) {
                 // Peer chat
-                ownerId.RequireEmpty();
+                ownerId.RequireNone();
 
                 // Creating authors
                 await peerChatId.UserIds
@@ -288,7 +288,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             }
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
-                ownerId = ownerId.RequireNonEmpty("Command.OwnerId");
+                ownerId = ownerId.Require("Command.OwnerId");
                 var author = await AuthorsBackend
                     .GetOrCreate(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
@@ -320,7 +320,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         }
         else if (change.IsUpdate(out update)) {
-            ownerId.RequireEmpty();
+            ownerId.RequireNone();
 
             dbChat = await dbContext.Chats
                 .Get(chatId, cancellationToken)
@@ -666,8 +666,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (account == null)
             return AuthorRules.None(chatId);
 
-        var otherUserId = chatId.OtherUserIdOrDefault(account.Id);
-        if (otherUserId.IsEmpty)
+        var otherUserId = chatId.UserIds.OtherThanOrDefault(account.Id);
+        if (otherUserId.IsNone)
             return AuthorRules.None(chatId);
 
         return new(chatId, author, account, ChatPermissions.Write.AddImplied());

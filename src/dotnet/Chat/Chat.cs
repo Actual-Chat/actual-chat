@@ -12,7 +12,7 @@ public sealed record Chat(
 {
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
-        (Chat? c) => c is { Id.IsEmpty: false });
+        (Chat? c) => c is { Id.IsNone: false });
 
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }

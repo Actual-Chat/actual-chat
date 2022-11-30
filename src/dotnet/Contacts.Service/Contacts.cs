@@ -56,7 +56,7 @@ public class Contacts : IContacts
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, id, expectedVersion, change) = command;
-        id.RequireNonEmpty();
+        id.Require();
         change.RequireValid();
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -75,7 +75,7 @@ public class Contacts : IContacts
             return; // It just spawns other commands, so nothing to do here
 
         var (session, id) = command;
-        id.RequireNonEmpty();
+        id.Require();
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)

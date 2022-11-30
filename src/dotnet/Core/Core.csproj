@@ -16,19 +16,4 @@
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Identifiers\StringIdentifiers.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>StringIdentifiers.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Identifiers\StringIdentifiers.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>StringIdentifiers.tt</DependentUpon>
-    </Compile>
-  </ItemGroup>
 </Project>

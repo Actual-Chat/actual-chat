@@ -11,7 +11,9 @@ public class RequireOtherAccount : RequirementComponent
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
-        await Accounts.Get(Session, UserId, cancellationToken).Require().ConfigureAwait(false);
+        var userId = new UserId(UserId);
+        var account = await Accounts.Get(Session, userId, cancellationToken).ConfigureAwait(false);
+        account.Require();
         return default;
     }
 }

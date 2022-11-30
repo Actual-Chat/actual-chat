@@ -60,7 +60,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 
         var entries = EntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsEmpty)
+            if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsNone)
                 continue;
             AddActiveEntry(entry);
             _ = BackgroundTask.Run(async () => {

@@ -46,7 +46,7 @@
         => new() { InitialValue = ComputedModel.Loading };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        if (AuthorId.IsEmpty)
+        if (AuthorId.IsNone)
             return ComputedModel.None;
 
         var chatId = AuthorId.ChatId;
@@ -82,7 +82,7 @@
         StateHasChanged();
         try {
             var m = State.LatestNonErrorValue;
-            if (m.ContactId.IsEmpty)
+            if (m.ContactId.IsNone)
                 return;
 
             var command = new IContacts.ChangeCommand(Session, m.ContactId, null, new Change<Contact>() {
@@ -100,7 +100,7 @@
 
     private void OnSendMessageClick() {
         var m = State.LatestNonErrorValue;
-        if (m.ContactId.IsEmpty || m.OwnAccount == null)
+        if (m.ContactId.IsNone || m.OwnAccount == null)
             return;
 
         Nav.NavigateTo(Links.ChatPage(m.ContactId.ChatId));

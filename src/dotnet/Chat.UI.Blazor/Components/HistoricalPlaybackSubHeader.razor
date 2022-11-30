@@ -99,7 +99,7 @@
         var lastModel = State.ValueOrDefault;
 
         var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return Model.NotPlaying;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);

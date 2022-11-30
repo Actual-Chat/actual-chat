@@ -82,7 +82,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
-        if (author.IsAnonymous || author.UserId.IsEmpty)
+        if (author.IsAnonymous || author.UserId.IsNone)
             return null;
 
         var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
@@ -123,7 +123,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Presence.Offline;
-        if (author.IsAnonymous || author.UserId.IsEmpty)
+        if (author.IsAnonymous || author.UserId.IsNone)
             return Presence.Unknown; // Important: we shouldn't report anonymous author presence
 
         return await UserPresences.Get(author.UserId, cancellationToken).ConfigureAwait(false);

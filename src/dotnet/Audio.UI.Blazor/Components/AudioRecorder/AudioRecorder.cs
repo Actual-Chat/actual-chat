@@ -66,7 +66,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 
     public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         try {

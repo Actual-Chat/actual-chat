@@ -20,7 +20,7 @@ public class MarkupHub : IHasServices
 
     public MentionNamer MentionNamer {
         get {
-            if (ChatId.IsEmpty)
+            if (ChatId.IsNone)
                 throw StandardError.Internal("ChatId is not set yet.");
             var mentionResolver = ChatMentionResolver;
             if (_mentionNamer == null || _mentionNamer.MentionResolver != mentionResolver)
@@ -31,7 +31,7 @@ public class MarkupHub : IHasServices
 
     public IChatMentionResolver ChatMentionResolver {
         get {
-            if (ChatId.IsEmpty)
+            if (ChatId.IsNone)
                 throw StandardError.Internal("ChatId is not set yet.");
             var factory = _chatMentionResolverFactory ??= Services.GetRequiredService<FrontendChatMentionResolverFactory>();
             if (_chatMentionResolver == null || _chatMentionResolver.ChatId != ChatId)
@@ -42,7 +42,7 @@ public class MarkupHub : IHasServices
 
     public ChatMentionSearchProvider ChatMentionSearchProvider {
         get {
-            if (ChatId.IsEmpty)
+            if (ChatId.IsNone)
                 throw StandardError.Internal("ChatId is not set yet.");
             if (_chatMentionSearchProvider == null || _chatMentionSearchProvider.ChatId != ChatId)
                 _chatMentionSearchProvider = new(Services, ChatId);

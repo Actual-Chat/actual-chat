@@ -17,7 +17,7 @@ public record Account(
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
-        (Account? a) => a is { Id.IsEmpty: false });
+        (Account? a) => a is { Id.IsNone: false });
     public static Requirement<Account> MustNotBeGuest { get; } = Requirement.New(
         new(() => StandardError.Account.Guest()),
         (Account? a) => a?.IsGuest == false);

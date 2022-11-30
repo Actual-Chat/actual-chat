@@ -35,7 +35,7 @@ public class AccountAutoProvisionTest : AppHostTestBase
         var user = await _tester.SignIn(new User("Bob"));
 
         // act
-        var account = (await _accounts.GetOwn(_tester.Session, default))!;
+        var account = await _accounts.GetOwn(_tester.Session, default);
 
         // assert
         account.Should().NotBeNull();

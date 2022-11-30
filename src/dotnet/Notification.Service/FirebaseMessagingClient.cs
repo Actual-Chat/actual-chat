@@ -30,8 +30,8 @@ public class FirebaseMessagingClient
         var chatEntryId = chatEntryNotification?.EntryId ?? default;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
 
-        var isChatRelated = !chatId.IsEmpty;
-        var isTextEntryRelated = chatEntryId.IsEmpty && chatEntryId.EntryKind == ChatEntryKind.Text;
+        var isChatRelated = !chatId.IsNone;
+        var isTextEntryRelated = chatEntryId.IsNone && chatEntryId.EntryKind == ChatEntryKind.Text;
         var tag = isTextEntryRelated
             ? chatEntryId.Value
             : isChatRelated ? chatId.Value : "topic";

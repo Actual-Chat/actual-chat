@@ -243,9 +243,9 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
-        var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOptions.OrDefault);
-        var chatEntryId = new ChatEntryId(dbNotification.ChatEntryId ?? "", ParseOptions.OrDefault);
-        var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOptions.OrDefault);
+        var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOptions.OrNone);
+        var chatEntryId = new ChatEntryId(dbNotification.ChatEntryId ?? "", ParseOptions.OrNone);
+        var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOptions.OrNone);
 
         return new NotificationEntry(dbNotification.Id,
             dbNotification.Kind,
@@ -301,7 +301,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var (reaction, entry, author, reactionAuthor, changeKind) = @event;
         if (changeKind == ChangeKind.Remove)
             return;
-        if (author.UserId.IsEmpty) // No notifs to anonymous users
+        if (author.UserId.IsNone) // No notifs to anonymous users
             return;
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
@@ -326,7 +326,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var title = GetTitle(chat, author);
         var iconUrl = GetIconUrl(chat, author);
         var notificationTime = Clocks.CoarseSystemClock.Now;
-        var otherUserIds = author.UserId.IsEmpty ? userIds : userIds.Where(uid => uid != author.UserId);
+        var otherUserIds = author.UserId.IsNone ? userIds : userIds.Where(uid => uid != author.UserId);
 
         foreach (var otherUserId in otherUserIds) {
             var notificationEntry = new NotificationEntry(

@@ -39,7 +39,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
 
     public string GetUserPrefix(UserId userId)
     {
-        if (userId.IsEmpty)
+        if (userId.IsNone)
             return "";
 
         return userId.IsGuestId

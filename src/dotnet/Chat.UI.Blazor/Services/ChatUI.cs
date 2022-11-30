@@ -76,34 +76,32 @@ public class ChatUI
     }
 
     [ComputeMethod]
-    public virtual async Task<ImmutableList<ChatState>> ListStates(bool includingSelected, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableList<ChatState>> ListChatStates(CancellationToken cancellationToken)
     {
-        if (includingSelected) {
-            var selectedChat = await GetSelectedChat(cancellationToken).ConfigureAwait(false);
-            var chats = await List(cancellationToken).ConfigureAwait(false);
-            if (selectedChat != null && chats.All(c => c.Id != selectedChat.Id))
-                chats = chats.Insert(0, selectedChat);
-            return chats;
-        }
-        else {
-            var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-            var chats = await contactIds
-                .Select(contactId => GetState(contactId.ChatId, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false);
-
-            var result = chats
-                .SkipNullItems()
-                .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
-                .ToImmutableList();
+        var result = await ListChatStatesExcludingSelected(cancellationToken).ConfigureAwait(false);
+        if (result.Any(c => c.IsSelected))
             return result;
-        }
+
+        var selectedChatState = await GetSelectedChatState(cancellationToken).ConfigureAwait(false);
+        if (selectedChatState == null)
+            return result;
+
+        result = result.Insert(0, selectedChatState);
+        return result;
     }
 
     [ComputeMethod]
-    public virtual async Task<ChatState?> GetState(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatState?> GetSelectedChatState(CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var result = await GetChatState(selectedChatId, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ChatState?> GetChatState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone)
             return null;
 
         var accountTask = Accounts.GetOwn(Session, cancellationToken);
@@ -186,7 +184,7 @@ public class ChatUI
     public virtual async Task<bool> MustKeepAwake()
     {
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
-        if (!recordingChatId.IsEmpty)
+        if (!recordingChatId.IsNone)
             return true;
 
         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
@@ -197,7 +195,7 @@ public class ChatUI
 
     public ValueTask AddActiveChat(ChatId chatId)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         return UpdateActiveChats(activeChats => activeChats.Add(new ActiveChat(chatId, false, false, Now)));
@@ -205,7 +203,7 @@ public class ChatUI
 
     public ValueTask RemoveActiveChat(ChatId chatId)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         return UpdateActiveChats(activeChats => activeChats.Remove(chatId));
@@ -215,7 +213,7 @@ public class ChatUI
     public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
     public ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         return UpdatePinnedChats(
@@ -227,7 +225,7 @@ public class ChatUI
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         return UpdateActiveChats(activeChats => {
@@ -247,12 +245,12 @@ public class ChatUI
             var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
             if (oldChat.ChatId == chatId)
                 return activeChats;
-            if (!oldChat.ChatId.IsEmpty)
+            if (!oldChat.ChatId.IsNone)
                 activeChats = activeChats.AddOrUpdate(oldChat with {
                     IsRecording = false,
                     Recency = Now,
                 });
-            if (!chatId.IsEmpty) {
+            if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
                 activeChats = activeChats.AddOrUpdate(newChat);
             }
@@ -278,17 +276,17 @@ public class ChatUI
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<ImmutableList<ChatState>> ListStates(CancellationToken cancellationToken)
+    protected virtual async Task<ImmutableList<ChatState>> ListChatStatesExcludingSelected(CancellationToken cancellationToken)
     {
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         var chats = await contactIds
-            .Select(contactId => GetState(contactId.ChatId, cancellationToken))
+            .Select(contactId => GetChatState(contactId.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
 
         var result = chats
             .SkipNullItems()
-            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact.TouchedAt)
+            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact?.TouchedAt ?? Moment.MaxValue)
             .ToImmutableList();
         return result;
     }

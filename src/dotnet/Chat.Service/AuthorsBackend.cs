@@ -38,7 +38,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty || authorId.IsEmpty || authorId.ChatId != chatId)
+        if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
             return null;
 
         if (authorId == AuthorExt.GetWalleId(chatId))
@@ -58,7 +58,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         ChatId chatId, UserId userId,
         CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty || userId.IsEmpty)
+        if (chatId.IsNone || userId.IsNone)
             return null;
 
         if (userId == Constants.User.Walle.UserId)
@@ -110,7 +110,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return ImmutableArray<AuthorId>.Empty;
 
         var dbContext = CreateDbContext();
@@ -127,7 +127,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return ImmutableArray<UserId>.Empty;
 
         var dbContext = CreateDbContext();
@@ -145,9 +145,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task<AuthorFull> Create(IAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
         var (chatId, userId) = command;
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
-        if (userId.IsEmpty)
+        if (userId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
 
         if (Computed.IsInvalidating()) {
@@ -238,7 +238,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 return default!; // No change was made
 
             var userId = invAuthor.UserId;
-            if (!userId.IsEmpty) {
+            if (!userId.IsNone) {
                 _ = GetByUserId(chatId, userId, default);
                 _ = ListUserIds(chatId, default);
             }
@@ -278,7 +278,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>()!;
             var userId = invAuthor.UserId;
-            if (!userId.IsEmpty) {
+            if (!userId.IsNone) {
                 _ = GetByUserId(chatId, userId, default);
                 _ = ListUserIds(chatId, default);
             }
@@ -315,7 +315,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 return author with { Avatar = avatar };
         }
         var userId = author.UserId;
-        var account = userId.IsEmpty ? null
+        var account = userId.IsNone ? null
             : await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         return author with { Avatar = account?.Avatar ?? GetDefaultAvatar(author) };
     }

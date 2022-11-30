@@ -32,7 +32,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         IChatsUpgradeBackend.UpgradeChatCommand command,
         CancellationToken cancellationToken)
     {
-        var chatId = command.ChatId.RequireNonEmpty();
+        var chatId = command.ChatId.Require();
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -55,16 +55,17 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        if (chat.Id.IsPeerChatId(out var userId1, out var userId2)) {
+        if (chat.Id.IsPeerChatId(out var peerChatId)) {
             // Peer chat
-            var ownerIds = new[] { userId1, userId2 };
-            await ownerIds
+            await peerChatId.UserIds
+                .ToArray()
                 .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
                 .Collect(0)
                 .ConfigureAwait(false);
-            var tContact1 = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
-            var tContact2 = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
-            var (contact1, contact2) = await tContact1.Join(tContact2).ConfigureAwait(false);
+            var (userId1, userId2) = peerChatId.UserIds;
+            var contactTask1 = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
+            var contactTask2 = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
+            await Task.WhenAll(contactTask1, contactTask2).ConfigureAwait(false);
         }
         else {
             // Group chat
@@ -199,13 +200,13 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             }
         }
 
-        if (creatorId.IsEmpty) {
+        if (creatorId.IsNone) {
             if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
         }
-        if (creatorId.IsEmpty)
+        if (creatorId.IsNone)
             throw StandardError.Constraint("Creator user not found");
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {

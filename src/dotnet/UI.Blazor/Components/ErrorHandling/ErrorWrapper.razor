@@ -1,7 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.LatestNonErrorValue;
 }
@@ -43,7 +43,7 @@
                 </div>
                 <div class="p-5 pt-0">
                     @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
-                        @if (account == null) {
+                        @if (account.IsGuest) {
                             <span>
                                 You can try to <SignInDropdown /> to resolve it.
                             </span>
@@ -81,7 +81,7 @@
         return base.DisposeAsync();
     }
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

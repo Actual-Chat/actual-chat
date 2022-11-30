@@ -1,32 +1,56 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatId : ISymbolIdentifier<ChatId>
 {
+    public static ChatId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
+
+    // Set on deserialization
+    private readonly UserId UserId1;
+    private readonly UserId UserId2;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatKind Kind => Value.OrdinalStartsWith(PeerChatId.IdPrefix) ? ChatKind.Peer : ChatKind.Group;
+    public ChatKind Kind => UserId1.IsNone ? ChatKind.Group : ChatKind.Peer;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public ChatId(Symbol id) => this = Parse(id);
-    public ChatId(string? id) => this = Parse(id);
-    public ChatId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public ChatId(Symbol id)
+        => this = Parse(id);
+    public ChatId(string? id)
+        => this = Parse(id);
+    public ChatId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
 
-    public ChatId(Symbol id, SkipParseOption _)
-        => Id = id;
+    public ChatId(Symbol id, UserId userId1, UserId userId2, SkipParseOption _)
+    {
+        Id = id;
+        UserId1 = userId1;
+        UserId2 = userId2;
+    }
 
-    public bool IsGroupChatId()
-        => Kind == ChatKind.Group;
     public bool IsPeerChatId(out PeerChatId peerChatId)
-        => PeerChatId.TryParse(Value, out peerChatId);
+    {
+        if (UserId1.IsNone) {
+            peerChatId = default;
+            return false;
+        }
+        peerChatId = new PeerChatId(Id, UserId1, UserId2, ParseOptions.Skip);
+        return true;
+    }
 
     // Conversion
 
@@ -46,7 +70,7 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
 
     public static ChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
-    public static ChatId ParseOrDefault(string? s)
+    public static ChatId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out ChatId result)
@@ -57,13 +81,17 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
         if (!Alphabet.AlphaNumericDash.IsMatch(s))
             return false;
 
-        result = new ChatId(s, ParseOptions.Skip);
-        if (result.Kind == ChatKind.Peer && !result.IsPeerChatId(out _)) {
-            // Invalid peer chat ID
-            result = default;
-            return false;
+        if (s.OrdinalStartsWith(PeerChatId.IdPrefix)) {
+            // Peer chat ID
+            if (!PeerChatId.TryParse(s, out var peerChatId))
+                return false;
+
+            result = new ChatId(peerChatId.Id, peerChatId.UserId1, peerChatId.UserId2, ParseOptions.Skip);
+            return true;
         }
 
+        // Group chat ID
+        result = new ChatId(s, default, default, ParseOptions.Skip);
         return true;
     }
 }

@@ -14,7 +14,7 @@ public record Author(
         VersionBasedEqualityComparer<Author, AuthorId>.Instance;
     public static Requirement<Author> MustExist { get; } = Requirement.New(
         new(() => StandardError.Author.Unavailable()),
-        (Author? a) => a is { Id.IsEmpty: false });
+        (Author? a) => a is { Id.IsNone: false });
 
     public static Author None { get; } = AuthorFull.None;
     public static Author Loading { get; } = AuthorFull.Loading;

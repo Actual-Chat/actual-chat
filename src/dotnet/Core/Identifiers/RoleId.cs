@@ -1,9 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<RoleId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<RoleId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<RoleId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct RoleId : ISymbolIdentifier<RoleId>
 {
+    public static RoleId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -17,12 +25,15 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public RoleId(Symbol id) => Parse(id);
-    public RoleId(string? id) => Parse(id);
-    public RoleId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public RoleId(Symbol id)
+        => this = Parse(id);
+    public RoleId(string? id)
+        => this = Parse(id);
+    public RoleId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
 
     public RoleId(Symbol id, ChatId chatId, long localId, SkipParseOption _)
     {
@@ -41,8 +52,6 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
     // Conversion
 
     public override string ToString() => Value;
-    public static implicit operator RoleId(Symbol source) => new(source);
-    public static implicit operator RoleId(string source) => new(source);
     public static implicit operator Symbol(RoleId source) => source.Id;
     public static implicit operator string(RoleId source) => source.Value;
 
@@ -58,7 +67,7 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
 
     public static RoleId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>();
-    public static RoleId ParseOrDefault(string? s)
+    public static RoleId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out RoleId result)

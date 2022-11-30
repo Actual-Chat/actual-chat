@@ -53,7 +53,7 @@ public class NavbarUI
             _ = HistoryUI.GoBack();
         else {
             var selectedChatId = ChatUI.SelectedChatId.Value;
-            if (!selectedChatId.IsEmpty)
+            if (!selectedChatId.IsNone)
                 Nav.NavigateTo(Links.ChatPage(selectedChatId));
         }
     }

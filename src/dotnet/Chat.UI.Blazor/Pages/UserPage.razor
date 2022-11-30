@@ -25,13 +25,13 @@
     <AccountName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
 </div>
 
-@if (m.CanAddContact || m.CanPeerChat) {
+@if (m.CanAddContact || m.CanChat) {
     <div class="user-info_buttons">
         <div class="btn-group btn-group-font-normal">
             @if (m.CanAddContact) {
                 <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
             }
-            @if (m.CanPeerChat) {
+            @if (m.CanChat) {
                 <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
             }
         </div>
@@ -60,20 +60,25 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userId = new UserId(UserId, ParseOptions.OrDefault);
-        if (userId.IsEmpty)
+        var userId = new UserId(UserId, ParseOptions.OrNone);
+        if (userId.IsNone)
             return Model.None;
 
+        var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, cancellationToken);
         if (account == null)
             return Model.None;
 
+        var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
+        var contactId = new ContactId(ownAccount.Id, peerChatId, ParseOptions.Skip);
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var canAddToContacts = !contactIds.Any(cid => cid.IsUserContact(out var userId) && userId == account.Id);
         return new Model {
+            OwnAccount = ownAccount,
             Account = account,
-            CanAddContact = canAddToContacts,
-            CanPeerChat = true,
+            PeerChatId = peerChatId,
+            ContactId = contactId,
+            CanAddContact = !contactIds.Any(x => x == contactId),
+            CanChat = true,
         };
     }
 
@@ -84,11 +89,10 @@
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var ownAccount = await Accounts.GetOwn(Session, default);
-            var account = await Accounts.Get(Session, UserId, default).Require();
-            var contactId = new ContactId(ownAccount.Id, account.Id, ContactKind.User);
-            var command = new IContacts.ChangeCommand(Session, contactId, null, new Change<Contact>() {
-                Create = new Contact(contactId),
+            var m = State.LatestNonErrorValue;
+            m.Account.Require();
+            var command = new IContacts.ChangeCommand(Session, m.ContactId, null, new Change<Contact>() {
+                Create = new Contact(m.ContactId),
             });
             await UICommander.Run(command);
         }
@@ -99,8 +103,9 @@
     }
 
     private void OnSendMessageClick() {
-        var peerChatId = ChatId.FormatShort(UserId);
-        Nav.NavigateTo(Links.ChatPage(peerChatId));
+        var m = State.LatestNonErrorValue;
+        m.Account.Require();
+        Nav.NavigateTo(Links.ChatPage(m.PeerChatId));
     }
 
     // Nested types
@@ -109,8 +114,11 @@
         public static Model None { get; } = new();
         public static Model Loading { get; } = new() { Account = Account.Loading }; // Should differ by ref. from None
 
+        public AccountFull OwnAccount { get; init; } = AccountFull.None;
         public Account Account { get; init; } = Account.None;
+        public PeerChatId PeerChatId { get; init; }
+        public ContactId ContactId { get; init; }
         public bool CanAddContact { get; init; }
-        public bool CanPeerChat { get; init; }
+        public bool CanChat { get; init; }
     }
 }

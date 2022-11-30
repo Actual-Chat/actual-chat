@@ -46,7 +46,7 @@
 
         var items = await ChatIds
             .Select(async chatId => {
-                var chatStateTask = ChatUI.GetState(chatId, cancellationToken);
+                var chatStateTask = ChatUI.GetChatState(chatId, cancellationToken);
                 var userChatSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
 
                 var chatState = await chatStateTask.ConfigureAwait(false);

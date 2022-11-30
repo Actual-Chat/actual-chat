@@ -15,16 +15,17 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (UserId.IsNullOrEmpty())
+        var userId = new UserId(UserId, ParseOptions.OrNone);
+        if (userId.IsNone)
             return Model.None;
 
-        var account = await Accounts.Get(Session, UserId, cancellationToken);
+        var account = await Accounts.Get(Session, userId, cancellationToken);
         if (account == null)
             return Model.None;
 
         var presence = Presence.Unknown;
         if (ShowPresence)
-            presence = await UserPresences.Get(UserId, cancellationToken);
+            presence = await UserPresences.Get(userId, cancellationToken);
 
         return new(account, presence);
     }

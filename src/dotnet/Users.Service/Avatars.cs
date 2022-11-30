@@ -53,7 +53,7 @@ public class Avatars : IAvatars
         if (change.IsCreate(out var avatar)) {
             // Create: fill in all missing properties
             change = new Change<AvatarFull>() {
-                Create = avatar.WithMissingPropertiesFrom(account?.Avatar),
+                Create = avatar.WithMissingPropertiesFrom(account.Avatar),
             };
         }
         else {

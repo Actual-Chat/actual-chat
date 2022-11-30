@@ -1,9 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<PrincipalId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 {
+    public static PrincipalId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -17,12 +25,12 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public PrincipalId(Symbol id) => this = Parse(id);
     public PrincipalId(string? id) => this = Parse(id);
-    public PrincipalId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public PrincipalId(string? id, ParseOrNoneOption _) => ParseOrNone(id);
 
     public PrincipalId(AuthorId authorId, SkipParseOption _)
     {
@@ -70,7 +78,7 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 
     public static PrincipalId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId>();
-    public static PrincipalId ParseOrDefault(string? s)
+    public static PrincipalId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out PrincipalId result)

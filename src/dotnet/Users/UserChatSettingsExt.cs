@@ -9,7 +9,7 @@ public static class UserChatSettingsExt
         CancellationToken cancellationToken = default)
     {
         var language = userChatSettings.Language;
-        if (language.IsValid)
+        if (language.IsNone)
             return language;
 
         var userLanguageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);

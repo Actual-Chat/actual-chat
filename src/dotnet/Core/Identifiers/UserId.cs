@@ -1,15 +1,22 @@
+using System.ComponentModel;
+using ActualChat.Internal;
 using Cysharp.Text;
 using Stl.Generators;
 
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<UserId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
 {
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
+
     public static readonly char GuestIdPrefixChar = '~';
+    public static UserId None => default;
 
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -18,9 +25,9 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsGuestId => IsEmpty || Value[0] == GuestIdPrefixChar;
+    public bool IsGuestId => IsNone || Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
         => new(IdGenerator.Next(), ParseOptions.Skip);
@@ -28,10 +35,15 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
         => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), ParseOptions.Skip);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public UserId(Symbol id) => this = Parse(id);
-    public UserId(string? id) => this = Parse(id);
-    public UserId(Symbol id, SkipParseOption _) => Id = id;
-    public UserId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public UserId(Symbol id)
+        => this = Parse(id);
+    public UserId(string? id)
+        => this = Parse(id);
+    public UserId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
+
+    public UserId(Symbol id, SkipParseOption _)
+        => Id = id;
 
     // Conversion
 
@@ -52,7 +64,7 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
 
     public static UserId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>();
-    public static UserId ParseOrDefault(string? s)
+    public static UserId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out UserId result)

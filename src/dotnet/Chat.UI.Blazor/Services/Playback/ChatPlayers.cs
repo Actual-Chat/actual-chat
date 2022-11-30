@@ -147,7 +147,7 @@ public class ChatPlayers : WorkerBase
     private ChatPlayer GetOrCreate(ChatId chatId, ChatPlayerKind playerKind)
     {
         this.ThrowIfDisposedOrDisposing();
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         ChatPlayer newPlayer;
@@ -169,7 +169,7 @@ public class ChatPlayers : WorkerBase
 
     private async Task Close(ChatId chatId, ChatPlayerKind playerKind)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
         ChatPlayer? player;
         lock (Lock) {
@@ -185,7 +185,7 @@ public class ChatPlayers : WorkerBase
 
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Realtime);
         var whenPlaying = player.WhenPlaying;
@@ -205,7 +205,7 @@ public class ChatPlayers : WorkerBase
 
     private Task<Task> StartHistoricalPlayback(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
         return player.Start(startAt, cancellationToken);

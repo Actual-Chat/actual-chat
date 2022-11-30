@@ -1,10 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<PeerChatId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
     public static readonly string IdPrefix = "p-";
+    public static PeerChatId None => default;
 
     [DataMember(Order = 0)]
     public Symbol Id { get; }
@@ -19,20 +26,20 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public (UserId UserId1, UserId UserId2) UserIds => (UserId1, UserId2);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public PeerChatId(Symbol id) => this = Parse(id);
     public PeerChatId(string? id) => this = Parse(id);
-    public PeerChatId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public PeerChatId(string? id, ParseOrNoneOption _) => ParseOrNone(id);
 
-    public PeerChatId(UserId userId1, UserId userId2, ParseOrDefaultOption _)
+    public PeerChatId(UserId userId1, UserId userId2, ParseOrNoneOption _)
     {
-        if (userId1.IsEmpty)
+        if (userId1.IsNone)
             return;
-        if (userId2.IsEmpty)
+        if (userId2.IsNone)
             return;
         if (userId1 == userId2)
             return;
@@ -43,9 +50,9 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 
     public PeerChatId(UserId userId1, UserId userId2)
     {
-        if (userId1.IsEmpty)
+        if (userId1.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userId1));
-        if (userId2.IsEmpty)
+        if (userId2.IsNone)
             throw new ArgumentOutOfRangeException(nameof(userId2));
         if (userId1 == userId2)
             throw new ArgumentOutOfRangeException(nameof(userId2), "Both user IDs are the same.");
@@ -61,21 +68,10 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         UserId2 = userId2;
     }
 
-    public void Deconstruct(out UserId userId1, out UserId userId2)
-    {
-        userId1 = UserId1;
-        userId2 = UserId2;
-    }
-
-    public UserId OtherUserId(UserId userId)
-        => (UserId1, UserId2).OtherThan(userId);
-    public UserId OtherUserIdOrDefault(UserId userId)
-        => (UserId1, UserId2).OtherThanOrDefault(userId);
-
     // Conversion
 
     public override string ToString() => Value;
-    public static implicit operator ChatId(PeerChatId source) => new(source.Id, ParseOptions.Skip);
+    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source.UserId1, source.UserId2, ParseOptions.Skip);
     public static implicit operator Symbol(PeerChatId source) => source.Id;
     public static implicit operator string(PeerChatId source) => source.Value;
 
@@ -92,7 +88,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 
     public static PeerChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
-    public static PeerChatId ParseOrDefault(string? s)
+    public static PeerChatId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out PeerChatId result)

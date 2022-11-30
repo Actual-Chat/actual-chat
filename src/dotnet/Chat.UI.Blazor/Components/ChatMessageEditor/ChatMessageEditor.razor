@@ -222,7 +222,7 @@
 
     private async Task OnOpenPrevious() {
         var chatId = ChatUI.SelectedChatId.Value;
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return;
 
         var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);

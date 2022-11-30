@@ -1,10 +1,10 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.LatestNonErrorValue;
-    if (account == null) {
+    if (account.IsGuest) {
         <SignInBlock/>
         return;
     }
@@ -26,9 +26,9 @@
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 }

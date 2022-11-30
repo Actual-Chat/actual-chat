@@ -27,7 +27,7 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         if (mustSetUserLanguageSettings)
-            await kvas.SetUserLanguageSettings(new () { Primary = LanguageId.Default, }, CancellationToken.None);
+            await kvas.SetUserLanguageSettings(new () { Primary = LanguageId.Main, }, CancellationToken.None);
 
         var audioRecord = new AudioRecord(
             session.Id, Constants.Chat.DefaultChatId,
@@ -57,7 +57,7 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = LanguageId.Default,
+                Primary = LanguageId.Main,
             });
 
         var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
@@ -98,7 +98,7 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = LanguageId.Default,
+                Primary = LanguageId.Main,
             });
 
         var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {

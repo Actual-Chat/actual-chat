@@ -139,7 +139,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
-        var account = await Accounts.GetOwn(Session, cancellationToken) ?? AccountFull.None;
+        var account = await Accounts.GetOwn(Session, cancellationToken);
         var sessions = await Auth.GetUserSessions(Session, cancellationToken);
         var sessionList = new List<SessionModel>();
 

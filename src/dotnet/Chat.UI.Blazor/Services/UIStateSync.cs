@@ -33,7 +33,6 @@ public class UIStateSync : WorkerBase
     private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private ContactUI ContactUI => _contactUI ??= Services.GetRequiredService<ContactUI>();
     private InteractiveUI InteractiveUI { get; }
 
     public UIStateSync(Session session, IServiceProvider services)
@@ -50,7 +49,7 @@ public class UIStateSync : WorkerBase
 
     protected override Task RunInternal(CancellationToken cancellationToken)
         => Task.WhenAll(
-            InvalidateSelectedContactDependencies(cancellationToken),
+            InvalidateSelectedChatDependencies(cancellationToken),
             InvalidatePinnedContactDependencies(cancellationToken),
             InvalidateActiveChatDependencies(cancellationToken),
             SyncPlaybackState(cancellationToken),
@@ -60,44 +59,38 @@ public class UIStateSync : WorkerBase
             ResetHighlightedChatEntry(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
 
-    private async Task InvalidateSelectedContactDependencies(CancellationToken cancellationToken)
+    private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldContactId = ContactUI.SelectedContactId.Value;
-        var changes = ContactUI.SelectedContactId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var oldChatId = ChatUI.SelectedChatId.Value;
+        var changes = ChatUI.SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
-            var newContactId = cSelectedContactId.Value;
+            var newChatId = cSelectedContactId.Value;
 
             using (Computed.Invalidate()) {
-                // Must invalidate ContactUI first
-                _ = ContactUI.IsSelected(oldContactId);
-                _ = ContactUI.IsSelected(newContactId);
-                _ = ChatUI.IsSelected(oldContactId.ChatId);
-                _ = ChatUI.IsSelected(newContactId.ChatId);
+                _ = ChatUI.IsSelected(oldChatId);
+                _ = ChatUI.IsSelected(newChatId);
             }
 
-            oldContactId = newContactId;
+            oldChatId = newChatId;
         }
     }
 
     private async Task InvalidatePinnedContactDependencies(CancellationToken cancellationToken)
     {
-        var oldContacts = new HashSet<PinnedChat>();
-        var changes = ContactUI.PinnedContacts.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var oldChats = new HashSet<PinnedChat>();
+        var changes = ChatUI.PinnedChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cPinnedContacts in changes.ConfigureAwait(false)) {
-            var newPinnedContacts = cPinnedContacts.Value.ToHashSet();
+            var newChats = cPinnedContacts.Value.ToHashSet();
 
-            var added = newPinnedContacts.Except(oldContacts);
-            var removed = oldContacts.Except(newPinnedContacts);
+            var added = newChats.Except(oldChats);
+            var removed = oldChats.Except(newChats);
             var changed = added.Concat(removed);
             using (Computed.Invalidate()) {
-                foreach (var c in changed) {
-                    // Must invalidate ContactUI first
-                    _ = ContactUI.IsPinned(c.Id);
-                    _ = ChatUI.IsPinned(c.Id.ChatId);
-                }
+                foreach (var c in changed)
+                    _ = ChatUI.IsPinned(c.ChatId);
             }
 
-            oldContacts = newPinnedContacts;
+            oldChats = newChats;
         }
     }
 
@@ -193,7 +186,7 @@ public class UIStateSync : WorkerBase
 
         if (recordingChatId == recorderChatId) {
             // The state is in sync
-            if (recordingChatId.IsEmpty)
+            if (recordingChatId.IsNone)
                 return default;
 
             if (await IsRecordingLanguageChanged().ConfigureAwait(false))
@@ -201,7 +194,7 @@ public class UIStateSync : WorkerBase
         } else if (recordingChatIdChanged) {
             // The recording was activated or deactivated
             SyncRecorderState();
-            if (recordingChatId.IsEmpty)
+            if (recordingChatId.IsNone)
                 return default;
 
             // Update _lastLanguageId
@@ -235,7 +228,7 @@ public class UIStateSync : WorkerBase
                     // Recording is running - let's top it first;
                     await AudioRecorder.StopRecording(cancellationToken).ConfigureAwait(false);
                 }
-                if (!chatIdToStartRecording.IsEmpty) {
+                if (!chatIdToStartRecording.IsNone) {
                     // And start the recording if we must
                     if (!InteractiveUI.IsInteractive.Value)
                         await InteractiveUI.Demand("audio recording").ConfigureAwait(false);
@@ -298,7 +291,7 @@ public class UIStateSync : WorkerBase
         CancellationToken cancellationToken)
     {
         var recordingChatId = await ChatUI.GetRecordingChatId().ConfigureAwait(false);
-        if (recordingChatId.IsEmpty)
+        if (recordingChatId.IsNone)
             return (recordingChatId, 0);
 
         var (_, end) = await Chats
@@ -311,7 +304,7 @@ public class UIStateSync : WorkerBase
     {
         var changes = ChatUI.HighlightedChatEntryId
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .Where(x => !x.Value.IsEmpty);
+            .Where(x => !x.Value.IsNone);
         CancellationTokenSource? cts = null;
         try {
             await foreach (var cHighlightedChatEntryId in changes.ConfigureAwait(false)) {

@@ -56,7 +56,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
-        if (chatId.IsEmpty)
+        if (chatId.IsNone)
             return Model.NotPlaying;
 
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);

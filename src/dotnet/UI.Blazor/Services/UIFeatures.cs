@@ -21,7 +21,7 @@ public static class UIFeatures
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
             var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            return account?.IsAdmin == true;
+            return account.IsAdmin;
         }
     }
 
@@ -36,7 +36,7 @@ public static class UIFeatures
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
             var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            return account?.IsAdmin == true;
+            return account.IsAdmin;
         }
     }
 

@@ -15,8 +15,6 @@ public abstract class NavbarContentBase : ComputedStateComponent<AccountFull>
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        return account ?? AccountFull.None;
-    }
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 }

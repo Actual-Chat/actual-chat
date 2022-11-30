@@ -1,9 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<ContactId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ContactId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<ContactId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ContactId : ISymbolIdentifier<ContactId>
 {
+    public static ContactId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -17,14 +25,19 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public ContactId(Symbol id) => this = Parse(id);
-    public ContactId(UserId ownerId, ChatId chatId) => Parse(Format(ownerId, chatId));
-    public ContactId(UserId ownerId, ChatId chatId, ParseOrDefaultOption _) => ParseOrDefault(Format(ownerId, chatId));
-    public ContactId(string id) => this = Parse(id);
-    public ContactId(string id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public ContactId(Symbol id)
+        => this = Parse(id);
+    public ContactId(UserId ownerId, ChatId chatId)
+        => this = Parse(Format(ownerId, chatId));
+    public ContactId(UserId ownerId, ChatId chatId, ParseOrNoneOption _)
+        => this = ParseOrNone(Format(ownerId, chatId));
+    public ContactId(string id)
+        => this = Parse(id);
+    public ContactId(string id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
 
     public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipParseOption _)
     {
@@ -61,7 +74,7 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     public static ContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>();
-    public static ContactId ParseOrDefault(string? s)
+    public static ContactId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out ContactId result)
@@ -77,6 +90,8 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
         if (!UserId.TryParse(s[..spaceIndex], out var ownerId))
             return false;
         if (!ChatId.TryParse(s[(spaceIndex + 1)..], out var chatId))
+            return false;
+        if (chatId.IsPeerChatId(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
 
         result = new ContactId(s, ownerId, chatId, ParseOptions.Skip);

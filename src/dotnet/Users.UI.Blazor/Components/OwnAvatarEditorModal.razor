@@ -49,7 +49,7 @@
             </div>
         </button>
 
-        @if (!ModalModel.ChatId.IsEmpty) {
+        @if (!ModalModel.ChatId.IsNone) {
             <FormSection InputId="@_form.IsActiveFieldId">
                 <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
                             Label="Used in this chat (otherwise the default one is used)"/>
@@ -87,9 +87,9 @@
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
         var account = await Accounts.GetOwn(Session, default);
-        var isDefault = ModalModel.AvatarId == (account?.Avatar.Id ?? Symbol.Empty);
+        var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
-        if (!ModalModel.ChatId.IsEmpty) {
+        if (!ModalModel.ChatId.IsNone) {
             var author = await Authors.GetOwn(Session, ModalModel.ChatId, default);
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
@@ -126,7 +126,7 @@
 
         if (_form.IsDefault && !_form.Base.IsDefault)
             await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
-        if (!chatId.IsEmpty && _form.IsActive && !_form.Base.IsActive)
+        if (!chatId.IsNone && _form.IsActive && !_form.Base.IsActive)
             await SetActiveAvatar(_form.IsActive ? avatarId : default);
 
         _form.CopyToBase();

@@ -38,7 +38,7 @@ public class AppServerAuthHelper : ServerAuthHelper
         var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
         if ((sessionInfo?.UserId ?? "").Length == 0) { // Unauthenticated
             var guestId = sessionInfo.GetGuestId();
-            if (guestId.IsEmpty) // No GuestId
+            if (guestId.IsNone) // No GuestId
                 setupSessionCommand = setupSessionCommand with {
                     Options = ImmutableOptionSet.Empty.Set(new GuestIdOption(UserId.NewGuest())),
                 };

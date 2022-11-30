@@ -1,13 +1,14 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace ActualChat.Web.Internal;
 
 #pragma warning disable IL2075
 
-public class StringIdentifierModelBinder : IModelBinder
+public class SymbolIdentifierModelBinder : IModelBinder
 {
-    private Func<string, IIdentifier>? _identifierFactory;
+    private Func<string?, ISymbolIdentifier>? _parser;
 
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {
@@ -20,21 +21,23 @@ public class StringIdentifierModelBinder : IModelBinder
             return Task.CompletedTask;
 
         try {
-            if (_identifierFactory == null) {
-                var stringArg = Expression.Parameter(typeof(string), "str");
-                var ctor = bindingContext.ModelType.GetConstructor(new[] { typeof(string) });
-                _identifierFactory = Expression
-                    .Lambda<Func<string,IIdentifier>>(Expression.New(ctor!, stringArg), stringArg)
+            if (_parser == null) {
+                var pValue = Expression.Parameter(typeof(string), "value");
+                var mParse = bindingContext.ModelType.GetMethod(
+                    "Parse",
+                    BindingFlags.Public | BindingFlags.Static,
+                    new[] { typeof(string) });
+                _parser = Expression
+                    .Lambda<Func<string?, ISymbolIdentifier>>(Expression.Call(mParse!, pValue), pValue)
                     .Compile();
             }
-            var sValue = valueProviderResult.FirstValue ?? "";
-            var result = _identifierFactory(sValue);
+            var value = valueProviderResult.FirstValue ?? "";
+            var result = _parser.Invoke(value);
             bindingContext.Result = ModelBindingResult.Success(result);
         }
         catch {
             bindingContext.Result = ModelBindingResult.Failed();
         }
-
         return Task.CompletedTask;
     }
 }

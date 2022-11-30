@@ -135,7 +135,7 @@ public class ServerKvas : IServerKvas
     {
         var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var guestId = sessionInfo.GetGuestId();
-        return guestId.IsEmpty ? null : Backend.GetUserPrefix(guestId);
+        return guestId.IsNone ? null : Backend.GetUserPrefix(guestId);
     }
 
     private async ValueTask<Dictionary<string, string>?> TryMigrateKeys(

@@ -1,9 +1,17 @@
+using System.ComponentModel;
+using ActualChat.Internal;
+
 namespace ActualChat;
 
 [DataContract]
+[JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
+[TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatEntryId>))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 {
+    public static ChatEntryId None => default;
+
     [DataMember(Order = 0)]
     public Symbol Id { get; }
 
@@ -19,12 +27,15 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => Id.IsEmpty;
+    public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public ChatEntryId(Symbol id) => Parse(id);
-    public ChatEntryId(string? id) => Parse(id);
-    public ChatEntryId(string? id, ParseOrDefaultOption _) => ParseOrDefault(id);
+    public ChatEntryId(Symbol id)
+        => this = Parse(id);
+    public ChatEntryId(string? id)
+        => this = Parse(id);
+    public ChatEntryId(string? id, ParseOrNoneOption _)
+        => this = ParseOrNone(id);
 
     public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseOption _)
     {
@@ -59,7 +70,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>();
-    public static ChatEntryId ParseOrDefault(string? s)
+    public static ChatEntryId ParseOrNone(string? s)
         => TryParse(s, out var result) ? result : default;
 
     public static bool TryParse(string? s, out ChatEntryId result)

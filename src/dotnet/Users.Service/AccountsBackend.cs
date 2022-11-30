@@ -29,7 +29,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsEmpty)
+        if (userId.IsNone)
             return null;
 
         // We _must_ have a dependency on AuthBackend.GetUser here
@@ -114,7 +114,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     private static AccountFull? GetGuestAccount(UserId userId)
     {
-        if (userId.IsEmpty || !userId.IsGuestId)
+        if (userId.IsNone || !userId.IsGuestId)
             return null;
 
         var name = RandomNameGenerator.Default.Generate(userId);

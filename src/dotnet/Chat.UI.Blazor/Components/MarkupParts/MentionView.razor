@@ -3,7 +3,7 @@
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
 <AuthorBadgeTemplate Id="@_authorId">
-    @if (context.Author.Id.IsEmpty) {
+    @if (context.Author.Id.IsNone) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
