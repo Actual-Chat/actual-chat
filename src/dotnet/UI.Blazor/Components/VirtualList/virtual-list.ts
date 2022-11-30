@@ -120,12 +120,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: visibilityThresholds,
-
-                /* required options for IntersectionObserver v2*/
-                // @ts-ignore
-                trackVisibility: true,
-                delay: 250,  // minimum 100
+                threshold: [0, 0.1, 0.5, 0.9, 1],
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
@@ -281,10 +276,10 @@ export class VirtualList {
                 const newItem = this.createListItem(key, itemRef);
                 this._items.set(key, newItem);
             }
-            // make rendered items visible
-            for (const itemRef of this.getNewItemRefs()) {
-                itemRef.classList.remove('new');
-            }
+        }
+        // make rendered items visible
+        for (const itemRef of this.getNewItemRefs()) {
+            itemRef.classList.remove('new');
         }
 
         this.updateOrderedItems();
@@ -494,18 +489,24 @@ export class VirtualList {
                     if (!pivotRef)
                         continue;
 
-                    const pivotOffset = pivot.offset;
-                    const itemRect = pivotRef.getBoundingClientRect();
-                    const currentPivotOffset = itemRect.top;
-                    const dPivotOffset = pivotOffset - currentPivotOffset;
-                    if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
-                        debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
-                        // debug helper
-                        // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-                        this._ref.scrollTop -= dPivotOffset;
-                    } else {
-                        debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ${pivotOffset} ~ ${itemRect.top}`, pivot);
-                    }
+                    new Promise<void>(resolve => {
+                        requestAnimationFrame(_time => {
+                            const pivotOffset = pivot.offset;
+                            const itemRect = pivotRef.getBoundingClientRect();
+                            const currentPivotOffset = itemRect.top;
+                            const dPivotOffset = pivotOffset - currentPivotOffset;
+                            if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
+                                debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
+                                // debug helper
+                                // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                                this._ref.scrollTop -= dPivotOffset;
+                            } else {
+                                debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ${pivotOffset} ~ ${itemRect.top}`, pivot);
+                            }
+                            resolve();
+                        });
+                    });
+
                     break;
                 }
             }
@@ -588,7 +589,6 @@ export class VirtualList {
                 this._items.set(key, newItem);
                 orderedItems.push(newItem);
             }
-            itemRef.classList.remove('new');
         }
         this._orderedItems = orderedItems;
     }
@@ -714,14 +714,12 @@ export class VirtualList {
             await this.requestData(true);
     }
 
-    private getNewItemRefs(): IterableIterator<HTMLElement> {
-        // getElementsByClassName is faster than querySelectorAll
-        return Array.from(this._containerRef.getElementsByClassName('item new')).values() as IterableIterator<HTMLElement>;
+    private getNewItemRefs(): HTMLCollectionOf<Element> {
+        return this._containerRef.getElementsByClassName('item new');
     }
 
-    private getAllItemRefs(): IterableIterator<HTMLElement> {
-        // getElementsByClassName is faster than querySelectorAll
-        return Array.from(this._containerRef.getElementsByClassName('item')).values() as IterableIterator<HTMLElement>;
+    private getAllItemRefs(): HTMLCollectionOf<HTMLLIElement> {
+        return this._containerRef.getElementsByTagName('li');
     }
 
     private getItemRef(key: string): HTMLElement | null {
