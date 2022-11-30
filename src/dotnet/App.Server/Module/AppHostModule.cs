@@ -164,6 +164,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 builder.WithOrigins(
                         "http://0.0.0.0",
                         "https://0.0.0.0",
+                        "app://0.0.0.0",
                         "http://0.0.0.0:7080",
                         "https://0.0.0.0:7080",
                         "https://0.0.0.0:7081"
