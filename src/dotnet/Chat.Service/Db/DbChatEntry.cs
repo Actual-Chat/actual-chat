@@ -86,7 +86,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
-            RepliedChatEntryId = RepliedChatEntryId!,
+            RepliedEntryLocalId = RepliedChatEntryId!,
             Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
             TextToTimeMap = Kind == ChatEntryKind.Text
@@ -120,7 +120,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
-        RepliedChatEntryId = model.RepliedChatEntryId;
+        RepliedChatEntryId = model.RepliedEntryLocalId;
         Content = model.ServiceEntry != null ? ServiceEntrySerializer.Write(model.ServiceEntry) : model.Content;
         IsServiceEntry = model.ServiceEntry != null;
 #pragma warning disable IL2026

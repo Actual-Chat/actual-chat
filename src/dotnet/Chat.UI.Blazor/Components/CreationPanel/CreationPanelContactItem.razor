@@ -12,7 +12,7 @@
     RenderFragment RenderItem()
         => @<div class="creation-panel-contact-item @(activeLink ? "" : "unfocusable")">
                <div class="flex-x w-full items-center gap-x-2">
-                   <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
+                   <AccountCircle UserId="@Contact.Account.Id" ShowPresence="true"/>
                    <span class="text-ellipsis whitespace-nowrap overflow-hidden">
                        <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
                    </span>
@@ -20,7 +20,7 @@
                @if (showEnding) {
                    <div class="flex-x justify-center min-w-4">
                        <Checkbox
-                           Id="@($"creation-panel-contact-{Contact.Id.OtherId}")"
+                           Id="@($"creation-panel-contact-{Contact.Account.Id}")"
                            Checked="@IsSelected"
                            Change="@OnSelect"/>
                    </div>

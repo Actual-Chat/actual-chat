@@ -14,7 +14,7 @@
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplied ? "replied-message" : "";
-    var isReply = entry.RepliedChatEntryId != null;
+    var isReply = entry.RepliedEntryLocalId != null;
     var selfQuoted = m.RepliedChatMessage?.Entry.AuthorId == entry.AuthorId;
     var mentionClass = m.IsMentioned && !selfQuoted ? "mention" : "";
 }
@@ -147,7 +147,7 @@
         var hasAnyMentions = HasAnyMentions(Markup);
         var isMentioned = IsMentioned(Markup, repliedChatMessage, ownAuthorId, hasAnyMentions);
         var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
-        var isHighlighted = entry.Id == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
+        var isHighlighted = entry.Id.LocalId == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedChatMessage = repliedChatMessage,
@@ -173,12 +173,14 @@
     }
 
     private async Task<ChatMessageModel?> GetRepliedChatMessage(CancellationToken cancellationToken) {
-        if (Message.Entry.RepliedChatEntryId == null)
+        if (Message.Entry.RepliedEntryLocalId is not { } repliedEntryLocalId)
             return null;
 
-        var repliedChatEntry = await Reader.Get(Message.Entry.RepliedChatEntryId.Value, CancellationToken.None) ?? new() { IsRemoved = true, ChatId = Message.Entry.ChatId};
+        var repliedEntryId = new ChatEntryId(Message.Entry.ChatId, Message.Entry.Kind, repliedEntryLocalId, AssumeValid.Option);
+        var repliedEntry = await Reader.Get(repliedEntryLocalId, CancellationToken.None)
+            ?? ChatEntry.Removed(repliedEntryId);
 
-        return new ChatMessageModel(repliedChatEntry) {
+        return new ChatMessageModel(repliedEntry) {
             IsBlockStart = true,
             IsQuote = true,
         };
@@ -190,7 +192,7 @@
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
             await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
-            ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
+            ChatUI.HighlightedChatEntryId.Value = Message.Entry.LocalId;
         }
     }
 

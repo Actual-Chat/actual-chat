@@ -323,7 +323,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option),
             AuthorId = author.Id,
             Content = text,
-            RepliedChatEntryId = repliedChatEntryId.IsSome(out var v) ? v : null,
+            RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
         };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry, command.Attachments.Length > 0);
         var textEntry =  await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -369,7 +369,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         chatEntry = chatEntry with { Content = text };
         if (repliedChatEntryId.IsSome(out var v))
-            chatEntry = chatEntry with { RepliedChatEntryId = v };
+            chatEntry = chatEntry with { RepliedEntryLocalId = v };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
     }

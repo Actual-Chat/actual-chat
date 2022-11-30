@@ -304,7 +304,7 @@ public class UIStateSync : WorkerBase
     {
         var changes = ChatUI.HighlightedChatEntryId
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .Where(x => !x.Value.IsNone);
+            .Where(x => x.Value != 0);
         CancellationTokenSource? cts = null;
         try {
             await foreach (var cHighlightedChatEntryId in changes.ConfigureAwait(false)) {

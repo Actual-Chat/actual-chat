@@ -4,14 +4,17 @@ using Stl.Versioning;
 namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<long>, IRequirementTarget
+public sealed record ChatEntry(
+    [property: DataMember] ChatEntryId Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
     public static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<ChatEntry, long>.Instance;
+        VersionBasedEqualityComparer<ChatEntry, ChatEntryId>.Instance;
 
-    long IHasId<long>.Id => LocalId;
-    [DataMember] public ChatEntryId Id { get; init; }
-    [DataMember] public long Version { get; init; }
+    public static ChatEntry Removed(ChatEntryId id)
+        => new (id) { IsRemoved = true };
+
     [DataMember] public bool IsRemoved { get; init; }
     [DataMember] public AuthorId AuthorId { get; init; }
     [DataMember] public Moment BeginsAt { get; init; }
@@ -42,7 +45,7 @@ public sealed record ChatEntry : IHasId<ChatEntryId>, IHasId<long>, IHasVersion<
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
 
-    public long? RepliedChatEntryId { get; init; }
+    public long? RepliedEntryLocalId { get; init; }
     public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
 
     public string GetContentOrDescription()
