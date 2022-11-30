@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<AuthorId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<AuthorId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<AuthorId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
 {
@@ -32,17 +34,17 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
         => this = Parse(id);
     public AuthorId(string? id)
         => this = Parse(id);
-    public AuthorId(string? id, ParseOrNoneOption _)
+    public AuthorId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public AuthorId(Symbol id, ChatId chatId, long localId, SkipParseOption _)
+    public AuthorId(Symbol id, ChatId chatId, long localId, AssumeValid _)
     {
         Id = id;
         ChatId = chatId;
         LocalId = localId;
     }
 
-    public AuthorId(ChatId chatId, long localId, SkipParseOption _)
+    public AuthorId(ChatId chatId, long localId, AssumeValid _)
     {
         Id = Format(chatId, localId);
         ChatId = chatId;
@@ -90,7 +92,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
         if (!long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new AuthorId(s, chatId, localId, ParseOptions.Skip);
+        result = new AuthorId(s, chatId, localId, AssumeValid.Option);
         return true;
     }
 }

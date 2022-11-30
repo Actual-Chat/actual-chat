@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatEntryId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 {
@@ -34,10 +36,10 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         => this = Parse(id);
     public ChatEntryId(string? id)
         => this = Parse(id);
-    public ChatEntryId(string? id, ParseOrNoneOption _)
+    public ChatEntryId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseOption _)
+    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, AssumeValid _)
     {
         Id = id;
         ChatId = chatId;
@@ -45,7 +47,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         LocalId = localId;
     }
 
-    public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseOption _)
+    public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, AssumeValid _)
     {
         Id = Format(chatId, entryKind, localId);
         ChatId = chatId;
@@ -101,7 +103,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         if (!long.TryParse(sLocalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new ChatEntryId(s, chatId, entryKind, localId, ParseOptions.Skip);
+        result = new ChatEntryId(s, chatId, entryKind, localId, AssumeValid.Option);
         return true;
     }
 }

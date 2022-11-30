@@ -9,7 +9,7 @@
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
-        Click="_ => ChatUI.SetRecordingChatId(Symbol.Empty)"
+        Click="@(_ => ChatUI.SetRecordingChatId(default))"
         Tooltip="Stop"
         FloatingPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -18,7 +18,7 @@
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
-        Click="_ => ChatUI.SetRecordingChatId(ChatId)"
+        Click="@(_ => ChatUI.SetRecordingChatId(ChatId))"
         Tooltip="Start"
         FloatingPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -29,11 +29,11 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken) => ChatUI.IsRecording(ChatId);
-
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.IsRecording(ChatId);
 }

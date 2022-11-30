@@ -63,7 +63,7 @@
             };
 
         var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
-        var contactId = new ContactId(ownAccount.Id, peerChatId, ParseOptions.Skip);
+        var contactId = new ContactId(ownAccount.Id, peerChatId, AssumeValid.Option);
         var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
         var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {

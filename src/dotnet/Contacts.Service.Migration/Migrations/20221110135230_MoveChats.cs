@@ -45,7 +45,7 @@ namespace ActualChat.Contacts.Migrations
             var dbChats = chatDbContext.Chats.ToDictionary(c => (Symbol)c.Id);
             var dbAuthors = chatDbContext.Authors.Where(a => !a.HasLeft).ToList();
             foreach (var dbAuthor in dbAuthors) {
-                var userId = new UserId(dbAuthor.UserId, ParseOptions.Skip);
+                var userId = new UserId(dbAuthor.UserId, AssumeValid.Option);
                 if (userId.IsNone) // Anonymous author, we do nothing in this case
                     continue;
 
@@ -56,7 +56,7 @@ namespace ActualChat.Contacts.Migrations
                     continue;
 
                 var c = new DbContact() {
-                    Id = new ContactId(userId, new ChatId(chat.Id), ParseOptions.Skip),
+                    Id = new ContactId(userId, new ChatId(chat.Id), AssumeValid.Option),
                     Version = versionGenerator.NextVersion(),
                     OwnerId = userId,
                     UserId = null,

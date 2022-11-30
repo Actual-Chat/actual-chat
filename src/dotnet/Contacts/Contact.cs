@@ -1,8 +1,10 @@
 using ActualChat.Users;
+using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Contacts;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract]
 public sealed record Contact(
     [property: DataMember] ContactId Id,

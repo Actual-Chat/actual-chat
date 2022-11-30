@@ -11,11 +11,7 @@
 </div>
 
 @code {
-    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
-    public TestListItemRef ItemRef { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter] public TestListItemRef ItemRef { get; set; } = null!;
 
     protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
         => Service.GetItem(ItemRef, cancellationToken);

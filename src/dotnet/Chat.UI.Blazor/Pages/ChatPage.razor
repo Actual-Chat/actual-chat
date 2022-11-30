@@ -100,7 +100,7 @@
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = new ChatId(ChatId, ParseOptions.OrNone);
+        var chatId = new ChatId(ChatId, ParseOrNone.Option);
         if (chatId.IsNone)
             chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId.IsNone)

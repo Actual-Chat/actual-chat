@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 public class ChatActivityTest : AppHostTestBase
 {
-    private const string ChatId = "the-actual-one";
+    private ChatId TestChatId { get; } = new("the-actual-one");
 
     public ChatActivityTest(ITestOutputHelper @out) : base(@out) { }
 
@@ -25,7 +25,7 @@ public class ChatActivityTest : AppHostTestBase
         sessionProvider.Session = session;
 
         var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
@@ -33,7 +33,7 @@ public class ChatActivityTest : AppHostTestBase
         var ct = cts.Token;
         try {
             var chatActivity = clientServices.GetRequiredService<ChatActivity>();
-            using var recordingActivity = await chatActivity.GetRecordingActivity(ChatId, ct);
+            using var recordingActivity = await chatActivity.GetRecordingActivity(TestChatId, ct);
             var cActiveChatEntries = await Computed.Capture(() => recordingActivity.GetActiveChatEntries(ct));
             var cActiveAuthorIds = await Computed.Capture(() => recordingActivity.GetActiveAuthorIds(ct));
             cActiveChatEntries.Value.Count.Should().Be(0);
@@ -67,11 +67,10 @@ public class ChatActivityTest : AppHostTestBase
     {
         var testClock = new TestClock();
         await testClock.Delay(2000, cancellationToken);
-        var author = await authorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
+        var author = await authorsBackend.GetOrCreate(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
-            ChatId = ChatId,
-            Kind = ChatEntryKind.Audio,
+            Id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option),
             AuthorId = author.Id,
             Content = "",
             StreamId = "FAKE",

@@ -17,7 +17,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()

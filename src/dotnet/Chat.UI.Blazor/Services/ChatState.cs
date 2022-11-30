@@ -1,10 +1,13 @@
 using ActualChat.Contacts;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed record ChatState
 {
     public const int MaxUnreadMessageCount = 1000;
+    public static ChatState None = new() { Chat = Chat.None, Summary = ChatSummary.None };
+    public static ChatState Loading = new() { Chat = Chat.Loading, Summary = ChatSummary.None };
 
     private bool? _hasMentions;
     private Trimmed<int>? _unreadMessageCount;

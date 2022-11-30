@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<PeerChatId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
@@ -33,9 +35,9 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public PeerChatId(Symbol id) => this = Parse(id);
     public PeerChatId(string? id) => this = Parse(id);
-    public PeerChatId(string? id, ParseOrNoneOption _) => ParseOrNone(id);
+    public PeerChatId(string? id, ParseOrNone _) => ParseOrNone(id);
 
-    public PeerChatId(UserId userId1, UserId userId2, ParseOrNoneOption _)
+    public PeerChatId(UserId userId1, UserId userId2, ParseOrNone _)
     {
         if (userId1.IsNone)
             return;
@@ -61,7 +63,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         Id = Format(UserId1, UserId2);
     }
 
-    public PeerChatId(Symbol id, UserId userId1, UserId userId2, SkipParseOption _)
+    public PeerChatId(Symbol id, UserId userId1, UserId userId2, AssumeValid _)
     {
         Id = id;
         UserId1 = userId1;
@@ -71,7 +73,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     // Conversion
 
     public override string ToString() => Value;
-    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source.UserId1, source.UserId2, ParseOptions.Skip);
+    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source.UserId1, source.UserId2, AssumeValid.Option);
     public static implicit operator Symbol(PeerChatId source) => source.Id;
     public static implicit operator string(PeerChatId source) => source.Value;
 
@@ -114,7 +116,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
             return false; // Wrong sort order
 
-        result = new PeerChatId((Symbol)s, userId1, userId2, ParseOptions.Skip);
+        result = new PeerChatId((Symbol)s, userId1, userId2, AssumeValid.Option);
         return true;
     }
 }

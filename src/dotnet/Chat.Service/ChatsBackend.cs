@@ -256,15 +256,20 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         Chat chat;
         DbChat dbChat;
         if (change.IsCreate(out var update)) {
-            if (chatId.IsNone)
+            var chatKind = update.Kind ?? chatId.Kind;
+            if (chatKind == ChatKind.Group) {
+                if (!(chatId.IsNone || Constants.Chat.SystemChatIds.Contains(chatId)))
+                    throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+
                 chatId = new ChatId(DbChat.IdGenerator.Next());
-            else if (chatId.Kind != ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(chatId))
-                throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+            }
+            else if (chatKind != ChatKind.Peer)
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
 
-            chat = ApplyDiff(new Chat(chatId) {
+            chat = new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
-            }, update);
-
+            };
+            chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -322,10 +327,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else if (change.IsUpdate(out update)) {
             ownerId.RequireNone();
 
-            dbChat = await dbContext.Chats
-                .Get(chatId, cancellationToken)
-                .RequireVersion(expectedVersion)
+            dbChat = await dbContext.Chats.ForUpdate()
+                .SingleAsync(c => c.Id == chatId, cancellationToken)
                 .ConfigureAwait(false);
+            dbChat.RequireVersion(expectedVersion);
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
@@ -343,6 +348,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             var newChat = DiffEngine.Patch(originalChat, diff) with {
                 Version = VersionGenerator.NextVersion(originalChat.Version),
             };
+            if (newChat.Kind != originalChat.Kind)
+                throw StandardError.Constraint("Chat kind cannot be changed.");
 
             // Validation
             switch (newChat.Kind) {
@@ -561,7 +568,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         DbChatEntry dbEntry;
         if (isNew) {
             var localId = await DbNextLocalId(dbContext, entry.ChatId, entryKind, cancellationToken).ConfigureAwait(false);
-            entryId = new ChatEntryId(chatId, entryKind, localId, ParseOptions.Skip);
+            entryId = new ChatEntryId(chatId, entryKind, localId, AssumeValid.Option);
             entry = entry with {
                 Id = entryId,
                 Version = VersionGenerator.NextVersion(),

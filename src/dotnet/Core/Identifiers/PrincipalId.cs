@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<PrincipalId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 {
@@ -30,9 +32,9 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public PrincipalId(Symbol id) => this = Parse(id);
     public PrincipalId(string? id) => this = Parse(id);
-    public PrincipalId(string? id, ParseOrNoneOption _) => ParseOrNone(id);
+    public PrincipalId(string? id, ParseOrNone _) => ParseOrNone(id);
 
-    public PrincipalId(AuthorId authorId, SkipParseOption _)
+    public PrincipalId(AuthorId authorId, AssumeValid _)
     {
         Id = authorId.Id;
         Kind = PrincipalKind.Author;
@@ -40,7 +42,7 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
         UserId = default;
     }
 
-    public PrincipalId(UserId userId, SkipParseOption _)
+    public PrincipalId(UserId userId, AssumeValid _)
     {
         Id = userId.Id;
         Kind = PrincipalKind.Author;
@@ -84,11 +86,11 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     public static bool TryParse(string? s, out PrincipalId result)
     {
         if (AuthorId.TryParse(s, out var authorId)) {
-            result = new PrincipalId(authorId, ParseOptions.Skip);
+            result = new PrincipalId(authorId, AssumeValid.Option);
             return true;
         }
         if (UserId.TryParse(s, out var userId)) {
-            result = new PrincipalId(userId, ParseOptions.Skip);
+            result = new PrincipalId(userId, AssumeValid.Option);
             return true;
         }
         result = default;

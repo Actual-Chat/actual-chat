@@ -75,11 +75,12 @@ public class PlaywrightTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
-        var user = await tester.SignIn(new User("", "ChatPageTester"));
+        var account = await tester.SignIn(new User(Symbol.Empty, "ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
+
         await Task.Delay(1000);
-        user.Id.Value.Should().NotBeNullOrEmpty();
-        user.Name.Should().Be("ChatPageTester");
+        account.Id.Value.Should().NotBeNullOrEmpty();
+        account.User.Name.Should().Be("ChatPageTester");
         var messages = await page.QuerySelectorAllAsync(".chat-layout .content");
         messages.Count.Should().BeGreaterThan(0);
         await Task.Delay(200);

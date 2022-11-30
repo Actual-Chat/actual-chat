@@ -15,7 +15,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userId = new UserId(UserId, ParseOptions.OrNone);
+        var userId = new UserId(UserId, ParseOrNone.Option);
         if (userId.IsNone)
             return Model.None;
 

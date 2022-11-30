@@ -5,13 +5,13 @@ public class AudioRecordTest
     [Fact]
     public void SessionPropertyTest()
     {
-        var r = new AudioRecord("", "chatId", 0);
+        var r = new AudioRecord(null!, new ChatId("chatId"), 0);
         r.Session.Should().BeNull();
-        r = r with { SessionId = "1234567890abcdef" };
-        r.Session.Id.Should().Be(r.SessionId);
-        r = r with { SessionId = "1234567890abcdefg" };
-        r.Session.Id.Should().Be(r.SessionId);
-        r = r with { SessionId = "" };
+        r = r with { Session = new Session("1234567890abcdef") };
+        r.Session.Should().Be(r.Session);
+        r = r with { Session = new Session("1234567890abcdefg") };
+        r.Session.Should().Be(r.Session);
+        r = r with { Session = null! };
         r.Session.Should().BeNull();
     }
 }

@@ -128,7 +128,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-        var userId = new UserId(sessionInfo?.UserId, ParseOptions.OrNone);
+        var userId = new UserId(sessionInfo?.UserId, ParseOrNone.Option);
         if (userId.IsNone)
             return;
 

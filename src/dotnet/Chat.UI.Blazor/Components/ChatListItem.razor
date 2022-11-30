@@ -61,13 +61,8 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public Chat Chat { get; init; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatListKind ListKind { get; init; }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter, EditorRequired] public Chat Chat { get; init; } = null!;
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
@@ -92,7 +87,7 @@
         return new(rules.CanWrite(), isListening, isRecording, isSelected);
     }
 
-    public record Model(
+    public sealed record Model(
         bool CanRecord,
         bool IsListening,
         bool IsRecording,

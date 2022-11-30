@@ -1,15 +1,20 @@
-﻿using Stl.Versioning;
+﻿using Stl.Fusion.Blazor;
+using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract]
 public sealed record Chat(
     [property: DataMember] ChatId Id,
     [property: DataMember] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
+    public static Chat None { get; } = new(default, 0) { Title = "This chat is unavailable" };
+    public static Chat Loading { get; } = new(default, 1) { Title = "Loading..."};
+
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.Chat.Unavailable()),
         (Chat? c) => c is { Id.IsNone: false });
@@ -30,6 +35,7 @@ public sealed record Chat(
 public sealed record ChatDiff : RecordDiff
 {
     [DataMember] public string? Title { get; init; }
+    [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
     [DataMember] public string? Picture { get; init; }
 }

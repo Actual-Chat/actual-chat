@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatId : ISymbolIdentifier<ChatId>
 {
@@ -32,10 +34,10 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
         => this = Parse(id);
     public ChatId(string? id)
         => this = Parse(id);
-    public ChatId(string? id, ParseOrNoneOption _)
+    public ChatId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ChatId(Symbol id, UserId userId1, UserId userId2, SkipParseOption _)
+    public ChatId(Symbol id, UserId userId1, UserId userId2, AssumeValid _)
     {
         Id = id;
         UserId1 = userId1;
@@ -48,7 +50,7 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
             peerChatId = default;
             return false;
         }
-        peerChatId = new PeerChatId(Id, UserId1, UserId2, ParseOptions.Skip);
+        peerChatId = new PeerChatId(Id, UserId1, UserId2, AssumeValid.Option);
         return true;
     }
 
@@ -86,12 +88,12 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
             if (!PeerChatId.TryParse(s, out var peerChatId))
                 return false;
 
-            result = new ChatId(peerChatId.Id, peerChatId.UserId1, peerChatId.UserId2, ParseOptions.Skip);
+            result = new ChatId(peerChatId.Id, peerChatId.UserId1, peerChatId.UserId2, AssumeValid.Option);
             return true;
         }
 
         // Group chat ID
-        result = new ChatId(s, default, default, ParseOptions.Skip);
+        result = new ChatId(s, default, default, AssumeValid.Option);
         return true;
     }
 }

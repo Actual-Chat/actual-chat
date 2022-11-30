@@ -21,14 +21,14 @@ public static partial class Constants
     {
         public static class Admin
         {
-            public static UserId UserId { get; } = new("admin", ParseOptions.Skip);
+            public static UserId UserId { get; } = new("admin", AssumeValid.Option);
             public static string Name { get; } =  "Admin";
             public static string Picture { get; } = "https://avatars.dicebear.com/api/avataaars/12333323132.svg";
         }
 
         public static class Walle
         {
-            public static UserId UserId { get; } = new("walle", ParseOptions.Skip);
+            public static UserId UserId { get; } = new("walle", AssumeValid.Option);
             public static long AuthorLocalId { get; } = -1;
             public static string Name { get; } =  "Wall-E";
             public static string Picture { get; } = "https://avatars.dicebear.com/api/bottts/12.svg";

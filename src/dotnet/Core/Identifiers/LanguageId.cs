@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,16 +8,17 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<LanguageId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<LanguageId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<LanguageId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct LanguageId : ISymbolIdentifier<LanguageId>
 {
-    public static LanguageId None { get; } = new("", "?", "Unknown", ParseOptions.Skip);
-    public static LanguageId English { get; } = new("en-US", "EN", "English", ParseOptions.Skip);
-    public static LanguageId French { get; } = new("fr-FR", "FR", "French", ParseOptions.Skip);
-    public static LanguageId German { get; } = new("de-DE", "DE", "German", ParseOptions.Skip);
-    public static LanguageId Russian { get; } = new("ru-RU", "RU", "Russian", ParseOptions.Skip);
-    public static LanguageId Spanish { get; } = new("es-ES", "ES", "Spanish", ParseOptions.Skip);
-    public static LanguageId Ukrainian { get; } = new("uk-UA", "UA", "Ukrainian", ParseOptions.Skip);
+    public static LanguageId None { get; } = new("", "?", "Unknown", AssumeValid.Option);
+    public static LanguageId English { get; } = new("en-US", "EN", "English", AssumeValid.Option);
+    public static LanguageId French { get; } = new("fr-FR", "FR", "French", AssumeValid.Option);
+    public static LanguageId German { get; } = new("de-DE", "DE", "German", AssumeValid.Option);
+    public static LanguageId Russian { get; } = new("ru-RU", "RU", "Russian", AssumeValid.Option);
+    public static LanguageId Spanish { get; } = new("es-ES", "ES", "Spanish", AssumeValid.Option);
+    public static LanguageId Ukrainian { get; } = new("uk-UA", "UA", "Ukrainian", AssumeValid.Option);
     public static LanguageId Main { get; } = English;
 
     public static ImmutableArray<LanguageId> All { get; } = ImmutableArray.Create(
@@ -59,10 +61,10 @@ public readonly struct LanguageId : ISymbolIdentifier<LanguageId>
         => this = Parse(id);
     public LanguageId(string? id)
         => this = Parse(id);
-    public LanguageId(string? id, ParseOrNoneOption _)
+    public LanguageId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    private LanguageId(Symbol id, Symbol shortcut, string title, SkipParseOption _)
+    private LanguageId(Symbol id, Symbol shortcut, string title, AssumeValid _)
         => _info = new LanguageInfo(id, shortcut, title);
 
     public LanguageId Or(LanguageId alternative)

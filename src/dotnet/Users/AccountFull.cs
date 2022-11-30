@@ -27,7 +27,7 @@ public sealed record AccountFull(
     [DataMember] public bool IsAdmin { get; init; }
 
     public AccountFull(User user, long version = 0)
-        : this(new UserId(user.Id, ParseOptions.Skip), version)
+        : this(new UserId(user.Id, AssumeValid.Option), version)
         => User = user;
 
     // This record relies on version-based equality

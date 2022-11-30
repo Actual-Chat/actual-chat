@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ContactId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ContactId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ContactId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ContactId : ISymbolIdentifier<ContactId>
 {
@@ -32,21 +34,21 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
         => this = Parse(id);
     public ContactId(UserId ownerId, ChatId chatId)
         => this = Parse(Format(ownerId, chatId));
-    public ContactId(UserId ownerId, ChatId chatId, ParseOrNoneOption _)
+    public ContactId(UserId ownerId, ChatId chatId, ParseOrNone _)
         => this = ParseOrNone(Format(ownerId, chatId));
     public ContactId(string id)
         => this = Parse(id);
-    public ContactId(string id, ParseOrNoneOption _)
+    public ContactId(string id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ContactId(Symbol id, UserId ownerId, ChatId chatId, SkipParseOption _)
+    public ContactId(Symbol id, UserId ownerId, ChatId chatId, AssumeValid _)
     {
         Id = id;
         OwnerId = ownerId;
         ChatId = chatId;
     }
 
-    public ContactId(UserId ownerId, ChatId chatId, SkipParseOption _)
+    public ContactId(UserId ownerId, ChatId chatId, AssumeValid _)
     {
         Id = Format(ownerId, chatId);
         OwnerId = ownerId;
@@ -94,7 +96,7 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
         if (chatId.IsPeerChatId(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
 
-        result = new ContactId(s, ownerId, chatId, ParseOptions.Skip);
+        result = new ContactId(s, ownerId, chatId, AssumeValid.Option);
         return true;
     }
 }

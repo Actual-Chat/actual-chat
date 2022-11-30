@@ -25,7 +25,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override async Task OnParametersSetAsync() {
-        AuthorId = new AuthorId(Id, ParseOptions.OrNone);
+        AuthorId = new AuthorId(Id, ParseOrNone.Option);
         ChatRecordingActivity?.Dispose();
         if (ShowsRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
@@ -35,7 +35,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        AuthorId = new AuthorId(Id, ParseOptions.OrNone);
+        AuthorId = new AuthorId(Id, ParseOrNone.Option);
         if (!IsValid)
             return new () { InitialValue = Model.None };
 

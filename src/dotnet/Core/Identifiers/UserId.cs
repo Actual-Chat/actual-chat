@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ActualChat.Internal;
 using Cysharp.Text;
+using Stl.Fusion.Blazor;
 using Stl.Generators;
 
 namespace ActualChat;
@@ -9,6 +10,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<UserId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
 {
@@ -30,19 +32,19 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
     public bool IsGuestId => IsNone || Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
-        => new(IdGenerator.Next(), ParseOptions.Skip);
+        => new(IdGenerator.Next(), AssumeValid.Option);
     public static UserId NewGuest()
-        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), ParseOptions.Skip);
+        => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), AssumeValid.Option);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public UserId(Symbol id)
         => this = Parse(id);
     public UserId(string? id)
         => this = Parse(id);
-    public UserId(string? id, ParseOrNoneOption _)
+    public UserId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public UserId(Symbol id, SkipParseOption _)
+    public UserId(Symbol id, AssumeValid _)
         => Id = id;
 
     // Conversion
@@ -83,7 +85,7 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
             }
         }
 
-        result = new UserId(s, ParseOptions.Skip);
+        result = new UserId(s, AssumeValid.Option);
         return true;
     }
 }

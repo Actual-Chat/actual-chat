@@ -142,9 +142,8 @@
     }
 
     private async Task OnJoin() {
-        string chatId = Chat.Id;
-        var command = new IChats.JoinCommand(Session, chatId);
-        await UICommander.Run(command, default);
+        var command = new IChats.JoinCommand(Session, Chat.Id);
+        await UICommander.Run(command);
     }
 
     public sealed class Model {

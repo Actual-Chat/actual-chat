@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
@@ -7,6 +8,7 @@ namespace ActualChat;
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<RoleId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<RoleId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<RoleId>))]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 public readonly struct RoleId : ISymbolIdentifier<RoleId>
 {
@@ -32,17 +34,17 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
         => this = Parse(id);
     public RoleId(string? id)
         => this = Parse(id);
-    public RoleId(string? id, ParseOrNoneOption _)
+    public RoleId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public RoleId(Symbol id, ChatId chatId, long localId, SkipParseOption _)
+    public RoleId(Symbol id, ChatId chatId, long localId, AssumeValid _)
     {
         Id = id;
         ChatId = chatId;
         LocalId = localId;
     }
 
-    public RoleId(ChatId chatId, long localId, SkipParseOption _)
+    public RoleId(ChatId chatId, long localId, AssumeValid _)
     {
         Id = Format(chatId, localId);
         ChatId = chatId;
@@ -90,7 +92,7 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
         if (!long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
 
-        result = new RoleId(s, chatId, localId, ParseOptions.Skip);
+        result = new RoleId(s, chatId, localId, AssumeValid.Option);
         return true;
     }
 }

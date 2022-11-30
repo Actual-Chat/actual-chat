@@ -1,12 +1,8 @@
 @using System.Security.Claims
-@using UserAvatar = ActualChat.Users.Avatar
 @inherits ComputedStateComponent<AccountFull>
 
 @{
     var account = State.LatestNonErrorValue;
-    if (account == null)
-        return;
-
     var user = account.User;
     var avatarId = account.Avatar.Id;
     var relativeUri = Links.UserPage(account.Id);
@@ -71,7 +67,7 @@
             <i class="icon-info text-xl"></i>
         </Icon>
         <Content>
-            Some bio: <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="@OwnAvatar.ShowInfo.Bio"/>
+            Some bio: <OwnAvatar AvatarId="@avatarId" Show="@OwnAvatar.ShowInfo.Bio"/>
         </Content>
         <Caption>
             Bio
@@ -109,7 +105,7 @@
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public ChatId ChatId { get; set; }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };

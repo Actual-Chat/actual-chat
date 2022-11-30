@@ -18,8 +18,8 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
     private ElementReference _recordsRef;
     private int _recordNumber;
 
-    private string ChatId => "the-actual-one";
-    private bool DebugMode { get; set; } = true;
+    private ChatId ChatId { get; } = new("the-actual-one");
+    private bool DebugMode { get; } = true;
     private bool IsRecording { get; set; }
 
     public async Task ToggleRecording()

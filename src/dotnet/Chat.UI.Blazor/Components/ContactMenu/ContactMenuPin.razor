@@ -25,7 +25,7 @@
 }
 
 @code {
-    private string ContactChatId => Contact.Id.ChatId;
+    private ChatId ChatId => Contact.ChatId;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
@@ -35,8 +35,8 @@
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(ContactChatId);
+        => ChatUI.IsPinned(ChatId);
 
     private void Toggle()
-        => _ = ChatUI.SetPinState(ContactChatId, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
 }

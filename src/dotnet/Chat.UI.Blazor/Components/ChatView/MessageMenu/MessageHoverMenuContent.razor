@@ -37,11 +37,7 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Message { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new () { InitialValue = Model.None };

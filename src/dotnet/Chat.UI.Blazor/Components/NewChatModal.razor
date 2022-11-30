@@ -43,7 +43,7 @@
 
     private async Task OnCreate()
     {
-        var command = new IChats.ChangeCommand(Session, "", null, new() {
+        var command = new IChats.ChangeCommand(Session, default, null, new() {
             Create = new ChatDiff() {
                 Title = _form.Title,
                 Kind = ChatKind.Group,

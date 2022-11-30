@@ -40,7 +40,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             if (otherUserId.IsNone)
                 return null;
 
-            var contactId = new ContactId(account.Id, peerChatId, ParseOptions.Skip);
+            var contactId = new ContactId(account.Id, peerChatId, AssumeValid.Option);
             contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
             if (contact == null)
                 return null;
@@ -292,10 +292,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
-            return new PrincipalId(author.Id, ParseOptions.Skip);
+            return new PrincipalId(author.Id, AssumeValid.Option);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return new PrincipalId(account.Id, ParseOptions.Skip);
+        return new PrincipalId(account.Id, AssumeValid.Option);
     }
 
     private async Task<ChatEntry> GetChatEntry(
@@ -321,7 +321,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatEntry = new ChatEntry {
-            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, ParseOptions.Skip),
+            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option),
             AuthorId = author.Id,
             Content = text,
             RepliedChatEntryId = repliedChatEntryId.IsSome(out var v) ? v : null,

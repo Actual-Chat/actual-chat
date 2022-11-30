@@ -39,7 +39,7 @@ namespace ActualChat.Contacts.Migrations
                 var userId = new UserId(oc.TargetUserId);
                 var peerChatId = new PeerChatId(ownerId, userId);
                 var c = new DbContact() {
-                    Id = new ContactId(ownerId, peerChatId, ParseOptions.Skip),
+                    Id = new ContactId(ownerId, peerChatId, AssumeValid.Option),
                     Version = oc.Version,
                     OwnerId = oc.OwnerUserId,
                     UserId = oc.TargetUserId,

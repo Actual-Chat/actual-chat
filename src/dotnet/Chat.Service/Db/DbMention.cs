@@ -28,7 +28,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
         => new() {
             Id = Id,
             MentionId = MentionId,
-            EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, EntryId, ParseOptions.Skip),
+            EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, EntryId, AssumeValid.Option),
         };
 
     public void UpdateFrom(Mention model)

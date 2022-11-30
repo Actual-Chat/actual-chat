@@ -41,14 +41,11 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<UIStateSync>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<RecentChatsUI>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>();
         services.AddScoped<FrontendChatMentionResolverFactory>();
 
         // Chat activity
         services.AddScoped<ChatActivity>();
-        services.AddScoped<ChatUnreadMessagesFactory>();
-        services.AddScoped<UnreadMessages>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings

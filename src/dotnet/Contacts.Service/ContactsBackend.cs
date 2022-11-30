@@ -67,7 +67,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     public async Task<Contact> GetOrCreateUserContact(UserId ownerId, UserId userId, CancellationToken cancellationToken)
     {
         var peerChatId = new PeerChatId(ownerId, userId);
-        var contactId = new ContactId(ownerId, peerChatId, ParseOptions.Skip);
+        var contactId = new ContactId(ownerId, peerChatId, AssumeValid.Option);
         var contact = await Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
         if (contact.IsStored())
             return contact;
@@ -187,7 +187,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (userId.IsNone) // We do nothing for anonymous authors for now
             return;
 
-        var contactId = new ContactId(userId, chatId, ParseOptions.Skip);
+        var contactId = new ContactId(userId, chatId, AssumeValid.Option);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
         var hasNoStoredContact = contact is not { IsVirtual: true };
         if (author.HasLeft == hasNoStoredContact)
@@ -215,7 +215,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (userId.IsNone) // We do nothing for anonymous authors for now
             return;
 
-        var contactId = new ContactId(userId, chatId, ParseOptions.OrNone);
+        var contactId = new ContactId(userId, chatId, ParseOrNone.Option);
         if (contactId.IsNone)
             return;
 

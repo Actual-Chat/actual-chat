@@ -66,8 +66,8 @@ public class LanguageUI
                 $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
                 cancellationToken).AsTask());
         return browserLanguages
-            .Select(x => LanguageId.Map.GetValueOrDefault(x))
-            .Where(x => x.IsValid)
+            .Select(x => new LanguageId(x, ParseOrNone.Option))
+            .Where(x => !x.IsNone)
             .Distinct()
             .ToList();
     }

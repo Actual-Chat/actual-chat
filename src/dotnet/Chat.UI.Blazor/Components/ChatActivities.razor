@@ -45,6 +45,7 @@
 
     public sealed class Model {
         public static Model None { get; } = new();
-        public ImmutableArray<Symbol> RecordingAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
+
+        public ImmutableArray<AuthorId> RecordingAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
     }
 }

@@ -30,7 +30,7 @@ public class AudioProcessorTest : AppHostTestBase
             await kvas.SetUserLanguageSettings(new () { Primary = LanguageId.Main, }, CancellationToken.None);
 
         var audioRecord = new AudioRecord(
-            session.Id, Constants.Chat.DefaultChatId,
+            session, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
         await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
@@ -60,7 +60,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = LanguageId.Main,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -101,7 +101,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = LanguageId.Main,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -163,9 +163,7 @@ public class AudioProcessorTest : AppHostTestBase
         string fileName = "file.webm",
         bool webMStream = true)
     {
-        var record = new AudioRecord(
-            session.Id, chatId,
-            CpuClock.Now.EpochOffset.TotalSeconds);
+        var record = new AudioRecord(session, chatId, CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int)filePath.GetFileInfo().Length;

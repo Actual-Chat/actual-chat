@@ -61,7 +61,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (ownAuthor.Id == authorId)
             return ownAuthor;
 
-        var principalId = new PrincipalId(ownAuthor.Id, ParseOptions.Skip);
+        var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
         var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.Has(ChatPermissions.EditRoles))
             return null;

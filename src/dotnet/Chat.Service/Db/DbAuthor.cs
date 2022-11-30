@@ -24,14 +24,14 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public List<DbAuthorRole> Roles { get; } = new();
 
     public static string ComposeId(ChatId chatId, long localId)
-        => new AuthorId(chatId, localId, ParseOptions.Skip).Id;
+        => new AuthorId(chatId, localId, AssumeValid.Option).Id;
 
     public AuthorFull ToModel()
     {
         var result = new AuthorFull(new AuthorId(Id), Version) {
             Version = Version,
             IsAnonymous = IsAnonymous,
-            UserId = new UserId(UserId ?? Symbol.Empty, ParseOptions.Skip),
+            UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
             RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToImmutableArray(),

@@ -36,15 +36,11 @@
     [Inject] private ICommander Commander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
     private string _quoteText = "";
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     protected override void OnParametersSet()
         => MarkupHub.ChatId = Message.Entry.ChatId;

@@ -243,9 +243,9 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (dbNotification == null)
             throw new InvalidOperationException("Notification doesn't exist.");
 
-        var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOptions.OrNone);
-        var chatEntryId = new ChatEntryId(dbNotification.ChatEntryId ?? "", ParseOptions.OrNone);
-        var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOptions.OrNone);
+        var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOrNone.Option);
+        var chatEntryId = new ChatEntryId(dbNotification.ChatEntryId ?? "", ParseOrNone.Option);
+        var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOrNone.Option);
 
         return new NotificationEntry(dbNotification.Id,
             dbNotification.Kind,

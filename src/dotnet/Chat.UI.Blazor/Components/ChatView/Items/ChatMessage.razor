@@ -113,11 +113,7 @@
     private Markup Markup => _cachedMarkup ?? GetMarkup();
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Message { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
     protected override void OnParametersSet()
         => _cachedMarkup = null;

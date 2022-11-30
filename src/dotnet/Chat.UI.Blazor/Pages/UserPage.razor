@@ -60,7 +60,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userId = new UserId(UserId, ParseOptions.OrNone);
+        var userId = new UserId(UserId, ParseOrNone.Option);
         if (userId.IsNone)
             return Model.None;
 
@@ -70,7 +70,7 @@
             return Model.None;
 
         var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
-        var contactId = new ContactId(ownAccount.Id, peerChatId, ParseOptions.Skip);
+        var contactId = new ContactId(ownAccount.Id, peerChatId, AssumeValid.Option);
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         return new Model {
             OwnAccount = ownAccount,

@@ -56,7 +56,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     private bool IsLongPress { get; set; } = false;
     private bool CanRecord { get; set; } = true;
@@ -69,9 +69,8 @@
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ActualChat.ChatId.ParseOrNone(ChatId);
         CanRecord = await AudioRecorder.CanRecord(cancellationToken);
-        var isRecordingRequested = await ChatUI.IsRecording(chatId);
+        var isRecordingRequested = await ChatUI.IsRecording(ChatId);
         // Default scheduler is used from here
         var lastState = State.LatestNonErrorValue;
         if (lastState == null)
@@ -105,7 +104,7 @@
             StateHasChanged();
             return;
         }
-        _ = ChatUI.SetRecordingChatId(ActualChat.ChatId.ParseOrNone(ChatId));
+        _ = ChatUI.SetRecordingChatId(ChatId);
     }
 
     private async Task OnLongPressStart() {
@@ -117,7 +116,7 @@
             return;
         }
         IsLongPress = true;
-        _ = ChatUI.SetRecordingChatId(ActualChat.ChatId.ParseOrNone(ChatId));
+        _ = ChatUI.SetRecordingChatId(ChatId);
     }
 
     private void OnLongPressStop() {

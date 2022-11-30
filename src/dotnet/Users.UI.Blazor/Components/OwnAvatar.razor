@@ -31,7 +31,6 @@
     [Inject] private IAvatars Avatars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
     [Parameter] public ShowInfo Show { get; set; } = ShowInfo.Avatar;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public string Class { get; set; } = "";

@@ -56,9 +56,9 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
-    private bool IsLongPress { get; set; } = false;
+    private bool IsLongPress { get; set; }
     private bool CanRecord { get; set; } = true;
 
     protected override async Task OnInitializedAsync() {
@@ -96,7 +96,7 @@
         var m = State.LatestNonErrorValue;
         var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.Initializing;
         if (isRecordingInThisChat) {
-            _ = ChatUI.SetRecordingChatId(Symbol.Empty);
+            _ = ChatUI.SetRecordingChatId(default);
             return;
         }
         CanRecord = await AudioRecorder.CanRecord();
@@ -123,7 +123,7 @@
         if (!IsLongPress)
             return;
         IsLongPress = false;
-        _ = ChatUI.SetRecordingChatId(Symbol.Empty);
+        _ = ChatUI.SetRecordingChatId(default);
     }
 
     public record Model(RecordingState RecordingState);

@@ -1,3 +1,4 @@
+@inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var cls = $"pin-toggle blackout {Class}";
@@ -16,7 +17,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     private void OnClick()
         => _ = ChatUI.RemoveActiveChat(ChatId);

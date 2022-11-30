@@ -20,10 +20,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-
-    private void OnListenClick()
-        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
         => new() {
@@ -33,4 +30,8 @@
 
     protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
         => ChatUI.GetPlaybackState(ChatId, cancellationToken);
+
+    private void OnListenClick()
+        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+
 }

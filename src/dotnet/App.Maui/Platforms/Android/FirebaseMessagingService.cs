@@ -37,7 +37,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         // Notification message is delivered here only when app is foreground.
         var data = message.Data;
         data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
-        var chatId = new ChatId(sChatId, ParseOptions.OrNone);
+        var chatId = new ChatId(sChatId, ParseOrNone.Option);
         if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
             var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
             if (handler.IsAlreadySelected(chatId)) {

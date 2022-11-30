@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);

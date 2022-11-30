@@ -104,7 +104,7 @@ public class ChatUI
         if (chatId.IsNone)
             return null;
 
-        var accountTask = Accounts.GetOwn(Session, cancellationToken);
+        var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
         var chatSummaryTask = Chats.GetSummary(Session, chatId, cancellationToken);
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
@@ -115,9 +115,10 @@ public class ChatUI
         var isListeningTask = IsListening(chatId);
         var isRecordingTask = IsRecording(chatId);
 
-        var account = await accountTask.ConfigureAwait(false);
-        var contactId = new ContactId(account.Id, chatId, ParseOptions.Skip);
-        var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
+        var ownAccount = await ownAccountTask.ConfigureAwait(false);
+        var contactId = new ContactId(ownAccount.Id, chatId, ParseOrNone.Option);
+        var contact = contactId.IsNone ? null
+            : await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
 
         var chat = await chatTask.ConfigureAwait(false);
         var chatSummary = await chatSummaryTask.ConfigureAwait(false);
@@ -302,14 +303,19 @@ public class ChatUI
 
     private Task<ISyncedState<long?>> CreateReadState(Symbol chatId, CancellationToken cancellationToken)
     {
-        var pChatId = new ChatId(chatId, ParseOptions.Skip);
+        var pChatId = new ChatId(chatId, ParseOrNone.Option);
         return Task.FromResult(StateFactory.NewCustomSynced<long?>(
             new (
                 // Reader
-                async ct => await ReadPositions.GetOwn(Session, pChatId, ct).ConfigureAwait(false),
+                async ct => {
+                    if (pChatId.IsNone)
+                        return null;
+
+                    return await ReadPositions.GetOwn(Session, pChatId, ct).ConfigureAwait(false);
+                },
                 // Writer
                 async (readEntryId, ct) => {
-                    if (readEntryId is not { } entryId)
+                    if (pChatId.IsNone || readEntryId is not { } entryId)
                         return;
 
                     var command = new IReadPositions.SetCommand(Session, pChatId, entryId);

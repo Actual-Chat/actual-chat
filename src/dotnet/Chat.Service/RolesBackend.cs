@@ -143,7 +143,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             var localId = await DbRoleIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new RoleId(chatId, localId, ParseOptions.Skip);
+            roleId = new RoleId(chatId, localId, AssumeValid.Option);
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };
