@@ -21,8 +21,8 @@ public static partial class Constants
     {
         public static class Admin
         {
-            public static UserId UserId { get; } = new("admin", AssumeValid.Option);
-            public static string Name { get; } =  "Admin";
+            public static UserId UserId { get; } = new("actualadmin", AssumeValid.Option);
+            public static string Name { get; } =  "Actual Chat Admin";
             public static string Picture { get; } = "https://avatars.dicebear.com/api/avataaars/12333323132.svg";
         }
 

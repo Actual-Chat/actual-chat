@@ -35,8 +35,7 @@
     <PackageReference Update="Google.Cloud.Storage.V1" Version="4.1.0" />
     <!-- We use Grpc.Core from otlp exporter -->
     <PackageReference Update="Grpc.Core" Version="2.46.5" />
-    <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
-    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="3.0.0-beta01"/>
+    <PackageReference Update="Google.Cloud.Speech.V2" Version="1.0.0-beta02"/>
     <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
     <PackageReference Update="MessagePack" Version="2.4.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.4.*"/>
@@ -56,6 +55,7 @@
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>

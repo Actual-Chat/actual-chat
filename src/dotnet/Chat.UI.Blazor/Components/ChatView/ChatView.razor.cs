@@ -159,6 +159,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 if (!_fullyVisibleEntryIds.Contains(navigateToEntryId.Value))
                     mustScrollToEntry = true;
             }
+        var scrollToKey = mustScrollToEntry
+            ? entryId.ToString(CultureInfo.InvariantCulture)
+            : null;
+
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
             ? new Range<long>(
@@ -168,13 +172,37 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ? new Range<long>(
                     chatIdRange.End - (2*PageSize),
                     chatIdRange.End)
-                : query.InclusiveRange
+                : query.KeyRange
                     .AsLongRange()
-                    .ToExclusive()
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
         var adjustedRange = queryRange.Clamp(chatIdRange);
-        var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
+        // extend requested range if close to chat Id range
+        var closeToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
+        var closeToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
+        var extendedRange = (closeToTheStart, closeToTheEnd) switch {
+            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
+            (_, true) => new Range<long>(adjustedRange.Start, chatIdRange.End).Expand(1),
+            (true, _) => new Range<long>(chatIdRange.Start, adjustedRange.End).Expand(1),
+            _ => adjustedRange,
+        };
+
+        var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
+        var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
+        // var oldRange =  oldData.Query.IsNone
+        //     ? new Range<long>(0,0)
+        //     : oldData.Query.KeyRange
+        //         .AsLongRange()
+        //         .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
+
+        // if (oldRange.Contains(extendedRange)
+        //     && oldRange.Size() - extendedRange.Size() < PageSize / 2
+        //     && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
+        //     && hasVeryFirstItem == oldData.HasVeryFirstItem
+        //     && hasVeryLastItem == oldData.HasVeryLastItem)
+        //     return oldData;
+
+        var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
@@ -184,8 +212,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
-        var hasVeryFirstItem = adjustedRange.Start <= chatIdRange.Start;
-        var hasVeryLastItem = adjustedRange.End + 1 >= chatIdRange.End;
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
@@ -193,11 +219,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasVeryFirstItem,
             hasVeryLastItem,
             TimeZoneConverter);
-        var scrollToKey = mustScrollToEntry
-            ? entryId.ToString(CultureInfo.InvariantCulture)
-            : null;
+
         var result = VirtualListData.New(
-            new VirtualListDataQuery(adjustedRange.AsStringRange()),
+            new VirtualListDataQuery(extendedRange.AsStringRange()),
             chatMessages,
             hasVeryFirstItem,
             hasVeryLastItem,
@@ -216,8 +240,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             try {
                 await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
                 var visibleKeys = await VisibleKeys.Use(cancellationToken);
-                if (visibleKeys.Count == 0)
+                if (visibleKeys.Count == 0) {
+                    ChatUI.VisibleIdRange.Value = new(0, 0);
                     continue;
+                }
 
                 var visibleEntryIds = visibleKeys
                     .Select(key =>
@@ -227,6 +253,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .Where(entryId => entryId.HasValue)
                     .Select(entryId => entryId!.Value)
                     .ToHashSet();
+                ChatUI.VisibleIdRange.Value = new (visibleEntryIds.Min(), visibleEntryIds.Max());
 
                 var maxVisibleEntryId = visibleEntryIds.Max();
                 var minVisibleEntryId = visibleEntryIds.Min();

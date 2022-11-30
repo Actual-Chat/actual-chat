@@ -36,7 +36,8 @@ public class ChatUI
     public ISyncedState<ImmutableHashSet<PinnedChat>> PinnedChats { get; }
     public IStoredState<ChatId> SelectedChatId { get; }
     public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
-    public IMutableState<ChatEntryId> HighlightedChatEntryId { get; }
+    public IMutableState<long> HighlightedChatEntryId { get; }
+    public IMutableState<Range<long>> VisibleIdRange { get; }
 
     public ChatUI(IServiceProvider services)
     {
@@ -66,7 +67,8 @@ public class ChatUI
                 Corrector = FixPinnedChats,
             });
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
-        HighlightedChatEntryId = StateFactory.NewMutable<ChatEntryId>();
+        HighlightedChatEntryId = StateFactory.NewMutable<long>();
+        VisibleIdRange = StateFactory.NewMutable<Range<long>>();
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);

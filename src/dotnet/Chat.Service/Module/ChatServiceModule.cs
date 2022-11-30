@@ -60,8 +60,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
         });
 
         // Commander & Fusion
-        var commander = services.AddCommander()
-            .AddLocalEventHandlers();
+        var commander = services.AddCommander();
         commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
@@ -77,6 +76,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
         });
         var fusion = services.AddFusion();
+        fusion.AddLocalCommandScheduler(Queues.Chats);
+        commander.AddEventHandlers();
 
         // Chats
         fusion.AddComputeService<IChats, Chats>();

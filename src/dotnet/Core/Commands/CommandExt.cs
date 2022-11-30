@@ -16,7 +16,7 @@ public static class CommandExt
     }
 
     public static Task Enqueue(
-        this ICommand command,
+        this IEvent @event,
         QueueRef queueRef1,
         QueueRef queueRef2,
         CancellationToken cancellationToken = default)
@@ -25,13 +25,13 @@ public static class CommandExt
         var provider = commandContext.Services.GetRequiredService<ICommandQueues>();
         var queue1 = provider.Get(queueRef1);
         var queue2 = provider.Get(queueRef2);
-        var task1 = queue1.Enqueue(command, cancellationToken);
-        var task2 = queue2.Enqueue(command, cancellationToken);
+        var task1 = queue1.Enqueue(@event, cancellationToken);
+        var task2 = queue2.Enqueue(@event, cancellationToken);
         return Task.WhenAll(task1, task2);
     }
 
     public static Task Enqueue(
-        this ICommand command,
+        this IEvent @event,
         QueueRef queueRef1,
         QueueRef queueRef2,
         QueueRef queueRef3,
@@ -42,14 +42,14 @@ public static class CommandExt
         var queue1 = provider.Get(queueRef1);
         var queue2 = provider.Get(queueRef2);
         var queue3 = provider.Get(queueRef3);
-        var task1 = queue1.Enqueue(command, cancellationToken);
-        var task2 = queue2.Enqueue(command, cancellationToken);
-        var task3 = queue3.Enqueue(command, cancellationToken);
+        var task1 = queue1.Enqueue(@event, cancellationToken);
+        var task2 = queue2.Enqueue(@event, cancellationToken);
+        var task3 = queue3.Enqueue(@event, cancellationToken);
         return Task.WhenAll(task1, task2, task3);
     }
 
     public static async Task Enqueue(
-        this ICommand command,
+        this IEvent @event,
         CancellationToken cancellationToken,
         params QueueRef[] queueRefs)
     {
@@ -58,7 +58,8 @@ public static class CommandExt
 
         var commandContext = CommandContext.GetCurrent();
         var provider = commandContext.Services.GetRequiredService<ICommandQueues>();
-        var tasks = queueRefs.Select(queueRef => provider.Get(queueRef).Enqueue(command, cancellationToken));
+
+        var tasks = queueRefs.Select(queueRef => provider.Get(queueRef).Enqueue(@event, cancellationToken));
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
@@ -75,7 +76,7 @@ public static class CommandExt
     }
 
     public static void EnqueueOnCompletion(
-        this ICommand command,
+        this IEvent @event,
         QueueRef queueRef1,
         QueueRef queueRef2)
     {
@@ -84,13 +85,14 @@ public static class CommandExt
             throw StandardError.Internal("The operation is already completed.");
 
         var operationItems = GetOperation(commandContext).Items;
-        var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
-        list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2));
+        var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty)
+            .Add(new EnqueuedCommandEntry(@event, queueRef1))
+            .Add(new EnqueuedCommandEntry(@event, queueRef2));
         operationItems.Set(list);
     }
 
     public static void EnqueueOnCompletion(
-        this ICommand command,
+        this IEvent @event,
         QueueRef queueRef1,
         QueueRef queueRef2,
         QueueRef queueRef3)
@@ -100,8 +102,10 @@ public static class CommandExt
             throw StandardError.Internal("The operation is already completed.");
 
         var operationItems = GetOperation(commandContext).Items;
-        var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty);
-        list = list.Add(new(command, queueRef1)).Add(new(command, queueRef2)).Add(new(command, queueRef3));
+        var list = operationItems.GetOrDefault(ImmutableList<EnqueuedCommandEntry>.Empty)
+            .Add(new EnqueuedCommandEntry(@event, queueRef1))
+            .Add(new EnqueuedCommandEntry(@event, queueRef2))
+            .Add(new EnqueuedCommandEntry(@event, queueRef3));
         operationItems.Set(list);
     }
 

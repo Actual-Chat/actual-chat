@@ -82,7 +82,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
                 IsAnonymous = false,
-                UserId = $"user{i}",
+                UserId = $"user{i:00}",
             };
             dbContext.Authors.Add(dbAuthor);
             try {

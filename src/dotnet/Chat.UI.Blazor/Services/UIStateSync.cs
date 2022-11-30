@@ -216,7 +216,7 @@ public class UIStateSync : WorkerBase
         }
 
         void SyncRecorderState()
-            => UpdateRecorderState(recorderState != null, recordingChatId, cancellationToken);
+            => UpdateRecorderState(recorderState != null && recorderChatId != recordingChatId, recordingChatId, cancellationToken);
     }
 
     private Task UpdateRecorderState(

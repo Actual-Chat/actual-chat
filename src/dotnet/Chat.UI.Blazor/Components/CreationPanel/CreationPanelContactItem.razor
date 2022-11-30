@@ -1,0 +1,64 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<CreationPanelContactItem.Model>
+@{
+    var m = State.ValueOrDefault;
+    if (m is null)
+        return;
+    var url = $"/chat/{m.ShortChatId.UrlEncode()}";
+    bool activeLink = PageNumber == 1;
+    bool showEnding = PageNumber == 2;
+
+    RenderFragment RenderItem()
+        => @<div class="creation-panel-contact-item @(activeLink ? "" : "unfocusable")">
+               <div class="flex-x w-full items-center gap-x-2">
+                   <AccountCircle UserId="@Contact.Id.OtherId" ShowPresence="true"/>
+                   <span class="text-ellipsis whitespace-nowrap overflow-hidden">
+                       <SearchUIHighlighter Text="@Contact.Account!.Avatar.Name"/>
+                   </span>
+               </div>
+               @if (showEnding) {
+                   <div class="flex-x justify-center min-w-4">
+                       <Checkbox
+                           Id="@($"creation-panel-contact-{Contact.Id.OtherId}")"
+                           Checked="@IsSelected"
+                           Change="@OnSelect"/>
+                   </div>
+               }
+           </div>;
+}
+
+@if (DisableLink) {
+    <div>
+        @RenderItem()
+    </div>
+} else {
+    <a class="unfocusable cursor-pointer" data-href="@url">
+        @RenderItem()
+    </a>
+}
+
+@code {
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
+    [Parameter] public int PageNumber { get; set; }
+    [Parameter] public bool DisableLink { get; set; }
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback OnSelect { get; set; }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
+        var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
+        var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);
+        var isOnline = presence is Presence.Online or Presence.Recording;
+
+        return new(
+            fullChatId,
+            shortChatId);
+    }
+
+    public record Model(
+        string FullChatId,
+        string ShortChatId);
+}

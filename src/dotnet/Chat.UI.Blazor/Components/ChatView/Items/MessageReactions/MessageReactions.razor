@@ -4,31 +4,30 @@
 @{
     var m = State.Value;
 }
-@if (!_areReactionsEnabled || !m.HasReactions) {
+@if (!m.HasReactions) {
     return;
 }
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
-        var ownReactionClass = m.OwnReaction?.EmojiId == reaction.EmojiId ? "message-reactions-reaction-own" : "";
-        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.EmojiId)"
-            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.EmojiId))"
-            data-menu-trigger="@MenuTriggers.RightClick.Format()">
-            <EmojiIcon Id="@reaction.EmojiId" class="w-4 h-4"/>
+        var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
+        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
+            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.Emoji))"
+            data-menu-trigger="@MenuTriggers.RightClick.Format()"
+            data-menu-position="@(FloatingPosition.Right.ToPositionString())">
+            <EmojiIcon Code="@reaction.Emoji" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
 
-    <li class="message-reactions-add hover:bg-reaction text-icons-03"
+    <li class="message-reactions-add"
         data-menu="@(MenuRef.New<ReactionSelectMenu>(ChatEntry.Id))"
         data-menu-trigger="@MenuTriggers.LeftClick.Format()"
         data-menu-position="@(FloatingPosition.Right.ToPositionString())">
-        <AddReactionIcon/>
+        <AddReactionIcon class="message-reactions-add-icon"/>
     </li>
 </ul>
 
 @code {
-    private bool _areReactionsEnabled;
-
     [Inject] private IReactions Reactions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
@@ -36,9 +35,6 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
-
-    protected override async Task OnInitializedAsync()
-        => _areReactionsEnabled = await Features.Get<UIFeatures.EnableMessageReactions, bool>(CancellationToken.None);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new Model(ChatEntry.HasReactions, ImmutableArray<ReactionSummary>.Empty), };

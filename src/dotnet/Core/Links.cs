@@ -21,9 +21,9 @@ public static class Links
 
     public static string Normalize(string link)
     {
-        if (!link.EndsWith("/", StringComparison.Ordinal))
+        if (!link.OrdinalEndsWith("/"))
             link += "/";
-        if (!link.StartsWith("/", StringComparison.Ordinal))
+        if (!link.OrdinalStartsWith("/"))
             link = "/" + link;
         return link;
     }

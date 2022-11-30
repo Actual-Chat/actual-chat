@@ -22,6 +22,7 @@
         => kind switch {
             ContactListKind.Pinned => "pinned-chats",
             ContactListKind.Unpinned => "unpinned-chats custom-scrollbar",
+            ContactListKind.All => "all-chats custom-scrollbar",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 }

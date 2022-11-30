@@ -11,19 +11,26 @@
     authorNameCls += "font-bold text-base";
 }
 
-<div class="quoted-message" @onclick="OnQuoteClick">
-    <div class="block bg-primary left-line min-h-10"></div>
-    <div class="flex-y w-full px-2 opacity-90">
-        <div class="grid pl-0.5">
-            <AuthorName Id="@entry.AuthorId" Class="@authorNameCls"/>
-        </div>
-        <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
-            <div class="flex-x w-full overflow-hidden">
-                <div class="truncate font-medium pointer-cursor text-base text-03">@model.Quote</div>
+@if (message.Entry.IsRemoved) {
+    <div class="quoted-message quoted-message-removed">
+        <LeftLine Class="h-5"/>
+        The message was deleted.
+    </div>
+} else {
+    <div class="quoted-message" @onclick="OnQuoteClick">
+        <LeftLine Class="h-10"/>
+        <div class="flex-y w-full px-2 opacity-90">
+            <div class="grid pl-0.5">
+                <AuthorName Id="@entry.AuthorId" Class="@authorNameCls"/>
+            </div>
+            <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
+                <div class="flex-x w-full overflow-hidden">
+                    <div class="truncate font-medium pointer-cursor text-base text-03">@(model.Quote)</div>
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -42,8 +49,9 @@
 
     private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
 
-    protected override void OnParametersSet()
-        => MarkupHub.ChatId = Message.Entry.ChatId;
+    protected override void OnParametersSet() {
+        MarkupHub.ChatId = Message.Entry.ChatId;
+    }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
@@ -69,5 +77,4 @@
         ChatMessageModel Message,
         string Quote,
         Author? OwnAuthor);
-
 }

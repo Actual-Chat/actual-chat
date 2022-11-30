@@ -1,7 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits MenuBase
 
-<ReactionSelect ChatEntry="@_entry" Class="gap-2" ReactionClass="w-4 h-4" />
+<div class="reaction-select-menu">
+    <ReactionSelect ChatEntry="@_entry" />
+</div>
 
 @code {
     private ChatEntry _entry = null!;

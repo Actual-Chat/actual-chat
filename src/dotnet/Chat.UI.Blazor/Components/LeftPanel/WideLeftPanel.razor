@@ -10,22 +10,13 @@
             @ref="_searchBoxRef"
             Placeholder="Find chat..."
             TextChanged="OnSearchBoxTextChanged"/>
-        <div>
-            <ButtonRound
-                Click="@OnClick"
-                Class="transparent"
-                Tooltip="New chat..."
-                FloatingPosition="FloatingPosition.Bottom">
-                <i class="icon-chat-add-two text-2xl"></i>
-            </ButtonRound>
-        </div>
     </div>
     <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
         <NavbarContent/>
     </div>
     @if (ScreenSize.IsNarrow()) {
         <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
-            <div class="text-02 text-lg font-medium">@NavbarUI.ActiveGroupTitle</div>
+            <div class="text-02 text-title-1">@NavbarUI.ActiveGroupTitle</div>
             <div class="flex grow"></div>
             <div class="flex">
                 <ButtonRound Click="OnHideLeftPanelClick" Class="transparent">
@@ -66,8 +57,9 @@
     private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
         => InvokeAsync(StateHasChanged);
 
-    private Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
-        _searchBoxRef?.Cancel();
-        return Task.CompletedTask;
+    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null) {
+            await _searchBoxRef.Cancel();
+        }
     }
 }

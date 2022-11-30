@@ -1,0 +1,16 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<button class="creation-btn" onclick="@OnClick">
+    <div class="min-w-10 max-w-10 md:min-w-12 md:max-w-12">
+        @Icon
+    </div>
+    <div class="font-medium text-lg">
+        @Title
+    </div>
+</button>
+
+@code{
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnClick { get; set; }
+}

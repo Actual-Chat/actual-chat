@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Commands;
 using ActualChat.Commands.Internal;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;

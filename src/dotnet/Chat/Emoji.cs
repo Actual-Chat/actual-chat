@@ -9,18 +9,18 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
     public static readonly Emoji None = new(Symbol.Empty, "");
 
     public static readonly Emoji ThumbsUp = new("👍", "thumbs up");
-    public static readonly Emoji RedHeart = new ("❤️", "red heart");
-    public static readonly Emoji Lol = new ("😂", "face with tears of joy");
-    public static readonly Emoji Surprise = new ("😲", "astonished face");
-    public static readonly Emoji Sad = new ("😥", "sad but relieved face");
-    public static readonly Emoji Angry = new ("😠", "angry face");
-    public static readonly Emoji Poo = new ("💩", "pile of poo");
-    public static readonly Emoji OkHand = new ("👌", "ok hand");
-    public static readonly Emoji Fire = new ("🔥", "fire");
-    public static readonly Emoji BeamingFace = new ("😁", "beaming face with smiling eyes");
-    public static readonly Emoji ThumbsDown = new ("👎", "thumbs down");
-    public static readonly Emoji ScreamingFaceInFear = new ("😱", "face screaming in fear");
-    public static readonly Emoji JackOLantern = new ("🎃", "jack-o-lantern");
+    public static readonly Emoji RedHeart = new("❤️", "red heart");
+    public static readonly Emoji Lol = new("😂", "face with tears of joy");
+    public static readonly Emoji Surprise = new("😲", "astonished face");
+    public static readonly Emoji Sad = new("😥", "sad but relieved face");
+    public static readonly Emoji Angry = new("😠", "angry face");
+    public static readonly Emoji Poo = new("💩", "pile of poo");
+    public static readonly Emoji OkHand = new("👌", "ok hand");
+    public static readonly Emoji Fire = new("🔥", "fire");
+    public static readonly Emoji BeamingFace = new("😁", "beaming face with smiling eyes");
+    public static readonly Emoji ThumbsDown = new("👎", "thumbs down");
+    public static readonly Emoji ScreamingFaceInFear = new("😱", "face screaming in fear");
+    public static readonly Emoji JackOLantern = new("🎃", "jack-o-lantern");
 
     private static readonly Dictionary<Symbol, Emoji> _all = new[] {
         ThumbsUp,
@@ -41,8 +41,6 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
     public static readonly IReadOnlyCollection<Emoji> All = _all.Values;
 
     public static Emoji Get(Symbol code) => _all.GetValueOrDefault(code) ?? None;
-    public static bool IsValid(Symbol code)
-        => _all.ContainsKey(code);
 
     public static implicit operator Symbol(Emoji emoji) => emoji.Id;
     public static implicit operator string(Emoji emoji) => emoji.Id;

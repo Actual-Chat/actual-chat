@@ -10,7 +10,7 @@ public class ChatEntryReaderTest : AppHostTestBase
 
     public ChatEntryReaderTest(ITestOutputHelper @out) : base(@out) { }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task BasicTest()
     {
         using var appHost = await NewAppHost();
@@ -50,7 +50,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task FindByMinBeginsAtTest()
     {
         using var appHost = await NewAppHost();
@@ -91,7 +91,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ReadTilesTest()
     {
         using var appHost = await NewAppHost();
@@ -125,7 +125,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result[0].Entries.Length.Should().BeGreaterThan(3);
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ShouldReadTilesReverse()
     {
         using var appHost = await NewAppHost();
@@ -162,7 +162,7 @@ public class ChatEntryReaderTest : AppHostTestBase
                 "it was a teenage wedding and the all folks wished them well");
     }
 
-    [Theory]
+    [Theory(Skip = "Flaky")]
     [InlineData(0, "it was a teenage wedding and the all folks wished them well")]
     [InlineData(1, "rape me rape me my friend")]
     [InlineData(2, "back in black i hit the sack")]
@@ -200,7 +200,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         entry?.Content.Should().Be(expected);
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ObserveTest1()
     {
         using var appHost = await NewAppHost();
@@ -245,7 +245,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky")]
     public async Task ObserveTest2()
     {
         using var appHost = await NewAppHost();

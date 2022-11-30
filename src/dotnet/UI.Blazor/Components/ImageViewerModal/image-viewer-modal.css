@@ -10,10 +10,6 @@
     @apply absolute top-0 flex-x min-h-14 w-full px-3 md:px-2 bg-black md:bg-transparent;
     @apply backdrop-blur-none md:backdrop-blur-sm;
 }
-.image-viewer-header .image-header-btn,
-.image-viewer-header .image-header-btn * {
-    @apply cursor-pointer;
-}
 .image-viewer-header .image-header-btn.btn.btn-round.mobile {
     @apply flex md:hidden;
     @apply min-h-10 max-h-10 min-w-10 max-w-10;
@@ -57,7 +53,7 @@
 }
 
 .image-viewer-modal .image-viewer-content img {
-    @apply flex-auto w-fit;
+    @apply flex-auto w-fit max-w-fit;
     @apply object-contain;
     max-height: calc(100vh - 7rem); /* screen height - close button height */
 }

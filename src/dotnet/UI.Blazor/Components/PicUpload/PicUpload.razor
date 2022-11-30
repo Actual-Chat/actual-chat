@@ -5,9 +5,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
+@{
+    var sizeClass = $"pic-size-{(int)Size}";
+}
+
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
     <Pic Title="@Title" Size="@Size" ContentId="@ContentId" Click="PictureClick" NoPicture="NoPicture"/>
-    <div class="pic-upload-picker">
+    <div class="pic-upload-picker @(sizeClass)">
         <FileUpload id="@_inputId"
                     UploadUrl="@ImageUploadUrl"
                     Uploaded="OnUploaded"

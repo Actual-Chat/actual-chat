@@ -6,12 +6,11 @@
     var isActive = NavbarUI.ActiveGroupId == Id;
     var cls = isActive ? "on" : "";
     var btnClass = $"{cls} {Class}";
-    var lineClass = isActive ? "bg-primary" : "bg-transparent";
+    var lineClass = isActive ? "h-8" : "invisible";
 }
 
 <div class="flex-x relative">
-    <div class="@lineClass left-line">
-    </div>
+    <LeftLine Class="@lineClass"/>
     <ButtonSquare
         Click="@OnClick"
         Class="@btnClass"

@@ -10,6 +10,7 @@ public class Form : EditForm
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsHorizontal { get; set; }
+    [Parameter] public string Id { get; set; } = "";
 
     public bool IsValid { get; private set; } = true;
 
@@ -50,7 +51,7 @@ public class Form : EditForm
 
         var i = 0;
         builder.OpenElement(i++, "form");
-        builder.AddAttribute(i++, "class", $"form {(IsHorizontal ? "form-x" : "form-y")}");
+        builder.AddAttribute(i++, "class", $"form {(IsHorizontal ? "form-x" : "form-y")} {Class}");
         builder.AddMultipleAttributes(i++, AdditionalAttributes);
         builder.AddAttribute(i++, "onsubmit", _handleSubmitCached);
         builder.OpenComponent<CascadingValue<EditContext>>(i++);

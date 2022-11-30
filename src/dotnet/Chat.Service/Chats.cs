@@ -230,7 +230,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return default;
     }
 
-    // [CommandHandler]
     public virtual Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

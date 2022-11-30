@@ -1,13 +1,13 @@
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
 namespace ActualChat.Commands;
+
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 public static class CommanderExt
 {
-    public static CommanderBuilder AddLocalEventHandlers(this CommanderBuilder builder)
+    public static CommanderBuilder AddEventHandlers(this CommanderBuilder builder)
     {
         var eventCommandHandlerResolverDescriptor = new ServiceDescriptor(typeof(ICommandHandlerResolver),
-            typeof(EventCommandHandlerResolver),
+            typeof(EventHandlerResolver),
             ServiceLifetime.Singleton);
         if (builder.Services.Any(sd => sd.ServiceType == typeof(ICommandHandlerResolver)))
             builder.Services.Replace(eventCommandHandlerResolverDescriptor);

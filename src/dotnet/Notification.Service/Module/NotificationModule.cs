@@ -41,8 +41,7 @@ public class NotificationModule : HostModule<NotificationSettings>
             db => db.AddEntityResolver<string, DbNotification>());
 
         // Commander & Fusion
-        var commander = services.AddCommander()
-            .AddLocalEventHandlers();
+        var commander = services.AddCommander();
         commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<NotificationDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
@@ -56,6 +55,8 @@ public class NotificationModule : HostModule<NotificationSettings>
             return false;
         });
         var fusion = services.AddFusion();
+        fusion.AddLocalCommandScheduler(Queues.Users);
+        commander.AddEventHandlers();
 
         // Module's own services
         fusion.AddComputeService<INotifications, Notifications>();

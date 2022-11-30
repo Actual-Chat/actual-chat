@@ -119,19 +119,17 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(message.audioHubUrl, {
-            skipNegotiation: true,
-            transport: signalR.HttpTransportType.WebSockets
-        })
+        .withUrl(message.audioHubUrl)
+        // Reverted skipNegotiate due to recording glitches???
+        //     .withUrl(message.audioHubUrl, {
+        //         skipNegotiation: true,
+        //         transport: signalR.HttpTransportType.WebSockets
+        //     })
         .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)
         .build();
     await hubConnection.start();
-    // call Ping first time to ensure pipeline is ready for recording after receiving mic data
-    const pong = await hubConnection.invoke('Ping');
-    if (pong !== 'Pong')
-        warnLog?.log(`onCreate: unexpected Ping call result:`, pong);
 
     // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);

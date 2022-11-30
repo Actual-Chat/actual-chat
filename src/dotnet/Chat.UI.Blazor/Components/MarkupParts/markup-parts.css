@@ -33,7 +33,7 @@
     @apply whitespace-break-spaces;
 }
 .playable-text-markup > span {
-    @apply inline-block cursor-pointer;
+    @apply inline-block;
 }
 .playable-text-markup > span:hover {
 }

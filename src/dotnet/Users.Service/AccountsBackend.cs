@@ -95,7 +95,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         if (HasIdentity(user, "internal") || HasIdentity(user, "test"))
             return true;
 
-        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email);
+        var email = user.GetEmail();
         if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
             return false;
 

@@ -1,0 +1,261 @@
+@using Stl.Extensibility
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Contacts
+@implements IModalView<CreationModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<CreationModal.ComputedModel>
+
+@{
+    var m = State.LatestNonErrorValue;
+
+    RenderFragment RenderArrowBack()
+        => @<ButtonRound Class="transparent" Click="@GetPreviousPage">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>;
+
+    RenderFragment RenderTitle(string title)
+        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
+}
+
+<CascadingValue Value="_enableIncompleteUI">
+    <DialogFrame class="creation-modal" ShowMobileHeader="false">
+        <Body>
+        @if (PageNumber == 1) {
+            <CreatePage
+                Title="Create"
+                AllContacts="@m.AllContacts.ToArray()"
+                SelectedContacts="@SelectedContacts"
+                OnCloseClick="@OnClose"
+                OnNextPageClick="@GetNextPage"
+                OnPreviousPageClick="@GetPreviousPage"/>
+        } else if (PageNumber == 2) {
+            <AddMembersPage
+                Title="Add members"
+                AllContacts="@m.AllContacts.ToArray()"
+                SelectedContacts="@SelectedContacts"
+                OnCloseClick="@OnClose"
+                OnNextPageClick="@GetNextPage"
+                OnPreviousPageClick="@GetPreviousPage"
+                SearchBox="@_searchBoxRef"
+                OnRemoveContact="@RemoveFromSelected"/>
+        } else if (PageNumber == 3) {
+            <div class="creation-panel">
+                <div class="header add-members">
+                    @RenderArrowBack()
+                    @RenderTitle("New Group")
+                    <ButtonRound Class="transparent" Click="@OnClose">
+                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
+                    </ButtonRound>
+                </div>
+
+                <Form @ref="@_formRef" Model="@_form" Id="@_form.FormId" Class="px-2">
+                    <DataAnnotationsValidator/>
+                    <div class="flex-y grow max-h-128 overflow-y-auto">
+                        <div class="flex-x gap-x-2 items-center pb-4">
+                            <AnonymousIcon Class="w-30 h-30 mx-2"></AnonymousIcon>
+                            <FormSection Label="Group name" InputId="@_form.TitleId" IsLabelInsideInput="true" Class="my-2" IsRequired="true">
+                                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
+                            </FormSection>
+                        </div>
+                    </div>
+                    <RenderIntoSlot Name="NewGroupFormButton">
+                        <div class="btn-group">
+                            @{
+                                var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                            }
+                            <Button Type="@ButtonType.Button" Click="@OnCreate" FormId="@_form.FormId" Class="@submitClass">Create</Button>
+                        </div>
+                    </RenderIntoSlot>
+                </Form>
+            </div>
+        }
+        <CreationPanelContacts
+            PageNumber="@PageNumber"
+            AllContacts="@m.AllContacts.ToArray()"
+            SelectedContacts="@SelectedContacts"
+            OnAddContact="@AddContactToSelected"/>
+        </Body>
+
+    <Buttons>
+        @if (PageNumber == 2) {
+            <div class="btn-group">
+                <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
+            </div>
+        } else if (PageNumber == 3) {
+            <RenderSlot Name="NewGroupFormButton"/>
+        }
+    </Buttons>
+    </DialogFrame>
+</CascadingValue>
+
+
+@code {
+    private bool _enableIncompleteUI;
+    private SearchBox _searchBoxRef = null!;
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] SelectedContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private int PageNumber { get; set; } = 1;
+    private CancellationTokenSource DisposeTokenSource { get; }
+    private CancellationToken DisposeToken { get; }
+
+    public CreationModal()
+    {
+        DisposeTokenSource = new();
+        DisposeToken = DisposeTokenSource.Token;
+    }
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        _form = new(ComponentIdGenerator);
+
+        var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
+        AllContacts = userContacts
+            .OrderBy(x => x.Account?.Avatar.Name)
+            .ToArray();
+        FilteredContacts = AllContacts;
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        if (!account.IsActive())
+            return ComputedModel.None;
+
+        var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        if (!searchPhrase.IsEmpty) {
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
+            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
+            contacts = (
+                from contact in contacts
+                let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
+                where rank > 0 || ReferenceEquals(selectedContact, contact)
+                orderby rank descending
+                select contact
+                ).ToList();
+        }
+        return new ComputedModel {
+            AllContacts = contacts,
+        };
+    }
+
+    private void OnClose()
+        => ModalInstance.CloseAsync();
+
+    private void GetNextPage() {
+        if (PageNumber >= 3) return;
+        PageNumber += 1;
+        StateHasChanged();
+    }
+
+    private void GetPreviousPage() {
+        if (PageNumber > 1) {
+            PageNumber -= 1;
+            StateHasChanged();
+        } else
+            OnClose();
+    }
+
+    private void AddContactToSelected(Contact selectedContact) {
+        var selectedContacts = SelectedContacts.ToList();
+        if (selectedContacts.Contains(selectedContact)) {
+            selectedContacts.Remove(selectedContact);
+        } else {
+            selectedContacts.Add(selectedContact);
+        }
+        SelectedContacts = selectedContacts.ToArray();
+        StateHasChanged();
+    }
+
+    private void RemoveFromSelected(Contact selectedContact) {
+        var selectedContacts = SelectedContacts.ToList();
+        if (!selectedContacts.Contains(selectedContact)) return;
+        selectedContacts.Remove(selectedContact);
+        SelectedContacts = selectedContacts.ToArray();
+        StateHasChanged();
+    }
+
+    private async Task OnCreate()
+    {
+        var command = new IChats.ChangeCommand(Session, "", null, new() {
+            Create = new ChatDiff() {
+                Title = _form.Title,
+                ChatType = ChatType.Group,
+                IsPublic = _form.IsPublic,
+            },
+        });
+        try {
+            var (chat, error) = await UICommander.Run(command, default);
+            if (error != null)
+                return;
+
+            chat = chat.Require();
+
+            var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account.Id).ToArray();
+            var createAuthorsCommand = new IAuthors.CreateAuthorsCommand(Session, chat.Id, userIds);
+            var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, DisposeToken);
+            if (error != null)
+                return;
+
+            await ModalInstance.CloseAsync();
+            Nav.NavigateTo(Links.ChatPage(chat.Id));
+        }
+        catch {
+        // Intended: command errors are shown in the UI anyway
+        }
+    }
+
+    public class FormModel
+    {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+        public bool IsPublic { get; set; }
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string IsPublicId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            IsPublicId = $"{FormId}-isPublic";
+        }
+    }
+
+    public sealed record Model;
+
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new() {
+            AllContacts = new (),
+        };
+
+        public List<Contact> AllContacts { get; init; } = null!;
+    }
+}

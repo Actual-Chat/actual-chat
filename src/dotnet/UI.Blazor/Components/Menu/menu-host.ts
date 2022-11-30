@@ -1,10 +1,20 @@
-import './menu.css'
+import './menu.css';
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
-import { empty, skipWhile, combineLatestWith, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
-import { computePosition, flip, Middleware, offset, Placement, shift, ReferenceElement, VirtualElement } from '@floating-ui/dom';
+import { combineLatestWith, empty, filter, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
+import {
+    computePosition,
+    flip,
+    Middleware,
+    offset,
+    Placement,
+    ReferenceElement,
+    shift,
+    VirtualElement,
+} from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
 import screenSize from '../../Services/ScreenSize/screen-size';
+import { Vibration } from '../../Services/Vibration/vibration';
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MenuHost';
@@ -105,10 +115,20 @@ export class MenuHost implements Disposable {
         this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
     }
 
+    private hideOverlay(): void {
+        if (this.menus.length)
+            return;
+        const overlay = document.getElementsByClassName('ac-menu-overlay')[0] as HTMLElement;
+        if (!overlay)
+            return;
+        overlay.style.display = 'none';
+    }
+
     private hideMenu(menu: Menu): void {
         debugLog?.log(`hideMenu, menu:`, menu);
         if (menu.elementRef)
             menu.elementRef.style.display = 'none';
+        this.hideOverlay();
 
         this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
     }
@@ -146,8 +166,20 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
+            )
+            .subscribe((event: Event) => {
+                if (!(event.target instanceof Element))
+                    return undefined;
+                if (event.target.nodeName === 'IMG')
+                    return undefined;
+                event.preventDefault();
+            });
+
+        fromEvent(document, 'contextmenu')
+            .pipe(
+                takeUntil(this.disposed$),
                 combineLatestWith(screenSize.size$),
-                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
                 switchMap((eventData: EventData | undefined) => {
@@ -161,6 +193,9 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'long-press')
             .pipe(
                 takeUntil(this.disposed$),
+                combineLatestWith(screenSize.size$),
+                filter(([_, screenSize]) => screenSize === 'Small'),
+                map(([event, _]) => event),
                 map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
                 switchMap((eventData: EventData | undefined) => {
                     return eventData ? of(eventData) : empty();
@@ -168,13 +203,14 @@ export class MenuHost implements Disposable {
             )
             .subscribe((eventData: EventData) => {
                 this.renderMenu(eventData);
+                Vibration.vibrate();
             });
 
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
                 combineLatestWith(screenSize.size$),
-                skipWhile(([_, screenSize]) => screenSize === 'Small'),
+                filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),
                 switchMap((eventData: EventData | undefined) => {
@@ -185,12 +221,27 @@ export class MenuHost implements Disposable {
                 this.renderMenu(eventData);
             });
 
+        fromEvent(document, 'touchend')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter((event: TouchEvent) => {
+                    if (!(event.target instanceof Element))
+                        return false;
+                    const isOverlayClicked = event.target.classList.contains('ac-menu-overlay');
+                    if (isOverlayClicked)
+                        return true;
+                    const isMenuClicked = event.target.closest('.ac-menu, .ac-menu-hover') != null;
+                    return isMenuClicked;
+                }),
+            )
+            .subscribe(() => {
+                this.hideAllMenus();
+            });
+
         escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
-                if (this.menus.length) {
-                    this.hideMenu(this.menus.pop());
-                }
+                this.hideAllMenus();
             });
     }
 
@@ -201,6 +252,8 @@ export class MenuHost implements Disposable {
         closeOnSecondClick: boolean
     ): EventData | undefined {
         if (!(event.target instanceof Element))
+            return undefined;
+        if (event.target.nodeName === 'IMG')
             return undefined;
         debugLog?.log(
             `mapEvent: event:`, event,

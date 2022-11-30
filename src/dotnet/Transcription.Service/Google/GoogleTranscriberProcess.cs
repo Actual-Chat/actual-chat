@@ -2,13 +2,15 @@ using System.Numerics;
 using ActualChat.Audio;
 using Cysharp.Text;
 using Google.Api.Gax.Grpc;
-using Google.Cloud.Speech.V1P1Beta1;
+using Google.Cloud.Speech.V2;
 using Google.Protobuf;
 
 namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
+    private readonly Task<Recognizer> _recognizerTask;
+
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
@@ -19,10 +21,12 @@ public class GoogleTranscriberProcess : WorkerBase
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
+        Task<Recognizer> recognizerTask,
         TranscriptionOptions options,
         AudioSource audioSource,
         ILogger? log = null)
     {
+        _recognizerTask = recognizerTask;
         Log = log ?? NullLogger.Instance;
         Options = options;
         AudioSource = audioSource;
@@ -40,40 +44,32 @@ public class GoogleTranscriberProcess : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
+            var recognizer = await _recognizerTask.ConfigureAwait(false);
             var webMStreamAdapter = new WebMStreamAdapter(Log);
             await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
-            var format = AudioSource.Format;
             var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
-            var config = new RecognitionConfig {
-                Encoding = MapEncoding(format.CodecKind),
-                AudioChannelCount = format.ChannelCount,
-                SampleRateHertz = format.SampleRate,
-                LanguageCode = Options.Language,
-                UseEnhanced = true,
-                MaxAlternatives = 1,
-                EnableAutomaticPunctuation = Options.IsPunctuationEnabled,
-                EnableSpokenPunctuation = false,
-                EnableSpokenEmojis = false,
-                EnableWordTimeOffsets = true,
-                DiarizationConfig = new() {
-                    EnableSpeakerDiarization = true,
-                    MaxSpeakerCount = Options.MaxSpeakerCount ?? 5,
+            var recognizeRequests = speechClient
+                .StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
+            var streamingRecognitionConfig = new StreamingRecognitionConfig {
+                Config = new RecognitionConfig {
+                    AutoDecodingConfig = new AutoDetectDecodingConfig()
+                }, // Use recognizer' settings
+                StreamingFeatures = new StreamingRecognitionFeatures {
+                    InterimResults = true,
+                    // TODO(AK): test google VAD events - probably it might be useful
+                    // VoiceActivityTimeout =
+                    // EnableVoiceActivityEvents =
                 },
             };
-
-            var recognizeRequests = speechClient.StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
-            await recognizeRequests.WriteAsync(new () {
-                    StreamingConfig = new () {
-                        Config = config,
-                        InterimResults = true,
-                        SingleUtterance = false,
-                    },
+            await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
+                    StreamingConfig = streamingRecognitionConfig,
+                    Recognizer = recognizer.Name,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
-            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests),
+            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests, streamingRecognitionConfig),
                 Log,
                 $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
                 cancellationToken);
@@ -101,9 +97,6 @@ public class GoogleTranscriberProcess : WorkerBase
     private void ProcessResponse(StreamingRecognizeResponse response)
     {
         DebugLog?.LogDebug("Response={Response}", response);
-        var error = response.Error;
-        if (error != null)
-            throw new TranscriptionException($"G{error.Code:D}", error.Message);
 
         Transcript transcript;
         var results = response.Results;
@@ -126,11 +119,15 @@ public class GoogleTranscriberProcess : WorkerBase
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            var endTime = (float)results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
+            var resultEndOffset = results.First().ResultEndOffset;
+            var endTime = resultEndOffset == null
+                ? null
+                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
+
             transcript = State.AppendAlternative(text, endTime);
+            DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+            Transcripts.Writer.TryWrite(transcript);
         }
-        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
-        Transcripts.Writer.TryWrite(transcript);
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,
@@ -141,7 +138,10 @@ public class GoogleTranscriberProcess : WorkerBase
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
 
         var alternative = result.Alternatives.Single();
-        var endTime = (float)result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        var resultEndOffset = result.ResultEndOffset;
+        var endTime = resultEndOffset == null
+            ? null
+            : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
         if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
             text = " " + text;
@@ -150,14 +150,16 @@ public class GoogleTranscriberProcess : WorkerBase
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
         foreach (var word in alternative.Words) {
-            var wordStartTime = (float)word.StartTime.ToTimeSpan().TotalSeconds;
+            var wordStartTime = word.StartOffset == null
+                ? 0
+                : (float)word.StartOffset.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
             var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
             if (wordStart < 0)
                 continue;
 
-            var wordEndTime = (float)word.EndTime.ToTimeSpan().TotalSeconds;
+            var wordEndTime = (float)word.EndOffset.ToTimeSpan().TotalSeconds;
             var wordEnd = wordStart + word.Word.Length;
 
             mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));
@@ -173,7 +175,7 @@ public class GoogleTranscriberProcess : WorkerBase
         }
 
         var lastPoint = mapPoints[^1];
-        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime);
+        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime ?? mapPoints.Max(v => v.Y));
         if (Math.Abs(lastPoint.X - veryLastPoint.X) < 0.1)
             mapPoints[^1] = veryLastPoint;
         else
@@ -184,32 +186,20 @@ public class GoogleTranscriberProcess : WorkerBase
 
     private async Task PushAudio(
         IAsyncEnumerable<byte[]> webMByteStream,
-        SpeechClient.StreamingRecognizeStream recognizeRequests)
+        SpeechClient.StreamingRecognizeStream recognizeRequests,
+        StreamingRecognitionConfig streamingRecognitionConfig)
     {
         try {
             await foreach (var chunk in webMByteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(chunk),
+                    StreamingConfig = streamingRecognitionConfig,
+                    Audio = ByteString.CopyFrom(chunk),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }
         }
         finally {
             await recognizeRequests.WriteCompleteAsync().ConfigureAwait(false);
-        }
-    }
-
-    private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodecKind codecKind)
-    {
-        switch (codecKind) {
-        case AudioCodecKind.Wav:
-            return RecognitionConfig.Types.AudioEncoding.Linear16;
-        case AudioCodecKind.Flac:
-            return RecognitionConfig.Types.AudioEncoding.Flac;
-        case AudioCodecKind.Opus:
-            return RecognitionConfig.Types.AudioEncoding.WebmOpus;
-        default:
-            return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
         }
     }
 }

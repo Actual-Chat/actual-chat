@@ -3,9 +3,9 @@
 
 <ul>
     @foreach (var authorId in _firstAuthorIds) {
-        <li class="flex-x justify-between">
+        <li class="reaction-authors-menu-item">
             <AuthorBadge Id="@authorId" Size="SquareSize.Size5"/>
-            <div class="ml-2">@_emoji</div>
+            <EmojiIcon Id="@_emoji" class="reaction-authors-menu-item-emoji"/>
         </li>
     }
 </ul>

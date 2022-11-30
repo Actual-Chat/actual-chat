@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Commands;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -108,6 +109,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
             return false;
         });
         var fusion = services.AddFusion();
+        fusion.AddLocalCommandScheduler(Queues.Users);
+        commander.AddEventHandlers();
 
         // Auth
         var fusionAuth = fusion.AddAuthentication();

@@ -1,4 +1,5 @@
 using ActualChat.Commands;
+using ActualChat.Commands.Internal;
 using ActualChat.Testing.Collections;
 
 namespace ActualChat.Core.UnitTests.Commands;
@@ -9,17 +10,19 @@ public class ScheduledCommandsTest: TestBase
     public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
     { }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task EnqueueEventOnCommandCompletion()
     {
         await using var services = new ServiceCollection()
+            .AddLogging()
             .AddFusion()
-            .AddLocalCommandScheduler()
+            .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
+        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -27,34 +30,72 @@ public class ScheduledCommandsTest: TestBase
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await Task.Delay(500);
+        await Awaiter.WaitFor(() => queue!.CompletedCommandCount != 0);
+
         testService.ProcessedEvents.Count.Should().Be(1);
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task MultipleEventHandlersAreCalled()
     {
         await using var services = new ServiceCollection()
+            .AddLogging()
             .AddCommander()
-            .AddLocalEventHandlers()
             .AddHandlers<DedicatedInterfaceEventHandler>()
             .Services
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddFusion()
-            .AddLocalCommandScheduler()
+            .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
             .AddComputeService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
+        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await Awaiter.WaitFor(() => testService.ProcessedEvents.Count == 2);
-        testService.ProcessedEvents.Count.Should().Be(2);
+        await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
+
+        foreach (var @event in testService.ProcessedEvents)
+            Out.WriteLine(@event.ToString());
+
+        testService.ProcessedEvents.Count.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task MultipleQueuesDontLeadToDuplicateEvents()
+    {
+        await using var services = new ServiceCollection()
+            .AddLogging()
+            .AddCommander()
+            .AddHandlers<DedicatedInterfaceEventHandler>()
+            .Services
+            .AddSingleton<DedicatedInterfaceEventHandler>()
+            .AddFusion()
+            .AddLocalCommandScheduler(Queues.Default)
+            .AddComputeService<ScheduledCommandTestService>()
+            .AddComputeService<DedicatedEventHandler>()
+            .Services
+            .BuildServiceProvider();
+        await services.HostedServices().Start();
+
+        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
+        var testService = services.GetRequiredService<ScheduledCommandTestService>();
+        var commander = services.GetRequiredService<ICommander>();
+
+        testService.ProcessedEvents.Count.Should().Be(0);
+        await commander.Call(new TestCommand3());
+
+        await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
+
+        foreach (var @event in testService.ProcessedEvents)
+            Out.WriteLine(@event.ToString());
+
+        testService.ProcessedEvents.Count.Should().Be(3);
     }
 }

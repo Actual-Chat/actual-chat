@@ -13,7 +13,7 @@ public class AudioProcessorTest : AppHostTestBase
 {
     public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
 
-    [Theory]
+    [Theory(Skip = "Flaky")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EmptyRecordingTest(bool mustSetUserLanguageSettings)

@@ -22,6 +22,9 @@ import './Components/SideNav/side-nav.css'
 import './Components/TabPanel/tab.css'
 
 export * from './Services/BrowserInfo/browser-info';
+export * from './Services/Escapist/escapist';
+export * from './Services/Escapist/escapist-subscription';
+export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/HistoryUI/history-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
@@ -31,17 +34,16 @@ export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
+export * from './Services/Vibration/vibration';
 
 export * from './Components/Clipboard/clipboard';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
-export * from './Services/Escapist/escapist';
-export * from './Services/Escapist/escapist-subscription';
-export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
+export * from './Components/TextInput/text-input';
 export * from './Components/Tooltip/tooltip-host';
 export * from './Components/VirtualList/virtual-list';
 

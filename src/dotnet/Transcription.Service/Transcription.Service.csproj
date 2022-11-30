@@ -5,7 +5,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Cloud.Speech.V1P1Beta1" />
+    <PackageReference Include="Google.Cloud.Speech.V2" />
+    <PackageReference Include="Google.Api.Gax" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
   </ItemGroup>
 
 </Project>

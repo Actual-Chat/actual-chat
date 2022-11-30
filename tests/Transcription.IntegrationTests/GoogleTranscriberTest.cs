@@ -1,5 +1,10 @@
 using ActualChat.Audio;
+using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Transcription.Google;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Stl.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
@@ -7,16 +12,26 @@ namespace ActualChat.Transcription.IntegrationTests;
 public class GoogleTranscriberTest : TestBase
 {
     private ILogger<GoogleTranscriber> Log { get; }
+    private CoreSettings CoreSettings { get; }
 
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-        => Log = log;
+    public GoogleTranscriberTest(IConfiguration configuration, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+    {
+        Log = log;
+        CoreSettings = configuration.GetSettings<CoreSettings>();
+    }
 
     [Theory]
     [InlineData("file.webm")]
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
-        var transcriber = new GoogleTranscriber(Log);
+        // Global - Google Speech v2 doesnt work with Http/3!
+        // GlobalHttpSettings.SocketsHttpHandler.AllowHttp3
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
+        var transcriber = new GoogleTranscriber(
+            CoreSettings,
+            new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -24,7 +39,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var diffs = await transcriber.Transcribe("test-user", options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
@@ -35,8 +50,12 @@ public class GoogleTranscriberTest : TestBase
     [Fact(Skip = "Manual")]
     public async Task ProperTextMapTest()
     {
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(Log);
+        var transcriber = new GoogleTranscriber(
+            CoreSettings,
+            new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -44,7 +63,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var diffs = await transcriber.Transcribe("test-user", options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());

@@ -19,10 +19,10 @@
             ? 0
             : SpacerSize;
     var startExpansion = Data.Items
-        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.Start) < 0)
+        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
         .Sum(i => i.CountAs);
     var endExpansion = Data.Items
-        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.End) <= 0)
+        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
         .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
@@ -35,8 +35,12 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
+    var visibleKeys = (VisibleKeysState?.LatestNonErrorValue ?? new List<string>()).ToHashSet();
     var items = Data.Items;
     LastData = Data;
+    var itemClassBase = Data.Query.IsNone
+        ? "item"
+        : "item new";
 }
 
 <div @ref="Ref"
@@ -62,17 +66,20 @@
     <ul @key="VirtualListSpecialKeys.Container"
         class="@flexClass virtual-container">
         @foreach (var item in items) {
+            var itemClass = visibleKeys.Contains(item.Key)
+                ? "item"
+                : itemClassBase;
             @if (item.CountAs != 1) {
-                <li @key="item.Key"
-                    class="item flex-none"
-                    data-key="@item.Key"
+                <li id="@item.Key"
+                    @key="item.Key"
+                    class="@itemClass"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
-                <li @key="item.Key"
-                    class="item flex-none"
-                    data-key="@item.Key">
+                <li id="@item.Key"
+                    @key="item.Key"
+                    class="@itemClass">
                     @Item(item)
                 </li>
             }

@@ -1,0 +1,125 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@if (_isCollapsed == true) {
+    <ButtonRound
+        Click="OnExpandClick"
+        Class="transparent"
+        Tooltip="@Placeholder"
+        FloatingPosition="FloatingPosition.Bottom">
+        <i class="icon-search text-2xl"></i>
+    </ButtonRound>
+} else {
+    <div class="@Class chat-search-box">
+        <label>
+            <ButtonRound
+                Class="search-button"
+                Click="OnSearchButtonClick"
+                IsDisabled="!CanBeTriggered"
+                Tooltip="@Placeholder"
+                FloatingPosition="FloatingPosition.Bottom">
+                <i class="icon-search text-2xl font-medium"></i>
+            </ButtonRound>
+            <TextInput
+                @ref="_inputRef"
+                Class="w-full"
+                Placeholder="@Placeholder"
+                MaxLength="@MaxLength"
+                TabIndex="@TabIndex"
+                TextChanged="OnInput"
+                KeyUp="OnKeyUp">
+            </TextInput>
+            @if (ShowSpinner && _isBusy) {
+                <div style="border-top-color:transparent"
+                     class="search-box-spinner">
+                </div>
+            } else {
+                @if (ShowClose) {
+                    <ButtonRound
+                        Class="cancel-button"
+                        Click="@Cancel"
+                        Tooltip="Close"
+                        FloatingPosition="FloatingPosition.Bottom">
+                        <i class="icon-close text-2xl"></i>
+                    </ButtonRound>
+                }
+            }
+        </label>
+    </div>
+}
+
+@code {
+    private string _text = "";
+    private bool? _isCollapsed;
+    private bool _needsFocus;
+    private TextInput _inputRef = null!;
+    private bool _isBusy;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<string> Triggered { get; set; }
+    [Parameter] public EventCallback Cancelled { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public bool ShowSpinner { get; set; }
+    [Parameter] public bool ShowClose{ get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public string TabIndex { get; set; } = "";
+
+    private bool CanBeTriggered => !_isBusy && !_text.IsNullOrEmpty();
+
+    protected override void OnParametersSet() =>
+        _isCollapsed ??= IsCollapsed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_needsFocus) {
+            await _inputRef.FocusAsync();
+            _needsFocus = false;
+        }
+    }
+
+    public ValueTask Focus()
+        => _inputRef.FocusAsync();
+
+    public async Task Cancel()
+    {
+        _text = "";
+        if (IsCollapsed)
+            _isCollapsed = true;
+
+        await Cancelled.InvokeAsync();
+    }
+
+    private async Task OnInput(string text) {
+        _text = text;
+        await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs e) {
+        switch (e.Key)
+        {
+            case "Enter" when !CanBeTriggered:
+                return;
+            case "Enter":
+                try {
+                    _isBusy = true;
+                    await Triggered.InvokeAsync(_text);
+                }
+                finally {
+                    _isBusy = false;
+                }
+                break;
+            case "Escape" when e.HasNoModifier():
+                await Cancel();
+                break;
+        }
+    }
+
+    private Task OnSearchButtonClick()
+        => Triggered.InvokeAsync(_text);
+
+    private void OnExpandClick() {
+        _isCollapsed = false;
+        _needsFocus = true;
+    }
+}

@@ -4,6 +4,7 @@
 <button class="@Class btn"
         name="@Name"
         type="@GetButtonType()"
+        form="@FormId"
         disabled="@IsDisabled"
         autofocus="@IsAutofocused"
         data-tooltip="@Tooltip"
@@ -20,6 +21,7 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public string FormId { get; set; } = "";
     [Parameter] public FloatingPosition FloatingPosition { get; set; }
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }

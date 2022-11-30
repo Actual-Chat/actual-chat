@@ -143,7 +143,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication();
-        fusion.AddLocalCommandScheduler();
+        fusion.AddLocalCommandScheduler(Queues.Default);
 
         // Web
         var dataProtection = Settings.DataProtection.NullIfEmpty()
@@ -164,6 +164,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 builder.WithOrigins(
                         "http://0.0.0.0",
                         "https://0.0.0.0",
+                        "app://0.0.0.0",
                         "http://0.0.0.0:7080",
                         "https://0.0.0.0:7080",
                         "https://0.0.0.0:7081"

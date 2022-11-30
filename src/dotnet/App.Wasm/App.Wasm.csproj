@@ -10,7 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" />
   </ItemGroup>

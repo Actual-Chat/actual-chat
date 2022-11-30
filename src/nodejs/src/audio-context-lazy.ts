@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { delayAsync, PromiseSource } from 'promises';
+import { AsyncLock, delayAsync, PromiseSource } from 'promises';
 import { onDeviceAwake } from 'on-device-awake';
 import { EventHandlerSet } from 'event-handling';
 import { NextInteraction } from 'next-interaction';
@@ -32,21 +32,26 @@ async function defaultFactory() : Promise<AudioContext> {
     return audioContext;
 }
 
-async function resume(audioContext: AudioContext, force = false) : Promise<AudioContext> {
+async function resume(audioContext: AudioContext, force = false) : Promise<void> {
     debugLog?.log(`-> resume: audioContext.state =`, audioContext.state);
     if (force || audioContext.state !== 'running' && audioContext.state !== 'closed') {
         if (force) {
             await audioContext.suspend();
         }
         const resumeTask = audioContext.resume().then(() => true);
-        const delayTask = delayAsync(250).then(() => false);
-        const result = await Promise.race([resumeTask, delayTask]);
+        let result = false;
+        for (let i = 1; i <= 20; i++) {
+            const delayTask = delayAsync(250).then(() => false);
+            result = await Promise.race([resumeTask, delayTask]);
+            if (!result)
+                debugLog?.log(`   can not resume audio context. Attempt=${i}.`);
+            if (result)
+                break;
+        }
         if (!result)
             throw new Error(`${LogScope}: Couldn't resume AudioContext.`);
     }
-
     debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
-    return audioContext;
 }
 
 async function warmup(audioContext: AudioContext): Promise<AudioContext> {
@@ -81,24 +86,18 @@ export class AudioContextLazy implements Disposable {
     private audioContextTask?: PromiseSource<AudioContext> = null;
     private nextInteractionHandler?: Disposable = null;
     private requireInteraction = true;
+    private initContextStarted = false;
+    private asyncLock : AsyncLock;
 
     public audioContext: AudioContext | null = null;
     public audioContextChanged: EventHandlerSet<AudioContext | null> = new EventHandlerSet<AudioContext | null>();
 
     constructor() {
+        this.asyncLock = new AsyncLock();
         this.audioContextTask = new PromiseSource<AudioContext>();
-        if (this.requireInteraction) {
-            this.nextInteractionHandler = NextInteraction.addHandler(async () => {
-                const audioContext = await defaultFactory();
-                this.setAudioContext(audioContext);
-                onDeviceAwake(() => this.wakeUp());
-            });
-        }
-        else {
-            void defaultFactory()
-                .then(audioContext => this.setAudioContext(audioContext))
-                .then(() => onDeviceAwake(() => this.wakeUp()));
-        }
+        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+            await this.initContext();
+        });
     }
 
     public dispose(): void {
@@ -106,14 +105,19 @@ export class AudioContextLazy implements Disposable {
     }
 
     public async get(): Promise<AudioContext> {
-        const audioContext = this.audioContext;
-        if (audioContext) {
-            let lastContextTime = audioContext['lastTime'] as number;
-            let currentContextTime = audioContext.currentTime;
-            if (lastContextTime == currentContextTime) {
-                if (audioContext.state === 'suspended')
-                    return resume(audioContext);
-
+        return this.asyncLock.lock(async () => {
+            const audioContext = this.audioContext;
+            if (audioContext) {
+                let lastContextTime = audioContext['lastTime'] as number;
+                let currentContextTime = audioContext.currentTime;
+                if (lastContextTime == currentContextTime) {
+                    if (audioContext.state === 'suspended') {
+                        await resume(audioContext);
+                        return audioContext;
+                    }
+                } else {
+                    audioContext['lastTime'] = audioContext.currentTime;
+                }
                 // The context might stuck after wake up
                 await delayAsync(20);
                 lastContextTime = audioContext['lastTime'] as number;
@@ -123,36 +127,32 @@ export class AudioContextLazy implements Disposable {
                     this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
+                return audioContext;
             }
-            else {
-                audioContext['lastTime'] = audioContext.currentTime;
-                // The context might stuck after wake up
-                await delayAsync(20);
-                lastContextTime = audioContext['lastTime'] as number;
-                currentContextTime = audioContext.currentTime;
-                if (lastContextTime == currentContextTime) {
-                    // We can't resume it - user gesture context has already been lost
-                    this.refreshAudioContextTask();
-                    return this.audioContextTask;
-                }
-            }
-            return audioContext;
-        }
-        return this.audioContextTask;
+            return this.audioContextTask;
+        });
     }
 
     public doNotWaitForInteraction(): void {
-        const audioContext = this.audioContext;
         this.requireInteraction = false;
         this.nextInteractionHandler?.dispose();
         this.nextInteractionHandler = null;
-        if (audioContext) {
+        void this.initContext();
+    }
+
+    private async initContext() : Promise<void> {
+        if (this.initContextStarted)
+            return;
+        this.initContextStarted = true;
+        try {
+            const audioContext = await defaultFactory();
             this.setAudioContext(audioContext);
+        } catch (error) {
+            errorLog?.log(`initContext(), error:`, error);
+            this.audioContextTask.reject(error);
+            return;
         }
-        else {
-            void defaultFactory()
-                .then(audioContext1 => this.setAudioContext(audioContext1));
-        }
+        onDeviceAwake(() => this.wakeUp());
     }
 
     private setAudioContext(audioContext: AudioContext): void {
@@ -170,11 +170,22 @@ export class AudioContextLazy implements Disposable {
         this.audioContextTask = new PromiseSource<AudioContext>();
         this.audioContextChanged.triggerSilently(null);
         if (this.requireInteraction) {
-            this.nextInteractionHandler = NextInteraction.addHandler(() => resume(audioContext, true)
-                .then(audioContext1 => this.setAudioContext(audioContext1)));
+            this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+                await this.refreshAudioContext(audioContext);
+            });
         } else {
-            void resume(audioContext, true)
-                .then(audioContext1 => this.setAudioContext(audioContext1));
+            void this.refreshAudioContext(audioContext);
+        }
+    }
+
+    private async refreshAudioContext(audioContext : AudioContext) : Promise<void> {
+        try {
+            await resume(audioContext, true);
+            this.setAudioContext(audioContext)
+        }
+        catch (error) {
+            errorLog?.log(`refreshAudioContext(), error:`, error);
+            this.audioContextTask.reject(error);
         }
     }
 
