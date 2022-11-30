@@ -293,7 +293,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     .GetOrCreate(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
-                var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Owner,
                         Permissions = ChatPermissions.Owner,
@@ -304,7 +304,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createJoinedRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                var createJoinedRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =

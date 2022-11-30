@@ -91,10 +91,10 @@ public readonly struct LanguageId : ISymbolIdentifier<LanguageId>
 
     public static bool TryParse(string? s, out LanguageId result)
     {
-        s ??= "";
-        if (ParsableIds.TryGetValue(s, out result))
+        var id = (Symbol)s;
+        if (ParsableIds.TryGetValue(id, out result))
             return true;
-        if (ParsableIds.TryGetValue(s.ToLowerInvariant(), out result))
+        if (ParsableIds.TryGetValue(id.Value.ToLowerInvariant(), out result))
             return true;
         return false;
     }

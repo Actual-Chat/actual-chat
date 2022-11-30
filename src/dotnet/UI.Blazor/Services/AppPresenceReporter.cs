@@ -14,6 +14,7 @@ public class AppPresenceReporter : WorkerBase
     protected ILogger Log { get; }
 
     protected IAuth Auth { get; }
+    protected IAccounts Accounts { get; }
     protected ISessionResolver SessionResolver { get; }
     protected MomentClockSet Clocks { get; }
     protected UserActivityUI UserActivityUI { get; }
@@ -25,6 +26,7 @@ public class AppPresenceReporter : WorkerBase
         Log = services.LogFor(GetType());
 
         Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
         SessionResolver = services.GetRequiredService<ISessionResolver>();
         Clocks = Settings.Clocks ?? services.Clocks();
         UserActivityUI = services.GetRequiredService<UserActivityUI>();
@@ -61,11 +63,8 @@ public class AppPresenceReporter : WorkerBase
 
     private async Task InvalidatePresence(Session session, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken);
-        if (user == null)
-            return;
-
+        var account = await Accounts.GetOwn(session, cancellationToken);
         using (Computed.Invalidate())
-            _ = UserPresences.Get(user.Id, cancellationToken);
+            _ = UserPresences.Get(account.Id, cancellationToken);
     }
 }

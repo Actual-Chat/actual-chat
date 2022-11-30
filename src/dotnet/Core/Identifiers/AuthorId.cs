@@ -44,7 +44,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
 
     public AuthorId(ChatId chatId, long localId, SkipParseOption _)
     {
-        Id = $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
+        Id = Format(chatId, localId);
         ChatId = chatId;
         LocalId = localId;
     }
@@ -64,6 +64,9 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
     public static bool operator !=(AuthorId left, AuthorId right) => !left.Equals(right);
 
     // Parsing
+
+    private static string Format(ChatId chatId, long localId)
+        => $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
 
     public static AuthorId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>();

@@ -5,11 +5,9 @@ namespace ActualChat.Chat;
 [DataContract]
 public sealed record Role(
     [property: DataMember] RoleId Id, // Corresponds to DbRole.Id
-    [property: DataMember] string Name = "",
-    [property: DataMember] SystemRole SystemRole = SystemRole.None
+    [property: DataMember] long Version = 0
     ) : IHasId<RoleId>, IHasVersion<long>, IRequirementTarget
 {
-    [DataMember] public long Version { get; init; } = 0;
     [DataMember] public string Picture { get; init; } = "";
     [DataMember] public ChatPermissions Permissions { get; init; }
 
@@ -17,6 +15,9 @@ public sealed record Role(
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId => Id.LocalId;
+
+    [DataMember] public string Name { get; init; } = "";
+    [DataMember] public SystemRole SystemRole { get; init; } = SystemRole.None;
 
     public Role Fix()
     {

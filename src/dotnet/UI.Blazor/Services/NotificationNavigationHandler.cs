@@ -33,6 +33,6 @@ public class NotificationNavigationHandler
         return Task.CompletedTask;
     }
 
-    public bool IsActiveChat(string chatId)
+    public bool IsAlreadySelected(ChatId chatId)
         => Links.Equals(Nav.GetRelativePath(), Links.ChatPage(chatId));
 }

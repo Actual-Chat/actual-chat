@@ -98,7 +98,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             if (ownerIds.Length > 0) {
                 var dbOwnerRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Owner);
                 if (dbOwnerRole == null) {
-                    var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                    var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
                         Create = new RoleDiff() {
                             SystemRole = SystemRole.Owner,
                             Permissions = ChatPermissions.Owner,
@@ -121,8 +121,9 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                         .ToHashSet();
                     var missingAuthors = ownerAuthors.Where(a => !ownerRoleAuthorIds.Contains(a.Id));
 
+                    var ownerRoleId = new RoleId(dbOwnerRole.Id);
                     var changeOwnersRoleCmd = new IRolesBackend.ChangeCommand(
-                        chatId, dbOwnerRole.Id, dbOwnerRole.Version,
+                        chatId, ownerRoleId, dbOwnerRole.Version,
                         new() {
                             Update = new RoleDiff() {
                                 Permissions = ChatPermissions.Owner,
@@ -137,7 +138,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
             var dbAnyoneRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Anyone);
             if (dbAnyoneRole == null) {
-                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, "", null, new() {
+                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =

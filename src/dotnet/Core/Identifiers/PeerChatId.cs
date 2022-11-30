@@ -83,6 +83,8 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     public static bool operator ==(PeerChatId left, PeerChatId right) => left.Equals(right);
     public static bool operator !=(PeerChatId left, PeerChatId right) => !left.Equals(right);
 
+    // Parsing
+
     private static string Format(UserId userId1, UserId userId2)
         => $"{IdPrefix}{userId1}-{userId2}";
 

@@ -53,9 +53,7 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
             permissions |= ChatPermissions.EditRoles;
         if (SystemRole is SystemRole.Owner)
             permissions = ChatPermissions.Owner;
-        return new (Id) {
-            Id = Id,
-            Version = Version,
+        return new (new RoleId(Id), Version) {
             SystemRole = SystemRole,
             Name = Name,
             Picture = Picture,

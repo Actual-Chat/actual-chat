@@ -47,7 +47,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, SkipParseOption _)
     {
-        Id = Invariant($"{chatId}:{entryKind:D}:{localId}");
+        Id = Format(chatId, entryKind, localId);
         ChatId = chatId;
         LocalId = localId;
     }
@@ -67,6 +67,9 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     public static bool operator !=(ChatEntryId left, ChatEntryId right) => !left.Equals(right);
 
     // Parsing
+
+    private static string Format(ChatId chatId, ChatEntryKind entryKind, long localId)
+        => Invariant($"{chatId}:{entryKind:D}:{localId}");
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>();
