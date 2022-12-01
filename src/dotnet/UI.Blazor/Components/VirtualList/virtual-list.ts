@@ -28,6 +28,7 @@ const ScrollDebounce: number = 600;
 const RemoveOldItemsDebounce: number = 2000;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
+const UpdateTimeout: number = 800;
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -843,9 +844,17 @@ export class VirtualList {
         if (this._query.isNone)
             return;
 
-        debugLog?.log(`requestData: query:`, this._query);
+        const whenUpdateCompleted = this._whenUpdateCompleted;
+        if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted())
+            return;
 
-        this._whenUpdateCompleted = new PromiseSource<void>();
+        const newWhenUpdateCompleted = new PromiseSource<void>();
+        newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
+            newWhenUpdateCompleted.resolve(undefined);
+            // to request data again after timeout
+            this.updateViewportThrottled();
+        })
+        this._whenUpdateCompleted = newWhenUpdateCompleted;
 
         if (getRidOfOldItems) {
             const items = this._orderedItems;
@@ -856,6 +865,7 @@ export class VirtualList {
         }
         // debug helper
         // await delayAsync(50);
+        debugLog?.log(`requestData: query:`, this._query);
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
         this._lastQueryTime = Date.now();
