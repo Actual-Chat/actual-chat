@@ -273,6 +273,9 @@ export class VirtualList {
         if (mutations.length === 0) {
             for (const itemRef of this.getAllItemRefs()) {
                 const key = getItemKey(itemRef);
+                if (!key || key == '')
+                    continue;
+
                 if (this._items.has(key))
                     continue;
 
@@ -584,6 +587,9 @@ export class VirtualList {
         // store item order
         for (const itemRef of this.getAllItemRefs()) {
             const key = getItemKey(itemRef);
+            if (!key || key == '')
+                continue;
+
             const item = this._items.get(key);
             if (item) {
                 orderedItems.push(item);
