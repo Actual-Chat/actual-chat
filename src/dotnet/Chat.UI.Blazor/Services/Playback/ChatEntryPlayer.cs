@@ -84,7 +84,6 @@ public sealed class ChatEntryPlayer : ProcessorBase
                 await playProcess.WhenCompleted.ConfigureAwait(false);
             }
             catch (Exception e) {
-                Console.WriteLine(e);
                 if (e is not OperationCanceledException)
                     Log.LogError(e, "Entry playback failed in chat #{ChatId}, entry #{EntryId}", ChatId, entry.Id);
             }
