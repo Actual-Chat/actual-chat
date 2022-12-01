@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.Testing;
+namespace ActualChat.UI.Blazor.Pages.VirtualListTestPage;
 
 public sealed class TestListItemRef : IVirtualListItem
 {

@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
@@ -25,9 +24,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
-
-        // Singletons
-        fusion.AddComputeService<VirtualListTestService>();
 
         // Transient
         services.AddTransient<MarkupHub>();

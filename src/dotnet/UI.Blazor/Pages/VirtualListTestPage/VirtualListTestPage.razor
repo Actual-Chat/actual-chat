@@ -3,11 +3,14 @@
 @implements IVirtualListDataSource<TestListItemRef>
 @inject VirtualListTestService Service
 @inject ILogger<VirtualListTestPage> Log
+@layout ChatLayout
 
-<MainHeader>VirtualList Test Page</MainHeader>
+<RenderIntoSlot Name="MainHeader">
+    <MainHeader>VirtualList Test Page</MainHeader>
+</RenderIntoSlot>
+
 
 <VirtualList
-    Style="height: 600px;"
     SpacerSize="10_000"
     SkeletonCount="2"
     DataSource="this" KeyComparer="LongAsStringKeyComparer.Default">
@@ -21,14 +24,18 @@
     </Skeleton>
 </VirtualList>
 
-<div class="m-3 pl-4">
-    <p>URL parameters:</p>
-    <ul class="list-disc">
-        <li><b>RangeSeed:</b> @RangeSeed</li>
-        <li><b>ContentSeed:</b> @ContentSeed</li>
-    </ul>
+<RenderIntoSlot Name="MainFooter">
+   <div class="m-3 pl-4">
+       <p>URL parameters:</p>
+       <ul class="list-disc">
+           <li><b>RangeSeed:</b> @RangeSeed</li>
+           <li><b>ContentSeed:</b> @ContentSeed</li>
+       </ul>
 
-</div>
+   </div>
+</RenderIntoSlot>
+
+
 
 @code {
     [Parameter, SupplyParameterFromQuery]

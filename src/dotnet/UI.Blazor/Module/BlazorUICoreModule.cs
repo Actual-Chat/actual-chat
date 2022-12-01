@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Pages.VirtualListTestPage;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal.Services;
 using Blazored.SessionStorage;
@@ -106,6 +107,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Host-specific services
         services.TryAddScoped<IClientAuth, WebClientAuth>();
+
+        // Test page services
+        fusion.AddComputeService<VirtualListTestService>();
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
     }
