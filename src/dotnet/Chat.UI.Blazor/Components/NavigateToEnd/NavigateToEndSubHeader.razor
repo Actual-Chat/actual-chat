@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<NavigateToEndSubHeader.Model>
 @{
     var m = State.ValueOrDefault;
-    if (m is not { Show: true })
+    if (m is not { IsVisible: true })
         return;
 }
 
@@ -18,27 +18,33 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken);
-        var selectedChatId = Chat.Id;
-        if (visibleRange.IsEmpty)
-            return new(false);
+        var chatState = await ChatUI.GetSelectedChatState(cancellationToken);
+        if (chatState == null)
+            return Model.Invisible;
 
-        var summary = await Chats.GetSummary(Session, selectedChatId, cancellationToken);
-        var lastEntryId = summary?.LastTextEntry?.Id ?? 0;
-        if (lastEntryId <= visibleRange.End)
-            return new(false);
+        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken);
+        if (visibleRange.IsEmpty)
+            return Model.Invisible;
+
+        var lastEntryId = chatState.Summary.LastTextEntry?.Id ?? default;
+        if (lastEntryId.IsNone || lastEntryId.LocalId <= visibleRange.End)
+            return Model.Invisible;
 
         return new(true, lastEntryId);
     }
 
-    public record Model(bool Show, long LastEntryId = 0);
-
     private async Task OnClick() {
-        var entryId = State.Value.LastEntryId;
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
-        ChatUI.HighlightedChatEntryId.Value = entryId;
+        var lastEntryId = State.LatestNonErrorValue.LastEntryId;
+        if (lastEntryId.IsNone)
+            return;
+
+        await UIEventHub.Publish(new NavigateToChatEntryEvent(lastEntryId));
+        ChatUI.HighlightedChatEntryId.Value = lastEntryId.LocalId;
     }
+
+    public sealed record Model(bool IsVisible, ChatEntryId LastEntryId)
+    {
+        public static Model Invisible { get; } = new(false, default);
+    };
 }

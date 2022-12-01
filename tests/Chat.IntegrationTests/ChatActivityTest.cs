@@ -69,8 +69,8 @@ public class ChatActivityTest : AppHostTestBase
         await testClock.Delay(2000, cancellationToken);
         var author = await authorsBackend.GetOrCreate(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
-        var entry = new ChatEntry {
-            Id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option),
+        var id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
+        var entry = new ChatEntry(id) {
             AuthorId = author.Id,
             Content = "",
             StreamId = "FAKE",

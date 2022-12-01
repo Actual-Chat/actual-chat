@@ -1,5 +1,5 @@
 ﻿namespace ActualChat.Kubernetes.Module;
 
-public class KubernetesSettings
+public sealed class KubernetesSettings
 {
 }

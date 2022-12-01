@@ -21,6 +21,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
     {
         if (entryId.EntryKind != ChatEntryKind.Text)
             throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support mentions.");
+
         return $"{entryId}:{authorId}";
     }
 

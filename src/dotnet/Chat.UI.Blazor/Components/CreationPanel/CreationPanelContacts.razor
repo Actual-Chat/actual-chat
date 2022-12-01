@@ -12,7 +12,7 @@
         countCls = "";
         onlySelected = true;
     }
-    bool disableLink = PageNumber != 1;
+    var disableLink = PageNumber != 1;
     var count = SelectedContacts.Length;
 
     RenderFragment RenderTab(TabId tabId, string title) =>

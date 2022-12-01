@@ -1,7 +1,7 @@
 namespace ActualChat.Audio;
 
 [DataContract]
-public record AudioRecord(
+public sealed record AudioRecord(
     [property: DataMember] Symbol Id, // Ignored on upload
     [property: DataMember] Session Session,
     [property: DataMember] ChatId ChatId,
@@ -14,6 +14,6 @@ public record AudioRecord(
         : this(NewId(), session, chatId,  clientStartOffset) { }
 
     // This record relies on referential equality
-    public virtual bool Equals(AudioRecord? other) => ReferenceEquals(this, other);
+    public bool Equals(AudioRecord? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

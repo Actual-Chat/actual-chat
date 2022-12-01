@@ -52,12 +52,12 @@ public class HistoryUI
 
         var relativeUri = Nav.GetRelativePath();
         var isHomePage = Links.Equals(relativeUri, "/");
-        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(""));
+        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(default));
         if (!isHomePage && !isChatsRootPage) {
             _rewriteInitialLocation = true;
             _initTaskSource = TaskSource.New<Unit>(true);
             Log.LogDebug("Rewrite initial location from '{InitialLocation}'", relativeUri);
-            Nav.NavigateTo(Links.ChatPage(""), false, true);
+            Nav.NavigateTo(Links.ChatPage(default), false, true);
             await _initTaskSource.Task.ConfigureAwait(true);
             _initTaskSource = TaskSource<Unit>.Empty;
         }

@@ -5,6 +5,7 @@
     var m = State.ValueOrDefault;
     if (m is null)
         return;
+
     var url = $"/chat/{m.ShortChatId.UrlEncode()}";
     bool activeLink = PageNumber == 1;
     bool showEnding = PageNumber == 2;
@@ -48,6 +49,8 @@
     [Parameter] public EventCallback OnSelect { get; set; }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = Contact.Account;
+        if (account)
         var presence = await UserPresences.Get(Contact.Id.OtherId, cancellationToken);
         var fullChatId = ParsedChatId.FormatFullPeerChatId(Contact.Id.OwnerId, Contact.Id.OtherId);
         var shortChatId = ParsedChatId.FormatShortPeerChatId(Contact.Id.OtherId);

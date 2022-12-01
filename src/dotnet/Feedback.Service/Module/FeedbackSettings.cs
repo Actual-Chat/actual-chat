@@ -1,8 +1,8 @@
 ﻿namespace ActualChat.Feedback.Module;
 
-public class FeedbackSettings
+public sealed class FeedbackSettings
 {
+    // DBs
     public string Db { get; set; } = "";
-
     public string Redis { get; set; } = "";
 }

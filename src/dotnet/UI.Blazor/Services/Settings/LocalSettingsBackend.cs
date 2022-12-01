@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class LocalSettingsBackend : IBatchingKvasBackend
+public sealed class LocalSettingsBackend : IBatchingKvasBackend
 {
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }

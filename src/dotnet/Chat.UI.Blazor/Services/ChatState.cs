@@ -3,11 +3,11 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed record ChatState
+public record ChatState
 {
     public const int MaxUnreadMessageCount = 1000;
-    public static ChatState None = new() { Chat = Chat.None, Summary = ChatSummary.None };
-    public static ChatState Loading = new() { Chat = Chat.Loading, Summary = ChatSummary.None };
+    public static ChatState None { get; } = new() { Chat = Chat.None, Summary = ChatSummary.None };
+    public static ChatState Loading { get; } = new() { Chat = Chat.Loading, Summary = ChatSummary.None };
 
     private bool? _hasMentions;
     private Trimmed<int>? _unreadMessageCount;
@@ -15,6 +15,7 @@ public sealed record ChatState
     public Chat Chat { get; init; } = null!;
     public ChatSummary Summary { get; init; } = null!;
     public Contact? Contact { get; init; }
+    public Presence Presence { get; init; } = Presence.Unknown;
     public Mention? LastMention { get; init; }
     public long? ReadEntryId { get; init; }
     public bool IsSelected { get; init; }
@@ -53,9 +54,7 @@ public sealed record ChatState
 
     public bool HasMentionsOrUnreadMessages => HasMentions || UnreadMessageCount.Value > 0;
 
-    // Equality must rely on Chat.Id only
-    public bool Equals(ChatState? other)
-        => other != null && Chat.Id.Equals(other.Chat.Id);
-    public override int GetHashCode()
-        => Chat.Id.GetHashCode();
+    // This record relies on referential equality
+    public virtual bool Equals(ChatState? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
