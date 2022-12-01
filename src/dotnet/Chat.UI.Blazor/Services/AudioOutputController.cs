@@ -1,6 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public interface IAudioOutputController : IComputeService
+public interface IAudioOutputController
 {
     IState<bool> IsSpeakerphoneOn { get; }
     void ToggleAudioDevice(bool enableAudioDevice);
