@@ -8,6 +8,8 @@
 @{
     var m = State.LatestNonErrorValue;
 
+    var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
+
     RenderFragment RenderArrowBack()
         => @<ButtonRound Class="transparent" Click="@GetPreviousPage">
                 <i class="icon-arrow-left text-2xl"></i>
@@ -18,7 +20,7 @@
 }
 
 <CascadingValue Value="_enableIncompleteUI">
-    <DialogFrame class="creation-modal" ShowMobileHeader="false">
+    <DialogFrame class="creation-modal" ShowMobileHeader="false" ButtonsClass="@btnCls">
         <Body>
         @if (PageNumber == 1) {
             <CreatePage
@@ -76,15 +78,15 @@
             OnAddContact="@AddContactToSelected"/>
         </Body>
 
-    <Buttons>
-        @if (PageNumber == 2) {
-            <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
-            </div>
-        } else if (PageNumber == 3) {
-            <RenderSlot Name="NewGroupFormButton"/>
-        }
-    </Buttons>
+        <Buttons>
+            @if (PageNumber == 2) {
+                <div class="btn-group">
+                    <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
+                </div>
+            } else if (PageNumber == 3) {
+                <RenderSlot Name="NewGroupFormButton"/>
+            }
+        </Buttons>
     </DialogFrame>
 </CascadingValue>
 

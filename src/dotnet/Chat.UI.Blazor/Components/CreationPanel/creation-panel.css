@@ -11,6 +11,12 @@
 .creation-panel {
     @apply flex-y left-0 bottom-0 w-full bg-01;
 }
+.creation-modal.modal-frame .dialog-buttons.creation-panel-01 {
+    @apply hidden;
+}
+.creation-modal.modal-frame .tab-panel .tab.contacts-tab {
+    @apply h-auto;
+}
 
 .creation-panel .header {
     @apply flex-x min-h-14 max-h-14 items-center border-b border-bg-04;
@@ -58,8 +64,8 @@
 .creation-panel .navbar-item * {
     @apply cursor-pointer;
 }
-.creation-panel .tab-panel-tabs {
-    /*@apply hidden;*/
+.creation-panel .tab-panel {
+    @apply mb-2;
 }
 
 .creation-panel-contact-list {

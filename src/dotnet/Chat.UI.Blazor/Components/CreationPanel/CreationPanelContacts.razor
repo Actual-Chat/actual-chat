@@ -19,7 +19,7 @@
         @<Tab
              Title="@title" Id="@tabId.ToString()"
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
-                <div class="h-full flex-y my-2">
+                <div class="h-full flex-y">
                     @foreach (var contact in ListContacts(tabId, onlySelected)) {
                         var isSelected = SelectedContacts.Contains(contact);
                         <CreationPanelContactItem
@@ -34,7 +34,7 @@
         </Tab>;
 }
 
-<div class="-flex-y w-full h-full">
+<div class="-flex-y w-full h-full overflow-y-auto">
     <TabPanel
         BottomHill="true"
         Class="@panelHeaderCls"
