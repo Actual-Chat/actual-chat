@@ -71,16 +71,16 @@ export class Landing {
             // scroll down
             if ((this.currentPageNumber <= Object.keys(this.pages).length)
                 && (page.classList.contains('page-scrolling'))
-                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
+                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 30) {
                 this.scrollToPageEnd(page);
             } else if (this.currentPageNumber < Object.keys(this.pages).length) {
                 this.scrollToNextPage();
             }
-        } else if (event.deltaY < 0) {
+        } else if (event.deltaY < 0) {``
             // scroll up
             if (this.currentPageNumber >= 1
                 && page.classList.contains('page-scrolling')
-                && Math.abs(page.getBoundingClientRect().top) > 100) {
+                && Math.abs(page.getBoundingClientRect().top) > 30) {
                 this.scrollToPageStart(page);
             } else if (this.currentPageNumber > 1) {
                 this.scrollToPreviousPage();
@@ -154,11 +154,50 @@ export class Landing {
         }, 500);
     }
 
-    private scrollToPageEnd = (page: HTMLElement) =>
-        page.scrollIntoView({behavior: 'smooth', block: 'end'});
+    private scrollToPageEnd = (page: HTMLElement) => {
+        let windowHeight = document.documentElement.clientHeight;
+        let pageRect = page.getBoundingClientRect();
+        let pageHeight = pageRect.height;
+        let pageBottom = pageRect.bottom;
+        if (pageHeight > windowHeight * 2 && pageBottom > windowHeight * 2) {
+            let pageItems = page.querySelectorAll('.page-item');
+            let pageItem = HTMLElement;
+            let minDelta = 10000;
+            pageItems.forEach(i => {
+                let elem = i as HTMLElement;
+                let itemTop = elem.getBoundingClientRect().top;
+                let itemBottom = elem.getBoundingClientRect().bottom;
+                let delta = windowHeight - itemTop;
+                if (delta > 0 && delta < minDelta && itemBottom > windowHeight) {
+                    minDelta = delta;
+                    pageItem = elem;
+                }
+            })
+            pageItem.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        } else page.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
 
-    private scrollToPageStart = (page: HTMLElement) =>
-        page.scrollIntoView({behavior: 'smooth', block: 'start'});
+    private scrollToPageStart = (page: HTMLElement) => {
+        let windowHeight = document.documentElement.clientHeight;
+        let pageRect = page.getBoundingClientRect();
+        let pageHeight = pageRect.height;
+        let pageTop = pageRect.top;
+        if (pageHeight > windowHeight * 2 && Math.abs(pageTop) > windowHeight) {
+            let pageItems = page.querySelectorAll('.page-item');
+            let pageItem = HTMLElement;
+            let minDelta = 10000;
+            pageItems.forEach(i => {
+                let elem = i as HTMLElement;
+                let delta = elem.getBoundingClientRect().bottom;
+                console.log('delta: ', delta);
+                if (delta > 0 && delta < minDelta) {
+                    minDelta = delta;
+                    pageItem = elem;
+                }
+            })
+            pageItem.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        } else page.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
 
     private getPageBottom = () =>

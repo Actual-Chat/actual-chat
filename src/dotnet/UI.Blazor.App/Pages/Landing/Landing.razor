@@ -20,12 +20,12 @@
 
 <div class="landing-header">
     <div class="min-w-fit">
-        <img src="/landing/p1-icon.png" alt="icon" class="light-icon min-w-10 min-h-10 max-h-10">
-        <img src="/landing/p1-icon-dark.png" alt="icon" class="absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
+        <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon min-w-10 min-h-10 max-h-10">
+        <img src="/landing/ac-icon-dark.svg" alt="icon" class="absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
     </div>
     <div class="px-2 mb-2 w-full">
-        <img src="/landing/p1-brand.png" alt="brand" class="light-icon min-h-6 max-h-6">
-        <img src="/landing/p1-brand-dark.png" alt="brand" class="absolute z-minus top-3 min-h-6 max-h-6">
+        <img src="/landing/ac-title-light.svg" alt="brand" class="light-icon min-h-6 max-h-6">
+        <img src="/landing/ac-title-dark.svg" alt="brand" class="absolute z-minus top-3 min-h-6 max-h-6">
     </div>
     <div class="header-text text-04 font-medium flex-x min-w-fit w-2/5 items-center justify-center gap-x-4 px-4">
         <div class="px-8">
@@ -36,126 +36,56 @@
                 Sign in with
             </div>
             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                <svg class="h-8 w-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="12" fill="#F5F5F5"/>
-                    <g clip-path="url(#clip0_1036_33378)">
-                        <path d="M7.36047 12.0001C7.36047 11.4273 7.4407 10.8546 7.64128 10.3228L4.67267 7.99097C4.07093 9.21824 3.75 10.5682 3.75 12.0001C3.75 13.4319 4.07093 14.7819 4.67267 15.9682L7.64128 13.6364C7.4407 13.1455 7.36047 12.5728 7.36047 12.0001Z" fill="#FBBC05"/>
-                        <path d="M12.5755 6.68182C13.8191 6.68182 14.9424 7.13182 15.8249 7.86818L18.3924 5.25C16.8278 3.85909 14.822 3 12.5755 3C9.0854 3 6.07668 5.04545 4.67261 8.03182L7.64121 10.3636C8.32319 8.19545 10.2488 6.68182 12.5755 6.68182Z" fill="#EA4335"/>
-                        <path d="M12.5755 17.3182C10.2488 17.3182 8.32319 15.8045 7.64121 13.6772L4.67261 16.0091C6.07668 18.9545 9.0854 21 12.5755 21C14.7418 21 16.7877 20.2227 18.3121 18.75L15.504 16.5409C14.7017 17.0318 13.6988 17.3182 12.5755 17.3182Z" fill="#34A853"/>
-                        <path d="M7.64121 13.6772L4.67261 16.0091L7.64121 13.6772Z" fill="#34A853"/>
-                        <path d="M20.7995 10.3635H12.5757V13.8408H17.3094C17.0687 15.0272 16.4268 15.9272 15.5042 16.5408L18.3123 18.7499C19.917 17.1953 21.0001 14.9453 21.0001 11.9999C21.0001 11.4681 20.9199 10.8953 20.7995 10.3635Z" fill="#4285F4"/>
-                    </g>
-                    <defs>
-                        <clipPath id="clip0_1036_33378">
-                            <rect width="17.25" height="18" fill="white" transform="translate(3.75 3)"/>
-                        </clipPath>
-                    </defs>
-                </svg>
+                <img src="/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
             </ButtonRound>
             @if (m.EnableIncompleteUI) {
                 <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                    <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M24 12C24 5.36889 18.6311 0 12 0C5.36889 0 0 5.36889 0 12C0 17.9911 4.39111 22.9511 10.1333 23.8578V15.4667H7.07556V12H10.1333V9.35111C10.1333 6.34667 11.9111 4.69333 14.6489 4.69333C15.9644 4.69333 17.3333 4.92444 17.3333 4.92444V7.87556H15.8222C14.3289 7.87556 13.8667 8.8 13.8667 9.74222V12H17.1911L16.6578 15.4667H13.8667V23.8578C19.6089 22.9511 24 17.9911 24 12Z" fill="#1677F0"/>
-                        <path d="M16.6754 15.4667L17.2088 12H13.8666V9.74225C13.8666 8.80003 14.3288 7.87558 15.8221 7.87558H17.3332V4.92447C17.3332 4.92447 15.9643 4.69336 14.6488 4.69336C11.911 4.69336 10.1332 6.34669 10.1332 9.35114V12H7.07544V15.4667H10.1332V23.8578C10.7377 23.9467 11.3777 24 11.9999 24C12.6399 24 13.2621 23.9467 13.8666 23.8578V15.4667H16.6754Z" fill="white"/>
-                    </svg>
+                    <img src="/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
                 </ButtonRound>
                 <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                    <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="12" cy="12" r="12" fill="#626262"/>
-                        <g clip-path="url(#clip0_1161_43975)">
-                            <path d="M17.6182 9.1135C17.5327 9.181 16.0231 10.0465 16.0231 11.971C16.0231 14.197 17.944 14.9845 18.0015 15.004C17.9926 15.052 17.6963 16.0825 16.9887 17.1325C16.3577 18.0565 15.6988 18.979 14.6963 18.979C13.6939 18.979 13.4359 18.3865 12.2786 18.3865C11.1509 18.3865 10.7499 18.9985 9.83292 18.9985C8.91597 18.9985 8.27617 18.1435 7.54054 17.0935C6.68845 15.8605 6 13.945 6 12.127C6 9.211 7.86339 7.6645 9.6973 7.6645C10.6717 7.6645 11.484 8.3155 12.0958 8.3155C12.6781 8.3155 13.5862 7.6255 14.6948 7.6255C15.115 7.6255 16.6246 7.6645 17.6182 9.1135ZM14.1685 6.391C14.627 5.8375 14.9514 5.0695 14.9514 4.3015C14.9514 4.195 14.9425 4.087 14.9233 4C14.1774 4.0285 13.2899 4.5055 12.7548 5.137C12.3346 5.623 11.9425 6.391 11.9425 7.1695C11.9425 7.2865 11.9617 7.4035 11.9705 7.441C12.0177 7.45 12.0943 7.4605 12.171 7.4605C12.8403 7.4605 13.6821 7.0045 14.1685 6.391Z" fill="white"/>
-                        </g>
-                        <defs>
-                            <clipPath id="clip0_1161_43975">
-                                <rect width="12" height="15" fill="white" transform="translate(6 4)"/>
-                            </clipPath>
-                        </defs>
-                    </svg>
+                    <img src="/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
                 </ButtonRound>
             }
         </div>
     </div>
 </div>
 @* Header end *@
-    <div class="page page-1 pt-16 overflow-y-hidden" id="landing-page-1">
-        <div class="flex-x px-16 h-full overflow-hidden">
-            <div class="flex-y w-3/5 justify-center">
-                <div class="text-04">
-                    <div class="text-6xl font-medium">Text of call?</div>
-                    <div class="text-6xl font-medium">But do you really have to choose?</div>
-                    <div class="py-8 text-xl">We want to redefine the meaning of "Chat". Actually.</div>
-                </div>
-                <div>
-                    <div class="flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
-                        <div>
-                            Sign in with
-                        </div>
-                        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                            <svg class="h-8 w-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="12" fill="#2970FF"/>
-                                <g clip-path="url(#clip0_1036_33378)">
-                                    <path d="M7.36047 12.0001C7.36047 11.4273 7.4407 10.8546 7.64128 10.3228L4.67267 7.99097C4.07093 9.21824 3.75 10.5682 3.75 12.0001C3.75 13.4319 4.07093 14.7819 4.67267 15.9682L7.64128 13.6364C7.4407 13.1455 7.36047 12.5728 7.36047 12.0001Z" fill="#F5F5F5"/>
-                                    <path d="M12.5755 6.68182C13.8191 6.68182 14.9424 7.13182 15.8249 7.86818L18.3924 5.25C16.8278 3.85909 14.822 3 12.5755 3C9.0854 3 6.07668 5.04545 4.67261 8.03182L7.64121 10.3636C8.32319 8.19545 10.2488 6.68182 12.5755 6.68182Z" fill="#F5F5F5"/>
-                                    <path d="M12.5755 17.3182C10.2488 17.3182 8.32319 15.8045 7.64121 13.6772L4.67261 16.0091C6.07668 18.9545 9.0854 21 12.5755 21C14.7418 21 16.7877 20.2227 18.3121 18.75L15.504 16.5409C14.7017 17.0318 13.6988 17.3182 12.5755 17.3182Z" fill="#F5F5F5"/>
-                                    <path d="M7.64121 13.6772L4.67261 16.0091L7.64121 13.6772Z" fill="#F5F5F5"/>
-                                    <path d="M20.7995 10.3635H12.5757V13.8408H17.3094C17.0687 15.0272 16.4268 15.9272 15.5042 16.5408L18.3123 18.7499C19.917 17.1953 21.0001 14.9453 21.0001 11.9999C21.0001 11.4681 20.9199 10.8953 20.7995 10.3635Z" fill="#F5F5F5"/>
-                                </g>
-                                <defs>
-                                    <clipPath id="clip0_1036_33378">
-                                        <rect width="17.25" height="18" fill="white" transform="translate(3.75 3)"/>
-                                    </clipPath>
-                                </defs>
-                            </svg>
-                        </ButtonRound>
-                        @if (m.EnableIncompleteUI) {
-                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M24 12C24 5.36889 18.6311 0 12 0C5.36889 0 0 5.36889 0 12C0 17.9911 4.39111 22.9511 10.1333 23.8578V15.4667H7.07556V12H10.1333V9.35111C10.1333 6.34667 11.9111 4.69333 14.6489 4.69333C15.9644 4.69333 17.3333 4.92444 17.3333 4.92444V7.87556H15.8222C14.3289 7.87556 13.8667 8.8 13.8667 9.74222V12H17.1911L16.6578 15.4667H13.8667V23.8578C19.6089 22.9511 24 17.9911 24 12Z" fill="#1677F0"/>
-                                    <path d="M16.6754 15.4667L17.2088 12H13.8666V9.74225C13.8666 8.80003 14.3288 7.87558 15.8221 7.87558H17.3332V4.92447C17.3332 4.92447 15.9643 4.69336 14.6488 4.69336C11.911 4.69336 10.1332 6.34669 10.1332 9.35114V12H7.07544V15.4667H10.1332V23.8578C10.7377 23.9467 11.3777 24 11.9999 24C12.6399 24 13.2621 23.9467 13.8666 23.8578V15.4667H16.6754Z" fill="white"/>
-                                </svg>
-                            </ButtonRound>
-                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="12" fill="#2970FF"/>
-                                    <g clip-path="url(#clip0_1161_43975)">
-                                        <path d="M17.6182 9.1135C17.5327 9.181 16.0231 10.0465 16.0231 11.971C16.0231 14.197 17.944 14.9845 18.0015 15.004C17.9926 15.052 17.6963 16.0825 16.9887 17.1325C16.3577 18.0565 15.6988 18.979 14.6963 18.979C13.6939 18.979 13.4359 18.3865 12.2786 18.3865C11.1509 18.3865 10.7499 18.9985 9.83292 18.9985C8.91597 18.9985 8.27617 18.1435 7.54054 17.0935C6.68845 15.8605 6 13.945 6 12.127C6 9.211 7.86339 7.6645 9.6973 7.6645C10.6717 7.6645 11.484 8.3155 12.0958 8.3155C12.6781 8.3155 13.5862 7.6255 14.6948 7.6255C15.115 7.6255 16.6246 7.6645 17.6182 9.1135ZM14.1685 6.391C14.627 5.8375 14.9514 5.0695 14.9514 4.3015C14.9514 4.195 14.9425 4.087 14.9233 4C14.1774 4.0285 13.2899 4.5055 12.7548 5.137C12.3346 5.623 11.9425 6.391 11.9425 7.1695C11.9425 7.2865 11.9617 7.4035 11.9705 7.441C12.0177 7.45 12.0943 7.4605 12.171 7.4605C12.8403 7.4605 13.6821 7.0045 14.1685 6.391Z" fill="white"/>
-                                    </g>
-                                    <defs>
-                                        <clipPath id="clip0_1161_43975">
-                                            <rect width="12" height="15" fill="white" transform="translate(6 4)"/>
-                                        </clipPath>
-                                    </defs>
-                                </svg>
-                            </ButtonRound>
-                        }
+<div class="page page-1 pt-16 overflow-y-hidden" id="landing-page-1">
+    <div class="flex-x px-16 h-full overflow-hidden">
+        <div class="flex-y w-3/5 justify-center">
+            <div class="text-04">
+                <div class="text-6xl font-medium">Text of call?</div>
+                <div class="text-6xl font-medium">But do you really have to choose?</div>
+                <div class="py-8 text-xl">We want to redefine the meaning of "Chat". Actually.</div>
+            </div>
+            <div>
+                <div class="flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
+                    <div>
+                        Sign in with
                     </div>
+                    <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                        <img src="/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                    </ButtonRound>
+                    @if (m.EnableIncompleteUI) {
+                        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
+                            <img src="/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                        </ButtonRound>
+                        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
+                            <img src="/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                        </ButtonRound>
+                    }
                 </div>
             </div>
-            <div class="flex w-2/5 justify-center">
-                <img src="/landing/p1-phone.png" alt="phone">
-            </div>
+        </div>
+        <div class="flex w-2/5 justify-center">
+            <img src="/landing/android-phone.svg" alt="phone">
         </div>
     </div>
+</div>
 
-    <div class="page page-2 pt-8 page-scrolling overflow-y-hidden" id="landing-page-2">
-        <div class="flex-y w-full py-12 px-16 items-center justify-center">
-            <div class="flex text-4xl font-semibold w-3/5">
-                - What’s the biggest differentiator between humans
-                and any other form of life on Earth?
-            </div>
-            <div class="flex-y text-4xl font-semibold w-3/5 items-end">
-                <span>- Communication.</span>And the more productive it is, the faster we evolve.
-            </div>
-        </div>
-        <div class="flex px-16 overflow-hidden">
-            <img src="/landing/p2-timeline.png" alt="timeline">
-        </div>
-        <div class="flex px-16 overflow-hidden">
-            <img src="/landing/p2-footer.png" alt="footer">
-        </div>
-    </div>
+<LandingTimeline/>
 
-    <div class="page page-3 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
+<div class="page page-3 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
         <div class="flex-y gap-y-8 justify-center items-center p-16 overflow-hidden ">
             <div class="text-7xl font-semibold">
                 Actual.chat merges voice and text into a single medium
@@ -193,7 +123,7 @@
         </div>
     </div>
 
-    <div class="page page-4 pt-4 overflow-y-hidden" id="landing-page-4">
+<div class="page page-4 pt-4 overflow-y-hidden" id="landing-page-4">
         <div class="flex w-full h-40 py-12 px-16 items-center justify-center">
             <div class="text-5xl font-semibold">We believe communication must be...</div>
         </div>
@@ -220,147 +150,310 @@
         </div>
     </div>
 
-    <div class="page page-5 overflow-y-hidden" id="landing-page-5">
-        <div class="flex h-full overflow-hidden">
+<div class="page page-5 overflow-y-hidden" id="landing-page-5">
+    <div class="flex h-full overflow-hidden">
+        <div class="flex-y w-1/2 justify-center p-16 pr-6">
+            <div class="text-7xl font-semibold">Seamless and frictionless</div>
+            <ul class="list-disc m-8">
+                <li>
+                    Typing is great, but there are so many cases when it’s inconvenient or impossible to type
+                </li>
+                <li>
+                    Driving, jogging, or already in bed, but still looking through your chats? Just hit the microphone button & start talking.
+                </li>
+            </ul>
+        </div>
+        <div class="w-1/2 p-16 pl-6">
+            <div class="flex-y gap-y-4 justify-center w-full h-full">
+                <div class="flex-x gap-x-8">
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/landing/person-01.svg" alt="body">
+                    </div>
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/landing/person-02.svg" alt="body">
+                    </div>
+                </div>
+                <div class="flex-x gap-x-8">
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/landing/person-03.svg" alt="body">
+                    </div>
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/landing/person-04.svg" alt="body">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page page-6 overflow-y-hidden" id="landing-page-6">
+    <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
+        <div class="flex w-1/2 items-center p-16 pb-24 pr-6">
+            <div class="w-full h-96 bg-[#CBCBD1]">
+
+            </div>
+        </div>
+        <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
+            <div class="text-7xl font-semibold">Synchronous + asynchronous</div>
+            <ul class="list-disc m-8">
+                <li>
+                    We start any conversation as asynchronous, which turns synchronous when parties start to respond in real-time.
+                </li>
+                <li>
+                    And if you missed the real-time conversation, transcription and recording is always there – in fact, you get exactly the same experience as in regular chats in this case.
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="page page-7 page-scrolling overflow-y-hidden" id="landing-page-7">
+    <div class="flex-y h-full">
+        <div class="flex-x min-h-136">
             <div class="flex-y w-1/2 justify-center p-16 pr-6">
-                <div class="text-7xl font-semibold">Seamless and frictionless</div>
+                <div class="text-7xl font-semibold">Productive</div>
                 <ul class="list-disc m-8">
                     <li>
-                        Typing is great, but there are so many cases when it’s inconvenient or impossible to type
+                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
                     </li>
                     <li>
-                        Driving, jogging, or already in bed, but still looking through your chats? Just hit the microphone button & start talking.
+                        "You know, we discussed this problem with Alice over the phone… Can you somehow find it?" - "Unfortunately, no - could you please tell me again what happened?
+                    </li>
+                    <li>
+                        Have you ever dreamed of highlighting the important parts of a voice conversation to have the summary later, or slicing a longer one to a few topics that could be continued later?
                     </li>
                 </ul>
+                Actual.chat shines in these scenarios
             </div>
-            <div class="w-1/2 p-16 pl-6">
-                <div class="flex-y justify-center w-full h-full">
-                    <div class="flex-x">
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/p5-image1.png" alt="body">
-                        </div>
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/p5-image2.png" alt="body">
-                        </div>
-                    </div>
-                    <div class="flex-x">
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/p5-image3.png" alt="body">
-                        </div>
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/p5-image4.png" alt="body">
-                        </div>
-                    </div>
+            <div class="flex w-1/2 p-16 pl-6">
+                <div class="w-full h-full bg-[#CBCBD1]">
+
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="page page-6 overflow-y-hidden" id="landing-page-6">
-        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
-            <div class="flex w-1/2 items-center p-16 pb-24 pr-6">
-                <div class="w-full h-96 bg-[#CBCBD1]">
+        <div class="flex-x min-h-136">
+            <div class="flex w-1/2 p-16 pr-6">
+                <div class="w-full h-full bg-[#CBCBD1]">
 
                 </div>
             </div>
-            <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
-                <div class="text-7xl font-semibold">Synchronous + asynchronous</div>
+            <div class="flex-y w-1/2 justify-center p-16 pl-6">
+                <div class="text-7xl font-semibold">Team-friendy</div>
+                Choose between synchronous and asynchronous style is a well-known problem for team conversations:
                 <ul class="list-disc m-8">
                     <li>
-                        We start any conversation as asynchronous, which turns synchronous when parties start to respond in real-time.
+                        Gathering the whole team = productivity hit; + Millennials and Gen-Z are ok only with specific kinds of meetings.
                     </li>
                     <li>
-                        And if you missed the real-time conversation, transcription and recording is always there – in fact, you get exactly the same experience as in regular chats in this case.
+                        But keeping everyone on the same page is important too.
                     </li>
                 </ul>
+                Is there a solution addressing both these issues well? We hope you just found one!
             </div>
         </div>
     </div>
+</div>
 
-    <div class="page page-7 page-scrolling overflow-y-hidden" id="landing-page-7">
-        <div class="flex-y h-full">
-            <div class="flex-x min-h-136">
-                <div class="flex-y w-1/2 justify-center p-16 pr-6">
-                    <div class="text-7xl font-semibold">Productive</div>
-                    <ul class="list-disc m-8">
-                        <li>
-                            Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
-                        </li>
-                        <li>
-                            "You know, we discussed this problem with Alice over the phone… Can you somehow find it?" - "Unfortunately, no - could you please tell me again what happened?
-                        </li>
-                        <li>
-                            Have you ever dreamed of highlighting the important parts of a voice conversation to have the summary later, or slicing a longer one to a few topics that could be continued later?
-                        </li>
-                    </ul>
-                    Actual.chat shines in these scenarios
+<div class="page page-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-8">
+    <div class="flex-y gap-y-8 items-center p-16 overflow-hidden min-h-screen">
+        <div class="flex self-start text-7xl font-semibold">
+            Enjoyable and Fun
+        </div>
+        <div class="gap-x-8 grid grid-cols-3">
+
+            <div class="flex-y gap-y-4">
+                <div class="h-48 bg-[#CBCBD1]">
+
                 </div>
-                <div class="flex w-1/2 p-16 pl-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
-
-                    </div>
+                <div>
+                    You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
                 </div>
             </div>
-            <div class="flex-x min-h-136">
-                <div class="flex w-1/2 p-16 pr-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
 
-                    </div>
+            <div class="flex-y gap-y-4">
+                <div class="h-48 bg-[#CBCBD1]">
+
                 </div>
-                <div class="flex-y w-1/2 justify-center p-16 pl-6">
-                    <div class="text-7xl font-semibold">Team-friendy</div>
-                    Choose between synchronous and asynchronous style is a well-known problem for team conversations:
-                    <ul class="list-disc m-8">
-                        <li>
-                            Gathering the whole team = productivity hit; + Millennials and Gen-Z are ok only with specific kinds of meetings.
-                        </li>
-                        <li>
-                            But keeping everyone on the same page is important too.
-                        </li>
-                    </ul>
-                    Is there a solution addressing both these issues well? We hope you just found one!
+                <div>
+                    Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
+                </div>
+            </div>
+
+            <div class="flex-y gap-y-4">
+                <div class="h-48 bg-[#CBCBD1]">
+
+                </div>
+                <div>
+                    When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="flex-x gap-x-12 h-80 items-center justify-evenly bg-[#8AB1FF] p-16">
+        <div class="flex-y gap-y-2">
+            <div class="text-7xl font-semibold">
+                Get Actual.chat
+            </div>
+            <div class="text-4xl font-medium">
+                Download for iOS, Android or use in Web
+            </div>
+        </div>
+        <div class="flex-x gap-x-12">
+            <button class="bg-white h-20 w-20 rounded-full">
+
+            </button>
+            <button class="bg-white h-20 w-20 rounded-full">
+
+            </button>
+            <button class="bg-white h-20 w-20 rounded-full">
+
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="page page-9 pt-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-9">
+    <div class="flex-y items-center px-16 py-8 overflow-hidden min-h-screen">
+        <div class="flex self-start text-7xl font-semibold">
+            Actual.chat Features
+        </div>
+        <div class="flex-x w-full justify-between">
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-01.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Voice & text</span>
+                    are merged together inchats - channels
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-02.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Markdown-style</span>
+                    text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-03.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Replies, @@mentions, and reactions</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-x w-full justify-between">
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-04.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Group and peer-to-peer chats</span>
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-05.svg" alt="description">
+                </div>
+                <div class="px-2">
+                    <span class="font-bold">Public</span> (anyone can view & listen) <span class="font-bold">and private chats</span>
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-06.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Characters</span>
+                    your status and picture you can choose on per-chat basis
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-x w-full justify-between">
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-07.svg" alt="description">
+                </div>
+                <div class="flex-y px-2">
+                    <span class="font-bold">Unlimited Image & file uploads</span>
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end">
+                    <img src="/landing/dialog-08.svg" alt="description">
+                </div>
+                <div class="px-2">
+                    <span class="font-bold">Languages</span>
+                </div>
+            </div>
+            <div class="flex-y gap-y-2 w-64">
+                <div class="flex w-full h-60 p-2 items-end"></div>
+                <div class="flex-y px-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page page-10 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
+    <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
+        <div class="text-7xl font-semibold">
+            What`s upcoming?
+        </div>
+        <div class="flex-x">
+            <div class="flex-y gap-y-8 min-w-full">
+                <div class="w-64">
+                    Highlights & conversation collapsing  (“Show just highlights for voice conversations”)
+                </div>
+                <div class="w-64">
+                    Places: a group of chats managed together. A perfect fit for team, company, or community chats.
+                </div>
+                <div class="w-64">
+                    Nested chats / threads
+                </div>
+                <div class="w-64">
+                    Chat timelines - think scrollbars, but much more informative
+                </div>
+            </div>
+            <div class="flex-y gap-y-8 min-w-full">
+                <div class="w-64">
+                    Search everywhere
+                </div>
+                <div class="w-64">
+                    New voice-related features - quotes, filters, noise cancellation
+                </div>
+                <div class="w-64">
+                    More languages, transcription and punctuation engines
+                </div>
+                <div class="w-64">
+                    Phone integration.
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="page page-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-8">
-        <div class="flex-y gap-y-8 items-center p-16 overflow-hidden min-h-screen">
-            <div class="flex self-start text-7xl font-semibold">
-                Enjoyable and Fun
+<div class="page page-11 page-scrolling overflow-y-hidden" id="landing-page-11">
+    <div class="flex-y h-full">
+        <div class="flex-x min-h-120">
+            <div class="flex w-1/2 p-16 pr-6">
+                <div class="w-full h-full bg-[#CBCBD1]">
+
+                </div>
             </div>
-            <div class="gap-x-8 grid grid-cols-3">
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
-                    </div>
-                </div>
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
-                    </div>
-                </div>
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
-                    </div>
-                </div>
+            <div class="flex-y gap-y-4 w-1/2 justify-center p-16 pl-6">
+                <div class="text-7xl font-semibold">How much does it cost?</div>
+                Right now Actual.chat is completely free. Its basic features will be either completely free or require a nominal fee (up to $1/mo) forever.
+                We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources. So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.
 
             </div>
         </div>
-        <div class="flex-x gap-x-12 h-80 items-center justify-evenly bg-[#8AB1FF] p-16">
+        <div class="flex-x gap-x-12 items-center justify-evenly bg-[#8AB1FF] p-16">
             <div class="flex-y gap-y-2">
                 <div class="text-7xl font-semibold">
                     Get Actual.chat
@@ -381,209 +474,46 @@
                 </button>
             </div>
         </div>
-    </div>
-
-    <div class="page page-9 pt-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-9">
-        <div class="flex-y items-center px-16 py-8 overflow-hidden min-h-screen">
-            <div class="flex self-start text-7xl font-semibold">
-                Actual.chat Features
-            </div>
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image1.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Voice & text</span>
-                        are merged together inchats - channels
-                    </div>
+        <div class="flex-x h-60 bg-07 p-12">
+            <div class="flex-y w-full">
+                <div class="flex-x h-full gap-x-12 justify-start text-04">
+                    <button class="h-12">
+                        Privacy
+                    </button>
+                    <button class="h-12">
+                        Terms
+                    </button>
+                    <button class="h-12">
+                        Cookie Preferences
+                    </button>
+                    <button class="h-12">
+                        Contact us
+                    </button>
+                    <button class="h-12">
+                        Region
+                    </button>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image2.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Markdown-style</span>
-                        text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image3.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Replies, @@mentions, and reactions</span>
-                    </div>
+                <div class="flex min-h-12 items-center text-04">
+                    © 2022 Actual.chat Inc.  All rights reserved.
                 </div>
             </div>
-
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image4.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Group and peer-to-peer chats</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image5.png" alt="description">
-                    </div>
-                    <div class="px-2">
-                        <span class="font-bold">Public</span> (anyone can view & listen) <span class="font-bold">and private chats</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image6.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Characters</span>
-                        your status and picture you can choose on per-chat basis
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image7.png" alt="description">
-                    </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Unlimited Image & file uploads</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
-                        <img src="/landing/p9-image8.png" alt="description">
-                    </div>
-                    <div class="px-2">
-                        <span class="font-bold">Languages</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end"></div>
-                    <div class="flex-y px-2"></div>
-                </div>
+            <div class="flex-y justify-between min-w-48 text-04">
+                <button class="h-12">
+                    Facebook
+                </button>
+                <button class="h-12">
+                    Github
+                </button>
+                <button class="h-12">
+                    Telegram
+                </button>
+                <button class="h-12">
+                    Medium
+                </button>
             </div>
         </div>
     </div>
-
-    <div class="page page-10 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
-        <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
-            <div class="text-7xl font-semibold">
-                What`s upcoming?
-            </div>
-            <div class="flex-x">
-                <div class="flex-y gap-y-8 min-w-full">
-                    <div class="w-64">
-                        Highlights & conversation collapsing  (“Show just highlights for voice conversations”)
-                    </div>
-                    <div class="w-64">
-                        Places: a group of chats managed together. A perfect fit for team, company, or community chats.
-                    </div>
-                    <div class="w-64">
-                        Nested chats / threads
-                    </div>
-                    <div class="w-64">
-                        Chat timelines - think scrollbars, but much more informative
-                    </div>
-                </div>
-                <div class="flex-y gap-y-8 min-w-full">
-                    <div class="w-64">
-                        Search everywhere
-                    </div>
-                    <div class="w-64">
-                        New voice-related features - quotes, filters, noise cancellation
-                    </div>
-                    <div class="w-64">
-                        More languages, transcription and punctuation engines
-                    </div>
-                    <div class="w-64">
-                        Phone integration.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="page page-11 page-scrolling overflow-y-hidden" id="landing-page-11">
-        <div class="flex-y h-full">
-            <div class="flex-x min-h-120">
-                <div class="flex w-1/2 p-16 pr-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
-
-                    </div>
-                </div>
-                <div class="flex-y gap-y-4 w-1/2 justify-center p-16 pl-6">
-                    <div class="text-7xl font-semibold">How much does it cost?</div>
-                    Right now Actual.chat is completely free. Its basic features will be either completely free or require a nominal fee (up to $1/mo) forever.
-                    We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources. So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.
-
-                </div>
-            </div>
-            <div class="flex-x gap-x-12 items-center justify-evenly bg-[#8AB1FF] p-16">
-                <div class="flex-y gap-y-2">
-                    <div class="text-7xl font-semibold">
-                        Get Actual.chat
-                    </div>
-                    <div class="text-4xl font-medium">
-                        Download for iOS, Android or use in Web
-                    </div>
-                </div>
-                <div class="flex-x gap-x-12">
-                    <button class="bg-white h-20 w-20 rounded-full">
-
-                    </button>
-                    <button class="bg-white h-20 w-20 rounded-full">
-
-                    </button>
-                    <button class="bg-white h-20 w-20 rounded-full">
-
-                    </button>
-                </div>
-            </div>
-            <div class="flex-x h-60 bg-07 p-12">
-                <div class="flex-y w-full">
-                    <div class="flex-x h-full gap-x-12 justify-start text-04">
-                        <button class="h-12">
-                            Privacy
-                        </button>
-                        <button class="h-12">
-                            Terms
-                        </button>
-                        <button class="h-12">
-                            Cookie Preferences
-                        </button>
-                        <button class="h-12">
-                            Contact us
-                        </button>
-                        <button class="h-12">
-                            Region
-                        </button>
-                    </div>
-                    <div class="flex min-h-12 items-center text-04">
-                        © 2022 Actual.chat Inc.  All rights reserved.
-                    </div>
-                </div>
-                <div class="flex-y justify-between min-w-48 text-04">
-                    <button class="h-12">
-                        Facebook
-                    </button>
-                    <button class="h-12">
-                        Github
-                    </button>
-                    <button class="h-12">
-                        Telegram
-                    </button>
-                    <button class="h-12">
-                        Medium
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 
 @code {
