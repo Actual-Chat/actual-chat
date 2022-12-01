@@ -7,10 +7,64 @@ enum LogLevel {
     None = 1000,
 }
 
+const LogMinLevelsKey = 'logMinLevels';
+
 export function initLogging(Log: unknown) : void {
     Log['defaultMinLevel'] = LogLevel.Debug;
     const minLevels = Log['minLevels'] as Map<string, LogLevel>;
+    const w = globalThis;
+    let wasRestored = false;
 
+    if (w) {
+        w[LogMinLevelsKey] = new LogMinLevels(minLevels);
+        if (w.sessionStorage) {
+            wasRestored = restoreFromStorage(w.sessionStorage, minLevels);
+        }
+    }
+
+    if (!wasRestored)
+        reset(minLevels);
+}
+
+export class LogMinLevels {
+    constructor (private minLevels: Map<string, LogLevel>)
+    { }
+
+    public override(scope: string, newLevel: LogLevel): void {
+        this.minLevels.set(scope, newLevel);
+
+        const w = globalThis;
+        if (w?.sessionStorage) {
+            persistToStorage(w.sessionStorage, this.minLevels);
+        }
+    }
+
+    public reset() {
+        reset(this.minLevels);
+    }
+}
+
+function restoreFromStorage(storage: Storage, minLevels: Map<string, LogLevel>): boolean {
+    const w = globalThis;
+    if (w?.sessionStorage) {
+        const storedMinLevelsString = w.sessionStorage.getItem(LogMinLevelsKey);
+        if (storedMinLevelsString) {
+            const storedMinLevels = new Map(JSON.parse(storedMinLevelsString) as [string, LogLevel][]);
+            if (!storedMinLevels.size || storedMinLevels.size == 0)
+                return false;
+
+            storedMinLevels.forEach((value, key) => minLevels.set(key, value));
+            return true;
+        }
+    }
+    return false;
+}
+
+function persistToStorage(storage: Storage, minLevels: Map<string, LogLevel>): void {
+    storage.setItem(LogMinLevelsKey, JSON.stringify(Array.from(minLevels.entries())));
+}
+
+function reset (minLevels: Map<string, LogLevel>): void {
     // Bumping up levels of noisy scopes
     minLevels.set('NextInteraction', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
@@ -38,4 +92,9 @@ export function initLogging(Log: unknown) : void {
     minLevels.set('VirtualList', LogLevel.Info);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
+
+    const w = globalThis;
+    if (w?.sessionStorage) {
+        persistToStorage(w.sessionStorage, minLevels);
+    }
 }

@@ -1,18 +1,19 @@
 import { initLogging } from 'logging-init';
+import 'logging-init';
 
 export enum LogLevel {
     Debug = 1,
     Info,
     Warn,
     Error,
-    None = 1000,                 fd
+    None = 1000,
 }
 
 export class Log {
     public static readonly minLevels: Map<string, LogLevel> = new Map<string, LogLevel>();
     public static defaultMinLevel = LogLevel.Error;
-    public static loggerFactory = (scope: string, level: LogLevel) => new Log(scope, level);
     private static isInitialized = false;
+    public log: (...data: unknown[]) => void;
 
     constructor(
         public readonly scope: string,
@@ -37,7 +38,9 @@ export class Log {
         }
     }
 
-    public static get(scope: string, level = LogLevel.Info) : Log | null {
+    public static loggerFactory = (scope: string, level: LogLevel) => new Log(scope, level);
+
+    public static get(scope: string, level = LogLevel.Info): Log | null {
         if (!this.isInitialized) {
             this.isInitialized = true;
             initLogging(this);
@@ -46,12 +49,9 @@ export class Log {
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
     }
 
-    public log: (...data: unknown[]) => void;
-
-    public assert(predicate?: boolean, ...data: unknown[]) : void {
+    public assert(predicate?: boolean, ...data: unknown[]): void {
         if (!predicate)
             this.log(data);
     }
 }
 
-import 'logging-init';
