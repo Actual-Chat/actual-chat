@@ -8,6 +8,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
+using ActualChat.Chat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
@@ -138,9 +139,10 @@ public static class MauiProgram
         services.AddSingleton<NavigationInterceptor>();
         services.AddTransient<MainPage>();
 
-        //Firebase messaging
 #if ANDROID
+        //Firebase messaging
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
+        services.AddScoped<IAudioOutputController, AndroidAudioOutputController>();
 #endif
 
         // Misc.

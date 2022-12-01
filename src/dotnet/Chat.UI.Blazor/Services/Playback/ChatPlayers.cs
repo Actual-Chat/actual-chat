@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatPlayers : WorkerBase
 {
@@ -8,6 +8,7 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private IServiceProvider Services { get; }
+    private IAudioOutputController AudioOutputController { get;}
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
     public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
@@ -16,6 +17,7 @@ public class ChatPlayers : WorkerBase
     public ChatPlayers(IServiceProvider services)
     {
         Services = services;
+        AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
         ChatUI = services.GetRequiredService<ChatUI>();
 
@@ -116,6 +118,7 @@ public class ChatPlayers : WorkerBase
 
         Task EnterState(ChatPlaybackState? state, CancellationToken ct)
         {
+            AudioOutputController.ToggleAudioDevice(state != null);
             if (state is HistoricalChatPlaybackState historical) {
                 HistoricalPlaybackChatId.Value = historical.ChatId;
                 var result = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
