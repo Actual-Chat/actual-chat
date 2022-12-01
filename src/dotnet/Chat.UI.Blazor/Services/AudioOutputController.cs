@@ -7,7 +7,7 @@ public interface IAudioOutputController : IComputeService
     void SwitchSpeakerphone();
 }
 
-public class AudioOutputController : IAudioOutputController
+public sealed class AudioOutputController : IAudioOutputController
 {
     public AudioOutputController(IStateFactory stateFactory)
         => IsSpeakerphoneOn = stateFactory.NewMutable<bool>();

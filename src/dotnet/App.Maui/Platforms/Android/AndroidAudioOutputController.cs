@@ -12,7 +12,7 @@ using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidAudioOutputController : IAudioOutputController
+public sealed class AndroidAudioOutputController : IAudioOutputController
 {
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
