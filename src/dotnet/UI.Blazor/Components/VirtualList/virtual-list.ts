@@ -253,6 +253,8 @@ export class VirtualList {
             for (const node of mutation.addedNodes) {
                 const itemRef = node as HTMLElement;
                 const key = getItemKey(itemRef);
+                if (!key || key == '')
+                    continue;
 
                 itemRef.classList.remove('new');
                 if (this._items.has(key)) {
