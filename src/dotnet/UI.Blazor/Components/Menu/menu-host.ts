@@ -1,7 +1,18 @@
 import './menu.css';
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
-import { combineLatestWith, empty, filter, fromEvent, map, of, Subject, switchMap, takeUntil } from 'rxjs';
+import {
+    combineLatestWith,
+    delay,
+    empty,
+    filter,
+    fromEvent,
+    map,
+    of,
+    Subject,
+    switchMap,
+    takeUntil,
+} from 'rxjs';
 import {
     computePosition,
     flip,
@@ -214,7 +225,7 @@ export class MenuHost implements Disposable {
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),
                 switchMap((eventData: EventData | undefined) => {
-                    return eventData ? of(eventData) : empty();
+                    return eventData ? of(eventData).pipe(delay(100)) : empty();
                 }),
             )
             .subscribe((eventData: EventData) => {
@@ -302,6 +313,15 @@ export class MenuHost implements Disposable {
             return undefined;
         }
         const trigger = closestElement.dataset['hoverMenu'];
+        const hoverMenu = this.menus.find(x => x.eventData.isHoverMenu);
+        if (hoverMenu) {
+            if (hoverMenu.eventData.menuRef === trigger) {
+                return undefined;
+            } else {
+                this.hideMenu(hoverMenu);
+            }
+        }
+
         return {
             placement: "top-end",
             menuRef: trigger,
