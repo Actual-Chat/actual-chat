@@ -12,7 +12,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 60)]
-    Task<ChatSummary?> GetSummary(
+    Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);

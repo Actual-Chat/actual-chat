@@ -15,8 +15,8 @@ public interface IChatsClientDef
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetSummary))]
-    Task<ChatSummary?> GetSummary(
+    [Get(nameof(GetNews))]
+    Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);

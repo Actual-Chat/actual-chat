@@ -11,7 +11,7 @@ public class DbReadPosition : IHasId<string>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     public long ReadEntryId { get; set; }
 
-    public static string ComposeId(UserId userId, string chatId)
+    public static string ComposeId(UserId userId, ChatId chatId)
         => $"{userId} {chatId}";
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbReadPosition>

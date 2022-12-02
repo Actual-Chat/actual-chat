@@ -28,11 +28,11 @@ public class ChatsController : ControllerBase, IChats
         => Service.GetRules(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ChatSummary?> GetSummary(
+    public Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
-        => Service.GetSummary(session, chatId, cancellationToken);
+        => Service.GetNews(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(

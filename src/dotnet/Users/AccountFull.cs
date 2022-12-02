@@ -11,7 +11,7 @@ public sealed record AccountFull(
 
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
-        (AccountFull? a) => a != null);
+        (AccountFull? a) => a is { Id.IsNone: false });
     public static Requirement<AccountFull> MustBeAdmin { get; } = MustExist & Requirement.New(
         new(() => StandardError.Account.NonAdmin()),
         (AccountFull? a) => a?.IsAdmin ?? false);

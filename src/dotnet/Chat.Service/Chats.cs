@@ -42,8 +42,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
             var contactId = new ContactId(account.Id, peerChatId, AssumeValid.Option);
             contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-            if (contact == null)
-                return null;
         }
 
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -119,16 +117,16 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatSummary?> GetSummary(
+    public virtual async Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
         if (chat == null)
-            return null;
+            return ChatNews.None;
 
-        return await Backend.GetSummary(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -319,14 +317,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatEntry = new ChatEntry {
-            Id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option),
-            AuthorId = author.Id,
-            Content = text,
-            RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
-        };
-        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry, command.Attachments.Length > 0);
-        var textEntry =  await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+        var backendCommand = new IChatsBackend.UpsertEntryCommand(
+            new ChatEntry(id) {
+                AuthorId = author.Id,
+                Content = text,
+                RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+            },
+            command.Attachments.Length > 0);
+        var chatEntry = await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < command.Attachments.Length; index++) {
             var attachmentUpload = command.Attachments[index];
@@ -338,7 +337,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
 
             var attachment = new TextEntryAttachment {
-                EntryId = textEntry.Id,
+                EntryId = chatEntry.Id,
                 Index = index,
                 Length = content.Length,
                 ContentType = contentType,
@@ -350,7 +349,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
             await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
         }
-        return textEntry;
+        return chatEntry;
     }
 
     private async Task<ChatEntry> UpdateTextEntry(

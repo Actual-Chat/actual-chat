@@ -11,20 +11,18 @@ namespace ActualChat.Contacts;
 public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBackend
 {
     private IAccountsBackend? _accountsBackend;
-    private IChatsBackend? _chatsBackend;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
 
     public ContactsBackend(IServiceProvider services) : base(services)
         => DbContactResolver = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
+    public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
     {
         if (contactId.OwnerId != (Symbol)ownerId)
-            return null;
+            throw new ArgumentOutOfRangeException(nameof(contactId));
 
         var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel()
@@ -34,7 +32,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (chatId.IsPeerChatId(out var peerChatId)) {
             var userId = peerChatId.UserIds.OtherThanOrDefault(ownerId);
             if (userId.IsNone)
-                return null;
+                throw new ArgumentOutOfRangeException(nameof(contactId));
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
             contact = contact with { Account = account.ToAccount() };
@@ -220,9 +218,6 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return;
 
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return;
-
         var command = new IContactsBackend.TouchCommand(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

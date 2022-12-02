@@ -29,6 +29,8 @@ public sealed record Chat(
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsVirtual => Version == 0 || Id.IsNone;
 }
 
 [DataContract]

@@ -75,7 +75,7 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
         if (s == null || s.Length < 3) // Tests may use some accounts with short Ids + there is "admin"
             return false;
 
-        var alphabet = Alphabet.AlphaNumeric;
+        var alphabet = Alphabet.AlphaNumericDash;
         for (var i = 0; i < s.Length; i++) {
             var c = s[i];
             if (!alphabet.IsMatch(c)) {

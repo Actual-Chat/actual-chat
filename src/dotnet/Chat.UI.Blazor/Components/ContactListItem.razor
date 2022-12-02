@@ -1,18 +1,18 @@
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<ContactListItem.Model>
+@inherits ComputedStateComponent<ChatState>
 @{
-    var m = State.ValueOrDefault;
-    if (ReferenceEquals(m, Model.None))
+    var m = State.ValueOrDefault ?? ChatState.Loading;
+    if (m.Chat.Id.IsNone)
         return;
 
-    var isMenuVisible = m.ChatState.IsListening || m.ChatState.IsRecording;
+    var isMenuVisible = m.IsListening || m.IsRecording;
     var cls = isMenuVisible ? "visible-menu" : "invisible-menu";
 }
 
 <NavbarItem
-    Url="@(Links.ChatPage(m.ChatState.Chat.Id))"
-    IsOnline="@m.IsOnline"
-    IsSelected="@m.ChatState.IsSelected"
+    Url="@(Links.ChatPage(m.Chat.Id))"
+    IsOnline="@m.Presence.IsOnline()"
+    IsSelected="@m.IsSelected"
     data-menu="@(MenuRef.New<ContactMenu>(Contact.Id).ToString())"
     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
     data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
@@ -27,8 +27,8 @@
     </ChildContent>
     <Ending>
         <div class="@cls">
-            <ChatListListenToggle ChatId="@m.ChatState.Chat.Id" Class="chat-menu-btn blackout"/>
-            <ChatListRecordingToggle ChatId="@m.ChatState.Chat.Id" Class="chat-menu-btn blackout"/>
+            <ChatListListenToggle ChatId="@m.Chat.Id" Class="chat-menu-btn blackout"/>
+            <ChatListRecordingToggle ChatId="@m.Chat.Id" Class="chat-menu-btn blackout"/>
             <div class="flex"
                  data-menu="@(MenuRef.New<ContactMenu>(Contact.Id).ToString())"
                  data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
@@ -49,31 +49,14 @@
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [Parameter, EditorRequired] public Contact Contact { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new () { InitialValue = Model.None };
+    protected override ComputedState<ChatState>.Options GetStateOptions()
+        => new () { InitialValue = ChatState.Loading };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = Contact.Account;
-        var chatState = await ChatUI.GetChatState(Contact.ChatId, cancellationToken);
-        if (chatState == null)
-            return Model.None;
-
-        var presence = account != null
-            ? await UserPresences.Get(account.Id, cancellationToken)
-            : Presence.Unknown;
-        return new Model(chatState, presence);
-    }
-
-    public record Model(
-        ChatState ChatState,
-        Presence Presence
-    ) {
-        public static Model None { get; } = new(ChatState.None, Presence.Unknown);
-
-        public bool IsOnline => Presence is Presence.Online or Presence.Recording;
+    protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken) {
+        var state = await ChatUI.GetState(Contact.ChatId, true, cancellationToken).ConfigureAwait(false);
+        return state ?? ChatState.None;
     }
 }

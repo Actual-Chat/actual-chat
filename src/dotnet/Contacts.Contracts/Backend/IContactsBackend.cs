@@ -3,7 +3,7 @@ namespace ActualChat.Contacts;
 public interface IContactsBackend : IComputeService
 {
     [ComputeMethod]
-    public Task<Contact?> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
+    public Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     public Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
 
     // Not a [ComputeMethod]!

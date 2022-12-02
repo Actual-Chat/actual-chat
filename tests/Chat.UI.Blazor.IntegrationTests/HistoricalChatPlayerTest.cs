@@ -83,7 +83,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
 
     private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, string ownerUserId)
     {
-        const string chatId = "test-chat";
+        var chatId = new ChatId("test-chat");
         var dbChat = new DbChat {
             Id = chatId,
             Version = 1,

@@ -28,12 +28,26 @@ public class Contacts : IContacts
             throw Unauthorized();
 
         var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
         var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return null; // We don't return Chat contacts w/ null Chat
+            return null; // We don't return contacts w/ null Chat
+
+        contact = contact with { Chat = chat };
+        return contact;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var contactId = new ContactId(ownAccount.Id, chatId, ParseOrNone.Option);
+        if (contactId.IsNone)
+            return null; // A peer chat that belongs to other users, etc.
+
+        var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null; // We don't return contacts w/ null Chat
 
         contact = contact with { Chat = chat };
         return contact;

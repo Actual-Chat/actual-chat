@@ -25,7 +25,7 @@ public class MessageController : ControllerBase
     [HttpPost]
     [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
-    public async Task<ActionResult<long>> PostMessage(string chatId)
+    public async Task<ActionResult<long>> PostMessage(ChatId chatId)
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
@@ -94,7 +94,7 @@ public class MessageController : ControllerBase
 
         var command = new IChats.UpsertTextEntryCommand(
             _sessionResolver.Session,
-            new ChatId(chatId),
+            chatId,
             null,
             post.Payload!.Text.Trim(),
             post.Payload!.RepliedChatEntryId

@@ -1,39 +1,52 @@
+using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using ActualChat.Users.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class ChatUI
+public partial class ChatUI : WorkerBase
 {
     public const int MaxUnreadChatCount = 100;
     public const int MaxActiveChatCount = 3;
 
-    private ChatPlayers? _chatPlayers;
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+
+    private ChatPlayers? _chatPlayers;
+    private AudioRecorder? _audioRecorder;
+    private AudioSettings? _audioSettings;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
+    private IUserPresences UserPresences { get; }
     private IChats Chats { get; }
     private IContacts Contacts { get; }
     private IReadPositions ReadPositions { get; }
     private IMentions Mentions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
+    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private AccountUI AccountUI { get; }
+    private LanguageUI LanguageUI { get; }
+    private InteractiveUI InteractiveUI { get; }
+    private KeepAwakeUI KeepAwakeUI { get; }
     private ModalUI ModalUI { get; }
-    private MomentClockSet Clocks { get; }
     private UICommander UICommander { get; }
+    private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
+    private ILogger Log { get; }
 
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
-    public ISyncedState<ImmutableHashSet<PinnedChat>> PinnedChats { get; }
     public IStoredState<ChatId> SelectedChatId { get; }
     public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
     public IMutableState<long> HighlightedChatEntryId { get; }
@@ -41,30 +54,31 @@ public class ChatUI
 
     public ChatUI(IServiceProvider services)
     {
+        Log = services.LogFor(GetType());
         Services = services;
+        Clocks = services.Clocks();
+
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
+        UserPresences = services.GetRequiredService<IUserPresences>();
         Chats = services.GetRequiredService<IChats>();
         Contacts = services.GetRequiredService<IContacts>();
         ReadPositions = services.GetRequiredService<IReadPositions>();
         Mentions = services.GetRequiredService<IMentions>();
+        AccountUI = services.GetRequiredService<AccountUI>();
+        LanguageUI = services.GetRequiredService<LanguageUI>();
+        InteractiveUI = services.GetRequiredService<InteractiveUI>();
+        KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
         ModalUI = services.GetRequiredService<ModalUI>();
-        Clocks = services.Clocks();
         UICommander = services.UICommander();
 
         var localSettings = services.LocalSettings();
-        var accountSettings = services.AccountSettings().WithPrefix(nameof(ChatUI));
         SelectedChatId = StateFactory.NewKvasStored<ChatId>(new(localSettings, nameof(SelectedChatId)));
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
             new (localSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
-            });
-        PinnedChats = StateFactory.NewKvasSynced<ImmutableHashSet<PinnedChat>>(
-            new(accountSettings, nameof(PinnedChats)) {
-                InitialValue = ImmutableHashSet<PinnedChat>.Empty,
-                Corrector = FixPinnedChats,
             });
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
@@ -73,81 +87,80 @@ public class ChatUI
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateReadState);
-        var uiStateSync = services.GetRequiredService<UIStateSync>();
-        uiStateSync.Start();
+        Start();
     }
 
     [ComputeMethod]
-    public virtual async Task<ImmutableList<ChatState>> ListChatStates(CancellationToken cancellationToken)
+    public virtual async Task<ImmutableList<ChatSummary>> ListSummaries(CancellationToken cancellationToken)
     {
-        var result = await ListChatStatesExcludingSelected(cancellationToken).ConfigureAwait(false);
-        if (result.Any(c => c.IsSelected))
-            return result;
-
-        var selectedChatState = await GetSelectedChatState(cancellationToken).ConfigureAwait(false);
-        if (selectedChatState == null)
-            return result;
-
-        result = result.Insert(0, selectedChatState);
-        return result;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<ChatState?> GetSelectedChatState(CancellationToken cancellationToken)
-    {
+        var result = await ListSummariesExcludingSelected(cancellationToken).ConfigureAwait(false);
         var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        var result = await GetChatState(selectedChatId, cancellationToken).ConfigureAwait(false);
+        if (result.Any(c => c.Chat.Id == selectedChatId))
+            return result;
+
+        var extraSummary = await GetSummary(selectedChatId, cancellationToken).ConfigureAwait(false);
+        if (extraSummary == null)
+            return result;
+
+        result = result.Insert(0, extraSummary);
         return result;
     }
 
     [ComputeMethod]
-    public virtual async Task<ChatState?> GetChatState(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatSummary?> GetSummary(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
             return null;
 
-        var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
-        var chatTask = Chats.Get(Session, chatId, cancellationToken);
-        var chatSummaryTask = Chats.GetSummary(Session, chatId, cancellationToken);
+        var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
+            return null;
+
+        var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
         var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
 
-        var isSelectedTask = IsSelected(chatId);
-        var isPinnedTask = IsPinned(chatId);
-        var isListeningTask = IsListening(chatId);
-        var isRecordingTask = IsRecording(chatId);
-
-        var ownAccount = await ownAccountTask.ConfigureAwait(false);
-        var contactId = new ContactId(ownAccount.Id, chatId, ParseOrNone.Option);
-        var contact = contactId.IsNone ? null
-            : await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
-
-        var chat = await chatTask.ConfigureAwait(false);
-        var chatSummary = await chatSummaryTask.ConfigureAwait(false);
-        if (chat == null || chatSummary == null)
-            return null;
-
-        var result = new ChatState() {
-            Chat = chat,
-            Summary = chatSummary,
-            Contact = contact,
+        var result = new ChatSummary(contact) {
+            News = await chatNewsTask.ConfigureAwait(false),
             LastMention = await lastMentionTask.ConfigureAwait(false),
             ReadEntryId = await readEntryIdTask.ConfigureAwait(false),
-            IsSelected = await isSelectedTask.ConfigureAwait(false),
-            IsPinned = await isPinnedTask.ConfigureAwait(false),
-            IsListening = await isListeningTask.ConfigureAwait(false),
-            IsRecording = await isRecordingTask.ConfigureAwait(false),
         };
         return result;
     }
 
     [ComputeMethod]
-    public virtual Task<bool> IsSelected(ChatId chatId)
-        => Task.FromResult(SelectedChatId.Value == chatId);
+    public virtual async Task<ChatState?> GetState(
+        ChatId chatId,
+        bool withPresence,
+        CancellationToken cancellationToken = default)
+    {
+        if (withPresence) {
+            // Recursive call to get a part of state that prob. changes less frequently
+            var state = await GetState(chatId, false).ConfigureAwait(false);
+            if (state == null)
+                return null;
+
+            var account = state.Contact.Account;
+            if (account == null)
+                return state;
+
+            var presence = await UserPresences.Get(account.Id, cancellationToken).ConfigureAwait(false);
+            return state with { Presence = presence };
+        }
+
+        var summary = await GetSummary(chatId, cancellationToken).ConfigureAwait(false);
+        if (summary == null)
+            return null;
+
+        var isSelected = await IsSelected(chatId).ConfigureAwait(false);
+        var isListening = await IsListening(chatId).ConfigureAwait(false);
+        var isRecording = await IsRecording(chatId).ConfigureAwait(false);
+        return new(summary, isSelected, isListening, isRecording);
+    }
 
     [ComputeMethod]
-    public virtual Task<bool> IsPinned(ChatId chatId)
-        => Task.FromResult(PinnedChats.Value.Contains(chatId));
+    public virtual Task<bool> IsSelected(ChatId chatId)
+        => Task.FromResult(SelectedChatId.Value == chatId);
 
     [ComputeMethod]
     public virtual Task<bool> IsListening(ChatId chatId)
@@ -214,16 +227,19 @@ public class ChatUI
 
     public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
     public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
-    public ValueTask SetPinState(ChatId chatId, bool mustPin)
+    public async ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        return UpdatePinnedChats(
-            pinnedChats => mustPin
-                ? pinnedChats.Add(new PinnedChat(chatId, Now))
-                : pinnedChats.Remove(chatId)
-            );
+        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
+        if (contact.IsPinned == mustPin)
+            return;
+
+        var command = new IContacts.ChangeCommand(Session, contact.Id, contact.Version, new Change<Contact>() {
+            Update = contact with { IsPinned = mustPin },
+        });
+        await UICommander.Run(command).ConfigureAwait(false);
     }
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
@@ -279,11 +295,11 @@ public class ChatUI
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<ImmutableList<ChatState>> ListChatStatesExcludingSelected(CancellationToken cancellationToken)
+    protected virtual async Task<ImmutableList<ChatSummary>> ListSummariesExcludingSelected(CancellationToken cancellationToken)
     {
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         var chats = await contactIds
-            .Select(contactId => GetChatState(contactId.ChatId, cancellationToken))
+            .Select(contactId => GetSummary(contactId.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
 
@@ -404,45 +420,5 @@ public class ChatUI
                 ? Clocks.CpuClock.Now
                 : Moment.Max(chat.Recency, lastEntry.EndsAt ?? lastEntry.BeginsAt);
         }
-    }
-
-    private async ValueTask UpdatePinnedChats(
-        Func<ImmutableHashSet<PinnedChat>, ImmutableHashSet<PinnedChat>> updater,
-        CancellationToken cancellationToken = default)
-    {
-        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var originalValue = PinnedChats.Value;
-        var updatedValue = updater.Invoke(originalValue);
-        if (ReferenceEquals(originalValue, updatedValue))
-            return;
-
-        updatedValue = await FixPinnedChats(updatedValue, cancellationToken).ConfigureAwait(false);
-        PinnedChats.Value = updatedValue;
-    }
-
-    private async ValueTask<ImmutableHashSet<PinnedChat>> FixPinnedChats(
-        ImmutableHashSet<PinnedChat> pinnedChats,
-        CancellationToken cancellationToken = default)
-    {
-        if (pinnedChats.Count < 32)
-            return pinnedChats;
-
-        var oldBoundary = Now - TimeSpan.FromDays(365);
-        var chats = await pinnedChats
-            .Where(c => c.Recency < oldBoundary)
-            .Select(async c => {
-                var chat = await Chats.Get(Session, c.ChatId, default).ConfigureAwait(false);
-                return (PinnedChat: c, Chat: chat);
-            })
-            .Collect()
-            .ConfigureAwait(false);
-
-        var result = pinnedChats;
-        foreach (var (c, chat) in chats) {
-            if (chat != null)
-                continue;
-            result = result.Remove(c);
-        }
-        return result;
     }
 }

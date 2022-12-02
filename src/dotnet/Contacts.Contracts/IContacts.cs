@@ -5,6 +5,8 @@ public interface IContacts : IComputeService
     [ComputeMethod]
     Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]

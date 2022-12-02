@@ -18,6 +18,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string OwnerId { get; set; } = "";
     public string? UserId { get; set; }
     public string? ChatId { get; set; }
+    public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
         get => _touchedAt.DefaultKind(DateTimeKind.Utc);
@@ -32,6 +33,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new(new ContactId(Id), Version) {
             UserId = new UserId(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
+            IsPinned = IsPinned,
         };
 
     public void UpdateFrom(Contact model)
@@ -48,6 +50,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         OwnerId = model.OwnerId;
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
+        IsPinned = model.IsPinned;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

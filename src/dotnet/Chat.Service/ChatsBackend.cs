@@ -110,19 +110,19 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatSummary?> GetSummary(
+    public virtual async Task<ChatNews> GetNews(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return null;
+            return ChatNews.None;
 
         var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length > 0 ? tile.Entries[^1] : null;
-        return new ChatSummary(chatId, idRange, lastEntry);
+        return new ChatNews(idRange, lastEntry);
     }
 
     // [ComputeMethod]
@@ -487,7 +487,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (author.ChatId == Constants.Chat.AnnouncementsChatId)
             return;
 
-        var createServiceEntryCommand = new IChatsBackend.UpsertEntryCommand(new ChatEntry {
+        var id = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(id) {
             AuthorId = AuthorExt.GetWalleId(author.ChatId),
             ServiceEntry = new () {
                 MembersChanged = new () {
@@ -496,7 +497,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 },
             },
         });
-        await Commander.Call(createServiceEntryCommand, true, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

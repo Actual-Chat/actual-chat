@@ -21,6 +21,10 @@ public class ContactsController : ControllerBase, IContacts
         => Service.Get(session, contactId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken)
+        => Service.GetForChat(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<ImmutableArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)

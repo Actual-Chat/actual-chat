@@ -1,5 +1,3 @@
-using ActualChat.Chat;
-
 namespace ActualChat.Contacts;
 
 public static class ContactsExt
