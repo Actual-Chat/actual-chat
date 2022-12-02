@@ -51,6 +51,8 @@ export class VirtualList {
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
     private readonly _items: Map<string, VirtualListItem>;
+    private readonly _itemRefs: Array<HTMLElement> = [];
+    private readonly _newItemRefs: Array<Element> = [];
     private readonly _statistics: VirtualListStatistics = new VirtualListStatistics();
 
     private _isDisposed = false;
@@ -219,6 +221,10 @@ export class VirtualList {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private maybeOnRenderEnd = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         this._isRendering = true;
+
+        this._itemRefs.fill(null);
+        this._newItemRefs.fill(null);
+
         const removedCount = mutations.reduce((prev, m) => prev+ m.removedNodes.length, 0);
         const addedCount = mutations.reduce((prev, m) => prev+ m.addedNodes.length, 0);
         const queryDuration = Math.max(0, Date.now() - this._lastQueryTime ?? 0);
@@ -723,12 +729,30 @@ export class VirtualList {
             await this.requestData(true);
     }
 
-    private getNewItemRefs(): HTMLCollectionOf<Element> {
-        return this._containerRef.getElementsByClassName('item new');
+    private getNewItemRefs(): Element[] {
+        const itemRefs = this._newItemRefs;
+        if (itemRefs.length && itemRefs[0])
+            return itemRefs;
+
+        const itemRefCollection = this._containerRef.getElementsByClassName('item new');
+        itemRefs.length = itemRefCollection.length;
+        for (let i = 0; i < itemRefCollection.length; i++) {
+            itemRefs[i] = itemRefCollection[i];
+        }
+        return itemRefs;
     }
 
-    private getAllItemRefs(): HTMLCollectionOf<HTMLLIElement> {
-        return this._containerRef.getElementsByTagName('li');
+    private getAllItemRefs(): HTMLElement[] {
+        const itemRefs = this._itemRefs;
+        if (itemRefs.length && itemRefs[0])
+            return itemRefs;
+
+        const itemRefCollection = this._containerRef.getElementsByTagName('li');
+        itemRefs.length = itemRefCollection.length;
+        for (let i = 0; i < itemRefCollection.length; i++) {
+            itemRefs[i] = itemRefCollection[i];
+        }
+        return itemRefs;
     }
 
     private getItemRef(key: string): HTMLElement | null {
