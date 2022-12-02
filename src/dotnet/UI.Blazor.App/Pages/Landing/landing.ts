@@ -161,10 +161,10 @@ export class Landing {
         let pageBottom = pageRect.bottom;
         if (pageHeight > windowHeight * 2 && pageBottom > windowHeight * 2) {
             let pageItems = page.querySelectorAll('.page-item');
-            let pageItem: HTMLElement;
+            let pageItem: HTMLDivElement;
             let minDelta = 10000;
             pageItems.forEach(i => {
-                let elem = i as HTMLElement;
+                let elem = i as HTMLDivElement;
                 let itemTop = elem.getBoundingClientRect().top;
                 let itemBottom = elem.getBoundingClientRect().bottom;
                 let delta = windowHeight - itemTop;
@@ -184,10 +184,10 @@ export class Landing {
         let pageTop = pageRect.top;
         if (pageHeight > windowHeight * 2 && Math.abs(pageTop) > windowHeight) {
             let pageItems = page.querySelectorAll('.page-item');
-            let pageItem = HTMLElement;
+            let pageItem: HTMLDivElement;
             let minDelta = 10000;
             pageItems.forEach(i => {
-                let elem = i as HTMLElement;
+                let elem = i as HTMLDivElement;
                 let delta = elem.getBoundingClientRect().bottom;
                 console.log('delta: ', delta);
                 if (delta > 0 && delta < minDelta) {
