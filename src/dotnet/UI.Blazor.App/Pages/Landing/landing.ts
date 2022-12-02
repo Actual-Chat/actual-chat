@@ -161,7 +161,7 @@ export class Landing {
         let pageBottom = pageRect.bottom;
         if (pageHeight > windowHeight * 2 && pageBottom > windowHeight * 2) {
             let pageItems = page.querySelectorAll('.page-item');
-            let pageItem = HTMLElement;
+            let pageItem: HTMLElement;
             let minDelta = 10000;
             pageItems.forEach(i => {
                 let elem = i as HTMLElement;
