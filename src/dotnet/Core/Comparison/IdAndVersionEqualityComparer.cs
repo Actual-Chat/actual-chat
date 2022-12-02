@@ -2,10 +2,10 @@ using Stl.Versioning;
 
 namespace ActualChat.Comparison;
 
-public sealed class VersionBasedEqualityComparer<T, TKey> : IEqualityComparer<T>
+public sealed class IdAndVersionEqualityComparer<T, TKey> : IEqualityComparer<T>
     where T : IHasId<TKey>, IHasVersion<long>
 {
-    public static IEqualityComparer<T> Instance { get; } = new VersionBasedEqualityComparer<T, TKey>();
+    public static IdAndVersionEqualityComparer<T, TKey> Instance { get; } = new();
 
     public bool Equals(T? x, T? y)
     {

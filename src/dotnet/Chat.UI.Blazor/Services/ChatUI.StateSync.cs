@@ -12,11 +12,12 @@ public partial class ChatUI
         => Task.WhenAll(
             InvalidateSelectedChatDependencies(cancellationToken),
             InvalidateActiveChatDependencies(cancellationToken),
-            SyncPlaybackState(cancellationToken),
+            InvalidateHistoricalPlaybackDependencies(cancellationToken),
+            PushRealtimePlaybackState(cancellationToken),
             SyncRecordingState(cancellationToken),
-            SyncKeepAwakeState(cancellationToken),
-            StopRecordingWhenInactive(cancellationToken),
+            PushKeepAwakeState(cancellationToken),
             ResetHighlightedChatEntry(cancellationToken),
+            StopRecordingWhenInactive(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
@@ -25,6 +26,8 @@ public partial class ChatUI
         var changes = SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
             var newChatId = cSelectedContactId.Value;
+            if (newChatId == oldChatId)
+                continue;
 
             using (Computed.Invalidate()) {
                 _ = IsSelected(oldChatId);
@@ -37,51 +40,71 @@ public partial class ChatUI
 
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
     {
-        var oldRecordingContact = default(ActiveChat);
-        var oldListeningContacts = new HashSet<ActiveChat>();
+        var oldRecordingChat = default(ActiveChat);
+        var oldListeningChats = new HashSet<ActiveChat>();
         var changes = ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
-            var activeContacts = cActiveContacts.Value;
-            var newRecordingContact = activeContacts.FirstOrDefault(c => c.IsRecording);
-            var newListeningContacts = activeContacts.Where(c => c.IsListening).ToHashSet();
+            var activeChats = cActiveContacts.Value;
+            var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+            var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
 
-            var added = newListeningContacts.Except(oldListeningContacts);
-            var removed = oldListeningContacts.Except(newListeningContacts);
+            var added = newListeningChats.Except(oldListeningChats);
+            var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
             using (Computed.Invalidate()) {
-                if (newRecordingContact != oldRecordingContact) {
+                if (newRecordingChat != oldRecordingChat) {
                     _ = GetRecordingChatId();
-                    _ = IsRecording(oldRecordingContact.ChatId);
-                    _ = IsRecording(newRecordingContact.ChatId);
+                    _ = GetMediaState(oldRecordingChat.ChatId);
+                    _ = GetMediaState(newRecordingChat.ChatId);
                 }
                 if (changed.Count > 0) {
                     _ = GetListeningChatIds();
-                    foreach (var c in changed)
-                        _ = IsListening(c.ChatId);
+                    foreach (var c in changed) {
+                        _ = GetMediaState(c.ChatId);
+                    }
                 }
             }
 
-            oldRecordingContact = newRecordingContact;
-            oldListeningContacts = newListeningContacts;
+            oldRecordingChat = newRecordingChat;
+            oldListeningChats = newListeningChats;
         }
     }
 
-    private async Task SyncPlaybackState(CancellationToken cancellationToken)
+    private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
+    {
+        var oldChatId = ChatId.None;
+        var changes = ChatPlayers.PlaybackState.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
+            var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
+            if (newChatId == oldChatId)
+                continue;
+
+            using (Computed.Invalidate()) {
+                _ = GetMediaState(oldChatId);
+                _ = GetMediaState(newChatId);
+            }
+
+            oldChatId = newChatId;
+        }
+    }
+
+
+    private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
     {
         using var dCancellationTask = cancellationToken.ToTask();
         var cancellationTask = dCancellationTask.Resource;
 
-        var cExpectedPlaybackStateBase = await Computed
-            .Capture(GetRealtimePlaybackState)
+        var cExpectedRealtimePlaybackStateBase = await Computed
+            .Capture(GetExpectedRealtimePlaybackState)
             .ConfigureAwait(false);
-        var playbackState = ChatPlayers.ChatPlaybackState;
+        var playbackState = ChatPlayers.PlaybackState;
 
-        var changes = cExpectedPlaybackStateBase.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = cExpectedRealtimePlaybackStateBase.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cExpectedPlaybackState in changes.ConfigureAwait(false)) {
             var expectedPlaybackState = cExpectedPlaybackState.ValueOrDefault;
             while (cExpectedPlaybackState.IsConsistent()) {
                 var playbackStateValue = playbackState.Value;
-                if (playbackStateValue is null or RealtimeChatPlaybackState) {
+                if (playbackStateValue is null or RealtimePlaybackState) {
                     if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
                         if (playbackStateValue is null && !InteractiveUI.IsInteractive.Value)
                             await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
@@ -180,11 +203,18 @@ public partial class ChatUI
             "Failed to apply new recording state.",
             CancellationToken.None);
 
-    private async Task SyncKeepAwakeState(CancellationToken cancellationToken)
+    [ComputeMethod]
+    protected virtual async Task<bool> MustKeepAwake()
+    {
+        var activeChats = await ActiveChats.Use().ConfigureAwait(false);
+        return activeChats.Any(c => c.IsListening || c.IsRecording);
+    }
+
+    private async Task PushKeepAwakeState(CancellationToken cancellationToken)
     {
         var lastMustKeepAwake = false;
         var cMustKeepAwake0 = await Computed
-            .Capture(() => MustKeepAwake())
+            .Capture(MustKeepAwake)
             .ConfigureAwait(false);
 
         var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);

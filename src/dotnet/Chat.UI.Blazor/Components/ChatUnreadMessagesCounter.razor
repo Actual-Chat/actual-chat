@@ -34,7 +34,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatStateTask = ChatUI.GetSummary(ChatId, cancellationToken);
+        var chatStateTask = ChatUI.Get(ChatId, cancellationToken);
         var getUserChatSettings = AccountSettings.GetUserChatSettings(ChatId, cancellationToken);
 
         // ConfigureAwait(false) from here

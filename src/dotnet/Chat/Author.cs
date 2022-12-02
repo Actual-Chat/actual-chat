@@ -10,14 +10,14 @@ public record Author(
     [property: DataMember] long Version = 0
     ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IEqualityComparer<Author> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<Author, AuthorId>.Instance;
-    public static Requirement<Author> MustExist { get; } = Requirement.New(
-        new(() => StandardError.Author.Unavailable()),
-        (Author? a) => a is { Id.IsNone: false });
+    public static IdAndVersionEqualityComparer<Author, AuthorId> EqualityComparer { get; } = new();
 
     public static Author None { get; } = AuthorFull.None;
     public static Author Loading { get; } = AuthorFull.Loading;
+
+    public static Requirement<Author> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<Author>()),
+        (Author? a) => a is { Id.IsNone: false });
 
     [DataMember] public Symbol AvatarId { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Auto-populated
@@ -30,8 +30,6 @@ public record Author(
     public long LocalId => Id.LocalId;
 
     // This record relies on version-based equality
-    public virtual bool Equals(Author? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public virtual bool Equals(Author? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

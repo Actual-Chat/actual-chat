@@ -4,16 +4,19 @@ using ActualChat.Users;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed record ChatState(
-    ChatSummary Summary,
+    ChatInfo Info,
+    ChatMediaState MediaState = default,
     bool IsSelected = false,
-    bool IsListening = false,
-    bool IsRecording = false,
     Presence Presence = Presence.Unknown)
 {
-    public static ChatState None { get; } = new(ChatSummary.None);
-    public static ChatState Loading { get; } = new(ChatSummary.Loading);
+    public static ChatState None { get; } = new(ChatInfo.None);
+    public static ChatState Loading { get; } = new(ChatInfo.Loading);
 
     // Shortcuts
-    public Contact Contact => Summary.Contact;
-    public Chat Chat => Summary.Chat;
+    public Contact Contact => Info.Contact;
+    public Chat Chat => Info.Chat;
+    public ChatNews News => Info.News;
+    public bool IsListening => MediaState.IsListening;
+    public bool IsPlayingHistorical => MediaState.IsPlayingHistorical;
+    public bool IsRecording => MediaState.IsRecording;
 }

@@ -124,7 +124,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
         if (chat == null)
-            return ChatNews.None;
+            return default;
 
         return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
     }

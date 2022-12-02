@@ -31,8 +31,6 @@ public sealed record AccountFull(
         => User = user;
 
     // This record relies on version-based equality
-    public bool Equals(AccountFull? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public bool Equals(AccountFull? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

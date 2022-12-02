@@ -6,14 +6,14 @@ namespace ActualChat.Users;
 [DataContract]
 public record Avatar : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    public static IEqualityComparer<Avatar> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<Avatar, Symbol>.Instance;
-    public static Requirement<Avatar> MustExist { get; } = Requirement.New(
-        new(() => StandardError.NotFound<Avatar>()),
-        (Avatar? a) => a is { Id.IsEmpty : false });
+    public static IdAndVersionEqualityComparer<Avatar, Symbol> EqualityComparer { get; } = new();
 
     public static Avatar None { get; } = new();
     public static Avatar Loading { get; } = new(); // Should differ by ref. from None
+
+    public static Requirement<Avatar> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<Avatar>()),
+        (Avatar? a) => a is { Id.IsEmpty : false });
 
     [DataMember] public Symbol Id { get; init; }
     [DataMember] public long Version { get; init; }
@@ -39,8 +39,6 @@ public record Avatar : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
     }
 
     // This record relies on version-based equality
-    public virtual bool Equals(Avatar? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public virtual bool Equals(Avatar? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

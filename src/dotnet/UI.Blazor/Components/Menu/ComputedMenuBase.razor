@@ -1,5 +1,17 @@
 @namespace ActualChat.UI.Blazor.Components
+@typeparam TState where TState : notnull
+@typeparam TMenuContent
+@inherits ComputedStateComponent<TState?>
 @implements IMenu
+@{
+    var m = State.LatestNonErrorValue;
+    if (m == null)
+        return; // Nothing to render yet
+}
+
+<CascadingValue Value="State.LatestNonErrorValue">
+    <DynamicComponent Type="typeof(TMenuContent)"/>
+</CascadingValue>
 
 @code {
     [Parameter] public string Id { get; set; } = "";
@@ -10,8 +22,9 @@
     public bool IsShown { get; private set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
-            await Show();
+        var canBeShown = State.LatestNonErrorValue != null;
+        if (IsShown != canBeShown)
+            await Show(canBeShown);
     }
 
     public async ValueTask Show(bool mustShow = true) {
@@ -24,5 +37,4 @@
 
     public ValueTask Hide()
         => Show(false);
-
 }

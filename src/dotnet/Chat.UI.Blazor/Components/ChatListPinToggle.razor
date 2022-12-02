@@ -29,8 +29,10 @@
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(ChatId);
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = await ChatUI.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        return chat?.Contact.IsPinned ?? false;
+    }
 
     private void OnToggle()
         => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);

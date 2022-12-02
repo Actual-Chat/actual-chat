@@ -1,4 +1,5 @@
-﻿using Stl.Fusion.Blazor;
+﻿using ActualChat.Comparison;
+using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
@@ -12,11 +13,13 @@ public sealed record Chat(
     [property: DataMember] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
+    public static IdAndVersionEqualityComparer<Chat, ChatId> EqualityComparer { get; } = new();
+
     public static Chat None { get; } = new(default, 0) { Title = "This chat is unavailable" };
     public static Chat Loading { get; } = new(default, 1) { Title = "Loading..."};
 
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
-        new(() => StandardError.Chat.Unavailable()),
+        new(() => StandardError.NotFound<Chat>()),
         (Chat? c) => c is { Id.IsNone: false });
 
     [DataMember] public string Title { get; init; } = "";
@@ -31,6 +34,10 @@ public sealed record Chat(
     public ChatKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsVirtual => Version == 0 || Id.IsNone;
+
+    // This record relies on version-based equality
+    public bool Equals(Chat? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }
 
 [DataContract]

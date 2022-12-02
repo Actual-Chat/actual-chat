@@ -71,9 +71,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
-        return new () {
-            Id = id,
-            Version = Version,
+        return new (id, Version) {
             IsRemoved = IsRemoved,
             AuthorId = new AuthorId(AuthorId),
             BeginsAt = BeginsAt,

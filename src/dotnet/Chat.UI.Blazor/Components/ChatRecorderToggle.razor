@@ -70,7 +70,8 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         CanRecord = await AudioRecorder.CanRecord(cancellationToken);
-        var isRecordingRequested = await ChatUI.IsRecording(ChatId);
+        var recordingChatId = await ChatUI.GetRecordingChatId();
+        var isRecordingRequested = recordingChatId == ChatId && !recordingChatId.IsNone;
         // Default scheduler is used from here
         var lastState = State.LatestNonErrorValue;
         if (lastState == null)

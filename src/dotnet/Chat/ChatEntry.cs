@@ -1,16 +1,24 @@
 ﻿using ActualChat.Comparison;
+using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract]
 public sealed record ChatEntry(
     [property: DataMember] ChatEntryId Id,
     [property: DataMember] long Version = 0
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<ChatEntry, ChatEntryId>.Instance;
+    public static IdAndVersionEqualityComparer<ChatEntry, ChatEntryId> EqualityComparer { get; } = new();
+
+    public static Requirement<ChatEntry> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<ChatEntry>()),
+        (ChatEntry? c) => c is { Id.IsNone: false });
+    public static Requirement<ChatEntry> MustNotBeRemoved { get; } = Requirement.New(
+        new(() => StandardError.NotFound<ChatEntry>()),
+        (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false });
 
     public static ChatEntry Removed(ChatEntryId id)
         => new (id) { IsRemoved = true };
@@ -64,8 +72,6 @@ public sealed record ChatEntry(
     }
 
     // This record relies on version-based equality
-    public bool Equals(ChatEntry? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public bool Equals(ChatEntry? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

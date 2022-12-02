@@ -1,10 +1,16 @@
+using Stl.Fusion.Blazor;
+
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract]
-public sealed record ChatNews(
+public record struct ChatNews(
     [property: DataMember] Range<long> TextEntryIdRange,
     [property: DataMember] ChatEntry? LastTextEntry = null
-    ) : IRequirementTarget
+    ) : IRequirementTarget, ICanBeNone<ChatNews>
 {
-    public static ChatNews None { get; } = new(default(Range<long>));
+    public static ChatNews None { get; } = default;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsNone => this == default;
 }

@@ -239,9 +239,8 @@ public sealed class AudioProcessor : IAudioProcessor
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
         var chatId = audioSegment.AudioRecord.ChatId;
-        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry() {
-            Id = chatEntryId,
+        var entryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
+        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
             AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
@@ -295,9 +294,8 @@ public sealed class AudioProcessor : IAudioProcessor
 
             // Got first non-empty transcript -> create text entry
             chatAudioEntry ??= await audioEntryTask.ConfigureAwait(false);
-            var chatEntryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-            textEntry = new ChatEntry() {
-                Id = chatEntryId,
+            var entryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+            textEntry = new ChatEntry(entryId) {
                 AuthorId = chatAudioEntry.AuthorId,
                 Content = "",
                 StreamId = transcriptStreamId,

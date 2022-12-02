@@ -9,8 +9,7 @@ public record Account(
     [property: DataMember] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IEqualityComparer<Account> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<Account, UserId>.Instance;
+    public static IdAndVersionEqualityComparer<Account, UserId> EqualityComparer { get; } = new();
 
     public static Account None => AccountFull.None;
     public static Account Loading => AccountFull.Loading;
@@ -29,8 +28,6 @@ public record Account(
     public bool IsGuest => Id.IsGuestId;
 
     // This record relies on version-based equality
-    public virtual bool Equals(Account? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public virtual bool Equals(Account? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

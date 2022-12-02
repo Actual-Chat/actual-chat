@@ -34,6 +34,9 @@
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsRecording(ChatId);
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = await ChatUI.GetState(ChatId, false, cancellationToken).ConfigureAwait(false);
+        return chat?.IsRecording ?? false;
+    }
+
 }

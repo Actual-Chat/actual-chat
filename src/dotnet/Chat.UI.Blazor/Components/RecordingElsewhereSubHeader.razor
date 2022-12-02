@@ -36,9 +36,6 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (await ChatUI.IsRecording(Chat.Id))
-            return Model.None;
-
         var recordingChatId = await ChatUI.GetRecordingChatId();
         if (recordingChatId.IsNone)
             return Model.None;

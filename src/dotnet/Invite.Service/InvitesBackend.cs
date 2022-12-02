@@ -108,7 +108,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var dbInvite = await dbContext.Invites
                 .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
                 .ConfigureAwait(false)
-            ?? throw StandardError.NotFound($"Invite code '{command.InviteId}' is not found.");
+            ?? throw StandardError.NotFound<Invite>("Invite with the specified code is not found.");
 
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);

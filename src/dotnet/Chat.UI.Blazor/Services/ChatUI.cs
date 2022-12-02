@@ -91,23 +91,23 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual async Task<ImmutableList<ChatSummary>> ListSummaries(CancellationToken cancellationToken)
+    public virtual async Task<ImmutableList<ChatInfo>> List(CancellationToken cancellationToken = default)
     {
-        var result = await ListSummariesExcludingSelected(cancellationToken).ConfigureAwait(false);
+        var result = await ListExcludingSelected(cancellationToken).ConfigureAwait(false);
         var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (result.Any(c => c.Chat.Id == selectedChatId))
             return result;
 
-        var extraSummary = await GetSummary(selectedChatId, cancellationToken).ConfigureAwait(false);
-        if (extraSummary == null)
+        var selectedChat = await Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+        if (selectedChat == null)
             return result;
 
-        result = result.Insert(0, extraSummary);
+        result = result.Insert(0, selectedChat);
         return result;
     }
 
     [ComputeMethod]
-    public virtual async Task<ChatSummary?> GetSummary(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (chatId.IsNone)
             return null;
@@ -120,7 +120,7 @@ public partial class ChatUI : WorkerBase
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
         var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
 
-        var result = new ChatSummary(contact) {
+        var result = new ChatInfo(contact) {
             News = await chatNewsTask.ConfigureAwait(false),
             LastMention = await lastMentionTask.ConfigureAwait(false),
             ReadEntryId = await readEntryIdTask.ConfigureAwait(false),
@@ -148,63 +148,44 @@ public partial class ChatUI : WorkerBase
             return state with { Presence = presence };
         }
 
-        var summary = await GetSummary(chatId, cancellationToken).ConfigureAwait(false);
-        if (summary == null)
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
             return null;
 
         var isSelected = await IsSelected(chatId).ConfigureAwait(false);
-        var isListening = await IsListening(chatId).ConfigureAwait(false);
-        var isRecording = await IsRecording(chatId).ConfigureAwait(false);
-        return new(summary, isSelected, isListening, isRecording);
+        var mediaState = await GetMediaState(chatId).ConfigureAwait(false);
+        return new(chat, mediaState, isSelected);
     }
 
-    [ComputeMethod]
+    [ComputeMethod] // Synced
     public virtual Task<bool> IsSelected(ChatId chatId)
         => Task.FromResult(SelectedChatId.Value == chatId);
 
-    [ComputeMethod]
-    public virtual Task<bool> IsListening(ChatId chatId)
-        => Task.FromResult(ActiveChats.Value.TryGetValue(chatId, out var c) && c.IsListening);
+    [ComputeMethod] // Synced
+    public virtual Task<ChatMediaState> GetMediaState(ChatId chatId)
+    {
+        var activeChats = ActiveChats.Value;
+        activeChats.TryGetValue(chatId, out var activeChat);
+        var isListening = activeChat.IsListening;
+        var isRecording = activeChat.IsRecording;
+        var isPlayingHistorical = ChatPlayers.PlaybackState.Value is HistoricalPlaybackState hps && hps.ChatId == chatId;
+        var result = new ChatMediaState(chatId, isListening, isPlayingHistorical, isRecording);
+        return Task.FromResult(result);
+    }
 
-    [ComputeMethod]
-    public virtual Task<bool> IsRecording(ChatId chatId)
-        => Task.FromResult(ActiveChats.Value.TryGetValue(chatId, out var c) && c.IsRecording);
-
-    [ComputeMethod]
+    [ComputeMethod] // Synced
     public virtual Task<ChatId> GetRecordingChatId()
         => Task.FromResult(ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
 
-    [ComputeMethod]
+    [ComputeMethod] // Synced
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
         => Task.FromResult(ActiveChats.Value.Where(c => c.IsListening).Select(c => c.ChatId).ToImmutableHashSet());
 
     [ComputeMethod]
-    public virtual async Task<SingleChatPlaybackState> GetPlaybackState(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var isListeningTask = IsListening(chatId);
-        var chatPlaybackStateTask = ChatPlayers.ChatPlaybackState.Use(cancellationToken);
-        var isListening = await isListeningTask.ConfigureAwait(false);
-        var chatPlaybackState = await chatPlaybackStateTask.ConfigureAwait(false);
-        var isPlayingHistorical = chatPlaybackState is HistoricalChatPlaybackState x && x.ChatId == chatId;
-        return new SingleChatPlaybackState(chatId, isListening, isPlayingHistorical);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<RealtimeChatPlaybackState?> GetRealtimePlaybackState()
+    public virtual async Task<RealtimePlaybackState?> GetExpectedRealtimePlaybackState()
     {
         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
-        return listeningChatIds.Count == 0 ? null : new RealtimeChatPlaybackState(listeningChatIds);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<bool> MustKeepAwake()
-    {
-        var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
-        if (!recordingChatId.IsNone)
-            return true;
-
-        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
-        return listeningChatIds.Count > 0;
+        return listeningChatIds.Count == 0 ? null : new RealtimePlaybackState(listeningChatIds);
     }
 
     // SetXxx & Add/RemoveXxx
@@ -295,11 +276,11 @@ public partial class ChatUI : WorkerBase
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<ImmutableList<ChatSummary>> ListSummariesExcludingSelected(CancellationToken cancellationToken)
+    protected virtual async Task<ImmutableList<ChatInfo>> ListExcludingSelected(CancellationToken cancellationToken)
     {
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         var chats = await contactIds
-            .Select(contactId => GetSummary(contactId.ChatId, cancellationToken))
+            .Select(contactId => Get(contactId.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
 

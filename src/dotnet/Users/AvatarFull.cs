@@ -19,8 +19,6 @@ public sealed record AvatarFull : Avatar
         => (AvatarFull) base.WithMissingPropertiesFrom(other);
 
     // This record relies on version-based equality
-    public bool Equals(AvatarFull? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public bool Equals(AvatarFull? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

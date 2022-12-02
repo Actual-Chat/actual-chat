@@ -1,17 +1,13 @@
+using Stl.Reflection;
+
 namespace ActualChat;
 
 public static partial class StandardError
 {
-    public static Exception NotFound(string message)
-        => new KeyNotFoundException(message);
     public static Exception NotFound<TTarget>(string? message = null)
-        => NotFound(typeof(TTarget), message);
-    public static Exception NotFound(Type target, string? message = null)
-        => NotFound(target.Name, message);
-    public static Exception NotFound(string target, string? message)
-        => NotFound(message.IsNullOrEmpty()
-            ? $"{target} is not found."
-            : $"{target}: {message}");
+        => new NotFoundException<TTarget>(message.IsNullOrEmpty()
+            ? $"{typeof(TTarget).GetName()} is not found."
+            : message);
 
     public static Exception StateTransition<TTarget>(string message)
         => StateTransition(typeof(TTarget), message);

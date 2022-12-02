@@ -116,7 +116,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ChatNews.None;
+            return default;
 
         var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);

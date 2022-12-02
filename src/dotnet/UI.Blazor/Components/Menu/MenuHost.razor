@@ -2,36 +2,29 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
+@{
+    var overlayClass = IsOverlayVisible ? "ac-menu-overlay" : "";
+}
 
 <div class="ac-menu-host @(GetHostCssClass())">
     <CascadingValue Value="@this" IsFixed="true">
-        @if (IsOverlayVisible) {
-            <div class="ac-menu-overlay">
-                @foreach (var menu in _menus) {
-                    <div id="@menu.Id"
-                         @key="menu.Id"
-                         class="@(GetMenuCssClass(menu))"
-                         style="display: block;">
-                        <ul class="ac-menu-list">
-                            <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
-                        </ul>
-                    </div>
-                }
-            </div>
-        } else {
-            @foreach (var menu in _menus) {
-                <div id="@menu.Id" @key="menu.Id" class="@(GetMenuCssClass(menu))">
+        <div class="@(GetOverlayCssClass())">
+            @foreach (var menu in _visibleMenus) {
+                <div
+                    id="@menu.Id"
+                    @key="menu.Id"
+                    class="@(GetMenuCssClass(menu))">
                     <ul class="ac-menu-list">
                         <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
                     </ul>
                 </div>
             }
-        }
+        </div>
     </CascadingValue>
 </div>
 
 @code {
-    private readonly List<Model> _menus = new();
+    private readonly List<Model> _visibleMenus = new();
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
@@ -39,32 +32,52 @@
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+
+    public ValueTask ShowMenu(IMenu menu)
+        => _jsRef.InvokeVoidAsync("showMenuById", menu.Id);
+
+    public ValueTask HideMenu(IMenu menu)
+        => _jsRef.InvokeVoidAsync("hideMenuById", menu.Id);
+
+    // JS interface
+
     [JSInvokable]
-    public Task RenderMenu(string menuRef, string id, bool isHoverMenu) {
+    public Task OnRenderMenu(string menuRef, string id, bool isHoverMenu) {
+        if (_visibleMenus.Any(m => m.Id == id))
+            return Task.CompletedTask;
+
         var parsedMenuRef = MenuRef.Parse(menuRef);
         var model = new Model(
             id,
             parsedMenuRef.MenuType,
             new Dictionary<string, object>() {
-                { nameof(MenuBase.Id), id },
-                { nameof(MenuBase.Arguments), parsedMenuRef.Arguments },
+                { nameof(IMenu.Id), id },
+                { nameof(IMenu.Arguments), parsedMenuRef.Arguments },
             },
             isHoverMenu);
-        _menus.Add(model);
+        _visibleMenus.Add(model);
         StateHasChanged();
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task HideMenu(string id) {
-        _menus.RemoveAll(x => x.Id == id);
+    public Task OnHideMenu(string id) {
+        var menu = _visibleMenus.FirstOrDefault(m => m.Id == id);
+        if (menu == null)
+            return Task.CompletedTask;
+
+        _visibleMenus.Remove(menu);
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    public async Task ShowMenu(MenuBase menu) {
-        await _jsRef.InvokeVoidAsync("showMenu", menu.Id);
-    }
+    // Protected & private methods
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -74,12 +87,14 @@
         }
     }
 
-    public async ValueTask DisposeAsync() {
-        await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null!;
-        _blazorRef.DisposeSilently();
-        _blazorRef = null!;
-    }
+    private bool IsOverlayVisible
+        => ScreenSize.IsNarrow() && _visibleMenus.Any(x => !x.IsHoverMenu);
+
+    private string GetHostCssClass()
+        => IsOverlayVisible ? "no-events" : "";
+
+    private string GetOverlayCssClass()
+        => IsOverlayVisible ? "ac-menu-overlay" : "";
 
     private string GetMenuCssClass(Model menu) {
         var cls = menu.IsHoverMenu
@@ -87,18 +102,10 @@
             : "ac-menu";
         if (ScreenSize.IsNarrow())
             cls += " mobile";
-        return cls;
-    }
-
-    private string GetHostCssClass() {
-        var cls = "";
         if (IsOverlayVisible)
-            cls += "no-events";
+            cls += " block";
         return cls;
     }
-
-    private bool IsOverlayVisible
-        => _menus.Any(x => !x.IsHoverMenu) && ScreenSize.IsNarrow();
 
     private sealed record Model(
         string Id,

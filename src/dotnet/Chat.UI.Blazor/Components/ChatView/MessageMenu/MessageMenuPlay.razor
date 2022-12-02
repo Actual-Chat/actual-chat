@@ -57,8 +57,8 @@
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatPlayers.HistoricalPlaybackChatId.Use(cancellationToken);
-        if (chatId.IsNone)
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
+        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
             return Model.NotPlaying;
 
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
@@ -68,17 +68,17 @@
             return State.ValueOrDefault ?? Model.NotPlaying;
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
-        var playbackStates = await playback.PlayingTracks.Use(cancellationToken);
+        var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
         Moment? playingAt = null;
         var canPlay = true;
-        foreach (var playbackState in playbackStates) {
-            var trackInfo = playbackState.TrackInfo;
+        foreach (var playingTrack in playingTracks) {
+            var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var audioEntry = chatAudioTrackInfo.AudioEntry;
                 if (audioEntry.ChatId != Entry.ChatId)
                     continue;
                 if (audioEntry.LocalId == Entry.AudioEntryId) {
-                    if (isPaused || playbackState.State.IsStarted) {
+                    if (isPaused || playingTrack.State.IsStarted) {
                         canPlay = false;
                     }
                 }

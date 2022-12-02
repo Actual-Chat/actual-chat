@@ -19,15 +19,19 @@
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatState = await ChatUI.GetSelected(cancellationToken);
-        if (chatState == null)
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId.IsNone)
             return Model.Invisible;
 
-        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken);
+        var chat = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return Model.Invisible;
+
+        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken).ConfigureAwait(false);
         if (visibleRange.IsEmpty)
             return Model.Invisible;
 
-        var lastEntryId = chatState.News.LastTextEntry?.Id ?? default;
+        var lastEntryId = chat.News.LastTextEntry?.Id ?? default;
         if (lastEntryId.IsNone || lastEntryId.LocalId <= visibleRange.End)
             return Model.Invisible;
 

@@ -2,16 +2,17 @@ using ActualChat.Contacts;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed record ChatSummary(Contact Contact)
+[ParameterComparer(typeof(ByRefParameterComparer))]
+public sealed record ChatInfo(Contact Contact)
 {
     public const int MaxUnreadMessageCount = 1000;
-    public static ChatSummary None { get; } = new(Contact.None);
-    public static ChatSummary Loading { get; } = new(Contact.Loading);
+    public static ChatInfo None { get; } = new(Contact.None);
+    public static ChatInfo Loading { get; } = new(Contact.Loading);
 
     private bool? _hasMentions;
     private Trimmed<int>? _unreadMessageCount;
 
-    public ChatNews News { get; init; } = ChatNews.None;
+    public ChatNews News { get; init; }
     public Mention? LastMention { get; init; }
     public long? ReadEntryId { get; init; }
 
@@ -49,6 +50,6 @@ public sealed record ChatSummary(Contact Contact)
         => HasMentions || UnreadMessageCount.Value > 0;
 
     // This record relies on referential equality
-    public bool Equals(ChatSummary? other) => ReferenceEquals(this, other);
+    public bool Equals(ChatInfo? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
