@@ -44,7 +44,7 @@ export class NumberRange extends Range<number> {
     public fitInto(fitRange: NumberRange): NumberRange | null {
         const epsilon = 10;
         if (this.size > fitRange.size + epsilon)
-            return null;
+            return fitRange;
         if (this.End > fitRange.size + epsilon)
             return null;
 

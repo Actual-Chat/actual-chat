@@ -377,7 +377,7 @@ export class VirtualList {
                     hasStickyEdge = true;
                 }
             }
-            if (rs.hasVeryFirstItem) {
+            if (!hasStickyEdge && rs.hasVeryFirstItem) {
                 const edgeKey = this.getFirstItemKey();
                 if (this._visibleItems.has(edgeKey)) {
                     this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.Start });
