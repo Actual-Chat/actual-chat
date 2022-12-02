@@ -34,6 +34,7 @@ public class ChatUI
     public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
     public IMutableState<long> HighlightedChatEntryId { get; }
     public IMutableState<Range<long>> VisibleIdRange { get; }
+    public IMutableState<bool> IsEndAnchorVisible { get; }
 
     public ChatUI(IServiceProvider services)
     {
@@ -62,6 +63,7 @@ public class ChatUI
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
         VisibleIdRange = StateFactory.NewMutable<Range<long>>();
+        IsEndAnchorVisible = StateFactory.NewMutable<bool>(true);
 
         // Read entry states from other windows / devices aren't delayed
         _lastReadEntryStatesUpdateDelayer = FixedDelayer.Instant;

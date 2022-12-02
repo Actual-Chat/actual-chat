@@ -33,6 +33,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<bool> IsEndAnchorVisible { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
     private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
@@ -45,6 +46,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         try {
             NavigateToEntryId = StateFactory.NewMutable<long?>();
             VisibleKeys = StateFactory.NewMutable(new List<string>());
+            IsEndAnchorVisible = StateFactory.NewMutable(true);
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
             LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token);
@@ -238,12 +240,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await VisibleKeys.Computed.WhenInvalidated(cancellationToken);
+                await Task.WhenAny(
+                    VisibleKeys.Computed.WhenInvalidated(cancellationToken),
+                    IsEndAnchorVisible.Computed.WhenInvalidated(cancellationToken)
+                );
                 var visibleKeys = await VisibleKeys.Use(cancellationToken);
                 if (visibleKeys.Count == 0) {
                     ChatUI.VisibleIdRange.Value = new(0, 0);
                     continue;
                 }
+                var isEndAnchorVisible = await IsEndAnchorVisible.Use(cancellationToken);
 
                 var visibleEntryIds = visibleKeys
                     .Select(key =>
@@ -253,6 +259,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .Where(entryId => entryId.HasValue)
                     .Select(entryId => entryId!.Value)
                     .ToHashSet();
+                ChatUI.IsEndAnchorVisible.Value = isEndAnchorVisible;
                 ChatUI.VisibleIdRange.Value = new (visibleEntryIds.Min(), visibleEntryIds.Max());
 
                 var maxVisibleEntryId = visibleEntryIds.Max();

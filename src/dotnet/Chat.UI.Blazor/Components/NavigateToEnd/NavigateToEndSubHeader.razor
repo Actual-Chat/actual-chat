@@ -21,15 +21,12 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken);
-        var selectedChatId = Chat.Id;
-        if (visibleRange.IsEmpty)
+        var isLastEntryVisible = await ChatUI.IsEndAnchorVisible.Use(cancellationToken);
+        if (isLastEntryVisible)
             return new(false);
 
-        var summary = await Chats.GetSummary(Session, selectedChatId, cancellationToken);
+        var summary = await Chats.GetSummary(Session, Chat.Id, cancellationToken);
         var lastEntryId = summary?.LastTextEntry?.Id ?? 0;
-        if (lastEntryId <= visibleRange.End)
-            return new(false);
 
         return new(true, lastEntryId);
     }

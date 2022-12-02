@@ -131,6 +131,7 @@
         // parsedChatId is either (valid & not short) or invalid at this point
         if (parsedChatId.IsValid && ChatUI.SelectedChatId.Value != parsedChatId.Id) {
             ChatUI.VisibleIdRange.Value = new(0, 0);
+            ChatUI.IsEndAnchorVisible.Value = true;
             ChatUI.SelectedChatId.Value = parsedChatId.Id;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
