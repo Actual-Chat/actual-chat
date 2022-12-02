@@ -57,6 +57,11 @@
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
+    <div @key="VirtualListSpecialKeys.EndAnchor"
+         class="@flexClass h-1 end-anchor">
+        &nbsp;
+    </div>
+
     <div @key="VirtualListSpecialKeys.EndSpacer"
          class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
          style="height: @(endSpacerSize)px">

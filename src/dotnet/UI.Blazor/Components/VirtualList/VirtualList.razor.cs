@@ -35,6 +35,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] public int SkeletonCount { get; set; } = 50;
     [Parameter] public double SpacerSize { get; set; } = 300;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
+    [Parameter] public IMutableState<bool>? IsEndAnchorVisibleState { get; set; }
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
 
     [JSInvokable]
@@ -46,7 +47,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     [JSInvokable]
-    public Task UpdateVisibleKeys(string?[] visibleKeys)
+    public Task UpdateVisibleKeys(string?[] visibleKeys, bool isEndAnchorVisible)
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         // Do not update state if disposed
@@ -55,6 +56,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
         if (visibleKeys?.Length > 0 && VisibleKeysState != null)
             VisibleKeysState.Value = visibleKeys.ToList()!;
+
+        if (IsEndAnchorVisibleState != null)
+            IsEndAnchorVisibleState.Value = isEndAnchorVisible;
 
         return Task.CompletedTask;
     }

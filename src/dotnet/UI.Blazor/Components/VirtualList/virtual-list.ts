@@ -1,5 +1,5 @@
 import './virtual-list.css';
-import { throttle, serialize, PromiseSource, debounce } from 'promises';
+import { debounce, PromiseSource, serialize, throttle } from 'promises';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -39,6 +39,7 @@ export class VirtualList {
     private readonly _spacerRef: HTMLElement;
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
+    private readonly _endAnchorRef: HTMLElement;
     private readonly _abortController: AbortController;
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
@@ -64,6 +65,7 @@ export class VirtualList {
 
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
+    private _isEndAnchorVisible: boolean = false;
     private _isScrolling: boolean = false;
     private _scrollTime: number | null = null;
     private _scrollDirection: 'up' | 'down' | 'none' = 'none';
@@ -103,6 +105,7 @@ export class VirtualList {
         this._containerRef = this._ref.querySelector(':scope > .virtual-container');
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
+        this._endAnchorRef = this._ref.querySelector(':scope > .end-anchor');
 
         // Events & observers
         const listenerOptions = { signal: this._abortController.signal };
@@ -123,7 +126,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: [0, 0.1, 0.5, 0.9, 1],
+                threshold: [0, 1],
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
@@ -165,6 +168,7 @@ export class VirtualList {
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
 
+        this._visibilityObserver.observe(this._endAnchorRef);
         this._skeletonObserver0.observe(this._spacerRef);
         this._skeletonObserver0.observe(this._endSpacerRef);
         this._skeletonObserver1.observe(this._spacerRef);
@@ -260,7 +264,7 @@ export class VirtualList {
             for (const node of mutation.addedNodes) {
                 const itemRef = node as HTMLElement;
                 const key = getItemKey(itemRef);
-                if (!key || key == '')
+                if (!key)
                     continue;
 
                 itemRef.classList.remove('new');
@@ -279,7 +283,7 @@ export class VirtualList {
         if (mutations.length === 0) {
             for (const itemRef of this.getAllItemRefs()) {
                 const key = getItemKey(itemRef);
-                if (!key || key == '')
+                if (!key)
                     continue;
 
                 if (this._items.has(key))
@@ -331,9 +335,28 @@ export class VirtualList {
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
         let hasChanged = false;
+        const rs = this._renderState;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
             const key = getItemKey(itemRef);
+            if (!key) {
+                if (this._endAnchorRef === itemRef) {
+                    if (entry.isIntersecting) {
+                        this._isEndAnchorVisible = true;
+                        if (rs.hasVeryLastItem) {
+                            const edgeKey = this.getLastItemKey();
+                            if (this._isEndAnchorVisible) {
+                                this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+                            }
+                        }
+                        this.turnOffIsEndAnchorVisibleDebounced.reset();
+                    }
+                    else if (this._isEndAnchorVisible) {
+                        this.turnOffIsEndAnchorVisibleDebounced();
+                    }
+                }
+                continue;
+            }
             if (entry.intersectionRatio <= 0.2 && !entry.isIntersecting) {
                 hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
@@ -346,16 +369,15 @@ export class VirtualList {
             this._top = entry.rootBounds.top + VisibilityEpsilon;
         }
         if (hasChanged) {
-            const rs = this._renderState;
             let hasStickyEdge = false;
             if (rs.hasVeryLastItem) {
                 const edgeKey = this.getLastItemKey();
-                if (this._visibleItems.has(edgeKey)) {
+                if (this._visibleItems.has(edgeKey) || this._isEndAnchorVisible) {
                     this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
                     hasStickyEdge = true;
                 }
             }
-            if (!hasStickyEdge && rs.hasVeryFirstItem) {
+            if (rs.hasVeryFirstItem) {
                 const edgeKey = this.getFirstItemKey();
                 if (this._visibleItems.has(edgeKey)) {
                     this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.Start });
@@ -422,6 +444,16 @@ export class VirtualList {
     private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce, true);
     private turnOffIsNearSkeleton() {
         this._isNearSkeleton = false;
+    }
+
+    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce, true);
+    private turnOffIsEndAnchorVisible() {
+        this._isEndAnchorVisible = false;
+        if (this._stickyEdge?.edge === VirtualListEdge.End) {
+            this.setStickyEdge(null);
+        }
+
+        this.updateVisibleKeysThrottled();
     }
 
     private getRenderState(): VirtualListRenderState | null {
@@ -580,7 +612,7 @@ export class VirtualList {
             return;
 
         const visibleKeys = [...this._visibleItems].sort();
-        await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys);
+        await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys, this._isEndAnchorVisible);
     }, 2);
 
     private updateOrderedItems(): void {
@@ -588,7 +620,7 @@ export class VirtualList {
         // store item order
         for (const itemRef of this.getAllItemRefs()) {
             const key = getItemKey(itemRef);
-            if (!key || key == '')
+            if (!key)
                 continue;
 
             const item = this._items.get(key);
@@ -751,7 +783,7 @@ export class VirtualList {
     }
 
     private getItemRef(key: string): HTMLElement | null {
-        if (key == null || key == '')
+        if (key == null)
             return null;
 
         // return this._containerRef.querySelector(`:scope > .item[data-key="${key}"]`);
@@ -801,7 +833,7 @@ export class VirtualList {
         });
     }
 
-    private setStickyEdge(stickyEdge: VirtualListStickyEdgeState): boolean {
+    private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
         const old = this._stickyEdge;
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             debugLog?.log(`setStickyEdge:`, stickyEdge);
