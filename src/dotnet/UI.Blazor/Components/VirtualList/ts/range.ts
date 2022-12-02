@@ -1,40 +1,40 @@
 export class Range<T> {
     constructor(
-        public Start: T,
-        public End: T,
+        public start: T,
+        public end: T,
     ) {
     }
 
     public get isEmpty(): boolean {
-        return this.Start === this.End;
+        return this.start === this.end;
     }
 
     public equals(other?: Range<T>): boolean {
-        return this.Start === other?.Start && this.End === other?.End;
+        return this.start === other?.start && this.end === other?.end;
     }
 }
 
 export class NumberRange extends Range<number> {
 
-    constructor(Start: number, End: number) {
-        super(Start, End);
+    constructor(start: number, end: number) {
+        super(start, end);
     }
 
     public get size(): number {
-        return this.End - this.Start;
+        return this.end - this.start;
     }
 
     public contains(containedRange: Range<number>): boolean;
     public contains(item: number): boolean;
     public contains(item: Range<number> | number): boolean {
         if (typeof item === 'number')
-            return this.Start <= item && item <= this.End;
-        return this.Start <= item.Start && item.End <= this.End;
+            return this.start <= item && item <= this.end;
+        return this.start <= item.start && item.end <= this.end;
     }
 
     public intersectWith(other: Range<number>): NumberRange {
-        const start = Math.max(this.Start, other.Start);
-        const end = Math.min(this.End, other.End);
+        const start = Math.max(this.start, other.start);
+        const end = Math.min(this.end, other.end);
         const result = new NumberRange(start, end);
         if (result.size < 0)
             return new NumberRange(0, 0);
@@ -45,12 +45,12 @@ export class NumberRange extends Range<number> {
         const epsilon = 10;
         if (this.size > fitRange.size + epsilon)
             return fitRange;
-        if (this.End > fitRange.size + epsilon)
+        if (this.end > fitRange.size + epsilon)
             return null;
 
         return new NumberRange(
-            fitRange.Start + this.Start,
-            fitRange.Start + this.End
+            fitRange.start + this.start,
+            fitRange.start + this.end
         );
     }
 }

@@ -218,8 +218,8 @@ export class VirtualList {
         return this._itemRange == null
             ? null
             : new NumberRange(
-                this._itemRange.Start - this._renderState.spacerSize,
-                this._itemRange.End + this._renderState.endSpacerSize);
+                this._itemRange.start - this._renderState.spacerSize,
+                this._itemRange.end + this._renderState.endSpacerSize);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -593,7 +593,7 @@ export class VirtualList {
             debugLog?.log(`updateViewport: `, null);
 
         if (this._viewport && viewport) {
-            if (viewport.Start < this._viewport.Start)
+            if (viewport.start < this._viewport.start)
                 this._scrollDirection = 'up';
             else
                 this._scrollDirection = 'down';
@@ -728,10 +728,10 @@ export class VirtualList {
         const loadZoneSize = viewport.size * 3;
         let bufferZoneSize = loadZoneSize * 2;
         const bufferZone = new NumberRange(
-            viewport.Start - bufferZoneSize,
-            viewport.End + bufferZoneSize);
+            viewport.start - bufferZoneSize,
+            viewport.end + bufferZoneSize);
 
-        const oldItemsRange = new NumberRange(bufferZone.End, itemRange.End);
+        const oldItemsRange = new NumberRange(bufferZone.end, itemRange.end);
         if (oldItemsRange.size <=0)
             return;
 
@@ -863,7 +863,7 @@ export class VirtualList {
             if (!item.range)
                 continue;
 
-            if (!(cornerStoneItem?.range) || cornerStoneItem?.range.End > item.range.End) {
+            if (!(cornerStoneItem?.range) || cornerStoneItem?.range.end > item.range.end) {
                 cornerStoneItem = item;
                 cornerStoneItemIndex = i;
             }
@@ -874,18 +874,18 @@ export class VirtualList {
         let prevItem = cornerStoneItem;
         for (let i = cornerStoneItemIndex + 1; i < orderedItems.length; i++) {
             const item = orderedItems[i];
-            item.range = new NumberRange(prevItem.range.End, prevItem.range.End + item.size);
+            item.range = new NumberRange(prevItem.range.end, prevItem.range.end + item.size);
             prevItem = item;
         }
         prevItem = cornerStoneItem;
         for (let i = cornerStoneItemIndex - 1; i >= 0; i--) {
             const item = orderedItems[i];
-            item.range = new NumberRange(prevItem.range.Start - item.size, prevItem.range.Start);
+            item.range = new NumberRange(prevItem.range.start - item.size, prevItem.range.start);
             prevItem = item;
         }
         this._itemRange = new NumberRange(
-            orderedItems[0].range.Start,
-            orderedItems[0].range.Start + orderedItems.map(it => it.size).reduce((sum, curr) => sum + curr, 0));
+            orderedItems[0].range.start,
+            orderedItems[0].range.start + orderedItems.map(it => it.size).reduce((sum, curr) => sum + curr, 0));
 
         this._shouldRecalculateItemRange = false;
         return true;
@@ -946,8 +946,8 @@ export class VirtualList {
         if (intersection.isEmpty)
             return true;
 
-        return intersection.Start - queryItemRange.Start > viewportSize
-            || queryItemRange.End - intersection.End > viewportSize;
+        return intersection.start - queryItemRange.start > viewportSize
+            || queryItemRange.end - intersection.end > viewportSize;
     }
 
     private getDataQuery(getRidOfOldItems: boolean): VirtualListDataQuery {
@@ -960,17 +960,17 @@ export class VirtualList {
             return this._lastQuery;
 
         const loadZoneSize = viewport.size * 4;
-        let loadStart = viewport.Start - loadZoneSize;
-        if (loadStart < alreadyLoaded.Start && rs.hasVeryFirstItem)
-            loadStart = alreadyLoaded.Start;
-        let loadEnd = viewport.End + loadZoneSize;
-        if (loadEnd > alreadyLoaded.End && rs.hasVeryLastItem)
-            loadEnd = alreadyLoaded.End;
+        let loadStart = viewport.start - loadZoneSize;
+        if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
+            loadStart = alreadyLoaded.start;
+        let loadEnd = viewport.end + loadZoneSize;
+        if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
+            loadEnd = alreadyLoaded.end;
         let bufferZoneSize = loadZoneSize * 2;
         const loadZone = new NumberRange(loadStart, loadEnd);
         const bufferZone = new NumberRange(
-            viewport.Start - bufferZoneSize,
-            viewport.End + bufferZoneSize);
+            viewport.start - bufferZoneSize,
+            viewport.end + bufferZoneSize);
 
         if (this.hasUnmeasuredItems) // Let's wait for measurement to complete first
             return this._lastQuery;
@@ -999,15 +999,15 @@ export class VirtualList {
         }
         if (startIndex < 0) {
             // No items inside the bufferZone, so we'll take the first or the last item
-            startIndex = endIndex = items[0].range.End < bufferZone.Start
+            startIndex = endIndex = items[0].range.end < bufferZone.start
                 ? 0
                 : items.length - 1;
         }
 
         const firstItem = items[startIndex];
         const lastItem = items[endIndex];
-        const startGap = Math.max(0, firstItem.range.Start - loadZone.Start);
-        const endGap = Math.max(0, loadZone.End - lastItem.range.End);
+        const startGap = Math.max(0, firstItem.range.start - loadZone.start);
+        const endGap = Math.max(0, loadZone.end - lastItem.range.end);
         const expandStartBy = this._renderState.hasVeryFirstItem || startGap === 0
             ? 0
             : clamp(Math.ceil(Math.max(startGap, loadZoneSize) / itemSize), 0, MaxExpandBy);
@@ -1015,7 +1015,7 @@ export class VirtualList {
             ? 0
             : clamp(Math.ceil(Math.max(endGap, loadZoneSize) / itemSize), 0, MaxExpandBy);
         const keyRange = new Range(firstItem.key, lastItem.key);
-        const virtualRange = new NumberRange(firstItem.range.Start - startGap, lastItem.range.End + endGap);
+        const virtualRange = new NumberRange(firstItem.range.start - startGap, lastItem.range.end + endGap);
         const query = new VirtualListDataQuery(keyRange, virtualRange);
         query.expandStartBy = expandStartBy / responseFulfillmentRatio;
         query.expandEndBy = expandEndBy / responseFulfillmentRatio;
