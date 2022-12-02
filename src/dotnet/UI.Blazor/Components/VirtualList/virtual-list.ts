@@ -330,7 +330,6 @@ export class VirtualList {
     };
 
     private onItemVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
-        const largeItemBecameVisible = new Array<HTMLElement>();
         let hasChanged = false;
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
@@ -342,8 +341,6 @@ export class VirtualList {
             else if ((entry.intersectionRatio >= 0.4 || entry.intersectionRect.height > MinViewPortSize / 2) && entry.isIntersecting) {
                 hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
-                if (entry.boundingClientRect.height > MinViewPortSize / 4)
-                    largeItemBecameVisible.push(itemRef);
             }
 
             this._top = entry.rootBounds.top + VisibilityEpsilon;
@@ -381,8 +378,6 @@ export class VirtualList {
                         history.pushState(currentState, document.title, location.pathname + location.search);
                     }
                 }
-
-                this.forceRepaint(largeItemBecameVisible);
             }
 
             this.updateVisibleKeysThrottled();
