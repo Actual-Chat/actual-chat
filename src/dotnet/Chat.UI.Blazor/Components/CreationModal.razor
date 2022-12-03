@@ -38,7 +38,6 @@
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
                 OnPreviousPageClick="@GetPreviousPage"
-                SearchBox="@_searchBoxRef"
                 OnRemoveContact="@RemoveFromSelected"/>
         } else if (PageNumber == 3) {
             <div class="creation-panel">
@@ -71,9 +70,11 @@
                 </Form>
             </div>
         }
+
         <CreationPanelContacts
             PageNumber="@PageNumber"
             AllContacts="@m.AllContacts.ToArray()"
+            FilteredContacts="@FilteredContacts"
             SelectedContacts="@SelectedContacts"
             OnAddContact="@AddContactToSelected"/>
         </Body>
@@ -93,7 +94,6 @@
 
 @code {
     private bool _enableIncompleteUI;
-    private SearchBox _searchBoxRef = null!;
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -150,6 +150,7 @@
             return ComputedModel.None;
 
         var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
+
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
@@ -163,6 +164,7 @@
                 select contact
                 ).ToList();
         }
+        AllContacts = contacts.ToArray();
         return new ComputedModel {
             AllContacts = contacts,
         };
