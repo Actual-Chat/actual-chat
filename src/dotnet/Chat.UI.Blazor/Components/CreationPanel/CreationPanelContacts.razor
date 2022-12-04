@@ -2,6 +2,11 @@
 @using ActualChat.Contacts
 
 @{
+    if (_oldPageNumber != PageNumber) {
+        SearchBox.Cancel();
+        _oldPageNumber = PageNumber;
+    }
+
     var panelHeaderCls = "overflow-y-hidden";
     var countCls = "hidden";
     var onlySelected = false;
@@ -49,7 +54,7 @@
 
     @if (PageNumber != 3) {
         <SearchBox
-            @ref="_searchBoxRef"
+            @ref="SearchBox"
             Class="mt-1"
             Placeholder="Type the username"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
@@ -58,7 +63,7 @@
 </div>
 
 @code{
-    private SearchBox _searchBoxRef = null!;
+    private int _oldPageNumber = 1;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -72,6 +77,7 @@
     [Parameter] public Contact[] FilteredContacts { get; set; } = null!;
     [Parameter] public Contact[] SelectedContacts { get; set; } = null!;
     [Parameter] public EventCallback<Contact> OnAddContact { get; set; }
+    [Parameter] public SearchBox SearchBox { get; set; } = null!;
 
     private List<Contact> ListContacts(TabId tabId, bool onlySelected) {
         var contacts = onlySelected ? SelectedContacts : FilteredContacts;

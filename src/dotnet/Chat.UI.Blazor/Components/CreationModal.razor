@@ -7,7 +7,6 @@
 
 @{
     var m = State.LatestNonErrorValue;
-
     var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
 
     RenderFragment RenderArrowBack()
@@ -16,24 +15,23 @@
             </ButtonRound>;
 
     RenderFragment RenderTitle(string title)
-        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
+        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">
+               @title
+           </div>;
 }
 
 <CascadingValue Value="_enableIncompleteUI">
-    <DialogFrame class="creation-modal" ShowMobileHeader="false" ButtonsClass="@btnCls">
+    <DialogFrame Class="creation-modal" ShowMobileHeader="false" ButtonsClass="@btnCls">
         <Body>
         @if (PageNumber == 1) {
             <CreatePage
                 Title="Create"
-                AllContacts="@m.AllContacts.ToArray()"
-                SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
                 OnPreviousPageClick="@GetPreviousPage"/>
         } else if (PageNumber == 2) {
             <AddMembersPage
                 Title="Add members"
-                AllContacts="@m.AllContacts.ToArray()"
                 SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"

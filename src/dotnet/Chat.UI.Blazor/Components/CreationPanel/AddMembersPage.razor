@@ -28,9 +28,7 @@
 
 @code{
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public Contact[] AllContacts { get; set; } = null!;
     [Parameter] public Contact[] SelectedContacts { get; set; } = null!;
-    [Parameter] public Contact[] FilteredContacts { get; set; } = null!;
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback OnNextPageClick { get; set; }
     [Parameter] public EventCallback OnPreviousPageClick { get; set; }
