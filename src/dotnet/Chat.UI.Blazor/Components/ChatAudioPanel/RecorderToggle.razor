@@ -64,7 +64,8 @@
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
+        var mediaState = await ChatUI.GetMediaState(ChatId).ConfigureAwait(false);
+        var isRecording = mediaState.IsRecording;
         // Default scheduler is used from here
         if (State.LatestNonErrorValue == null)
             return new (isRecording ? RecordingState.On : RecordingState.Off);

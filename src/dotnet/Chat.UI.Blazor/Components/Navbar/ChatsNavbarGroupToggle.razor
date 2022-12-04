@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
 @{
     var m = State.ValueOrDefault ?? new();
-    var showBadge = m.Count.Value > 0;
+    var showBadge = m.Count.Value != 0;
 }
 <NavbarGroupToggle
     Title="Chats" Id="@NavbarGroupIds.Chats" Tooltip="Chats" FloatingPosition="FloatingPosition.Right" ShowBadge="@showBadge">
@@ -16,23 +16,20 @@
 </NavbarGroupToggle>
 
 @code {
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             UpdateDelayer = FixedDelayer.Get(5),
+            InitialValue = new(),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatContacts = await Contacts.ListChatContacts(Session, cancellationToken);
-        var chats = chatContacts.Select(c => c.Chat);
-        var count = await UnreadMessages.GetUnreadChatCount(chats.Select(c => c!.Id), cancellationToken);
+        var chats = await ChatUI.List(ChatListOrder.ByLastEventTime, cancellationToken);
+        var count = chats.Select(c => c.UnmutedUnreadCount).Sum();
         return new(count);
     }
 
-    public record Model(Trimmed<int> Count = default);
+    public sealed record Model(Trimmed<int> Count = default);
 }

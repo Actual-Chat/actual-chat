@@ -12,9 +12,9 @@
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public ChatInfo ChatInfo { get; set; } = null!;
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnLeaveChatClick() {
-        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatInfo.Chat));
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
     }
 }

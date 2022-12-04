@@ -1,13 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatMediaState>
+@inherits FusionComponentBase
 @{
-    var m = State.Value;
-    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
-    var listeningClass = m.IsListening ? "on" : "off";
+    var playingHistoricalClass = ChatState.IsPlayingHistorical ? "opacity-60" : "";
+    var listeningClass = ChatState.IsListening ? "on" : "off";
     var cls = $"play {listeningClass} {playingHistoricalClass}";
 }
 
-@if (!m.IsListening) {
+@if (!ChatState.IsListening) {
     <MenuEntry
         OnClick="@OnListenClick"
         Class="@cls"
@@ -32,19 +31,8 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public ChatInfo ChatInfo { get; set; } = null!;
-
-    private Chat Chat => ChatInfo.Chat;
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnListenClick()
-        => _ = ChatUI.SetListeningState(Chat.Id, !State.LatestNonErrorValue.IsListening);
-
-    protected override ComputedState<ChatMediaState>.Options GetStateOptions()
-        => new() {
-            InitialValue = ChatMediaState.None,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
-
-    protected override Task<ChatMediaState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetMediaState(Chat.Id, cancellationToken);
+        => _ = ChatUI.SetListeningState(ChatState.Id, !ChatState.IsListening);
 }

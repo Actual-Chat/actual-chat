@@ -1,8 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<bool>
-
+@inherits FusionComponentBase
 @{
-    var isRecording = State.Value;
+    var isRecording = ChatState.IsRecording;
     var cls = "important-item " + (isRecording ? "on" : "off");
 }
 
@@ -15,7 +14,7 @@
     </MenuEntry>
 } else {
     <MenuEntry
-        OnClick="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
+        OnClick="@(_ => ChatUI.SetRecordingChatId(ChatState.Id))"
         Class="@cls"
         Icon="icon-mic"
         Text="Start talking">
@@ -25,11 +24,5 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsRecording(Chat.Id);
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 }

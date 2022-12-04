@@ -30,13 +30,10 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
-    [Inject] private ContactUI ContactUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
-
-    protected override Task OnInitializedAsync() => ContactUI.SelectedContactId.WhenRead;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = Model.Loading };
@@ -49,9 +46,9 @@
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
                 link = Links.ChatPage(default);
             else {
-                var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
-                if (chat != null)
-                    link = Links.ChatPage(chat.Id);
+                var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                link = Links.ChatPage(selectedChat != null ? selectedChatId : Constants.Chat.DefaultChatId);
             }
         }
         return new(account, link);

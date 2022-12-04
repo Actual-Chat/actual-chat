@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits FusionComponentBase
 @{
-    var rules = ChatInfo.Chat.Rules;
+    var rules = ChatState.Chat.Rules;
 }
 
 @if (rules.CanWrite()) {
@@ -14,5 +14,5 @@
 }
 
 @code{
-    [CascadingParameter] public ChatInfo ChatInfo { get; set; } = null!;
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 }

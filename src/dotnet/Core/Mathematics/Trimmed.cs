@@ -1,7 +1,9 @@
 using System.Numerics;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat.Mathematics;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
 [DataContract]
 public readonly record struct Trimmed<T>

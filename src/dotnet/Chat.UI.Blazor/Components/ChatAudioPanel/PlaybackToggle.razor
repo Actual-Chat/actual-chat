@@ -45,5 +45,5 @@
         };
 
     protected override Task<ChatMediaState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetMediaState(ChatId, cancellationToken);
+        => ChatUI.GetMediaState(ChatId);
 }

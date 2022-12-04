@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
-    var chats = m.PinnedChats.Concat(m.UnpinnedChats).Select(x => x.Id).ToList();
+    var count = m.AllChats.Select(c => c.UnreadCount).Sum();
 
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
@@ -10,7 +10,7 @@
              Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
-                <UnreadMessagesCounter ChatIds="chats" Click="@OnTabUnreadBadgeClick"/>
+                <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
             </TitleContent>
             <ChildContent>
                 <div class="h-full flex-y my-2">
@@ -43,11 +43,9 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -57,27 +55,26 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await ListChats(_activeTabId);
+        var chats = (await ListChats(_activeTabId)).ToList();
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         // Default scheduler is used from here
         if (!searchPhrase.IsEmpty) {
-            var selectedChat = await RecentChatsUI.GetSelectedChat(cancellationToken);
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
             chats = (
                 from c in chats
-                let rank = searchPhrase.GetMatchRank(c.Title)
-                where rank > 0 || c.Id == selectedChat?.Id
-                orderby rank descending
+                let rank = searchPhrase.GetMatchRank(c.Chat.Title)
+                where rank > 0 || c.Chat.Id == selectedChatId
+                orderby c.Contact.IsPinned descending, rank descending
                 select c
-                ).ToImmutableList();
+                ).ToList();
         }
 
-        var pinnedChatIds = await ChatUI.PinnedChats.Use(cancellationToken);
         var pinnedChats = chats
-            .Where(c => pinnedChatIds.Contains(c.Id))
+            .TakeWhile(c => c.Contact.IsPinned)
             .ToList();
         var unpinnedChats = chats
-            .Where(c => !pinnedChatIds.Contains(c.Id))
+            .Skip(pinnedChats.Count)
             .ToList();
 
         return new Model {
@@ -91,9 +88,9 @@
             LoadingUI.MarkLoaded();
     }
 
-    private Task<ImmutableList<Chat>> ListChats(TabId tabId)
+    private Task<ImmutableList<ChatInfo>> ListChats(TabId tabId)
         => tabId switch {
-            TabId.Recent => RecentChatsUI.ListIncludingSelected(),
+            TabId.Recent => ChatUI.List(ChatListOrder.ByLastEventTime),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
 
@@ -106,16 +103,13 @@
         _ = State.Recompute();
     }
 
-    private async Task OnTabUnreadBadgeClick() {
-        var allChatIds = State.Value.PinnedChats.Concat(State.Value.UnpinnedChats).Select(x => x.Id).ToList();
-        var firstUnreadChatId = await UnreadMessages.GetFirstUnreadChat(allChatIds, CancellationToken.None);
-        if (firstUnreadChatId.IsEmpty)
+    private void OnUnreadBadgeClick() {
+        var allChats = State.LatestNonErrorValue.AllChats;
+        var firstUnreadChat = allChats.FirstOrDefault(c => c.UnmutedUnreadCount != 0);
+        if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
             return;
 
-        if (firstUnreadChatId == ChatUI.SelectedChatId.Value)
-            return;
-
-        Nav.NavigateTo(Links.ChatPage(firstUnreadChatId));
+        Nav.NavigateTo(Links.ChatPage(firstUnreadChat.Chat.Id));
     }
 
     public enum TabId {
@@ -123,10 +117,13 @@
     }
 
     public sealed record Model {
+        private static List<ChatInfo> _emptyList = new();
+
         public static Model None { get; } = new();
 
-        public List<Chat> PinnedChats { get; init; } = new ();
-        public List<Chat> UnpinnedChats { get; init; } = new ();
+        public List<ChatInfo> PinnedChats { get; init; } = _emptyList;
+        public List<ChatInfo> UnpinnedChats { get; init; } = _emptyList;
+        public IEnumerable<ChatInfo> AllChats => PinnedChats.Concat(UnpinnedChats);
     }
 
 }

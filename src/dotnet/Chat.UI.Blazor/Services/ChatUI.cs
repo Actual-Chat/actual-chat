@@ -36,6 +36,8 @@ public partial class ChatUI : WorkerBase
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private AccountSettings AccountSettings { get; }
+    private LocalSettings LocalSettings { get; }
     private AccountUI AccountUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
@@ -66,6 +68,8 @@ public partial class ChatUI : WorkerBase
         Contacts = services.GetRequiredService<IContacts>();
         ReadPositions = services.GetRequiredService<IReadPositions>();
         Mentions = services.GetRequiredService<IMentions>();
+        AccountSettings = services.AccountSettings();
+        LocalSettings = services.LocalSettings();
         AccountUI = services.GetRequiredService<AccountUI>();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
@@ -73,10 +77,9 @@ public partial class ChatUI : WorkerBase
         ModalUI = services.GetRequiredService<ModalUI>();
         UICommander = services.UICommander();
 
-        var localSettings = services.LocalSettings();
-        SelectedChatId = StateFactory.NewKvasStored<ChatId>(new(localSettings, nameof(SelectedChatId)));
+        SelectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)));
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
-            new (localSettings, nameof(ActiveChats)) {
+            new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
             });
@@ -91,18 +94,19 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual async Task<ImmutableList<ChatInfo>> List(CancellationToken cancellationToken = default)
+    public virtual async Task<ImmutableList<ChatInfo>> List(ChatListOrder order, CancellationToken cancellationToken = default)
     {
-        var result = await ListExcludingSelected(cancellationToken).ConfigureAwait(false);
+        var result = await ListOrdered(order, cancellationToken).ConfigureAwait(false);
         var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (result.Any(c => c.Chat.Id == selectedChatId))
+        if (result.Any(c => c.Id == selectedChatId))
             return result;
 
         var selectedChat = await Get(selectedChatId, cancellationToken).ConfigureAwait(false);
         if (selectedChat == null)
             return result;
 
-        result = result.Insert(0, selectedChat);
+        var pinnedChatCounts = result.Count(c => c.Contact.IsPinned);
+        result = result.Insert(pinnedChatCounts, selectedChat);
         return result;
     }
 
@@ -119,11 +123,13 @@ public partial class ChatUI : WorkerBase
         var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
         var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
+        var userChatSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
 
         var result = new ChatInfo(contact) {
             News = await chatNewsTask.ConfigureAwait(false),
             LastMention = await lastMentionTask.ConfigureAwait(false),
             ReadEntryId = await readEntryIdTask.ConfigureAwait(false),
+            UserSettings = await userChatSettingsTask.ConfigureAwait(false),
         };
         return result;
     }
@@ -276,19 +282,30 @@ public partial class ChatUI : WorkerBase
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<ImmutableList<ChatInfo>> ListExcludingSelected(CancellationToken cancellationToken)
+    protected virtual async Task<ImmutableList<ChatInfo>> ListOrdered(ChatListOrder order, CancellationToken cancellationToken)
+    {
+        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
+        var preOrderedChats = chats
+            .OrderByDescending(c => c.Contact.IsPinned)
+            .ThenByDescending(c => c.HasUnreadMentions);
+        var orderedChats = order switch {
+            ChatListOrder.ByLastEventTime => preOrderedChats.ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
+            ChatListOrder.ByOwnUpdateTime => preOrderedChats.ThenByDescending(c => c.Contact.TouchedAt),
+            _ => throw new ArgumentOutOfRangeException(nameof(order)),
+        };
+        var result = orderedChats.ToImmutableList();
+        return result;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<List<ChatInfo>> ListUnordered(CancellationToken cancellationToken)
     {
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var chats = await contactIds
+        var result = await contactIds
             .Select(contactId => Get(contactId.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-
-        var result = chats
-            .SkipNullItems()
-            .OrderByDescending(c => c.HasMentions).ThenByDescending(c => c.Contact?.TouchedAt ?? Moment.MaxValue)
-            .ToImmutableList();
-        return result;
+        return result.SkipNullItems().ToList();
     }
 
     // Private methods

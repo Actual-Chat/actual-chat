@@ -59,9 +59,8 @@ public partial class ChatUI
                 }
                 if (changed.Count > 0) {
                     _ = GetListeningChatIds();
-                    foreach (var c in changed) {
+                    foreach (var c in changed)
                         _ = GetMediaState(c.ChatId);
-                    }
                 }
             }
 

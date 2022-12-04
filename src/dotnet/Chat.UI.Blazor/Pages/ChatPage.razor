@@ -43,7 +43,7 @@
 </RenderIntoStack>
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat">
-        <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
+        <UnreadCountSubHeader Click="@OnUnreadCountSubHeaderClick"/>
     </CascadingValue>
 </RenderIntoStack>
 
@@ -127,7 +127,7 @@
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
-    private void OnUnreadMessagesClick()
+    private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
     public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account) {
