@@ -1,5 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Contacts
+@inherits CreationModal
+
+@{
+    var m = State.LatestNonErrorValue;
+}
 
 <div class="creation-panel page-01">
     <div class="header">
@@ -20,21 +25,23 @@
                 <i class="icon-people text-2xl"></i>
             </Icon>
         </CreationButton>
-        <CreationButton Title="New Channel">
-            <Icon>
-                <i class="icon-loudspeaker text-2xl"></i>
-            </Icon>
-        </CreationButton>
-        <CreationButton Title="New Contact">
-            <Icon>
-                <i class="icon-person-add text-2xl"></i>
-            </Icon>
-        </CreationButton>
-        <CreationButton Title="New Place">
-            <Icon>
-                <i class="icon-plus text-2xl"></i>
-            </Icon>
-        </CreationButton>
+        @if (m.EnableIncompleteUI) {
+            <CreationButton Title="New Channel">
+                <Icon>
+                    <i class="icon-loudspeaker text-2xl"></i>
+                </Icon>
+            </CreationButton>
+            <CreationButton Title="New Contact">
+                <Icon>
+                    <i class="icon-person-add text-2xl"></i>
+                </Icon>
+            </CreationButton>
+            <CreationButton Title="New Place">
+                <Icon>
+                    <i class="icon-plus text-2xl"></i>
+                </Icon>
+            </CreationButton>
+        }
     </div>
 </div>
 

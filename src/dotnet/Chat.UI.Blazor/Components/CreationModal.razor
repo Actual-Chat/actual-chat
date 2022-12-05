@@ -20,7 +20,7 @@
            </div>;
 }
 
-<CascadingValue Value="_enableIncompleteUI">
+<CascadingValue Value="m.EnableIncompleteUI">
     <DialogFrame Class="creation-modal" ShowMobileHeader="false" ButtonsClass="@btnCls">
         <Body>
         @if (PageNumber == 1) {
@@ -91,7 +91,6 @@
 
 
 @code {
-    private bool _enableIncompleteUI;
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -126,9 +125,7 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
         _form = new(ComponentIdGenerator);
-
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
         AllContacts = userContacts
             .OrderBy(x => x.Account?.Avatar.Name)
@@ -143,6 +140,7 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);
         if (!account.IsActive())
             return ComputedModel.None;
@@ -165,6 +163,7 @@
         AllContacts = contacts.ToArray();
         return new ComputedModel {
             AllContacts = contacts,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -256,8 +255,10 @@
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new() {
             AllContacts = new (),
+            EnableIncompleteUI = false,
         };
 
         public List<Contact> AllContacts { get; init; } = null!;
+        public bool EnableIncompleteUI { get; init; }
     }
 }
