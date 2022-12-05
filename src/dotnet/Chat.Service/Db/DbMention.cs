@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.Db;
 
 [Table("Mentions")]
-[Index(nameof(ChatId), nameof(TextEntryLocalId), nameof(MentionId))]
-[Index(nameof(ChatId), nameof(MentionId), nameof(TextEntryLocalId))]
+[Index(nameof(ChatId), nameof(EntryId), nameof(MentionId))]
+[Index(nameof(ChatId), nameof(MentionId), nameof(EntryId))]
 public class DbMention : IHasId<string>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
     public string ChatId { get; set; } = "";
     public string MentionId { get; set; } = "";
-    public long TextEntryLocalId { get; set; }
+    public long EntryId { get; set; }
 
     public DbMention() { }
     public DbMention(Mention model) => UpdateFrom(model);
@@ -29,7 +29,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
         => new() {
             Id = Id,
             MentionId = MentionId,
-            EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, TextEntryLocalId, AssumeValid.Option),
+            EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, EntryId, AssumeValid.Option),
         };
 
     public void UpdateFrom(Mention model)
@@ -40,6 +40,6 @@ public class DbMention : IHasId<string>, IRequirementTarget
         Id = id;
         ChatId = model.ChatId;
         MentionId = model.MentionId;
-        TextEntryLocalId = model.EntryId.LocalId;
+        EntryId = model.EntryId.LocalId;
     }
 }
