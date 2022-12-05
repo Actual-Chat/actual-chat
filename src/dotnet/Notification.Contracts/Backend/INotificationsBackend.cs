@@ -7,21 +7,27 @@ public interface INotificationsBackend : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListRecentNotificationIds(UserId userId, CancellationToken cancellationToken);
+    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<NotificationEntry> GetNotification(UserId userId, string notificationId, CancellationToken cancellationToken);
+    Task<Notification> Get(NotificationId notificationId, CancellationToken cancellationToken);
 
     // Command handlers
 
     [CommandHandler]
-    Task NotifyUser(NotifyUserCommand command, CancellationToken cancellationToken);
+    Task Notify(NotifyCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task Upsert(UpsertCommand notification, CancellationToken cancellationToken);
     [CommandHandler]
     Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record NotifyUserCommand(
-        [property: DataMember] UserId UserId,
-        [property: DataMember] NotificationEntry Entry
+    public sealed record NotifyCommand(
+        [property: DataMember] Notification Notification
+    ) : ICommand<Unit>, IBackendCommand;
+
+    [DataContract]
+    public sealed record UpsertCommand(
+        [property: DataMember] Notification Notification
     ) : ICommand<Unit>, IBackendCommand;
 
     [DataContract]

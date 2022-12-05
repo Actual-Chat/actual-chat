@@ -103,5 +103,5 @@ public class Contacts : IContacts
     // Private methods
 
     private static Exception Unauthorized()
-        => StandardError.Unauthorized("You can access only your own contacts");
+        => StandardError.Unauthorized("You can access only your own contacts.");
 }

@@ -7,13 +7,11 @@ public interface INotificationsClientDef
 {
     [Get(nameof(ListRecentNotificationIds))]
     Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
 
-    [Get(nameof(GetNotification))]
-    Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken);
-
+    [Post(nameof(Handle))]
+    public Task Handle([Body] INotifications.HandleCommand command, CancellationToken cancellationToken);
     [Post(nameof(RegisterDevice))]
     Task RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
-
-    [Post(nameof(HandleNotification))]
-    public Task HandleNotification([Body] INotifications.HandleNotificationCommand command, CancellationToken cancellationToken);
 }

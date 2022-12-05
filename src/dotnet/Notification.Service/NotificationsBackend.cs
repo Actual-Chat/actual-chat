@@ -65,42 +65,63 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         return subscriberIds;
     }
 
-    // [CommandHandler]
-    public virtual async Task NotifyUser(INotificationsBackend.NotifyUserCommand command, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(UserId userId, CancellationToken cancellationToken)
     {
-        var (userId, entry) = command;
-        var notificationKind = entry.Kind;
-        var context = CommandContext.GetCurrent();
+        // Get notifications for last day
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
 
-        if (Computed.IsInvalidating()) {
-            var invNotificationId = context.Operation().Items.GetOrDefault(Symbol.Empty);
-            if (invNotificationId.IsEmpty) // Created
-                _ = ListRecentNotificationIds(userId, default);
-            else // Updated
-                _ = GetNotification(userId, invNotificationId, default);
-            return;
-        }
+        var yesterdayId = new NotificationId(userId, Ulid.NewUlid(Clocks.CoarseSystemClock.UtcNow.AddDays(-1)));
+        return dbContext.Notifications
+            // ReSharper disable once StringCompareToIsCultureSpecific
+            .Where(n => n.UserId == userId.Value && n.Id.CompareTo(yesterdayId.ToString()) > 0)
+            .OrderByDescending(n => n.Id)
+            .Select(n => new NotificationId(n.Id))
+            .ToImmutableArray();
+    }
 
-        var notificationIds = await ListRecentNotificationIds(userId, cancellationToken).ConfigureAwait(false);
-        var notifications = await notificationIds
-            .Select(id => GetNotification(userId, id, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
+    // [ComputeMethod]
+    public virtual async Task<Notification> Get(
+        NotificationId notificationId,
+        CancellationToken cancellationToken)
+    {
+        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        return dbNotification.Require().ToModel();
+    }
 
-        switch (notificationKind) {
+    // [CommandHandler]
+    public virtual async Task Notify(INotificationsBackend.NotifyCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var notification = command.Notification;
+        var kind = notification.Kind;
+        var userId = notification.UserId.Require();
+        var chatId = notification.ChatId;
+
+        switch (kind) {
         case NotificationKind.Message: {
-            var chatEntryNotification = entry.ChatEntryNotification.Require();
-            var existingEntry = notifications
-                .OrderByDescending(n => n.NotificationTime)
-                .FirstOrDefault(n => n.Kind == notificationKind
-                    && n.ChatEntryNotification!.EntryId.ChatId == chatEntryNotification.EntryId.ChatId);
+            // TODO(AY): Refactor this thing to O(1) DB lookups!
+            var notificationIds = await ListRecentNotificationIds(userId, cancellationToken).ConfigureAwait(false);
+            var notifications = await notificationIds
+                .Select(id => Get(id, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            var recentSimilarNotification = notifications
+                .OrderByDescending(n => n.HandledAt)
+                .FirstOrDefault(n => n.Kind == kind && n.ChatId == chatId);
 
-            if (existingEntry != null) {
-                var recency = entry.NotificationTime - existingEntry.NotificationTime;
+            if (recentSimilarNotification != null) {
+                var recency = notification.HandledAt - recentSimilarNotification.HandledAt;
                 if (recency <= NotificationConstants.ChatEntryNotificationThrottleInterval)
                     return;
 
-                entry = entry with { Id = existingEntry.Id };
+                notification = notification with {
+                    Id = recentSimilarNotification.Id,
+                    Version = recentSimilarNotification.Version,
+                };
             }
             break;
         }
@@ -116,69 +137,55 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             throw StandardError.NotSupported<NotificationKind>("Notification type is unsupported.");
         }
 
-        await UpsertEntry(entry, cancellationToken).ConfigureAwait(false);
-        await SendSystemNotification(userId, entry, cancellationToken).ConfigureAwait(false);
+        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        await Send(userId, notification, cancellationToken).ConfigureAwait(false);
+    }
 
-        async Task UpsertEntry(NotificationEntry entry1, CancellationToken cancellationToken1)
-        {
-            var dbContext = await CreateCommandDbContext(cancellationToken1).ConfigureAwait(false);
-            await using var __ = dbContext.ConfigureAwait(false);
+    // [CommandHandler]
+    public virtual async Task Upsert(INotificationsBackend.UpsertCommand command, CancellationToken cancellationToken)
+    {
+        var notification = command.Notification;
+        var userId = notification.UserId.Require();
 
-            var dbEntry = await dbContext.Notifications.ForUpdate()
-                .SingleOrDefaultAsync(e => e.Id == entry1.Id.Value, cancellationToken)
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invNotificationId = context.Operation().Items.GetOrDefault(NotificationId.None);
+            if (invNotificationId.IsNone) // Created
+                _ = ListRecentNotificationIds(userId, default);
+            else // Updated
+                _ = Get(invNotificationId, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        DbNotification? dbNotification;
+        var now = Clocks.CoarseSystemClock.Now;
+        if (notification.Version == 0) {
+            notification = notification with {
+                Id = notification.Id.Or(userId, static userId1 => new NotificationId(userId1, Ulid.NewUlid())),
+                Version = VersionGenerator.NextVersion(),
+                CreatedAt = now,
+            };
+            dbNotification = new DbNotification();
+            dbNotification.UpdateFrom(notification);
+            dbContext.Notifications.Add(dbNotification);
+        }
+        else {
+            dbNotification = await dbContext.Notifications.ForUpdate()
+                .SingleOrDefaultAsync(e => e.Id == notification.Id.Value, cancellationToken)
                 .ConfigureAwait(false);
-
-            if (dbEntry != null) {
-                dbEntry.Title = entry1.Title;
-                dbEntry.Content = entry1.Content;
-                dbEntry.IconUrl = entry1.IconUrl;
-                dbEntry.ChatId = entry1.ChatId;
-                dbEntry.EntryId = entry1.ChatEntryNotification?.EntryId;
-                dbEntry.AuthorId = entry1.ChatEntryNotification?.AuthorId;
-                dbEntry.ModifiedAt = entry1.NotificationTime;
-                dbEntry.HandledAt = null;
-                context.Operation().Items.Set(entry1.Id);
-            }
-            else {
-                var now = Clocks.CoarseSystemClock.Now;
-                dbEntry = new DbNotification {
-                    Id = entry1.Id,
-                    UserId = userId,
-                    Kind = entry1.Kind,
-                    Title = entry1.Title,
-                    Content = entry1.Content,
-                    IconUrl = entry1.IconUrl,
-                    ChatId = entry1.ChatId,
-                    EntryId = entry1.ChatEntryNotification?.EntryId,
-                    AuthorId = entry1.ChatEntryNotification?.AuthorId,
-                    CreatedAt = now,
-                    ModifiedAt = now,
-                    HandledAt = null,
-                };
-                dbContext.Notifications.Add(dbEntry);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            dbNotification = dbNotification.RequireVersion(notification.Version);
+            notification = notification with {
+                Version = VersionGenerator.NextVersion(notification.Version),
+            };
+            dbNotification.UpdateFrom(notification);
+            context.Operation().Items.Set(notification.Id);
         }
 
-        async Task SendSystemNotification(UserId userId1, NotificationEntry entry1, CancellationToken cancellationToken1)
-        {
-            var deviceIds = await GetDevicesInternal(userId1, cancellationToken1).ConfigureAwait(false);
-            if (deviceIds.Count <= 0)
-                return;
-
-            await FirebaseMessagingClient.SendMessage(entry1, deviceIds, cancellationToken1).ConfigureAwait(false);
-        }
-
-        async Task<List<Symbol>> GetDevicesInternal(
-            UserId userId1,
-            CancellationToken cancellationToken1)
-        {
-            var devices = await ListDevices(userId1, cancellationToken1).ConfigureAwait(false);
-            return devices
-                .Select(d => d.DeviceId)
-                .ToList();
-        }
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -212,62 +219,6 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", affectedUserIds.Count);
         context.Operation().Items.Set(affectedUserIds);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListRecentNotificationIds(UserId userId, CancellationToken cancellationToken)
-    {
-        // Get notifications for last day
-        var yesterdayId = Ulid.NewUlid(Clocks.CoarseSystemClock.UtcNow.AddDays(-1));
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        return dbContext.Notifications
-            // ReSharper disable once StringCompareToIsCultureSpecific
-            .Where(n => n.UserId == userId.Value && n.Id.CompareTo(yesterdayId.ToString()) > 0)
-            .OrderByDescending(n => n.Id)
-            .Select(n => (Symbol)n.Id)
-            .ToImmutableArray();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<NotificationEntry> GetNotification(
-        UserId userIdId,
-        string notificationId,
-        CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
-        if (dbNotification == null)
-            throw new InvalidOperationException("Notification doesn't exist.");
-
-        var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOrNone.Option);
-        var chatEntryId = new ChatEntryId(dbNotification.EntryId ?? "", ParseOrNone.Option);
-        var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOrNone.Option);
-
-        return new NotificationEntry(dbNotification.Id,
-            dbNotification.Kind,
-            dbNotification.Title,
-            dbNotification.Content,
-            dbNotification.IconUrl,
-            dbNotification.ModifiedAt ?? dbNotification.CreatedAt) {
-            ChatEntryNotification = dbNotification.Kind switch {
-                NotificationKind.Invitation => null,
-                NotificationKind.Message => new ChatEntryNotification(chatEntryId, authorId),
-                NotificationKind.Reply => new ChatEntryNotification(chatEntryId, authorId),
-                NotificationKind.Reaction => new ChatEntryNotification(chatEntryId, authorId),
-                _ => throw new ArgumentOutOfRangeException(),
-            },
-            ChatNotification = dbNotification.Kind switch {
-                NotificationKind.Invitation => new ChatNotification(chatId),
-                NotificationKind.Message => null,
-                NotificationKind.Reply => null,
-                NotificationKind.Reaction => null,
-                _ => throw new ArgumentOutOfRangeException(),
-            },
-        };
     }
 
     // Event handlers
@@ -314,31 +265,37 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     // Private methods
 
+    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
+    {
+        var devices = await ListDevices(userId, cancellationToken1).ConfigureAwait(false);
+        var deviceIds = devices.Select(d => d.DeviceId).ToList();
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, cancellationToken1).ConfigureAwait(false);
+    }
+
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatEntry entry,
         AuthorFull changeAuthor,
-        string text,
-        NotificationKind notificationKind,
+        string content,
+        NotificationKind kind,
         IEnumerable<UserId> userIds,
         CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(entry.ChatId, cancellationToken).Require().ConfigureAwait(false);
         var title = GetTitle(chat, changeAuthor);
         var iconUrl = GetIconUrl(chat, changeAuthor);
-        var notificationTime = Clocks.CoarseSystemClock.Now;
+        var createdAt = Clocks.CoarseSystemClock.Now;
         var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
-            var notificationEntry = new NotificationEntry(
-                Ulid.NewUlid().ToString(),
-                notificationKind,
-                title,
-                text,
-                iconUrl,
-                notificationTime) {
+            var notification = new Notification(default) {
+                Kind = kind,
+                Title = title,
+                Content = content,
+                IconUrl = iconUrl,
+                CreatedAt = createdAt,
                 ChatEntryNotification = new ChatEntryNotification(entry.Id, changeAuthor.Id),
             };
-            await new INotificationsBackend.NotifyUserCommand(otherUserId, notificationEntry)
+            await new INotificationsBackend.NotifyCommand(notification)
                 .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
                 .ConfigureAwait(false);
         }

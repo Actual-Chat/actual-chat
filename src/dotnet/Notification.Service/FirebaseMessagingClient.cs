@@ -22,11 +22,15 @@ public class FirebaseMessagingClient
         Log = log;
     }
 
-    public async Task SendMessage(NotificationEntry entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
+    public async Task SendMessage(Notification entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
     {
-        var (notificationId, notificationType, title, content, iconUrl, _) = entry;
-        var chatEntryNotification = entry.ChatEntryNotification;
+        var (notificationId, _) = entry;
+        var kind = entry.Kind;
+        var title = entry.Title;
+        var content = entry.Content;
+        var iconUrl = entry.IconUrl;
         var chatId = entry.ChatId;
+        var chatEntryNotification = entry.ChatEntryNotification;
         var chatEntryId = chatEntryNotification?.EntryId ?? default;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
 

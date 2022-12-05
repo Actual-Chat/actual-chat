@@ -67,9 +67,6 @@ public readonly struct LanguageId : ISymbolIdentifier<LanguageId>
     private LanguageId(Symbol id, Symbol shortcut, string title, AssumeValid _)
         => _info = new LanguageInfo(id, shortcut, title);
 
-    public LanguageId Or(LanguageId alternative)
-        => IsNone ? this : alternative;
-
     // Conversion
 
     public override string ToString() => Value;

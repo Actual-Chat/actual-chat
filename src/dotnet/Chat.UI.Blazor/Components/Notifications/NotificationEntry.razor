@@ -1,9 +1,9 @@
 @using ActualChat.Notification
 @using System.Timers
 @using Timer = System.Timers.Timer
-@inherits ComputedStateComponent<Notification.Model>
+@using Notification = ActualChat.Notification.Notification
+@inherits ComputedStateComponent<NotificationEntry.Model>
 @implements IDisposable
-
 @{
     var model = State.Value;
     var title = model.Title;
@@ -42,7 +42,7 @@
     [Inject] private INotifications Notifications { get; set; } = null!;
     [Inject] private UrlMapper UrlMapper { get; set; } = null!;
 
-    [Parameter] public NotificationEntry NotificationEntry { get; set; } = null!;
+    [Parameter] public Notification Notification { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public TimeSpan? AutoCloseDelay { get; set; }
     [Parameter] public TimeSpan? AnimationTime { get; set; }
@@ -69,7 +69,7 @@
     }
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var notification = NotificationEntry;
+        var notification = Notification;
         var chatId = notification.ChatEntryNotification?.EntryId.ChatId ?? notification.ChatNotification?.ChatId ?? default;
         var entryId = notification.ChatEntryNotification?.EntryId;
         var authorId = notification.ChatEntryNotification?.AuthorId ?? Symbol.Empty;
