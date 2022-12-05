@@ -152,7 +152,7 @@ public sealed class AudioProcessor : IAudioProcessor
 
     // Private methods
 
-    private async Task<LanguageId> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<Language> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
         var userChatSettings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);

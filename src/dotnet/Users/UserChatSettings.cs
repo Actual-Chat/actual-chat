@@ -7,6 +7,6 @@ public sealed record UserChatSettings
 
     public static string GetKvasKey(string chatId) => $"@UserChatSettings({chatId})";
 
-    [DataMember] public LanguageId Language { get; init; }
+    [DataMember] public Language Language { get; init; }
     [DataMember] public ChatNotificationMode NotificationMode { get; init; }
 }

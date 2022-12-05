@@ -6,7 +6,7 @@ namespace ActualChat;
 
 [DataContract]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
-[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatEntryId>))]
+[Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ChatEntryId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]

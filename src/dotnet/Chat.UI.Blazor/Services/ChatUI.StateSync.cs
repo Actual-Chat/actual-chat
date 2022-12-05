@@ -2,7 +2,7 @@
 
 public partial class ChatUI
 {
-    private LanguageId? _lastRecordingLanguage;
+    private Language? _lastRecordingLanguage;
     private Symbol _lastRecordingChatId;
     private Symbol _lastRecorderChatId;
 
@@ -160,7 +160,7 @@ public partial class ChatUI
             if (recordingChatId.IsNone)
                 return default;
 
-            // Update _lastLanguageId
+            // Update _lastRecordingLanguage
             await IsRecordingLanguageChanged().ConfigureAwait(false);
             // Start recording = start realtime playback
             await SetListeningState(recordingChatId, true).ConfigureAwait(false);

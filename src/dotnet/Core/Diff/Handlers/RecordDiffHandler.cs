@@ -75,7 +75,7 @@ public class RecordDiffHandler<
         public Func<object, TDiffProperty> DiffPropertyGetter { get; }
         public Action<object, TDiffProperty> DiffPropertySetter { get; }
         public Func<object, TRecordProperty> RecordPropertyGetter { get; }
-        public Action<object, TRecordProperty> RecordPropertySetter { get; }
+        public Action<object, TRecordProperty>? RecordPropertySetter { get; }
 
         public RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
             : base(engine, diffProperty, recordProperty)
@@ -84,7 +84,8 @@ public class RecordDiffHandler<
             DiffPropertyGetter = DiffProperty.GetGetter<TDiffProperty>();
             DiffPropertySetter = DiffProperty.GetSetter<TDiffProperty>();
             RecordPropertyGetter = RecordProperty.GetGetter<TRecordProperty>();
-            RecordPropertySetter = RecordProperty.GetSetter<TRecordProperty>();
+            if (RecordProperty.SetMethod != null)
+                RecordPropertySetter = RecordProperty.GetSetter<TRecordProperty>();
         }
 
         public override void Diff(TRecord source, TRecord target, TDiff diff)
@@ -97,6 +98,9 @@ public class RecordDiffHandler<
 
         public override void Apply(TRecord source, TRecord target, TDiff diff)
         {
+            if (RecordPropertySetter == null)
+                return;
+
             var sourceValue = RecordPropertyGetter.Invoke(source);
             var diffValue = DiffPropertyGetter.Invoke(diff);
             var targetValue = Handler.Patch(sourceValue, diffValue);

@@ -11,7 +11,7 @@
 
 <fieldset class="language-settings" id="language-settings-primary">
     <legend>Your primary language:</legend>
-    @foreach (var language in LanguageId.All) {
+    @foreach (var language in Languages.All) {
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
                    Value="@language.Value" IsChecked="@(language == languages.Primary)"
@@ -27,7 +27,7 @@
                Value="" IsChecked="@(languages.Secondary == null)"
                Title="None" Change="_ => SetSecondary(null)"/>
     </div>
-    @foreach (var language in LanguageId.All.Where(x => x != languages.Primary)) {
+    @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
                    Value="@language.Value" IsChecked="@(language == languages.Secondary)"
@@ -40,7 +40,7 @@
 @code {
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
-    private void SetPrimary(LanguageId language) {
+    private void SetPrimary(Language language) {
         var languages = State.Value.Languages;
         if (languages.Secondary == language)
             languages = languages with { Secondary = languages.Primary };
@@ -48,7 +48,7 @@
         LanguageUI.Settings.Value = languages with { Primary = language };
     }
 
-    private void SetSecondary(LanguageId? language) {
+    private void SetSecondary(Language? language) {
         var languages = State.Value.Languages;
         if (languages.Primary == language && languages.Secondary != null)
             languages = languages with { Primary = languages.Secondary.Value };

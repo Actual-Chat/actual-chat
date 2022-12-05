@@ -5,10 +5,10 @@ public sealed record UserLanguageSettings
 {
     public const string KvasKey = nameof(UserLanguageSettings);
 
-    [DataMember] public LanguageId Primary { get; init; } = LanguageId.Main;
-    [DataMember] public LanguageId? Secondary { get; init; }
+    [DataMember] public Language Primary { get; init; } = Languages.Main;
+    [DataMember] public Language? Secondary { get; init; }
 
-    public LanguageId Next(LanguageId language)
+    public Language Next(Language language)
         => Primary == language
             ? Secondary ?? Primary
             : Primary;

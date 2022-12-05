@@ -15,7 +15,7 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
         if (!Bits.IsPowerOf2((ulong)cacheCount))
             throw new ArgumentOutOfRangeException(nameof(cacheCount));
 
-        var capacityPerCache = capacity / cacheCount;
+        var capacityPerCache = Math.Max(1, capacity / cacheCount);
         _caches = new LruCache<TKey, TValue>[cacheCount];
         _cacheIndexMask = cacheCount - 1;
         for (var i = 0; i < _caches.Length; i++)
