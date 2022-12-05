@@ -2,10 +2,6 @@ namespace ActualChat.Chat;
 
 public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequirementTarget
 {
-    public static Requirement<Emoji> MustExist { get; } = Requirement.New(
-        new(() => StandardError.NotFound<Emoji>()),
-        (Emoji? e) => e != null && _all.ContainsKey(e.Id));
-
     public static readonly Emoji None = new(Symbol.Empty, "");
 
     public static readonly Emoji ThumbsUp = new("👍", "thumbs up");
@@ -37,6 +33,10 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
         ScreamingFaceInFear,
         JackOLantern,
     }.ToDictionary(x => x.Id);
+
+    public static Requirement<Emoji> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<Emoji>()),
+        (Emoji? e) => e != null && _all.ContainsKey(e.Id));
 
     public static readonly IReadOnlyCollection<Emoji> All = _all.Values;
 

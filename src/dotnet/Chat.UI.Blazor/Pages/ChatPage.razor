@@ -114,6 +114,7 @@
 
         if (ChatUI.SelectedChatId.Value != chatId) {
             ChatUI.VisibleIdRange.Value = new(0, 0);
+            ChatUI.IsEndAnchorVisible.Value = true;
             ChatUI.SelectedChatId.Value = chatId;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;

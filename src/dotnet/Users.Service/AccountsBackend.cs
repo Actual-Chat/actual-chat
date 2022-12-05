@@ -42,7 +42,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         }
         else {
             var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-            account = dbAccount?.ToModel();
+            account = dbAccount?.ToModel(user);
             if (account == null)
                 return null;
 

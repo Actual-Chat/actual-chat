@@ -2,6 +2,11 @@
 @using ActualChat.Contacts
 
 @{
+    if (_oldPageNumber != PageNumber) {
+        SearchBox.Cancel();
+        _oldPageNumber = PageNumber;
+    }
+
     var panelHeaderCls = "overflow-y-hidden";
     var countCls = "hidden";
     var onlySelected = false;
@@ -17,24 +22,24 @@
 
     RenderFragment RenderTab(TabId tabId, string title) =>
         @<Tab
-             Title="@title" Id="@tabId.ToString()"
-             Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
-                <div class="h-full flex-y my-2">
-                    @foreach (var contact in ListContacts(tabId, onlySelected)) {
-                        var isSelected = SelectedContacts.Contains(contact);
-                        <CreationPanelContactItem
-                            @key="contact"
-                            Contact="@contact"
-                            IsSelected="@isSelected"
-                            DisableLink="@disableLink"
-                            PageNumber="@PageNumber"
-                            OnSelect="@(() => OnAddContact.InvokeAsync(contact))"/>
-                    }
-                </div>
+            Title="@title" Id="@tabId.ToString()"
+            Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+            <div class="h-full flex-y">
+                @foreach (var contact in ListContacts(tabId, onlySelected)) {
+                    var isSelected = SelectedContacts.Contains(contact);
+                    <CreationPanelContactItem
+                        @key="contact"
+                        Contact="@contact"
+                        IsSelected="@isSelected"
+                        DisableLink="@disableLink"
+                        PageNumber="@PageNumber"
+                        OnSelect="@(() => OnAddContact.InvokeAsync(contact))"/>
+                }
+            </div>
         </Tab>;
 }
 
-<div class="-flex-y w-full h-full">
+<div class="-flex-y w-full h-full overflow-y-auto custom-scrollbar px-2 my-2 ">
     <TabPanel
         BottomHill="true"
         Class="@panelHeaderCls"
@@ -42,14 +47,24 @@
 
         @RenderTab(TabId.Recent, "Recent")
         @RenderTab(TabId.All, "A-Z")
-        @* @RenderTab(ContactTab.Favorites, "Favorites") *@
     </TabPanel>
-    <div class="font-medium px-4 @countCls">
+    <div class="font-medium px-4 mb-4 @countCls">
         @(count > 1 ? $"{count} Members" : $"{count} Member")
     </div>
+
+    @if (PageNumber != 3) {
+        <SearchBox
+            @ref="SearchBox"
+            Class="mt-1"
+            Placeholder="Type the username"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+    }
 </div>
 
 @code{
+    private int _oldPageNumber = 1;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
@@ -59,11 +74,13 @@
     [Parameter] public int PageNumber { get; set; }
     [Parameter] public bool ShowOnlySelected { get; set; }
     [Parameter] public Contact[] AllContacts { get; set; } = null!;
+    [Parameter] public Contact[] FilteredContacts { get; set; } = null!;
     [Parameter] public Contact[] SelectedContacts { get; set; } = null!;
     [Parameter] public EventCallback<Contact> OnAddContact { get; set; }
+    [Parameter] public SearchBox SearchBox { get; set; } = null!;
 
     private List<Contact> ListContacts(TabId tabId, bool onlySelected) {
-        var contacts = onlySelected ? SelectedContacts : AllContacts;
+        var contacts = onlySelected ? SelectedContacts : FilteredContacts;
         return tabId switch {
             TabId.All => contacts.OrderBy(c => c.Account!.Avatar.Name).ToList(),
             TabId.Recent => contacts.OrderByDescending(c => c.TouchedAt).ToList(),
@@ -85,5 +102,13 @@
         }
         SelectedContacts = selectedContacts.ToArray();
         StateHasChanged();
+    }
+
+    private void OnFilter(string filter) {
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Account != null && x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
     }
 }

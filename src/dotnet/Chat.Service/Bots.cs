@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public static class AuthorExt
+public static class Bots
 {
     public static AuthorId GetWalleId(ChatId chatId)
         => new(chatId, Constants.User.Walle.AuthorLocalId, AssumeValid.Option);

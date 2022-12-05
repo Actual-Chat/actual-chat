@@ -7,7 +7,9 @@ namespace ActualChat.Mathematics;
 [StructLayout(LayoutKind.Auto)]
 [DataContract]
 public readonly record struct Trimmed<T>
-    : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>, IComparable<Trimmed<T>>
+    : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,
+        IComparisonOperators<Trimmed<T>, Trimmed<T>, bool>,
+        IComparable<Trimmed<T>>
     where T : struct, IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
 {
     [DataMember] public T Value { get; }
@@ -36,6 +38,8 @@ public readonly record struct Trimmed<T>
     public static implicit operator Trimmed<T>((T Value, T TrimValue) source)
         => new(source.Value, source.TrimValue);
 
+    // Addition
+
     public static Trimmed<T> operator +(Trimmed<T> left, Trimmed<T> right)
     {
         var minLimit = left.Limit;
@@ -46,6 +50,16 @@ public readonly record struct Trimmed<T>
         return new (left.Value + right.Value, minLimit);
     }
 
-    public int CompareTo(Trimmed<T> other)
-        => Comparer<T>.Default.Compare(Value, other.Value);
+    // Comparison
+
+    public int CompareTo(Trimmed<T> other) => Comparer<T>.Default.Compare(Value, other.Value);
+    public static bool operator <(Trimmed<T> left, Trimmed<T> right) => left.CompareTo(right) < 0;
+    public static bool operator >(Trimmed<T> left, Trimmed<T> right) => left.CompareTo(right) > 0;
+    public static bool operator <=(Trimmed<T> left, Trimmed<T> right) => left.CompareTo(right) <= 0;
+    public static bool operator >=(Trimmed<T> left, Trimmed<T> right) => left.CompareTo(right) >= 0;
+
+    // Equality
+
+    public bool Equals(Trimmed<T> other) => Value.Equals(other.Value);
+    public override int GetHashCode() => Value.GetHashCode();
 }

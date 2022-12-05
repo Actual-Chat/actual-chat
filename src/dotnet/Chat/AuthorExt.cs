@@ -17,5 +17,4 @@ public static class AuthorExt
             IsAnonymous = author.IsAnonymous,
         };
     }
-
 }

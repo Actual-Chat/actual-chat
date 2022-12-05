@@ -41,8 +41,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
             return null;
 
-        if (authorId == AuthorExt.GetWalleId(chatId))
-            return AuthorExt.GetWalle(chatId);
+        if (authorId == Bots.GetWalleId(chatId))
+            return Bots.GetWalle(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         if (dbAuthor == null)
@@ -62,7 +62,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return null;
 
         if (userId == Constants.User.Walle.UserId)
-            return AuthorExt.GetWalle(chatId);
+            return Bots.GetWalle(chatId);
 
         AuthorFull? author;
         { // Closes "using" block earlier

@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatPlayers : WorkerBase
 {
@@ -8,14 +8,15 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private IServiceProvider Services { get; }
+    private IAudioOutputController AudioOutputController { get;}
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
     public IMutableState<PlaybackState?> PlaybackState { get; }
-    public IMutableState<ChatId> HistoricalPlaybackChatId { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
         Services = services;
+        AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
         ChatUI = services.GetRequiredService<ChatUI>();
 
@@ -113,22 +114,24 @@ public class ChatPlayers : WorkerBase
             throw new ArgumentOutOfRangeException(nameof(playbackState));
         }
 
-        Task EnterState(PlaybackState? state, CancellationToken ct)
+        async Task EnterState(PlaybackState? state, CancellationToken ct)
         {
+            await AudioOutputController.ToggleAudio(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
-                var result = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
+                var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
-                    var endPlaybackTask = await result.ConfigureAwait(false);
+                    var endPlaybackTask = await startTask.ConfigureAwait(false);
                     await endPlaybackTask.ConfigureAwait(false);
                     await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, ct).ConfigureAwait(false);
                     if (PlaybackState.Value == historical)
                         ResumeRealtimePlayback();
                 }, ct);
-                return result;
+                await startTask.ConfigureAwait(false);
             }
-            if (state is RealtimePlaybackState realtime)
-                return ResumeRealtimePlayback(realtime.ChatIds, ct);
-            return Task.CompletedTask;
+            if (state is RealtimePlaybackState realtime) {
+                var resumeTask = ResumeRealtimePlayback(realtime.ChatIds, ct);
+                await resumeTask.ConfigureAwait(false);
+            }
         }
 
         async Task ExitState(PlaybackState? state, CancellationToken ct)

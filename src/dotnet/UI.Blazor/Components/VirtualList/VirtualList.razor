@@ -11,7 +11,7 @@
     var spacerSize = Data.HasVeryFirstItem
         ? 0
         : renderIndex == 0
-            ? 2000 // initial spacer size to cover all list area on first load
+            ? 1000 // initial spacer size to cover all list area on first load
             : SpacerSize;
     var endSpacerSize = Data.HasVeryLastItem
         ? 0
@@ -55,6 +55,11 @@
     <div @key="VirtualListSpecialKeys.RenderState"
          class="@flexClass flex-none data render-state hidden">
         @SystemJsonSerializer.Default.Write(renderState)
+    </div>
+
+    <div @key="VirtualListSpecialKeys.EndAnchor"
+         class="@flexClass h-1 end-anchor">
+        &nbsp;
     </div>
 
     <div @key="VirtualListSpecialKeys.EndSpacer"

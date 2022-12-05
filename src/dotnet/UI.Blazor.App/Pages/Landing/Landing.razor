@@ -1,0 +1,569 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using System.Security.Cryptography
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Module
+@inherits ComputedStateComponent<Landing.Model>
+@layout NoLayout
+@{
+    var m = State.LatestNonErrorValue;
+    var account = m.Account;
+    var user = account?.User.OrGuest();
+    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
+}
+
+<div @ref="Ref" class="landing">
+    @* Header start *@
+    <div class="landing-header">
+        <div class="min-w-fit">
+            <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon min-w-10 min-h-10 max-h-10">
+            <img src="/landing/ac-icon-dark.svg" alt="icon" class="absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
+        </div>
+        <div class="px-2 mb-2 w-full">
+            <img src="/landing/ac-title-light.svg" alt="brand" class="light-icon min-h-6 max-h-6">
+            <img src="/landing/ac-title-dark.svg" alt="brand" class="absolute z-minus top-3 min-h-6 max-h-6">
+        </div>
+        <div class="header-text text-04 font-medium flex-x min-w-fit w-2/5 items-center justify-center gap-x-4 px-4">
+            <div class="px-8">
+                For business
+            </div>
+            <div class="header-text flex-x h-10 gap-x-4 items-center rounded-full border border-bg-01 px-2 py-1 text-04 font-semibold">
+                <div>
+                    Sign in with
+                </div>
+                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                    <img src="/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                </ButtonRound>
+                @if (m.EnableIncompleteUI) {
+                    <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
+                        <img src="/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
+                    </ButtonRound>
+                    <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
+                        <img src="/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
+                    </ButtonRound>
+                }
+            </div>
+        </div>
+    </div>
+    @* Header end *@
+    <div class="page page-1 pt-16 overflow-y-hidden" id="landing-page-1">
+        <div class="flex-x px-16 h-full overflow-hidden">
+            <div class="flex-y w-3/5 justify-center">
+                <div class="text-04">
+                    <div class="text-6xl font-medium">Text of call?</div>
+                    <div class="text-6xl font-medium">But do you really have to choose?</div>
+                    <div class="py-8 text-xl">We want to redefine the meaning of "Chat". Actually.</div>
+                </div>
+                <div>
+                    <div class="flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
+                        <div>
+                            Sign in with
+                        </div>
+                        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                            <img src="/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                        </ButtonRound>
+                        @if (m.EnableIncompleteUI) {
+                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
+                                <img src="/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                            </ButtonRound>
+                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
+                                <img src="/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                            </ButtonRound>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="flex w-2/5 justify-center">
+                <img src="/landing/android-phone.svg" alt="phone">
+            </div>
+        </div>
+    </div>
+
+    <LandingTimeline/>
+
+    <div class="page page-3 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
+        <div class="flex-y gap-y-8 justify-center items-center p-16 overflow-hidden ">
+            <div class="text-7xl font-semibold">
+                Actual.chat merges voice and text into a single medium
+            </div>
+            <div class="gap-x-8 grid grid-cols-3">
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
+                    </div>
+                </div>
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
+                    </div>
+                </div>
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-4 pt-4 overflow-y-hidden" id="landing-page-4">
+        <div class="flex w-full h-40 py-12 px-16 items-center justify-center">
+            <div class="text-5xl font-semibold">We believe communication must be...</div>
+        </div>
+        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
+            <div class="flex w-1/2 p-16 pb-24 pr-6">
+                <div class="w-full h-96 bg-[#CBCBD1]">
+
+                </div>
+            </div>
+            <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
+                <div class="text-7xl font-semibold">Stressless</div>
+                <ul class="list-disc m-8">
+                    <li>
+                        76% of millennials and 40% of baby boomers experience anxiety when the phone rings, leading to 61% of the millennials avoiding calls
+                    </li>
+                    <li>
+                        Miillennials and Gen-Z also find calls rude and anxiety-inducing. 81% of respondents admit that they often experience anxiety when talking to someone on the phone. Most, if not all, even need to work up the courage to press the Call button.
+                    </li>
+                    <li>
+                        Believe it or not, but there is no “Call” button in Actual.chat :)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-5 overflow-y-hidden" id="landing-page-5">
+        <div class="flex h-full overflow-hidden">
+            <div class="flex-y w-1/2 justify-center p-16 pr-6">
+                <div class="text-7xl font-semibold">Seamless and frictionless</div>
+                <ul class="list-disc m-8">
+                    <li>
+                        Typing is great, but there are so many cases when it’s inconvenient or impossible to type
+                    </li>
+                    <li>
+                        Driving, jogging, or already in bed, but still looking through your chats? Just hit the microphone button & start talking.
+                    </li>
+                </ul>
+            </div>
+            <div class="w-1/2 p-16 pl-6">
+                <div class="flex-y gap-y-4 justify-center w-full h-full">
+                    <div class="flex-x gap-x-8">
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img src="/landing/person-01.svg" alt="body">
+                        </div>
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img src="/landing/person-02.svg" alt="body">
+                        </div>
+                    </div>
+                    <div class="flex-x gap-x-8">
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img src="/landing/person-03.svg" alt="body">
+                        </div>
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img src="/landing/person-04.svg" alt="body">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-6 overflow-y-hidden" id="landing-page-6">
+        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
+            <div class="flex w-1/2 items-center p-16 pb-24 pr-6">
+                <div class="w-full h-96 bg-[#CBCBD1]">
+
+                </div>
+            </div>
+            <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
+                <div class="text-7xl font-semibold">Synchronous + asynchronous</div>
+                <ul class="list-disc m-8">
+                    <li>
+                        We start any conversation as asynchronous, which turns synchronous when parties start to respond in real-time.
+                    </li>
+                    <li>
+                        And if you missed the real-time conversation, transcription and recording is always there – in fact, you get exactly the same experience as in regular chats in this case.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-7 page-scrolling overflow-y-hidden" id="landing-page-7">
+        <div class="flex-y h-full">
+            <div class="flex-x min-h-136">
+                <div class="flex-y w-1/2 justify-center p-16 pr-6">
+                    <div class="text-7xl font-semibold">Productive</div>
+                    <ul class="list-disc m-8">
+                        <li>
+                            Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
+                        </li>
+                        <li>
+                            "You know, we discussed this problem with Alice over the phone… Can you somehow find it?" - "Unfortunately, no - could you please tell me again what happened?
+                        </li>
+                        <li>
+                            Have you ever dreamed of highlighting the important parts of a voice conversation to have the summary later, or slicing a longer one to a few topics that could be continued later?
+                        </li>
+                    </ul>
+                    Actual.chat shines in these scenarios
+                </div>
+                <div class="flex w-1/2 p-16 pl-6">
+                    <div class="w-full h-full bg-[#CBCBD1]">
+
+                    </div>
+                </div>
+            </div>
+            <div class="flex-x min-h-136">
+                <div class="flex w-1/2 p-16 pr-6">
+                    <div class="w-full h-full bg-[#CBCBD1]">
+
+                    </div>
+                </div>
+                <div class="flex-y w-1/2 justify-center p-16 pl-6">
+                    <div class="text-7xl font-semibold">Team-friendy</div>
+                    Choose between synchronous and asynchronous style is a well-known problem for team conversations:
+                    <ul class="list-disc m-8">
+                        <li>
+                            Gathering the whole team = productivity hit; + Millennials and Gen-Z are ok only with specific kinds of meetings.
+                        </li>
+                        <li>
+                            But keeping everyone on the same page is important too.
+                        </li>
+                    </ul>
+                    Is there a solution addressing both these issues well? We hope you just found one!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-8">
+        <div class="flex-y gap-y-8 items-center p-16 overflow-hidden min-h-screen">
+            <div class="flex self-start text-7xl font-semibold">
+                Enjoyable and Fun
+            </div>
+            <div class="gap-x-8 grid grid-cols-3">
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
+                    </div>
+                </div>
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
+                    </div>
+                </div>
+
+                <div class="flex-y gap-y-4">
+                    <div class="h-48 bg-[#CBCBD1]">
+
+                    </div>
+                    <div>
+                        When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div class="flex-x gap-x-12 h-80 items-center justify-evenly bg-[#8AB1FF] p-16">
+            <div class="flex-y gap-y-2">
+                <div class="text-7xl font-semibold">
+                    Get Actual.chat
+                </div>
+                <div class="text-4xl font-medium">
+                    Download for iOS, Android or use in Web
+                </div>
+            </div>
+            <div class="flex-x gap-x-12">
+                <button class="bg-white h-20 w-20 rounded-full">
+
+                </button>
+                <button class="bg-white h-20 w-20 rounded-full">
+
+                </button>
+                <button class="bg-white h-20 w-20 rounded-full">
+
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-9 pt-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-9">
+        <div class="flex-y items-center px-16 py-8 overflow-hidden min-h-screen">
+            <div class="flex self-start text-7xl font-semibold">
+                Actual.chat Features
+            </div>
+            <div class="flex-x w-full justify-between">
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-01.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Voice & text</span>
+                        are merged together inchats - channels
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-02.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Markdown-style</span>
+                        text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-03.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Replies, @@mentions, and reactions</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-x w-full justify-between">
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-04.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Group and peer-to-peer chats</span>
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-05.svg" alt="description">
+                    </div>
+                    <div class="px-2">
+                        <span class="font-bold">Public</span> (anyone can view & listen) <span class="font-bold">and private chats</span>
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-06.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Characters</span>
+                        your status and picture you can choose on per-chat basis
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-x w-full justify-between">
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-07.svg" alt="description">
+                    </div>
+                    <div class="flex-y px-2">
+                        <span class="font-bold">Unlimited Image & file uploads</span>
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end">
+                        <img src="/landing/dialog-08.svg" alt="description">
+                    </div>
+                    <div class="px-2">
+                        <span class="font-bold">Languages</span>
+                    </div>
+                </div>
+                <div class="flex-y gap-y-2 w-64">
+                    <div class="flex w-full h-60 p-2 items-end"></div>
+                    <div class="flex-y px-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-10 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
+        <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
+            <div class="text-7xl font-semibold">
+                What`s upcoming?
+            </div>
+            <div class="flex-x">
+                <div class="flex-y gap-y-8 min-w-full">
+                    <div class="w-64">
+                        Highlights & conversation collapsing  (“Show just highlights for voice conversations”)
+                    </div>
+                    <div class="w-64">
+                        Places: a group of chats managed together. A perfect fit for team, company, or community chats.
+                    </div>
+                    <div class="w-64">
+                        Nested chats / threads
+                    </div>
+                    <div class="w-64">
+                        Chat timelines - think scrollbars, but much more informative
+                    </div>
+                </div>
+                <div class="flex-y gap-y-8 min-w-full">
+                    <div class="w-64">
+                        Search everywhere
+                    </div>
+                    <div class="w-64">
+                        New voice-related features - quotes, filters, noise cancellation
+                    </div>
+                    <div class="w-64">
+                        More languages, transcription and punctuation engines
+                    </div>
+                    <div class="w-64">
+                        Phone integration.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page page-11 page-scrolling overflow-y-hidden" id="landing-page-11">
+        <div class="flex-y h-full">
+            <div class="flex-x min-h-120">
+                <div class="flex w-1/2 p-16 pr-6">
+                    <div class="w-full h-full bg-[#CBCBD1]">
+
+                    </div>
+                </div>
+                <div class="flex-y gap-y-4 w-1/2 justify-center p-16 pl-6">
+                    <div class="text-7xl font-semibold">How much does it cost?</div>
+                    Right now Actual.chat is completely free. Its basic features will be either completely free or require a nominal fee (up to $1/mo) forever.
+                    We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources. So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.
+
+                </div>
+            </div>
+            <div class="flex-x gap-x-12 items-center justify-evenly bg-[#8AB1FF] p-16">
+                <div class="flex-y gap-y-2">
+                    <div class="text-7xl font-semibold">
+                        Get Actual.chat
+                    </div>
+                    <div class="text-4xl font-medium">
+                        Download for iOS, Android or use in Web
+                    </div>
+                </div>
+                <div class="flex-x gap-x-12">
+                    <button class="bg-white h-20 w-20 rounded-full">
+
+                    </button>
+                    <button class="bg-white h-20 w-20 rounded-full">
+
+                    </button>
+                    <button class="bg-white h-20 w-20 rounded-full">
+
+                    </button>
+                </div>
+            </div>
+            <div class="flex-x h-60 bg-07 p-12">
+                <div class="flex-y w-full">
+                    <div class="flex-x h-full gap-x-12 justify-start text-04">
+                        <button class="h-12">
+                            Privacy
+                        </button>
+                        <button class="h-12">
+                            Terms
+                        </button>
+                        <button class="h-12">
+                            Cookie Preferences
+                        </button>
+                        <button class="h-12">
+                            Contact us
+                        </button>
+                        <button class="h-12">
+                            Region
+                        </button>
+                    </div>
+                    <div class="flex min-h-12 items-center text-04">
+                        © 2022 Actual.chat Inc.  All rights reserved.
+                    </div>
+                </div>
+                <div class="flex-y justify-between min-w-48 text-04">
+                    <button class="h-12">
+                        Facebook
+                    </button>
+                    <button class="h-12">
+                        Github
+                    </button>
+                    <button class="h-12">
+                        Telegram
+                    </button>
+                    <button class="h-12">
+                        Medium
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    private DotNetObjectReference<Landing> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => AuthSchemas = await ClientAuth.GetSchemas();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.Landing.create",
+                Ref, BlazorRef
+                );
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+        => new() {
+            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+        };
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public AccountFull? Account { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}

@@ -23,16 +23,16 @@
         if (chatId.IsNone)
             return Model.Invisible;
 
-        var chat = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        var isEndAnchorVisible = await ChatUI.IsEndAnchorVisible.Use(cancellationToken).ConfigureAwait(false);
+        if (isEndAnchorVisible)
+            return Model.Invisible;
+
+        var chat = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return Model.Invisible;
 
-        var visibleRange = await ChatUI.VisibleIdRange.Use(cancellationToken).ConfigureAwait(false);
-        if (visibleRange.IsEmpty)
-            return Model.Invisible;
-
         var lastEntryId = chat.News.LastTextEntry?.Id ?? default;
-        if (lastEntryId.IsNone || lastEntryId.LocalId <= visibleRange.End)
+        if (lastEntryId.IsNone)
             return Model.Invisible;
 
         return new(true, lastEntryId);

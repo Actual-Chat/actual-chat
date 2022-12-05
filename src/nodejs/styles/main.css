@@ -169,3 +169,50 @@ input.input-underlined {
     @apply fixed z-90 w-auto md:w-1/5 inset-x-2 md:inset-x-auto md:right-2 py-4;
     @apply h-full overflow-y-auto;
 }
+
+/* Landing page */
+
+.landing {
+    @apply w-full;
+}
+.landing .page {
+    @apply flex-y h-screen;
+}
+.landing .page-scrolling {
+    @apply flex-y h-full;
+}
+.landing .page-1 {
+    background: #0036A3 url("../../dotnet/App.Wasm/wwwroot/landing/ellipses.svg") no-repeat;
+    background-size: cover;
+}
+.landing .page-2 {
+    @apply bg-01;
+}
+.landing-auth-btn.btn.btn-round {
+    @apply text-lg md:text-base;
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
+}
+.landing-auth-btn.btn.btn-round .btn-content {
+    @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
+}
+.landing-header {
+    @apply absolute top-0 z-10 flex-x w-full py-2 px-16 items-center bg-transparent;
+}
+.landing-header.filled .light-icon {
+    @apply invisible;
+}
+.landing-header.filled .header-text {
+    @apply text-01 border-text-01;
+}
+.landing-header.blur-bg {
+    @apply backdrop-blur-2xl;
+}
+.timeline-item {
+    @apply flex-x h-24;
+}
+.timeline-item * {
+    @apply border-text-01;
+}
+.timeline-item .disabled * {
+    @apply border-0;
+}

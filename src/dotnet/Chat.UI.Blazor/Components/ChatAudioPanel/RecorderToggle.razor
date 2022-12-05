@@ -67,9 +67,10 @@
         var mediaState = await ChatUI.GetMediaState(ChatId).ConfigureAwait(false);
         var isRecording = mediaState.IsRecording;
         // Default scheduler is used from here
-        if (State.LatestNonErrorValue == null)
-            return new (isRecording ? RecordingState.On : RecordingState.Off);
-        return new (isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);
+        var chatIdHasChanged = State.LatestNonErrorValue == null || State.LatestNonErrorValue.ChatId != ChatId;
+        if (chatIdHasChanged)
+            return new (ChatId, isRecording ? RecordingState.On : RecordingState.Off);
+        return new (ChatId, isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);
     }
 
     private async Task OnClick() {
@@ -113,5 +114,5 @@
         _ = ChatUI.SetRecordingChatId(default);
     }
 
-    public record Model(RecordingState RecordingState);
+    public record Model(string ChatId, RecordingState RecordingState);
 }

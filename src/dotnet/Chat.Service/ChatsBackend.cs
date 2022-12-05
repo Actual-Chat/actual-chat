@@ -489,7 +489,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         var id = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(id) {
-            AuthorId = AuthorExt.GetWalleId(author.ChatId),
+            AuthorId = Bots.GetWalleId(author.ChatId),
             ServiceEntry = new () {
                 MembersChanged = new () {
                     AuthorId = author.Id,

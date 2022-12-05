@@ -9,15 +9,6 @@
 
 <ChatsNavbarGroupToggle/>
 
-@if (m.IsActive()) {
-    <NavbarGroupToggle
-        Title="Contacts"
-        Id="@NavbarGroupIds.Contacts"
-        Tooltip="Contacts"
-        FloatingPosition="FloatingPosition.Right">
-        <i class="icon-people text-2xl font-medium"></i>
-    </NavbarGroupToggle>
-}
 @if (m.IsAdmin) {
     <NavbarGroupToggle
         Title="Administration"

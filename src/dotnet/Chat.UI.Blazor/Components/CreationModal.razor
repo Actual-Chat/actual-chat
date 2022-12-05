@@ -7,6 +7,7 @@
 
 @{
     var m = State.LatestNonErrorValue;
+    var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
 
     RenderFragment RenderArrowBack()
         => @<ButtonRound Class="transparent" Click="@GetPreviousPage">
@@ -14,29 +15,27 @@
             </ButtonRound>;
 
     RenderFragment RenderTitle(string title)
-        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">@title</div>;
+        => @<div class="w-full px-2 text-xl md:text-lg font-semibold md:font-medium">
+               @title
+           </div>;
 }
 
 <CascadingValue Value="_enableIncompleteUI">
-    <DialogFrame class="creation-modal" ShowMobileHeader="false">
+    <DialogFrame Class="creation-modal" ShowMobileHeader="false" ButtonsClass="@btnCls">
         <Body>
         @if (PageNumber == 1) {
             <CreatePage
                 Title="Create"
-                AllContacts="@m.AllContacts.ToArray()"
-                SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
                 OnPreviousPageClick="@GetPreviousPage"/>
         } else if (PageNumber == 2) {
             <AddMembersPage
                 Title="Add members"
-                AllContacts="@m.AllContacts.ToArray()"
                 SelectedContacts="@SelectedContacts"
                 OnCloseClick="@OnClose"
                 OnNextPageClick="@GetNextPage"
                 OnPreviousPageClick="@GetPreviousPage"
-                SearchBox="@_searchBoxRef"
                 OnRemoveContact="@RemoveFromSelected"/>
         } else if (PageNumber == 3) {
             <div class="creation-panel">
@@ -69,29 +68,30 @@
                 </Form>
             </div>
         }
+
         <CreationPanelContacts
             PageNumber="@PageNumber"
             AllContacts="@m.AllContacts.ToArray()"
+            FilteredContacts="@FilteredContacts"
             SelectedContacts="@SelectedContacts"
             OnAddContact="@AddContactToSelected"/>
         </Body>
 
-    <Buttons>
-        @if (PageNumber == 2) {
-            <div class="btn-group">
-                <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
-            </div>
-        } else if (PageNumber == 3) {
-            <RenderSlot Name="NewGroupFormButton"/>
-        }
-    </Buttons>
+        <Buttons>
+            @if (PageNumber == 2) {
+                <div class="btn-group">
+                    <Button Type="@ButtonType.Button" Click="@GetNextPage" Class="btn-primary">Next</Button>
+                </div>
+            } else if (PageNumber == 3) {
+                <RenderSlot Name="NewGroupFormButton"/>
+            }
+        </Buttons>
     </DialogFrame>
 </CascadingValue>
 
 
 @code {
     private bool _enableIncompleteUI;
-    private SearchBox _searchBoxRef = null!;
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -148,6 +148,7 @@
             return ComputedModel.None;
 
         var contacts = await Contacts.ListContacts(Session, c => c.Account != null, cancellationToken).ConfigureAwait(false);
+
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
@@ -160,6 +161,7 @@
                 select contact
                 ).ToList();
         }
+        AllContacts = contacts.ToArray();
         return new ComputedModel {
             AllContacts = contacts,
         };
@@ -217,7 +219,7 @@
 
             chat = chat.Require();
 
-            var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account.Id).ToArray();
+            var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account!.Id).ToArray();
             var createAuthorsCommand = new IAuthors.CreateAuthorsCommand(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, DisposeToken);
             if (error != null)

@@ -2,9 +2,9 @@ namespace ActualChat.Users;
 
 [DataContract]
 public sealed record AccountFull(
-    UserId Id,
+    [property: DataMember] User User,
     long Version = 0
-    ) : Account(Id, Version)
+    ) : Account(new UserId(User.Id, AssumeValid.Option), Version)
 {
     public static new AccountFull None { get; } = new(User.NewGuest(), 0) { Avatar = Avatar.None };
     public static new AccountFull Loading { get; } = new(User.NewGuest(), 1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
@@ -23,12 +23,7 @@ public sealed record AccountFull(
         (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin));
     public static Requirement<AccountFull> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
 
-    [DataMember] public User User { get; init; }
     [DataMember] public bool IsAdmin { get; init; }
-
-    public AccountFull(User user, long version = 0)
-        : this(new UserId(user.Id, AssumeValid.Option), version)
-        => User = user;
 
     // This record relies on version-based equality
     public bool Equals(AccountFull? other) => EqualityComparer.Equals(this, other);

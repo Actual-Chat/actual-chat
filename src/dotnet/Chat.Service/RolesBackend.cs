@@ -163,7 +163,8 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             dbRole = await dbContext.Roles.ForUpdate()
                 .SingleOrDefaultAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
                 .ConfigureAwait(false);
-            role = dbRole.RequireVersion(expectedVersion).ToModel();
+            dbRole = dbRole.RequireVersion(expectedVersion);
+            role = dbRole.ToModel();
 
             if (change.IsUpdate(out update)) {
                 if ((update.SystemRole ?? role.SystemRole) != role.SystemRole)

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Numerics;
 using ActualChat.Internal;
 using Cysharp.Text;
 using Stl.Fusion.Blazor;
@@ -12,7 +13,9 @@ namespace ActualChat;
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<UserId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
+public readonly struct UserId : ISymbolIdentifier<UserId>,
+    IComparable<UserId>,
+    IComparisonOperators<UserId, UserId, bool>
 {
     private static readonly RandomStringGenerator IdGenerator = new(6, Alphabet.AlphaNumeric);
     private static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
@@ -53,9 +56,16 @@ public readonly struct UserId : ISymbolIdentifier<UserId>, IComparable<UserId>
     public static implicit operator Symbol(UserId source) => source.Id;
     public static implicit operator string(UserId source) => source.Value;
 
-    // Equality
+    // Comparison
 
     public int CompareTo(UserId other) => Id.CompareTo(other.Id);
+    public static bool operator >(UserId left, UserId right) => left.CompareTo(right) > 0;
+    public static bool operator >=(UserId left, UserId right) => left.CompareTo(right) >= 0;
+    public static bool operator <(UserId left, UserId right) => left.CompareTo(right) < 0;
+    public static bool operator <=(UserId left, UserId right) => left.CompareTo(right) <= 0;
+
+    // Equality
+
     public bool Equals(UserId other) => Id.Equals(other.Id);
     public override bool Equals(object? obj) => obj is UserId other && Equals(other);
     public override int GetHashCode() => Id.GetHashCode();

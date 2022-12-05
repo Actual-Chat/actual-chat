@@ -163,6 +163,7 @@
     <PackageReference Update="Xamarin.GooglePlayServices.Auth" Version="120.3.0" />
     <PackageReference Update="Xamarin.Firebase.Messaging" Version="123.0.8" />
     <PackageReference Update="Xamarin.Google.Dagger" Version="2.41.0.2" />
+    <PackageReference Update="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
   </ItemGroup>
 
 </Project>

@@ -24,34 +24,13 @@
             </btn>
         }
     </div>
-    <div class="px-2">
-        <SearchBox
-            @ref="SearchBox"
-            Class="mt-1"
-            Placeholder="Type the username"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-    </div>
 </div>
 
 @code{
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
-
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public Contact[] AllContacts { get; set; } = null!;
     [Parameter] public Contact[] SelectedContacts { get; set; } = null!;
-    [Parameter] public Contact[] FilteredContacts { get; set; } = null!;
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback OnNextPageClick { get; set; }
     [Parameter] public EventCallback OnPreviousPageClick { get; set; }
     [Parameter] public EventCallback<Contact> OnRemoveContact { get; set; }
-    [Parameter] public SearchBox SearchBox { get; set; } = null!;
-
-    private void OnFilter(string filter) {
-        FilteredContacts = string.IsNullOrWhiteSpace(filter)
-            ? AllContacts.ToArray()
-            : AllContacts
-                .Where(x => x.Account != null && x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
-                .ToArray();
-    }
 }
