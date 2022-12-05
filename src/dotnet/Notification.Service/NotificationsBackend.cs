@@ -133,7 +133,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 dbEntry.Content = entry1.Content;
                 dbEntry.IconUrl = entry1.IconUrl;
                 dbEntry.ChatId = entry1.ChatId;
-                dbEntry.ChatEntryId = entry1.ChatEntryNotification?.EntryId;
+                dbEntry.EntryId = entry1.ChatEntryNotification?.EntryId;
                 dbEntry.AuthorId = entry1.ChatEntryNotification?.AuthorId;
                 dbEntry.ModifiedAt = entry1.NotificationTime;
                 dbEntry.HandledAt = null;
@@ -149,7 +149,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                     Content = entry1.Content,
                     IconUrl = entry1.IconUrl,
                     ChatId = entry1.ChatId,
-                    ChatEntryId = entry1.ChatEntryNotification?.EntryId,
+                    EntryId = entry1.ChatEntryNotification?.EntryId,
                     AuthorId = entry1.ChatEntryNotification?.AuthorId,
                     CreatedAt = now,
                     ModifiedAt = now,
@@ -244,7 +244,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             throw new InvalidOperationException("Notification doesn't exist.");
 
         var chatId = new ChatId(dbNotification.ChatId ?? "", ParseOrNone.Option);
-        var chatEntryId = new ChatEntryId(dbNotification.ChatEntryId ?? "", ParseOrNone.Option);
+        var chatEntryId = new ChatEntryId(dbNotification.EntryId ?? "", ParseOrNone.Option);
         var authorId = new AuthorId(dbNotification.AuthorId ?? "", ParseOrNone.Option);
 
         return new NotificationEntry(dbNotification.Id,

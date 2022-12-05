@@ -18,7 +18,7 @@ public class DbNotification : IHasId<string>, IRequirementTarget
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? ChatId { get; set; }
-    public string? ChatEntryId { get; set; }
+    public string? EntryId { get; set; }
     public string? AuthorId { get; set; }
     public string IconUrl { get; set; } = null!;
     [NotMapped] public bool IsActive => _handledAt != null;
