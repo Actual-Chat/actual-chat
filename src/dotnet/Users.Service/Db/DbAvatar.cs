@@ -35,7 +35,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireVersion();
+        model.RequireSomeVersion();
 
         if (PrincipalId.IsNullOrEmpty())
             PrincipalId = model.PrincipalId.NullIfEmpty()?.Value;

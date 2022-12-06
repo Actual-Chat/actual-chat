@@ -40,7 +40,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireVersion();
+        model.RequireSomeVersion();
 
         Version = model.Version;
         TouchedAt = model.TouchedAt.ToDateTimeClamped();

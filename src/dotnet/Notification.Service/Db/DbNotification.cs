@@ -74,7 +74,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireVersion();
+        model.RequireSomeVersion();
 
         var chatEntryNotification = model.ChatEntryNotification;
         if (chatEntryNotification != null) {

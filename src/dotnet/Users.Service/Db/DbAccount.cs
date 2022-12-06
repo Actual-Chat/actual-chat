@@ -28,7 +28,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireVersion();
+        model.RequireSomeVersion();
 
         Id = id;
         Version = model.Version;

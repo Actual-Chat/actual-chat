@@ -40,7 +40,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = ComposeId(model.EntryId, model.AuthorId);
         this.RequireSameOrEmptyId(id);
-        model.RequireVersion();
+        model.RequireSomeVersion();
 
         Id = id;
         Version = model.Version;
