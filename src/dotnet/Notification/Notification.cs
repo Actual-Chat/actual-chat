@@ -25,6 +25,8 @@ public record Notification(
     public bool IsActive => HandledAt == null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId => ChatEntryNotification?.EntryId.ChatId ?? ChatNotification?.ChatId ?? default(ChatId);
+
+    public Notification() : this(NotificationId.None) { }
 }
 
 [DataContract]

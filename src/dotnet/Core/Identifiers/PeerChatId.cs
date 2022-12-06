@@ -99,7 +99,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     {
         result = default;
         if (s.IsNullOrEmpty())
-            return false;
+            return true; // None
 
         if (!s.OrdinalStartsWith(IdPrefix))
             return false;

@@ -261,12 +261,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 if (!(chatId.IsNone || Constants.Chat.SystemChatIds.Contains(chatId)))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
 
-                chatId = new ChatId(DbChat.IdGenerator.Next());
+                chatId = new ChatId(Generate.Option);
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
 
-            chat = new Chat(chatId) {
+            chat = new Chat(chatId, VersionGenerator.NextVersion()) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
             chat = ApplyDiff(chat, update);

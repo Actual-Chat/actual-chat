@@ -85,6 +85,11 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 
     public static bool TryParse(string? s, out PrincipalId result)
     {
+        if (s.IsNullOrEmpty()) {
+            result = default;
+            return true; // None
+        }
+
         if (AuthorId.TryParse(s, out var authorId)) {
             result = new PrincipalId(authorId, AssumeValid.Option);
             return true;

@@ -1,21 +1,26 @@
-﻿namespace ActualChat.Chat;
+﻿using Stl.Versioning;
+
+namespace ActualChat.Chat;
 
 [DataContract]
-public sealed record TextEntryAttachment : IRequirementTarget
+public sealed record TextEntryAttachment(
+    [property: DataMember] Symbol Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
 
-    [DataMember] public Symbol Id { get; init; }
     [DataMember] public ChatEntryId EntryId { get; init; }
     [DataMember] public int Index { get; init; }
-    [DataMember] public long Version { get; init; }
     [DataMember] public string ContentId { get; init; } = "";
 
     [DataMember] public string MetadataJson {
         get => _metadata.Data;
         init => _metadata.Data = value;
     }
+
+    // Computed properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId => EntryId.ChatId;
@@ -61,6 +66,8 @@ public sealed record TextEntryAttachment : IRequirementTarget
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
+
+    public TextEntryAttachment() : this(Symbol.Empty) { }
 
     // Private methods
 

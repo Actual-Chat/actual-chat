@@ -175,8 +175,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             // so we have to create a new random avatar
             var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
                 Create = new AvatarFull() {
-                    Id = Symbol.Empty,
-                    Version = VersionGenerator.NextVersion(),
                     Name = RandomNameGenerator.Default.Generate(),
                     Bio = "Unregistered user",
                     Picture = "", // NOTE(AY): Add a random one?
@@ -322,7 +320,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
-            Id = default,
             Name = RandomNameGenerator.Default.Generate(author.Id),
             Picture = DefaultUserPicture.GetAvataaar(author.Id),
             Bio = "",

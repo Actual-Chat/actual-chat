@@ -35,6 +35,8 @@ public sealed record Chat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsVirtual => Version == 0 || Id.IsNone;
 
+    public Chat() : this(ChatId.None) { }
+
     // This record relies on version-based equality
     public bool Equals(Chat? other) => EqualityComparer.Equals(this, other);
     public override int GetHashCode() => EqualityComparer.GetHashCode(this);

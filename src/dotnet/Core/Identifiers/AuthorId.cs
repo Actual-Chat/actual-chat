@@ -79,7 +79,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
     {
         result = default;
         if (s.IsNullOrEmpty())
-            return false;
+            return true; // None
 
         var chatIdLength = s.OrdinalIndexOf(":");
         if (chatIdLength == -1)

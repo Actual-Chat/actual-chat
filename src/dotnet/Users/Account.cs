@@ -24,8 +24,11 @@ public record Account(
     [DataMember] public AccountStatus Status { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsGuest => Id.IsGuestId;
+
+    public Account() : this(UserId.None) { }
 
     // This record relies on version-based equality
     public virtual bool Equals(Account? other) => EqualityComparer.Equals(this, other);

@@ -67,10 +67,16 @@ public readonly struct Language : ISymbolIdentifier<Language>
     public static bool TryParse(string? s, out Language result)
     {
         var id = (Symbol)s;
+        if (id.IsEmpty) {
+            result = default;
+            return true; // None
+        }
+
         if (Languages.IdToLanguage.TryGetValue(id, out result))
             return true;
         if (Languages.IdToLanguage.TryGetValue(id.Value.ToLowerInvariant(), out result))
             return true;
+
         return false;
     }
 }

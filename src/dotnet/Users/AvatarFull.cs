@@ -1,15 +1,17 @@
 namespace ActualChat.Users;
 
-public sealed record AvatarFull : Avatar
+public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Version)
 {
     public static new Requirement<AvatarFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),
         (AvatarFull? a) => a is { Id.IsEmpty : false });
 
-    public static new AvatarFull None { get; } = new();
-    public static new AvatarFull Loading { get; } = new(); // Should differ by ref. from None
+    public static new AvatarFull None { get; } = new(Symbol.Empty, 0);
+    public static new AvatarFull Loading { get; } = new(Symbol.Empty, 1); // Should differ by ref. from None
 
     [DataMember] public Symbol PrincipalId { get; init; }
+
+    public AvatarFull() : this(Symbol.Empty) { }
 
     // Helpers
 

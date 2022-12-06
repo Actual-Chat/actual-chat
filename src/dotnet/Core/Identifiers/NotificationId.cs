@@ -82,7 +82,7 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
     {
         result = default;
         if (s.IsNullOrEmpty())
-            return false;
+            return true; // None
 
         var columnIndex = s.IndexOf(':');
         if (columnIndex <= 0)

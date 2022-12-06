@@ -22,7 +22,7 @@ public sealed record Contact(
     [DataMember] public Moment TouchedAt { get; init; }
     [DataMember] public bool IsPinned { get; init; }
 
-    // Shortcuts
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -36,4 +36,6 @@ public sealed record Contact(
     [DataMember] public Account? Account { get; init; }
     // Populated on front-end on reads
     [DataMember] public Chat.Chat Chat { get; init; } = null!;
+
+    public Contact() : this(ContactId.None) { }
 }

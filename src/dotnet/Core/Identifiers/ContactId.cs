@@ -83,7 +83,7 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
     {
         result = default;
         if (s.IsNullOrEmpty())
-            return false;
+            return true; // None
 
         var spaceIndex = s.IndexOf(' ');
         if (spaceIndex <= 0)

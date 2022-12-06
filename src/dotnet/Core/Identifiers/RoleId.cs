@@ -79,7 +79,7 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
     {
         result = default;
         if (s.IsNullOrEmpty())
-            return false;
+            return true;
 
         var chatIdLength = s.OrdinalIndexOf(":");
         if (chatIdLength == -1)

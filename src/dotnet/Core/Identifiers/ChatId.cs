@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ActualChat.Internal;
 using Stl.Fusion.Blazor;
+using Stl.Generators;
 
 namespace ActualChat;
 
@@ -12,6 +13,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ChatId : ISymbolIdentifier<ChatId>
 {
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
     public static ChatId None => default;
 
     [DataMember(Order = 0)]
@@ -36,6 +39,8 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
         => this = Parse(id);
     public ChatId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
+    public ChatId(Generate _)
+        => this = new ChatId(IdGenerator.Next());
 
     public ChatId(Symbol id, UserId userId1, UserId userId2, AssumeValid _)
     {
@@ -78,9 +83,10 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
     public static bool TryParse(string? s, out ChatId result)
     {
         result = default;
-        if (s.IsNullOrEmpty() || s.Length < 6)
-            return false;
-        if (!Alphabet.AlphaNumericDash.IsMatch(s))
+        if (s.IsNullOrEmpty())
+            return true; // None
+
+        if (s.Length < 6 || !Alphabet.AlphaNumericDash.IsMatch(s))
             return false;
 
         if (s.OrdinalStartsWith(PeerChatId.IdPrefix)) {

@@ -23,8 +23,13 @@ public abstract class SymbolIdentifierTestBase<TIdentifier> : TestBase
     [Fact]
     public void ParseTest()
     {
-        ValidIdentifiers.Any(s => TIdentifier.ParseOrNone(s).IsNone).Should().BeFalse();
-        InvalidIdentifiers.All(s => TIdentifier.ParseOrNone(s).IsNone).Should().BeTrue();
+        var parsed = ValidIdentifiers.Select(s => TIdentifier.ParseOrNone(s)).ToArray();
+        Out.WriteLine(parsed.ToDelimitedString());
+        parsed.All(id => id.IsNone).Should().BeFalse();
+
+        parsed = InvalidIdentifiers.Select(s => TIdentifier.ParseOrNone(s)).ToArray();
+        Out.WriteLine(parsed.ToDelimitedString());
+        parsed.All(id => id.IsNone).Should().BeTrue();
     }
 
     [Fact]

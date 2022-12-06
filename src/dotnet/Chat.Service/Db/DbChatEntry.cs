@@ -100,6 +100,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
+        model.RequireVersion();
 
         Id = id;
         ChatId = model.ChatId;

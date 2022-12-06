@@ -10,14 +10,16 @@ public sealed record Role(
 {
     [DataMember] public string Picture { get; init; } = "";
     [DataMember] public ChatPermissions Permissions { get; init; }
+    [DataMember] public string Name { get; init; } = "";
+    [DataMember] public SystemRole SystemRole { get; init; } = SystemRole.None;
 
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId => Id.LocalId;
 
-    [DataMember] public string Name { get; init; } = "";
-    [DataMember] public SystemRole SystemRole { get; init; } = SystemRole.None;
+    public Role() : this(RoleId.None) { }
 
     public Role Fix()
     {

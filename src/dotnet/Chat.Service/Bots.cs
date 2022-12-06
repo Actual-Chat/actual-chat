@@ -10,7 +10,7 @@ public static class Bots
     public static AuthorFull GetWalle(ChatId chatId)
         => new (GetWalleId(chatId)) {
             UserId = Constants.User.Walle.UserId,
-            Avatar = new AvatarFull {
+            Avatar = new AvatarFull() {
                 Name = Constants.User.Walle.Name,
                 Picture = Constants.User.Walle.Picture,
             },

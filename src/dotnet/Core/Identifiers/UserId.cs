@@ -82,7 +82,10 @@ public readonly struct UserId : ISymbolIdentifier<UserId>,
     public static bool TryParse(string? s, out UserId result)
     {
         result = default;
-        if (s == null || s.Length < 3) // Tests may use some accounts with short Ids + there is "admin"
+        if (s.IsNullOrEmpty())
+            return true; // None
+
+        if (s.Length < 3) // Tests may use some accounts with short Ids + there is "admin"
             return false;
 
         var alphabet = Alphabet.AlphaNumericDash;

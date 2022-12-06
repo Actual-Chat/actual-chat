@@ -29,9 +29,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public TextEntryAttachment ToModel()
     {
         var entryId = new ChatEntryId(EntryId);
-        return new () {
-            Id = Id,
-            Version = Version,
+        return new (Id, Version) {
             EntryId = entryId,
             Index = Index,
             ContentId = ContentId,
@@ -44,6 +42,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         var entryId = model.EntryId;
         var id = ComposeId(entryId, model.Index);
         this.RequireSameOrEmptyId(id);
+        model.RequireVersion();
 
         Id = id;
         Version = model.Version;

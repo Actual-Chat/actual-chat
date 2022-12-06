@@ -8,8 +8,6 @@ namespace ActualChat.Chat.Db;
 [Table("Chats")]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
-
     private DateTime _createdAt;
 
     public DbChat() { }
@@ -44,6 +42,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
+        model.RequireVersion();
 
         Id = id;
         Version = model.Version;

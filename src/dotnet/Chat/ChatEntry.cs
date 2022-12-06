@@ -36,7 +36,10 @@ public sealed record ChatEntry(
     [DataMember] public long? AudioEntryId { get; init; }
     [DataMember] public long? VideoEntryId { get; init; }
     [DataMember] public LinearMap TextToTimeMap { get; init; }
+    [DataMember] public long? RepliedEntryLocalId { get; init; }
+    [DataMember] public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
 
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -47,14 +50,11 @@ public sealed record ChatEntry(
     public bool IsServiceEntry => ServiceEntry != null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public double? Duration
-        => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
-
+    public double? Duration => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
 
-    public long? RepliedEntryLocalId { get; init; }
-    public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
+    public ChatEntry() : this(ChatEntryId.None) { }
 
     public string GetContentOrDescription()
     {
