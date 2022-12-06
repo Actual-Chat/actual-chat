@@ -28,12 +28,12 @@ namespace ActualChat.Chat.Migrations
                 table: "chat_entries");
 
             migrationBuilder.RenameColumn(
-                name: "composite_id",
+                name: "id",
                 table: "chat_entries",
-                newName: "id");
+                newName: "local_id");
 
             migrationBuilder.RenameColumn(
-                name: "local_id",
+                name: "composite_id",
                 table: "chat_entries",
                 newName: "id");
 
