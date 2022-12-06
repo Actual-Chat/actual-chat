@@ -13,6 +13,8 @@ namespace ActualChat.Contacts.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // NOTE(AY): Obsolete: applied to all of our DBs
+            /*
             var dbInitializer = DbInitializer.Current as DbInitializer<ContactsDbContext>;
             var usersDbInitializer = dbInitializer.InitializeTasks
                 .Select(kv => kv.Key is UsersDbInitializer x ? x : null)
@@ -49,6 +51,7 @@ namespace ActualChat.Contacts.Migrations
                 dbContext.Add(c);
             }
             dbContext.SaveChanges();
+            */
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

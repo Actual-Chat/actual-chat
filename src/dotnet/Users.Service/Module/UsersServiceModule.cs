@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Commands;
-using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -16,7 +15,6 @@ using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.Plugins;
-using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
@@ -79,7 +77,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();
-            db.AddEntityResolver<string, DbContactOld>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbReadPosition>();
 
