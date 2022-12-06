@@ -35,7 +35,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
-        await PseudoGetAll(searchKey, cancellationToken).ConfigureAwait(false);
+        await PseudoGetAll(searchKey).ConfigureAwait(false);
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -58,7 +58,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "", default);
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
             return default!;
@@ -93,7 +93,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "", default);
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
             return default!;
@@ -138,6 +138,6 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoGetAll(string searchKey, CancellationToken cancellationToken)
+    protected virtual Task<Unit> PseudoGetAll(string searchKey)
         => Stl.Async.TaskExt.UnitTask;
 }

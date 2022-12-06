@@ -46,6 +46,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(chatId);
+
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
     }
@@ -244,8 +245,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChat = context.Operation().Items.Get<Chat>()!;
-            _ = Get(invChat.Id, default);
+            var invChat = context.Operation().Items.Get<Chat>();
+            if (invChat != null)
+                _ = Get(invChat.Id, default);
             return null!;
         }
 
@@ -258,15 +260,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (change.IsCreate(out var update)) {
             var chatKind = update.Kind ?? chatId.Kind;
             if (chatKind == ChatKind.Group) {
-                if (!(chatId.IsNone || Constants.Chat.SystemChatIds.Contains(chatId)))
+                if (chatId.IsNone)
+                    chatId = new ChatId(Generate.Option);
+                else if (!Constants.Chat.SystemChatIds.Contains(chatId))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
-
-                chatId = new ChatId(Generate.Option);
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
 
-            chat = new Chat(chatId, VersionGenerator.NextVersion()) {
+            chat = new Chat(chatId) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
             chat = ApplyDiff(chat, update);
@@ -309,7 +311,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createJoinedRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =
@@ -319,7 +321,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                             | ChatPermissions.Leave,
                     },
                 });
-                await Commander.Call(createJoinedRoleCmd, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
             }
             else
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");

@@ -64,8 +64,8 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             => role.SystemRole switch {
                 SystemRole.Anyone => true,
                 SystemRole.Guest => isGuest,
-                SystemRole.Regular => !isGuest && !isAnonymous,
-                SystemRole.Anonymous => !isGuest && isAnonymous,
+                SystemRole.User => !isGuest && !isAnonymous,
+                SystemRole.AnonymousUser => !isGuest && isAnonymous,
                 _ => false,
             };
     }
@@ -150,7 +150,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             role = DiffEngine.Patch(role, update).Fix();
             dbRole = new DbRole(role);
             if (role.SystemRole != SystemRole.None) {
-                var dbSameSystemRole = await dbContext.Roles
+                var dbSameSystemRole = await dbContext.Roles.ForUpdate()
                     .SingleOrDefaultAsync(r => r.ChatId == dbRole.ChatId && r.SystemRole == dbRole.SystemRole, cancellationToken)
                     .ConfigureAwait(false);
                 if (dbSameSystemRole != null)
@@ -230,6 +230,6 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
     // Protected methods
 
-    protected virtual Task<Unit> PseudoList(ChatId chatId)
+    protected virtual Task<Unit> PseudoList(ChatId _)
         => Stl.Async.TaskExt.UnitTask;
 }
