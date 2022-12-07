@@ -32,18 +32,20 @@ public class GoogleTranscriber : ITranscriber
 
     public IAsyncEnumerable<Transcript> Transcribe(
         Symbol transcriberKey,
-        TranscriptionOptions options,
+        string streamId,
         AudioSource audioSource,
+        TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
+        Log.LogDebug("Getting recognizer");
         var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
         var recognizerId = $"r-{prefix}-{options.Language.ToLowerInvariant()}";
         var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
-        var process = new GoogleTranscriberProcess(recognizerTask, options, audioSource, Log);
+        var process = new GoogleTranscriberProcess(recognizerTask, streamId, audioSource, options, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
 
-        async Task<Recognizer> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
+        async Task<string> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
         {
             var recognizer = await Cache.GetOrCreateAsync(recognizerId1,
             async entry => {
@@ -77,14 +79,10 @@ public class GoogleTranscriber : ITranscriber
                                 Features = new RecognitionFeatures {
                                     EnableAutomaticPunctuation = true,
                                     MaxAlternatives = 1,
-                                    DiarizationConfig = new SpeakerDiarizationConfig {
-                                        MinSpeakerCount = 1,
-                                        MaxSpeakerCount = options1.MaxSpeakerCount ?? 1,
-                                    },
-                                    EnableSpokenPunctuation = true,
-                                    EnableSpokenEmojis = true,
+                                    EnableSpokenPunctuation = false,
+                                    EnableSpokenEmojis = false,
                                     ProfanityFilter = false,
-                                    EnableWordConfidence = true,
+                                    EnableWordConfidence = false,
                                     EnableWordTimeOffsets = true,
                                     MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
                                 },
@@ -94,18 +92,18 @@ public class GoogleTranscriber : ITranscriber
                     },
                     // CallSettings.FromCancellationToken(cancellationToken));
                     new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, WriteOptions.Default, null))
-                    .ConfigureAwait(false);
+                .ConfigureAwait(false);
 
                 var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
                 var newRecognizer = completedNewRecognizerOperation.Result;
                 if (newRecognizer.ExpireTime != null)
                     entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
                 // let's wait for some time while the recognizer become operational
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
-                return newRecognizer!;
+                // await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
+                return newRecognizer;
             });
 
-            return recognizer!;
+            return recognizer!.Name;
         }
     }
 

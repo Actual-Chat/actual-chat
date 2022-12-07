@@ -9,25 +9,28 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
-    private readonly Task<Recognizer> _recognizerTask;
+    private readonly Task<string> _recognizerTask;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
+    private string StreamId { get; }
     private TranscriptionOptions Options { get; }
     private AudioSource AudioSource { get; }
     private TranscriberState State { get; }
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
-        Task<Recognizer> recognizerTask,
-        TranscriptionOptions options,
+        Task<string> recognizerTask,
+        string streamId,
         AudioSource audioSource,
+        TranscriptionOptions options,
         ILogger? log = null)
     {
         _recognizerTask = recognizerTask;
         Log = log ?? NullLogger.Instance;
+        StreamId = streamId;
         Options = options;
         AudioSource = audioSource;
         State = new();
@@ -63,9 +66,10 @@ public class GoogleTranscriberProcess : WorkerBase
                     // EnableVoiceActivityEvents =
                 },
             };
+            Log.LogDebug("Starting recognize process for {StreamId}", StreamId);
             await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
                     StreamingConfig = streamingRecognitionConfig,
-                    Recognizer = recognizer.Name,
+                    Recognizer = recognizer,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
@@ -125,9 +129,9 @@ public class GoogleTranscriberProcess : WorkerBase
                 : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
 
             transcript = State.AppendAlternative(text, endTime);
-            DebugLog?.LogDebug("Transcript={Transcript}", transcript);
-            Transcripts.Writer.TryWrite(transcript);
         }
+        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+        Transcripts.Writer.TryWrite(transcript);
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,

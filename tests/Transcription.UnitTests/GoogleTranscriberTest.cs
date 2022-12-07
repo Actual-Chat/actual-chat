@@ -20,7 +20,7 @@ public class GoogleTranscriberTest : TestBase
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
         };
-        var process = new GoogleTranscriberProcess(Task.FromResult(new Recognizer()), options, null!, Log);
+        var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();
@@ -194,7 +194,7 @@ public class GoogleTranscriberTest : TestBase
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
         };
-        var process = new GoogleTranscriberProcess(Task.FromResult(new Recognizer()), options, null!, Log);
+        var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();

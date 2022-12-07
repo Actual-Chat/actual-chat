@@ -55,7 +55,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
-const FADE_CHUNKS = CHUNKS_WILL_BE_SENT_ON_RESUME / 2;
+const FADE_CHUNKS = 2;
 const CHUNK_SIZE = 960;
 
 /** buffer or callbackId: number of `end` message */
@@ -75,7 +75,8 @@ let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
 let lowNoiseChunk: Float32Array | null = null;
-let debug: boolean = false;
+let silenceChunk: Float32Array | null = null;
+let chunkTimeOffset: number = 0;
 
 worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMessage | EndMessage>) => handleRpc(
     ev.data.rpcResultId,
@@ -134,16 +135,20 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     // Get fade-in window
     kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
     pinkNoiseChunk = initPinkNoiseBuffer(1.0);
-    lowNoiseChunk = initPinkNoiseBuffer(0.05);
+    lowNoiseChunk = initPinkNoiseBuffer(0.005);
+    silenceChunk = new Float32Array(CHUNK_SIZE);
 
     // Setting encoder module
     if (codecModule == null)
         await codecModuleReady;
-    encoder = new codecModule.Encoder();
+
     // warmup encoder
+    encoder = new codecModule.Encoder();
     for (let i=0; i < 2; i++) {
         encoder.encode(pinkNoiseChunk.buffer);
     }
+    encoder.delete();
+    encoder = null;
 
     whenMicReady = new PromiseSource();
     debugLog?.log(`onCreate, encoder:`, encoder);
@@ -158,10 +163,7 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
 
     debugLog?.log(`onInit`);
 
-    // cleanup encoder state
-    for (let i=0; i < 2; i++) {
-        encoder.encode(lowNoiseChunk.buffer);
-    }
+    encoder = new codecModule.Encoder();
 
     if (whenMicReady) {
         // wait for mic data
@@ -174,8 +176,10 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
 
 function onEnd(): void {
     state = 'ended';
-    processQueue();
+    processQueue('out');
     recordingSubject.complete();
+    encoder?.delete();
+    encoder = null;
 }
 
 // Worklet sends messages with raw audio
@@ -225,7 +229,11 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
         if (newVadState === 'silence') {
             // set state, then complete the stream
             vadState = newVadState;
+            processQueue('out');
             recordingSubject.complete();
+            encoder?.delete();
+            encoder = null;
+            chunkTimeOffset = 0;
         }
         else {
             if (!lastInitArguments)
@@ -234,7 +242,10 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             // start new stream and then set state
             const { sessionId, chatId } = lastInitArguments;
             recordingSubject = new signalR.Subject<Uint8Array>();
-            await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+            if (!encoder)
+                encoder = new codecModule.Encoder();
+            const preSkip = encoder.preSkip;
+            await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, preSkip, recordingSubject);
             vadState = newVadState;
             processQueue('in');
         }
@@ -244,22 +255,33 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     }
 };
 
-function processQueue(fade: 'in' | 'none' = 'none'): void {
+function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (isEncoding)
         return;
 
     try {
         isEncoding = true;
         let fadeWindowIndex: number | null = null;
-        if (fade === 'in' && queue.length >= FADE_CHUNKS )
-            fadeWindowIndex = 0;
+        if (fade === 'in') {
+            const result = encoder.encode(silenceChunk.buffer);
+            recordingSubject.next(result);
+            chunkTimeOffset = 20;
+        }
+        else if (fade === 'out') {
+            if (queue.length >= FADE_CHUNKS)
+                fadeWindowIndex = 0;
+        }
 
         while (!queue.isEmpty()) {
             const item = queue.shift();
             if (fadeWindowIndex !== null) {
                 const samples = new Float32Array(item);
-                for (let i = 0; i < samples.length; i++)
-                    samples[i] *= kbdWindow[fadeWindowIndex + i];
+                if (fade === 'in')
+                    for (let i = 0; i < samples.length; i++)
+                        samples[i] *= kbdWindow[fadeWindowIndex + i];
+                else if (fade === 'out')
+                    for (let i = 0; i < samples.length; i++)
+                        samples[i] *= kbdWindow[kbdWindow.length - 1 - fadeWindowIndex - i];
 
                 fadeWindowIndex += samples.length;
                 if (fadeWindowIndex >= FADE_CHUNKS * CHUNK_SIZE)
@@ -270,6 +292,14 @@ function processQueue(fade: 'in' | 'none' = 'none'): void {
             const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
             workletPort.postMessage(workletMessage, [item]);
             recordingSubject.next(result);
+            chunkTimeOffset += 20;
+        }
+        if (fade === 'out') {
+            while (chunkTimeOffset < 2200) {
+                const result = encoder.encode(lowNoiseChunk.buffer);
+                recordingSubject.next(result);
+                chunkTimeOffset += 20;
+            }
         }
     }
     catch (error) {
