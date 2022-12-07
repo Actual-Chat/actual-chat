@@ -53,7 +53,7 @@
 }
 
 .image-viewer-modal .image-viewer-content img {
-    @apply flex-auto w-fit max-w-fit;
+    @apply flex-auto w-fit max-w-full;
     @apply object-contain;
     max-height: calc(100vh - 7rem); /* screen height - close button height */
 }
