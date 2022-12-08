@@ -23,7 +23,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.MentionId == mentionId)
+            .Where(x => x.ChatId == chatId.Value && x.MentionId == mentionId.Value)
             .OrderByDescending(x => x.EntryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
