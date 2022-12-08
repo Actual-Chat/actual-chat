@@ -20,17 +20,17 @@
     <div class="landing-header blur-bg">
         <div class="min-w-fit">
             <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon min-w-10 min-h-10 max-h-10">
-            <img src="/landing/ac-icon-dark.svg" alt="icon" class="absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
+            <img src="/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
         </div>
         <div class="px-2 mb-2 w-full">
             <img src="/landing/ac-title-light.svg" alt="brand" class="light-icon min-h-6 max-h-6">
-            <img src="/landing/ac-title-dark.svg" alt="brand" class="absolute z-minus top-3 min-h-6 max-h-6">
+            <img src="/landing/ac-title-dark.svg" alt="brand" class="dark-icon absolute z-minus top-3 min-h-6 max-h-6">
         </div>
-        <div class="header-text text-04 font-medium flex-x min-w-fit w-2/5 items-center justify-center gap-x-4 px-4">
+        <div class="header-text">
             <div class="px-8">
                 For business
             </div>
-            <div class="header-text flex-x h-10 gap-x-4 items-center rounded-full border border-bg-01 px-2 py-1 text-04 font-semibold">
+            <div class="signin-text">
                 <div>
                     Sign in with
                 </div>
@@ -84,7 +84,7 @@
 
     <LandingTimeline/>
 
-    <div class="page page-3 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
+    <div class="page page-3 justify-center overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
         <div class="flex-y gap-y-8 justify-center items-center p-16 overflow-hidden ">
             <div class="text-7xl font-semibold">
                 Actual.chat merges voice and text into a single medium
@@ -127,10 +127,8 @@
             <div class="text-5xl font-semibold">We believe communication must be...</div>
         </div>
         <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
-            <div class="flex w-1/2 p-16 pb-24 pr-6">
-                <div class="w-full h-96 bg-[#CBCBD1]">
-
-                </div>
+            <div class="flex justify-center w-1/2 p-16 pb-24 pr-6">
+                <img src="/landing/stressless.svg" alt="stressless">
             </div>
             <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
                 <div class="text-7xl font-semibold">Stressless</div>
@@ -187,7 +185,7 @@
 
     <div class="page page-6 overflow-y-hidden" id="landing-page-6">
         <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
-            <div class="flex w-1/2 items-center p-16 pb-24 pr-6">
+            <div class="flex w-1/2 items-center p-16 pr-6">
                 <div class="w-full h-96 bg-[#CBCBD1]">
 
                 </div>
@@ -231,10 +229,8 @@
                 </div>
             </div>
             <div class="flex-x min-h-136">
-                <div class="flex w-1/2 p-16 pr-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
-
-                    </div>
+                <div class="flex justify-center w-1/2 p-16 pr-6">
+                    <img src="/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
                 </div>
                 <div class="flex-y w-1/2 justify-center p-16 pl-6">
                     <div class="text-7xl font-semibold">Team-friendy</div>
@@ -254,7 +250,7 @@
     </div>
 
     <div class="page page-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-8">
-        <div class="flex-y gap-y-8 items-center p-16 overflow-hidden min-h-screen">
+        <div class="flex-y gap-y-8 items-center justify-center p-16 overflow-hidden min-h-screen">
             <div class="flex self-start text-7xl font-semibold">
                 Enjoyable and Fun
             </div>
@@ -399,39 +395,25 @@
         </div>
     </div>
 
-    <div class="page page-10 overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
+    <div class="page page-10 justify-center overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
         <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
             <div class="text-7xl font-semibold">
                 What`s upcoming?
             </div>
-            <div class="flex-x">
-                <div class="flex-y gap-y-8 min-w-full">
-                    <div class="w-64">
-                        Highlights & conversation collapsing  (“Show just highlights for voice conversations”)
-                    </div>
-                    <div class="w-64">
-                        Places: a group of chats managed together. A perfect fit for team, company, or community chats.
-                    </div>
-                    <div class="w-64">
-                        Nested chats / threads
-                    </div>
-                    <div class="w-64">
-                        Chat timelines - think scrollbars, but much more informative
-                    </div>
+            <div class="flex-x w-full justify-between">
+                <div class="flex-y gap-y-8 min-w-1/3">
+                    <LandingUpcomingItem Text="Highlights & conversation collapsing (“Show just highlights for voice conversations”)"/>
+                    <LandingUpcomingItem Text="Places: a group of chats managed together. A perfect fit for team, company, or community chats."/>
                 </div>
-                <div class="flex-y gap-y-8 min-w-full">
-                    <div class="w-64">
-                        Search everywhere
-                    </div>
-                    <div class="w-64">
-                        New voice-related features - quotes, filters, noise cancellation
-                    </div>
-                    <div class="w-64">
-                        More languages, transcription and punctuation engines
-                    </div>
-                    <div class="w-64">
-                        Phone integration.
-                    </div>
+                <div class="flex-y gap-y-8 min-w-1/3">
+                    <LandingUpcomingItem Text="Chat timelines - think scrollbars, but much more informative"/>
+                    <LandingUpcomingItem Text="New voice-related features - quotes, filters, noise cancellation"/>
+                    <LandingUpcomingItem Text="Nested chats / threads"/>
+                </div>
+                <div class="flex-y gap-y-8 min-w-1/3">
+                    <LandingUpcomingItem Text="More languages, transcription and punctuation engines"/>
+                    <LandingUpcomingItem Text="Phone integration"/>
+                    <LandingUpcomingItem Text="Search everywhere"/>
                 </div>
             </div>
         </div>

@@ -1,0 +1,12 @@
+@namespace ActualChat.UI.Blazor.App
+
+<div class="flex-x gap-x-2 w-64 h-14">
+    <div class="bg-primary h-full min-w-1 max-w-1 rounded-full"></div>
+    <div class="w-full self-center">
+        @Text
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Text { get; set; } = "";
+}
