@@ -2,14 +2,20 @@ import { debounce } from 'promises';
 
 const LogScope = 'Landing';
 
+enum ScrollBlock {
+    start = 'start',
+    end = 'end',
+}
+
 export class Landing {
     private blazorRef: DotNet.DotNetObject;
     private readonly landing: HTMLElement;
     private pages: {};
-    private pageBottoms: {};
-    private pageNumbers: {};
     private bottom: number;
+    private pageCount: number;
     private currentPageNumber: number = 1;
+    private nearestTopPageNumber: number = 1;
+    private nearestBottomPageNumber: number = 2;
     private header: HTMLElement;
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
@@ -20,28 +26,133 @@ export class Landing {
         this.landing = landing;
         this.blazorRef = blazorRef;
         this.header = this.landing.querySelector('.landing-header');
-        this.bottom = window.innerHeight;
-        this.getPageData();
-        this.getPageBottom();
-        window.addEventListener('wheel', this.getScrollDirection, {passive: false, });
-        window.addEventListener('keydown', this.onUpOrDownClick, {passive: false, });
+        this.getInitialData();
+        window.addEventListener('keydown', this.smartScrollThrottled, {passive: false, });
+        this.landing.addEventListener('wheel', this.smartScrollThrottled);
+    }
+
+    private smartScrollThrottled = debounce(
+                (event: Event & { target: Element; }) => this.smartScroll(event), 300, true);
+
+    private smartScroll = ((event: Event & { target: Element; }) => {
+        setTimeout(() => {
+            this.scrollHandler(event);
+        },200);
+    });
+
+    private scrollHandler = (event: Event) => {
+        let oldBottom = this.bottom;
+        this.bottom = this.landing.getBoundingClientRect().bottom;
+        let delta = this.getRoundValue(oldBottom - this.bottom);
+        let scrollUp = delta < 0;
+        let rect = (this.pages[this.currentPageNumber] as HTMLElement).getBoundingClientRect();
+        let bottom = this.getRoundValue(rect.bottom);
+        let top = this.getRoundValue(rect.top);
+        if (Math.abs(delta) <= 150 && delta != 0) {
+            if (top != 0 && bottom != window.innerHeight) {
+                if (!scrollUp) {
+                    // little scroll down => smart scroll to end of current page or to start of next page
+                    let nextPage = this.pages[this.nearestBottomPageNumber] as HTMLElement;
+                    setTimeout(() => {
+                        if (this.nearestBottomPageNumber == this.currentPageNumber) {
+                            let currentPage = this.pages[this.currentPageNumber] as HTMLElement;
+                            if (currentPage.getBoundingClientRect().bottom > window.innerHeight
+                                && currentPage.getBoundingClientRect().top <= 0) {
+                                this.scrollToPage(nextPage, event, ScrollBlock.end);
+                            } else {
+                                this.scrollToPage(nextPage, event, ScrollBlock.start);
+                            }
+                        } else {
+                            this.scrollToPage(nextPage, event, ScrollBlock.start);
+                        }
+                    }, 100);
+                } else {
+                    let previousPage = this.pages[this.nearestTopPageNumber] as HTMLElement;
+                    setTimeout(() => {
+                        if (this.nearestTopPageNumber == this.currentPageNumber) {
+                            let currentPage = this.pages[this.currentPageNumber] as HTMLElement;
+                            if (currentPage.getBoundingClientRect().top < 0
+                            && currentPage.getBoundingClientRect().bottom >= window.innerHeight) {
+                                this.scrollToPage(previousPage, event, ScrollBlock.start);
+                            } else {
+                                this.scrollToPage(previousPage, event, ScrollBlock.end);
+
+                            }
+                        } else {
+                            this.scrollToPage(previousPage, event, ScrollBlock.end);
+                        }
+                    }, 100);
+                }
+            }
+        } else {
+            this.getNearestPages();
+        }
+    }
+
+    private scrollToPage = (page: HTMLElement, event: Event, block: ScrollBlock = ScrollBlock.start) => {
+        this.preventEvent(event);
+        page.scrollIntoView({behavior: 'smooth', block: block, })
+        setTimeout(() => {
+            this.getPageData();
+        }, 500);
+    }
+
+    private getNearestPages = () => {
+        let windowHeight = window.innerHeight;
+        for (let i = 1; i <= Object.keys(this.pages).length; i++) {
+            let page = this.pages[i] as HTMLElement;
+            let pageTop = this.getRoundValue(page.getBoundingClientRect().top);
+            let pageBottom = this.getRoundValue(page.getBoundingClientRect().bottom);
+            if (pageTop == 0 && pageBottom >= windowHeight) {
+                this.currentPageNumber = i;
+                this.nearestTopPageNumber = i == 1 ? i : i - 1;
+                this.nearestBottomPageNumber = i + 1;
+                if (i == this.pageCount || pageBottom > windowHeight)
+                    this.nearestBottomPageNumber = i;
+                break;
+            } else if (pageTop > 0 && pageTop < windowHeight) {
+                this.currentPageNumber = i;
+                this.nearestTopPageNumber = i == 1 ? i : i - 1;
+                this.nearestBottomPageNumber = i;
+                break;
+            } else if (pageTop < 0 && pageBottom >= windowHeight) {
+                this.currentPageNumber = i;
+                this.nearestTopPageNumber = i;
+                this.nearestBottomPageNumber = i == this.pageCount ? i : i + 1;
+                break;
+            }
+        }
+    }
+
+    private getBottom = () => {
+        this.bottom = this.getRoundValue(this.landing.getBoundingClientRect().bottom);
+    }
+
+    private getRoundValue = (value: number) : number =>
+        Math.round(value);
+
+    private getInitialData = () => {
+        this.getBottom();
+        let pages = this.landing.querySelectorAll('.page');
+        this.pageCount = pages.length;
+        let i = 1;
+        this.pages = {};
+        pages.forEach((page: HTMLElement) => {
+            this.pages[i] = page;
+            i++;
+        });
     }
 
     private getPageData() {
         this.pages = {};
         let pages = this.landing.querySelectorAll('.page');
-        let bottoms = {};
-        let numbers = {};
         let i = 1;
         pages.forEach((elem: HTMLElement) => {
-            let id = elem.getAttribute('id');
             this.pages[i] = elem;
-            numbers[i] = id;
-            bottoms[i] = Math.round(elem.getBoundingClientRect().bottom);
             i++;
         });
-        this.pageNumbers = numbers;
-        this.pageBottoms = bottoms;
+        this.getBottom();
+        this.getNearestPages();
         this.setHeaderStyle();
     }
 
@@ -55,153 +166,7 @@ export class Landing {
                 list.add('filled');
             }
         }
-        if (page == 7 || page == 8 || page == 9 || page == 11) {
-            list.add('blur-bg');
-        } else {
-            list.remove('blur-bg');
-        }
     }
-
-    private getScrollDirectionThrottled = debounce(
-        (event: WheelEvent & { target: Element; }) => this.getScrollDirectionInternal(event), 300, true);
-
-    private getScrollDirectionInternal = ((event: WheelEvent & { target: Element; }) => {
-        let page = this.pages[this.currentPageNumber];
-        if (event.deltaY > 0) {
-            // scroll down
-            if ((this.currentPageNumber <= Object.keys(this.pages).length)
-                && (page.classList.contains('page-scrolling'))
-                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 30) {
-                this.scrollToPageEnd(page);
-            } else if (this.currentPageNumber < Object.keys(this.pages).length) {
-                this.scrollToNextPage();
-            }
-        } else if (event.deltaY < 0) {``
-            // scroll up
-            if (this.currentPageNumber >= 1
-                && page.classList.contains('page-scrolling')
-                && Math.abs(page.getBoundingClientRect().top) > 30) {
-                this.scrollToPageStart(page);
-            } else if (this.currentPageNumber > 1) {
-                this.scrollToPreviousPage();
-            }
-        } else this.getPageData();
-    });
-
-    private getScrollDirection = ((event: WheelEvent & { target: Element; }) => {
-        this.preventEvent(event);
-        this.getScrollDirectionThrottled(event);
-    });
-
-    private getDownClickThrottled = debounce(
-        (page: HTMLElement) => {
-            if (page.classList.contains('page-scrolling')
-                && this.currentPageNumber <= Object.keys(this.pages).length
-                && Math.abs(page.getBoundingClientRect().bottom - this.bottom) > 100) {
-                this.scrollToPageEnd(page);
-            } else if (this.currentPageNumber < Object.keys(this.pages).length) {
-                this.scrollToNextPage();
-            }
-        }, 300, true);
-
-    private getUpClickThrottled = debounce(
-        (page: HTMLElement) => {
-            if (page.classList.contains('page-scrolling')
-                && this.currentPageNumber >= 1
-                && Math.abs(page.getBoundingClientRect().top) > 100) {
-                this.scrollToPageStart(page);
-            } else if (this.currentPageNumber > 1) {
-                this.scrollToPreviousPage();
-            }
-        }, 300, true);
-
-    private onUpOrDownClick = ((event: KeyboardEvent & { target: Element; }) => {
-        if (document.activeElement === document.querySelector('body')) {
-            let page = this.pages[this.currentPageNumber] as HTMLElement;
-            if (event.keyCode == 40) {
-                // scroll down
-                this.preventEvent(event);
-                this.getDownClickThrottled(page);
-            } else if (event.keyCode == 38) {
-                // scroll up
-                this.preventEvent(event);
-                this.getUpClickThrottled(page);
-            } else this.getPageData();
-        }
-    });
-
-    private scrollToNextPage() {
-        let nextPageId = '#' + this.pageNumbers[this.currentPageNumber + 1];
-        let nextPage = this.landing.querySelector(`${nextPageId}`);
-        nextPage.scrollIntoView({ behavior: 'smooth', });
-        this.currentPageNumber += 1;
-        setTimeout(() => {
-            this.getPageData();
-        }, 500);
-    }
-
-    private scrollToPreviousPage() {
-        let previousPageId = '#' + this.pageNumbers[this.currentPageNumber - 1];
-        let previousPage = this.landing.querySelector(`${previousPageId}`);
-        if (previousPage.classList.contains('page-scrolling')) {
-            previousPage.scrollIntoView({ behavior: 'smooth', block: 'end'});
-        } else {
-            previousPage.scrollIntoView({ behavior: 'smooth', });
-        }
-        this.currentPageNumber -= 1;
-        setTimeout(() => {
-            this.getPageData();
-        }, 500);
-    }
-
-    private scrollToPageEnd = (page: HTMLElement) => {
-        let windowHeight = document.documentElement.clientHeight;
-        let pageRect = page.getBoundingClientRect();
-        let pageHeight = pageRect.height;
-        let pageBottom = pageRect.bottom;
-        if (pageHeight > windowHeight * 2 && pageBottom > windowHeight * 2) {
-            let pageItems = page.querySelectorAll('.page-item');
-            let pageItem: HTMLDivElement;
-            let minDelta = 10000;
-            pageItems.forEach(i => {
-                let elem = i as HTMLDivElement;
-                let itemTop = elem.getBoundingClientRect().top;
-                let itemBottom = elem.getBoundingClientRect().bottom;
-                let delta = windowHeight - itemTop;
-                if (delta > 0 && delta < minDelta && itemBottom > windowHeight) {
-                    minDelta = delta;
-                    pageItem = elem;
-                }
-            })
-            pageItem.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        } else page.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    private scrollToPageStart = (page: HTMLElement) => {
-        let windowHeight = document.documentElement.clientHeight;
-        let pageRect = page.getBoundingClientRect();
-        let pageHeight = pageRect.height;
-        let pageTop = pageRect.top;
-        if (pageHeight > windowHeight * 2 && Math.abs(pageTop) > windowHeight) {
-            let pageItems = page.querySelectorAll('.page-item');
-            let pageItem: HTMLDivElement;
-            let minDelta = 10000;
-            pageItems.forEach(i => {
-                let elem = i as HTMLDivElement;
-                let delta = elem.getBoundingClientRect().bottom;
-                console.log('delta: ', delta);
-                if (delta > 0 && delta < minDelta) {
-                    minDelta = delta;
-                    pageItem = elem;
-                }
-            })
-            pageItem.scrollIntoView({ behavior: 'smooth', block: 'end' })
-        } else page.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-
-    private getPageBottom = () =>
-        this.bottom = window.innerHeight;
 
     private preventEvent(e: Event) {
         e.preventDefault();
@@ -209,8 +174,8 @@ export class Landing {
     }
 
     public dispose() {
-        window.removeEventListener('scroll', this.getScrollDirection);
-        window.removeEventListener('keydown', this.onUpOrDownClick);
+        window.removeEventListener('keydown', this.smartScrollThrottled);
+        this.landing.removeEventListener('wheel', this.smartScrollThrottled);
     }
 }
 
