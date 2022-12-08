@@ -1,5 +1,6 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
+@using Stl.Reflection
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<AccountFull>
 @{
@@ -34,7 +35,7 @@
                 <div class="p-4 pr-5">
                     @foreach (var (requirement, error) in context.Items) {
                         var title = HostInfo.IsDevelopmentInstance
-                            ? $"Error ({error.GetType().Name}):"
+                            ? $"Error ({error.GetType().GetName()}):"
                             : "Error:";
                         <Error @key="requirement"
                                Title="@title"
