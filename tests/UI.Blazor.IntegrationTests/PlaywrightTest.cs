@@ -22,7 +22,7 @@ public class PlaywrightTest : AppHostTestBase
         const float timeout = 20_000f;
         using var appHost = await NewAppHost().ConfigureAwait(false);
         using var tester = appHost.NewPlaywrightTester();
-        var user = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
+        var account = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
         var (page, _) = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
         await page.WaitForLoadStateAsync(LoadState.Load,
             new PageWaitForLoadStateOptions() { Timeout = timeout }).ConfigureAwait(false);

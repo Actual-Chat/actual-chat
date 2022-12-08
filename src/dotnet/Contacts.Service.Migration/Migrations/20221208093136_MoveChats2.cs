@@ -5,15 +5,23 @@ using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Users;
 using ActualChat.Users.Module;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
+#pragma warning disable MA0004
+#pragma warning disable VSTHRD002
 
 namespace ActualChat.Contacts.Migrations
 {
     public partial class MoveChats2 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            UpAsync(migrationBuilder).Wait();
+        }
+
+        private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
             var dbInitializer = DbInitializer.Current as DbInitializer<ContactsDbContext>;
             var chatDbInitializer = dbInitializer.InitializeTasks
@@ -36,14 +44,16 @@ namespace ActualChat.Contacts.Migrations
             using var usersDbContext = usersDbInitializer.DbHub.CreateDbContext();
 
             // Removing all existing chat DbContacts
-            var dbContacts = dbContext.Contacts.Where(c => c.ChatId != null && c.ChatId != "").ToList();
+            var dbContacts = await dbContext.Contacts
+                .Where(c => c.ChatId != null && c.ChatId != "")
+                .ToListAsync();
             dbContext.Contacts.RemoveRange(dbContacts);
-            dbContext.SaveChanges();
+            await dbContext.SaveChangesAsync();
 
             // And recreating them
-            var dbAccounts = usersDbContext.Accounts.ToDictionary(c => (Symbol)c.Id);
-            var dbChats = chatDbContext.Chats.ToDictionary(c => (Symbol)c.Id);
-            var dbAuthors = chatDbContext.Authors.Where(a => !a.HasLeft).ToList();
+            var dbAccounts = await usersDbContext.Accounts.ToDictionaryAsync(c => (Symbol)c.Id);
+            var dbChats = await chatDbContext.Chats.ToDictionaryAsync(c => (Symbol)c.Id);
+            var dbAuthors = await chatDbContext.Authors.Where(a => !a.HasLeft).ToListAsync();
             foreach (var dbAuthor in dbAuthors) {
                 var userId = new UserId(dbAuthor.UserId, AssumeValid.Option);
                 if (userId.IsNone) // Anonymous author, we do nothing in this case
@@ -65,7 +75,7 @@ namespace ActualChat.Contacts.Migrations
                 };
                 dbContext.Add(c);
             }
-            dbContext.SaveChanges();
+            await dbContext.SaveChangesAsync();
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

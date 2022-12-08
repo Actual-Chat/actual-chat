@@ -1,6 +1,7 @@
 using ActualChat.App.Wasm;
 using ActualChat.App.Server;
 using Microsoft.Extensions.Configuration;
+using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Testing.Host;
 
@@ -44,6 +45,7 @@ public class WebClientTester : IWebClientTester
         AppHost = appHost;
         var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
         Session = sessionFactory.CreateSession();
+        Commander.Run(new SetupSessionCommand(Session)).Wait();
         _mustDisposeClientServices = clientServices == null;
         _clientServicesLazy = new Lazy<IServiceProvider>(() => clientServices ?? CreateClientServices());
     }

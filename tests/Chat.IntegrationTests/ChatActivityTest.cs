@@ -19,7 +19,7 @@ public class ChatActivityTest : AppHostTestBase
         var clientServices = tester.ClientServices;
         var commander = services.GetRequiredService<ICommander>();
         var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        var user = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var sessionProvider = clientServices.GetRequiredService<ISessionProvider>();
         sessionProvider.Session = session;
@@ -45,7 +45,7 @@ public class ChatActivityTest : AppHostTestBase
             await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
             await cActiveChatEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
             var authorId = cActiveAuthorIds.Value.Single();
             var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorActive(authorId, ct));
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);

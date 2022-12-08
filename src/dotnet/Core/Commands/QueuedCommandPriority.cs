@@ -1,6 +1,6 @@
 namespace ActualChat.Commands;
 
-public enum CommandPriority
+public enum QueuedCommandPriority
 {
     Low = -1,
     Default = 0,

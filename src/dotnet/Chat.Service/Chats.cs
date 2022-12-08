@@ -33,27 +33,25 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        Contact? contact = null;
-        if (chatId.IsPeerChatId(out var peerChatId)) {
-            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            var otherUserId = peerChatId.UserIds.OtherThanOrDefault(account.Id);
-            if (otherUserId.IsNone)
-                return null;
-
-            var contactId = new ContactId(account.Id, peerChatId, AssumeValid.Option);
-            contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-        }
-
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null) {
-            if (contact?.Account == null)
+        if (chatId.Kind == ChatKind.Peer) {
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            var contactId = new ContactId(account.Id, chatId, ParseOrNone.Option);
+            if (contactId.IsNone)
                 return null;
 
-            chat = new Chat(chatId) {
-                Title = contact.Account.Avatar.Name,
-                Picture = contact.Account.Avatar.Picture,
+            var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
+            if (contact.Account == null)
+                return null; // No peer account
+
+            chat ??= new Chat(chatId);
+            chat = chat with {
+                Title = account.Avatar.Name,
+                Picture = account.Avatar.Picture,
             };
         }
+        else if (chat == null)
+            return null;
 
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead())
@@ -196,7 +194,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, expectedVersion, change) = command;
-        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        var chat = chatId.IsNone ? null
+            : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
@@ -206,8 +205,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 OwnerId = account.Id,
             };
         }
-        if (change.Update.HasValue)
-            chat.Rules.Permissions.Require(ChatPermissions.EditProperties);
+        else {
+            var requiredPermissions = change.Remove
+                ? ChatPermissions.Owner
+                : ChatPermissions.EditProperties;
+            chat.Require().Rules.Permissions.Require(requiredPermissions);
+        }
 
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         return chat;

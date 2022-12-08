@@ -16,7 +16,7 @@ public class ChatOperationsTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var account = await tester.SignIn(new User("", "Bob"));
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -67,7 +67,7 @@ public class ChatOperationsTest : AppHostTestBase
 
         var author = await authors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
-        author!.UserId.Should().Be(user.Id);
+        author!.UserId.Should().Be(account.Id);
     }
 
     [Theory]
@@ -171,7 +171,7 @@ public class ChatOperationsTest : AppHostTestBase
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
-            var user = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+            var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
 
@@ -182,7 +182,7 @@ public class ChatOperationsTest : AppHostTestBase
 
             var joinChatCommand = new IChats.JoinCommand(session, chatId);
             await commander.Call(joinChatCommand);
-            await AssertJoined(tester.AppServices, session, chatId, user);
+            await AssertJoined(tester.AppServices, session, chatId, account);
 
             var leaveCommand = new IChats.LeaveCommand(session, chatId);
             await commander.Call(leaveCommand);
@@ -197,7 +197,7 @@ public class ChatOperationsTest : AppHostTestBase
             else
                 chat.Should().BeNull();
 
-            await AssertNotJoined(tester.AppServices, session, chatId, user);
+            await AssertNotJoined(tester.AppServices, session, chatId, account);
 
             // re-join again
             if (!isPublicChat) {
@@ -205,7 +205,7 @@ public class ChatOperationsTest : AppHostTestBase
                 await Task.Delay(1000); // Let the command complete
             }
             await commander.Call(joinChatCommand, default);
-            await AssertJoined(tester.AppServices, session, chatId, user);
+            await AssertJoined(tester.AppServices, session, chatId, account);
         }
     }
 

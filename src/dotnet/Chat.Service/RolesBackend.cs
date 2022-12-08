@@ -56,7 +56,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             .Select(r => r.ToModel())
             .Concat(systemRoles.Where(IsInSystemRole))
             .DistinctBy(r => r.Id)
-            .OrderBy(r => r.Id)
+            .OrderBy(r => r.Id.Id)
             .ToImmutableArray();
         return roles;
 

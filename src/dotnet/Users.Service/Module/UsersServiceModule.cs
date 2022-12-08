@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
@@ -72,7 +73,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
-            services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
+            services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
+            db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();

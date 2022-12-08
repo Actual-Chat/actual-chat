@@ -56,7 +56,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var user = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 

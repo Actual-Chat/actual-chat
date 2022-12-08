@@ -3,6 +3,7 @@ using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using Stl.CommandR.Internal;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
