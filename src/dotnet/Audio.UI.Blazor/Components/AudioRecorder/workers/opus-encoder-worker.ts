@@ -259,6 +259,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (isEncoding)
         return;
 
+    if (!encoder)
+        return;
+
     try {
         isEncoding = true;
         let fadeWindowIndex: number | null = null;
