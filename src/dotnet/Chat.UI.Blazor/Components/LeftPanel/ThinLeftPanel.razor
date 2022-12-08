@@ -9,13 +9,21 @@
         <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
             <ButtonSquare
                 Click="OnShowCreationModal"
-                Class="plus-btn"
                 ContentClass="navbar-navigation-button-content"
                 Tooltip="Create"
                 FloatingPosition="FloatingPosition.Right">
                 <i class="icon-plus text-2xl font-medium"></i>
             </ButtonSquare>
             <NavbarGroupToggles/>
+            @if (_enableIncompleteUI) {
+                <ButtonSquare
+                    Click="OnOnboardingModalShow"
+                    ContentClass="navbar-navigation-button"
+                    Tooltip="Onboarding"
+                    FloatingPosition="FloatingPosition.Right">
+                    <i class="icon-settings text-2xl font-medium"></i>
+                </ButtonSquare>
+            }
         </div>
         <div class="flex w-full py-2 justify-center">
             <AccountDropdown/>
@@ -30,4 +38,7 @@
 
     private void OnShowCreationModal()
         => ModalUI.Show(new CreationModal.Model());
+
+    private void OnOnboardingModalShow()
+        => ModalUI.Show(new OnboardingModal.Model());
 }

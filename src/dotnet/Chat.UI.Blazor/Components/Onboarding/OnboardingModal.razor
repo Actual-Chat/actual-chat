@@ -1,0 +1,84 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using Stl.Extensibility
+@implements IModalView<OnboardingModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<OnboardingModal.ComputedModel>
+
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<DialogFrame Class="onboarding-modal" ShowMobileHeader="false">
+    <Body>
+        <Stepper>
+            <Step>
+                @if (context.CanMoveBack) {
+                    <Button Click="context.MoveBack">Back</Button>
+                }
+                1
+                @if (context.IsLast) {
+                    <Button>Start messaging</Button>
+                } else if (context.CanMoveForward) {
+                    <Button Click="context.MoveForward">Next</Button>
+                }
+            </Step>
+            <Step>
+                @if (context.CanMoveBack) {
+                    <Button Click="context.MoveBack">Back</Button>
+                }
+                2
+                @if (context.IsLast) {
+                    <Button>Start messaging</Button>
+                } else if (context.CanMoveForward) {
+                    <Button Click="context.MoveForward">Next</Button>
+                }
+            </Step>
+            <Step>
+                @if (context.CanMoveBack) {
+                    <Button Click="context.MoveBack">Back</Button>
+                }
+                3
+                @if (context.IsLast) {
+                    <Button Click="ModalInstance.CloseAsync">Start messaging</Button>
+                } else if (context.CanMoveForward) {
+                    <Button Click="context.MoveForward">Next</Button>
+                }
+            </Step>
+        </Stepper>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        if (!account.IsActive())
+            return ComputedModel.None;
+        return new ComputedModel {
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    public sealed record Model;
+
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new() {
+            EnableIncompleteUI = false,
+        };
+
+        public bool EnableIncompleteUI { get; init; }
+    }
+}
