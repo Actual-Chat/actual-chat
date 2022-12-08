@@ -151,7 +151,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     {
         var dbUserPresence = await dbContext.UserPresences
             .ForUpdate()
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
+            .FirstOrDefaultAsync(x => x.UserId == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {
             dbUserPresence = new DbUserPresence() { UserId = userId };

@@ -71,7 +71,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
             var dbAuthor = await dbContext.Authors
                 .Include(a => a.Roles)
-                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
             author = dbAuthor?.ToModel();
             if (author == null)

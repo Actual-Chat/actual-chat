@@ -174,8 +174,9 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             dbContext.Notifications.Add(dbNotification);
         }
         else {
+            var notificationCopy = notification;
             dbNotification = await dbContext.Notifications.ForUpdate()
-                .SingleOrDefaultAsync(e => e.Id == notification.Id.Value, cancellationToken)
+                .SingleOrDefaultAsync(e => e.Id == notificationCopy.Id.Value, cancellationToken)
                 .ConfigureAwait(false);
             dbNotification = dbNotification.RequireVersion(notification.Version);
             notification = notification with {

@@ -330,7 +330,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             ownerId.RequireNone();
 
             dbChat = await dbContext.Chats.ForUpdate()
-                .SingleAsync(c => c.Id == chatId, cancellationToken)
+                .SingleAsync(c => c.Id == chatId.Value, cancellationToken)
                 .ConfigureAwait(false);
             dbChat.RequireVersion(expectedVersion);
             chat = ApplyDiff(dbChat.ToModel(), update);
