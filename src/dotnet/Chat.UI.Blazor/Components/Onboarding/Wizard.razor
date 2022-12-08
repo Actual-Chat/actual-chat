@@ -1,0 +1,41 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<Stepper>
+    <Step>
+        @if (context.CanMoveBack) {
+            <Button Click="context.MoveBack">Back</Button>
+        }
+        1
+        @if (context.IsLast) {
+            <Button>Start messaging</Button>
+        } else if (context.CanMoveForward) {
+            <Button Click="context.MoveForward">Next</Button>
+        }
+    </Step>
+    <Step>
+        @if (context.CanMoveBack) {
+            <Button Click="context.MoveBack">Back</Button>
+        }
+        2
+        @if (context.IsLast) {
+            <Button>Start messaging</Button>
+        } else if (context.CanMoveForward) {
+            <Button Click="context.MoveForward">Next</Button>
+        }
+    </Step>
+    <Step>
+        @if (context.CanMoveBack) {
+            <Button Click="context.MoveBack">Back</Button>
+        }
+        3
+        @if (context.IsLast) {
+            <Button>Start messaging</Button>
+        } else if (context.CanMoveForward) {
+            <Button Click="context.MoveForward">Next</Button>
+        }
+    </Step>
+</Stepper>
+
+@code {
+
+}

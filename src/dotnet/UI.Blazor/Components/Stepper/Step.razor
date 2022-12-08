@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.Components
+
+@if (Stepper.CurrentStep != this) {
+    return;
+}
+
+@ChildContent?.Invoke(Stepper)
+
+@code {
+    [CascadingParameter] public Stepper Stepper { get; set; } = null!;
+    [Parameter] public RenderFragment<Stepper>? ChildContent { get; set; }
+
+    protected override void OnInitialized() {
+        Stepper.AddStep(this);
+    }
+}
