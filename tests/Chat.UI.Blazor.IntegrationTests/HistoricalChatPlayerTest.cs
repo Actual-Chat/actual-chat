@@ -28,7 +28,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         _appHost.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 60_000)]
     public async Task RewindBackTest()
     {
         var services = _tester.ScopedAppServices;
@@ -83,7 +83,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
 
     private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, string ownerUserId)
     {
-        var chatId = new ChatId("test-chat");
+        var chatId = new ChatId("testchat");
         var dbChat = new DbChat {
             Id = chatId,
             Version = 1,
