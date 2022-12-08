@@ -27,9 +27,14 @@ export class Landing {
         this.blazorRef = blazorRef;
         this.header = this.landing.querySelector('.landing-header');
         this.getInitialData();
-        window.addEventListener('keydown', this.smartScrollThrottled, {passive: false, });
+        window.addEventListener('keydown', this.keyboardHandler, {passive: false, });
         this.landing.addEventListener('wheel', this.smartScrollThrottled);
     }
+
+    private keyboardHandler = ((event: KeyboardEvent & { target: Element; }) => {
+        if (event.keyCode == 40 || event.keyCode == 38)
+            this.smartScrollThrottled(event);
+    });
 
     private smartScrollThrottled = debounce(
                 (event: Event & { target: Element; }) => this.smartScroll(event), 300, true);
@@ -41,23 +46,24 @@ export class Landing {
     });
 
     private scrollHandler = (event: Event) => {
+        let windowHeight = window.innerHeight;
         let oldBottom = this.bottom;
-        this.bottom = this.landing.getBoundingClientRect().bottom;
+        this.bottom = this.getRoundValue(this.landing.getBoundingClientRect().bottom);
         let delta = this.getRoundValue(oldBottom - this.bottom);
         let scrollUp = delta < 0;
         let rect = (this.pages[this.currentPageNumber] as HTMLElement).getBoundingClientRect();
         let bottom = this.getRoundValue(rect.bottom);
         let top = this.getRoundValue(rect.top);
-        if (Math.abs(delta) <= 150 && delta != 0) {
-            if (top != 0 && bottom != window.innerHeight) {
+        if (Math.abs(delta) <= 200 && delta != 0) {
+            if (top != 0 && bottom != windowHeight) {
                 if (!scrollUp) {
                     // little scroll down => smart scroll to end of current page or to start of next page
                     let nextPage = this.pages[this.nearestBottomPageNumber] as HTMLElement;
                     setTimeout(() => {
                         if (this.nearestBottomPageNumber == this.currentPageNumber) {
                             let currentPage = this.pages[this.currentPageNumber] as HTMLElement;
-                            if (currentPage.getBoundingClientRect().bottom > window.innerHeight
-                                && currentPage.getBoundingClientRect().top <= 0) {
+                            if (this.getRoundValue(currentPage.getBoundingClientRect().bottom) > windowHeight
+                                && this.getRoundValue(currentPage.getBoundingClientRect().top) <= 0) {
                                 this.scrollToPage(nextPage, event, ScrollBlock.end);
                             } else {
                                 this.scrollToPage(nextPage, event, ScrollBlock.start);
@@ -71,8 +77,8 @@ export class Landing {
                     setTimeout(() => {
                         if (this.nearestTopPageNumber == this.currentPageNumber) {
                             let currentPage = this.pages[this.currentPageNumber] as HTMLElement;
-                            if (currentPage.getBoundingClientRect().top < 0
-                            && currentPage.getBoundingClientRect().bottom >= window.innerHeight) {
+                            if (this.getRoundValue(currentPage.getBoundingClientRect().top) < 0
+                            && this.getRoundValue(currentPage.getBoundingClientRect().bottom) >= windowHeight) {
                                 this.scrollToPage(previousPage, event, ScrollBlock.start);
                             } else {
                                 this.scrollToPage(previousPage, event, ScrollBlock.end);
@@ -98,30 +104,33 @@ export class Landing {
     }
 
     private getNearestPages = () => {
-        let windowHeight = window.innerHeight;
-        for (let i = 1; i <= Object.keys(this.pages).length; i++) {
-            let page = this.pages[i] as HTMLElement;
-            let pageTop = this.getRoundValue(page.getBoundingClientRect().top);
-            let pageBottom = this.getRoundValue(page.getBoundingClientRect().bottom);
-            if (pageTop == 0 && pageBottom >= windowHeight) {
-                this.currentPageNumber = i;
-                this.nearestTopPageNumber = i == 1 ? i : i - 1;
-                this.nearestBottomPageNumber = i + 1;
-                if (i == this.pageCount || pageBottom > windowHeight)
+        setTimeout(() => {
+            let windowHeight = window.innerHeight;
+            for (let i = 1; i <= this.pageCount; i++) {
+                let page = this.pages[i] as HTMLElement;
+                let pageTop = this.getRoundValue(page.getBoundingClientRect().top);
+                let pageBottom = this.getRoundValue(page.getBoundingClientRect().bottom);
+                if (pageTop == 0 && pageBottom >= windowHeight) {
+                    this.currentPageNumber = i;
+                    this.nearestTopPageNumber = i == 1 ? i : i - 1;
+                    this.nearestBottomPageNumber = i + 1;
+                    if (i == this.pageCount || pageBottom > windowHeight)
+                        this.nearestBottomPageNumber = i;
+                    break;
+                } else if (pageTop > 0 && pageTop < windowHeight) {
+                    this.currentPageNumber = i;
+                    this.nearestTopPageNumber = i == 1 ? i : i - 1;
                     this.nearestBottomPageNumber = i;
-                break;
-            } else if (pageTop > 0 && pageTop < windowHeight) {
-                this.currentPageNumber = i;
-                this.nearestTopPageNumber = i == 1 ? i : i - 1;
-                this.nearestBottomPageNumber = i;
-                break;
-            } else if (pageTop < 0 && pageBottom >= windowHeight) {
-                this.currentPageNumber = i;
-                this.nearestTopPageNumber = i;
-                this.nearestBottomPageNumber = i == this.pageCount ? i : i + 1;
-                break;
+                    break;
+                } else if (pageTop < 0 && pageBottom >= windowHeight) {
+                    this.currentPageNumber = i;
+                    this.nearestTopPageNumber = i;
+                    this.nearestBottomPageNumber = i == this.pageCount ? i : i + 1;
+                    break;
+                }
             }
-        }
+            this.setHeaderStyle();
+        }, 100);
     }
 
     private getBottom = () => {
@@ -153,7 +162,6 @@ export class Landing {
         });
         this.getBottom();
         this.getNearestPages();
-        this.setHeaderStyle();
     }
 
     private setHeaderStyle = () => {
