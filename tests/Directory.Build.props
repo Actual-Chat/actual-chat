@@ -23,7 +23,9 @@
     <!-- IL2070: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
     <!-- IL2075: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
-    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0004;MA0006;MA0011;RCS1090;</NoWarn>
+    <!-- MA0002-0006: culture-dependent string comparison -->
+    <!-- VSTHRD002: .Wait() deadlock -->
+    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;RCS1090;VSTHRD002;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
