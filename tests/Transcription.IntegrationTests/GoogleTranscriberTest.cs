@@ -1,4 +1,3 @@
-using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.Module;
@@ -21,7 +20,7 @@ public class GoogleTranscriberTest : TestBase
         CoreSettings = configuration.GetSettings<CoreSettings>();
     }
 
-    [Theory]
+    [Theory(Skip = "Manual")]
     [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     [InlineData("0002-AK.opuss", true)]
