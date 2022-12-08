@@ -77,7 +77,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices
             .ForUpdate()
-            .SingleOrDefaultAsync(d => d.Id == deviceId, cancellationToken)
+            .SingleOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
             .ConfigureAwait(false);
 
         var dbDevice = existingDbDevice;

@@ -35,7 +35,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId)
+            .Where(d => d.UserId == userId.Value)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var devices = dbDevices.Select(d => d.ToModel()).ToImmutableArray();

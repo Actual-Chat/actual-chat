@@ -12,7 +12,10 @@
         @ChildContent
     </ChildContent>
     <ErrorContent>
-        @if (context.Errors.Any(e => e is GuestAccountException)) {
+        @if (ReferenceEquals(account, AccountFull.Loading)) {
+            // Don't render anything until account is loaded
+        }
+        else if (context.Errors.Any(e => e is GuestAccountException)) {
             <SignInBlock/>
         } else if (context.Errors.Any(e => e is SuspendedAccountException)) {
             <SignOutBlock>
@@ -43,7 +46,7 @@
                     }
                 </div>
                 <div class="p-5 pt-0">
-                    @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
+                    @if (context.Items.Any(x => x.Value is INotFoundException)) {
                         @if (account.IsGuest) {
                             <span>
                                 You can try to <SignInDropdown /> to resolve it.
@@ -81,6 +84,12 @@
         Nav.LocationChanged -= _onLocationChanged;
         return base.DisposeAsync();
     }
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountFull.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);

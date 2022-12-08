@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio;
+﻿using System;
+
+namespace ActualChat.Audio;
 
 public sealed class AudioSettings
 {

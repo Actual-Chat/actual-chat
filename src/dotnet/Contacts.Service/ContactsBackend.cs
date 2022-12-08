@@ -21,7 +21,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
     {
-        if (contactId.OwnerId != (Symbol)ownerId)
+        if (contactId.OwnerId.Id != (Symbol)ownerId)
             throw new ArgumentOutOfRangeException(nameof(contactId));
 
         var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);

@@ -13,7 +13,7 @@ public static class MenuRegistry
 
     public static Symbol GetTypeId(Type type)
         => TypeToTypeId.GetOrAdd(type, type1 => {
-            if (!type1.IsAssignableTo(typeof(MenuBase)))
+            if (!type1.IsAssignableTo(typeof(IMenu)))
                 throw new ArgumentOutOfRangeException(nameof(type));
             var typeId = type1.ToSymbol(false);
             TypeIdToType.GetOrAdd(typeId, type1);

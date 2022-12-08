@@ -45,7 +45,7 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     public PrincipalId(UserId userId, AssumeValid _)
     {
         Id = userId.Id;
-        Kind = PrincipalKind.Author;
+        Kind = PrincipalKind.User;
         AuthorId = default;
         UserId = userId;
     }
@@ -67,6 +67,8 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     public override string ToString() => Value;
     public static implicit operator Symbol(PrincipalId source) => source.Id;
     public static implicit operator string(PrincipalId source) => source.Value;
+    public static implicit operator PrincipalId(Symbol source) => new(source);
+    public static implicit operator PrincipalId(string source) => new(source);
 
     // Equality
 

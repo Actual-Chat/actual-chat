@@ -1,7 +1,7 @@
 namespace ActualChat;
 
 [Serializable]
-public abstract class NotFoundException : Exception
+public abstract class NotFoundException : Exception, INotFoundException
 {
     protected NotFoundException() : base() { }
     protected NotFoundException(string? message) : base(message) { }

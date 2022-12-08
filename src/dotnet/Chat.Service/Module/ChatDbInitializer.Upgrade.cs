@@ -52,7 +52,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     private async Task UpgradePermissions(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
-        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var chatId = Constants.Chat.AnnouncementsChatId.Value;
         var candidateDbRoles = await dbContext.Roles
             .Where(c => c.SystemRole == SystemRole.Anyone)
             .Where(c => c.ChatId != chatId)
@@ -85,7 +85,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
     private async Task EnsureAnnouncementsChatExists(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
-        var chatId = (string)Constants.Chat.AnnouncementsChatId;
+        var chatId = Constants.Chat.AnnouncementsChatId.Value;
         var exists = await dbContext.Chats
             .Where(c => c.Id == chatId)
             .AnyAsync(cancellationToken)

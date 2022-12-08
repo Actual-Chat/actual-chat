@@ -117,7 +117,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authorIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId && !a.HasLeft)
+            .Where(a => a.ChatId == chatId.Value && !a.HasLeft)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -134,7 +134,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
+            .Where(a => a.ChatId == chatId.Value && !a.HasLeft && a.UserId != null)
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

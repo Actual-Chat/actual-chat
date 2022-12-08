@@ -3,8 +3,8 @@
 public partial class ChatUI
 {
     private Language? _lastRecordingLanguage;
-    private Symbol _lastRecordingChatId;
-    private Symbol _lastRecorderChatId;
+    private ChatId _lastRecordingChatId;
+    private ChatId _lastRecorderChatId;
 
     // All state sync logic should be here
 

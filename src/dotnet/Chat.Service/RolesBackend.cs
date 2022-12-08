@@ -84,7 +84,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbRoles = await dbContext.Roles
-            .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
+            .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles.Select(r => r.ToModel()).ToImmutableArray();
@@ -105,7 +105,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthorIds = await dbContext.AuthorRoles
-            .Where(ar => ar.DbRoleId == roleId)
+            .Where(ar => ar.DbRoleId == roleId.Value)
             .Select(ar => ar.DbAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -181,7 +181,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbAuthorRoles = await dbContext.AuthorRoles.ForUpdate()
-                    .Where(ar => ar.DbRoleId == roleId)
+                    .Where(ar => ar.DbRoleId == roleId.Value)
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 dbContext.RemoveRange(dbAuthorRoles);
@@ -205,12 +205,12 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             if (removedAuthorIds.Any()) {
  #pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles
-                    .Where(ar => ar.DbRoleId == roleId && removedAuthorIds.Contains(ar.DbAuthorId))
+                    .Where(ar => ar.DbRoleId == roleId.Value && removedAuthorIds.Contains(ar.DbAuthorId))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (role!.SystemRole == SystemRole.Owner) {
                     var remainingOwnerCount = await dbContext.Authors
-                        .Where(a => a.ChatId == chatId && a.UserId != null && !a.HasLeft
+                        .Where(a => a.ChatId == chatId.Value && a.UserId != null && !a.HasLeft
                             && !removedAuthorIds.Contains(a.Id))
                         .CountAsync(cancellationToken)
                         .ConfigureAwait(false);
