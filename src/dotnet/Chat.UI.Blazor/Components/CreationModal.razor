@@ -1,10 +1,8 @@
 @using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Contacts
-@implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<CreationModal.ComputedModel>
-
 @{
     var m = State.LatestNonErrorValue;
     var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
@@ -213,7 +211,7 @@
             },
         });
         try {
-            var (chat, error) = await UICommander.Run(command, default);
+            var (chat, error) = await UICommander.Run(command, CancellationToken.None);
             if (error != null)
                 return;
 
@@ -233,7 +231,7 @@
         }
     }
 
-    public class FormModel
+    public sealed class FormModel
     {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
@@ -250,13 +248,15 @@
         }
     }
 
-    public sealed record Model;
-
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new() {
             AllContacts = new (),
         };
 
         public List<Contact> AllContacts { get; init; } = null!;
+    }
+
+    public record Model() {
+        public static Model None { get; } = new();
     }
 }

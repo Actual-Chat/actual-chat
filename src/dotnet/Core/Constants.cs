@@ -4,10 +4,10 @@ public static partial class Constants
 {
     public static class Chat
     {
-        public static ChatId DefaultChatId { get; } = new("the-actual-one");
-        public static ChatId AnnouncementsChatId { get; } = new("announcements");
-        public static IReadOnlySet<ChatId> SystemChatIds { get; } =
-            new HashSet<ChatId>(new [] { DefaultChatId, AnnouncementsChatId });
+        public static ChatId DefaultChatId { get; } = new("the-actual-one", default, default, AssumeValid.Option);
+        public static ChatId AnnouncementsChatId { get; } = new("announcements", default, default, AssumeValid.Option);
+        public static IReadOnlySet<Symbol> SystemChatIds { get; } =
+            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id });
 
         public static TileStack<long> IdTileStack { get; } = TileStacks.Long5To1K;
         public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;

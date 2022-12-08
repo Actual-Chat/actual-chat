@@ -86,7 +86,7 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        if (s.Length < 6 || !Alphabet.AlphaNumericDash.IsMatch(s))
+        if (s.Length < 6)
             return false;
 
         if (s.OrdinalStartsWith(PeerChatId.IdPrefix)) {
@@ -95,11 +95,14 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
                 return false;
 
             result = new ChatId(peerChatId.Id, peerChatId.UserId1, peerChatId.UserId2, AssumeValid.Option);
-            return true;
         }
+        else {
+            if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
+                return false;
 
-        // Group chat ID
-        result = new ChatId(s, default, default, AssumeValid.Option);
+            // Group chat ID
+            result = new ChatId(s, default, default, AssumeValid.Option);
+        }
         return true;
     }
 }
