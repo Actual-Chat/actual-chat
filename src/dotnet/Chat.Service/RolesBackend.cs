@@ -47,9 +47,9 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
         var dbRoles = await dbContext.Roles
             .Where(r =>
-                r.ChatId == chatId
+                r.ChatId == chatId.Value
                 && (r.SystemRole == SystemRole.None || r.SystemRole == SystemRole.Owner)
-                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId && ar.DbRoleId == r.Id))
+                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId.Value && ar.DbRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles

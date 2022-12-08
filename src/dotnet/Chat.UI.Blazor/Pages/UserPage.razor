@@ -77,7 +77,7 @@
             Account = account,
             PeerChatId = peerChatId,
             ContactId = contactId,
-            CanAddContact = !contactIds.Any(x => x == contactId),
+            CanAddContact = !contactIds.Any(x => x == contactId.Value),
             CanChat = true,
         };
     }

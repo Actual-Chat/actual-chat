@@ -41,10 +41,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 
     [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
-    {
-        var sAuthorId = (Symbol)authorId;
-        return Task.FromResult(_activeEntries.Any(e => e.AuthorId == sAuthorId));
-    }
+        => Task.FromResult(_activeEntries.Any(e => e.AuthorId == authorId));
 
     // Protected & private methods
 
