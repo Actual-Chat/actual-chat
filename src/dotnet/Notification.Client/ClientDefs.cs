@@ -6,7 +6,7 @@ namespace ActualChat.Notification;
 public interface INotificationsClientDef
 {
     [Get(nameof(ListRecentNotificationIds))]
-    Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
+    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
     [Get(nameof(Get))]
     Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
 

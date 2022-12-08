@@ -5,7 +5,7 @@ namespace ActualChat.Contacts;
 [BasePath("contacts")]
 public interface IContactsClientDef
 {
-    [Get(nameof(GetForChat))]
+    [Get(nameof(Get))]
     Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken);
     [Get(nameof(GetForChat))]
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
