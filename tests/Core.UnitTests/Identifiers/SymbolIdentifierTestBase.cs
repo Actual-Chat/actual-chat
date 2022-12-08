@@ -8,7 +8,7 @@ public abstract class SymbolIdentifierTestBase<TIdentifier> : TestBase
     public TIdentifier Default = default;
     public TIdentifier None = TIdentifier.None;
 
-    public SymbolIdentifierTestBase(ITestOutputHelper @out) : base(@out) { }
+    protected SymbolIdentifierTestBase(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public void NoneTest()

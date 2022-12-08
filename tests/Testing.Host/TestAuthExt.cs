@@ -86,7 +86,7 @@ public static class TestAuthExt
                 await HandleGoogleSignInPopup(user, password, page);
                 break;
             case MicrosoftAccountDefaults.AuthenticationScheme:
-                throw new NotImplementedException();
+                throw new NotSupportedException();
             default:
                 throw new ArgumentOutOfRangeException(nameof(authScheme));
         }
