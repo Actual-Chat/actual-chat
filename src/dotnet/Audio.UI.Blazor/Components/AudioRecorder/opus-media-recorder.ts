@@ -71,27 +71,6 @@ export class OpusMediaRecorder {
         this.whenLoaded = this.load();
     }
 
-    public pause(): void {
-        warnLog?.assert(this.state !== 'inactive', `pause: state == 'inactive'`);
-        warnLog?.assert(this.source != null, `pause: source == null`);
-
-        // Stop stream first
-        this.source.disconnect();
-        this.encoderWorklet.disconnect();
-        this.vadWorklet.disconnect();
-        this.state = 'paused';
-    }
-
-    public resume(): void {
-        warnLog?.assert(this.state !== 'inactive', `resume: state == 'inactive'`);
-        warnLog?.assert(this.source != null, `resume: source == null`);
-
-        // Restart streaming data
-        this.source.connect(this.encoderWorklet);
-        this.source.connect(this.vadWorklet);
-        this.state = 'recording';
-    }
-
     public async start(sessionId: string, chatId: string): Promise<void> {
         warnLog?.assert(sessionId != '', `start: sessionId is unspecified`);
         warnLog?.assert(chatId != '', `start: chatId is unspecified`);

@@ -32,18 +32,20 @@ public class GoogleTranscriber : ITranscriber
 
     public IAsyncEnumerable<Transcript> Transcribe(
         Symbol transcriberKey,
-        TranscriptionOptions options,
+        string streamId,
         AudioSource audioSource,
+        TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
+        Log.LogDebug("Getting recognizer");
         var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
         var recognizerId = $"r-{prefix}-{options.Language.Value.ToLowerInvariant()}";
         var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
-        var process = new GoogleTranscriberProcess(recognizerTask, options, audioSource, Log);
+        var process = new GoogleTranscriberProcess(recognizerTask, streamId, audioSource, options, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
 
-        async Task<Recognizer> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
+        async Task<string> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
         {
             var recognizer = await Cache.GetOrCreateAsync(
                 recognizerId1,
@@ -66,47 +68,43 @@ public class GoogleTranscriber : ITranscriber
                     }
                     catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) { }
 
-                    var newRecognizerOperation = await speechClient.CreateRecognizerAsync(
-                        new CreateRecognizerRequest {
-                            Parent = parent,
-                            RecognizerId = recognizerId,
-                            Recognizer = new Recognizer {
-                                Model = "latest_long",
-                                DisplayName = recognizerId,
-                                LanguageCodes = { options.Language.Value },
-                                DefaultRecognitionConfig = new RecognitionConfig {
-                                    Features = new RecognitionFeatures {
-                                        EnableAutomaticPunctuation = true,
-                                        MaxAlternatives = 1,
-                                        DiarizationConfig = new SpeakerDiarizationConfig {
-                                            MinSpeakerCount = 1,
-                                            MaxSpeakerCount = options1.MaxSpeakerCount ?? 1,
-                                        },
-                                        EnableSpokenPunctuation = true,
-                                        EnableSpokenEmojis = true,
-                                        ProfanityFilter = false,
-                                        EnableWordConfidence = true,
-                                        EnableWordTimeOffsets = true,
-                                        MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
-                                    },
-                                    AutoDecodingConfig = new AutoDetectDecodingConfig(),
+                var newRecognizerOperation = await speechClient.CreateRecognizerAsync(
+                    new CreateRecognizerRequest {
+                        Parent = parent,
+                        RecognizerId = recognizerId,
+                        Recognizer = new Recognizer {
+                            Model = "latest_long",
+                            DisplayName = recognizerId,
+                            LanguageCodes = { options.Language.Value },
+                            DefaultRecognitionConfig = new RecognitionConfig {
+                                Features = new RecognitionFeatures {
+                                    EnableAutomaticPunctuation = true,
+                                    MaxAlternatives = 1,
+                                    EnableSpokenPunctuation = false,
+                                    EnableSpokenEmojis = false,
+                                    ProfanityFilter = false,
+                                    EnableWordConfidence = false,
+                                    EnableWordTimeOffsets = true,
+                                    MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
                                 },
+                                AutoDecodingConfig = new AutoDetectDecodingConfig(),
                             },
                         },
-                        // CallSettings.FromCancellationToken(cancellationToken));
-                        new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, WriteOptions.Default, null))
-                        .ConfigureAwait(false);
+                    },
+                    // CallSettings.FromCancellationToken(cancellationToken));
+                    new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, WriteOptions.Default, null)
+                ).ConfigureAwait(false);
 
-                    var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
-                    var newRecognizer = completedNewRecognizerOperation.Result;
-                    if (newRecognizer.ExpireTime != null)
-                        entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
-                    // let's wait for some time while the recognizer become operational
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
-                    return newRecognizer;
-                }).ConfigureAwait(false);
+                var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
+                var newRecognizer = completedNewRecognizerOperation.Result;
+                if (newRecognizer.ExpireTime != null)
+                    entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
+                // let's wait for some time while the recognizer become operational
+                // await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
+                return newRecognizer;
+            }).ConfigureAwait(false);
 
-            return recognizer!;
+            return recognizer!.Name;
         }
     }
 

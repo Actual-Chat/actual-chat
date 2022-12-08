@@ -61,7 +61,7 @@ public class ActualOpusStreamAdapterTests
         var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
         var outList = await outByteStream.ToListAsync();
         var outArray = outList.SelectMany(chunk => chunk).ToArray();
-        outArray.Length.Should().Be(10561);
+        outArray.Length.Should().Be(10563); // we added preSkip with this commit
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)

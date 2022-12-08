@@ -58,6 +58,7 @@ public sealed class AudioProcessor : IAudioProcessor
 
     public async Task ProcessAudio(
         AudioRecord record,
+        int preSkipFrames,
         IAsyncEnumerable<AudioFrame> recordingStream,
         CancellationToken cancellationToken)
     {
@@ -77,7 +78,7 @@ public sealed class AudioProcessor : IAudioProcessor
             var author = await AuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             var audio = new AudioSource(
-                Task.FromResult(AudioSource.DefaultFormat),
+                Task.FromResult(AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames }),
                 recordingStream,
                 TimeSpan.Zero,
                 AudioSourceLog,
@@ -174,8 +175,9 @@ public sealed class AudioProcessor : IAudioProcessor
         };
         var allTranscripts = Transcriber.Transcribe(
             identity,
-            transcriptionOptions,
+            audioSegment.StreamId,
             audioSegment.Audio,
+            transcriptionOptions,
             cancellationToken);
         var segments = TranscriptSplitter.GetSegments(audioSegment, allTranscripts, cancellationToken);
         var segmentTasks = new Queue<Task>();

@@ -3,7 +3,12 @@
 
 <div class="@Class copy-to-clipboard">
     <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
-    <ButtonRound Click="OnClick" ContentClass="flex-x gap-x-1" Class="@BtnClass" Tooltip="Copy" TooltipPosition="TooltipPosition.Top">
+    <ButtonRound
+        Click="OnClick"
+        ContentClass="flex-x gap-x-1"
+        Class="@BtnClass"
+        Tooltip="Copy"
+        FloatingPosition="FloatingPosition.Top">
         <i class="icon-copy text-xl" aria-hidden="true"></i>
         @if (OrdinalEquals(_lastCopiedText, Text) && !HideCopiedTag) {
             <div class="c-copied">

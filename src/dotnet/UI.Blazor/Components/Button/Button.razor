@@ -2,14 +2,8 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button class="@Class btn"
-        name="@Name"
         type="@GetButtonType()"
-        form="@FormId"
-        disabled="@IsDisabled"
-        autofocus="@IsAutofocused"
-        data-tooltip="@Tooltip"
-        data-tooltip-position="@(FloatingPosition.ToPositionString())"
-        @attributes="@AdditionalAttributes"
+        @attributes="@GetAttributes()"
         @onclick="Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
@@ -34,4 +28,29 @@
 
     private string GetButtonType()
         => Type.ToString().ToLower();
+
+    private IReadOnlyDictionary<string, object> GetAttributes() {
+        var attributes = AdditionalAttributes == null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(AdditionalAttributes);
+        if (!FormId.IsNullOrEmpty()) {
+            attributes.Add("form", FormId);
+        }
+        if (IsAutofocused) {
+            attributes.Add("autofocus", IsAutofocused);
+        }
+        if (!Name.IsNullOrEmpty()) {
+            attributes.Add("name", Name);
+        }
+        if (IsDisabled) {
+            attributes.Add("disabled", IsDisabled);
+        }
+        if (!Tooltip.IsNullOrEmpty()) {
+            attributes.Add("data-tooltip", Tooltip);
+        }
+        if (FloatingPosition != FloatingPosition.None) {
+            attributes.Add("data-tooltip-position", FloatingPosition.ToPositionString());
+        }
+        return attributes;
+    }
 }

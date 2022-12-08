@@ -9,12 +9,19 @@
 }
 
 @if (!HideSetDefaultButton) {
-    <ButtonRound Class="tile-btn" Tooltip="Set default" TooltipPosition="TooltipPosition.Top"
-                 Click="@OnSetDefaultClick">
+    <ButtonRound
+        Class="tile-btn"
+        Tooltip="Set default"
+        FloatingPosition="FloatingPosition.Top"
+        Click="@OnSetDefaultClick">
         <i class="icon-star text-xl @cls"></i>
     </ButtonRound>
 }
-<ButtonRound Class="tile-btn" Tooltip="Edit" TooltipPosition="TooltipPosition.Top" Click="OnEditClick">
+<ButtonRound
+    Class="tile-btn"
+    Tooltip="Edit"
+    FloatingPosition="FloatingPosition.Top"
+    Click="OnEditClick">
     <i class="icon-edit text-xl"></i>
 </ButtonRound>
 

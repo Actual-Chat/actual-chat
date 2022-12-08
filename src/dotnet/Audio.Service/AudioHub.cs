@@ -42,7 +42,7 @@ public class AudioHub : Hub
             yield return chunk;
     }
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> audioStream)
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, int preSkipFrames, IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
@@ -56,7 +56,7 @@ public class AudioHub : Hub
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        await AudioProcessor.ProcessAudio(audioRecord, frameStream, cancellationToken)
+        await AudioProcessor.ProcessAudio(audioRecord, preSkipFrames, frameStream, cancellationToken)
             .ConfigureAwait(false);
     }
 

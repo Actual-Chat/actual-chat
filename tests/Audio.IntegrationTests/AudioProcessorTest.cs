@@ -32,7 +32,7 @@ public class AudioProcessorTest : AppHostTestBase
         var audioRecord = new AudioRecord(
             session, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
-        await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
+        await audioProcessor.ProcessAudio(audioRecord, 333, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
         var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
@@ -172,7 +172,7 @@ public class AudioProcessorTest : AppHostTestBase
             ? new WebMStreamAdapter(log)
             : (IAudioStreamAdapter)new ActualOpusStreamAdapter(log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
-        await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
+        await audioProcessor.ProcessAudio(record, 222, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);
     }
 

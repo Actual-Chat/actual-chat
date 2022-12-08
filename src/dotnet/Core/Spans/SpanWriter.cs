@@ -60,7 +60,7 @@ public ref struct SpanWriter
 
     public int Write(ReadOnlySpan<byte> byteSpan, int length, int? position = null)
     {
-        byteSpan.CopyTo(Span.Slice(position ?? Position));
+        byteSpan.CopyTo(Span[(position ?? Position)..]);
 
         return UpdatePosition(length, position);
     }

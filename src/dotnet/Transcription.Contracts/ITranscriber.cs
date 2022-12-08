@@ -6,7 +6,8 @@ public interface ITranscriber
 {
     IAsyncEnumerable<Transcript> Transcribe(
         Symbol transcriberKey,
-        TranscriptionOptions options,
+        string streamId,
         AudioSource audioSource,
+        TranscriptionOptions options,
         CancellationToken cancellationToken);
 }
