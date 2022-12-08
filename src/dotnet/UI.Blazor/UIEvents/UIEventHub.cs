@@ -3,14 +3,16 @@ namespace ActualChat.UI.Blazor;
 public sealed class UIEventHub
 {
     private readonly Dictionary<Type, ImmutableList<Delegate>> _handlers = new ();
+    private Dispatcher? _dispatcher;
 
-    private Dispatcher Dispatcher { get; }
+    private IServiceProvider Services { get; }
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private ILogger Log { get; }
 
     public UIEventHub(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        Dispatcher = services.GetRequiredService<Dispatcher>();
+        Services = services;
     }
 
     public void Subscribe<TEvent>(UIEventHandler<TEvent> handler)

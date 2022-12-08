@@ -1,5 +1,5 @@
 import { Log, LogLevel } from 'logging';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 const LogScope: string = 'HistoryUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -20,14 +20,14 @@ export class HistoryUI {
         // enrich user state
         const enrichUserState = state =>
             JSON.stringify({
-                               _index: state?._index ?? 0,
-                               _id: uuidv4(),
-                               userState: state.userState
-                           });
+               _index: state?._index ?? 0,
+               _id: uuid(),
+               userState: state.userState
+            });
 
         const pushState = history.pushState;
         history.pushState = function(state) {
-            debugLog?.log(`pushState invoked:`, state);
+            debugLog?.log(`pushState:`, state);
             arguments[0] = {
                 _index: state._index,
                 userState: enrichUserState(state)
@@ -37,7 +37,7 @@ export class HistoryUI {
 
         const replaceState = history.replaceState;
         history.replaceState = function(state) {
-            debugLog?.log(`replaceState invoked:`, state);
+            debugLog?.log(`replaceState:`, state);
             arguments[0] = {
                 _index: state._index,
                 userState: enrichUserState(state)
