@@ -12,7 +12,7 @@
 <NavbarItem
     Url="@($"/chat/{chatId}")"
     IsSelected="@m.IsSelected"
-    data-menu="@(MenuRef.New<ChatMenu>(chatId).ToString())"
+    data-menu="@(MenuRef.New<ChatMenu>(chatId.Value).ToString())"
     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
     data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
     data-long-press-delay="500">
@@ -30,15 +30,15 @@
                 if (canWrite) {
                     <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle ChatId="chatId" Class="chat-menu-btn blackout"/>
                 <ActiveChatRemoveButton ChatId="@chatId" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
                     <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle ChatId="chatId" Class="chat-menu-btn blackout"/>
                 <div class="flex"
-                     data-menu="@(MenuRef.New<ChatMenu>(chatId).ToString())"
+                     data-menu="@(MenuRef.New<ChatMenu>(chatId.Value).ToString())"
                      data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                      data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound

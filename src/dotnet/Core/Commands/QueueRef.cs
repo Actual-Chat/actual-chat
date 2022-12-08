@@ -3,15 +3,11 @@ namespace ActualChat.Commands;
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct QueueRef(
-    string Name,
-    string? ShardKey = null,
-    QueuedCommandPriority Priority = QueuedCommandPriority.Default)
+    [property: DataMember(Order = 0)] string Name,
+    [property: DataMember(Order = 1)] Symbol ShardKey = default,
+    [property: DataMember(Order = 2)] QueuedCommandPriority Priority = QueuedCommandPriority.Default)
 {
     private static readonly char[] AnyDelimiter = { '.', '[' };
-
-    [DataMember(Order = 0)] public string Name { get; init; } = Name;
-    [DataMember(Order = 1)] public string ShardKey { get; init; } = ShardKey ?? "";
-    [DataMember(Order = 2)] public QueuedCommandPriority Priority { get; init; } = Priority;
 
     public QueueRef(string name, QueuedCommandPriority priority)
         : this(name, "", priority) { }
@@ -24,7 +20,7 @@ public readonly record struct QueueRef(
             QueuedCommandPriority.Low => "low",
             _ => "",
         };
-        return (!ShardKey.IsNullOrEmpty(), Priority is not QueuedCommandPriority.Default) switch {
+        return (!ShardKey.IsEmpty, Priority is not QueuedCommandPriority.Default) switch {
             (false, false) => Name,
             (false, true) => $"{Name}.{prioritySuffix}",
             (true, false) => $"{Name}[{ShardKey}]",
@@ -34,7 +30,7 @@ public readonly record struct QueueRef(
 
     // Helpers
 
-    public QueueRef ShardBy(string shardKey)
+    public QueueRef ShardBy(Symbol shardKey)
         => this with { ShardKey = shardKey };
 
     public QueueRef WithPriority(QueuedCommandPriority priority)

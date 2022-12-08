@@ -45,9 +45,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(chatId);
+            throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var dbChat = await DbChatResolver.Get(chatId.Value, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
     }
 

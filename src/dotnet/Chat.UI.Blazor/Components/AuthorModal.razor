@@ -11,8 +11,8 @@
 <DialogFrame Title="@title">
     <Body>
         <div class="flex-x items-center gap-x-3">
-            <AuthorCircle Id="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
-            <AuthorName Id="@AuthorId" Class="text-02 font-semibold text-lg" EnableDetailsPopup="false" />
+            <AuthorCircle AuthorId="@AuthorId" Size="SquareSize.Size12" ShowsPresence="true" ShowsRecording="true"/>
+            <AuthorName AuthorId="@AuthorId" Class="text-02 font-semibold text-lg" EnableDetailsPopup="false" />
         </div>
     </Body>
     <Buttons>
@@ -65,7 +65,7 @@
         var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
         var contactId = new ContactId(ownAccount.Id, peerChatId, AssumeValid.Option);
         var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
-        var canAddContact = !contactIds.Any(id => id == contactId.Value);
+        var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {
             Author = author,
             Account = account,

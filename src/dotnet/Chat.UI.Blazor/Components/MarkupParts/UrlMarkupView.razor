@@ -18,7 +18,7 @@ case MarkupUrlKind.Image:
     break;
 default:
     <a class="@cls" href="@Markup.Url" target="_blank"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.ChatId, _message.Key, Markup.Url))"
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.ChatId.Value, _message.Key, Markup.Url))"
        data-menu-trigger="@MenuTriggers.RightClick.Format()">
         @Markup.Url
     </a>

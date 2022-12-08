@@ -67,33 +67,33 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         newMoment.Should().Be(yesterday.AddSeconds(5).ToMoment());
     }
 
-    private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, string userId)
+    private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, UserId userId)
     {
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(chatId, 1),
-            ChatId = chatId,
+            ChatId = chatId.Value,
             LocalId = 1,
             Version = 1,
             IsAnonymous = false,
-            UserId = userId,
+            UserId = userId.Value,
         };
         dbContext.Authors.Add(dbAuthor);
         return dbAuthor;
     }
 
-    private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, string ownerUserId)
+    private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, UserId ownerUserId)
     {
         var chatId = new ChatId("testchat");
         var dbChat = new DbChat {
-            Id = chatId,
+            Id = chatId.Value,
             Version = 1,
             Title = "Test chat",
             CreatedAt = сreatedAt,
             IsPublic = true,
             Owners = {
                 new DbChatOwner {
-                    DbChatId = chatId,
-                    DbUserId = ownerUserId,
+                    DbChatId = chatId.Value,
+                    DbUserId = ownerUserId.Value,
                 },
             },
         };
@@ -111,9 +111,9 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
         var audioEntry = new DbChatEntry {
-            Id = id,
-            ChatId = id.ChatId,
-            AuthorId = authorId,
+            Id = id.Value,
+            ChatId = id.ChatId.Value,
+            AuthorId = authorId.Value,
             Kind = id.EntryKind,
             LocalId = id.LocalId,
             Version = 1,

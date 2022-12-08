@@ -99,17 +99,17 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(ChatEntry model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
-        ChatId = model.ChatId;
+        Id = id.Value;
+        ChatId = model.ChatId.Value;
         Kind = model.Kind;
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
 
-        AuthorId = model.AuthorId;
+        AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
         ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;

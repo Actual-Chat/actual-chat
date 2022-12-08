@@ -18,7 +18,7 @@
     <TileItem Unselected="true" Class="first-tile-item">
         <Icon>
             <AccountBadge
-                UserId="@(account?.Id ?? "")"
+                UserId="@(account?.Id ?? default)"
                 Size="SquareSize.Size9"
                 ShowPresence="false"
                 TextClass="hidden" />

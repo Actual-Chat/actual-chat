@@ -14,7 +14,7 @@ public sealed record AuthorRules(
         new(() => StandardError.NotFound<AuthorRules>()),
         (AuthorRules? a) => a is { ChatId.IsEmpty: false });
 
-    public static AuthorRules None(Symbol chatId) => new(chatId, AuthorFull.None, AccountFull.None);
+    public static AuthorRules None(ChatId chatId) => new(chatId, AuthorFull.None, AccountFull.None);
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite() => Permissions.Has(ChatPermissions.Write);

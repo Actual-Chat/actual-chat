@@ -39,7 +39,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Contact model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         Version = model.Version;
@@ -47,8 +47,8 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!Id.IsNullOrEmpty())
             return; // Only Version & TouchedAt can be changed for already existing contacts
 
-        Id = id;
-        OwnerId = model.OwnerId;
+        Id = id.Value;
+        OwnerId = model.OwnerId.Value;
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
         IsPinned = model.IsPinned;

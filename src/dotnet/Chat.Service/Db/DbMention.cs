@@ -38,7 +38,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
         this.RequireSameOrEmptyId(id);
 
         Id = id;
-        ChatId = model.ChatId;
+        ChatId = model.ChatId.Value;
         MentionId = model.MentionId;
         EntryId = model.EntryId.LocalId;
     }

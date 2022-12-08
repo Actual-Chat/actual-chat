@@ -21,8 +21,8 @@
 </MainHeader>
 
 <div class="user-info_badge">
-    <AccountCircle UserId="@UserId" Size="SquareSize.Size12" ShowPresence="true" />
-    <AccountName UserId="@UserId" Class="text-02 font-semibold text-lg"/>
+    <AccountCircle UserId="@account.Id" Size="SquareSize.Size12" ShowPresence="true" />
+    <AccountName UserId="@account.Id" Class="text-02 font-semibold text-lg"/>
 </div>
 
 @if (m.CanAddContact || m.CanChat) {
@@ -77,7 +77,7 @@
             Account = account,
             PeerChatId = peerChatId,
             ContactId = contactId,
-            CanAddContact = !contactIds.Any(x => x == contactId.Value),
+            CanAddContact = !contactIds.Any(id => id == contactId),
             CanChat = true,
         };
     }

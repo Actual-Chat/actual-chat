@@ -14,7 +14,7 @@ public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
     [ComputeMethod(AutoInvalidationDelay = 61)]
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
     {
-        var dbUserPresence = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        var dbUserPresence = await DbUserPresenceResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
         if (dbUserPresence == null)
             return Presence.Offline;
 

@@ -33,7 +33,7 @@ public class GoogleTranscriberTest : TestBase
             CoreSettings,
             new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
@@ -57,7 +57,7 @@ public class GoogleTranscriberTest : TestBase
             CoreSettings,
             new MemoryCache(Options.Create(new MemoryCacheOptions())));
         var options = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,

@@ -27,7 +27,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         if (roleId.ChatId != chatId)
             return null;
 
-        var dbRole = await DbRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
+        var dbRole = await DbRoleResolver.Get(default, roleId.Value, cancellationToken).ConfigureAwait(false);
         return dbRole?.ToModel();
     }
 
@@ -141,7 +141,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         if (change.IsCreate(out var update)) {
             roleId.RequireNone();
             var localId = await DbRoleIdGenerator
-                .Next(dbContext, chatId, cancellationToken)
+                .Next(dbContext, chatId.Value, cancellationToken)
                 .ConfigureAwait(false);
             roleId = new RoleId(chatId, localId, AssumeValid.Option);
             role = new Role(roleId) {
@@ -197,8 +197,8 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             // Adding items
             foreach (var authorId in update.AuthorIds.AddedItems.Distinct())
                 dbContext.AuthorRoles.Add(new() {
-                    DbRoleId = roleId,
-                    DbAuthorId = authorId
+                    DbRoleId = roleId.Value,
+                    DbAuthorId = authorId.Value,
                 });
             // Removing items
             var removedAuthorIds = update.AuthorIds.RemovedItems.Distinct().Select(i => i.Value).ToList();

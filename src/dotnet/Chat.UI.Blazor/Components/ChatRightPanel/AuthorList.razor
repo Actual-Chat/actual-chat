@@ -12,13 +12,13 @@
         @foreach (var authorId in m.OnlineAuthorIds) {
             @if (authorId == _ownAuthor?.Id) {
                 <AuthorBadge
-                    Id="@authorId"
+                    AuthorId="@authorId"
                     ShowsPresence="true"
                     Click="OnSelfClick"
                     TextClass="font-medium text-02 select-none"/>
             } else {
                 <AuthorBadge
-                    Id="@authorId"
+                    AuthorId="@authorId"
                     ShowsPresence="true"
                     Click="() => OnAuthorClick(authorId)"
                     TextClass="font-medium text-02 select-none"/>
@@ -27,7 +27,7 @@
         <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Length</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
             <AuthorBadge
-                Id="@authorId"
+                AuthorId="@authorId"
                 ShowsPresence="true"
                 Click="() => OnAuthorClick(authorId)"
                 TextClass="font-medium text-02 select-none"/>

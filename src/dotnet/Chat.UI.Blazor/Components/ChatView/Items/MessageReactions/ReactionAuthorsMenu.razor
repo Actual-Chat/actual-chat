@@ -4,7 +4,7 @@
 <ul>
     @foreach (var authorId in _firstAuthorIds) {
         <li class="reaction-authors-menu-item">
-            <AuthorBadge Id="@authorId" Size="SquareSize.Size5"/>
+            <AuthorBadge AuthorId="@authorId" Size="SquareSize.Size5"/>
             <EmojiIcon Id="@_emoji" class="reaction-authors-menu-item-emoji"/>
         </li>
     }

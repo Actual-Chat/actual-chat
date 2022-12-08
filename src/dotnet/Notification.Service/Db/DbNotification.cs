@@ -73,7 +73,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     public void UpdateFrom(Notification model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
         var chatEntryNotification = model.ChatEntryNotification;
@@ -82,16 +82,16 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
                 throw new ArgumentOutOfRangeException(nameof(model), "EntryId must be a Text entry Id here.");
         }
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
-        UserId = model.UserId;
+        UserId = model.UserId.Value;
         Kind = model.Kind;
         Title = model.Title;
         Content = model.Content;
         IconUrl = model.IconUrl;
-        ChatId = model.ChatId;
+        ChatId = model.ChatId.Value;
         TextEntryLocalId = chatEntryNotification?.EntryId.LocalId;
-        AuthorId = chatEntryNotification?.AuthorId;
+        AuthorId = chatEntryNotification?.AuthorId.Value;
         CreatedAt = model.CreatedAt;
         HandledAt = model.HandledAt;
     }

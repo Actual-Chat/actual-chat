@@ -46,7 +46,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
 
         Id = id;
         Version = model.Version;
-        EntryId = entryId;
+        EntryId = entryId.Value;
         Index = model.Index;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;

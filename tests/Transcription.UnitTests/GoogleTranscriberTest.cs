@@ -15,7 +15,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task DuplicateFinalResponsesTest()
     {
         var options = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
@@ -189,7 +189,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var options = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = new Language("ru-RU"),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,

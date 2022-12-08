@@ -64,11 +64,11 @@ public class DbRole : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Role model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
-        ChatId = id.ChatId;
+        Id = id.Value;
+        ChatId = id.ChatId.Value;
         LocalId = id.LocalId;
         Version = model.Version;
         SystemRole = model.SystemRole;

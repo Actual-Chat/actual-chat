@@ -27,10 +27,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(AccountFull model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id);
+        this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        Id = id;
+        Id = id.Value;
         Version = model.Version;
         Status = model.Status;
     }

@@ -75,9 +75,6 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     public override string ToString() => Value;
     public static implicit operator ChatId(PeerChatId source) => new(source.Id, source.UserId1, source.UserId2, AssumeValid.Option);
     public static implicit operator Symbol(PeerChatId source) => source.Id;
-    public static implicit operator string(PeerChatId source) => source.Value;
-    public static implicit operator PeerChatId(Symbol source) => new(source);
-    public static implicit operator PeerChatId(string source) => new(source);
 
     // Equality
 

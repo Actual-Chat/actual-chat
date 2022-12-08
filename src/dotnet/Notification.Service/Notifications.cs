@@ -85,7 +85,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = account.Id,
+                UserId = account.Id.Value,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };

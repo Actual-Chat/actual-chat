@@ -47,14 +47,14 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (Computed.IsInvalidating()) {
             InvalidatePresenceIfOffline(userId);
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(default, userId, default);
+                _ = AuthBackend.GetUser(default, userId.Value, default);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await DbUsers.Get(dbContext, userId.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
 
@@ -154,7 +154,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             .FirstOrDefaultAsync(x => x.UserId == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {
-            dbUserPresence = new DbUserPresence() { UserId = userId };
+            dbUserPresence = new DbUserPresence() { UserId = userId.Value };
             dbContext.Add(dbUserPresence);
         }
         dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;

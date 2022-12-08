@@ -32,8 +32,8 @@
 }
 
 <div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId.Value, Message.Key).ToString())"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId.Value, Message.Key, "").ToString())"
      data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
      data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
      data-long-press-delay="500">
@@ -41,7 +41,7 @@
         <div class="chat-message group px-1.5 py-1 relative">
             @if (showPicture || isReply) {
                 <div class="m-1.5">
-                    <ChatMessageAuthorCircle Id="@entry.AuthorId" Click="@OnAuthorClick"/>
+                    <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" Click="@OnAuthorClick"/>
                 </div>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
@@ -52,7 +52,7 @@
             <div class="flex-1 overflow-hidden">
                 @if (showHeader || isReply) {
                     <div class="flex-x items-baseline header chat-message-header ml-1">
-                        <AuthorName Id="@entry.AuthorId" Class="chat-message-author-name" />
+                        <AuthorName AuthorId="@entry.AuthorId" Class="chat-message-author-name" />
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
                         @* &nbsp; *@
                         @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@

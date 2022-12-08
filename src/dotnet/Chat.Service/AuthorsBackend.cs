@@ -44,7 +44,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (authorId == Bots.GetWalleId(chatId))
             return Bots.GetWalle(chatId);
 
-        var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        var dbAuthor = await DbAuthorResolver.Get(authorId.Value, cancellationToken).ConfigureAwait(false);
         if (dbAuthor == null)
             return null;
 
@@ -184,15 +184,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         var localId = await DbAuthorLocalIdGenerator
-            .Next(dbContext, chatId, cancellationToken)
+            .Next(dbContext, chatId.Value, cancellationToken)
             .ConfigureAwait(false);
         var id = DbAuthor.ComposeId(chatId, localId);
         dbAuthor = new() {
             Id = id,
             Version = VersionGenerator.NextVersion(),
-            ChatId = chatId,
+            ChatId = chatId.Value,
             LocalId = localId,
-            UserId = account.Id,
+            UserId = account.Id.Value,
             AvatarId = newAvatar?.Id,
             IsAnonymous = true,
         };
@@ -320,8 +320,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
-            Name = RandomNameGenerator.Default.Generate(author.Id),
-            Picture = DefaultUserPicture.GetAvataaar(author.Id),
+            Name = RandomNameGenerator.Default.Generate(author.Id.Value),
+            Picture = DefaultUserPicture.GetAvataaar(author.Id.Value),
             Bio = "",
         };
 }

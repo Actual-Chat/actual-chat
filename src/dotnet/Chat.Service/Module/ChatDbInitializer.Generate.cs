@@ -16,15 +16,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         var defaultChatId = Constants.Chat.DefaultChatId;
         var adminUserId = Constants.User.Admin.UserId;
         var dbChat = new DbChat {
-            Id = defaultChatId,
+            Id = defaultChatId.Value,
             Version = VersionGenerator.NextVersion(),
             Title = "The Actual One",
             CreatedAt = Clocks.SystemClock.Now,
             IsPublic = true,
             Owners = {
                 new DbChatOwner {
-                    DbChatId = defaultChatId,
-                    DbUserId = adminUserId,
+                    DbChatId = defaultChatId.Value,
+                    DbUserId = adminUserId.Value,
                 },
             },
         };
@@ -32,11 +32,11 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(defaultChatId, 1),
-            ChatId = defaultChatId,
+            ChatId = defaultChatId.Value,
             LocalId = 1,
             Version = VersionGenerator.NextVersion(),
             IsAnonymous = false,
-            UserId = adminUserId,
+            UserId = adminUserId.Value,
         };
         dbContext.Authors.Add(dbAuthor);
 
@@ -78,7 +78,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbAuthor {
                 Id = DbAuthor.ComposeId(chatId, i + 1),
-                ChatId = chatId,
+                ChatId = chatId.Value,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
                 IsAnonymous = false,
@@ -240,7 +240,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
             id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
             var textEntry = new DbChatEntry {
-                Id = id,
+                Id = id.Value,
                 ChatId = dbChat.Id,
                 Kind = ChatEntryKind.Text,
                 LocalId = localId,

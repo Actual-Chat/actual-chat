@@ -59,9 +59,6 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(ContactId source) => source.Id;
-    public static implicit operator string(ContactId source) => source.Value;
-    public static implicit operator ContactId(Symbol source) => new(source);
-    public static implicit operator ContactId(string source) => new(source);
 
     // Equality
 

@@ -44,9 +44,9 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id;
         Version = model.Version;
-        AuthorId = model.AuthorId;
-        EntryId = model.EntryId;
-        EmojiId = model.EmojiId;
+        AuthorId = model.AuthorId.Value;
+        EntryId = model.EntryId.Value;
+        EmojiId = model.EmojiId.Value;
         ModifiedAt = model.ModifiedAt;
     }
 }

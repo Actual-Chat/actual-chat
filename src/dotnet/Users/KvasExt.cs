@@ -8,12 +8,12 @@ public static class KvasExt
 
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
+        var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId.Value), cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
     public static Task SetUserChatSettings(this IKvas kvas, ChatId chatId, UserChatSettings value, CancellationToken cancellationToken)
-        => kvas.Set(UserChatSettings.GetKvasKey(chatId), value, cancellationToken);
+        => kvas.Set(UserChatSettings.GetKvasKey(chatId.Value), value, cancellationToken);
 
     // UserAvatarSettings
 

@@ -24,7 +24,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (contactId.OwnerId.Id != (Symbol)ownerId)
             throw new ArgumentOutOfRangeException(nameof(contactId));
 
-        var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
+        var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel()
             ?? new Contact(contactId); // A fake contact
 
@@ -47,7 +47,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ownerId + ' ';
+        var idPrefix = ownerId.Value + ' ';
         var contactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .OrderBy(a => a.Id)

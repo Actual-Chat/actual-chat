@@ -55,9 +55,6 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(RoleId source) => source.Id;
-    public static implicit operator string(RoleId source) => source.Value;
-    public static implicit operator RoleId(Symbol source) => new(source);
-    public static implicit operator RoleId(string source) => new(source);
 
     // Equality
 

@@ -37,7 +37,7 @@ public class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
-        var recognizerId = $"r-{prefix}-{options.Language.ToLowerInvariant()}";
+        var recognizerId = $"r-{prefix}-{options.Language.Value.ToLowerInvariant()}";
         var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
         var process = new GoogleTranscriberProcess(recognizerTask, options, audioSource, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
@@ -73,7 +73,7 @@ public class GoogleTranscriber : ITranscriber
                             Recognizer = new Recognizer {
                                 Model = "latest_long",
                                 DisplayName = recognizerId,
-                                LanguageCodes = { options.Language },
+                                LanguageCodes = { options.Language.Value },
                                 DefaultRecognitionConfig = new RecognitionConfig {
                                     Features = new RecognitionFeatures {
                                         EnableAutomaticPunctuation = true,

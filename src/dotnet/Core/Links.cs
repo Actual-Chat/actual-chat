@@ -7,8 +7,8 @@ public static class Links
             ? $"/chat/{chatId}#{entryId}"
             : $"/chat/{chatId}";
 
-    public static string UserPage(string userId)
-        => $"/u/{userId.UrlEncode()}";
+    public static string UserPage(UserId userId)
+        => $"/u/{userId.Value.UrlEncode()}";
 
     public static string SettingsPage()
         => "/settings";

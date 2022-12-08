@@ -50,7 +50,7 @@
         Clock.Delay(delay, _disposeToken).ContinueWith(_ => {
             if (_disposeToken.IsCancellationRequested)
                 return;
-            StateHasChanged();
+            this.StateHasChangedAsync();
         }, TaskScheduler.Current);
         return false;
     }

@@ -86,7 +86,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         NotificationId notificationId,
         CancellationToken cancellationToken)
     {
-        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
         return dbNotification.Require().ToModel();
     }
 

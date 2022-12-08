@@ -33,7 +33,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
             return null;
 
         // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(default, userId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(default, userId.Value, cancellationToken).ConfigureAwait(false);
         AccountFull? account;
         if (user == null) {
             account = GetGuestAccount(userId);
@@ -41,7 +41,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
                 return null;
         }
         else {
-            var dbAccount = await DbAccountResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+            var dbAccount = await DbAccountResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
             account = dbAccount?.ToModel(user);
             if (account == null)
                 return null;
@@ -117,7 +117,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         if (userId.IsNone || !userId.IsGuestId)
             return null;
 
-        var name = RandomNameGenerator.Default.Generate(userId);
+        var name = RandomNameGenerator.Default.Generate(userId.Value);
         var user = new User(userId, name);
         var account = new AccountFull(user);
         return account;
