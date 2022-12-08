@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<CascadingValue Value="@this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private readonly List<Step> _steps = new();
+    private Step? _currentStep;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public Step? CurrentStep => _currentStep;
+
+    public void AddStep(Step step) {
+        _steps.Add(step);
+        if (_steps.Count == 1) {
+            _currentStep = step;
+        }
+    }
+
+    public bool CanMoveForward => !IsLast;
+
+    public bool CanMoveBack => !IsFirst;
+
+    public void MoveForward() {
+        if (_currentStep == null)
+            return;
+        var index = _steps.IndexOf(_currentStep);
+        _currentStep = _steps.ElementAtOrDefault(index + 1);
+    }
+
+    public void MoveBack() {
+        if (_currentStep == null)
+            return;
+        var index = _steps.IndexOf(_currentStep);
+        _currentStep = _steps.ElementAtOrDefault(index - 1);
+    }
+
+    public bool IsLast
+        => _currentStep != null && _steps.IndexOf(_currentStep) == _steps.Count - 1;
+
+    public bool IsFirst
+        => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
+}
