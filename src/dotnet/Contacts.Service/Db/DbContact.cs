@@ -26,8 +26,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public DbContact() { }
-    public DbContact(Contact contact)
-        => UpdateFrom(contact);
+    public DbContact(Contact contact) => UpdateFrom(contact);
 
     public Contact ToModel()
         => new(new ContactId(Id), Version) {
