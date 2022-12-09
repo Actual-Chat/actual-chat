@@ -1,61 +1,30 @@
 @namespace ActualChat.UI.Blazor.App
 
-@{
-    var leftCls = IsLeft ? "" : "disabled";
-    var rightCls = IsLeft ? "disabled" : "";
-}
-
-<div class="timeline-item page-item">
-    <div class="part-left flex-x w-1/2 border-r @leftCls">
-        <div class="content flex-x w-full">
-            <div class="context-text flex-y w-full items-end justify-center">
-                <div class="text-top">
-                    @if (IsLeft) {
-                        @TextTop
-                    }
-                </div>
-                <div class="text-bottom w-80 text-end">
-                    @if (IsLeft) {
-                        @TextBottom
-                    }
-                </div>
-            </div>
-            <div class="content-icon flex items-center justify-center min-w-24 mx-2 @IconClass">
-                @if (IsLeft) {
-                    @ContentIcon
-                }
-            </div>
-        </div>
-        <div class="flex-y min-w-4">
-            <div class="top h-1/2 border-b"></div>
-            <div class="bottom h-1/2 border-t"></div>
-        </div>
-    </div>
-    <div class="part-right flex-x w-1/2 border-l @rightCls">
-        <div class="flex-y min-w-4">
-            <div class="top h-1/2 border-b"></div>
-            <div class="bottom h-1/2 border-t"></div>
-        </div>
-        <div class="content flex-x w-full">
-            <div class="content-icon flex items-center justify-center min-w-24 mx-2 @IconClass">
-                @if (!IsLeft) {
-                    @ContentIcon
-                }
-            </div>
-            <div class="context-text flex-y w-full items-start justify-center">
-                <div class="text-top">
-                    @if (!IsLeft) {
-                        @TextTop
-                    }
-                </div>
-                <div class="text-bottom w-80">
-                    @if (!IsLeft) {
-                        @TextBottom
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="timeline-item">
+    <TimelineItemLeft
+        IconClass="@IconClass"
+        IsLeft="@IsLeft"
+        IsMobile="@IsMobile"
+        TextTop="@TextTop"
+        TextBottom="@TextBottom">
+        <ChildContent>
+            @if (IsLeft) {
+                @ContentIcon
+            }
+        </ChildContent>
+    </TimelineItemLeft>
+    <TimelineItemRight
+        IconClass="@IconClass"
+        IsLeft="@IsLeft"
+        IsMobile="@IsMobile"
+        TextTop="@TextTop"
+        TextBottom="@TextBottom">
+        <ChildContent>
+            @if (!IsLeft) {
+                @ContentIcon
+            }
+        </ChildContent>
+    </TimelineItemRight>
 
 </div>
 
@@ -65,5 +34,5 @@
     [Parameter] public string TextTop { get; set; } = "";
     [Parameter] public string TextBottom { get; set; } = "";
     [Parameter] public string IconClass { get; set; } = "";
-
+    [Parameter] public bool IsMobile { get; set; }
 }
