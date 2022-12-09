@@ -1,0 +1,164 @@
+.landing {
+    @apply w-full;
+}
+.landing .page {
+    @apply flex-y h-screen;
+}
+.landing .page-scrolling {
+    @apply flex-y h-full;
+}
+.landing .page-1 {
+    @apply bg-[#0436A3];
+}
+.landing .page-1 .page-1-wrapper {
+    @apply w-full h-full pt-16 bg-contain;
+    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses.svg')] bg-no-repeat;
+}
+.landing.mobile .page-1 {
+    @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
+}
+.landing.mobile .page-1 .page-1-wrapper {
+    @apply w-full h-full pt-12 bg-cover;
+    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses-mobile.svg')] bg-no-repeat;
+}
+.landing .page-1 .main-text {
+    @apply flex-y w-3/5 justify-center;
+}
+.landing.mobile .page-1 .main-text {
+    @apply flex-y w-full justify-center;
+}
+.landing .page-1 .signin-button-group {
+    @apply flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1;
+}
+.landing.mobile .page-1 .signin-button-group {
+    @apply text-xl my-12 px-4;
+}
+.landing .page-2 {
+    @apply bg-01;
+}
+.landing-auth-btn.btn.btn-round {
+    @apply text-lg md:text-base;
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
+}
+.landing-auth-btn.btn.btn-round .btn-content {
+    @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
+}
+
+/* Header */
+.landing-header {
+    @apply absolute h-16 top-0 z-10 flex-x w-full py-2 px-16 items-center bg-transparent overflow-hidden;
+}
+.mobile .landing-header {
+    @apply px-2 h-14;
+}
+.landing-header .light-icon,
+.landing-header .dark-icon {
+    @apply min-w-10 min-h-10 max-h-10;
+}
+.mobile .landing-header .light-icon,
+.mobile .landing-header .dark-icon {
+    @apply min-w-8 min-h-8 max-h-8;
+}
+.landing-header .light-title,
+.landing-header .dark-title {
+    @apply min-h-6 max-h-6;
+}
+.mobile .landing-header .light-title,
+.mobile .landing-header .dark-title {
+    @apply min-h-8 max-h-8 top-3;
+}
+.mobile .landing-header .dark-title {
+    @apply max-w-40;
+}
+.landing-header .light-icon,
+.landing-header .light-title {
+    @apply opacity-100 transition-all ease-in-out duration-200;
+}
+
+.landing-header .dark-icon,
+.landing-header .dark-title {
+    @apply opacity-0 transition-all ease-in-out duration-200;
+}
+.landing-header .header-text {
+    @apply flex-x gap-x-4 min-w-fit w-2/5 items-center justify-center px-4 font-medium;
+    @apply text-04 transition-all ease-in-out duration-100;
+}
+.mobile .landing-header .header-text {
+    @apply hidden;
+}
+.landing-header .signin-text {
+    @apply flex-x gap-x-4 h-10 items-center rounded-full border px-2 py-1 font-semibold;
+    @apply text-04 border-bg-04 transition-all ease-in-out duration-100;
+}
+.landing-header.filled .light-icon,
+.landing-header.filled .light-title {
+    @apply opacity-0 transition-all ease-in-out duration-100;
+}
+.landing-header.filled .dark-icon,
+.landing-header.filled .dark-title {
+    @apply opacity-100 transition-all ease-in-out duration-100;
+}
+.landing-header.filled .header-text {
+    @apply text-01 transition-all ease-in-out duration-100;
+}
+.landing-header.filled .signin-text {
+    @apply text-01 border-text-01 transition-all ease-in-out duration-100;
+}
+.landing-header.blur-bg {
+    @apply backdrop-blur-2xl;
+}
+.landing-header .signin-button.btn {
+    @apply min-w-10 border border-bg-01 bg-transparent;
+}
+.landing-header.filled .signin-button.btn {
+    @apply border-text-01;
+}
+.landing-header .signin-button.btn .btn-content {
+    @apply min-w-10 max-w-10 min-h-10 max-h-10 bg-transparent text-04;
+}
+.landing-header.filled .signin-button.btn .btn-content {
+    @apply text-01;
+}
+.landing-header .menu-button.btn {
+    @apply min-w-10 bg-transparent;
+}
+.landing-header .menu-button.btn .btn-content {
+    @apply min-w-10 max-w-10 min-h-10 max-h-10 bg-transparent text-04;
+}
+.landing-header.filled .menu-button.btn .btn-content {
+    @apply text-01;
+}
+
+.timeline-item {
+    @apply flex-x h-24;
+}
+.mobile .timeline-item {
+    @apply flex-x h-auto;
+}
+.timeline-item * {
+    @apply border-text-01;
+}
+.timeline-item .disabled * {
+    @apply border-0;
+}
+.timeline-item .content {
+    /*@apply flex-x;*/
+}
+.mobile .timeline-item .content {
+    @apply px-4;
+}
+.mobile .timeline-item .part-right .content {
+    @apply flex-y gap-y-2;
+}
+.timeline-item .content-icon {
+    @apply flex items-center justify-center min-w-24 mx-2;
+}
+.mobile .timeline-item .part-left .content-icon {
+    @apply justify-end;
+}
+.mobile .timeline-item .content-icon {
+    @apply justify-start m-0;
+}
+.mobile .timeline-item .content-icon.left {
+    @apply justify-end mx-4;
+}

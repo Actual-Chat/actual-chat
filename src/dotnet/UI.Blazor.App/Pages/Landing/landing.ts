@@ -27,7 +27,7 @@ export class Landing {
         this.blazorRef = blazorRef;
         this.header = this.landing.querySelector('.landing-header');
         this.getInitialData();
-        window.addEventListener('keydown', this.keyboardHandler, {passive: false, });
+        window.addEventListener('keydown', this.keyboardHandler, { passive: false, });
         this.landing.addEventListener('wheel', this.smartScrollThrottled);
     }
 
@@ -96,8 +96,10 @@ export class Landing {
     }
 
     private scrollToPage = (page: HTMLElement, event: Event, block: ScrollBlock = ScrollBlock.start) => {
-        this.preventEvent(event);
-        page.scrollIntoView({behavior: 'smooth', block: block, })
+        if (!this.landing.classList.contains('mobile')) {
+            this.preventEvent(event);
+            page.scrollIntoView({ behavior: 'smooth', block: block, })
+        }
         setTimeout(() => {
             this.getPageData();
         }, 500);
@@ -165,14 +167,15 @@ export class Landing {
     }
 
     private setHeaderStyle = () => {
-        let page = this.currentPageNumber;
         let list = this.header.classList;
-        if (page == 1) {
-            list.remove('filled');
-        } else {
+        let firstPage = this.pages[1] as HTMLElement;
+        let firstPageBottom = firstPage.getBoundingClientRect().bottom;
+        if (firstPageBottom <= 0) {
             if (!list.contains('filled')) {
                 list.add('filled');
             }
+        } else {
+            list.remove('filled');
         }
     }
 
