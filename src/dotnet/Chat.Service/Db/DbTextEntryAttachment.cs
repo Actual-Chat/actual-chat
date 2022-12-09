@@ -21,7 +21,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
 
     public static string ComposeId(ChatEntryId entryId, int index)
     {
-        if (entryId.EntryKind != ChatEntryKind.Text)
+        if (entryId.Kind != ChatEntryKind.Text)
             throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support attachments.");
         return Invariant($"{entryId.ChatId}:{entryId.LocalId}:{index}");
     }

@@ -87,7 +87,7 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
     // Parsing
 
     private static string Format(UserId userId1, UserId userId2)
-        => $"{IdPrefix}{userId1}-{userId2}";
+        => userId1.IsNone ? "" : $"{IdPrefix}{userId1}-{userId2}";
 
     public static PeerChatId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
@@ -104,13 +104,13 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
             return false;
 
         var tail = s.AsSpan(2);
-        var dashIndex = tail.IndexOf('-');
-        if (dashIndex < 0)
+        var userId1Length = tail.IndexOf('-');
+        if (userId1Length < 0)
             return false;
 
-        if (!UserId.TryParse(tail[..dashIndex].ToString(), out var userId1))
+        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1))
             return false;
-        if (!UserId.TryParse(tail[(dashIndex + 1)..].ToString(), out var userId2))
+        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
             return false;
         if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
             return false; // Wrong sort order

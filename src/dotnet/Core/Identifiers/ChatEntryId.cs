@@ -19,9 +19,9 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     // Set on deserialization
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatEntryKind EntryKind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatId ChatId { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatEntryKind Kind { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId { get; }
 
@@ -39,18 +39,19 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     public ChatEntryId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind entryKind, long localId, AssumeValid _)
+    public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind kind, long localId, AssumeValid _)
     {
         Id = id;
         ChatId = chatId;
-        EntryKind = entryKind;
+        Kind = kind;
         LocalId = localId;
     }
 
-    public ChatEntryId(ChatId chatId, ChatEntryKind entryKind, long localId, AssumeValid _)
+    public ChatEntryId(ChatId chatId, ChatEntryKind kind, long localId, AssumeValid _)
     {
-        Id = Format(chatId, entryKind, localId);
+        Id = Format(chatId, kind, localId);
         ChatId = chatId;
+        Kind = kind;
         LocalId = localId;
     }
 
@@ -69,8 +70,8 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     // Parsing
 
-    private static string Format(ChatId chatId, ChatEntryKind entryKind, long localId)
-        => Invariant($"{chatId}:{entryKind:D}:{localId}");
+    private static string Format(ChatId chatId, ChatEntryKind kind, long localId)
+        => chatId.IsNone ? "" : Invariant($"{chatId}:{kind:D}:{localId}");
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>();
@@ -84,25 +85,30 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
             return true; // None
 
         var chatIdLength = s.OrdinalIndexOf(":");
-        if (chatIdLength == -1)
+        if (chatIdLength < 0)
             return false;
 
         if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
             return false;
 
-        var entryKindLength = s.OrdinalIndexOf(":", chatIdLength + 1);
-        if (entryKindLength == -1)
+        var kindStart = chatIdLength + 1;
+        var kindLength = s.OrdinalIndexOf(":", kindStart);
+        if (kindLength < 0)
             return false;
 
-        var sEntryKind = s[(chatIdLength + 1)..entryKindLength];
-        if (!Enum.TryParse<ChatEntryKind>(sEntryKind, out var entryKind))
+        var sKind = s.AsSpan(kindStart, kindLength - kindStart);
+        if (!int.TryParse(sKind, NumberStyles.Integer, CultureInfo.InvariantCulture, out var kind))
+            return false;
+        if (kind is < 0 or > 2)
             return false;
 
-        var sLocalId = s[(entryKindLength + 1)..];
+        var sLocalId = s.AsSpan(kindLength + 1);
         if (!long.TryParse(sLocalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
             return false;
+        if (localId < 0)
+            return false;
 
-        result = new ChatEntryId(s, chatId, entryKind, localId, AssumeValid.Option);
+        result = new ChatEntryId(s, chatId, (ChatEntryKind) kind, localId, AssumeValid.Option);
         return true;
     }
 }

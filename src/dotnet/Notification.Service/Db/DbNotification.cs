@@ -78,7 +78,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
 
         var chatEntryNotification = model.ChatEntryNotification;
         if (chatEntryNotification != null) {
-            if (chatEntryNotification.EntryId.EntryKind != ChatEntryKind.Text)
+            if (chatEntryNotification.EntryId.Kind != ChatEntryKind.Text)
                 throw new ArgumentOutOfRangeException(nameof(model), "EntryId must be a Text entry Id here.");
         }
 

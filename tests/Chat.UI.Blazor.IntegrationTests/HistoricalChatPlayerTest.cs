@@ -114,7 +114,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
             Id = id.Value,
             ChatId = id.ChatId.Value,
             AuthorId = authorId.Value,
-            Kind = id.EntryKind,
+            Kind = id.Kind,
             LocalId = id.LocalId,
             Version = 1,
             BeginsAt = beginsAt,

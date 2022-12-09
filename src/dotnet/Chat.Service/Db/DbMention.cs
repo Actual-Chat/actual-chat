@@ -19,7 +19,7 @@ public class DbMention : IHasId<string>, IRequirementTarget
 
     public static string ComposeId(ChatEntryId entryId, string authorId)
     {
-        if (entryId.EntryKind != ChatEntryKind.Text)
+        if (entryId.Kind != ChatEntryKind.Text)
             throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support mentions.");
 
         return $"{entryId}:{authorId}";

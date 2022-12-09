@@ -158,7 +158,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var chatTile = await ChatsBackend.GetTile(
                 entryId.ChatId,
-                entryId.EntryKind,
+                entryId.Kind,
                 idTile.Range,
                 false,
                 cancellationToken)

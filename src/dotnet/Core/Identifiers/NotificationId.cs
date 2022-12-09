@@ -70,7 +70,7 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
     // Parsing
 
     private static string Format(UserId userId, Ulid ulid)
-        => $"{userId}:{ulid}";
+        => userId.IsNone ? "" : $"{userId}:{ulid}";
 
     public static NotificationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId>();
@@ -83,13 +83,13 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var columnIndex = s.IndexOf(':');
-        if (columnIndex <= 0)
+        var userIdLength = s.IndexOf(':');
+        if (userIdLength <= 0)
             return false;
 
-        if (!UserId.TryParse(s[..columnIndex], out var ownerId))
+        if (!UserId.TryParse(s[..userIdLength], out var ownerId))
             return false;
-        if (!Ulid.TryParse(s[(columnIndex + 1)..], out var ulid))
+        if (!Ulid.TryParse(s.AsSpan(userIdLength + 1), out var ulid))
             return false;
 
         result = new NotificationId(s, ownerId, ulid, AssumeValid.Option);

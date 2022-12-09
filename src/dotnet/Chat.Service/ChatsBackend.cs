@@ -404,7 +404,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             _ = await GetOrCreatePeerChat(chatId, cancellationToken).ConfigureAwait(false);
 
         // Injecting mention names into the markup
-        if (entry.Kind == ChatEntryKind.Text && entry.Content.Length > 0) {
+        if (entry is { Kind: ChatEntryKind.Text, Content.Length: > 0 }) {
             var content = entry.Content;
             var markup = MarkupParser.Parse(content);
             var mentionNamer = new MentionNamer(ChatMentionResolverFactory.Create(chatId));
@@ -442,7 +442,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            InvalidateTiles(entryId.ChatId, entryId.EntryKind, entryId.LocalId, ChangeKind.Update);
+            InvalidateTiles(entryId.ChatId, entryId.Kind, entryId.LocalId, ChangeKind.Update);
             return default!;
         }
 
@@ -567,13 +567,13 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         //     later we'll change this to something that's more performant.
         var entryId = entry.Id;
         var chatId = entry.ChatId;
-        var entryKind = entry.Kind;
+        var kind = entry.Kind;
         var isNew = entryId.LocalId == 0;
 
         DbChatEntry dbEntry;
         if (isNew) {
-            var localId = await DbNextLocalId(dbContext, entry.ChatId, entryKind, cancellationToken).ConfigureAwait(false);
-            entryId = new ChatEntryId(chatId, entryKind, localId, AssumeValid.Option);
+            var localId = await DbNextLocalId(dbContext, entry.ChatId, kind, cancellationToken).ConfigureAwait(false);
+            entryId = new ChatEntryId(chatId, kind, localId, AssumeValid.Option);
             entry = entry with {
                 Id = entryId,
                 Version = VersionGenerator.NextVersion(),

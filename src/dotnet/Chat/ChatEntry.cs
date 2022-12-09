@@ -45,7 +45,7 @@ public sealed record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId => Id.LocalId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public ChatEntryKind Kind => Id.EntryKind;
+    public ChatEntryKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsServiceEntry => ServiceEntry != null;
 
