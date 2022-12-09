@@ -13,78 +13,100 @@
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
+    var isMobile = ScreenSize.IsNarrow();
 }
 
-<div @ref="Ref" class="landing">
-    @* Header start *@
+<div @ref="Ref" class="landing @(isMobile ? "mobile" : "")">
+    @* Header *@
     <div class="landing-header blur-bg">
-        <div class="min-w-fit">
-            <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon min-w-10 min-h-10 max-h-10">
-            <img src="/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute z-minus top-2 min-w-10 min-h-10 max-h-10">
-        </div>
-        <div class="px-2 mb-2 w-full">
-            <img src="/landing/ac-title-light.svg" alt="brand" class="light-icon min-h-6 max-h-6">
-            <img src="/landing/ac-title-dark.svg" alt="brand" class="dark-icon absolute z-minus top-3 min-h-6 max-h-6">
-        </div>
-        <div class="header-text">
-            <div class="px-8">
-                For business
+        @if (isMobile) {
+            <ButtonRound Class="menu-button">
+                <i class="icon-menu text-2xl"></i>
+            </ButtonRound>
+        }
+        <div class="flex-x w-full @(isMobile ? "justify-center" : "")">
+            <div class="min-w-fit">
+                <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img src="/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute top-3">
             </div>
-            <div class="signin-text">
-                <div>
-                    Sign in with
-                </div>
-                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                    <img src="/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
-                </ButtonRound>
-                @if (m.EnableIncompleteUI) {
-                    <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                        <img src="/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
-                    </ButtonRound>
-                    <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                        <img src="/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
-                    </ButtonRound>
-                }
+            <div class="px-2 self-center @(!isMobile ? "w-full mb-2" : "max-w-40")">
+                <img src="/landing/ac-title-light.svg" alt="brand" class="light-title">
+                <img src="/landing/ac-title-dark.svg" alt="brand" class="dark-title absolute top-4">
             </div>
-        </div>
-    </div>
-    @* Header end *@
-    <div class="page page-1 pt-16 overflow-y-hidden" id="landing-page-1">
-        <div class="flex-x px-16 h-full overflow-hidden">
-            <div class="flex-y w-3/5 justify-center">
-                <div class="text-04">
-                    <div class="text-6xl font-medium">Text of call?</div>
-                    <div class="text-6xl font-medium">But do you really have to choose?</div>
-                    <div class="py-8 text-xl">We want to redefine the meaning of "Chat". Actually.</div>
-                </div>
-                <div>
-                    <div class="flex-x gap-x-4 h-12 w-fit items-center rounded-full text-01 font-semibold border border-primary bg-01 px-2 py-1">
+            <div class="header-text">
+                @if (!isMobile) {
+                    <div class="px-8">
+                        For business
+                    </div>
+                    <div class="signin-text">
                         <div>
                             Sign in with
                         </div>
                         <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                            <img src="/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                            <img src="/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
                         </ButtonRound>
                         @if (m.EnableIncompleteUI) {
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                <img src="/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                                <img src="/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
                             </ButtonRound>
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                <img src="/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                                <img src="/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
                             </ButtonRound>
                         }
                     </div>
-                </div>
+                }
             </div>
-            <div class="flex w-2/5 justify-center">
-                <img src="/landing/android-phone.svg" alt="phone">
+        </div>
+        @if (isMobile) {
+            <div class="min-w-12">
+                <ButtonRound Class="signin-button">
+                    <i class="icon-log-in text-xl"></i>
+                </ButtonRound>
+            </div>
+        }
+    </div>
+
+    @* Page 1 *@
+    <div class="page page-1 overflow-hidden" id="landing-page-1">
+        <div class="page-1-wrapper overflow-hidden">
+            <div class="flex-x h-full overflow-hidden @(isMobile ? "px-4" : "px-16")">
+                <div class="main-text">
+                    <div class="text-04">
+                        <div class="font-medium @(isMobile ? "text-4.5xl" : "text-6xl")">Text of call?</div>
+                        <div class="font-medium @(isMobile ? "text-4.5xl" : "text-6xl")">But do you really have to choose?</div>
+                        <div class="py-8 @(isMobile ? "text-4.5xl font-thin" : "text-xl")">We want to redefine the meaning of "Chat". Actually.</div>
+                    </div>
+                    <div class="flex @(isMobile ? "justify-center" : "")">
+                        <div class="signin-button-group">
+                            <div>
+                                Sign in with
+                            </div>
+                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                                <img src="/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                            </ButtonRound>
+                            @if (m.EnableIncompleteUI) {
+                                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
+                                    <img src="/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                                </ButtonRound>
+                                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
+                                    <img src="/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                                </ButtonRound>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="flex w-2/5 justify-center @(isMobile ? "hidden" : "")">
+                    <img src="/landing/android-phone.svg" alt="phone">
+                </div>
             </div>
         </div>
     </div>
 
-    <LandingTimeline/>
+    @* Page 2 *@
+    <LandingTimeline IsMobile="@isMobile"/>
 
-    <div class="page page-3 justify-center overflow-y-hidden bg-[#EEEEF6]" id="landing-page-3">
+    @* Page 3 *@
+    <div class="page page-3 justify-center overflow-hidden bg-[#EEEEF6]" id="landing-page-3">
         <div class="flex-y gap-y-8 justify-center items-center p-16 overflow-hidden ">
             <div class="text-7xl font-semibold">
                 Actual.chat merges voice and text into a single medium
@@ -122,7 +144,8 @@
         </div>
     </div>
 
-    <div class="page page-4 pt-4 overflow-y-hidden" id="landing-page-4">
+    @* Page 4 *@
+    <div class="page page-4 pt-4 overflow-hidden" id="landing-page-4">
         <div class="flex w-full h-40 py-12 px-16 items-center justify-center">
             <div class="text-5xl font-semibold">We believe communication must be...</div>
         </div>
@@ -147,7 +170,8 @@
         </div>
     </div>
 
-    <div class="page page-5 overflow-y-hidden" id="landing-page-5">
+    @* Page 5 *@
+    <div class="page page-5 overflow-hidden" id="landing-page-5">
         <div class="flex h-full overflow-hidden">
             <div class="flex-y w-1/2 justify-center p-16 pr-6">
                 <div class="text-7xl font-semibold">Seamless and frictionless</div>
@@ -183,7 +207,8 @@
         </div>
     </div>
 
-    <div class="page page-6 overflow-y-hidden" id="landing-page-6">
+    @* Page 6 *@
+    <div class="page page-6 overflow-hidden" id="landing-page-6">
         <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
             <div class="flex w-1/2 items-center p-16 pr-6">
                 <div class="w-full h-96 bg-[#CBCBD1]">
@@ -204,7 +229,8 @@
         </div>
     </div>
 
-    <div class="page page-7 page-scrolling overflow-y-hidden" id="landing-page-7">
+    @* Page 7 *@
+    <div class="page page-7 page-scrolling overflow-hidden" id="landing-page-7">
         <div class="flex-y h-full">
             <div class="flex-x min-h-136">
                 <div class="flex-y w-1/2 justify-center p-16 pr-6">
@@ -249,7 +275,8 @@
         </div>
     </div>
 
-    <div class="page page-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-8">
+    @* Page 8 *@
+    <div class="page page-8 page-scrolling overflow-hidden bg-[#EEEEF6]" id="landing-page-8">
         <div class="flex-y gap-y-8 items-center justify-center p-16 overflow-hidden min-h-screen">
             <div class="flex self-start text-7xl font-semibold">
                 Enjoyable and Fun
@@ -308,7 +335,8 @@
         </div>
     </div>
 
-    <div class="page page-9 pt-8 page-scrolling overflow-y-hidden bg-[#EEEEF6]" id="landing-page-9">
+    @* Page 9 *@
+    <div class="page page-9 pt-8 page-scrolling overflow-hidden bg-[#EEEEF6]" id="landing-page-9">
         <div class="flex-y items-center px-16 py-8 overflow-hidden min-h-screen">
             <div class="flex self-start text-7xl font-semibold">
                 Actual.chat Features
@@ -395,7 +423,8 @@
         </div>
     </div>
 
-    <div class="page page-10 justify-center overflow-y-hidden bg-[#EEEEF6]" id="landing-page-10">
+    @* Page 10 *@
+    <div class="page page-10 justify-center overflow-hidden bg-[#EEEEF6]" id="landing-page-10">
         <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
             <div class="text-7xl font-semibold">
                 What`s upcoming?
@@ -419,7 +448,8 @@
         </div>
     </div>
 
-    <div class="page page-11 page-scrolling overflow-y-hidden" id="landing-page-11">
+    @* Page 11 *@
+    <div class="page page-11 page-scrolling overflow-hidden" id="landing-page-11">
         <div class="flex-y h-full">
             <div class="flex-x min-h-120">
                 <div class="flex w-1/2 p-16 pr-6">
@@ -510,6 +540,8 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnInitializedAsync()
         => AuthSchemas = await ClientAuth.GetSchemas();
