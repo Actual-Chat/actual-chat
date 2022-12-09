@@ -40,6 +40,10 @@
         if (recordingChatId.IsNone)
             return Model.None;
 
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        if (selectedChatId == recordingChatId)
+            return Model.None;
+
         var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken);
         if (recordingChat == null)
             return Model.None;
