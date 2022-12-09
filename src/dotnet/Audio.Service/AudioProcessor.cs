@@ -169,9 +169,6 @@ public sealed class AudioProcessor : IAudioProcessor
     {
         var transcriptionOptions = new TranscriptionOptions {
             Language = audioSegment.Languages[0],
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
         var allTranscripts = Transcriber.Transcribe(
             identity,

@@ -37,9 +37,6 @@ public class GoogleTranscriberTest : TestBase
             Log);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName, withDelay: withDelay);
 
@@ -79,9 +76,6 @@ public class GoogleTranscriberTest : TestBase
             Log);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
         var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();

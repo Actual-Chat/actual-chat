@@ -23,7 +23,12 @@
     <!-- IL2070: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
     <!-- IL2075: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
-    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;RCS1090;</NoWarn>
+    <!-- MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed' -->
+    <!-- MA0011: Use an overload of 'Parse' that has a 'System.IFormatProvider' parameter -->
+    <!-- MA0002: Use an overload that has a IEqualityComparer<string> or IComparer<string> parameter -->
+    <!-- MA0006: Use string.Equals instead of Equals operator -->
+    <!-- MA0074: Use an overload of 'Replace' that has a StringComparison parameter -->
+    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;RCS1090;MA0004;MA0011;MA0002;MA0006;MA0074;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

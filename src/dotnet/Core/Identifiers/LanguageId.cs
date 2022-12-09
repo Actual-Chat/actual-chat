@@ -21,7 +21,7 @@ public partial struct LanguageId
     public static readonly ImmutableDictionary<string, LanguageId> Map =
             ImmutableDictionary<string, LanguageId>.Empty
                 .WithComparers(StringComparer.OrdinalIgnoreCase)
-                .SetItems(All.Select(x => KeyValuePair.Create(x.Shortcut, x)))
+                .SetItems(All.Select(x => KeyValuePair.Create(x.Code, x)))
                 .SetItems(All.Select(x => KeyValuePair.Create(x.Value, x)));
 
     public bool IsValid
@@ -46,7 +46,7 @@ public partial struct LanguageId
             _ => "Unknown",
         };
 
-    public string Shortcut
+    public string Code
         => Value switch {
             "en-US" => "EN",
             "fr-FR" => "FR",
