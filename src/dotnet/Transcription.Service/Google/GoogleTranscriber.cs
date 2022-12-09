@@ -39,7 +39,8 @@ public class GoogleTranscriber : ITranscriber
     {
         Log.LogDebug("Getting recognizer");
         var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
-        var recognizerId = $"r-{prefix}-{options.Language.Value.ToLowerInvariant()}";
+        var languageSuffix = options.Language.Value.ToLowerInvariant().NullIfEmpty() ?? "x"; // Should not be empty
+        var recognizerId = $"r-{prefix}-{languageSuffix}";
         var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
         var process = new GoogleTranscriberProcess(recognizerTask, streamId, audioSource, options, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
@@ -56,20 +57,21 @@ public class GoogleTranscriber : ITranscriber
                     var parent = $"projects/{projectId}/locations/global";
                     var recognizerName = $"{parent}/recognizers/{recognizerId}";
                     try {
-                        var existingRecognizer = await speechClient.GetRecognizerAsync(
-                            new GetRecognizerRequest {
-                                Name = recognizerName,
-                            },
-                            cancellationToken1).ConfigureAwait(false);
+                        var getRecognizerRequest = new GetRecognizerRequest { Name = recognizerName };
+                        var existingRecognizer = await speechClient
+                            .GetRecognizerAsync(getRecognizerRequest, cancellationToken1)
+                            .ConfigureAwait(false);
+
                         if (existingRecognizer.ExpireTime != null)
                             entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
                         if (existingRecognizer.State == Recognizer.Types.State.Active)
                             return existingRecognizer;
                     }
-                    catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) { }
+                    catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) {
+                        // NOTE(AY): Intended, it's created further in this case
+                    }
 
-                var newRecognizerOperation = await speechClient.CreateRecognizerAsync(
-                    new CreateRecognizerRequest {
+                    var createRecognizerRequest = new CreateRecognizerRequest {
                         Parent = parent,
                         RecognizerId = recognizerId,
                         Recognizer = new Recognizer {
@@ -90,10 +92,16 @@ public class GoogleTranscriber : ITranscriber
                                 AutoDecodingConfig = new AutoDetectDecodingConfig(),
                             },
                         },
-                    },
-                    // CallSettings.FromCancellationToken(cancellationToken));
-                    new CallSettings(cancellationToken1, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, WriteOptions.Default, null)
-                ).ConfigureAwait(false);
+                    };
+                    var callSettings = new CallSettings(
+                        cancellationToken1,
+                        Expiration.FromTimeout(TimeSpan.FromMinutes(30)),
+                        null, null,
+                        WriteOptions.Default,
+                        null);
+                    var newRecognizerOperation = await speechClient
+                        .CreateRecognizerAsync(createRecognizerRequest, callSettings)
+                        .ConfigureAwait(false);
 
                 var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
                 var newRecognizer = completedNewRecognizerOperation.Result;

@@ -76,7 +76,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
                 Version = VersionGenerator.NextVersion(),
                 ModifiedAt = Clocks.SystemClock.Now,
             };
-            dbReaction = new DbReaction(command.Reaction);
+            dbReaction = new DbReaction(reaction);
             dbContext.Add(dbReaction);
             var dbSummary = await UpsertDbSummary(true).ConfigureAwait(false);
             if (dbSummary.Count > 1)
