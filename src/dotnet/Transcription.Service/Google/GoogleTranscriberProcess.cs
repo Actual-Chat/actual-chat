@@ -9,7 +9,7 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
-    private readonly Task<string> _getRecognizerIdTask;
+    private readonly Task<string> _recognizerTask;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -22,13 +22,13 @@ public class GoogleTranscriberProcess : WorkerBase
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
-        Task<string> getRecognizerIdTask,
+        Task<string> recognizerTask,
         string streamId,
         AudioSource audioSource,
         TranscriptionOptions options,
         ILogger? log = null)
     {
-        _getRecognizerIdTask = getRecognizerIdTask;
+        _recognizerTask = recognizerTask;
         Log = log ?? NullLogger.Instance;
         StreamId = streamId;
         Options = options;
@@ -47,7 +47,7 @@ public class GoogleTranscriberProcess : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
-            var recognizerId = await _getRecognizerIdTask.ConfigureAwait(false);
+            var recognizerId = await _recognizerTask.ConfigureAwait(false);
             var webMStreamAdapter = new WebMStreamAdapter(Log);
             await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
             var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);

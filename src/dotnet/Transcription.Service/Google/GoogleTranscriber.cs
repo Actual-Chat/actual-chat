@@ -4,30 +4,30 @@ using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
 using Grpc.Core;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {
-    private readonly Lazy<Task<string>> _projectId;
+    private readonly CancellationToken _stopToken;
+    private readonly IThreadSafeLruCache<string, Task<string>> _cache;
+    private readonly Task<string> _projectIdTask;
 
     private CoreSettings CoreSettings { get; }
-    private IMemoryCache Cache { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
-    public GoogleTranscriber(
-        CoreSettings coreSettings,
-        IMemoryCache cache,
-        ILogger<GoogleTranscriber>? log = null)
+    public GoogleTranscriber(IServiceProvider services)
     {
-        CoreSettings = coreSettings;
-        Cache = cache;
-        Log = log ?? NullLogger<GoogleTranscriber>.Instance;
-        #pragma warning disable VSTHRD011
-        _projectId = new Lazy<Task<string>>(BackgroundTask.Run(LoadProjectId));
+        Log = services.LogFor(GetType());
+        CoreSettings = services.GetRequiredService<CoreSettings>();
+        var hostApplicationLifetime = services.GetService<IHostApplicationLifetime>();
+
+        _stopToken = hostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None;
+        _cache = new ThreadSafeLruCache<string, Task<string>>(10);
+        _projectIdTask = BackgroundTask.Run(LoadProjectId);
     }
 
     public IAsyncEnumerable<Transcript> Transcribe(
@@ -37,50 +37,49 @@ public class GoogleTranscriber : ITranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        var getRecognizerIdTask = GetRecognizerId(options, cancellationToken);
-        var process = new GoogleTranscriberProcess(getRecognizerIdTask, streamId, audioSource, options, Log);
+        var recognizerTask = GetRecognizer(options, cancellationToken);
+        var process = new GoogleTranscriberProcess(recognizerTask, streamId, audioSource, options, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
     }
 
     // Private methods
 
-    private async Task<string> LoadProjectId()
+    private Task<string> GetRecognizer(TranscriptionOptions options, CancellationToken cancellationToken)
     {
-        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
-            return CoreSettings.GoogleProjectId;
-
-        var platform = await Platform.InstanceAsync().ConfigureAwait(false);
-        if (platform?.ProjectId == null)
-            throw StandardError.NotSupported<GoogleTranscriber>(
-                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
-        return platform.ProjectId;
-    }
-
-    private async Task<string> GetRecognizerId(TranscriptionOptions options, CancellationToken cancellationToken)
-    {
-        var (languageCode, region) = GetLanguageCodeAndRegion(options.Language, CoreSettings.GoogleRegionId);
+        var region = GetRegionId();
+        var languageCode = GetLanguageCode(options.Language);
         var recognizerId = $"{languageCode.ToLowerInvariant()}";
 
-        var recognizer = await Cache.GetOrCreateAsync(recognizerId, async _ => {
-            var speechClient = await new SpeechClientBuilder().BuildAsync(cancellationToken).ConfigureAwait(false);
-            var projectId = await _projectId.Value.ConfigureAwait(false);
+        var recognizerTask = _cache.GetOrCreate(recognizerId, async _ => {
+            var speechClient = await new SpeechClientBuilder().BuildAsync(_stopToken).ConfigureAwait(false);
+            var projectId = await GetProjectId().ConfigureAwait(false);
 
             var parent = $"projects/{projectId}/locations/{region}";
-            var recognizerName = $"{parent}/recognizers/{recognizerId}";
+            var name = $"{parent}/recognizers/{recognizerId}";
+
+            retry:
             try {
-                var getRecognizerRequest = new GetRecognizerRequest { Name = recognizerName };
+                var getRecognizerRequest = new GetRecognizerRequest { Name = name };
                 var existingRecognizer = await speechClient
-                    .GetRecognizerAsync(getRecognizerRequest, cancellationToken)
+                    .GetRecognizerAsync(getRecognizerRequest, _stopToken)
                     .ConfigureAwait(false);
                 if (existingRecognizer.State == Recognizer.Types.State.Active)
-                    return existingRecognizer;
+                    return existingRecognizer.Name;
+            }
+            catch (RpcException e) when (
+                e.StatusCode is StatusCode.InvalidArgument
+                && e.Status.Detail.OrdinalStartsWith("Expected resource location to be global"))
+            {
+                parent = $"projects/{projectId}/locations/global";
+                name = $"{parent}/recognizers/{recognizerId}";
+                goto retry;
             }
             catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) {
                 // NOTE(AY): Intended, it's created further in this case
             }
 
-            DebugLog?.LogDebug("Creating new recognizer, Id = {RecognizerId}", recognizerId);
+            DebugLog?.LogDebug("Creating new recognizer: Id = {RecognizerName}", recognizerId);
             var createRecognizerRequest = new CreateRecognizerRequest {
                 Parent = parent,
                 RecognizerId = recognizerId,
@@ -103,24 +102,45 @@ public class GoogleTranscriber : ITranscriber
                     },
                 },
             };
-            var createRecognizer = await speechClient
-                .CreateRecognizerAsync(createRecognizerRequest, CallSettings.FromCancellationToken(cancellationToken))
+            var createRecognizerOperation = await speechClient
+                .CreateRecognizerAsync(createRecognizerRequest, _stopToken)
                 .ConfigureAwait(false);
-            var createRecognizerCompleted = await createRecognizer
-                .PollUntilCompletedAsync()
+            var createRecognizerCompleted = await createRecognizerOperation
+                .PollUntilCompletedAsync(null, CallSettings.FromCancellationToken(_stopToken))
                 .ConfigureAwait(false);
             var newRecognizer = createRecognizerCompleted.Result;
-            return newRecognizer;
-        }).ConfigureAwait(false);
+            return newRecognizer.Name;
+        });
 
-        return recognizer!.Name;
+        if (recognizerTask.IsFaulted && !recognizerTask.IsCanceled)
+            _cache.Remove(recognizerId); // We'll retry on the next attempt to get it
+
+        return recognizerTask.WaitAsync(cancellationToken);
     }
 
-    private (string Code, string Region) GetLanguageCodeAndRegion(Language language, string regionId)
-        => (language.Code.Value, regionId) switch {
-           ("EN", "us-central1") => ("en-US", "us-central1"),
-           ("ES", "us-central1") => ("es-US", "us-central1"),
-           ("FR", "us-central1") => ("fr-CA", "northamerica-northeast1"),
-           (_, _) => (language.Value, "global"),
+    private string GetRegionId()
+        => CoreSettings.GoogleRegionId.NullIfEmpty()
+            ?? throw StandardError.Configuration($"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
+
+    private string GetLanguageCode(Language language)
+        => language.Code.Value switch {
+            "ES" => "es-US",
+            "FR" => "fr-CA",
+            _ => language.Value,
         };
+
+    private Task<string> GetProjectId()
+        => _projectIdTask;
+
+    private async Task<string> LoadProjectId()
+    {
+        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
+            return CoreSettings.GoogleProjectId;
+
+        var platform = await Platform.InstanceAsync().ConfigureAwait(false);
+        if (platform?.ProjectId == null)
+            throw StandardError.NotSupported<GoogleTranscriber>(
+                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
+        return platform.ProjectId;
+    }
 }

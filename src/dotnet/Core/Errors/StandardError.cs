@@ -51,6 +51,8 @@ public static partial class StandardError
     public static Exception Unauthorized(string message)
         => new UnauthorizedAccessException(message);
 
+    public static Exception Configuration(string message)
+        => new InternalError($"Configuration: {message}");
     public static Exception Internal(string message)
         => new InternalError(message);
 }
