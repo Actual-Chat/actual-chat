@@ -1,6 +1,7 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.App
 
-<div class="flex-x gap-x-2 w-64 h-14">
+<div class="flex-x gap-x-2 @(ScreenSize.IsNarrow() ? "w-3/4 h-16" : "w-64 h-14")">
     <div class="bg-primary h-full min-w-1 max-w-1 rounded-full"></div>
     <div class="w-full self-center">
         @Text
@@ -9,4 +10,5 @@
 
 @code {
     [Parameter] public string Text { get; set; } = "";
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 }
