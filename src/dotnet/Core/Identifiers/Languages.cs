@@ -22,8 +22,8 @@ public static class Languages
     public static readonly Dictionary<Symbol, Language> IdToLanguage =
         All.ToDictionary(x => x.Id)
             .Concat(All.ToDictionary(x => (Symbol)x.Value.ToLowerInvariant()))
-            .Concat(All.ToDictionary(x => x.Shortcut))
-            .Concat(All.ToDictionary(x => (Symbol)x.Shortcut.Value.ToLowerInvariant()))
+            .Concat(All.ToDictionary(x => x.Code))
+            .Concat(All.ToDictionary(x => (Symbol)x.Code.Value.ToLowerInvariant()))
             .DistinctBy(kv => kv.Key)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
 }

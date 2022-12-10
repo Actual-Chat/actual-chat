@@ -5,13 +5,13 @@ internal sealed class LanguageHandle
     internal static readonly LanguageHandle None = new("", "?", "Unknown");
 
     public readonly Symbol Id;
-    public readonly Symbol Shortcut;
+    public readonly Symbol Code;
     public readonly string Title;
 
-    public LanguageHandle(Symbol id, Symbol shortcut, string title)
+    public LanguageHandle(Symbol id, Symbol code, string title)
     {
         Id = id;
-        Shortcut = shortcut;
+        Code = code;
         Title = title;
     }
 }

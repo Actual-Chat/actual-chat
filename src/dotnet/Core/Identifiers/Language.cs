@@ -28,7 +28,7 @@ public readonly struct Language : ISymbolIdentifier<Language>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Symbol Shortcut => Handle.Shortcut;
+    public Symbol Code => Handle.Code;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Title => Handle.Title;
 

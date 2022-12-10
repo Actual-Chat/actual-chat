@@ -5,7 +5,8 @@
   "CoreSettings": {
     "Instance": "dev",
     "GoogleStorageBucket": "",
-    "GoogleProjectId": ""
+    "GoogleProjectId": "",
+    "GoogleRegionId": "us-central1"
   },
   "RedisSettings": {
     "DefaultRedis": "localhost|test_{instance.}{context}"

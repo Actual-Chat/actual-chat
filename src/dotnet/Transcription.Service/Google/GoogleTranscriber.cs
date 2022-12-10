@@ -11,12 +11,13 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {
-    private static readonly Regex _invalidCharsRe = new ("[^a-z0-9-]",RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private readonly Lazy<Task<string>> _projectId;
 
     private CoreSettings CoreSettings { get; }
     private IMemoryCache Cache { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
     public GoogleTranscriber(
         CoreSettings coreSettings,
@@ -37,84 +38,13 @@ public class GoogleTranscriber : ITranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("Getting recognizer");
-        var prefix = _invalidCharsRe.Replace(transcriberKey.Value.ToLowerInvariant().Truncate(40), "-");
-        var languageSuffix = options.Language.Value.ToLowerInvariant().NullIfEmpty() ?? "x"; // Should not be empty
-        var recognizerId = $"r-{prefix}-{languageSuffix}";
-        var recognizerTask = GetOrCreateRecognizer(recognizerId, options, cancellationToken);
-        var process = new GoogleTranscriberProcess(recognizerTask, streamId, audioSource, options, Log);
+        var getRecognizerIdTask = GetRecognizerId(options, cancellationToken);
+        var process = new GoogleTranscriberProcess(getRecognizerIdTask, streamId, audioSource, options, Log);
         process.Run().ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
-
-        async Task<string> GetOrCreateRecognizer(string recognizerId1, TranscriptionOptions options1, CancellationToken cancellationToken1)
-        {
-            var recognizer = await Cache.GetOrCreateAsync(
-                recognizerId1,
-                async entry => {
-                    var speechClient = await new SpeechClientBuilder().BuildAsync(cancellationToken1).ConfigureAwait(false);
-                    var projectId = await _projectId.Value.ConfigureAwait(false);
-
-                    var parent = $"projects/{projectId}/locations/global";
-                    var recognizerName = $"{parent}/recognizers/{recognizerId}";
-                    try {
-                        var getRecognizerRequest = new GetRecognizerRequest { Name = recognizerName };
-                        var existingRecognizer = await speechClient
-                            .GetRecognizerAsync(getRecognizerRequest, cancellationToken1)
-                            .ConfigureAwait(false);
-
-                        if (existingRecognizer.ExpireTime != null)
-                            entry.AbsoluteExpiration = existingRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
-                        if (existingRecognizer.State == Recognizer.Types.State.Active)
-                            return existingRecognizer;
-                    }
-                    catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) {
-                        // NOTE(AY): Intended, it's created further in this case
-                    }
-
-                    var createRecognizerRequest = new CreateRecognizerRequest {
-                        Parent = parent,
-                        RecognizerId = recognizerId,
-                        Recognizer = new Recognizer {
-                            Model = "latest_long",
-                            DisplayName = recognizerId,
-                            LanguageCodes = { options.Language.Value },
-                            DefaultRecognitionConfig = new RecognitionConfig {
-                                Features = new RecognitionFeatures {
-                                    EnableAutomaticPunctuation = true,
-                                    MaxAlternatives = 1,
-                                    EnableSpokenPunctuation = false,
-                                    EnableSpokenEmojis = false,
-                                    ProfanityFilter = false,
-                                    EnableWordConfidence = false,
-                                    EnableWordTimeOffsets = true,
-                                    MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
-                                },
-                                AutoDecodingConfig = new AutoDetectDecodingConfig(),
-                            },
-                        },
-                    };
-                    var callSettings = new CallSettings(
-                        cancellationToken1,
-                        Expiration.FromTimeout(TimeSpan.FromMinutes(30)),
-                        null, null,
-                        WriteOptions.Default,
-                        null);
-                    var newRecognizerOperation = await speechClient
-                        .CreateRecognizerAsync(createRecognizerRequest, callSettings)
-                        .ConfigureAwait(false);
-
-                var completedNewRecognizerOperation = await newRecognizerOperation.PollUntilCompletedAsync().ConfigureAwait(false);
-                var newRecognizer = completedNewRecognizerOperation.Result;
-                if (newRecognizer.ExpireTime != null)
-                    entry.AbsoluteExpiration = newRecognizer.ExpireTime.ToDateTimeOffset().AddSeconds(-10);
-                // let's wait for some time while the recognizer become operational
-                // await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken1).ConfigureAwait(false);
-                return newRecognizer;
-            }).ConfigureAwait(false);
-
-            return recognizer!.Name;
-        }
     }
+
+    // Private methods
 
     private async Task<string> LoadProjectId()
     {
@@ -127,4 +57,71 @@ public class GoogleTranscriber : ITranscriber
                 $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
         return platform.ProjectId;
     }
+
+    private async Task<string> GetRecognizerId(TranscriptionOptions options, CancellationToken cancellationToken)
+    {
+        var (languageCode, region) = GetLanguageCodeAndRegion(options.Language, CoreSettings.GoogleRegionId);
+        var recognizerId = $"{languageCode.ToLowerInvariant()}";
+
+        var recognizer = await Cache.GetOrCreateAsync(recognizerId, async _ => {
+            var speechClient = await new SpeechClientBuilder().BuildAsync(cancellationToken).ConfigureAwait(false);
+            var projectId = await _projectId.Value.ConfigureAwait(false);
+
+            var parent = $"projects/{projectId}/locations/{region}";
+            var recognizerName = $"{parent}/recognizers/{recognizerId}";
+            try {
+                var getRecognizerRequest = new GetRecognizerRequest { Name = recognizerName };
+                var existingRecognizer = await speechClient
+                    .GetRecognizerAsync(getRecognizerRequest, cancellationToken)
+                    .ConfigureAwait(false);
+                if (existingRecognizer.State == Recognizer.Types.State.Active)
+                    return existingRecognizer;
+            }
+            catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) {
+                // NOTE(AY): Intended, it's created further in this case
+            }
+
+            DebugLog?.LogDebug("Creating new recognizer, Id = {RecognizerId}", recognizerId);
+            var createRecognizerRequest = new CreateRecognizerRequest {
+                Parent = parent,
+                RecognizerId = recognizerId,
+                Recognizer = new Recognizer {
+                    Model = "latest_long",
+                    DisplayName = recognizerId,
+                    LanguageCodes = { options.Language.Value },
+                    DefaultRecognitionConfig = new RecognitionConfig {
+                        Features = new RecognitionFeatures {
+                            EnableAutomaticPunctuation = true,
+                            MaxAlternatives = 0,
+                            EnableSpokenPunctuation = false,
+                            EnableSpokenEmojis = false,
+                            ProfanityFilter = false,
+                            EnableWordConfidence = false,
+                            EnableWordTimeOffsets = true,
+                            MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
+                        },
+                        AutoDecodingConfig = new AutoDetectDecodingConfig(),
+                    },
+                },
+            };
+            var createRecognizer = await speechClient
+                .CreateRecognizerAsync(createRecognizerRequest, CallSettings.FromCancellationToken(cancellationToken))
+                .ConfigureAwait(false);
+            var createRecognizerCompleted = await createRecognizer
+                .PollUntilCompletedAsync()
+                .ConfigureAwait(false);
+            var newRecognizer = createRecognizerCompleted.Result;
+            return newRecognizer;
+        }).ConfigureAwait(false);
+
+        return recognizer!.Name;
+    }
+
+    private (string Code, string Region) GetLanguageCodeAndRegion(Language language, string regionId)
+        => (language.Code.Value, regionId) switch {
+           ("EN", "us-central1") => ("en-US", "us-central1"),
+           ("ES", "us-central1") => ("es-US", "us-central1"),
+           ("FR", "us-central1") => ("fr-CA", "northamerica-northeast1"),
+           (_, _) => (language.Value, "global"),
+        };
 }

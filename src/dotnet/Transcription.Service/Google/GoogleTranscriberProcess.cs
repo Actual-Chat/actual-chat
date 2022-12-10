@@ -9,7 +9,7 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
-    private readonly Task<string> _recognizerTask;
+    private readonly Task<string> _getRecognizerIdTask;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -22,13 +22,13 @@ public class GoogleTranscriberProcess : WorkerBase
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
-        Task<string> recognizerTask,
+        Task<string> getRecognizerIdTask,
         string streamId,
         AudioSource audioSource,
         TranscriptionOptions options,
         ILogger? log = null)
     {
-        _recognizerTask = recognizerTask;
+        _getRecognizerIdTask = getRecognizerIdTask;
         Log = log ?? NullLogger.Instance;
         StreamId = streamId;
         Options = options;
@@ -47,7 +47,7 @@ public class GoogleTranscriberProcess : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
-            var recognizer = await _recognizerTask.ConfigureAwait(false);
+            var recognizerId = await _getRecognizerIdTask.ConfigureAwait(false);
             var webMStreamAdapter = new WebMStreamAdapter(Log);
             await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
             var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
@@ -57,8 +57,8 @@ public class GoogleTranscriberProcess : WorkerBase
                 .StreamingRecognize(CallSettings.FromCancellationToken(cancellationToken));
             var streamingRecognitionConfig = new StreamingRecognitionConfig {
                 Config = new RecognitionConfig {
-                    AutoDecodingConfig = new AutoDetectDecodingConfig()
-                }, // Use recognizer' settings
+                    AutoDecodingConfig = new AutoDetectDecodingConfig(),
+                },
                 StreamingFeatures = new StreamingRecognitionFeatures {
                     InterimResults = true,
                     // TODO(AK): test google VAD events - probably it might be useful
@@ -69,7 +69,7 @@ public class GoogleTranscriberProcess : WorkerBase
             Log.LogDebug("Starting recognize process for {StreamId}", StreamId);
             await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
                     StreamingConfig = streamingRecognitionConfig,
-                    Recognizer = recognizer,
+                    Recognizer = recognizerId,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 

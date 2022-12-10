@@ -16,9 +16,6 @@ public class GoogleTranscriberTest : TestBase
     {
         var options = new TranscriptionOptions() {
             Language = new ("ru-RU"),
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
         var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
@@ -189,10 +186,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var options = new TranscriptionOptions() {
-            Language = new Language("ru-RU"),
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
+            Language = new ("ru-RU"),
         };
         var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
