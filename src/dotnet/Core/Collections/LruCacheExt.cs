@@ -12,7 +12,11 @@ public static class LruCacheExt
             return value;
 
         value = factory.Invoke(key);
-        cache.TryAdd(key, value);
-        return value;
+        while (true) {
+            if (cache.TryAdd(key, value))
+                return value;
+            if (cache.TryGetValue(key, out var cachedValue))
+                return cachedValue;
+        }
     }
 }
