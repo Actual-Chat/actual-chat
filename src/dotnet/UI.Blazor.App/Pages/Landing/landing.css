@@ -2,7 +2,7 @@
     @apply w-full;
 }
 .landing .page {
-    @apply flex-y h-screen;
+    @apply flex-y h-screen overflow-hidden;
 }
 .landing .page-scrolling {
     @apply flex-y h-full;
@@ -11,15 +11,15 @@
     @apply bg-[#0436A3];
 }
 .landing .page-1 .page-1-wrapper {
-    @apply w-full h-full pt-16 bg-contain;
-    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses.svg')] bg-no-repeat;
+    @apply w-full h-full pt-16 bg-contain bg-no-repeat;
+    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses.svg')];
 }
 .landing.mobile .page-1 {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
 }
 .landing.mobile .page-1 .page-1-wrapper {
-    @apply w-full h-full pt-12 bg-cover;
-    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses-mobile.svg')] bg-no-repeat;
+    @apply w-full h-full pt-12 bg-cover bg-repeat-round;
+    @apply bg-[url('../../../../dotnet/App.Wasm/wwwroot/landing/ellipses-mobile.svg')];
 }
 .landing .page-1 .main-text {
     @apply flex-y w-3/5 justify-center;
@@ -33,15 +33,18 @@
 .landing.mobile .page-1 .signin-button-group {
     @apply text-xl my-12 px-4;
 }
-.landing .page-2 {
-    @apply bg-01;
-}
 .landing-auth-btn.btn.btn-round {
     @apply text-lg md:text-base;
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
 }
 .landing-auth-btn.btn.btn-round .btn-content {
     @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
+}
+.landing .title-text {
+    @apply text-7xl font-semibold;
+}
+.landing.mobile .title-text {
+    @apply text-4.5xl;
 }
 
 /* Header */
@@ -141,9 +144,6 @@
 .timeline-item .disabled * {
     @apply border-0;
 }
-.timeline-item .content {
-    /*@apply flex-x;*/
-}
 .mobile .timeline-item .content {
     @apply px-4;
 }
@@ -161,4 +161,11 @@
 }
 .mobile .timeline-item .content-icon.left {
     @apply justify-end mx-4;
+}
+
+.landing .footer-info-btn {
+    @apply h-12;
+}
+.landing.mobile .footer-info-btn {
+    @apply h-10 text-xl font-medium text-start;
 }
