@@ -72,8 +72,8 @@
             <div class="flex-x h-full overflow-hidden @(isMobile ? "px-4" : "px-16")">
                 <div class="main-text">
                     <div class="text-04">
-                        <div class="font-medium @(isMobile ? "text-4.5xl" : "text-6xl")">Text of call?</div>
-                        <div class="font-medium @(isMobile ? "text-4.5xl" : "text-6xl")">But do you really have to choose?</div>
+                        <div class="title-text">Text of call?</div>
+                        <div class="title-text">But do you really have to choose?</div>
                         <div class="py-8 @(isMobile ? "text-4.5xl font-thin" : "text-xl")">We want to redefine the meaning of "Chat". Actually.</div>
                     </div>
                     <div class="flex @(isMobile ? "justify-center" : "")">
@@ -106,56 +106,50 @@
     <LandingTimeline IsMobile="@isMobile"/>
 
     @* Page 3 *@
-    <div class="page page-3 justify-center overflow-hidden bg-[#EEEEF6]" id="landing-page-3">
-        <div class="flex-y gap-y-8 justify-center items-center p-16 overflow-hidden ">
-            <div class="text-7xl font-semibold">
-                Actual.chat merges voice and text into a single medium
+    <div class="page page-3 @(isMobile ? "page-scrolling" : "")" id="landing-page-3">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y" : "flex-x")">
+            <div class="flex-y gap-y-8 @(isMobile ? "px-4 py-8" : "w-1/2 justify-center p-16 pb-24 pr-6")">
+                <div class="title-text">Voice and text merged into a single medium</div>
+                @if (isMobile) {
+                    <div class="flex justify-center p-4">
+                        <img src="/landing/voice-and-text.svg" alt="voice and text">
+                    </div>
+                }
+                <div class="flex-y gap-y-2">
+                    <div>
+                        1. You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
+                    </div>
+                    <div>
+                        2. Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
+                    </div>
+                    <div>
+                        3. When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
+                    </div>
+                </div>
             </div>
-            <div class="gap-x-8 grid grid-cols-3">
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
-                    </div>
+            @if (!isMobile) {
+                <div class="flex justify-center w-1/2 p-16 pb-24 pl-6">
+                    <img src="/landing/voice-and-text.svg" alt="voice and text">
                 </div>
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
-                    </div>
-                </div>
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
-                    </div>
-                </div>
-
-            </div>
+            }
         </div>
     </div>
 
     @* Page 4 *@
-    <div class="page page-4 pt-4 overflow-hidden" id="landing-page-4">
-        <div class="flex w-full h-40 py-12 px-16 items-center justify-center">
-            <div class="text-5xl font-semibold">We believe communication must be...</div>
+    <div class="page page-4 @(isMobile ? "page-scrolling" : "pt-8")" id="landing-page-4">
+        <div class="flex w-full items-center justify-center @(isMobile ? "py-8 px-16" : "h-40 py-12 px-16")">
+            <div class="@(isMobile ? "flex-y items-center text-xl font-medium" : "flex-x text-5xl font-semibold")">
+                <span>We believe&nbsp;</span>
+                <span>communication must be...</span>
+            </div>
         </div>
-        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
-            <div class="flex justify-center w-1/2 p-16 pb-24 pr-6">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y px-4" : "flex-x")">
+            <div class="flex justify-center @(isMobile ? "p-8" : "w-1/2 p-16 pb-24 pr-6")">
                 <img src="/landing/stressless.svg" alt="stressless">
             </div>
-            <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
-                <div class="text-7xl font-semibold">Stressless</div>
-                <ul class="list-disc m-8">
+            <div class="flex-y justify-center @(isMobile ? "" : "w-1/2 p-16 pb-24 pl-6")">
+                <div class="title-text">Stressless</div>
+                <ul class="list-disc @(isMobile ? "px-8 py-4" : " m-8")">
                     <li>
                         76% of millennials and 40% of baby boomers experience anxiety when the phone rings, leading to 61% of the millennials avoiding calls
                     </li>
@@ -171,10 +165,10 @@
     </div>
 
     @* Page 5 *@
-    <div class="page page-5 overflow-hidden" id="landing-page-5">
-        <div class="flex h-full overflow-hidden">
-            <div class="flex-y w-1/2 justify-center p-16 pr-6">
-                <div class="text-7xl font-semibold">Seamless and frictionless</div>
+    <div class="page page-5 @(isMobile ? "page-scrolling" : "")" id="landing-page-5">
+        <div class="h-full overflow-hidden @(isMobile ? "-flex-y justify-end py-8" : "flex-x")">
+            <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
+                <div class="title-text">Seamless and frictionless</div>
                 <ul class="list-disc m-8">
                     <li>
                         Typing is great, but there are so many cases when it’s inconvenient or impossible to type
@@ -184,7 +178,7 @@
                     </li>
                 </ul>
             </div>
-            <div class="w-1/2 p-16 pl-6">
+            <div class="@(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
                 <div class="flex-y gap-y-4 justify-center w-full h-full">
                     <div class="flex-x gap-x-8">
                         <div class="flex overflow-hidden justify-center items-center">
@@ -208,15 +202,15 @@
     </div>
 
     @* Page 6 *@
-    <div class="page page-6 overflow-hidden" id="landing-page-6">
-        <div class="flex h-full overflow-hidden bg-[#EEEEF6]">
-            <div class="flex w-1/2 items-center p-16 pr-6">
-                <div class="w-full h-96 bg-[#CBCBD1]">
+    <div class="page page-6 @(isMobile ? "page-scrolling" : "")" id="landing-page-6">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y py-8" : "flex-x")">
+            <div class="flex items-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
+                <div class="w-full bg-[#CBCBD1] @(isMobile ? "h-48" : "h-96")">
 
                 </div>
             </div>
-            <div class="flex-y w-1/2 justify-center p-16 pb-24 pl-6">
-                <div class="text-7xl font-semibold">Synchronous + asynchronous</div>
+            <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pb-24 pl-6")">
+                <div class="title-text">Synchronous + asynchronous</div>
                 <ul class="list-disc m-8">
                     <li>
                         We start any conversation as asynchronous, which turns synchronous when parties start to respond in real-time.
@@ -230,11 +224,11 @@
     </div>
 
     @* Page 7 *@
-    <div class="page page-7 page-scrolling overflow-hidden" id="landing-page-7">
+    <div class="page page-7 page-scrolling" id="landing-page-7">
         <div class="flex-y h-full">
-            <div class="flex-x min-h-136">
-                <div class="flex-y w-1/2 justify-center p-16 pr-6">
-                    <div class="text-7xl font-semibold">Productive</div>
+            <div class="@(isMobile ? "-flex-y py-16" : "flex-x min-h-136")">
+                <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
+                    <div class="title-text">Productive</div>
                     <ul class="list-disc m-8">
                         <li>
                             Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
@@ -248,18 +242,18 @@
                     </ul>
                     Actual.chat shines in these scenarios
                 </div>
-                <div class="flex w-1/2 p-16 pl-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
+                <div class="flex @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
+                    <div class="w-full bg-[#CBCBD1] @(isMobile ? "h-48" : "h-full")">
 
                     </div>
                 </div>
             </div>
-            <div class="flex-x min-h-136">
-                <div class="flex justify-center w-1/2 p-16 pr-6">
+            <div class="bg-[#EEEEF6] @(isMobile ? "flex-y py-16" : "flex-x min-h-136")">
+                <div class="flex justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
                     <img src="/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
                 </div>
-                <div class="flex-y w-1/2 justify-center p-16 pl-6">
-                    <div class="text-7xl font-semibold">Team-friendy</div>
+                <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
+                    <div class="title-text">Team-friendy</div>
                     Choose between synchronous and asynchronous style is a well-known problem for team conversations:
                     <ul class="list-disc m-8">
                         <li>
@@ -276,52 +270,57 @@
     </div>
 
     @* Page 8 *@
-    <div class="page page-8 page-scrolling overflow-hidden bg-[#EEEEF6]" id="landing-page-8">
-        <div class="flex-y gap-y-8 items-center justify-center p-16 overflow-hidden min-h-screen">
-            <div class="flex self-start text-7xl font-semibold">
+    <div class="page page-8 page-scrolling" id="landing-page-8">
+        <div class="flex-y items-center justify-center overflow-hidden @(isMobile ? "px-4 py-8 gap-y-4" : "px-16 py-24 gap-y-8")">
+            <div class="flex font-semibold @(isMobile ? "self-center text-4.5xl" : "self-start text-7xl")">
                 Enjoyable and Fun
             </div>
-            <div class="gap-x-8 grid grid-cols-3">
+            <div class="@(isMobile ? "grid grid-rows-3 gap-y-8" : "grid grid-cols-3 gap-x-8")">
 
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
+                <div class="flex-y gap-y-2">
+                    <div class="flex h-60 items-center justify-center">
+                        <img src="/landing/enjoyable-01.svg" alt="enjoyable">
                     </div>
-                    <div>
-                        You don’t have to “call” your parties - all you need is to start talking. We record, transmit & transcribe your speech in real-time.
-                    </div>
-                </div>
-
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
-                    </div>
-                    <div>
-                        Once other participants get a notification & start responding, you’ll hear their responses in real time. Or just read them and reply in text - whatever you prefer!
+                    <div class="px-8 text-center">
+                        Many people prefer hearing you rather than reading your texts
                     </div>
                 </div>
 
-                <div class="flex-y gap-y-4">
-                    <div class="h-48 bg-[#CBCBD1]">
-
+                <div class="flex-y gap-y-2">
+                    <div class="flex h-60 items-center justify-center">
+                        <img src="/landing/enjoyable-02.svg" alt="enjoyable" class="">
                     </div>
-                    <div>
-                        When you talk with someone else in real-time, it’s very similar to a regular call. Otherwise it’s quite similar to text & voice messaging.
+                    <div class="px-8 text-center">
+                        Some of us are much better speakers than writers
+                    </div>
+                </div>
+
+                <div class="flex-y">
+                    <div class="flex h-60 items-center justify-center">
+                        <img src="/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                    </div>
+                    <div class="px-8 text-center">
+                        Jokes are almost always more fun when they’re told
                     </div>
                 </div>
 
             </div>
         </div>
-        <div class="flex-x gap-x-12 h-80 items-center justify-evenly bg-[#8AB1FF] p-16">
+        <div class="items-center justify-evenly bg-[#8AB1FF] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-80 p-16")">
             <div class="flex-y gap-y-2">
-                <div class="text-7xl font-semibold">
+                <div class="font-semibold @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
                     Get Actual.chat
                 </div>
-                <div class="text-4xl font-medium">
-                    Download for iOS, Android or use in Web
+                <div class="@(isMobile ? "flex-y text-2xl text-center pb-4" : "text-4xl font-medium")">
+                    @if (isMobile) {
+                        <span>Download for:</span>
+                        <span>iOS, Android or use in Web</span>
+                    } else {
+                        <span>Download for iOS, Android or use in Web</span>
+                    }
                 </div>
             </div>
-            <div class="flex-x gap-x-12">
+            <div class="flex-x gap-x-12 @(isMobile ? "p-4" : "")">
                 <button class="bg-white h-20 w-20 rounded-full">
 
                 </button>
@@ -336,100 +335,107 @@
     </div>
 
     @* Page 9 *@
-    <div class="page page-9 pt-8 page-scrolling overflow-hidden bg-[#EEEEF6]" id="landing-page-9">
-        <div class="flex-y items-center px-16 py-8 overflow-hidden min-h-screen">
-            <div class="flex self-start text-7xl font-semibold">
+    <div class="page page-9 page-scrolling" id="landing-page-9">
+        <div class="flex-y items-center overflow-hidden @(isMobile ? "text-4.5xl px-4 pt-8 gap-y-8" : "px-16 pb-8 pt-16 min-h-screen")">
+            <div class="flex self-start font-semibold @(isMobile ? "text-4.5xl " : "text-7xl")">
                 Actual.chat Features
             </div>
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+            <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-01.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Voice & text</span>
-                        are merged together inchats - channels
+                        <span>are merged together in</span>
+                        <span>chats - channels</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-02.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Markdown-style</span>
                         text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-03.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Replies, @@mentions, and reactions</span>
                     </div>
                 </div>
             </div>
 
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+            <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-04.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
-                        <span class="font-bold">Group and peer-to-peer chats</span>
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
+                        <span class="font-bold">Group and peer-to-peer</span>
+                        <span class="font-bold">chats</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-05.svg" alt="description">
                     </div>
-                    <div class="px-2">
-                        <span class="font-bold">Public</span> (anyone can view & listen) <span class="font-bold">and private chats</span>
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
+                        <div>
+                            <span class="font-bold">Public</span> (anyone can view &
+                        </div>
+                        <div>
+                            listen) <span class="font-bold">and private chats</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-06.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Characters</span>
                         your status and picture you can choose on per-chat basis
                     </div>
                 </div>
             </div>
 
-            <div class="flex-x w-full justify-between">
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+            <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-07.svg" alt="description">
                     </div>
-                    <div class="flex-y px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Unlimited Image & file uploads</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end">
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
                         <img src="/landing/dialog-08.svg" alt="description">
                     </div>
-                    <div class="px-2">
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Languages</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 w-64">
-                    <div class="flex w-full h-60 p-2 items-end"></div>
-                    <div class="flex-y px-2"></div>
+                <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
+                    <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")"></div>
+                    <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")"></div>
                 </div>
             </div>
         </div>
     </div>
 
     @* Page 10 *@
-    <div class="page page-10 justify-center overflow-hidden bg-[#EEEEF6]" id="landing-page-10">
-        <div class="flex-y gap-y-16 justify-center items-start p-16 overflow-hidden ">
-            <div class="text-7xl font-semibold">
-                What`s upcoming?
+    <div class="page page-10 justify-center bg-[#EEEEF6] @(isMobile ? "page-scrolling" : "")" id="landing-page-10">
+        <div class="flex-y justify-center items-start overflow-hidden @(isMobile ? "px-4 py-8 gap-y-8" : "p-16 gap-y-16")">
+            <div class="font-semibold @(isMobile ? "flex-y text-4.5xl" : "flex-x text-7xl")">
+                <span>What`s&nbsp;</span><span>upcoming?</span>
             </div>
-            <div class="flex-x w-full justify-between">
+            <div class="flex-x w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-8 min-w-1/3">
                     <LandingUpcomingItem Text="Highlights & conversation collapsing (“Show just highlights for voice conversations”)"/>
                     <LandingUpcomingItem Text="Places: a group of chats managed together. A perfect fit for team, company, or community chats."/>
@@ -449,31 +455,38 @@
     </div>
 
     @* Page 11 *@
-    <div class="page page-11 page-scrolling overflow-hidden" id="landing-page-11">
+    <div class="page page-11 page-scrolling" id="landing-page-11">
         <div class="flex-y h-full">
-            <div class="flex-x min-h-120">
-                <div class="flex w-1/2 p-16 pr-6">
-                    <div class="w-full h-full bg-[#CBCBD1]">
-
+            <div class="@(isMobile ? "flex-y py-8" : "flex-x min-h-120")">
+                <div class="@(isMobile ? "flex-y px-4 py-8" : "flex-x w-1/2 p-16 pr-6")">
+                    <div class="w-full font-semibold @(isMobile ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
+                        <span>How much&nbsp;</span>
+                        <span>does it&nbsp;</span>
+                        <span>cost?</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-4 w-1/2 justify-center p-16 pl-6">
-                    <div class="text-7xl font-semibold">How much does it cost?</div>
-                    Right now Actual.chat is completely free. Its basic features will be either completely free or require a nominal fee (up to $1/mo) forever.
-                    We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources. So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.
-
+                <div class="flex-y gap-y-4 justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
+                    <span>Right now Actual.chat is completely free.</span>
+                    <span>Its basic features will be either completely free or require a nominal fee (up to $1/mo) forever.</span>
+                    <span>We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources.
+                        So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.</span>
                 </div>
             </div>
-            <div class="flex-x gap-x-12 items-center justify-evenly bg-[#8AB1FF] p-16">
+            <div class="items-center justify-evenly bg-[#8AB1FF] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-80 p-16")">
                 <div class="flex-y gap-y-2">
-                    <div class="text-7xl font-semibold">
+                    <div class="font-semibold @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
                         Get Actual.chat
                     </div>
-                    <div class="text-4xl font-medium">
-                        Download for iOS, Android or use in Web
+                    <div class="@(isMobile ? "flex-y text-2xl text-center pb-4" : "text-4xl font-medium")">
+                        @if (isMobile) {
+                            <span>Download for:</span>
+                            <span>iOS, Android or use in Web</span>
+                        } else {
+                            <span>Download for iOS, Android or use in Web</span>
+                        }
                     </div>
                 </div>
-                <div class="flex-x gap-x-12">
+                <div class="flex-x gap-x-12 @(isMobile ? "p-4" : "")">
                     <button class="bg-white h-20 w-20 rounded-full">
 
                     </button>
@@ -485,40 +498,40 @@
                     </button>
                 </div>
             </div>
-            <div class="flex-x h-60 bg-07 p-12">
+            <div class="flex-x bg-07 @(isMobile ? "p-4" : "h-60 p-12")">
                 <div class="flex-y w-full">
-                    <div class="flex-x h-full gap-x-12 justify-start text-04">
-                        <button class="h-12">
+                    <div class="h-full justify-start text-04 @(isMobile ? "flex-y" : "flex-x gap-x-12")">
+                        <button class="footer-info-btn">
                             Privacy
                         </button>
-                        <button class="h-12">
+                        <button class="footer-info-btn">
                             Terms
                         </button>
-                        <button class="h-12">
+                        <button class="footer-info-btn">
                             Cookie Preferences
                         </button>
-                        <button class="h-12">
+                        <button class="footer-info-btn">
                             Contact us
                         </button>
-                        <button class="h-12">
+                        <button class="footer-info-btn">
                             Region
                         </button>
                     </div>
-                    <div class="flex min-h-12 items-center text-04">
+                    <div class="flex items-center text-04 @(isMobile ? "min-h-16" : "min-h-12")">
                         © 2022 Actual.chat Inc.  All rights reserved.
                     </div>
                 </div>
-                <div class="flex-y justify-between min-w-48 text-04">
-                    <button class="h-12">
+                <div class="flex-y justify-between min-w-48 text-04 @(isMobile ? "hidden" : "")">
+                    <button class="footer-info-btn">
                         Facebook
                     </button>
-                    <button class="h-12">
+                    <button class="footer-info-btn">
                         Github
                     </button>
-                    <button class="h-12">
+                    <button class="footer-info-btn">
                         Telegram
                     </button>
-                    <button class="h-12">
+                    <button class="footer-info-btn">
                         Medium
                     </button>
                 </div>
