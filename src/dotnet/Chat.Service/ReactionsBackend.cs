@@ -71,6 +71,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             .ConfigureAwait(false);
         var mustUpdateHasReactions = true;
         var changeKind = ChangeKind.Create;
+
         if (dbReaction == null) {
             reaction = reaction with {
                 Version = VersionGenerator.NextVersion(),
@@ -78,25 +79,28 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             };
             dbReaction = new DbReaction(reaction);
             dbContext.Add(dbReaction);
-            var dbSummary = await UpsertDbSummary(true).ConfigureAwait(false);
+
+            var dbSummary = await UpsertDbSummary(emoji, true).ConfigureAwait(false);
             if (dbSummary.Count > 1)
-                mustUpdateHasReactions = false; // there were already reaction before;
+                mustUpdateHasReactions = false; // There were already reaction before
         }
         else {
-            var dbSummary = await UpsertDbSummary(false).ConfigureAwait(false);
-            if (dbSummary.Count > 0)
-                mustUpdateHasReactions = false; // there are still some reactions left
-
-            if (emoji.Id == dbReaction.EmojiId)
+            if (emoji.Id == dbReaction.EmojiId) {
                 dbContext.Remove(dbReaction);
+                var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
+                if (dbSummary.Count > 0)
+                    mustUpdateHasReactions = false; // Some reactions are still there
+            }
             else {
+                var oldEmoji = Emoji.Get(dbReaction.EmojiId);
                 dbReaction.Version = VersionGenerator.NextVersion(dbReaction.Version);
                 dbReaction.EmojiId = emoji.Id;
                 dbReaction.ModifiedAt = Clocks.SystemClock.Now;
-                dbSummary = await UpsertDbSummary(true).ConfigureAwait(false);
-                if (dbSummary.Count > 1)
-                    mustUpdateHasReactions = false; // There were already reaction before
+                await UpsertDbSummary(oldEmoji, false).ConfigureAwait(false);
+                await UpsertDbSummary(emoji, true).ConfigureAwait(false);
+                mustUpdateHasReactions = false; // Author replaced one reaction with another
             }
+
             reaction = dbReaction.ToModel();
             changeKind = ChangeKind.Update;
         }
@@ -108,9 +112,9 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
             .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
 
-        async Task<DbReactionSummary> UpsertDbSummary(bool mustIncrementCount)
+        async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)
         {
-            var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji);
+            var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji1);
             var dbSummary = await dbContext.ReactionSummaries.ForUpdate()
                 .SingleOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
                 .ConfigureAwait(false);
@@ -121,7 +125,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
                 dbSummary = new DbReactionSummary(new ReactionSummary {
                     EntryId = entryId,
                     FirstAuthorIds = ImmutableList.Create(authorId),
-                    EmojiId = emoji.Id,
+                    EmojiId = emoji1.Id,
                     Count = 1,
                     Version = VersionGenerator.NextVersion(),
                 });
@@ -145,10 +149,10 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
         async Task UpdateHasReactions()
         {
-            var hasReactionsAfter = await dbContext.ReactionSummaries
+            var hasReactions = await dbContext.ReactionSummaries
                 .AnyAsync(x => x.EntryId == entryId.Value && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
-            entry = entry with { HasReactions = hasReactionsAfter };
+            entry = entry with { HasReactions = hasReactions };
             entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);
         }
     }
