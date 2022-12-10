@@ -14,7 +14,7 @@
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id.Value, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()"
             data-menu-position="@(FloatingPosition.Right.ToPositionString())">
-            <EmojiIcon Code="@reaction.Emoji" class="message-reactions-reaction-emoji"/>
+            <EmojiIcon Id="@reaction.Emoji.Id" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
