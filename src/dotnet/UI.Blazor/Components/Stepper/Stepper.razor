@@ -1,14 +1,32 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <CascadingValue Value="@this" IsFixed="true">
-    @ChildContent
+    @if (HeaderContent != null) {
+        <div class="stepper-header">
+            @HeaderContent.Invoke(this)
+        </div>
+    }
+
+    @if (ChildContent != null) {
+        <div class="stepper-body">
+            @ChildContent.Invoke(this)
+        </div>
+    }
+
+    @if (FooterContent != null) {
+        <div class="stepper-footer">
+            @FooterContent.Invoke(this)
+        </div>
+    }
 </CascadingValue>
 
 @code {
     private readonly List<Step> _steps = new();
     private Step? _currentStep;
 
-    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment<Stepper>? HeaderContent { get; set; }
+    [Parameter] public RenderFragment<Stepper>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<Stepper>? FooterContent { get; set; }
 
     public Step? CurrentStep => _currentStep;
 
@@ -17,6 +35,7 @@
         if (_steps.Count == 1) {
             _currentStep = step;
         }
+        StateHasChanged();
     }
 
     public bool IsLast
@@ -25,9 +44,9 @@
     public bool IsFirst
         => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
 
-    public bool CanMoveForward => !IsLast;
+    public bool CanMoveForward => _currentStep != null && !IsLast;
 
-    public bool CanMoveBack => !IsFirst;
+    public bool CanMoveBack => _currentStep != null && !IsFirst;
 
     public void MoveForward() {
         if (_currentStep == null)
