@@ -11,7 +11,9 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 const noSleep = new NoSleep();
 
 export class KeepAwakeUI {
+    private static _mustKeepAwake: boolean;
     public static async setKeepAwake(mustKeepAwake: boolean) {
+        this._mustKeepAwake = mustKeepAwake;
         if (mustKeepAwake && !noSleep.isEnabled) {
             infoLog?.log(`setKeepAwake: enabling`);
             try {
@@ -30,10 +32,17 @@ export class KeepAwakeUI {
             }
         }
     };
+    public static async warmup() {
+        if (!noSleep.isEnabled) {
+            await noSleep.enable();
+        }
+        if (!this._mustKeepAwake) {
+            noSleep.disable();
+        }
+    }
 }
 
 NextInteraction.addHandler(async () => {
     debugLog?.log(`warming up noSleep`);
-    await noSleep.enable();
-    noSleep.disable();
+    await KeepAwakeUI.warmup();
 });
