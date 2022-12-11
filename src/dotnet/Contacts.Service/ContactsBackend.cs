@@ -114,6 +114,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             contact = contact with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
+                IsPinned = contact.IsPinned,
                 TouchedAt = Clocks.SystemClock.Now,
             };
             dbContact = new DbContact(contact);

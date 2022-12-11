@@ -43,14 +43,14 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Version = model.Version;
         TouchedAt = model.TouchedAt.ToDateTimeClamped();
+        IsPinned = model.IsPinned;
         if (!Id.IsNullOrEmpty())
-            return; // Only Version & TouchedAt can be changed for already existing contacts
+            return; // Only above properties can be changed for already existing contacts
 
         Id = id.Value;
         OwnerId = model.OwnerId.Value;
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
-        IsPinned = model.IsPinned;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>
