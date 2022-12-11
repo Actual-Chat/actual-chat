@@ -5,9 +5,11 @@
     var m = State.LatestNonErrorValue;
 }
 
-<Toggle Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
-        Label="@Label"
-        Value="@(m == ChatNotificationMode.Muted)" ValueChanged="OnValueChanged" />
+<Toggle
+    Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
+    Label="@Label"
+    Value="@(m == ChatNotificationMode.Muted)"
+    ValueChanged="OnValueChanged"/>
 
 @code {
     private string? _id;
@@ -17,23 +19,26 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    private bool IsLoading => !Chat.Id.IsNone;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()
         => new() { InitialValue = ChatNotificationMode.Default };
 
     protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
-        var userChatSettings = await AccountSettings.GetUserChatSettings(ChatId, cancellationToken);
+        var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return userChatSettings.NotificationMode;
     }
 
     private Task OnValueChanged(bool isMuted)
         => UICommander.RunLocal(async cancellationToken => {
-            var userChatSettings = await AccountSettings.GetUserChatSettings(ChatId, cancellationToken).ConfigureAwait(false);
+            var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
             userChatSettings = userChatSettings with {
                 NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
             };
-            await AccountSettings.SetUserChatSettings(ChatId, userChatSettings, cancellationToken).ConfigureAwait(false);
+            await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
+            _ = UICommander.RunNothing();
         });
 }

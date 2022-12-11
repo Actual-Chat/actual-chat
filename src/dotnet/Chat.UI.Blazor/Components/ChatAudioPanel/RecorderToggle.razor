@@ -54,7 +54,7 @@
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     private bool CanRecord => _canRecord ?? true;
-    private bool IsLoading => State.LatestNonErrorValue.Chat.Id != Chat.Id;
+    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
     private bool IsRecording => !IsLoading && State.LatestNonErrorValue.IsRecording;
     private bool IsLongPressOn { get; set; } = false;
 

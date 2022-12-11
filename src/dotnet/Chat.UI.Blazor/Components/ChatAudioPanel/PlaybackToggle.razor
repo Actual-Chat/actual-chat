@@ -35,7 +35,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
-    private bool IsLoading => State.LatestNonErrorValue.Chat.Id != Chat.Id;
+    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
     private bool IsListening => !IsLoading && State.LatestNonErrorValue.MediaState.IsListening;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
