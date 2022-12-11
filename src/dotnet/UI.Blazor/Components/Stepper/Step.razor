@@ -4,7 +4,9 @@
     return;
 }
 
-@ChildContent?.Invoke(Stepper)
+<div class="step">
+    @ChildContent?.Invoke(Stepper)
+</div>
 
 @code {
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;

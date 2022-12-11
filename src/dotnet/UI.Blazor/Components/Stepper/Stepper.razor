@@ -1,24 +1,29 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<CascadingValue Value="@this" IsFixed="true">
-    @if (HeaderContent != null) {
-        <div class="stepper-header">
-            @HeaderContent.Invoke(this)
-        </div>
-    }
+<div class="stepper">
+    <CascadingValue Value="@this" IsFixed="true">
+        @if (HeaderContent != null) {
+            <div class="stepper-header">
+                @HeaderContent.Invoke(this)
+            </div>
+        }
 
-    @if (ChildContent != null) {
         <div class="stepper-body">
-            @ChildContent.Invoke(this)
-        </div>
-    }
+            @if (ChildContent != null) {
+                <div class="stepper-content">
+                    @ChildContent.Invoke(this)
+                </div>
+            }
 
-    @if (FooterContent != null) {
-        <div class="stepper-footer">
-            @FooterContent.Invoke(this)
+            @if (FooterContent != null) {
+                <div class="stepper-footer">
+                    @FooterContent.Invoke(this)
+                </div>
+            }
         </div>
-    }
-</CascadingValue>
+
+    </CascadingValue>
+</div>
 
 @code {
     private readonly List<Step> _steps = new();
