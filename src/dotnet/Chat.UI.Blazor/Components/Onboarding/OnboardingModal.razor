@@ -13,41 +13,31 @@
     ShowMobileHeader="false"
     HandleEscape="false">
     <Body>
-        <Stepper>
+    <Stepper Context="stepper">
+        <HeaderContent>
+            @if (stepper.CanMoveBack) {
+                <Button Click="stepper.MoveBack">Back</Button>
+            }
+        </HeaderContent>
+        <ChildContent>
             <Step>
-                @if (context.CanMoveBack) {
-                    <Button Click="context.MoveBack">Back</Button>
-                }
                 1
-                @if (context.IsLast) {
-                    <Button>Start messaging</Button>
-                } else if (context.CanMoveForward) {
-                    <Button Click="context.MoveForward">Next</Button>
-                }
             </Step>
             <Step>
-                @if (context.CanMoveBack) {
-                    <Button Click="context.MoveBack">Back</Button>
-                }
                 2
-                @if (context.IsLast) {
-                    <Button>Start messaging</Button>
-                } else if (context.CanMoveForward) {
-                    <Button Click="context.MoveForward">Next</Button>
-                }
             </Step>
             <Step>
-                @if (context.CanMoveBack) {
-                    <Button Click="context.MoveBack">Back</Button>
-                }
                 3
-                @if (context.IsLast) {
-                    <Button Click="ModalInstance.CloseAsync">Start messaging</Button>
-                } else if (context.CanMoveForward) {
-                    <Button Click="context.MoveForward">Next</Button>
-                }
             </Step>
-        </Stepper>
+        </ChildContent>
+        <FooterContent>
+            @if (stepper.IsLast) {
+                <Button Click="ModalInstance.CloseAsync">Start messaging</Button>
+            } else if (stepper.CanMoveForward) {
+                <Button Click="stepper.MoveForward">Next</Button>
+            }
+        </FooterContent>
+    </Stepper>
     </Body>
 </DialogFrame>
 
