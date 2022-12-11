@@ -3,28 +3,24 @@ namespace ActualChat.Commands;
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct QueueRef(
-    string Name,
-    string? ShardKey = null,
-    CommandPriority Priority = CommandPriority.Default)
+    [property: DataMember(Order = 0)] string Name,
+    [property: DataMember(Order = 1)] Symbol ShardKey = default,
+    [property: DataMember(Order = 2)] QueuedCommandPriority Priority = QueuedCommandPriority.Default)
 {
     private static readonly char[] AnyDelimiter = { '.', '[' };
 
-    [DataMember(Order = 0)] public string Name { get; init; } = Name;
-    [DataMember(Order = 1)] public string ShardKey { get; init; } = ShardKey ?? "";
-    [DataMember(Order = 2)] public CommandPriority Priority { get; init; } = Priority;
-
-    public QueueRef(string name, CommandPriority priority)
+    public QueueRef(string name, QueuedCommandPriority priority)
         : this(name, "", priority) { }
 
     public override string ToString()
     {
         var prioritySuffix = Priority switch {
-            CommandPriority.Critical => "critical",
-            CommandPriority.High => "high",
-            CommandPriority.Low => "low",
+            QueuedCommandPriority.Critical => "critical",
+            QueuedCommandPriority.High => "high",
+            QueuedCommandPriority.Low => "low",
             _ => "",
         };
-        return (!ShardKey.IsNullOrEmpty(), Priority is not CommandPriority.Default) switch {
+        return (!ShardKey.IsEmpty, Priority is not QueuedCommandPriority.Default) switch {
             (false, false) => Name,
             (false, true) => $"{Name}.{prioritySuffix}",
             (true, false) => $"{Name}[{ShardKey}]",
@@ -34,10 +30,10 @@ public readonly record struct QueueRef(
 
     // Helpers
 
-    public QueueRef ShardBy(string shardKey)
+    public QueueRef ShardBy(Symbol shardKey)
         => this with { ShardKey = shardKey };
 
-    public QueueRef WithPriority(CommandPriority priority)
+    public QueueRef WithPriority(QueuedCommandPriority priority)
         => this with { Priority = priority };
 
     // Parse methods
@@ -86,12 +82,12 @@ public readonly record struct QueueRef(
         }
     }
 
-    private static CommandPriority? GetPriority(string prioritySuffix, string? value)
+    private static QueuedCommandPriority? GetPriority(string prioritySuffix, string? value)
         => prioritySuffix switch {
             "" => default,
-            "low" => CommandPriority.Low,
-            "high" => CommandPriority.High,
-            "critical" => CommandPriority.Critical,
+            "low" => QueuedCommandPriority.Low,
+            "high" => QueuedCommandPriority.High,
+            "critical" => QueuedCommandPriority.Critical,
             _ => null,
         };
 }

@@ -1,7 +1,8 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
+@using Stl.Reflection
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.LatestNonErrorValue;
 }
@@ -11,7 +12,10 @@
         @ChildContent
     </ChildContent>
     <ErrorContent>
-        @if (context.Errors.Any(e => e is NoAccountException)) {
+        @if (ReferenceEquals(account, AccountFull.Loading)) {
+            // Don't render anything until account is loaded
+        }
+        else if (context.Errors.Any(e => e is GuestAccountException)) {
             <SignInBlock/>
         } else if (context.Errors.Any(e => e is SuspendedAccountException)) {
             <SignOutBlock>
@@ -34,7 +38,7 @@
                 <div class="p-4 pr-5">
                     @foreach (var (requirement, error) in context.Items) {
                         var title = HostInfo.IsDevelopmentInstance
-                            ? $"Error ({error.GetType().Name}):"
+                            ? $"Error ({error.GetType().GetName()}):"
                             : "Error:";
                         <Error @key="requirement"
                                Title="@title"
@@ -42,8 +46,8 @@
                     }
                 </div>
                 <div class="p-5 pt-0">
-                    @if (context.Items.Any(x => x.Value is IContentUnavailableException)) {
-                        @if (account == null) {
+                    @if (context.Items.Any(x => x.Value is INotFoundException)) {
+                        @if (account.IsGuest) {
                             <span>
                                 You can try to <SignInDropdown /> to resolve it.
                             </span>
@@ -81,7 +85,13 @@
         return base.DisposeAsync();
     }
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountFull.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

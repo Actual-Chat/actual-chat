@@ -8,14 +8,14 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string UserId { get; set; } = "";
+    [Parameter, EditorRequired] public UserId UserId { get; set; }
     [Parameter] public bool ShowPresence { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (UserId.IsNullOrEmpty())
+        if (UserId.IsNone)
             return Model.None;
 
         var account = await Accounts.Get(Session, UserId, cancellationToken);

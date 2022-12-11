@@ -40,9 +40,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? DetailsJson { get; set; }
 
     public Invite ToModel()
-        => new() {
-            Id = Id,
-            Version = Version,
+        => new(Id, Version) {
             Remaining = Remaining,
             ExpiresOn = ExpiresOn,
             CreatedAt = CreatedAt,
@@ -52,7 +50,11 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(Invite model)
     {
-        Id = model.Id;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
+
+        Id = id;
         Version = model.Version;
         Remaining = model.Remaining;
         ExpiresOn = model.ExpiresOn;

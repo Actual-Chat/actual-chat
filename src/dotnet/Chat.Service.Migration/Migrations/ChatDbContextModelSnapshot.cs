@@ -96,10 +96,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<int>("ChatType")
-                        .HasColumnType("integer")
-                        .HasColumnName("chat_type");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -107,6 +103,10 @@ namespace ActualChat.Chat.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
 
                     b.Property<string>("Picture")
                         .IsRequired()
@@ -131,9 +131,9 @@ namespace ActualChat.Chat.Migrations
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntry", b =>
                 {
-                    b.Property<string>("CompositeId")
+                    b.Property<string>("Id")
                         .HasColumnType("text")
-                        .HasColumnName("composite_id");
+                        .HasColumnName("id");
 
                     b.Property<long?>("AudioEntryId")
                         .HasColumnType("bigint")
@@ -182,10 +182,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("has_reactions");
 
-                    b.Property<long>("Id")
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("boolean")
                         .HasColumnName("is_removed");
@@ -193,6 +189,14 @@ namespace ActualChat.Chat.Migrations
                     b.Property<bool>("IsServiceEntry")
                         .HasColumnType("boolean")
                         .HasColumnName("is_service_entry");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<long>("LocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("local_id");
 
                     b.Property<long?>("RepliedChatEntryId")
                         .HasColumnType("bigint")
@@ -206,10 +210,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("text_to_time_map");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint")
@@ -219,23 +219,23 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("video_entry_id");
 
-                    b.HasKey("CompositeId")
+                    b.HasKey("Id")
                         .HasName("pk_chat_entries");
 
-                    b.HasIndex("ChatId", "Type", "Id")
-                        .HasDatabaseName("ix_chat_entries_chat_id_type_id");
+                    b.HasIndex("ChatId", "Kind", "LocalId")
+                        .HasDatabaseName("ix_chat_entries_chat_id_kind_local_id");
 
-                    b.HasIndex("ChatId", "Type", "Version")
-                        .HasDatabaseName("ix_chat_entries_chat_id_type_version");
+                    b.HasIndex("ChatId", "Kind", "Version")
+                        .HasDatabaseName("ix_chat_entries_chat_id_kind_version");
 
-                    b.HasIndex("ChatId", "Type", "BeginsAt", "EndsAt")
-                        .HasDatabaseName("ix_chat_entries_chat_id_type_begins_at_ends_at");
+                    b.HasIndex("ChatId", "Kind", "BeginsAt", "EndsAt")
+                        .HasDatabaseName("ix_chat_entries_chat_id_kind_begins_at_ends_at");
 
-                    b.HasIndex("ChatId", "Type", "EndsAt", "BeginsAt")
-                        .HasDatabaseName("ix_chat_entries_chat_id_type_ends_at_begins_at");
+                    b.HasIndex("ChatId", "Kind", "EndsAt", "BeginsAt")
+                        .HasDatabaseName("ix_chat_entries_chat_id_kind_ends_at_begins_at");
 
-                    b.HasIndex("ChatId", "Type", "IsRemoved", "Id")
-                        .HasDatabaseName("ix_chat_entries_chat_id_type_is_removed_id");
+                    b.HasIndex("ChatId", "Kind", "IsRemoved", "LocalId")
+                        .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_local_id");
 
                     b.ToTable("chat_entries");
                 });
@@ -262,11 +262,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<string>("AuthorId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("author_id");
-
                     b.Property<string>("ChatId")
                         .IsRequired()
                         .HasColumnType("text")
@@ -276,14 +271,19 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("entry_id");
 
+                    b.Property<string>("MentionId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mention_id");
+
                     b.HasKey("Id")
                         .HasName("pk_mentions");
 
-                    b.HasIndex("ChatId", "AuthorId", "EntryId")
-                        .HasDatabaseName("ix_mentions_chat_id_author_id_entry_id");
+                    b.HasIndex("ChatId", "EntryId", "MentionId")
+                        .HasDatabaseName("ix_mentions_chat_id_entry_id_mention_id");
 
-                    b.HasIndex("ChatId", "EntryId", "AuthorId")
-                        .HasDatabaseName("ix_mentions_chat_id_entry_id_author_id");
+                    b.HasIndex("ChatId", "MentionId", "EntryId")
+                        .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_id");
 
                     b.ToTable("mentions");
                 });
@@ -299,17 +299,17 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("author_id");
 
-                    b.Property<string>("ChatEntryId")
+                    b.Property<string>("EmojiId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("chat_entry_id");
+                        .HasColumnName("emoji_id");
 
-                    b.Property<string>("Emoji")
+                    b.Property<string>("EntryId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("emoji");
+                        .HasColumnName("entry_id");
 
-                    b.Property<DateTime?>("ModifiedAt")
+                    b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
@@ -330,19 +330,19 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<string>("ChatEntryId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_entry_id");
-
                     b.Property<long>("Count")
                         .HasColumnType("bigint")
                         .HasColumnName("count");
 
-                    b.Property<string>("Emoji")
+                    b.Property<string>("EmojiId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("emoji");
+                        .HasColumnName("emoji_id");
+
+                    b.Property<string>("EntryId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entry_id");
 
                     b.Property<string>("FirstAuthorIdsJson")
                         .IsRequired()
@@ -357,8 +357,8 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_reaction_summaries");
 
-                    b.HasIndex("ChatEntryId")
-                        .HasDatabaseName("ix_reaction_summaries_chat_entry_id");
+                    b.HasIndex("EntryId")
+                        .HasDatabaseName("ix_reaction_summaries_entry_id");
 
                     b.ToTable("reaction_summaries");
                 });
@@ -443,19 +443,19 @@ namespace ActualChat.Chat.Migrations
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>
                 {
-                    b.Property<string>("CompositeId")
+                    b.Property<string>("Id")
                         .HasColumnType("text")
-                        .HasColumnName("composite_id");
-
-                    b.Property<string>("ChatEntryId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_entry_id");
+                        .HasColumnName("id");
 
                     b.Property<string>("ContentId")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("content_id");
+
+                    b.Property<string>("EntryId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entry_id");
 
                     b.Property<int>("Index")
                         .HasColumnType("integer")
@@ -471,7 +471,7 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("version");
 
-                    b.HasKey("CompositeId")
+                    b.HasKey("Id")
                         .HasName("pk_text_entry_attachments");
 
                     b.ToTable("text_entry_attachments");

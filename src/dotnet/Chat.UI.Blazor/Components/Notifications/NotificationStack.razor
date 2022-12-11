@@ -1,6 +1,5 @@
 @using ActualChat.Notification
 @inherits ComputedStateComponent<NotificationStack.Model>
-
 @{
     var model = State.Value;
     var notifications = model.Notifications;
@@ -9,13 +8,13 @@
 <div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar max-h-[100%]"
     @onmouseover="MouseOver"
     @onmouseout="MouseOut">
-    @foreach (var notification in notifications.OrderBy(n => n.NotificationTime)) {
-        var notificationId = notification.Id.Value;
-        <Notification @key="@notificationId"
+    @foreach (var notification in notifications.OrderBy(n => n.HandledAt)) {
+        var notificationId = notification.Id;
+        <NotificationEntry @key="@notificationId.Value"
                       Closed="() => OnClose(notificationId)"
                       AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"
                       AnimationTime="@(TimeSpan.FromSeconds(1))"
-                      NotificationEntry="@notification"/>
+                      Notification="@notification"/>
     }
 </div>
 
@@ -33,9 +32,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
-        var notifications = new List<NotificationEntry>();
+        var notifications = new List<ActualChat.Notification.Notification>();
         foreach (var notificationId in notificationIds) {
-            var notification = await Notifications.GetNotification(Session, notificationId, cancellationToken);
+            var notification = await Notifications.Get(Session, notificationId, cancellationToken);
             notifications.Add(notification);
         }
 
@@ -44,8 +43,8 @@
         };
     }
 
-    private async Task OnClose(string notificationId) {
-        var command = new INotifications.HandleNotificationCommand(Session, notificationId);
+    private async Task OnClose(NotificationId notificationId) {
+        var command = new INotifications.HandleCommand(Session, notificationId);
         await UICommander.Run(command);
     }
 
@@ -62,6 +61,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public ImmutableArray<NotificationEntry> Notifications { get; init; } = ImmutableArray<NotificationEntry>.Empty;
+        public ImmutableArray<ActualChat.Notification.Notification> Notifications { get; init; } = ImmutableArray<ActualChat.Notification.Notification>.Empty;
     }
 }

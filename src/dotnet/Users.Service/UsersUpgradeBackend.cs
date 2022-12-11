@@ -8,7 +8,7 @@ public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgrade
 {
     public UsersUpgradeBackend(IServiceProvider services) : base(services) { }
 
-    public async Task<ImmutableList<string>> ListAllUserIds(CancellationToken cancellationToken)
+    public async Task<ImmutableList<UserId>> ListAllUserIds(CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -17,6 +17,6 @@ public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgrade
             .Select(c => c.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.ToImmutableList();
+        return userIds.Select(id => new UserId(id)).ToImmutableList();
     }
 }

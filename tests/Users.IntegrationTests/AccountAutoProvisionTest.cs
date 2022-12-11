@@ -35,7 +35,7 @@ public class AccountAutoProvisionTest : AppHostTestBase
         var user = await _tester.SignIn(new User("Bob"));
 
         // act
-        var account = (await _accounts.GetOwn(_tester.Session, default))!;
+        var account = await _accounts.GetOwn(_tester.Session, default);
 
         // assert
         account.Should().NotBeNull();
@@ -44,18 +44,16 @@ public class AccountAutoProvisionTest : AppHostTestBase
     }
 
     [Fact]
-    public async Task ShouldNotTouchAccountForExistingUser()
+    public async Task ShouldNotCreateAccountForExistingUser()
     {
         // arrange
-        var user = await _tester.SignIn(new User("Bob"));
-        var expected = (await _accounts.GetOwn(_tester.Session, default))!;
+        var account = await _tester.SignIn(new User("Bob"));
         await _tester.SignOut();
 
         // act
-        await _tester.SignIn(user);
-        var actual = (await _accounts.GetOwn(_tester.Session, default))!;
+        var account2 = await _tester.SignIn(account.User);
 
         // assert
-        actual.Should().BeEquivalentTo(expected, options => options.Excluding(x => x.User));
+        account2.Should().BeEquivalentTo(account, options => options.Excluding(x => x.User));
     }
 }

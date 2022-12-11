@@ -6,15 +6,15 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[Index(nameof(ChatId), nameof(Type), nameof(IsRemoved), nameof(Id))] // For GetEntryCount queries
-[Index(nameof(ChatId), nameof(Type), nameof(Id))]
-[Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
-[Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
-[Index(nameof(ChatId), nameof(Type), nameof(Version))]
-public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
+[Index(nameof(ChatId), nameof(Kind), nameof(IsRemoved), nameof(LocalId))] // For GetEntryCount queries
+[Index(nameof(ChatId), nameof(Kind), nameof(LocalId))]
+[Index(nameof(ChatId), nameof(Kind), nameof(BeginsAt), nameof(EndsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(EndsAt), nameof(BeginsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(Version))]
+public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<ServiceEntryDetails> ServiceEntrySerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<ServiceEntryDetails>();
+    private static ITextSerializer<SystemEntryContent> ServiceEntrySerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<SystemEntryContent>();
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;
@@ -24,10 +24,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
-    [Key] public string CompositeId { get; set; } = "";
-    public string ChatId { get; set; } = "";
-    public long Id { get; set; }
+    [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
+    public string ChatId { get; set; } = "";
+    public long LocalId { get; set; }
+
     public bool IsRemoved { get; set; }
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
@@ -56,7 +57,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
 
     public double Duration { get; set; }
 
-    public ChatEntryType Type { get; set; }
+    public ChatEntryKind Kind { get; set; }
     public string Content { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
@@ -66,19 +67,13 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
-    public static string ComposeId(string chatId, ChatEntryType entryType, long entryId)
-        => $"{chatId}:{entryType:D}:{entryId.ToString(CultureInfo.InvariantCulture)}";
-
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
-        => new() {
-            CompositeId = CompositeId,
-            ChatId = ChatId,
-            Type = Type,
-            Id = Id,
-            Version = Version,
+    {
+        var chatId = new ChatId(ChatId);
+        var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
+        return new (id, Version) {
             IsRemoved = IsRemoved,
-
-            AuthorId = AuthorId,
+            AuthorId = new AuthorId(AuthorId),
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt,
             EndsAt = EndsAt,
@@ -89,27 +84,32 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
-            RepliedChatEntryId = RepliedChatEntryId!,
+            RepliedEntryLocalId = RepliedChatEntryId!,
             Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
-            TextToTimeMap = Type == ChatEntryType.Text
+            TextToTimeMap = Kind == ChatEntryKind.Text
                 ? TextToTimeMap != null
-                ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
-                : default
+                    ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
+                    : default
                 : default,
 #pragma warning restore IL2026
         };
+    }
 
     public void UpdateFrom(ChatEntry model)
     {
-        CompositeId = ComposeId(model.ChatId, model.Type, model.Id);
-        ChatId = model.ChatId;
-        Type = model.Type;
-        Id = model.Id;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
+        model.RequireSomeVersion();
+
+        Id = id.Value;
+        ChatId = model.ChatId.Value;
+        Kind = model.Kind;
+        LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
 
-        AuthorId = model.AuthorId;
+        AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
         ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
@@ -119,7 +119,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
-        RepliedChatEntryId = model.RepliedChatEntryId;
+        RepliedChatEntryId = model.RepliedEntryLocalId;
         Content = model.ServiceEntry != null ? ServiceEntrySerializer.Write(model.ServiceEntry) : model.Content;
         IsServiceEntry = model.ServiceEntry != null;
 #pragma warning disable IL2026

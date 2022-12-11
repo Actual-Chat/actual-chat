@@ -1,6 +1,6 @@
 namespace ActualChat.Users.Module;
 
-public class UsersSettings
+public sealed class UsersSettings
 {
     // DBs
     public string Db { get; set; } = "";

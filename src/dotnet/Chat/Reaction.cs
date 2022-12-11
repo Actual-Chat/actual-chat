@@ -1,19 +1,18 @@
+using Stl.Versioning;
+
 namespace ActualChat.Chat;
 
 // TODO(FC): remove this model since it should not be used from client side
-public record Reaction : IHasId<Symbol>, IRequirementTarget
+[DataContract]
+public record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     [DataMember] public Symbol Id { get; init; }
-    [DataMember] public Symbol AuthorId { get; init; }
-    [DataMember] public Symbol ChatId { get; init; } // TODO(FC): try replacing with ChatEntryId
-    [DataMember] public long EntryId { get; init; }
-    [DataMember] public string Emoji { get; init; } = "";
+    [DataMember] public long Version { get; init; }
+    [DataMember] public AuthorId AuthorId { get; init; }
+    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public Symbol EmojiId { get; init; }
+    [DataMember] public Moment ModifiedAt { get; init; }
 
-    public void Deconstruct(out Symbol authorId, out Symbol chatId, out long entryId, out string emoji)
-    {
-        authorId = AuthorId;
-        chatId = ChatId;
-        entryId = EntryId;
-        emoji = Emoji;
-    }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Emoji Emoji => Emoji.Get(EmojiId);
 }

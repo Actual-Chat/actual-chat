@@ -49,7 +49,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             IsEndAnchorVisible = StateFactory.NewMutable(true);
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(Chat.Id, _disposeToken.Token);
+            LastReadEntryState = await ChatUI.LeaseReadState(Chat.Id, _disposeToken.Token);
             _initialLastReadEntryId = LastReadEntryState.Value;
         }
         finally {
@@ -78,7 +78,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (lastReadEntryId is { } entryId)
             navigateToEntryId = entryId;
         else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token);
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
             navigateToEntryId = chatIdRange.ToInclusive().End;
         }
 
@@ -87,12 +87,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigateToEntry(navigateToEntryId);
     }
 
-    public void NavigateToEntry(long navigateToEntryId)
+    public void NavigateToEntry(long localId)
     {
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
         NavigateToEntryId.Value = null;
-        NavigateToEntryId.Value = navigateToEntryId;
+        NavigateToEntryId.Value = localId;
     }
 
     public void TryNavigateToEntry()
@@ -116,10 +116,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         await WhenInitialized;
 
         var chat = Chat;
-        var chatId = chat.Id.Value;
+        var chatId = chat.Id;
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
         var lastReadEntryId = LastReadEntryState?.Value ?? 0;
         if (LastReadEntryState != null && lastReadEntryId >= chatIdRange.End) {
             // looks like an error, let's reset last read position to the las entry id
@@ -133,11 +133,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
         var lastTile = await Chats.GetTile(Session,
             chatId,
-            ChatEntryType.Text,
+            ChatEntryKind.Text,
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != authorId || entry.Id <= _initialLastReadEntryId)
+            if (entry.AuthorId != authorId || entry.LocalId <= _initialLastReadEntryId)
                 continue;
 
             // scroll only on text entries
@@ -145,8 +145,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 continue;
 
             // scroll to the latest Author entry - e.g.m when author submits the new one
-            _initialLastReadEntryId = entry.Id;
-            entryId = entry.Id;
+            _initialLastReadEntryId = entry.LocalId;
+            entryId = entry.LocalId;
             mustScrollToEntry = true;
         }
 
@@ -206,12 +206,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
         var chatTiles = await idTiles
-            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken))
+            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
 
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
-            .Where(e => e.Type == ChatEntryType.Text)
+            .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
         var chatMessages = ChatMessageModel.FromEntries(
@@ -286,9 +286,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => TryNavigateToEntry();
 
-    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent navigation, CancellationToken cancellationToken)
+    private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
-        NavigateToEntry(navigation.ChatEntryId);
+        if (@event.ChatEntryId.ChatId == Chat.Id)
+            NavigateToEntry(@event.ChatEntryId.LocalId);
         return Task.CompletedTask;
     }
 }

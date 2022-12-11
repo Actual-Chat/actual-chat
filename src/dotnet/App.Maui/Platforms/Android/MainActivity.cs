@@ -229,7 +229,7 @@ public class MainActivity : MauiAppCompatActivity
                 data.Add(key, extraValue.ToString());
         }
 
-        data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url);
+        var url = data.GetValueOrDefault(NotificationConstants.MessageDataKeys.Link);
         if (url.IsNullOrEmpty())
             return;
 

@@ -2,7 +2,6 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<bool>
-
 @{
     var m = State.LatestNonErrorValue;
     var cls = m ? "text-primary" : "text-icons-01";
@@ -31,7 +30,7 @@
     [Inject] private Session Session { get; init; } = null!;
 
     [Parameter] public bool HideSetDefaultButton { get; set; }
-    [Parameter] public string AvatarId { get; set; } = "";
+    [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
     [Parameter] public EventCallback OnEditClick { get; set; }
     [Parameter] public EventCallback OnSetDefaultClick { get; set; }
 
@@ -43,7 +42,7 @@
         var defaultAvatarId = accountSettings.DefaultAvatarId;
         if (defaultAvatarId.IsEmpty)
             defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
-        return AvatarId == defaultAvatarId;
+        return Avatar.Id == defaultAvatarId;
     }
 
 }

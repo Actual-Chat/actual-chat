@@ -14,10 +14,20 @@ export class KeepAwakeUI {
     public static async setKeepAwake(mustKeepAwake: boolean) {
         if (mustKeepAwake && !noSleep.isEnabled) {
             infoLog?.log(`setKeepAwake: enabling`);
-            await noSleep.enable();
+            try {
+                await noSleep.enable();
+            }
+            catch (e) {
+                errorLog.log(`setKeepAwake(true): error:`, e);
+            }
         } else if (!mustKeepAwake && noSleep.isEnabled) {
             infoLog?.log(`setKeepAwake: disabling`);
-            noSleep.disable();
+            try {
+                noSleep.disable();
+            }
+            catch (e) {
+                errorLog.log(`setKeepAwake(false): error:`, e);
+            }
         }
     };
 }

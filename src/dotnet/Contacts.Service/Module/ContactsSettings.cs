@@ -1,6 +1,6 @@
 namespace ActualChat.Contacts.Module;
 
-public class ContactsSettings
+public sealed class ContactsSettings
 {
     // DBs
     public string Db { get; set; } = "";

@@ -5,7 +5,7 @@ public interface IInvites : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Invite>> ListChatInvites(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> Generate(GenerateCommand command, CancellationToken cancellationToken);

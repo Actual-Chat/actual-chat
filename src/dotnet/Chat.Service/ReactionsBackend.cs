@@ -19,7 +19,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(string entryId, string authorId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -31,14 +31,14 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> List(
-        string chatEntryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
-            .Where(x => x.ChatEntryId == chatEntryId && x.Count > 0)
+            .Where(x => x.EntryId == entryId.Value && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbReactionSummaries.Select(x => x.ToModel()).ToImmutableArray();
@@ -47,15 +47,19 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     // [CommandHandler]
     public virtual async Task React(IReactionsBackend.ReactCommand command, CancellationToken cancellationToken)
     {
-        var (authorId, chatId, entryId, newEmoji) = command.Reaction;
-        var parsedChatEntryId = new ParsedChatEntryId(chatId, ChatEntryType.Text, entryId).ToString();
+        var reaction = command.Reaction;
+        var entryId = reaction.EntryId;
+        var chatId = entryId.ChatId;
+        var authorId = reaction.AuthorId;
+
         if (Computed.IsInvalidating()) {
-            _ = List(parsedChatEntryId, default);
-            _ = Get(parsedChatEntryId, authorId, default);
+            _ = List(entryId, default);
+            _ = Get(entryId, authorId, default);
             return;
         }
 
-        var entry = await GetChatEntry(chatId, entryId, cancellationToken).Require().ConfigureAwait(false);
+        var emoji = Emoji.Get(reaction.EmojiId).Require();
+        var entry = await GetChatEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -63,64 +67,65 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbReaction = await dbContext.Reactions
-            .Get(DbReaction.ComposeId(parsedChatEntryId, authorId), cancellationToken)
+            .Get(DbReaction.ComposeId(entryId, authorId), cancellationToken)
             .ConfigureAwait(false);
-        var needsHasReactionsUpdate = true;
+        var mustUpdateHasReactions = true;
         var changeKind = ChangeKind.Create;
+
         if (dbReaction == null) {
-            dbReaction = new DbReaction(command.Reaction) {
+            reaction = reaction with {
                 Version = VersionGenerator.NextVersion(),
                 ModifiedAt = Clocks.SystemClock.Now,
             };
+            dbReaction = new DbReaction(reaction);
             dbContext.Add(dbReaction);
-            var dbSummary = await UpsertDbSummary(newEmoji, true).ConfigureAwait(false);
+
+            var dbSummary = await UpsertDbSummary(emoji, true).ConfigureAwait(false);
             if (dbSummary.Count > 1)
-                needsHasReactionsUpdate = false; // there were already reaction before;
+                mustUpdateHasReactions = false; // There were already reaction before
         }
         else {
-            var dbSummary = await UpsertDbSummary(dbReaction.Emoji, false).ConfigureAwait(false);
-            if (dbSummary.Count > 0)
-                needsHasReactionsUpdate = false; // there are still some reactions left
-
-            if (dbReaction.Emoji.Equals(newEmoji, StringComparison.OrdinalIgnoreCase)) {
+            if (emoji.Id == dbReaction.EmojiId) {
                 dbContext.Remove(dbReaction);
-                changeKind = ChangeKind.Remove;
+                var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
+                if (dbSummary.Count > 0)
+                    mustUpdateHasReactions = false; // Some reactions are still there
             }
             else {
-                dbReaction.Emoji = newEmoji;
+                var oldEmoji = Emoji.Get(dbReaction.EmojiId);
                 dbReaction.Version = VersionGenerator.NextVersion(dbReaction.Version);
+                dbReaction.EmojiId = emoji.Id;
                 dbReaction.ModifiedAt = Clocks.SystemClock.Now;
-                dbSummary = await UpsertDbSummary(newEmoji, true).ConfigureAwait(false);
-                if (dbSummary.Count > 1)
-                    needsHasReactionsUpdate = false; // There were already reaction before
-                changeKind = ChangeKind.Update;
+                await UpsertDbSummary(oldEmoji, false).ConfigureAwait(false);
+                await UpsertDbSummary(emoji, true).ConfigureAwait(false);
+                mustUpdateHasReactions = false; // Author replaced one reaction with another
             }
+
+            reaction = dbReaction.ToModel();
+            changeKind = ChangeKind.Update;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        if (needsHasReactionsUpdate)
+        if (mustUpdateHasReactions)
             await UpdateHasReactions().ConfigureAwait(false);
 
-        new ReactionChangedEvent(entry, entryAuthor, author, newEmoji, changeKind)
+        new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
             .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
 
-        ValueTask<DbReactionSummary?> GetDbSummary(string emoji)
+        async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)
         {
-            var id = DbReactionSummary.ComposeId(parsedChatEntryId, emoji);
-            return dbContext.ReactionSummaries.Get(id, cancellationToken);
-        }
-
-        async Task<DbReactionSummary> UpsertDbSummary(string emoji, bool increase)
-        {
-            var dbSummary = await GetDbSummary(emoji).ConfigureAwait(false);
-            if (!increase)
+            var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji1);
+            var dbSummary = await dbContext.ReactionSummaries.ForUpdate()
+                .SingleOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!mustIncrementCount)
                 dbSummary = dbSummary.Require();
 
             if (dbSummary == null) {
                 dbSummary = new DbReactionSummary(new ReactionSummary {
-                    ChatEntryId = parsedChatEntryId,
+                    EntryId = entryId,
                     FirstAuthorIds = ImmutableList.Create(authorId),
-                    Emoji = emoji,
+                    EmojiId = emoji1.Id,
                     Count = 1,
                     Version = VersionGenerator.NextVersion(),
                 });
@@ -128,8 +133,8 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             }
             else {
                 var summary = dbSummary.ToModel();
-                summary = increase ? summary.Increase() : summary.Decrease();
-                if (increase)
+                summary = summary.IncrementCount(mustIncrementCount ? 1 : -1);
+                if (mustIncrementCount)
                     summary = summary.AddAuthor(authorId);
                 else {
                     summary = summary.RemoveAuthor(authorId);
@@ -144,25 +149,25 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
         async Task UpdateHasReactions()
         {
-            var hasReactionsAfter = await dbContext.ReactionSummaries
-                .AnyAsync(x => x.ChatEntryId == parsedChatEntryId && x.Count > 0, cancellationToken)
+            var hasReactions = await dbContext.ReactionSummaries
+                .AnyAsync(x => x.EntryId == entryId.Value && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
-            entry = entry with { HasReactions = hasReactionsAfter };
+            entry = entry with { HasReactions = hasReactions };
             entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task<ChatEntry?> GetChatEntry(string chatId, long entryId, CancellationToken cancellationToken)
+    private async Task<ChatEntry?> GetChatEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var chatTile = await ChatsBackend.GetTile(
-                chatId,
-                ChatEntryType.Text,
+                entryId.ChatId,
+                entryId.Kind,
                 idTile.Range,
                 false,
                 cancellationToken)
             .ConfigureAwait(false);
-        var entry = chatTile.Entries.FirstOrDefault(x => x.Id == entryId);
+        var entry = chatTile.Entries.FirstOrDefault(x => x.LocalId == entryId.LocalId);
         return entry;
     }
 }

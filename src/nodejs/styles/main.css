@@ -76,6 +76,11 @@ h3 {
     @apply text-lg;
 }
 
+/* Styled inputs */
+
+input.input-imprinted {
+    @apply border-0 bg-04;
+}
 
 /* Sections */
 
@@ -91,11 +96,28 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply border-0;
 }
 
-/* Other inputs */
+/* Stack */
 
-input.input-imprinted {
-    @apply border-0 bg-04;
+.stack {
+    @apply inline-grid;
 }
+.stack > * {
+    @apply col-start-1 row-start-1;
+}
+.stack > * {
+    transform: translateY(1rem) scale(0.9);
+    z-index: 1;
+}
+.stack > *:nth-child(2) {
+    transform: translateY(0.5rem) scale(0.95);
+    z-index: 2;
+}
+.stack > *:nth-child(1) {
+    transform: translateY(0) scale(1);
+    z-index: 3;
+}
+
+/* Error toast */
 
 input.input-underlined {
     @apply bg-transparent border-b border-placeholder;
@@ -142,6 +164,7 @@ input.input-underlined {
 }
 
 /* Welcome page */
+
 .welcome-page {
     @apply fixed flex-y md:flex-x h-full w-full p-8;
     background-image: linear-gradient(to right bottom, #96d6f9, #8bdef6, #88e6ee, #8febe2, #9ff0d4, #97ecd2, #8fe9d0, #87e5ce, #65d7da, #54c7e3, #5eb5e4, #76a1db);
@@ -207,6 +230,9 @@ input.input-underlined {
 .landing-header.blur-bg {
     @apply backdrop-blur-2xl;
 }
+
+/* Timeline */
+
 .timeline-item {
     @apply flex-x h-24;
 }

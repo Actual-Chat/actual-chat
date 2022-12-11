@@ -3,10 +3,10 @@
 <ul class="reaction-select">
     @foreach (var emoji in _emojis) {
         <MenuEntry
-            OnClick="_ => React(emoji.Code)"
+            OnClick="_ => React(emoji.Id)"
             Class="reaction-select-reaction">
             <IconContent>
-                <EmojiIcon Code="@emoji.Code" class="reaction-select-reaction-emoji"/>
+                <EmojiIcon Id="@emoji.Id" class="reaction-select-reaction-emoji"/>
             </IconContent>
         </MenuEntry>
     }
@@ -27,9 +27,10 @@
         _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
     }
 
-    private Task React(string emoji) {
+    private Task React(Symbol emojiId) {
         var command = new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = ChatEntry.ChatId, EntryId = ChatEntry.Id, Emoji = emoji,
+            EntryId = ChatEntry.Id,
+            EmojiId = emojiId,
         });
         return UICommander.Run(command);
     }

@@ -35,12 +35,11 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override Task OnInitializedAsync() => ChatUI.SelectedChatId.WhenRead;
 
@@ -50,15 +49,15 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
-        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false) ?? AccountFull.None;
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
         var link = "";
         if (HistoryUI.IsInitialLocation || _signInHasRequested) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
-                link = Links.ChatPage("");
+                link = Links.ChatPage(default);
             else {
-                var chat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
-                if (chat != null)
-                    link = Links.ChatPage(chat.Id);
+                var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                link = Links.ChatPage(selectedChat != null ? selectedChatId : Constants.Chat.DefaultChatId);
             }
         }
         return new(account, link);

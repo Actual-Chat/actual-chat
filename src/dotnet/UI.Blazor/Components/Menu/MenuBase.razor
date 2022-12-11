@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@implements IMenu
 
 @code {
     [Parameter] public string Id { get; set; } = "";
@@ -6,8 +7,22 @@
 
     [CascadingParameter] public MenuHost Host { get; set; } = null!;
 
+    public bool IsShown { get; private set; }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
-            await Host.ShowMenu(this);
+            await Show();
     }
+
+    public async ValueTask Show(bool mustShow = true) {
+        if (IsShown == mustShow)
+            return;
+
+        IsShown = mustShow;
+        await Host.ShowMenu(this);
+    }
+
+    public ValueTask Hide()
+        => Show(false);
+
 }

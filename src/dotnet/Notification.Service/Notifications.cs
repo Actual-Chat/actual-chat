@@ -1,4 +1,5 @@
-﻿using ActualChat.Notification.Backend;
+﻿using ActualChat.Commands;
+using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -19,44 +20,41 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<string>> ListRecentNotificationIds(
+    public virtual async Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(
         Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<NotificationEntry> GetNotification(
-        Session session, string notificationId, CancellationToken cancellationToken)
+    public virtual async Task<Notification> Get(
+        Session session, NotificationId notificationId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        return await Backend.GetNotification(account.Id, notificationId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (notificationId.UserId != account.Id)
+            throw Unauthorized();
+
+        return await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task HandleNotification(
-        INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+    public virtual async Task Handle(
+        INotifications.HandleCommand command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
-            _ = GetNotification(command.Session, command.NotificationId, default);
-            _ = ListRecentNotificationIds(command.Session, default);
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, notificationId) = command;
+        var notification = await Get(session, notificationId, cancellationToken).ConfigureAwait(false);
+        if (notification.HandledAt.HasValue)
             return;
-        }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbNotification = await dbContext.Notifications
-            .ForUpdate()
-            .SingleOrDefaultAsync(x => x.Id == command.NotificationId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbNotification == null)
-            throw new InvalidOperationException("Notification doesn't exist.");
-
-        dbNotification.HandledAt = Clocks.SystemClock.Now;
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        notification = notification with {
+            HandledAt = Clocks.SystemClock.Now,
+        };
+        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        await Commander.Run(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -68,20 +66,18 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = Backend.ListDevices(device.UserId, default);
+                _ = Backend.ListDevices(new UserId(device.UserId), default);
             return;
         }
 
         var (session, deviceId, deviceType) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices
             .ForUpdate()
-            .SingleOrDefaultAsync(d => d.Id == deviceId, cancellationToken)
+            .SingleOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
             .ConfigureAwait(false);
 
         var dbDevice = existingDbDevice;
@@ -89,7 +85,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = account.Id,
+                UserId = account.Id.Value,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -102,4 +98,9 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         context.Operation().Items.Set(dbDevice);
         context.Operation().Items.Set(existingDbDevice == null);
     }
+
+    // Private methods
+
+    private static Exception Unauthorized()
+        => StandardError.Unauthorized("You can access only your own notifications.");
 }

@@ -1,9 +1,15 @@
+using Stl.Fusion.Blazor;
+
 namespace ActualChat.Chat;
 
-public record Mention : IHasId<Symbol>, IRequirementTarget
+[ParameterComparer(typeof(ByValueParameterComparer))]
+[DataContract]
+public sealed record Mention : IHasId<Symbol>, IRequirementTarget
 {
-    [DataMember] public Symbol Id { get; init; } = "";
-    [DataMember] public string AuthorId { get; init; } = "";
-    [DataMember] public string ChatId { get; init; } = "";
-    [DataMember] public long EntryId { get; init; }
+    [DataMember] public Symbol Id { get; init; }
+    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public Symbol MentionId { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => EntryId.ChatId;
 }

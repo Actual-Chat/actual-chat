@@ -35,7 +35,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
-        await PseudoGetAll(searchKey, cancellationToken).ConfigureAwait(false);
+        await PseudoGetAll(searchKey).ConfigureAwait(false);
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -58,7 +58,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "", default);
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
             return default!;
@@ -93,14 +93,14 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         if (Computed.IsInvalidating()) {
             var invInvite = context.Operation().Items.Get<Invite>();
             if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "", default);
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
             return default!;
         }
 
         var session = command.Session;
-        var account = await Accounts.GetOwn(command.Session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -108,25 +108,25 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var dbInvite = await dbContext.Invites
                 .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
                 .ConfigureAwait(false)
-            ?? throw StandardError.NotFound($"Invite code '{command.InviteId}' is not found.");
+            ?? throw StandardError.NotFound<Invite>("Invite with the specified code is not found.");
 
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
-        var userInviteDetails = invite.Details?.User;
+        var userInviteDetails = invite.Details.User;
         if (userInviteDetails != null) {
             if (account.Status == AccountStatus.Suspended)
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
                 throw StandardError.StateTransition("Your account is already active.");
-            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active })
+            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
             _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
-            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId)
+            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId.Value)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 
@@ -138,6 +138,6 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoGetAll(string searchKey, CancellationToken cancellationToken)
+    protected virtual Task<Unit> PseudoGetAll(string searchKey)
         => Stl.Async.TaskExt.UnitTask;
 }

@@ -22,55 +22,34 @@ public class FirebaseMessagingClient
         Log = log;
     }
 
-    public async Task SendMessage(NotificationEntry entry, List<string> deviceIds, CancellationToken cancellationToken)
+    public async Task SendMessage(Notification entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
     {
-        var (notificationId, notificationType, title, content, iconUrl, _) = entry;
-        var message = entry.Message;
-        var chatId = message?.ChatId ?? Symbol.Empty;
-        var entryId = message?.EntryId;
+        var (notificationId, _) = entry;
+        var kind = entry.Kind;
+        var title = entry.Title;
+        var content = entry.Content;
+        var iconUrl = entry.IconUrl;
+        var chatId = entry.ChatId;
+        var chatEntryNotification = entry.ChatEntryNotification;
+        var chatEntryId = chatEntryNotification?.EntryId ?? default;
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
-        var tag = "topic";
-        string link = null!;
-        switch (notificationType) {
-        case NotificationType.Message: {
-            if (!chatId.IsEmpty) {
-                tag = chatId;
-                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
-            }
-            break;
-        }
-        case NotificationType.Reply: {
-            if (!chatId.IsEmpty) {
-                tag = chatId;
-                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
-            }
-            break;
-        }
-        case NotificationType.Invitation: {
-            if (!chatId.IsEmpty) {
-                tag = chatId;
-                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId));
-            }
-            break;
-        }
-        case NotificationType.Reaction:
-            if (!chatId.IsEmpty) {
-                tag = chatId;
-                link = UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId));
-            }
-            break;
-        default:
-            throw new InvalidOperationException("NotificationType is not supported.");
-        }
-        var entryIdAsString = entryId.HasValue ? entryId.Value.ToString(CultureInfo.InvariantCulture) : "";
+
+        var isChatRelated = !chatId.IsNone;
+        var isTextEntryRelated = chatEntryId.IsNone && chatEntryId.Kind == ChatEntryKind.Text;
+        var tag = isTextEntryRelated
+            ? chatEntryId.Value
+            : isChatRelated ? chatId.Value : "topic";
+        var link = isTextEntryRelated
+            ? UrlMapper.ToAbsolute(Links.ChatPage(chatId, chatEntryId.LocalId))
+            : isChatRelated ? UrlMapper.ToAbsolute(Links.ChatPage(chatId)) : "";
 
         var multicastMessage = new MulticastMessage {
-            Tokens = deviceIds,
+            Tokens = deviceIds.Select(id => id.Value).ToList(),
             Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
+                { NotificationConstants.MessageDataKeys.NotificationId, notificationId.Value },
                 { NotificationConstants.MessageDataKeys.Tag, tag },
-                { NotificationConstants.MessageDataKeys.ChatId, chatId },
-                { NotificationConstants.MessageDataKeys.EntryId, entryIdAsString },
+                { NotificationConstants.MessageDataKeys.ChatId, chatId.Value },
+                { NotificationConstants.MessageDataKeys.ChatEntryId, chatEntryId.Value },
                 { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
                 { NotificationConstants.MessageDataKeys.Link, link },
             },

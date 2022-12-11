@@ -1,37 +1,26 @@
 @using System.Text.Encodings.Web
 @using ActualChat.Chat
-@inherits ComputedStateComponent<ImmutableArray<Symbol>>
+@inherits ComputedStateComponent<ImmutableArray<AvatarFull>>
 @{
-    var m = State.LatestNonErrorValue;
+    var avatars = State.LatestNonErrorValue;
 }
 
 <div class="flex-y gap-y-2">
-    @foreach (var avatarId in m) {
+    @foreach (var avatar in avatars) {
         <Tile>
             <TileItem Unselected="true">
                 <Icon>
-                    <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId"/>
+                    <AvatarCard Avatar="@avatar"/>
                 </Icon>
                 <Right>
-                    <TileButtons OnEditClick="@(() => EditAvatar(avatarId, "Edit avatar"))"
-                                 OnSetDefaultClick="@(() => SetDefaultAvatar(avatarId))"
-                                 AvatarId="@avatarId"/>
+                    <TileButtons
+                        Avatar="@avatar"
+                        OnEditClick="@(() => EditAvatar(avatar, "Edit avatar"))"
+                        OnSetDefaultClick="@(() => SetDefaultAvatar(avatar))"/>
                 </Right>
                 <Content>
-                    <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="OwnAvatar.ShowInfo.Name"/>
+                    @avatar.Name
                 </Content>
-            </TileItem>
-
-            <TileItem>
-                <Icon>
-                    <i class="icon-at text-xl"></i>
-                </Icon>
-                <Content>
-                    Id: @avatarId
-                </Content>
-                <Caption>
-                    Avatar Id
-                </Caption>
             </TileItem>
 
             <TileItem>
@@ -39,7 +28,7 @@
                     <i class="icon-info text-xl"></i>
                 </Icon>
                 <Content>
-                    Some bio: <OwnAvatar AvatarId="@avatarId" ChatId="@ChatId" Show="OwnAvatar.ShowInfo.Bio"/>
+                    @avatar.Bio
                 </Content>
                 <Caption>
                     Bio
@@ -59,16 +48,21 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
-    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public Chat Chat { get; set; } = Chat.None;
 
-    protected override ComputedState<ImmutableArray<Symbol>>.Options GetStateOptions()
-        => new () { InitialValue = ImmutableArray<Symbol>.Empty };
+    protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
+        => new () { InitialValue = ImmutableArray<AvatarFull>.Empty };
 
-    protected override async Task<ImmutableArray<Symbol>> ComputeState(CancellationToken cancellationToken)
-        => await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+    protected override async Task<ImmutableArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+        var avatars = await avatarIds
+            .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
+            .Collect();
+        return avatars.SkipNullItems().ToImmutableArray();
+    }
 
     private async Task OnAddNewAvatar() {
-        if (!ChatId.IsNullOrEmpty())
+        if (!Chat.Id.IsNone)
             throw StandardError.Constraint("Avatars can be added on account page only");
 
         var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
@@ -80,15 +74,15 @@
         if (error != null)
             return;
 
-        EditAvatar(avatar.Id, "Add avatar");
+        EditAvatar(avatar, "Add avatar");
     }
 
-    private void EditAvatar(string avatarId, string title) {
-        ModalUI.Show(new OwnAvatarEditorModal.Model(avatarId, ChatId, title));
+    private void EditAvatar(AvatarFull avatar, string title) {
+        ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
     }
 
-    private async Task SetDefaultAvatar(string avatarId) {
-        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
+    private async Task SetDefaultAvatar(AvatarFull avatar) {
+        var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);
         await UICommander.Run(command);
     }
 }

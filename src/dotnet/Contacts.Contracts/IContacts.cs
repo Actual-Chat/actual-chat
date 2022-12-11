@@ -3,11 +3,9 @@ namespace ActualChat.Contacts;
 public interface IContacts : IComputeService
 {
     [ComputeMethod]
-    Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken);
+    Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken);
+    Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 

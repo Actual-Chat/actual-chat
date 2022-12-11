@@ -71,11 +71,8 @@
     [Parameter] public string? ClickedLinkUrl { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new ComputedState<Model>.Options {
-            InitialValue = Model.None,
-        };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {

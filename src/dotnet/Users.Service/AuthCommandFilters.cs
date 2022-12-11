@@ -3,6 +3,7 @@ using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using Stl.CommandR.Internal;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -41,19 +42,19 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = sessionInfo.UserId;
+        var userId = new UserId(sessionInfo.UserId);
 
         if (Computed.IsInvalidating()) {
             InvalidatePresenceIfOffline(userId);
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(default, userId, default);
+                _ = AuthBackend.GetUser(default, userId.Value, default);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await DbUsers.Get(dbContext, userId.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
 
@@ -84,9 +85,9 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = sessionInfo.UserId;
+        var userId = new UserId(sessionInfo.UserId);
 
-        new IServerKvas.MoveSessionKeysCommand(command.Session)
+        new IServerKvas.MigrateGuestKeysCommand(command.Session)
             .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
 
         var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler
@@ -128,8 +129,8 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-        var userId = sessionInfo?.UserId;
-        if (userId == null)
+        var userId = new UserId(sessionInfo?.UserId, ParseOrNone.Option);
+        if (userId.IsNone)
             return;
 
         if (Computed.IsInvalidating()) {
@@ -146,23 +147,20 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
     // Private methods
 
-    private async Task UpdatePresence(
-        UsersDbContext dbContext,
-        string userId,
-        CancellationToken cancellationToken)
+    private async Task UpdatePresence(UsersDbContext dbContext, UserId userId, CancellationToken cancellationToken)
     {
         var dbUserPresence = await dbContext.UserPresences
             .ForUpdate()
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
+            .FirstOrDefaultAsync(x => x.UserId == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {
-            dbUserPresence = new DbUserPresence() { UserId = userId };
+            dbUserPresence = new DbUserPresence() { UserId = userId.Value };
             dbContext.Add(dbUserPresence);
         }
         dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;
     }
 
-    private void InvalidatePresenceIfOffline(string userId)
+    private void InvalidatePresenceIfOffline(UserId userId)
     {
         var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
         if (c == null || c.IsInvalidated())

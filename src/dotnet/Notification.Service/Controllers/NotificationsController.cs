@@ -17,11 +17,11 @@ public class NotificationsController : ControllerBase, INotifications
     }
 
     [HttpGet, Publish]
-    public Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken)
-        => Service.GetNotification(session, notificationId, cancellationToken);
+    public Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken)
+        => Service.Get(session, notificationId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+    public Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
         => Service.ListRecentNotificationIds(session, cancellationToken);
 
     [HttpPost]
@@ -29,6 +29,6 @@ public class NotificationsController : ControllerBase, INotifications
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task HandleNotification([FromBody] INotifications.HandleNotificationCommand command, CancellationToken cancellationToken)
+    public Task Handle([FromBody] INotifications.HandleCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 }

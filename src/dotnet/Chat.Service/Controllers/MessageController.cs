@@ -25,7 +25,7 @@ public class MessageController : ControllerBase
     [HttpPost]
     [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
-    public async Task<ActionResult<long>> PostMessage(string chatId)
+    public async Task<ActionResult<long>> PostMessage(ChatId chatId)
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
@@ -92,8 +92,13 @@ public class MessageController : ControllerBase
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
-        var command = new IChats.UpsertTextEntryCommand(_sessionResolver.Session, chatId, null, post.Payload!.Text.Trim())
-            { RepliedChatEntryId = post.Payload!.RepliedChatEntryId };
+        var command = new IChats.UpsertTextEntryCommand(
+            _sessionResolver.Session,
+            chatId,
+            null,
+            post.Payload!.Text.Trim(),
+            post.Payload!.RepliedChatEntryId
+        );
         if (post.Files.Count > 0) {
             var uploads = new List<TextEntryAttachmentUpload>();
             foreach (var file in post.Files) {
@@ -113,7 +118,7 @@ public class MessageController : ControllerBase
 
         try {
             var chatEntry = await _commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-            return chatEntry.Id;
+            return chatEntry.LocalId;
         }
         catch {
             return BadRequest("Failed to process command");

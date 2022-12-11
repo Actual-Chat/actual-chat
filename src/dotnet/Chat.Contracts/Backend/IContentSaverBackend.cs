@@ -7,7 +7,7 @@ public interface IContentSaverBackend : IComputeService
 
     [DataContract]
     public sealed record SaveContentCommand(
-        [property: DataMember] string ContentId,
+        [property: DataMember] Symbol ContentId,
         [property: DataMember] byte[] Content,
         [property: DataMember] string ContentType
         ) : ICommand<Unit>, IBackendCommand;

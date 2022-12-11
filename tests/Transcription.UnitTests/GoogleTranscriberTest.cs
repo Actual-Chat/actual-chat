@@ -15,7 +15,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task DuplicateFinalResponsesTest()
     {
         var options = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
         };
         var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
@@ -186,7 +186,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var options = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
         };
         var process = new GoogleTranscriberProcess(Task.FromResult("test"), "test", null!, options, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);

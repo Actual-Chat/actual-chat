@@ -14,16 +14,23 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Column(TypeName = "smallint")]
     public AccountStatus Status { get; set; }
 
-    public AccountFull ToModel(AccountFull model)
-        => model with {
-            Id = Id,
+    public AccountFull ToModel(User user)
+    {
+        if (user.Id != Id)
+            throw new ArgumentOutOfRangeException(nameof(user));
+
+        return new (user, Version) {
             Status = Status,
-            Version = Version,
         };
+    }
 
     public void UpdateFrom(AccountFull model)
     {
-        Id = model.Id;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
+        model.RequireSomeVersion();
+
+        Id = id.Value;
         Version = model.Version;
         Status = model.Status;
     }

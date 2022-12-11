@@ -6,30 +6,31 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ReactionSummaries")]
-[Index(nameof(ChatEntryId))]
+[Index(nameof(EntryId))]
 public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<ImmutableList<Symbol>> AuthorIdsSerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<ImmutableList<Symbol>>();
+    private static ITextSerializer<ImmutableList<AuthorId>> AuthorIdsSerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<ImmutableList<AuthorId>>();
 
     [Key] public string Id { get; set; } = null!;
-    public string ChatEntryId { get; set; } = "";
-    public long Count { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
-    public string Emoji { get; set; } = "";
+    public string EntryId { get; set; } = "";
+
+    public long Count { get; set; }
+    public string EmojiId { get; set; } = "";
     public string FirstAuthorIdsJson { get; set; } = "";
 
     public DbReactionSummary() { }
     public DbReactionSummary(ReactionSummary model) => UpdateFrom(model);
 
-    public static string ComposeId(string chatEntryId, string emoji)
-        => $"{chatEntryId}:{emoji}";
+    public static string ComposeId(ChatEntryId entryId, Symbol emojiId)
+        => $"{entryId}:{emojiId}";
 
     public ReactionSummary ToModel()
         => new () {
             Id = Id,
-            ChatEntryId = ChatEntryId,
-            Emoji = Emoji,
+            EntryId = new ChatEntryId(EntryId),
+            EmojiId = EmojiId,
             Count = Count,
             Version = Version,
             FirstAuthorIds = AuthorIdsSerializer.Read(FirstAuthorIdsJson),
@@ -37,9 +38,13 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
 
     public void UpdateFrom(ReactionSummary model)
     {
-        Id = ComposeId(model.ChatEntryId, model.Emoji);
-        ChatEntryId = model.ChatEntryId;
-        Emoji = model.Emoji;
+        var id = ComposeId(model.EntryId, model.EmojiId);
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
+
+        Id = id;
+        EntryId = model.EntryId.Value;
+        EmojiId = model.EmojiId;
         Version = model.Version;
         Count = model.Count;
         FirstAuthorIdsJson = AuthorIdsSerializer.Write(model.FirstAuthorIds);

@@ -22,19 +22,19 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Role?> Get(string chatId, string roleId, CancellationToken cancellationToken)
+    public virtual async Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
-        var parsedRoleId = (ParsedRoleId)roleId;
-        if (!(parsedRoleId.IsValid && parsedRoleId.ChatId == chatId))
+        if (roleId.ChatId != chatId)
             return null;
 
-        var dbRole = await DbRoleResolver.Get(default, roleId, cancellationToken).ConfigureAwait(false);
+        var dbRole = await DbRoleResolver.Get(default, roleId.Value, cancellationToken).ConfigureAwait(false);
         return dbRole?.ToModel();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Role>> List(string chatId, string authorId,
-        bool isAuthenticated, bool isAnonymous,
+    public virtual async Task<ImmutableArray<Role>> List(
+        ChatId chatId, AuthorId authorId,
+        bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken)
     {
         // No need to call PseudoList - it's called by ListSystem anyway
@@ -47,32 +47,32 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
         var dbRoles = await dbContext.Roles
             .Where(r =>
-                r.ChatId == chatId
+                r.ChatId == chatId.Value
                 && (r.SystemRole == SystemRole.None || r.SystemRole == SystemRole.Owner)
-                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId && ar.DbRoleId == r.Id))
+                && dbContext.AuthorRoles.Any(ar => ar.DbAuthorId == authorId.Value && ar.DbRoleId == r.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles
             .Select(r => r.ToModel())
             .Concat(systemRoles.Where(IsInSystemRole))
             .DistinctBy(r => r.Id)
-            .OrderBy(r => r.Id)
+            .OrderBy(r => r.Id.Id)
             .ToImmutableArray();
         return roles;
 
         bool IsInSystemRole(Role role)
             => role.SystemRole switch {
                 SystemRole.Anyone => true,
-                SystemRole.Unauthenticated => !isAuthenticated,
-                SystemRole.Regular => isAuthenticated && !isAnonymous,
-                SystemRole.Anonymous => isAuthenticated && isAnonymous,
+                SystemRole.Guest => isGuest,
+                SystemRole.User => !isGuest && !isAnonymous,
+                SystemRole.AnonymousUser => !isGuest && isAnonymous,
                 _ => false,
             };
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Role>> ListSystem(
-        string chatId, CancellationToken cancellationToken)
+        ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -84,7 +84,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbRoles = await dbContext.Roles
-            .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
+            .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var roles = dbRoles.Select(r => r.ToModel()).ToImmutableArray();
@@ -92,12 +92,12 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(
-        string chatId, string roleId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
+        ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -105,11 +105,11 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbAuthorIds = await dbContext.AuthorRoles
-            .Where(ar => ar.DbRoleId == roleId)
+            .Where(ar => ar.DbRoleId == roleId.Value)
             .Select(ar => ar.DbAuthorId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var authorIds = dbAuthorIds.Select(id => (Symbol)id).ToImmutableArray();
+        var authorIds = dbAuthorIds.Select(id => new AuthorId(id)).ToImmutableArray();
         return authorIds;
     }
 
@@ -129,7 +129,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         }
 
         change.RequireValid();
-        chatId = chatId.RequireNonEmpty("Command.ChatId");
+        chatId = chatId.Require("Command.ChatId");
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -139,18 +139,18 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         Role? role;
         DbRole? dbRole;
         if (change.IsCreate(out var update)) {
-            roleId.RequireEmpty("command.RoleId");
+            roleId.RequireNone();
             var localId = await DbRoleIdGenerator
-                .Next(dbContext, chatId, cancellationToken)
+                .Next(dbContext, chatId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            roleId = new ParsedRoleId(chatId, localId).Id;
+            roleId = new RoleId(chatId, localId, AssumeValid.Option);
             role = new Role(roleId) {
                 Version = VersionGenerator.NextVersion(),
             };
             role = DiffEngine.Patch(role, update).Fix();
             dbRole = new DbRole(role);
             if (role.SystemRole != SystemRole.None) {
-                var dbSameSystemRole = await dbContext.Roles
+                var dbSameSystemRole = await dbContext.Roles.ForUpdate()
                     .SingleOrDefaultAsync(r => r.ChatId == dbRole.ChatId && r.SystemRole == dbRole.SystemRole, cancellationToken)
                     .ConfigureAwait(false);
                 if (dbSameSystemRole != null)
@@ -159,11 +159,12 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             dbContext.Add(dbRole);
         }
         else {
-            roleId.RequireNonEmpty("Command.RoleId");
+            roleId.Require("Command.RoleId");
             dbRole = await dbContext.Roles.ForUpdate()
-                .SingleAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
+                .SingleOrDefaultAsync(r => r.ChatId == chatId.Value && r.Id == roleId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            role = dbRole.RequireVersion(expectedVersion).ToModel();
+            dbRole = dbRole.RequireVersion(expectedVersion);
+            role = dbRole.ToModel();
 
             if (change.IsUpdate(out update)) {
                 if ((update.SystemRole ?? role.SystemRole) != role.SystemRole)
@@ -180,7 +181,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
                     throw StandardError.Constraint("This system role cannot be removed.");
 
                 var dbAuthorRoles = await dbContext.AuthorRoles.ForUpdate()
-                    .Where(ar => ar.DbRoleId == roleId)
+                    .Where(ar => ar.DbRoleId == roleId.Value)
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 dbContext.RemoveRange(dbAuthorRoles);
@@ -196,20 +197,20 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             // Adding items
             foreach (var authorId in update.AuthorIds.AddedItems.Distinct())
                 dbContext.AuthorRoles.Add(new() {
-                    DbRoleId = roleId,
-                    DbAuthorId = authorId
+                    DbRoleId = roleId.Value,
+                    DbAuthorId = authorId.Value,
                 });
             // Removing items
             var removedAuthorIds = update.AuthorIds.RemovedItems.Distinct().Select(i => i.Value).ToList();
             if (removedAuthorIds.Any()) {
  #pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles
-                    .Where(ar => ar.DbRoleId == roleId && removedAuthorIds.Contains(ar.DbAuthorId))
+                    .Where(ar => ar.DbRoleId == roleId.Value && removedAuthorIds.Contains(ar.DbAuthorId))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (role!.SystemRole == SystemRole.Owner) {
                     var remainingOwnerCount = await dbContext.Authors
-                        .Where(a => a.ChatId == chatId && a.UserId != null && !a.HasLeft
+                        .Where(a => a.ChatId == chatId.Value && a.UserId != null && !a.HasLeft
                             && !removedAuthorIds.Contains(a.Id))
                         .CountAsync(cancellationToken)
                         .ConfigureAwait(false);
@@ -229,6 +230,6 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
     // Protected methods
 
-    protected virtual Task<Unit> PseudoList(string chatId)
+    protected virtual Task<Unit> PseudoList(ChatId _)
         => Stl.Async.TaskExt.UnitTask;
 }

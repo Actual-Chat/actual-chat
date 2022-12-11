@@ -1,15 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
-@inherits ComputedStateComponent<RecorderToggle.Model?>
+@inherits ComputedStateComponent<RecorderToggle.Model>
 @{
-    var m = State.LatestNonErrorValue;
-    var recordState = m?.RecordingState ?? RecordingState.Off;
-    var wrapperCls = recordState switch
-    {
-        RecordingState.OffToOn => "record-off-to-on",
-        RecordingState.OnToOff => "record-on-to-off",
-        RecordingState.Off => "record-off",
-        _ => "record-on",
+    var lastRenderedState = _lastRenderedState;
+    var m = _lastRenderedState = State.LatestNonErrorValue;
+    if (lastRenderedState.Chat.Id != m.Chat.Id)
+        lastRenderedState = m;
+
+    var wrapperCls = (lastRenderedState.IsRecording, m.IsRecording) switch {
+        (false, true) => "record-off-to-on",
+        (true, false) => "record-on-to-off",
+        (_, true) => "record-on",
+        (_, false) => "record-off",
     };
 }
 
@@ -45,73 +47,77 @@
 }
 
 @code {
-    public enum RecordingState {
-        On,
-        Off,
-        OnToOff,
-        OffToOn,
-    }
+    private Model _lastRenderedState = Model.None;
+    private bool? _canRecord = null;
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-
-    private bool? _canRecord = null;
-    private bool IsLongPress { get; set; } = false;
     private bool CanRecord => _canRecord ?? true;
+    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
+    private bool IsRecording => !IsLoading && State.LatestNonErrorValue.IsRecording;
+    private bool IsLongPressOn { get; set; } = false;
 
-    protected override ComputedState<Model?>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var isRecording = await ChatUI.IsRecording(ChatId).ConfigureAwait(false);
-        // Default scheduler is used from here
-        var chatIdHasChanged = State.LatestNonErrorValue == null || State.LatestNonErrorValue.ChatId != ChatId;
-        if (chatIdHasChanged)
-            return new (ChatId, isRecording ? RecordingState.On : RecordingState.Off);
-        return new (ChatId, isRecording ? RecordingState.OffToOn : RecordingState.OnToOff);
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var mediaState = await ChatUI.GetMediaState(Chat.Id);
+        return new Model(Chat, mediaState.IsRecording);
     }
 
     private async Task OnClick() {
-        var m = State.LatestNonErrorValue;
-        var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.OffToOn;
-        if (isRecordingInThisChat) {
-            _ = ChatUI.SetRecordingChatId(Symbol.Empty);
-            return;
-        }
+        if (IsLoading)
+            return; // Loading
 
-        if (_canRecord == null) {
-            _canRecord = await AudioRecorder.CanRecord();
-            StateHasChanged();
+        if (IsRecording) {
+            _ = ChatUI.SetRecordingChatId(default);
         }
-        if (!CanRecord)
-            return;
+        else {
+            if (_canRecord == null) {
+                _canRecord = await AudioRecorder.CanRecord();
+                StateHasChanged();
+            }
+            if (!CanRecord)
+                return;
 
-        _ = ChatUI.SetRecordingChatId(ChatId);
+            _ = ChatUI.SetRecordingChatId(Chat.Id);
+        }
     }
 
     private async Task OnLongPressStart() {
-        if (IsLongPress)
+        if (IsLongPressOn)
             return;
 
         if (_canRecord == null) {
             _canRecord = await AudioRecorder.CanRecord();
             StateHasChanged();
         }
-        if (!CanRecord)
+        if (!CanRecord || IsLoading)
             return;
 
-        IsLongPress = true;
-        _ = ChatUI.SetRecordingChatId(ChatId);
+        IsLongPressOn = true;
+        _ = ChatUI.SetRecordingChatId(Chat.Id);
     }
 
     private void OnLongPressStop() {
-        if (!IsLongPress)
+        if (!IsLongPressOn)
             return;
 
-        IsLongPress = false;
-        _ = ChatUI.SetRecordingChatId(Symbol.Empty);
+        IsLongPressOn = false;
+        _ = ChatUI.SetRecordingChatId(default);
     }
 
-    public record Model(string ChatId, RecordingState RecordingState);
+    public sealed record Model(
+        Chat Chat,
+        bool IsRecording = false
+    ) {
+        public static Model Loading { get; } = new(Chat.Loading);
+        public static Model None { get; } = new(Chat.None);
+    }
 }

@@ -28,22 +28,6 @@ public class AppServerAuthHelper : ServerAuthHelper
         return isCloseWindowRequest;
     }
 
-    protected override Task<SessionInfo> SetupSession(
-        Session session,
-        SessionInfo? sessionInfo,
-        string ipAddress,
-        string userAgent,
-        CancellationToken cancellationToken)
-    {
-        var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
-        var options = sessionInfo?.Options ?? ImmutableOptionSet.Empty;
-        if (!options.GetOrDefault<GuestId>().IsValid)
-            setupSessionCommand = setupSessionCommand with {
-                Options = ImmutableOptionSet.Empty.Set(GuestId.New()),
-            };
-        return Commander.Call(setupSessionCommand, true, cancellationToken);
-    }
-
     protected override (User User, UserIdentity AuthenticatedIdentity) CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema)
     {
         var (newUser, userIdentity) = base.CreateOrUpdateUser(user, httpUser, schema);

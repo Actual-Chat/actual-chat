@@ -5,28 +5,31 @@ using Stl.Versioning;
 namespace ActualChat.Chat;
 
 [DataContract]
-public record Author : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+public record Author(
+    [property: DataMember] AuthorId Id,
+    [property: DataMember] long Version = 0
+    ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
-    private static IEqualityComparer<Author> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<Author, Symbol>.Instance;
+    public static IdAndVersionEqualityComparer<Author, AuthorId> EqualityComparer { get; } = new();
+
+    public static Author None { get; } = new(default, 0) { Avatar = Avatar.None };
+    public static Author Loading { get; } = new(default, 1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
+
     public static Requirement<Author> MustExist { get; } = Requirement.New(
-        new(() => StandardError.Author.Unavailable()),
-        (Author? a) => a is { Id.IsEmpty : false });
+        new(() => StandardError.NotFound<Author>()),
+        (Author? a) => a is { Id.IsNone: false });
 
-    public static Author None { get; } = new() { Avatar = Avatar.None };
-    public static Author Loading { get; } = new() { Avatar = Avatar.Loading }; // Should differ by ref. from None
-
-    [DataMember] public Symbol Id { get; init; }
-    [DataMember] public long Version { get; init; }
-    [DataMember] public Symbol ChatId { get; init; }
     [DataMember] public Symbol AvatarId { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Auto-populated
     [DataMember] public bool IsAnonymous { get; init; }
     [DataMember] public bool HasLeft { get; init; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => Id.ChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public long LocalId => Id.LocalId;
+
     // This record relies on version-based equality
-    public virtual bool Equals(Author? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public virtual bool Equals(Author? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

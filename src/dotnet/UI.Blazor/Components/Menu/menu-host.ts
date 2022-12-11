@@ -88,15 +88,25 @@ export class MenuHost implements Disposable {
         this.menus = [];
     }
 
-    public showMenu(id: string): void {
+    public showMenuById(id: string): void {
         const menu = this.menus.find(x => x.id === id);
         if (!menu)
             return;
+
         const elementRef = document.getElementById(id);
         if (!elementRef)
             return;
+
         menu.elementRef = elementRef;
         void updatePosition(menu);
+    }
+
+    public hideMenuById(id: string): void {
+        const menu = this.menus.find(x => x.id === id);
+        if (!menu)
+            return;
+
+        this.hideMenu(menu);
     }
 
     private renderMenu(eventData: EventData): void {
@@ -123,15 +133,17 @@ export class MenuHost implements Disposable {
             eventData: eventData,
         };
         this.menus.push(menu);
-        this.blazorRef.invokeMethodAsync('RenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
+        this.blazorRef.invokeMethodAsync('OnRenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
     }
 
     private hideOverlay(): void {
         if (this.menus.length)
             return;
+
         const overlay = document.getElementsByClassName('ac-menu-overlay')[0] as HTMLElement;
         if (!overlay)
             return;
+
         overlay.style.display = 'none';
     }
 
@@ -141,7 +153,7 @@ export class MenuHost implements Disposable {
             menu.elementRef.style.display = 'none';
         this.hideOverlay();
 
-        this.blazorRef.invokeMethodAsync('HideMenu', menu.id);
+        this.blazorRef.invokeMethodAsync('OnHideMenu', menu.id);
     }
 
     private hideAllMenus(): void {
@@ -181,8 +193,10 @@ export class MenuHost implements Disposable {
             .subscribe((event: Event) => {
                 if (!(event.target instanceof Element))
                     return undefined;
+
                 if (event.target.nodeName === 'IMG')
                     return undefined;
+
                 event.preventDefault();
             });
 
@@ -238,9 +252,11 @@ export class MenuHost implements Disposable {
                 filter((event: TouchEvent) => {
                     if (!(event.target instanceof Element))
                         return false;
+
                     const isOverlayClicked = event.target.classList.contains('ac-menu-overlay');
                     if (isOverlayClicked)
                         return true;
+
                     const isMenuClicked = event.target.closest('.ac-menu, .ac-menu-hover') != null;
                     return isMenuClicked;
                 }),
@@ -341,6 +357,7 @@ function getPlacement(triggerRef: HTMLElement): Placement {
     const placement = triggerRef.dataset['menuPosition'];
     if (placement)
         return placement as Placement;
+
     return 'top';
 }
 

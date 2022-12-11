@@ -1,5 +1,6 @@
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -15,7 +16,7 @@ public class ChatOperationsTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        var user = await tester.SignIn(new User("", "Bob"));
+        var account = await tester.SignIn(new User("", "Bob"));
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -24,10 +25,10 @@ public class ChatOperationsTest : AppHostTestBase
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
-        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = chatTitle,
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
                 IsPublic = isPublicChat,
             },
         }));
@@ -66,7 +67,7 @@ public class ChatOperationsTest : AppHostTestBase
 
         var author = await authors.GetOwn(session, chat.Id, default);
         author.Should().NotBeNull();
-        author!.UserId.Should().Be(user.Id);
+        author!.UserId.Should().Be(account.Id);
     }
 
     [Theory]
@@ -76,18 +77,18 @@ public class ChatOperationsTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
 
-        Symbol chatId;
-        Symbol inviteId = Symbol.Empty;
+        ChatId chatId;
+        var inviteId = Symbol.Empty;
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+            var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
-                    ChatType = ChatType.Group,
+                    Kind = ChatKind.Group,
                     IsPublic = isPublicChat,
                 },
             }));
@@ -108,7 +109,7 @@ public class ChatOperationsTest : AppHostTestBase
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
-            var user = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+            var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
             var canJoin = await chats.CanJoin(session, chatId, default);
@@ -127,7 +128,7 @@ public class ChatOperationsTest : AppHostTestBase
             var command = new IChats.JoinCommand(session, chatId);
             await commander.Call(command, default);
 
-            await AssertUserJoined(tester.AppServices, session, chatId, user);
+            await AssertJoined(tester.AppServices, session, chatId, account);
         }
     }
 
@@ -138,7 +139,7 @@ public class ChatOperationsTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
 
-        Symbol chatId;
+        ChatId chatId;
         Symbol inviteId = Symbol.Empty;
         {
             await using var tester = appHost.NewBlazorTester();
@@ -146,10 +147,10 @@ public class ChatOperationsTest : AppHostTestBase
             await tester.SignIn(new User("", "Alice"));
 
             var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+            var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
                 Create = new ChatDiff() {
                     Title = "test chat",
-                    ChatType = ChatType.Group,
+                    Kind = ChatKind.Group,
                     IsPublic = isPublicChat,
                 },
             }));
@@ -170,7 +171,7 @@ public class ChatOperationsTest : AppHostTestBase
         {
             await using var tester = appHost.NewBlazorTester();
             var session = tester.Session;
-            var user = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+            var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
 
@@ -181,7 +182,7 @@ public class ChatOperationsTest : AppHostTestBase
 
             var joinChatCommand = new IChats.JoinCommand(session, chatId);
             await commander.Call(joinChatCommand);
-            await AssertUserJoined(tester.AppServices, session, chatId, user);
+            await AssertJoined(tester.AppServices, session, chatId, account);
 
             var leaveCommand = new IChats.LeaveCommand(session, chatId);
             await commander.Call(leaveCommand);
@@ -196,7 +197,7 @@ public class ChatOperationsTest : AppHostTestBase
             else
                 chat.Should().BeNull();
 
-            await AssertUserNotJoined(tester.AppServices, session, chatId, user);
+            await AssertNotJoined(tester.AppServices, session, chatId, account);
 
             // re-join again
             if (!isPublicChat) {
@@ -204,11 +205,11 @@ public class ChatOperationsTest : AppHostTestBase
                 await Task.Delay(1000); // Let the command complete
             }
             await commander.Call(joinChatCommand, default);
-            await AssertUserJoined(tester.AppServices, session, chatId, user);
+            await AssertJoined(tester.AppServices, session, chatId, account);
         }
     }
 
-    private static async Task AssertUserJoined(IServiceProvider services, Session session, Symbol chatId, User user)
+    private static async Task AssertJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var chats = services.GetRequiredService<IChats>();
 
@@ -225,19 +226,19 @@ public class ChatOperationsTest : AppHostTestBase
         var authorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         var author = await authors.GetOwn(session, chatId, default);
         author.Should().NotBeNull();
-        author!.UserId.Should().Be(user.Id);
+        author!.UserId.Should().Be(account.Id);
         author.HasLeft.Should().BeFalse();
 
         var ownChatIds = await authorsUpgradeBackend.ListOwnChatIds(session, default);
         ownChatIds.Should().Contain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);
-        userIds.Should().Contain(user.Id);
+        userIds.Should().Contain(account.Id);
         var authorIds = await authors.ListAuthorIds(session, chatId, default);
         authorIds.Should().Contain(author.Id);
     }
 
-    private static async Task AssertUserNotJoined(IServiceProvider services, Session session, Symbol chatId, User user)
+    private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var authors = services.GetRequiredService<IAuthors>();
         var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
@@ -253,7 +254,7 @@ public class ChatOperationsTest : AppHostTestBase
         ownChatIds.Should().NotContain(chatId);
 
         var userIds = await authors.ListUserIds(session, chatId, default);
-        userIds.Should().NotContain(user.Id);
+        userIds.Should().NotContain(account.Id);
         // use backend service to avoid permissions check
         var authorIds = await authorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);

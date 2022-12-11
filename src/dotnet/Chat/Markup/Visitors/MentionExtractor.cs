@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public record MentionExtractor : RefStatelessMarkupVisitor<HashSet<Symbol>>
 {
-    public HashSet<Symbol> GetMentionedAuthorIds(Markup markup)
+    public HashSet<Symbol> GetMentionIds(Markup markup)
     {
         var mentions = new HashSet<Symbol>();
         Visit(markup, ref mentions);

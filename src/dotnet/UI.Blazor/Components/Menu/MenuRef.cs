@@ -10,10 +10,10 @@ public readonly struct MenuRef
     public string[] Arguments { get; }
 
     public static MenuRef New<TMenu>()
-        where TMenu : MenuBase
+        where TMenu : IMenu
         => new (typeof(TMenu));
     public static MenuRef New<TMenu>(params string[] arguments)
-        where TMenu : MenuBase
+        where TMenu : IMenu
         => new (typeof(TMenu), arguments);
 
     public MenuRef(Type menuType)

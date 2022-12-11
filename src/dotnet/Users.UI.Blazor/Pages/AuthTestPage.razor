@@ -17,7 +17,7 @@
 <h3 class="section border-0">Session</h3>
 <ul>
     <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
-    <li><code>SessionInfo.Options.GuestId</code>: <b><code>@(m.SessionInfo?.Options.GetOrDefault<GuestId>())</code></b></li>
+    <li><code>SessionInfo.GetGuestId()</code>: <b><code>@(m.SessionInfo.GetGuestId())</code></b></li>
     <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 
@@ -139,7 +139,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
-        var account = await Accounts.GetOwn(Session, cancellationToken) ?? AccountFull.None;
+        var account = await Accounts.GetOwn(Session, cancellationToken);
         var sessions = await Auth.GetUserSessions(Session, cancellationToken);
         var sessionList = new List<SessionModel>();
 

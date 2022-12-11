@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -12,10 +13,11 @@ public class HistoryUI
     private int _historyIndex;
     private readonly string _initialLocation;
     private bool _rewriteInitialLocation;
-    private TaskSource<Unit> _initTaskSource;
+    private readonly bool _isTestServer;
+    private TaskSource<Unit> _whenInitializedSource;
 
     private IJSRuntime JS { get; }
-    private ILogger<HistoryUI> Log { get; }
+    private ILogger Log { get; }
     private NavigationManager Nav { get; }
 
     public bool IsInitialLocation { get; private set; }
@@ -23,51 +25,68 @@ public class HistoryUI
 
     public event EventHandler<EventArgs>? AfterLocationChangedHandled;
 
-    public HistoryUI(
-        IJSRuntime js,
-        NavigationManager nav,
-        ILogger<HistoryUI> log)
+    public HistoryUI(IServiceProvider services)
     {
-        JS = js;
-        Log = log;
-        Nav = nav;
+        Log = services.LogFor(GetType());
+        JS = services.GetRequiredService<IJSRuntime>();
+        Nav = services.GetRequiredService<NavigationManager>();
+        var hostInfo = services.GetRequiredService<HostInfo>();
+        _isTestServer = hostInfo.AppKind == AppKind.TestServer;
 
         IsInitialLocation = true;
-        _initialLocation = Nav.GetRelativePath();
-        _historyIndex = 0;
-        _history.Add(new HistoryItem(Nav.Uri, ""));
-        Log.LogDebug("Initial location: '{Location}'", Nav.Uri);
+        if (_isTestServer) {
+            _initialLocation = "";
+            _historyIndex = 0;
+        }
+        else {
+            var uri = Nav.Uri;
+            _initialLocation = Nav.GetRelativePath();
+            _historyIndex = 0;
+            _history.Add(new HistoryItem(uri, ""));
+            Log.LogDebug("Initial location: '{Location}'", uri);
 
-        // HistoryUI is initialized upon BlazorCircuitContext is created.
-        // At this moment there is no yet subscribers to Nav.LocationChanged.
-        // So HistoryUI will be notified the first on location changed, even before the Router.
-        Nav.LocationChanged += OnLocationChanged;
+            // HistoryUI is initialized upon BlazorCircuitContext is created.
+            // At this moment there is no yet subscribers to Nav.LocationChanged.
+            // So HistoryUI will be notified the first on location changed, even before the Router.
+            Nav.LocationChanged += OnLocationChanged;
+        }
 
         WhenInitialized = Initialize();
     }
 
     private async Task Initialize()
     {
+        if (_isTestServer)
+            return;
+
         _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
 
         var relativeUri = Nav.GetRelativePath();
         var isHomePage = Links.Equals(relativeUri, "/");
-        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(""));
+        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(default));
         if (!isHomePage && !isChatsRootPage) {
             _rewriteInitialLocation = true;
-            _initTaskSource = TaskSource.New<Unit>(true);
+            _whenInitializedSource = TaskSource.New<Unit>(true);
             Log.LogDebug("Rewrite initial location from '{InitialLocation}'", relativeUri);
-            Nav.NavigateTo(Links.ChatPage(""), false, true);
-            await _initTaskSource.Task.ConfigureAwait(true);
-            _initTaskSource = TaskSource<Unit>.Empty;
+            Nav.NavigateTo(Links.ChatPage(default), false, true);
+            await _whenInitializedSource.Task.ConfigureAwait(true);
+            _whenInitializedSource = TaskSource<Unit>.Empty;
         }
     }
 
     public Task GoBack()
-        => JS.InvokeVoidAsync("eval", "history.back()").AsTask();
+    {
+        if (_isTestServer)
+            return Task.CompletedTask;
+
+        return JS.InvokeVoidAsync("eval", "history.back()").AsTask();
+    }
 
     public void NavigateTo(Action? onForwardAction, Action? onBackAction)
     {
+        if (_isTestServer)
+            return;
+
         if (_pendingHistoryItem != null)
             throw StandardError.Constraint("There is still pending history item");
         var historyItem = new HistoryItemPrototype(Nav.Uri) {
@@ -93,8 +112,8 @@ public class HistoryUI
         // redirects to 'chrome://new-tab-page/' and not to '/chats/'.
         // While calling 'history.back()' works as expected.
 
-        if (!_initTaskSource.IsEmpty)
-            _initTaskSource.TrySetResult(default);
+        if (!_whenInitializedSource.IsEmpty)
+            _whenInitializedSource.TrySetResult(default);
 
         IsInitialLocation = false;
 

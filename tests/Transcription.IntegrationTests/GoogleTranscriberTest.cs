@@ -2,10 +2,10 @@ using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Transcription.Google;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Stl.IO;
+using Stl.Testing.Output;
+using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
@@ -31,12 +31,10 @@ public class GoogleTranscriberTest : TestBase
         // GlobalHttpSettings.SocketsHttpHandler.AllowHttp3
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
-        var transcriber = new GoogleTranscriber(
-            CoreSettings,
-            new MemoryCache(Options.Create(new MemoryCacheOptions())),
-            Log);
+        var services = CreateServiceProvider();
+        var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
         };
         var audio = await GetAudio(fileName, withDelay: withDelay);
 
@@ -70,12 +68,10 @@ public class GoogleTranscriberTest : TestBase
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(
-            CoreSettings,
-            new MemoryCache(Options.Create(new MemoryCacheOptions())),
-            Log);
+        var services = CreateServiceProvider();
+        var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = "ru-RU",
+            Language = new ("ru-RU"),
         };
         var audio = await GetAudio(fileName);
         var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
@@ -114,4 +110,20 @@ public class GoogleTranscriberTest : TestBase
 
     private static FilePath GetAudioFilePath(FilePath fileName)
         => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
+
+    private ServiceProvider CreateServiceProvider()
+        => new ServiceCollection()
+            .AddSingleton(CoreSettings)
+            .AddLogging(logging => {
+                logging.ClearProviders();
+                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.AddDebug();
+                // XUnit logging requires weird setup b/c otherwise it filters out
+                // everything below LogLevel.Information
+                logging.AddProvider(
+                    new XunitTestOutputLoggerProvider(
+                        new TestOutputHelperAccessor(Out),
+                        (_, _) => true));
+            })
+            .BuildServiceProvider();
 }

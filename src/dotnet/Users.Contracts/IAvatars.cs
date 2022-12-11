@@ -3,9 +3,9 @@
 public interface IAvatars : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<AvatarFull?> GetOwn(Session session, string avatarId, CancellationToken cancellationToken);
+    Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<Avatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
+    Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
 

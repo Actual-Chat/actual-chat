@@ -25,7 +25,7 @@
         => Invites.ListUserInvites(Session, cancellationToken);
 
     private async Task OnNewInviteClick() {
-        var invite = new Invite {
+        var invite = new Invite() {
             Remaining = 10,
             Details = new InviteDetails { User = new() },
         };

@@ -8,7 +8,7 @@
 }
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
-        <EmojiIcon Code="@Emoji.ThumbsUp.Code" class="w-5 h-5"/>
+        <EmojiIcon Id="@Emoji.ThumbsUp.Id" class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply) {
         <ButtonRound
@@ -21,7 +21,7 @@
     @if (entry.AudioEntryId != null) {
         <MessageMenuPlay Entry="@entry"/>
     }
-    <ButtonRound data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
+    <ButtonRound data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId.Value, Message.Key, "").ToString())"
                  data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                  data-menu-position="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
@@ -35,11 +35,7 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Message { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new () { InitialValue = Model.None };
@@ -60,9 +56,8 @@
 
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
-            ChatId = Message.Entry.ChatId,
             EntryId = Message.Entry.Id,
-            Emoji = Emoji.ThumbsUp,
+            EmojiId = Emoji.ThumbsUp,
         }));
     }
 

@@ -17,12 +17,9 @@ public class ReadPositions: DbServiceBase<UsersDbContext>, IReadPositions
     }
 
     // [ComputeMethod]
-    public virtual async Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return null;
-
         return await Backend.Get(account.Id, chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -34,12 +31,7 @@ public class ReadPositions: DbServiceBase<UsersDbContext>, IReadPositions
 
         var (session, chatId, readEntryId) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return;
-
-        await Commander.Call(
-            new IReadPositionsBackend.SetCommand(account.Id, chatId, readEntryId),
-            true, cancellationToken)
-            .ConfigureAwait(false);
+        var backendCommand = new IReadPositionsBackend.SetCommand(account.Id, chatId, readEntryId);
+        await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

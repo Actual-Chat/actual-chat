@@ -23,4 +23,9 @@
     <Using Include="ActualChat.Chat.UI.Blazor" />
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Components\ContactMenu\ContactMenu.razor" />
+    <_ContentIncludedByDefault Remove="Components\ContactMenu\ContactMenuPin.razor" />
+  </ItemGroup>
 </Project>

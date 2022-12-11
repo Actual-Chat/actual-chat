@@ -2,5 +2,5 @@ namespace ActualChat.Transcription;
 
 public record TranscriptionOptions
 {
-    public LanguageId Language { get; init; } = LanguageId.Default;
+    public Language Language { get; init; } = Languages.Main;
 }

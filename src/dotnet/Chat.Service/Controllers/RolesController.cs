@@ -17,15 +17,15 @@ public class RolesController : ControllerBase, IRoles
     }
 
     [HttpGet, Publish]
-    public Task<Role?> Get(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+    public Task<Role?> Get(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
         => Service.Get(session, chatId, roleId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Role>> List(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.List(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, string roleId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, roleId, cancellationToken);
 
     // Commands

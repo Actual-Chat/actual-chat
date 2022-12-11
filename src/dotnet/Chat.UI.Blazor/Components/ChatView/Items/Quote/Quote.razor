@@ -1,6 +1,7 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using Cysharp.Text
 @using ActualChat.Chat.UI.Blazor.Events
-@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
 @{
     var message = Message;
     var entry = message.Entry;
@@ -50,15 +51,10 @@
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatMessageModel Message { get; set; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatEntryLinkType LinkType { get; set; }
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntryLinkType LinkType { get; set; }
 
-    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryType.Text);
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
 
     protected override async Task OnParametersSetAsync() {
         MarkupHub.ChatId = Message.Entry.ChatId;
@@ -70,7 +66,7 @@
     private async Task OnQuoteClick() {
         if (Message.IsQuote) {
             await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
-            ChatUI.HighlightedChatEntryId.Value = Message.Entry.Id;
+            ChatUI.HighlightedChatEntryId.Value = Message.Entry.LocalId;
         }
     }
 

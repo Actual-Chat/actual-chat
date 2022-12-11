@@ -1,10 +1,8 @@
 @using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Contacts
-@implements IModalView<CreationModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<CreationModal.ComputedModel>
-
 @{
     var m = State.LatestNonErrorValue;
     var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
@@ -150,8 +148,7 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var selectedUserId = new ParsedChatId(selectedChatId).GetPeerChatTargetUserId(account.Id);
-            var selectedContact = contacts.FirstOrDefault(c => c.Account!.Id == selectedUserId);
+            var selectedContact = contacts.FirstOrDefault(c => c.ChatId == selectedChatId);
             contacts = (
                 from contact in contacts
                 let rank = searchPhrase.GetMatchRank(contact.Account!.Avatar.Name)
@@ -205,21 +202,21 @@
 
     private async Task OnCreate()
     {
-        var command = new IChats.ChangeCommand(Session, "", null, new() {
+        var command = new IChats.ChangeCommand(Session, default, null, new() {
             Create = new ChatDiff() {
                 Title = _form.Title,
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
                 IsPublic = _form.IsPublic,
             },
         });
         try {
-            var (chat, error) = await UICommander.Run(command, default);
+            var (chat, error) = await UICommander.Run(command, CancellationToken.None);
             if (error != null)
                 return;
 
             chat = chat.Require();
 
-            var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account.Id).ToArray();
+            var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account!.Id).ToArray();
             var createAuthorsCommand = new IAuthors.CreateAuthorsCommand(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, DisposeToken);
             if (error != null)
@@ -233,7 +230,7 @@
         }
     }
 
-    public class FormModel
+    public sealed class FormModel
     {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
@@ -250,8 +247,6 @@
         }
     }
 
-    public sealed record Model;
-
     public sealed record ComputedModel {
         public static ComputedModel None { get; } = new() {
             AllContacts = new (),
@@ -260,5 +255,9 @@
 
         public List<Contact> AllContacts { get; init; } = null!;
         public bool EnableIncompleteUI { get; init; }
+    }
+
+    public record Model() {
+        public static Model None { get; } = new();
     }
 }

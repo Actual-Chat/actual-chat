@@ -27,13 +27,13 @@ public class LanguageUI
             });
     }
 
-    public async ValueTask<LanguageId> GetChatLanguage(Symbol chatId, CancellationToken cancellationToken = default)
+    public async ValueTask<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<LanguageId> ChangeChatLanguage(Symbol chatId)
+    public async Task<Language> ChangeChatLanguage(ChatId chatId)
     {
         await Settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;
@@ -54,20 +54,20 @@ public class LanguageUI
     {
         var languages = await GetClientLanguages(cancellationToken);
         return new () {
-            Primary = languages.Count > 0 ? languages[0] : LanguageId.Default,
-            Secondary = languages.Count > 1 ? (LanguageId?) languages[1] : null,
+            Primary = languages.Count > 0 ? languages[0] : Languages.Main,
+            Secondary = languages.Count > 1 ? (Language?) languages[1] : null,
         };
     }
 
-    private async ValueTask<List<LanguageId>> GetClientLanguages(CancellationToken cancellationToken)
+    private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)
     {
         var browserLanguages = await Dispatcher.InvokeAsync(
             () => JS.InvokeAsync<string[]>(
                 $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
                 cancellationToken).AsTask());
         return browserLanguages
-            .Select(x => LanguageId.Map.GetValueOrDefault(x))
-            .Where(x => x.IsValid)
+            .Select(x => new Language(x, ParseOrNone.Option))
+            .Where(x => !x.IsNone)
             .Distinct()
             .ToList();
     }

@@ -3,7 +3,7 @@
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
 <AuthorBadgeTemplate AuthorId="@_authorId">
-    @if (context.Author.Id.IsEmpty) {
+    @if (context.Author.Id.IsNone) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
@@ -20,20 +20,19 @@
 </AuthorBadgeTemplate>
 
 @code {
-    private string _authorId = "";
+    private AuthorId _authorId;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
 
     protected override void OnParametersSet() {
-        MarkupHub.ChatId = Entry.ChatId;
         var id = Markup.Id;
-        if (!id.OrdinalHasPrefix("a:", out _authorId))
-            _authorId = id;
+        if (id.OrdinalHasPrefix("a:", out var authorId))
+            AuthorId.TryParse(authorId, out _authorId);
     }
 
-    private void OnAuthorClick()
-        => ChatUI.ShowAuthorModal(_authorId);
+    private void OnAuthorClick() {
+        if (!_authorId.IsNone)
+            ChatUI.ShowAuthorModal(_authorId);
+    }
+
 }

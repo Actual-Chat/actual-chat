@@ -19,34 +19,25 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
         Backend = services.GetRequiredService<IAuthorsBackend>();
     }
 
-    public async Task<List<Symbol>> ListChatIds(string userId, CancellationToken cancellationToken)
+    public async Task<List<ChatId>> ListChatIds(UserId userId, CancellationToken cancellationToken)
     {
-        if (userId.IsNullOrEmpty())
-            return new List<Symbol>();
+        if (userId.IsNone)
+            return new List<ChatId>();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.Authors
-            .Where(a => a.UserId == userId && !a.HasLeft)
+            .Where(a => a.UserId == userId.Value && !a.HasLeft)
             .Select(a => a.ChatId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return chatIds.Select(id => (Symbol)id).ToList();
+        return chatIds.Select(id => new ChatId(id)).ToList();
     }
 
-    public async Task<List<Symbol>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
+    public async Task<List<ChatId>> ListOwnChatIds(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account != null)
-            return await ListChatIds(account.Id, cancellationToken).ConfigureAwait(false);
-
-        var kvas = ServerKvas.GetClient(session);
-        var unregisteredAuthorSettings = await kvas.GetUnregisteredUserSettings(cancellationToken).ConfigureAwait(false);
-        var chats = unregisteredAuthorSettings.Chats;
-        var chatIds = chats.Keys.AsEnumerable();
-        if (!chats.ContainsKey(Constants.Chat.AnnouncementsChatId.Value))
-            chatIds = chatIds.Append(Constants.Chat.AnnouncementsChatId.Value);
-        return chatIds.Select(id => (Symbol)id).ToList();
+        return await ListChatIds(account.Id, cancellationToken).ConfigureAwait(false);
     }
 }

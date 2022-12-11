@@ -1,6 +1,7 @@
 ﻿using ActualChat.Contacts.Db;
 using ActualChat.Db;
 using ActualChat.Hosting;
+using ActualChat.Users;
 using ActualChat.Users.Module;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -12,6 +13,8 @@ namespace ActualChat.Contacts.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // NOTE(AY): Obsolete: applied to all of our DBs
+            /*
             var dbInitializer = DbInitializer.Current as DbInitializer<ContactsDbContext>;
             var usersDbInitializer = dbInitializer.InitializeTasks
                 .Select(kv => kv.Key is UsersDbInitializer x ? x : null)
@@ -34,17 +37,21 @@ namespace ActualChat.Contacts.Migrations
                 if (oc.OwnerUserId.IsNullOrEmpty() || oc.TargetUserId.IsNullOrEmpty())
                     continue;
 
+                var ownerId = new UserId(oc.OwnerUserId);
+                var userId = new UserId(oc.TargetUserId);
+                var peerChatId = new PeerChatId(ownerId, userId);
                 var c = new DbContact() {
-                    Id = new ContactId(oc.OwnerUserId, oc.TargetUserId, ContactKind.User),
+                    Id = new ContactId(ownerId, peerChatId, AssumeValid.Option),
                     Version = oc.Version,
                     OwnerId = oc.OwnerUserId,
                     UserId = oc.TargetUserId,
-                    ChatId = null,
+                    ChatId = peerChatId,
                     TouchedAt = clocks.SystemClock.Now,
                 };
                 dbContext.Add(c);
             }
             dbContext.SaveChanges();
+            */
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

@@ -1,10 +1,10 @@
 namespace ActualChat.Chat;
 
-public interface IMentionsBackend
+public interface IMentionsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        ChatId chatId,
+        Symbol mentionId,
         CancellationToken cancellationToken);
 }

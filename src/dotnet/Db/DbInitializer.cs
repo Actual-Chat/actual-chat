@@ -32,7 +32,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
             if (hostInfo.RequiredServiceScopes.Contains(ServiceScope.Test))
-                mustMigrate = Random.Shared.Next(10) == 0; // 10% migration probability in tests
+                mustMigrate = Random.Shared.Next(10) > -1; // 10% migration probability in tests
             if (mustMigrate)
                 await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
             else

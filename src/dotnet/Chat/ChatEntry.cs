@@ -1,43 +1,60 @@
 ﻿using ActualChat.Comparison;
+using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTarget
+[ParameterComparer(typeof(ByValueParameterComparer))]
+[DataContract]
+public sealed record ChatEntry(
+    [property: DataMember] ChatEntryId Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
-    private static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
-        VersionBasedEqualityComparer<ChatEntry, long>.Instance;
+    public static IdAndVersionEqualityComparer<ChatEntry, ChatEntryId> EqualityComparer { get; } = new();
 
-    public Symbol ChatId { get; init; }
-    public ChatEntryType Type { get; init; }
-    public long Id { get; init; }
-    public long Version { get; init; }
-    public bool IsRemoved { get; init; }
-    public Symbol AuthorId { get; init; }
-    public Moment BeginsAt { get; init; }
-    public Moment? ClientSideBeginsAt { get; init; }
-    public Moment? EndsAt { get; init; }
-    public Moment? ContentEndsAt { get; init; }
-    public string Content { get; init; } = "";
-    public ServiceEntryDetails? ServiceEntry { get; init; }
+    public static Requirement<ChatEntry> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<ChatEntry>()),
+        (ChatEntry? c) => c is { Id.IsNone: false });
+    public static Requirement<ChatEntry> MustNotBeRemoved { get; } = Requirement.New(
+        new(() => StandardError.NotFound<ChatEntry>()),
+        (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false });
+
+    public static ChatEntry Removed(ChatEntryId id)
+        => new (id) { IsRemoved = true };
+
+    [DataMember] public bool IsRemoved { get; init; }
+    [DataMember] public AuthorId AuthorId { get; init; }
+    [DataMember] public Moment BeginsAt { get; init; }
+    [DataMember] public Moment? ClientSideBeginsAt { get; init; }
+    [DataMember] public Moment? EndsAt { get; init; }
+    [DataMember] public Moment? ContentEndsAt { get; init; }
+    [DataMember] public string Content { get; init; } = "";
+    [DataMember] public SystemEntryContent? ServiceEntry { get; init; }
+    [DataMember] public bool HasReactions { get; init; }
+    [DataMember] public Symbol StreamId { get; init; } = "";
+    [DataMember] public long? AudioEntryId { get; init; }
+    [DataMember] public long? VideoEntryId { get; init; }
+    [DataMember] public LinearMap TextToTimeMap { get; init; }
+    [DataMember] public long? RepliedEntryLocalId { get; init; }
+    [DataMember] public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
+
+    // Computed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatId ChatId => Id.ChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public long LocalId => Id.LocalId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public ChatEntryKind Kind => Id.Kind;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsServiceEntry => ServiceEntry != null;
-    public bool HasReactions { get; init; }
-    public Symbol StreamId { get; init; } = "";
-    public long? AudioEntryId { get; init; }
-    public long? VideoEntryId { get; init; }
-    public LinearMap TextToTimeMap { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public double? Duration
-        => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
-
+    public double? Duration => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
 
-    public long? RepliedChatEntryId { get; init; }
-    public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
-
-    public Symbol CompositeId { get; init; } = "";
+    public ChatEntry() : this(ChatEntryId.None) { }
 
     public string GetContentOrDescription()
     {
@@ -55,8 +72,6 @@ public sealed record ChatEntry : IHasId<long>, IHasVersion<long>, IRequirementTa
     }
 
     // This record relies on version-based equality
-    public bool Equals(ChatEntry? other)
-        => EqualityComparer.Equals(this, other);
-    public override int GetHashCode()
-        => EqualityComparer.GetHashCode(this);
+    public bool Equals(ChatEntry? other) => EqualityComparer.Equals(this, other);
+    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }

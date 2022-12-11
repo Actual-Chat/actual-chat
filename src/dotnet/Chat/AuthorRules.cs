@@ -3,13 +3,18 @@ using ActualChat.Users;
 namespace ActualChat.Chat;
 
 [DataContract]
-public record AuthorRules(
+public sealed record AuthorRules(
     [property: DataMember] Symbol ChatId,
     [property: DataMember] AuthorFull? Author,
-    [property: DataMember] AccountFull? Account,
-    [property: DataMember] ChatPermissions Permissions = 0)
+    [property: DataMember] AccountFull Account,
+    [property: DataMember] ChatPermissions Permissions = 0
+    ) : IRequirementTarget
 {
-    public static AuthorRules None(Symbol chatId) => new(chatId, null, null);
+    public static Requirement<AuthorRules> MustExist { get; } = Requirement.New(
+        new(() => StandardError.NotFound<AuthorRules>()),
+        (AuthorRules? a) => a is { ChatId.IsEmpty: false });
+
+    public static AuthorRules None(ChatId chatId) => new(chatId, AuthorFull.None, AccountFull.None);
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);
     public bool CanWrite() => Permissions.Has(ChatPermissions.Write);
@@ -25,4 +30,6 @@ public record AuthorRules(
         => Permissions.Has(required);
     public void Require(ChatPermissions required)
         => Permissions.Require(required);
+
+
 }

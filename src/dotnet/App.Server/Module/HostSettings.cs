@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 
 namespace ActualChat.App.Server.Module;
 
-public class HostSettings
+public sealed class HostSettings
 {
     public AppKind? AppKind { get; set; }
     public string BaseUrl { get; set; } = "";

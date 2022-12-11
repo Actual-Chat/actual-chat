@@ -140,7 +140,6 @@ public static class MauiProgram
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        //Firebase messaging
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
         services.AddScoped<IAudioOutputController, AndroidAudioOutputController>();
 #endif

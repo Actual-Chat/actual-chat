@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
-@inherits ComputedStateComponent<ActualChat.Users.AccountFull?>
+@inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
     var account = State.LatestNonErrorValue;
 }
 
 <AccountBadge
-    UserId="@(account?.Id ?? "")"
+    UserId="@account.Id"
     Size="SquareSize.Size12"
     ShowPresence="true"
     TextClass="hidden" />
@@ -15,9 +15,9 @@
     [Inject] Session Session { get; init; } = null!;
     [Inject] IAccounts Accounts { get; init; } = null!;
 
-    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 }

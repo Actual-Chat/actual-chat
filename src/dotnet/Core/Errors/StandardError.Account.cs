@@ -4,8 +4,8 @@ public static partial class StandardError
 {
     public static class Account
     {
-        public static Exception None(string? message = null)
-            => new NoAccountException(message);
+        public static Exception Guest(string? message = null)
+            => new GuestAccountException(message);
         public static Exception Inactive(string? message = null)
             => new InactiveAccountException(message);
         public static Exception Suspended(string? message = null)
@@ -22,11 +22,11 @@ public abstract class AccountException : Exception
     protected AccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
-public class NoAccountException : AccountException
+public class GuestAccountException : AccountException
 {
-    public NoAccountException() : this(null) { }
-    public NoAccountException(string? message) : base(message ?? "You must sign-in to perform this action.") { }
-    public NoAccountException(string? message, Exception? inner) : base(message, inner) { }
+    public GuestAccountException() : this(null) { }
+    public GuestAccountException(string? message) : base(message ?? "You must sign-in to perform this action.") { }
+    public GuestAccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
 public class InactiveAccountException : AccountException

@@ -31,12 +31,12 @@
 
     private async Task OnSearchTriggered(string text) {
         var chatId = Chat.Id;
-        var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.Id, text, CancellationToken.None);
+        var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.LocalId, text, CancellationToken.None);
         if (nextEntry == null)
             return;
 
         await UIEventHub.Publish(new NavigateToChatEntryEvent(nextEntry.Id));
-        ChatUI.HighlightedChatEntryId.Value = nextEntry.Id;
+        ChatUI.HighlightedChatEntryId.Value = nextEntry.LocalId;
         _lastFoundEntry = nextEntry;
     }
 

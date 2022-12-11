@@ -17,7 +17,7 @@ public class PlayableTextPalette
     {
         lock (_activeLeases) {
             var lease = _activeLeases
-                .Where(c => c.Value.AuthorId == authorId)
+                .Where(c => c.Value.AuthorId == authorId.Value)
                 .Select(c => c.Value)
                 .FirstOrDefault();
             if (lease == null) {
@@ -51,7 +51,7 @@ public class PlayableTextPalette
 
     private PlayableTextColor? PeekColor(Symbol authorId)
     {
-        foreach (var oldLease in _leasingHistory.Where(c => c.AuthorId == authorId)) {
+        foreach (var oldLease in _leasingHistory.Where(c => c.AuthorId == authorId.Value)) {
             if (!_activeLeases.ContainsKey(oldLease.Color))
                 return oldLease.Color;
         }

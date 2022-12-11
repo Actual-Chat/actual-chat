@@ -3,27 +3,25 @@
 public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<ImmutableArray<string>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
-
+    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<NotificationEntry> GetNotification(Session session, string notificationId, CancellationToken cancellationToken);
+    Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task HandleNotification(HandleNotificationCommand command, CancellationToken cancellationToken);
-
+    Task Handle(HandleCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RegisterDevice(RegisterDeviceCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record RegisterDeviceCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string DeviceId,
+        [property: DataMember] Symbol DeviceId,
         [property: DataMember] DeviceType DeviceType
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public sealed record HandleNotificationCommand(
+    public sealed record HandleCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string NotificationId
+        [property: DataMember] NotificationId NotificationId
     ) : ISessionCommand<Unit>;
 }

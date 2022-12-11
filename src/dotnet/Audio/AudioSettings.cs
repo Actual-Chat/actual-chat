@@ -1,6 +1,8 @@
-﻿namespace ActualChat.Audio;
+﻿using System;
 
-public class AudioSettings
+namespace ActualChat.Audio;
+
+public sealed class AudioSettings
 {
     public string Redis { get; set; } = "";
     public string ServiceName { get; set; } = "actual-chat-app-service";

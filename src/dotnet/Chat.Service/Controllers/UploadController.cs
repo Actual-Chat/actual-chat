@@ -11,7 +11,7 @@ public class UploadController : UploadControllerBase
     public UploadController(IChats chats) => _chats = chats;
 
     [HttpPost, Route("api/chats/{chatId}/upload-picture")]
-    public Task<IActionResult> UploadPicture(string chatId, CancellationToken cancellationToken)
+    public Task<IActionResult> UploadPicture(ChatId chatId, CancellationToken cancellationToken)
     {
         return Upload(ValidateRequest, GetContentIdPrefix, cancellationToken);
 

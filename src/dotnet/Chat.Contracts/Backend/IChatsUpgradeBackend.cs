@@ -15,7 +15,7 @@ public interface IChatsUpgradeBackend : ICommandService
 
     [DataContract]
     public sealed record UpgradeChatCommand(
-        [property: DataMember] Symbol ChatId
+        [property: DataMember] ChatId ChatId
     ) : ICommand<Unit>, IBackendCommand;
 
     [DataContract]

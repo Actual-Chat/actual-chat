@@ -10,7 +10,7 @@ public interface IServerKvas : IComputeService
     [CommandHandler]
     Task SetMany(SetManyCommand command, CancellationToken cancellationToken = default);
     [CommandHandler]
-    Task MoveSessionKeys(MoveSessionKeysCommand command, CancellationToken cancellationToken = default);
+    Task MigrateGuestKeys(MigrateGuestKeysCommand command, CancellationToken cancellationToken = default);
 
     [DataContract]
     public record SetCommand(
@@ -26,7 +26,7 @@ public interface IServerKvas : IComputeService
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public record MoveSessionKeysCommand(
+    public record MigrateGuestKeysCommand(
         [property: DataMember(Order = 0)] Session Session
         ) : ISessionCommand<Unit>;
 }

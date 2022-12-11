@@ -139,7 +139,7 @@ public static class TestHostFactory
         // while in Rider only method name is used.
         // Drop namespace to have more readable instance name (with test method name) after length is truncated.
         var classNamespace = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
-        if (displayName.StartsWith(classNamespace))
+        if (displayName.OrdinalStartsWith(classNamespace))
             displayName = displayName.Substring(classNamespace.Length + 1);
         return FilePath.GetHashedName(test.TestCase.UniqueID, displayName);
     }

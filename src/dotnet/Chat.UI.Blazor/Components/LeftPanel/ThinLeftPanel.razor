@@ -8,7 +8,7 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-2">
             <ButtonSquare
-                Click="OnCreationCreationModalShow"
+                Click="OnShowCreationModal"
                 Class="plus-btn"
                 ContentClass="navbar-navigation-button"
                 Tooltip="Create"
@@ -38,6 +38,6 @@
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    private void OnCreationCreationModalShow()
+    private void OnShowCreationModal()
         => ModalUI.Show(new CreationModal.Model());
 }

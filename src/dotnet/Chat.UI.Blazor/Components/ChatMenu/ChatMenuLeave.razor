@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
 
 <MenuEntrySeparator />
 <MenuEntry
@@ -9,12 +10,11 @@
 </MenuEntry>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnLeaveChatClick() {
-        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(Chat));
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
     }
 }

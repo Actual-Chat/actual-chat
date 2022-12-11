@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
@@ -15,12 +16,12 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
     public bool IsQuote { get; init; }
-    public bool ShowEntryType { get; init; }
+    public bool ShowEntryKind { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
     {
         Entry = entry;
-        Key = entry.Id.ToString(CultureInfo.InvariantCulture);
+        Key = entry.LocalId.ToString(CultureInfo.InvariantCulture);
     }
 
     public override string ToString()
@@ -79,7 +80,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
             var hasDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
             var isBlockEnd = ShouldSplit(entry, nextEntry);
-            var isUnread = entry.Id > (lastReadEntryId ?? 0);
+            var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var contentKindChanged = !isPrevAudio.HasValue || isPrevAudio.Value ^ isAudio;
             var model = new ChatMessageModel(entry) {
@@ -88,7 +89,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
                 IsFirstUnread = isUnread && !isPrevUnread,
-                ShowEntryType = contentKindChanged
+                ShowEntryKind = contentKindChanged
             };
             result.Add(model);
 
@@ -108,7 +109,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
                 return true;
-            if (oldBlockStartIds != null && oldBlockStartIds.Contains(nextEntry.Id))
+            if (oldBlockStartIds != null && oldBlockStartIds.Contains(nextEntry.LocalId))
                 return true;
 
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;

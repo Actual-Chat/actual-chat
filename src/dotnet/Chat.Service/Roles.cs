@@ -7,7 +7,6 @@ namespace ActualChat.Chat;
 public class Roles : DbServiceBase<ChatDbContext>, IRoles
 {
     private IAccounts Accounts { get; }
-    private IChats Chats { get; }
     private IChatsBackend ChatsBackend { get; }
     private IAuthors Authors { get; }
     private IRolesBackend Backend { get; }
@@ -15,7 +14,6 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     public Roles(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         Authors = services.GetRequiredService<IAuthors>();
         Backend = services.GetRequiredService<IRolesBackend>();
@@ -23,7 +21,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // [ComputeMethod]
     public virtual async Task<Role?> Get(
-        Session session, string chatId, string roleId, CancellationToken cancellationToken)
+        Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
@@ -35,27 +33,27 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Role>> List(
-        Session session, string chatId, CancellationToken cancellationToken)
+        Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null or { HasLeft: true })
             return ImmutableArray<Role>.Empty;
 
-        var isAuthenticated = account != null;
+        var isGuest = account.IsGuest;
         var isAnonymous = author is { IsAnonymous: true };
         return await Backend
-            .List(chatId, author.Id, isAuthenticated, isAnonymous, cancellationToken)
+            .List(chatId, author.Id, isGuest, isAnonymous, cancellationToken)
             .ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListAuthorIds(
-        Session session, string chatId, string roleId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
+        Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
-            return ImmutableArray<Symbol>.Empty;
+            return ImmutableArray<AuthorId>.Empty;
 
         // If we're here, current user is either admin or is in owner role
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);
@@ -76,7 +74,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
 
     // Private methods
 
-    private async Task<bool> IsOwner(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task<bool> IsOwner(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })
@@ -93,7 +91,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         return true;
     }
 
-    private async Task RequireOwner(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task RequireOwner(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account is { IsAdmin: true })

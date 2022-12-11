@@ -1,65 +1,74 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<PlaybackToggle.Model>
 @{
-    var m = State.LatestNonErrorValue;
-    var playbackState = m.PlaybackState;
-    if (playbackState.ChatId.IsEmpty)
-        return; // Not computed yet
+    var lastRenderedState = _lastRenderedState;
+    var m = _lastRenderedState = State.LatestNonErrorValue;
+    if (lastRenderedState.Chat.Id != m.Chat.Id)
+        lastRenderedState = m;
+    var mediaState = m.MediaState;
 
-    var playingHistoricalClass = playbackState.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"{(playbackState.IsListening ? "on" : "off")} {playingHistoricalClass}";
-    var lastRenderedState = _lastRenderedState ?? m;
-    var isListeningChange = (lastRenderedState.PlaybackState.IsListening, playbackState.IsListening);
-    var wrapperCls = isListeningChange switch {
+    var playingHistoricalClass = mediaState.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"{(mediaState.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var wrapperCls = (lastRenderedState.MediaState.IsListening, mediaState.IsListening) switch {
         (false, true) => "listen-off-to-on",
         (true, false) => "listen-on-to-off",
-        (_, false) => "listen-off",
         (_, true) => "listen-on",
+        (_, false) => "listen-off",
     };
     _lastRenderedState = m;
-    var loadBtnCls = "loud-btn " + (m.IsSpeakerOn ? "on" : "off");
+    var loudBtnCls = "loud-btn " + (m.IsSpeakerphoneOn ? "on" : "off");
 }
 
 <div class="@wrapperCls playback-wrapper">
     <ButtonRound Click="@OnListenClick" Class="@cls">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
-    <ButtonRound Click="@OnChangeAudioOutputClick" Class="@loadBtnCls">
+    <ButtonRound Click="@OnToggleAudioOutputClick" Class="@loudBtnCls">
         <i class="icon-volume-up text-2xl"></i>
     </ButtonRound>
 </div>
 
 @code {
-    private Model? _lastRenderedState;
+    private Model _lastRenderedState = Model.Loading;
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
+    private bool IsListening => !IsLoading && State.LatestNonErrorValue.MediaState.IsListening;
 
-    private void OnListenClick()
-        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.PlaybackState.IsListening);
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var playbackState = await ChatUI.GetPlaybackState(ChatId, cancellationToken);
-        var isSpeakerOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken).ConfigureAwait(false);
-        return new Model(playbackState, isSpeakerOn);
+        var mediaState = await ChatUI.GetMediaState(Chat.Id);
+        var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
+        return new Model(Chat, mediaState, isSpeakerphoneOn);
     }
 
-    private void OnChangeAudioOutputClick()
-    {
-        AudioOutputController.SwitchSpeakerphone();
+    private void OnListenClick() {
+        if (IsLoading)
+            return;
+
+        _ = ChatUI.SetListeningState(Chat.Id, !IsListening);
     }
 
-    public record Model(SingleChatPlaybackState PlaybackState, bool IsSpeakerOn)
-    {
-        public static readonly Model None = new (SingleChatPlaybackState.None, true);
+    private void OnToggleAudioOutputClick()
+        => AudioOutputController.ToggleSpeakerphone(!AudioOutputController.IsSpeakerphoneOn.Value);
+
+
+    public sealed record Model(
+        Chat Chat,
+        ChatMediaState MediaState,
+        bool IsSpeakerphoneOn = false
+    ) {
+        public static Model Loading { get; } = new(Chat.Loading, ChatMediaState.None);
+        public static Model None { get; } = new(Chat.None, ChatMediaState.None);
     }
 }

@@ -21,7 +21,7 @@ public class InvitesController : ControllerBase, IInvites
         => Service.ListUserInvites(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<Invite>> ListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListChatInvites(session, chatId, cancellationToken);
 
     [HttpPost]

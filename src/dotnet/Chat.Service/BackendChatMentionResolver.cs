@@ -7,7 +7,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
 
-    public Symbol ChatId { get; set; }
+    public ChatId ChatId { get; set; }
 
     public BackendChatMentionResolver(IServiceProvider services)
     {
@@ -19,11 +19,13 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        var targetId = mention.Id;
-        if (targetId.OrdinalHasPrefix("u:", out var userId))
-            throw StandardError.NotSupported("User mentions aren't supported yet.");
-        if (!targetId.OrdinalHasPrefix("a:", out var authorId))
-            authorId = targetId;
+        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
+            return null;
+
+        var authorId = new AuthorId(sAuthorId, ParseOrNone.Option);
+        if (authorId.IsNone)
+            return null;
+
         return await AuthorsBackend.Get(ChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 

@@ -54,7 +54,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''"></FixedEnvironment>
+    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''"/>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     <AnalysisLevel>preview</AnalysisLevel>
   </PropertyGroup>

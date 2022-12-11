@@ -22,8 +22,8 @@
         if (linkedChatEntry == null)
             return null;
 
-        var reader = new ChatEntryReader(Chats, Session, linkedChatEntry.Entry.ChatId, linkedChatEntry.Entry.Type);
-        var entry = await reader.Get(linkedChatEntry.Entry.Id, cancellationToken);
+        var reader = new ChatEntryReader(Chats, Session, linkedChatEntry.Entry.ChatId, linkedChatEntry.Entry.Kind);
+        var entry = await reader.Get(linkedChatEntry.Entry.LocalId, cancellationToken);
         if (entry == null) {
             // The entry was removed
             ChatUI.LinkedChatEntry.Value = null;

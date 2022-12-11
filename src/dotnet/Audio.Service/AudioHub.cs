@@ -50,7 +50,7 @@ public class AudioHub : Hub
         var cancellationToken = httpContext.RequestAborted;
         var session = SessionMiddleware.GetSession(httpContext).Require();
 
-        var audioRecord = new AudioRecord(session.Id, chatId, clientStartOffset);
+        var audioRecord = new AudioRecord(new Session(session.Id), new ChatId(chatId), clientStartOffset);
         var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,

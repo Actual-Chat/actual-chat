@@ -12,10 +12,10 @@ namespace ActualChat.Chat.Db;
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 
-    [ConcurrencyCheck] public long Version { get; set; }
     public bool IsAnonymous { get; set; }
     public string? UserId { get; set; }
     public string? AvatarId { get; set; }
@@ -23,17 +23,15 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public List<DbAuthorRole> Roles { get; } = new();
 
-    public static string ComposeId(string chatId, long localId)
-        => new ParsedAuthorId(chatId, localId).Id;
+    public static string ComposeId(ChatId chatId, long localId)
+        => new AuthorId(chatId, localId, AssumeValid.Option).Id;
 
     public AuthorFull ToModel()
     {
-        var result = new AuthorFull() {
-            Id = Id,
-            ChatId = ChatId,
+        var result = new AuthorFull(new AuthorId(Id), Version) {
             Version = Version,
             IsAnonymous = IsAnonymous,
-            UserId = UserId ?? "",
+            UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
             RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToImmutableArray(),

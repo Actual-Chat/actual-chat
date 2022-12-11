@@ -4,13 +4,13 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatRecordingActivityReplica : IChatRecordingActivity
 {
-    private readonly SharedResourcePool<Symbol, ChatRecordingActivity>.Lease _lease;
+    private readonly SharedResourcePool<ChatId, ChatRecordingActivity>.Lease _lease;
     private readonly IChatRecordingActivity _source;
 
     public ChatActivity Owner => _source.Owner;
-    public Symbol ChatId => _source.ChatId;
+    public ChatId ChatId => _source.ChatId;
 
-    public ChatRecordingActivityReplica(SharedResourcePool<Symbol, ChatRecordingActivity>.Lease lease)
+    public ChatRecordingActivityReplica(SharedResourcePool<ChatId, ChatRecordingActivity>.Lease lease)
     {
         _lease = lease;
         _source = lease.Resource;
@@ -22,9 +22,9 @@ public class ChatRecordingActivityReplica : IChatRecordingActivity
     public Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
         => _source.GetActiveChatEntries(cancellationToken);
 
-    public Task<ImmutableArray<Symbol>> GetActiveAuthorIds(CancellationToken cancellationToken)
+    public Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
         => _source.GetActiveAuthorIds(cancellationToken);
 
-    public Task<bool> IsAuthorActive(string authorId, CancellationToken cancellationToken)
+    public Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
         => _source.IsAuthorActive(authorId, cancellationToken);
 }

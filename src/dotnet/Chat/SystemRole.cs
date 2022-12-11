@@ -5,9 +5,9 @@ namespace ActualChat.Chat;
 public enum SystemRole
 {
     None = 0,
-    Anyone = 11, // Any author
-    Unauthenticated = Anyone + 2, // Unauthenticated authors in public chats
-    Regular = Anyone + 4, // Regular author
-    Anonymous = Anyone + 4 + 8, // Anonymous author
+    Anyone = 11, // Any author who joined the chat
+    Guest = Anyone + 2, // Unauthenticated user
+    User = Anyone + 4, // Authenticated user in non-anonymous mode
+    AnonymousUser = Anyone + 4 + 8, // Authenticated user in anonymous mode
     Owner = 101,
 }

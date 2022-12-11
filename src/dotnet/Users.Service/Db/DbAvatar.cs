@@ -24,9 +24,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbAvatar(AvatarFull model) => UpdateFrom(model);
 
     public AvatarFull ToModel()
-        => new() {
-            Id = Id,
-            Version = Version,
+        => new(Id, Version) {
             PrincipalId = PrincipalId ?? Symbol.Empty,
             Name = Name,
             Picture = Picture,
@@ -35,16 +33,16 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(AvatarFull model)
     {
-        if (Id.IsNullOrEmpty())
-            Id = model.Id;
-        else if (model.Id != Id)
-            throw StandardError.Constraint("Can't change Avatar.Id.");
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
 
         if (PrincipalId.IsNullOrEmpty())
             PrincipalId = model.PrincipalId.NullIfEmpty()?.Value;
         else if (PrincipalId != model.PrincipalId)
             throw StandardError.Constraint("Can't change Avatar.PrincipalId.");
 
+        Id = id;
         Version = model.Version;
         Name = model.Name;
         Picture = model.Picture;

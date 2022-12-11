@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Blazored.Modal;
 using Blazored.Modal.Services;
 using Stl.Extensibility;
+using Stl.Reflection;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -27,7 +28,7 @@ public sealed class ModalUI
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
         if (componentType == null)
             throw StandardError.NotFound<IModalView>(
-                $"No modal view component for '{model.GetType()}' model.");
+                $"No modal view component for '{model.GetType().GetName()}' model.");
 
         if (!BrowserInfo.ScreenSize.Value.IsNarrow())
             return Task.FromResult(ShowInternal(componentType, model, isFullScreen));

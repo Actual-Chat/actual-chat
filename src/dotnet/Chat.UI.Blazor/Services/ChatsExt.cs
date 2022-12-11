@@ -5,8 +5,8 @@ public static class ChatsExt
     public static ChatEntryReader NewEntryReader(
         this IChats chats,
         Session session,
-        string chatId,
-        ChatEntryType entryType,
+        ChatId chatId,
+        ChatEntryKind entryKind,
         TileLayer<long>? idTileLayer = null)
-        => new(chats, session, chatId, entryType, idTileLayer);
+        => new(chats, session, chatId, entryKind, idTileLayer);
 }

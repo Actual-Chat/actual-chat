@@ -3,16 +3,19 @@ using Stl.Versioning;
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 namespace ActualChat.Invite;
 
-public sealed record Invite : IHasId<Symbol>, IRequirementTarget
+[DataContract]
+public sealed record Invite(
+    [property: DataMember] Symbol Id,
+    [property: DataMember] long Version = 0
+    ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    public Symbol Id { get; init; } = "";
-    public long Version { get; init; }
+    [DataMember] public Symbol CreatedBy { get; init; } = "";
+    [DataMember] public Moment CreatedAt { get; init; }
+    [DataMember] public Moment ExpiresOn { get; init; }
+    [DataMember] public int Remaining { get; init; }
+    [DataMember] public InviteDetails Details { get; init; } = null!;
 
-    public Symbol CreatedBy { get; init; } = "";
-    public Moment CreatedAt { get; init; }
-    public Moment ExpiresOn { get; init; }
-    public int Remaining { get; init; }
-    public InviteDetails Details { get; init; } = null!;
+    public Invite() : this(Symbol.Empty) { }
 
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
     {
@@ -47,6 +50,6 @@ public sealed record InviteDetails
     }
 }
 
-public record ChatInviteDetails(Symbol ChatId);
+public record ChatInviteDetails(ChatId ChatId);
 
 public record UserInviteDetails;

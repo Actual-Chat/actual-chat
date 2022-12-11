@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.10")
+                .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -77,35 +77,6 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_avatars");
 
                     b.ToTable("avatars");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbContactOld", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("OwnerUserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("owner_user_id");
-
-                    b.Property<string>("TargetUserId")
-                        .HasColumnType("text")
-                        .HasColumnName("target_user_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_contacts");
-
-                    b.HasIndex("OwnerUserId")
-                        .HasDatabaseName("ix_contacts_owner_user_id");
-
-                    b.ToTable("contacts");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
@@ -186,7 +157,6 @@ namespace ActualChat.Users.Migrations
                         .HasColumnName("user_agent");
 
                     b.Property<string>("UserId")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("user_id");
 

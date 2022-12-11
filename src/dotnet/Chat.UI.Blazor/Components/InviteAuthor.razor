@@ -77,14 +77,17 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        var existingUserIds = new HashSet<Symbol>(
+        var existingUserIds = new HashSet<UserId>(
             await Authors.ListUserIds(Session, Chat.Id, DisposeToken));
 
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
         var contacts = await userContacts
             .Select(async c => {
                 // Fine to use ConfigureAwait(false) here
-                var account = c.Account!;
+                var account = c.Account;
+                if (account == null)
+                    return null;
+
                 var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
                 return new Contact() {
                     Account = account,
@@ -95,6 +98,7 @@
             .Collect();
 
         AllContacts = contacts
+            .SkipNullItems()
             .OrderBy(x => x.Account.Avatar.Name)
             .ToArray();
         FilteredContacts = AllContacts;

@@ -1,10 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<ActualChat.Users.AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.LatestNonErrorValue;
-    if (account != null) {
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
+
+    if (!account.IsGuest) {
         <button class="account-btn btn-square" onclick="@OnSettingsClick">
             <AccountView/>
         </button>
@@ -13,15 +16,18 @@
     }
 }
 
-@code{
+@code {
     [Inject] Session Session { get; init; } = null!;
     [Inject] IAccounts Accounts { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    protected override ComputedState<AccountFull?>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountFull.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
 
-    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 
 

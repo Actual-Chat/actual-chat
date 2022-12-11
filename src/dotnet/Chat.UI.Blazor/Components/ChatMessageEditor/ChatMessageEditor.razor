@@ -89,15 +89,15 @@
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private MarkupEditorHtmlConverter HtmlConverter => MarkupHub.MarkupEditorHtmlConverter;
-    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<long?>? ReadState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -112,8 +112,8 @@
         BlazorRef = null!;
 
         using (await _lastReadEntrySync.Lock()) {
-            LastReadEntryState?.DisposeSilently();
-            LastReadEntryState = null!;
+            ReadState?.DisposeSilently();
+            ReadState = null!;
         }
     }
 
@@ -121,14 +121,14 @@
         var chatId = Chat.Id;
         using (await _lastReadEntrySync.Lock()) {
             var oldChatId = MarkupHub.ChatId;
-            if (oldChatId.IsEmpty)
+            if (oldChatId.IsNone)
                 MarkupHub.ChatId = chatId; // initially set chat id for mentions.
             if (oldChatId == chatId)
                 return;
 
-            LastReadEntryState.DisposeSilently();
-            LastReadEntryState = null;
-            LastReadEntryState = await ChatUI.LeaseLastReadEntryState(chatId, default);
+            ReadState.DisposeSilently();
+            ReadState = null;
+            ReadState = await ChatUI.LeaseReadState(chatId, default);
             MarkupHub.ChatId = chatId;
         }
 
@@ -179,19 +179,19 @@
             ChatUI.LinkedChatEntry.Value = null;
             _ = UICommander.RunNothing();
 
-            long entryId;
+            long readEntryId;
             if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
                 if (chatEntry == null)
                     throw new InternalError("Linked chat entry points to null entry.");
-                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.Id, text));
-                entryId = chatEntry.Id;
+                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.LocalId, text));
+                readEntryId = chatEntry.LocalId;
 
             } else {
-                entryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
+                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
             }
 
-            if (LastReadEntryState != null && LastReadEntryState.Value < entryId)
-                LastReadEntryState.Value = entryId;
+            if (ReadState != null && ReadState.Value < readEntryId)
+                ReadState.Value = readEntryId;
             _ = ChatUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
@@ -225,13 +225,16 @@
 
     private async Task OnOpenPrevious() {
         var chatId = ChatUI.SelectedChatId.Value;
+        if (chatId.IsNone)
+            return;
+
         var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         if (author == null)
             return;
 
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, CancellationToken.None);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryType.Text, idTileLayer);
+        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
             chatIdRange,
             x => x.AuthorId == author.Id && !x.AudioEntryId.HasValue && x.StreamId.IsEmpty,

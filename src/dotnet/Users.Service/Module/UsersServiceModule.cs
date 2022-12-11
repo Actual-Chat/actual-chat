@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Commands;
-using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -11,12 +10,12 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.Plugins;
-using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
@@ -74,12 +73,12 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
-            services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
+            services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
+            db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();
-            db.AddEntityResolver<string, DbContactOld>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbReadPosition>();
 

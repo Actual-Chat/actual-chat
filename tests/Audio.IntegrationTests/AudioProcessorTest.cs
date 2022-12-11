@@ -27,10 +27,10 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         if (mustSetUserLanguageSettings)
-            await kvas.SetUserLanguageSettings(new () { Primary = LanguageId.Default, }, CancellationToken.None);
+            await kvas.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
 
         var audioRecord = new AudioRecord(
-            session.Id, Constants.Chat.DefaultChatId,
+            session, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds);
         await audioProcessor.ProcessAudio(audioRecord, 333, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
@@ -57,20 +57,20 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = LanguageId.Default,
+                Primary = Languages.Main,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
             },
         }));
         chat = chat.Require();
 
         using var cts = new CancellationTokenSource();
 
-        var userChatSettings = new UserChatSettings { Language = LanguageId.Russian };
+        var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
@@ -98,13 +98,13 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = LanguageId.Default,
+                Primary = Languages.Main,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, "", null, new() {
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = "Test",
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
             },
         }));
         chat = chat.Require();
@@ -159,13 +159,11 @@ public class AudioProcessorTest : AppHostTestBase
         AudioProcessor audioProcessor,
         ILogger log,
         Session session,
-        string chatId,
+        ChatId chatId,
         string fileName = "file.webm",
         bool webMStream = true)
     {
-        var record = new AudioRecord(
-            session.Id, chatId,
-            CpuClock.Now.EpochOffset.TotalSeconds);
+        var record = new AudioRecord(session, chatId, CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int)filePath.GetFileInfo().Length;

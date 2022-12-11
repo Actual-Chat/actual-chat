@@ -11,7 +11,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
 {
     private BlazorTester _tester = null!;
     private AppHost _appHost = null!;
-    private User _user = null!;
+    private Account _account = null!;
 
     public HistoricalChatPlayerTest(ITestOutputHelper @out) : base(@out) { }
 
@@ -19,7 +19,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         _appHost = await NewAppHost();
         _tester = _appHost.NewBlazorTester();
-        _user = await _tester.SignIn(new User(UserConstants.Admin.Name), default);
+        _account = await _tester.SignIn(new User(Constants.User.Admin.Name));
     }
 
     public override async Task DisposeAsync()
@@ -28,7 +28,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         _appHost.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 60_000)]
     public async Task RewindBackTest()
     {
         var services = _tester.ScopedAppServices;
@@ -38,22 +38,22 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         var yesterday = today.AddDays(-1);
         var entry1BeginsAt = yesterday;
         var entry2BeginsAt = yesterday.AddMinutes(15);
-        string chatId;
+        ChatId chatId;
 
         var dbContextFactory = services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
         var dbContext = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
         await using (var _ = dbContext.ConfigureAwait(false)) {
-            var dbChat = AddChat(dbContext, yesterday, _user.Id);
-            chatId = dbChat.Id;
-            var dbAuthor = AddAuthor(dbContext, dbChat.Id, _user.Id);
-            var authorId = dbAuthor.Id;
-            long entryId = 1;
-            AddAudioEntry(dbContext, dbChat.Id, authorId, ref entryId, entry1BeginsAt, TimeSpan.FromSeconds(20));
-            AddAudioEntry(dbContext, dbChat.Id, authorId, ref entryId, entry2BeginsAt, TimeSpan.FromSeconds(60));
+            var dbChat = AddChat(dbContext, yesterday, _account.Id);
+            chatId = new ChatId(dbChat.Id);
+            var dbAuthor = AddAuthor(dbContext, chatId, _account.Id);
+            var authorId = new AuthorId(dbAuthor.Id);
+            long localId = 1;
+            AddAudioEntry(dbContext, chatId, authorId, ref localId, entry1BeginsAt, TimeSpan.FromSeconds(20));
+            AddAudioEntry(dbContext, chatId, authorId, ref localId, entry2BeginsAt, TimeSpan.FromSeconds(60));
             await dbContext.SaveChangesAsync().ConfigureAwait(false);
         }
 
-        var player = services.Activate<HistoricalChatPlayer>((Symbol)chatId);
+        var player = services.Activate<HistoricalChatPlayer>(chatId);
         // Rewind back along same audio entry
         var newMoment = await player.GetRewindMoment(entry2BeginsAt.AddSeconds(30), TimeSpan.FromSeconds(-15), default);
         newMoment.Should().Be(entry2BeginsAt.AddSeconds(15).ToMoment());
@@ -67,33 +67,33 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         newMoment.Should().Be(yesterday.AddSeconds(5).ToMoment());
     }
 
-    private static DbAuthor AddAuthor(ChatDbContext dbContext,  string chatId, string userId)
+    private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, UserId userId)
     {
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(chatId, 1),
-            ChatId = chatId,
+            ChatId = chatId.Value,
             LocalId = 1,
             Version = 1,
             IsAnonymous = false,
-            UserId = userId,
+            UserId = userId.Value,
         };
         dbContext.Authors.Add(dbAuthor);
         return dbAuthor;
     }
 
-    private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, string ownerUserId)
+    private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, UserId ownerUserId)
     {
-        const string chatId = "test-chat";
+        var chatId = new ChatId("testchat");
         var dbChat = new DbChat {
-            Id = chatId,
+            Id = chatId.Value,
             Version = 1,
             Title = "Test chat",
             CreatedAt = сreatedAt,
             IsPublic = true,
             Owners = {
                 new DbChatOwner {
-                    DbChatId = chatId,
-                    DbUserId = ownerUserId,
+                    DbChatId = chatId.Value,
+                    DbUserId = ownerUserId.Value,
                 },
             },
         };
@@ -101,19 +101,26 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         return dbChat;
     }
 
-    private static void AddAudioEntry(ChatDbContext dbContext, string chatId, string authorId, ref long entryId, DateTime beginsAt, TimeSpan duration)
+    private static void AddAudioEntry(
+        ChatDbContext dbContext,
+        ChatId chatId,
+        AuthorId authorId,
+        ref long localId,
+        DateTime beginsAt,
+        TimeSpan duration)
     {
+        var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
         var audioEntry = new DbChatEntry {
-            CompositeId = DbChatEntry.ComposeId(chatId, ChatEntryType.Audio, entryId),
-            ChatId = chatId,
-            AuthorId = authorId,
-            Type = ChatEntryType.Audio,
-            Id = entryId,
+            Id = id.Value,
+            ChatId = id.ChatId.Value,
+            AuthorId = authorId.Value,
+            Kind = id.Kind,
+            LocalId = id.LocalId,
             Version = 1,
             BeginsAt = beginsAt,
             EndsAt = beginsAt.Add(duration),
         };
         dbContext.Add(audioEntry);
-        entryId++;
+        localId++;
     }
 }

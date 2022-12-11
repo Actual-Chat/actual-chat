@@ -14,17 +14,15 @@
         <div class="@titleClass">@title</div>
 
         @if (!m.IsCollapsed) {
-            <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats"/>
+            <ChatList Kind="ChatListKind.Active" Chats="@m.Chats"/>
         }
     </div>
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -36,7 +34,7 @@
         var activeChats = await ChatUI.ActiveChats.Use(cancellationToken);
         var chats = (await activeChats
             .OrderByDescending(c => c.Recency)
-            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+            .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
             .Collect()
             ).SkipNullItems()
             .ToList();
@@ -51,7 +49,7 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public List<Chat> Chats { get; init; } = new ();
-        public bool IsCollapsed { get; init; } = false;
+        public List<ChatInfo> Chats { get; init; } = new ();
+        public bool IsCollapsed { get; init; }
     }
 }

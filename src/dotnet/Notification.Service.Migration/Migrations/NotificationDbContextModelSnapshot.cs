@@ -17,7 +17,7 @@ namespace ActualChat.Notification.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.10")
+                .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -59,36 +59,6 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("devices");
                 });
 
-            modelBuilder.Entity("ActualChat.Notification.Db.DbMutedChatSubscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_id");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_muted_chat_subscriptions");
-
-                    b.HasIndex("UserId", "ChatId")
-                        .HasDatabaseName("ix_muted_chat_subscriptions_user_id_chat_id");
-
-                    b.ToTable("muted_chat_subscriptions");
-                });
-
             modelBuilder.Entity("ActualChat.Notification.Db.DbNotification", b =>
                 {
                     b.Property<string>("Id")
@@ -98,10 +68,6 @@ namespace ActualChat.Notification.Migrations
                     b.Property<string>("AuthorId")
                         .HasColumnType("text")
                         .HasColumnName("author_id");
-
-                    b.Property<long?>("ChatEntryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("chat_entry_id");
 
                     b.Property<string>("ChatId")
                         .HasColumnType("text")
@@ -125,13 +91,13 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("text")
                         .HasColumnName("icon_url");
 
-                    b.Property<DateTime?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<int>("NotificationType")
+                    b.Property<int>("Kind")
                         .HasColumnType("integer")
-                        .HasColumnName("notification_type");
+                        .HasColumnName("kind");
+
+                    b.Property<long?>("TextEntryLocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("text_entry_local_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -142,6 +108,11 @@ namespace ActualChat.Notification.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("user_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
                     b.HasKey("Id")
                         .HasName("pk_notifications");

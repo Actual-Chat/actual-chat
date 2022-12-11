@@ -18,6 +18,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string OwnerId { get; set; } = "";
     public string? UserId { get; set; }
     public string? ChatId { get; set; }
+    public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
         get => _touchedAt.DefaultKind(DateTimeKind.Utc);
@@ -25,36 +26,31 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public DbContact() { }
-    public DbContact(Contact contact)
-        => UpdateFrom(contact);
+    public DbContact(Contact contact) => UpdateFrom(contact);
 
     public Contact ToModel()
-        => new() {
-            Id = Id,
-            Version = Version,
+        => new(new ContactId(Id), Version) {
+            UserId = new UserId(UserId ?? ""),
             TouchedAt = TouchedAt.ToMoment(),
+            IsPinned = IsPinned,
         };
 
     public void UpdateFrom(Contact model)
     {
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
+        model.RequireSomeVersion();
+
         Version = model.Version;
         TouchedAt = model.TouchedAt.ToDateTimeClamped();
+        IsPinned = model.IsPinned;
         if (!Id.IsNullOrEmpty())
-            return; // Only Version & TouchedAt can be changed for already existing contacts
+            return; // Only above properties can be changed for already existing contacts
 
-        var contactId = model.Id.RequireValid();
-        Id = contactId;
-        OwnerId = contactId.OwnerId;
-        switch (contactId.Kind) {
-        case ContactKind.User:
-            UserId = contactId.OwnerId;
-            break;
-        case ContactKind.Chat:
-            ChatId = contactId.OwnerId;
-            break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(model));
-        }
+        Id = id.Value;
+        OwnerId = model.OwnerId.Value;
+        ChatId = model.ChatId.Value.NullIfEmpty();
+        UserId = model.UserId.Value.NullIfEmpty();
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

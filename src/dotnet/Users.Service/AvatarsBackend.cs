@@ -15,9 +15,9 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<AvatarFull?> Get(string avatarId, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken)
     {
-        if (avatarId.IsNullOrEmpty())
+        if (avatarId.IsEmpty)
             return null;
 
         var dbUserAvatar = await DbAvatarResolver.Get(avatarId, cancellationToken).ConfigureAwait(false);

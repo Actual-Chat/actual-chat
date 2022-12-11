@@ -1,4 +1,4 @@
-.chat-entry-type-marker {
+.chat-entry-kind-marker {
     @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
 }
 

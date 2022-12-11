@@ -21,67 +21,36 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> Get(Session session, string id, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
     {
-        var contactId = new ContactId(id);
-        if (!contactId.IsFullyValid)
-            return null;
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.Id != contactId.OwnerId)
+            throw Unauthorized();
 
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null || account.Id != contactId.OwnerId)
-            return null;
+        var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null; // We don't return contacts w/ null Chat
 
-        var contact = await Backend.Get(account.Id, id, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
+        contact = contact with { Chat = chat };
+        return contact;
     }
 
     // [ComputeMethod]
-    public virtual async Task<Contact?> GetForChat(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var ownerId = account.Id;
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var contactId = new ContactId(ownAccount.Id, chatId, ParseOrNone.Option);
+        if (contactId.IsNone)
+            return null; // A peer chat that belongs to other users, etc.
 
-        var parsedChatId = new ParsedChatId(chatId);
-        ContactId id;
-        switch (parsedChatId.Kind) {
-        case ChatIdKind.Group:
-            id = new ContactId(ownerId, parsedChatId.Id, ContactKind.Chat);
-            break;
-        case ChatIdKind.PeerShort:
-            id = new ContactId(ownerId, parsedChatId.UserId1, ContactKind.User);
-            break;
-        case ChatIdKind.PeerFull:
-            id = new ContactId(ownerId, parsedChatId.GetPeerChatTargetUserId(ownerId), ContactKind.User);
-            break;
-        default:
-            return null;
-        }
+        var contact = await Backend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, contact.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null; // We don't return contacts w/ null Chat
 
-        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Contact?> GetForUser(Session session, string userId, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
-        var ownerId = account.Id;
-
-        var id = new ContactId(ownerId, userId, ContactKind.User);
-        var contact = await Backend.Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-        if (contact == null)
-            return null;
-
-        var canRead = await Chats.HasPermissions(session, contact.ChatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return canRead ? contact : null;
+        contact = contact with { Chat = chat };
+        return contact;
     }
 
     // [ComputeMethod]
@@ -90,9 +59,6 @@ public class Contacts : IContacts
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account == null)
-            return ImmutableArray<ContactId>.Empty;
-
         var contactIds = await Backend.ListIds(account.Id, cancellationToken).ConfigureAwait(false);
         return contactIds;
     }
@@ -104,12 +70,12 @@ public class Contacts : IContacts
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, id, expectedVersion, change) = command;
-        id.RequireFullyValid();
+        id.Require();
         change.RequireValid();
 
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)
-            throw StandardError.Unauthorized("Users can change only their own contacts.");
+            throw Unauthorized();
 
         return await Commander
             .Call(new IContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)
@@ -123,14 +89,19 @@ public class Contacts : IContacts
             return; // It just spawns other commands, so nothing to do here
 
         var (session, id) = command;
-        id.RequireFullyValid();
+        id.Require();
 
-        var account = await Accounts.GetOwn(session, cancellationToken).Require().ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (id.OwnerId != account.Id)
-            throw StandardError.Unauthorized("Users can change only their own contacts.");
+            throw Unauthorized();
 
         await Commander
             .Call(new IContactsBackend.TouchCommand(id), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    // Private methods
+
+    private static Exception Unauthorized()
+        => StandardError.Unauthorized("You can access only your own contacts.");
 }

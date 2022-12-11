@@ -1,26 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<bool>
-@{
-    var isPinned = State.Value;
-}
+@inherits FusionComponentBase
 
 <MenuEntry
     OnClick="@Toggle"
     Icon="icon-pin"
-    Text="@(isPinned ? "Unpin" : "Pin")">
+    Text="@(ChatState.Contact.IsPinned ? "Unpin" : "Pin")">
 </MenuEntry>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(Chat.Id);
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void Toggle()
-        => _ = ChatUI.SetPinState(Chat.Id, !State.Value);
+        => _ = ChatUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
 }

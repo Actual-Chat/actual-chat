@@ -8,6 +8,7 @@ public class NavbarUI
     private ChatUI ChatUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
+
     public bool IsVisible { get; private set; }
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
@@ -15,13 +16,14 @@ public class NavbarUI
     public event EventHandler? ActiveGroupChanged;
     public event EventHandler? VisibilityChanged;
 
-    public NavbarUI(BrowserInfo browserInfo, HistoryUI historyUI, NavigationManager nav, ChatUI chatUI)
+    public NavbarUI(IServiceProvider services)
     {
-        BrowserInfo = browserInfo;
-        ChatUI = chatUI;
-        HistoryUI = historyUI;
-        Nav = nav;
-        historyUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
+        ChatUI = services.GetRequiredService<ChatUI>();
+        HistoryUI = services.GetRequiredService<HistoryUI>();
+        Nav = services.GetRequiredService<NavigationManager>();
+
+        HistoryUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
             IsVisible = ShouldShowNavbar();
     }
@@ -51,7 +53,7 @@ public class NavbarUI
             _ = HistoryUI.GoBack();
         else {
             var selectedChatId = ChatUI.SelectedChatId.Value;
-            if (!selectedChatId.IsEmpty)
+            if (!selectedChatId.IsNone)
                 Nav.NavigateTo(Links.ChatPage(selectedChatId));
         }
     }
@@ -66,7 +68,7 @@ public class NavbarUI
     private bool ShouldShowNavbar()
     {
         var relativeUrl = Nav.GetRelativePath();
-        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(""));
+        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(default));
         return showNavbar;
     }
 

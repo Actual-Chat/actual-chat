@@ -11,7 +11,7 @@ public class AvatarPicturesController : UploadControllerBase
     public AvatarPicturesController(IAvatars avatars) => Avatars = avatars;
 
     [HttpPost, Route("api/user-avatars/{avatarId}/upload-picture")]
-    public Task<IActionResult> UploadPicture(string avatarId, CancellationToken cancellationToken)
+    public Task<IActionResult> UploadPicture(Symbol avatarId, CancellationToken cancellationToken)
     {
         return Upload(ValidateRequest, GetContentIdPrefix, cancellationToken);
 
@@ -21,6 +21,6 @@ public class AvatarPicturesController : UploadControllerBase
             return userAvatar is null ? NotFound() : null;
         }
 
-        string GetContentIdPrefix() => $"avatar-pictures/{avatarId.Replace(':', '_')}/picture-";
+        string GetContentIdPrefix() => $"avatar-pictures/{avatarId.Value.Replace(':', '_')}/picture-";
     }
 }

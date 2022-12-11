@@ -15,15 +15,15 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
 
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        ChatId chatId,
+        Symbol mentionId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.AuthorId == authorId.Value)
+            .Where(x => x.ChatId == chatId.Value && x.MentionId == mentionId.Value)
             .OrderByDescending(x => x.EntryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -40,10 +40,10 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChangedAuthorIds = context.Operation().Items.Get<HashSet<Symbol>>();
-            if (invChangedAuthorIds != null) {
-                foreach (var authorId1 in invChangedAuthorIds)
-                    _ = GetLast(entry.ChatId, authorId1, default);
+            var invChangedMentionIds = context.Operation().Items.Get<HashSet<Symbol>>();
+            if (invChangedMentionIds != null) {
+                foreach (var mentionId in invChangedMentionIds)
+                    _ = GetLast(entry.ChatId, mentionId, default);
             }
             return;
         }
@@ -52,39 +52,38 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var markup = MarkupParser.Parse(entry.Content);
-        var authorIds = new MentionExtractor().GetMentionedAuthorIds(markup);
+        var mentionIds = new MentionExtractor().GetMentionIds(markup);
         var existingMentions = await dbContext.Mentions
-            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryId == entry.Id)
+            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryId == entry.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var changedAuthorIds = new HashSet<Symbol>();
+        var changedMentionIds = new HashSet<Symbol>();
         if (changeKind is ChangeKind.Remove) {
             dbContext.Mentions.RemoveRange(existingMentions);
-            changedAuthorIds.AddRange(existingMentions.Select(m => (Symbol)m.AuthorId));
+            changedMentionIds.AddRange(existingMentions.Select(m => (Symbol)m.MentionId));
         }
         else {
-            var toRemove = existingMentions.ExceptBy(authorIds, x => x.Id).ToList();
+            var toRemove = existingMentions.ExceptBy(mentionIds, x => (Symbol)x.Id).ToList();
             dbContext.Mentions.RemoveRange(toRemove);
 
-            var toAdd = authorIds
-                .Except(existingMentions.Select(x => (Symbol)x.AuthorId))
-                .Select(authorId1 => new DbMention {
-                    Id = DbMention.ComposeId(entry.ChatId, entry.Id, authorId1),
-                    AuthorId = authorId1,
-                    ChatId = entry.ChatId,
-                    EntryId = entry.Id,
+            var toAdd = mentionIds
+                .Except(existingMentions.Select(x => (Symbol)x.MentionId))
+                .Select(mentionId => new DbMention {
+                    Id = DbMention.ComposeId(entry.Id, mentionId),
+                    MentionId = mentionId,
+                    EntryId = entry.LocalId,
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);
 
-            changedAuthorIds.AddRange(toRemove.Select(m => (Symbol)m.AuthorId));
-            changedAuthorIds.AddRange(toAdd.Select(m => (Symbol)m.AuthorId));
+            changedMentionIds.AddRange(toRemove.Select(m => (Symbol)m.MentionId));
+            changedMentionIds.AddRange(toAdd.Select(m => (Symbol)m.MentionId));
         }
 
-        if (changedAuthorIds.Count == 0)
+        if (changedMentionIds.Count == 0)
             return;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(changedAuthorIds);
+        context.Operation().Items.Set(changedMentionIds);
     }
 }

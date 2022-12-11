@@ -19,16 +19,6 @@ public static class DbSetExt
 
     public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
         this DbSet<TEntity> set,
-        string key,
-        CancellationToken cancellationToken)
-        where TEntity : class
-    {
-        key.RequireNonEmpty("key");
-        return set.FindAsync(DbKey.Compose(key), cancellationToken);
-    }
-
-    public static ValueTask<TEntity?> Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>(
-        this DbSet<TEntity> set,
         long key,
         CancellationToken cancellationToken)
         where TEntity : class

@@ -127,7 +127,7 @@
         if (browserInfo.ScreenSize.Value.IsNarrow()) {
             var relativeUri = Nav.GetRelativePath();
             var isHomePage = Links.Equals(relativeUri, "/");
-            var isChatPage = relativeUri.OrdinalStartsWith(Links.ChatPage(""));
+            var isChatPage = relativeUri.OrdinalStartsWith(Links.ChatPage(default));
             // Home page in narrow view redirects to Chat page.
             // Chat page will set marker.
             if (isHomePage || isChatPage) {

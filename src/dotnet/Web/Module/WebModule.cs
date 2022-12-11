@@ -20,7 +20,7 @@ public class WebModule : HostModule, IWebModule
 
         // Controllers, etc.
         services.AddMvcCore(options => {
-            options.ModelBinderProviders.Add(new IdentifierModelBinderProvider());
+            options.ModelBinderProviders.Add(new ModelBinderProvider());
         });
     }
 

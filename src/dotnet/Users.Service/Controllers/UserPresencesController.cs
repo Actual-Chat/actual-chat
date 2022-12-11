@@ -13,6 +13,6 @@ public class UserPresencesController : ControllerBase, IUserPresences
         => Service = service;
 
     [HttpGet, Publish]
-    public Task<Presence> Get(string userId, CancellationToken cancellationToken)
+    public Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
         => Service.Get(userId, cancellationToken);
 }

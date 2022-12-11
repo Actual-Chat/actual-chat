@@ -5,7 +5,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
     /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
     private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
-    public RealtimeChatPlayer(Session session, Symbol chatId, IServiceProvider services)
+    public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Realtime;
 
@@ -14,13 +14,13 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
     {
         startAt = Clocks.SystemClock.Now; // We always override startAt here
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
+        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
-        var startId = startEntry?.Id ?? idRange.End;
+        var startId = startEntry?.LocalId ?? idRange.End;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {

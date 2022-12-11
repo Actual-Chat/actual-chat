@@ -74,7 +74,7 @@
 
     private async Task OnDelete() {
         await ModalInstance.CloseAsync();
-        var command = new IChats.RemoveTextEntryCommand(Session, ChatEntry.ChatId, ModalModel.MessageModel.Entry.Id);
+        var command = new IChats.RemoveTextEntryCommand(Session, ChatEntry.ChatId, ModalModel.MessageModel.Entry.LocalId);
         await UICommander.Run(command);
     }
 

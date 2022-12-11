@@ -18,7 +18,7 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<AvatarFull?> GetOwn(Session session, string avatarId, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken)
     {
         var avatarIds = await ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
         if (!avatarIds.Contains(avatarId))
@@ -29,7 +29,7 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<Avatar?> Get(Session session, string avatarId, CancellationToken cancellationToken)
+    public virtual async Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken)
         => await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
 
     // [ComputeMethod]
@@ -53,7 +53,7 @@ public class Avatars : IAvatars
         if (change.IsCreate(out var avatar)) {
             // Create: fill in all missing properties
             change = new Change<AvatarFull>() {
-                Create = avatar.WithMissingPropertiesFrom(account?.Avatar),
+                Create = avatar.WithMissingPropertiesFrom(account.Avatar),
             };
         }
         else {

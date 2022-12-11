@@ -17,7 +17,7 @@ public class ReadPositionsController: ControllerBase, IReadPositions
     }
 
     [HttpGet, Publish]
-    public Task<long?> GetOwn(Session session, string chatId, CancellationToken cancellationToken)
+    public Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.GetOwn(session, chatId, cancellationToken);
 
     [HttpPost]

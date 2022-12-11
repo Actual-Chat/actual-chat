@@ -3,24 +3,25 @@ namespace ActualChat.Chat;
 public interface IRolesBackend : IComputeService
 {
     [ComputeMethod]
-    Task<Role?> Get(string chatId, string roleId, CancellationToken cancellationToken);
+    Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(string chatId, string authorId,
-        bool isAuthenticated, bool isAnonymous,
+    Task<ImmutableArray<Role>> List(
+        ChatId chatId, AuthorId authorId,
+        bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Role>> ListSystem(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListAuthorIds(string chatId, string roleId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(
-        [property: DataMember] string ChatId,
-        [property: DataMember] string RoleId,
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] RoleId RoleId,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<RoleDiff> Change
     ) : ICommand<Role>, IBackendCommand;

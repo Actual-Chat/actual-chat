@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Module;
 
-public class BlazorUISettings
+public sealed class BlazorUISettings
 {
     public bool? EnableIncompleteUI { get; set; } = null;
 }

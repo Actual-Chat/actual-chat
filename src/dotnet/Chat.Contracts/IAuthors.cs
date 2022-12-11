@@ -5,21 +5,20 @@ namespace ActualChat.Chat;
 public interface IAuthors : IComputeService
 {
     [ComputeMethod]
-    Task<Author?> Get(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<AuthorFull?> GetOwn(Session session, string chatId, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<AuthorFull?> GetFull(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Account?> GetAccount(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Symbol>> ListUserIds(Session session, string chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<Presence> GetAuthorPresence(Session session, string chatId, string authorId, CancellationToken cancellationToken);
+    Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Commands
 
@@ -31,14 +30,14 @@ public interface IAuthors : IComputeService
     [DataContract]
     public sealed record CreateAuthorsCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] Symbol ChatId,
-        [property: DataMember] Symbol[] UserIds
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] UserId[] UserIds
         ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record SetAvatarCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
+        [property: DataMember] ChatId ChatId,
         [property: DataMember] Symbol AvatarId
     ) : ISessionCommand<Unit>;
 }

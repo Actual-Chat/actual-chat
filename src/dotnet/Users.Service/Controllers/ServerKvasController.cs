@@ -30,6 +30,6 @@ public class ServerKvasController : ControllerBase, IServerKvas
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task MoveSessionKeys([FromBody] IServerKvas.MoveSessionKeysCommand command, CancellationToken cancellationToken = default)
+    public Task MigrateGuestKeys([FromBody] IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default)
         => Commander.Call(command, cancellationToken);
 }

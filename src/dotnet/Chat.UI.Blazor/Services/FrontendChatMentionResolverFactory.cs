@@ -7,6 +7,6 @@ public class FrontendChatMentionResolverFactory : IChatMentionResolverFactory
     public FrontendChatMentionResolverFactory(IServiceProvider services)
         => Services = services;
 
-    public IChatMentionResolver Create(Symbol chatId)
+    public IChatMentionResolver Create(ChatId chatId)
         => new FrontendChatMentionResolver(Services) { ChatId = chatId };
 }

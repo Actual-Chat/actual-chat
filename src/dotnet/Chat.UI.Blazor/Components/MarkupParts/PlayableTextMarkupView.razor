@@ -10,7 +10,7 @@
         PlayableTextColor.Cyan => "playable-text-color-cyan",
         PlayableTextColor.Green => "playable-text-color-green",
         null => "",
-        _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
+        _ => throw StandardError.Internal("Invalid Model.Color value."),
         };
     var playOnClickIsEnabled = !ScreenSize.IsNarrow();
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
@@ -51,7 +51,7 @@
 
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
+        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryKind.Audio);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
@@ -115,7 +115,7 @@
         if (hasActivePlaying) {
             colorLease ??= PaletteProvider
                 .GetPalette(Entry.ChatId)
-                .RentColor(Entry.AuthorId, Entry.Id);
+                .RentColor(Entry.AuthorId, Entry.LocalId);
         }
         else {
             if (colorLease != null) {

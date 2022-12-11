@@ -1,5 +1,6 @@
 using System.Reflection;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.Services;
 using RestEase;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -23,23 +24,31 @@ public class ClientDefsTest : AppHostTestBase
     {
         public void Validate(IServiceCollection serviceCollection)
         {
-            var computeServiceDescriptors = serviceCollection
-                .Where(x => x.ServiceType.IsInterface && x.ServiceType.IsAssignableTo(typeof(IComputeService)))
-                .Where(x => x.ServiceType.Namespace!.OrdinalStartsWith("ActualChat."))
-                .Where(x => !x.ServiceType.Name.OrdinalEndsWith("Backend"))
-                .Select(x => x.ServiceType)
-                .ToList();
+            var skippedServiceTypes = new HashSet<Type>() { typeof(ILiveTime) };
+            var computeServiceTypes = (
+                from d in serviceCollection
+                where d.Lifetime is not ServiceLifetime.Scoped
+                let t = d.ServiceType
+                where t.IsInterface && t.IsAssignableTo(typeof(IComputeService))
+                  && t.Namespace!.OrdinalStartsWith("ActualChat.")
+                  && !t.Name.OrdinalEndsWith("Backend")
+                  && !skippedServiceTypes.Contains(t)
+                select t
+                ).ToList();
             var clientDefMap = GetClientDefMap();
-            foreach (var computeService in computeServiceDescriptors) {
-                var clientDef = clientDefMap.GetValueOrDefault(computeService.Name + "ClientDef")
-                    ?? throw new Exception($"{computeService} does not have client def.");
+            foreach (var serviceType in computeServiceTypes) {
+                if (serviceType == typeof(ILiveTime))
+                    continue;
 
-                foreach (var method in GetComputeServiceMethods(computeService)) {
+                var clientDef = clientDefMap.GetValueOrDefault(serviceType.Name + "ClientDef")
+                    ?? throw new Exception($"{serviceType} does not have client def.");
+
+                foreach (var method in GetComputeServiceMethods(serviceType)) {
                     var clientDefMethod = clientDef.GetMethod(method.Name)
                         ?? throw new Exception($"{clientDef}.{method.Name} is missing");
 
                     if (method.GetParameters().Length != clientDefMethod.GetParameters().Length)
-                        throw new Exception($"{clientDef}.{clientDefMethod.Name} parameters count does not match {computeService}.{method.Name}.");
+                        throw new Exception($"{clientDef}.{clientDefMethod.Name} parameters count does not match {serviceType}.{method.Name}.");
 
                     foreach (var (parameter, clientDefParameter) in method.GetParameters()
                                  .Zip(clientDefMethod.GetParameters())) {
@@ -65,7 +74,7 @@ public class ClientDefsTest : AppHostTestBase
                     }
 
                     if (clientDefMethod.ReturnType != method.ReturnType) {
-                        throw new Exception($"Return type 'clientDefMethod.ReturnType' of {clientDef}.{clientDefMethod.Name} does not match return type '{method.ReturnType}' of {computeService}.{method.Name}.");
+                        throw new Exception($"Return type 'clientDefMethod.ReturnType' of {clientDef}.{clientDefMethod.Name} does not match return type '{method.ReturnType}' of {serviceType}.{method.Name}.");
                     }
                 }
             }

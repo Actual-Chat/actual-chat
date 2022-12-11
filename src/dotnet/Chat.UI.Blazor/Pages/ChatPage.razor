@@ -7,7 +7,7 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     if (m.IsUnavailable) {
-        <RequireChat ChatId="@m.ParsedChatId.Id.Value" />
+        <RequireChat Id="@m.ChatId.Id.Value" />
         return;
     }
     var error = State.Error; // AY: Add code displaying the error bar later
@@ -43,7 +43,7 @@
 </RenderIntoStack>
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat">
-        <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
+        <UnreadCountSubHeader Click="@OnUnreadCountSubHeaderClick"/>
     </CascadingValue>
 </RenderIntoStack>
 
@@ -84,7 +84,6 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private RecentChatsUI RecentChatsUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
@@ -107,64 +106,42 @@
         => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        if (chatId.IsNullOrEmpty()) {
-            var selectedChat = await RecentChatsUI.GetSelectedOrDefaultChat(cancellationToken).ConfigureAwait(false);
-            if (selectedChat != null)
-                chatId = selectedChat.Id;
-        }
-
-        if (chatId.IsNullOrEmpty())
+        var chatId = new ChatId(ChatId, ParseOrNone.Option);
+        if (chatId.IsNone)
+            chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId.IsNone)
             return Model.None;
 
-        var accountTask = Accounts.GetOwn(Session, default);
-        var account = (AccountFull?) null;
-
-        var parsedChatId = new ParsedChatId(chatId);
-        if (parsedChatId.Kind is ChatIdKind.PeerShort) {
-            account ??= await accountTask;
-            parsedChatId = account != null
-                ? ParsedChatId.FormatFullPeerChatId(account.Id, parsedChatId.UserId1)
-                : parsedChatId.Invalid();
-        }
-
-        // parsedChatId is either (valid & not short) or invalid at this point
-        if (parsedChatId.IsValid && ChatUI.SelectedChatId.Value != parsedChatId.Id) {
+        if (ChatUI.SelectedChatId.Value != chatId) {
             ChatUI.VisibleIdRange.Value = new(0, 0);
             ChatUI.IsEndAnchorVisible.Value = true;
-            ChatUI.SelectedChatId.Value = parsedChatId.Id;
+            ChatUI.SelectedChatId.Value = chatId;
             if (ChatUI.LinkedChatEntry.Value != null)
                 ChatUI.LinkedChatEntry.Value = null;
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
             _ = UICommander.RunNothing();
         }
 
-        account ??= await accountTask;
-        if (!parsedChatId.IsValid)
-            return new Model(parsedChatId, null, account); // Unavailable
-
-        var chat = await Chats.Get(Session, parsedChatId.Id, cancellationToken);
-        if (chat == null)
-            return new Model(parsedChatId, null, account); // Unavailable
-
-        var result = new Model(parsedChatId, chat, account);
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var result = new Model(chatId, chat, account);
         return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
-    private void OnUnreadMessagesClick()
+    private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ParsedChatId ParsedChatId, Chat? Chat, AccountFull? Account) {
-        public static Model None { get; } = new(default, null, null);
-        public static Model Loading { get; } = new(default, null, null); // Should differ by ref. from None
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account) {
+        public static Model None { get; } = new(default, null, AccountFull.None);
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
 
-        public bool IsNone => ParsedChatId.Id.IsEmpty;
+        public bool IsNone => ChatId.Id.IsEmpty;
         public bool IsUnavailable => !IsNone && Chat is null;
 
         public bool IsSame(Model? other) {
             if (other == null)
                 return false;
-            return ParsedChatId == other.ParsedChatId
+            return ChatId == other.ChatId
                 && ReferenceEquals(Chat, other.Chat)
                 && ReferenceEquals(Account, other.Account);
         }
