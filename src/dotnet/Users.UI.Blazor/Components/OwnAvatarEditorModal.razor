@@ -124,9 +124,9 @@
         if (error != null)
             return;
 
-        if (_form.IsDefault && !_form.Base.IsDefault)
+        if (_form is { IsDefault: true, Base.IsDefault: false })
             await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
-        if (!chatId.IsNone && _form.IsActive && !_form.Base.IsActive)
+        if (!chatId.IsNone && _form is { IsActive: true, Base.IsActive: false })
             await SetActiveAvatar(_form.IsActive ? avatarId : default);
 
         _form.CopyToBase();

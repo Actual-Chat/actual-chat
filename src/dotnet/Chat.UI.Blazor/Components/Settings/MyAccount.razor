@@ -6,7 +6,7 @@
         return;
 
     var user = account.User;
-    var avatarId = account.Avatar.Id;
+    var avatar = account.Avatar;
     var relativeUri = Links.UserPage(account.Id);
     var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
     user.Claims.TryGetValue(ClaimTypes.Email, out var email);
@@ -24,7 +24,7 @@
                 TextClass="hidden" />
         </Icon>
         <Right>
-            <TileButtons HideSetDefaultButton="true" OnEditClick="@(() => EditAccount(avatarId))"/>
+            <TileButtons HideSetDefaultButton="true" OnEditClick="@EditAccount"/>
         </Right>
         <Content>
             @account.User.Name
@@ -69,7 +69,7 @@
             <i class="icon-info text-xl"></i>
         </Icon>
         <Content>
-            Some bio: <OwnAvatar AvatarId="@avatarId" Show="@OwnAvatar.ShowInfo.Bio"/>
+            @avatar.Bio
         </Content>
         <Caption>
             Bio
@@ -116,6 +116,6 @@
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 
-    private void EditAccount(string avatarId)
-        => ModalUI.Show(new OwnAccountEditorModal.Model(avatarId, default));
+    private void EditAccount()
+        => ModalUI.Show(OwnAccountEditorModal.Model.Default);
 }

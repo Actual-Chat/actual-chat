@@ -2,6 +2,10 @@
 @using Stl.Fusion.Authentication.Commands
 @implements IModalView<OwnAccountEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@{
+    if (ReferenceEquals(_account, AccountFull.Loading))
+        return;
+}
 
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame Title="Edit account" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
@@ -9,8 +13,8 @@
         <DataAnnotationsValidator/>
         <ValidationSummary/>
 
-        <OwnAvatar
-            AvatarId="@ModalModel.AvatarId"
+        <AvatarCard
+            Avatar="@_account.Avatar"
             Size="SquareSize.Size30"
             Class="edit-account-avatar"/>
 
@@ -38,6 +42,7 @@
 @code {
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private AccountFull _account = AccountFull.Loading;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -49,8 +54,8 @@
 
     protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        var account = await Accounts.GetOwn(Session, default);
-        _form.Name = account.User.Name ?? "";
+        _account = await Accounts.GetOwn(Session, default);
+        _form.Name = _account.User.Name ?? "";
         _form.CopyToBase();
     }
 
@@ -83,5 +88,7 @@
         { }
     }
 
-    public sealed record Model(Symbol AvatarId, Symbol ChatId);
+    public sealed record Model {
+        public static Model Default { get; } = new();
+    };
 }
