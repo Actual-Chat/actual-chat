@@ -34,16 +34,16 @@ public class AuthorsController : ControllerBase, IAuthors
         => Service.GetAccount(session, chatId, authorId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+        => Service.GetPresence(session, chatId, authorId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListUserIds(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<Presence> GetAuthorPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
-        => Service.GetAuthorPresence(session, chatId, authorId, cancellationToken);
 
     // Commands
 

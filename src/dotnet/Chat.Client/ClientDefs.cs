@@ -78,16 +78,13 @@ public interface IAuthorsClientDef
     Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [Get(nameof(GetAccount))]
     Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
+    [Get(nameof(GetPresence))]
+    Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [Get(nameof(ListAuthorIds))]
     Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [Get(nameof(ListUserIds))]
     Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [Get(nameof(GetAuthor))]
-    Task<Author?> GetAuthor(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [Get(nameof(GetAuthorPresence))]
-    Task<Presence> GetAuthorPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [Post(nameof(CreateAuthors))]
     Task CreateAuthors([Body] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken);

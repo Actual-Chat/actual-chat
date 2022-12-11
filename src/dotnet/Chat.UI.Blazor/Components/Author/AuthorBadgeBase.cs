@@ -95,7 +95,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 
         var presence = Presence.Unknown;
         if (ShowsPresence)
-            presence = await Authors.GetAuthorPresence(session, chatId, authorId, cancellationToken);
+            presence = await Authors.GetPresence(session, chatId, authorId, cancellationToken);
         if (ChatRecordingActivity != null) {
             var isRecording = await ChatRecordingActivity.IsAuthorActive(authorId, cancellationToken);
             if (isRecording)

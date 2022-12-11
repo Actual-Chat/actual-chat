@@ -12,14 +12,13 @@ public interface IAuthors : IComputeService
     Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
-    Task<Presence> GetAuthorPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     // Commands
 

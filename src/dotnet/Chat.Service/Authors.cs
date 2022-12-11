@@ -110,7 +110,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<Presence> GetAuthorPresence(
+    public virtual async Task<Presence> GetPresence(
         Session session,
         ChatId chatId,
         AuthorId authorId,

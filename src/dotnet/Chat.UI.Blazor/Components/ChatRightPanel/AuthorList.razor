@@ -55,7 +55,7 @@
         var offlineAuthorIds = new List<AuthorId>();
         var presences = await allAuthorIds
             .Select(async authorId => {
-                var presence = await Authors.GetAuthorPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
+                var presence = await Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
                 return (authorId, presence);
             })
             .Collect();
