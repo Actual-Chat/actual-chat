@@ -19,6 +19,12 @@
         }
     }
 
+    public bool IsLast
+        => _currentStep != null && _steps.IndexOf(_currentStep) == _steps.Count - 1;
+
+    public bool IsFirst
+        => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
+
     public bool CanMoveForward => !IsLast;
 
     public bool CanMoveBack => !IsFirst;
@@ -36,10 +42,4 @@
         var index = _steps.IndexOf(_currentStep);
         _currentStep = _steps.ElementAtOrDefault(index - 1);
     }
-
-    public bool IsLast
-        => _currentStep != null && _steps.IndexOf(_currentStep) == _steps.Count - 1;
-
-    public bool IsFirst
-        => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
 }
