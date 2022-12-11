@@ -207,7 +207,7 @@ public partial class ChatUI : WorkerBase
     public ValueTask AddActiveChat(ChatId chatId)
     {
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
+            return ValueTask.CompletedTask;
 
         return UpdateActiveChats(activeChats => activeChats.Add(new ActiveChat(chatId, false, false, Now)));
     }
@@ -215,7 +215,7 @@ public partial class ChatUI : WorkerBase
     public ValueTask RemoveActiveChat(ChatId chatId)
     {
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
+            return ValueTask.CompletedTask;
 
         return UpdateActiveChats(activeChats => activeChats.Remove(chatId));
     }
@@ -225,7 +225,7 @@ public partial class ChatUI : WorkerBase
     public async ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
+            return;
 
         var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
         if (contact.IsPinned == mustPin)
@@ -240,7 +240,7 @@ public partial class ChatUI : WorkerBase
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(chatId));
+            return ValueTask.CompletedTask;
 
         return UpdateActiveChats(activeChats => {
             var oldActiveChats = activeChats;

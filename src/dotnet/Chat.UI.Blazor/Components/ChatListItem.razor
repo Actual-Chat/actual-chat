@@ -3,6 +3,7 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var chat = m.Chat;
+    var mediaState = m.MediaState;
     var canWrite = chat.Rules.CanWrite();
     var isMenuVisible = m.IsListening || m.IsRecording;
     var cls = isMenuVisible ? "visible-menu" : "invisible-menu";
@@ -27,15 +28,15 @@
         <div class="@cls">
             @if (ListKind == ChatListKind.Active) {
                 if (canWrite) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@m.IsRecording" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chat.Id" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
                 <ActiveChatRemoveButton ChatId="@chat.Id" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@m.IsRecording" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chat.Id" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
                 <div class="flex"
                      data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value).ToString())"
                      data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
