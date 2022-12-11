@@ -124,12 +124,12 @@ public interface IMentionsClientDef
 public interface IReactionsClientDef
 {
     [Get(nameof(Get))]
-    Task<Reaction?> Get(Session session, string entryId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
 
     [Get(nameof(ListSummaries))]
     Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
-        Symbol chatEntryId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken);
 
     [Post(nameof(React))]

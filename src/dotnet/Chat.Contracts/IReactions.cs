@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public interface IReactions
+public interface IReactions : IComputeService
 {
     [ComputeMethod]
     Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken);

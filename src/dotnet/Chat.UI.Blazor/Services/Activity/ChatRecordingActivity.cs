@@ -1,13 +1,15 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public interface IChatRecordingActivity : IDisposable
+public interface IChatRecordingActivity : IComputeService, IDisposable
 {
     ChatActivity Owner { get; }
     ChatId ChatId { get; }
 
+    [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
-    // NOTE(AY): authorId is string to avoid boxing in [ComputeMethod]
+    [ComputeMethod]
     Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken);
 }
 
@@ -31,15 +33,12 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         _log = owner.Services.LogFor(GetType());
     }
 
-    [ComputeMethod]
     public virtual Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries);
 
-    [ComputeMethod]
     public virtual Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
 
-    [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Any(e => e.AuthorId == authorId));
 

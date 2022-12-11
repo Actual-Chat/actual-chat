@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public interface IMentionsBackend
+public interface IMentionsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Mention?> GetLast(
