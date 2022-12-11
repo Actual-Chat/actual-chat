@@ -142,6 +142,9 @@ public partial class ChatUI : WorkerBase
         bool withPresence,
         CancellationToken cancellationToken = default)
     {
+        if (chatId.IsNone)
+            return null;
+
         if (withPresence) {
             // Recursive call to get a part of state that prob. changes less frequently
             var state = await GetState(chatId, false).ConfigureAwait(false);
@@ -167,11 +170,14 @@ public partial class ChatUI : WorkerBase
 
     [ComputeMethod] // Synced
     public virtual Task<bool> IsSelected(ChatId chatId)
-        => Task.FromResult(SelectedChatId.Value == chatId);
+        => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
 
     [ComputeMethod] // Synced
     public virtual Task<ChatMediaState> GetMediaState(ChatId chatId)
     {
+        if (chatId.IsNone)
+            return Task.FromResult(ChatMediaState.None);
+
         var activeChats = ActiveChats.Value;
         activeChats.TryGetValue(chatId, out var activeChat);
         var isListening = activeChat.IsListening;
