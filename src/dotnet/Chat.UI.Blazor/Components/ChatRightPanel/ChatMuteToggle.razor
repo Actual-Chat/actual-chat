@@ -39,6 +39,5 @@
                 NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
             };
             await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
-            _ = UICommander.RunNothing();
         });
 }
