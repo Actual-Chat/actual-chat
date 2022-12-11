@@ -1,18 +1,17 @@
 @using ActualChat.Search
 @inherits ComputedStateComponent<ChatState>
 @{
-    var c = ChatInfo;
     var m = _lastRenderedModel = State.LatestNonErrorValue;
-    var chatId = c.Id;
-    var canWrite = c.Chat.Rules.CanWrite();
+    var chat = m.Chat;
+    var canWrite = chat.Rules.CanWrite();
     var isMenuVisible = m.IsListening || m.IsRecording;
     var cls = isMenuVisible ? "visible-menu" : "invisible-menu";
 }
 
 <NavbarItem
-    Url="@($"/chat/{chatId}")"
+    Url="@($"/chat/{chat.Id}")"
     IsSelected="@m.IsSelected"
-    data-menu="@(MenuRef.New<ChatMenu>(chatId.Value).ToString())"
+    data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value).ToString())"
     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
     data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
     data-long-press-delay="500">
@@ -28,17 +27,17 @@
         <div class="@cls">
             @if (ListKind == ChatListKind.Active) {
                 if (canWrite) {
-                    <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@m.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
-                <ActiveChatRemoveButton ChatId="@chatId" Class="chat-menu-btn"/>
+                <ChatListListenToggle ChatId="@chat.Id" Class="chat-menu-btn blackout"/>
+                <ActiveChatRemoveButton ChatId="@chat.Id" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
-                    <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@m.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle ChatId="@chat.Id" Class="chat-menu-btn blackout"/>
                 <div class="flex"
-                     data-menu="@(MenuRef.New<ChatMenu>(chatId.Value).ToString())"
+                     data-menu="@(MenuRef.New<ChatMenu>(chat.Id.Value).ToString())"
                      data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
                      data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound
@@ -53,12 +52,12 @@
                 </div>
             }
         </div>
-        <UnreadCount Value="@m.Info.UnreadCount" NotificationMode="@c.UserSettings.NotificationMode"/>
+        <UnreadCount Value="@m.Info.UnreadCount" NotificationMode="@m.Info.UserSettings.NotificationMode"/>
     </Ending>
 </NavbarItem>
 
 @code {
-    private ChatState? _lastRenderedModel;
+    private ChatState? _lastRenderedModel = null;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
@@ -69,7 +68,9 @@
         => State.HasError || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
 
     protected override ComputedState<ChatState>.Options GetStateOptions()
-        => new() { InitialValue = ChatState.Loading };
+        => new() {
+            InitialValue = new ChatState(ChatInfo, new ChatMediaState(ChatInfo.Id)),
+        };
 
     protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)
     {

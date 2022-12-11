@@ -1,11 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<bool>
+@inherits FusionComponentBase
 @{
-    var isRecording = State.Value;
-    var cls = $"recording-in-chat {(isRecording ? "on" : "off")} {Class}";
+    if (Chat.Id.IsNone)
+        return;
+
+    var cls = $"recording-in-chat {(IsRecording ? "on" : "off")} {Class}";
 }
 
-@if (isRecording) {
+@if (IsRecording) {
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
@@ -18,7 +20,7 @@
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
-        Click="@(_ => ChatUI.SetRecordingChatId(ChatId))"
+        Click="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
         Tooltip="Start"
         FloatingPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -28,15 +30,7 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public bool IsRecording { get; set; }
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var chat = await ChatUI.GetState(ChatId, false, cancellationToken).ConfigureAwait(false);
-        return chat?.IsRecording ?? false;
-    }
-
 }
