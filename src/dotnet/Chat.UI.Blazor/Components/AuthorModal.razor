@@ -54,8 +54,8 @@
         if (author == null)
             return ComputedModel.None;
 
-        var ownAccount = await Accounts.GetOwn(Session, default);
-        var account = await Authors.GetAccount(Session, ChatId, AuthorId, default);
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
+        var account = await Authors.GetAccount(Session, ChatId, AuthorId, cancellationToken);
         if (account == null)
             return new ComputedModel() {
                 Author = author,
@@ -64,7 +64,7 @@
 
         var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
         var contactId = new ContactId(ownAccount.Id, peerChatId, AssumeValid.Option);
-        var contactIds = await Contacts.ListIds(Session, default).ConfigureAwait(false);
+        var contactIds = await Contacts.ListIds(Session, default);
         var canAddContact = !contactIds.Any(id => id == contactId);
         return new ComputedModel() {
             Author = author,

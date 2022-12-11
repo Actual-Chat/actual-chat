@@ -107,8 +107,6 @@
     [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [Parameter] public ChatId ChatId { get; set; }
-
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountFull.Loading,
@@ -116,8 +114,8 @@
         };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => Accounts.GetOwn(Session, default);
+        => Accounts.GetOwn(Session, cancellationToken);
 
     private void EditAccount(string avatarId)
-        => ModalUI.Show(new OwnAccountEditorModal.Model(avatarId, ChatId));
+        => ModalUI.Show(new OwnAccountEditorModal.Model(avatarId, default));
 }

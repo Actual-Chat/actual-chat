@@ -50,7 +50,7 @@
     protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var account = await Accounts.GetOwn(Session, default);
-        _form.Name = account?.User.Name ?? "";
+        _form.Name = account.User.Name ?? "";
         _form.CopyToBase();
     }
 

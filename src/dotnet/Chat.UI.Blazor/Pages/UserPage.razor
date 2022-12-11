@@ -64,7 +64,7 @@
         if (userId.IsNone)
             return Model.None;
 
-        var ownAccount = await Accounts.GetOwn(Session, default);
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
         var account = await Accounts.Get(Session, userId, cancellationToken);
         if (account == null)
             return Model.None;

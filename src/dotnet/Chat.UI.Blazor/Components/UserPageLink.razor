@@ -27,5 +27,5 @@
         };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => Accounts.GetOwn(Session, default);
+        => Accounts.GetOwn(Session, cancellationToken);
 }

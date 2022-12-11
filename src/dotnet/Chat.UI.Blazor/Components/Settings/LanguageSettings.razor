@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Components.Notifications
 @inherits ComputedStateComponent<LanguageSettings.Model>
-
 @{
-    var languages = State.ValueOrDefault?.Languages;
-}
+    var m = State.LatestNonErrorValue;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
 
-@if (languages == null) {
-    return;
+    var languages = m.Languages;
 }
 
 <fieldset class="language-settings" id="language-settings-primary">
@@ -56,10 +56,15 @@
         LanguageUI.Settings.Value = languages with { Secondary = language };
     }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.Loading };
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await LanguageUI.Settings.Use(cancellationToken);
         return new(languages);
     }
 
-    public sealed record Model(UserLanguageSettings Languages);
+    public sealed record Model(UserLanguageSettings Languages) {
+        public static Model Loading { get; } = new(new UserLanguageSettings());
+    }
 }
