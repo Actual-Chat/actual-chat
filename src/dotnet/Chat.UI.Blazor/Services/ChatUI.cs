@@ -243,13 +243,17 @@ public partial class ChatUI : WorkerBase
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         return UpdateActiveChats(activeChats => {
-            if (activeChats.TryGetValue(chatId, out var chat)) {
+            var oldActiveChats = activeChats;
+            if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 activeChats = activeChats.Remove(chat);
                 chat = chat with { IsListening = mustListen };
                 activeChats = activeChats.Add(chat);
             }
             else if (mustListen)
                 activeChats = activeChats.Add(new ActiveChat(chatId, true, false, Now));
+            if (oldActiveChats != activeChats)
+                UICommander.RunNothing();
+
             return activeChats;
         });
     }
@@ -259,6 +263,7 @@ public partial class ChatUI : WorkerBase
             var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
             if (oldChat.ChatId == chatId)
                 return activeChats;
+
             if (!oldChat.ChatId.IsNone)
                 activeChats = activeChats.AddOrUpdate(oldChat with {
                     IsRecording = false,
@@ -268,6 +273,7 @@ public partial class ChatUI : WorkerBase
                 var newChat = new ActiveChat(chatId, true, true, Now);
                 activeChats = activeChats.AddOrUpdate(newChat);
             }
+            UICommander.RunNothing();
             return activeChats;
         });
 
