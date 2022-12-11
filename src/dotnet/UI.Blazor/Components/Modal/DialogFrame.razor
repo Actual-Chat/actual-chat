@@ -27,6 +27,7 @@
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
+    [Parameter] public bool HandleEscape { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public bool NoNarrowHeader { get; set; }
     [Parameter] public string Title { get; set; } = "";
@@ -34,7 +35,7 @@
     [Parameter] public RenderFragment? Buttons { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
+        if (firstRender && HandleEscape) {
             EscapeSubscription = await Escapist.SubscribeAsync(
                 () => _ = ModalInstance.CloseAsync(),
                 TokenSource.Token).ConfigureAwait(false);
