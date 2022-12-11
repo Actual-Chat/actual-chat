@@ -11,12 +11,18 @@
 <DialogFrame
     Class="onboarding-modal"
     ShowMobileHeader="false"
+    HasHeader="false"
     HandleEscape="false">
     <Body>
     <Stepper Context="stepper">
         <HeaderContent>
             @if (stepper.CanMoveBack) {
-                <Button Click="stepper.MoveBack">Back</Button>
+                <ButtonRound
+                    Class="transparent"
+                    Click="stepper.MoveBack">
+                    <i class="icon-arrow-left text-2xl"></i>
+                </ButtonRound>
+                <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
             }
         </HeaderContent>
         <ChildContent>
@@ -32,9 +38,17 @@
         </ChildContent>
         <FooterContent>
             @if (stepper.IsLast) {
-                <Button Click="ModalInstance.CloseAsync">Start messaging</Button>
+                <Button
+                    Click="ModalInstance.CloseAsync"
+                    Class="btn-primary btn-w-full">
+                    Start messaging
+                </Button>
             } else if (stepper.CanMoveForward) {
-                <Button Click="stepper.MoveForward">Next</Button>
+                <Button
+                    Click="stepper.MoveForward"
+                    Class="btn-primary btn-w-full">
+                    Next
+                </Button>
             }
         </FooterContent>
     </Stepper>
