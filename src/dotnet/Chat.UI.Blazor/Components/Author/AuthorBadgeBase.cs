@@ -11,7 +11,6 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Inject] protected Session Session { get; init; } = null!;
 
     protected ChatId ChatId => AuthorId.ChatId;
-    protected bool IsValid => !AuthorId.IsNone;
     protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public AuthorId AuthorId { get; set; }
@@ -21,22 +20,23 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
         ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
     }
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
         if (ShowsRecording)
-            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
-        // Default scheduler is used from here
-        _ = State.Recompute(); // ~ Same as what's in base.OnParametersSetAsync()
+            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
+        await base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
-        if (!IsValid)
-            return new () { InitialValue = Model.None };
-
         var model = Model.Loading;
+        if (AuthorId.IsNone)
+            return new () { InitialValue = model };
+
         // Try to provide pre-filled initialValue for the first render when everything is cached
         var authorTask = GetAuthor(Session, ChatId, AuthorId, default);
 #pragma warning disable VSTHRD002
@@ -58,7 +58,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!IsValid)
+        if (AuthorId.IsNone)
             return Model.None;
 
         var author = await GetAuthor(Session, ChatId, AuthorId, cancellationToken);
@@ -77,12 +77,10 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        if (!IsValid)
+        if (AuthorId.IsNone)
             return null;
 
         var author = await Authors.Get(session, chatId, authorId, cancellationToken);
-        if (author == null)
-            return null;
         return author;
     }
 
@@ -92,7 +90,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         AuthorId authorId,
         CancellationToken cancellationToken)
     {
-        if (!IsValid)
+        if (AuthorId.IsNone)
             return Presence.Offline;
 
         var presence = Presence.Unknown;

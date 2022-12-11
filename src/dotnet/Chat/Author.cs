@@ -12,8 +12,8 @@ public record Author(
 {
     public static IdAndVersionEqualityComparer<Author, AuthorId> EqualityComparer { get; } = new();
 
-    public static Author None { get; } = AuthorFull.None;
-    public static Author Loading { get; } = AuthorFull.Loading;
+    public static Author None { get; } = AuthorFull.None.ToAuthor();
+    public static Author Loading { get; } = AuthorFull.Loading.ToAuthor();
 
     public static Requirement<Author> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Author>()),
