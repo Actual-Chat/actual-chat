@@ -31,7 +31,7 @@
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
                 }
                 <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
-                <ActiveChatRemoveButton ChatId="@chat.Id" Class="chat-menu-btn"/>
+                <ActiveChatRemoveButton Chat="@chat" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
                     <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
