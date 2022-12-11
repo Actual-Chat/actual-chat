@@ -30,13 +30,13 @@
                 if (canWrite) {
                     <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="chatId" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 <ActiveChatRemoveButton ChatId="@chatId" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
                     <ChatListRecordingToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle ChatId="chatId" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle ChatId="@chatId" Class="chat-menu-btn blackout"/>
                 <div class="flex"
                      data-menu="@(MenuRef.New<ChatMenu>(chatId.Value).ToString())"
                      data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
