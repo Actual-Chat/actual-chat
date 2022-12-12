@@ -63,6 +63,7 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(ChatId source) => source.Id;
+    public static implicit operator string(ChatId source) => source.Id.Value;
 
     // Equality
 

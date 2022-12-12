@@ -11,11 +11,11 @@ public class RequireChat : RequirementComponent
     [Inject] protected ILogger<RequireChat> Log { get; init; } = null!;
 
     [Parameter, EditorRequired]
-    public string Id { get; set; } = "";
+    public string ChatSid { get; set; } = "";
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
-        if (!ChatId.TryParse(Id, out var chatId)) {
+        if (!ChatId.TryParse(ChatSid, out var chatId)) {
             Log.LogWarning("Invalid ChatId");
             throw StandardError.Format<ChatId>();
         }

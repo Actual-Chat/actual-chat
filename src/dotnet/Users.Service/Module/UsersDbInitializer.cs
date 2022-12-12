@@ -31,13 +31,13 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
             // Creating admin user
-            var adminIdentity = new UserIdentity("internal", Constants.User.Admin.UserId.Value);
+            var adminIdentity = new UserIdentity("internal", Constants.User.Admin.UserId);
             dbContext.Users.Add(new DbUser() {
-                Id = Constants.User.Admin.UserId.Value,
+                Id = Constants.User.Admin.UserId,
                 Name = Constants.User.Admin.Name,
                 Identities = {
                     new DbUserIdentity<string>() {
-                        DbUserId = Constants.User.Admin.UserId.Value,
+                        DbUserId = Constants.User.Admin.UserId,
                         Id = adminIdentity.Id,
                         Secret = "",
                     },
@@ -45,12 +45,12 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             });
             var avatarId = Ulid.NewUlid().ToString();
             dbContext.Accounts.Add(new DbAccount {
-                Id = Constants.User.Admin.UserId.Value,
+                Id = Constants.User.Admin.UserId,
                 Status = AccountStatus.Active,
             });
             dbContext.Avatars.Add(new DbAvatar() {
                 Id = avatarId,
-                PrincipalId = Constants.User.Admin.UserId.Value,
+                PrincipalId = Constants.User.Admin.UserId,
                 Name = Constants.User.Admin.Name,
                 Picture = Constants.User.Admin.Picture,
             });
@@ -66,7 +66,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
-            var adminUser = await authBackend.GetUser(default, Constants.User.Admin.UserId.Value, cancellationToken).ConfigureAwait(false)
+            var adminUser = await authBackend.GetUser(default, Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw StandardError.Internal("Failed to locate 'admin' user.");
             await commander.Call(
                     new SignInCommand(session, adminUser, adminUser.Identities.Keys.Single()),

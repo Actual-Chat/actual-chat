@@ -47,7 +47,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        var dbChat = await DbChatResolver.Get(chatId.Value, cancellationToken).ConfigureAwait(false);
+        var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
     }
 
@@ -138,7 +138,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind);
+            .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
 
@@ -166,7 +166,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind);
+            .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => e.IsRemoved == false);
         var maxId = await dbChatEntries
@@ -207,7 +207,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbEntries = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value
+            .Where(e => e.ChatId == chatId
                 && e.Kind == entryKind
                 && e.LocalId >= idTile.Range.Start
                 && e.LocalId < idTile.Range.End)
@@ -330,7 +330,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             ownerId.RequireNone();
 
             dbChat = await dbContext.Chats.ForUpdate()
-                .SingleAsync(c => c.Id == chatId.Value, cancellationToken)
+                .SingleAsync(c => c.Id == chatId, cancellationToken)
                 .ConfigureAwait(false);
             dbChat.RequireVersion(expectedVersion);
             chat = ApplyDiff(dbChat.ToModel(), update);
@@ -514,7 +514,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         return await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind)
+            .Where(e => e.ChatId == chatId && e.Kind == entryKind)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)

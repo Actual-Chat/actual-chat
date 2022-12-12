@@ -43,7 +43,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
         model.RequireSomeVersion();
 
         Id = id;
-        EntryId = model.EntryId.Value;
+        EntryId = model.EntryId;
         EmojiId = model.EmojiId;
         Version = model.Version;
         Count = model.Count;

@@ -28,7 +28,7 @@ public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgra
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.Authors
-            .Where(a => a.UserId == userId.Value && !a.HasLeft)
+            .Where(a => a.UserId == userId && !a.HasLeft)
             .Select(a => a.ChatId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

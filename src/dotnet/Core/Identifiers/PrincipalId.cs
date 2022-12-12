@@ -66,6 +66,7 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(PrincipalId source) => source.Id;
+    public static implicit operator string(PrincipalId source) => source.Id.Value;
 
     // Equality
 

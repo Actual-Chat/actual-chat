@@ -7,5 +7,5 @@ public class DbUserIdHandler : DbUserIdHandler<string>
 {
     public DbUserIdHandler(IConverterProvider converters)
         : base(converters, null)
-        => Generator = () => UserId.New().Value;
+        => Generator = () => UserId.New();
 }

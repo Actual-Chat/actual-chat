@@ -63,7 +63,7 @@
                 Class="historical-playback-active-authors-panel"
                 MaxIconCount="4"
                 Size="SquareSize.Size6"
-                AuthorIds="@m.AuthorIds" />
+                AuthorSids="@m.AuthorSids" />
         </div>
 
         <div class="flex-none">
@@ -115,14 +115,14 @@
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
-        var authorIds = ImmutableArray<AuthorId>.Empty;
+        var authorSids = ImmutableArray<string>.Empty;
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                if (!authorIds.Contains(authorId))
-                    authorIds = authorIds.Add(authorId);
+                if (!authorSids.Contains(authorId))
+                    authorSids = authorSids.Add(authorId);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
@@ -137,7 +137,7 @@
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != ChatViewChat.Id,
-                AuthorIds = authorIds
+                AuthorSids = authorSids,
             };
 
         var canUseLastModel = lastModel != null
@@ -205,7 +205,7 @@
         public string ChatTitle { get; init; } = "";
         public ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
-        public ImmutableArray<AuthorId> AuthorIds { get; init; }
+        public ImmutableArray<string> AuthorSids { get; init; }
     }
 
     internal class RewindController

@@ -41,10 +41,10 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Chat model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id.Value);
+        this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
-        Id = id.Value;
+        Id = id;
         Version = model.Version;
         Title = model.Title;
         CreatedAt = model.CreatedAt;

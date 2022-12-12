@@ -46,7 +46,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
         var dbChat = await dbContext.Chats
             .Include(c => c.Owners)
-            .SingleOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken)
+            .SingleOrDefaultAsync(c => c.Id == chatId, cancellationToken)
             .ConfigureAwait(false);
         if (dbChat == null)
             return;
@@ -72,7 +72,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
             // Removing duplicate system roles
             var systemDbRoles = await dbContext.Roles
-                .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
+                .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             foreach (var group in systemDbRoles.GroupBy(r => r.SystemRole)) {
@@ -85,7 +85,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
             // Reload system roles
             systemDbRoles = await dbContext.Roles
-                .Where(r => r.ChatId == chatId.Value && r.SystemRole != SystemRole.None)
+                .Where(r => r.ChatId == chatId && r.SystemRole != SystemRole.None)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -113,7 +113,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                     // We want another transaction view here
                     using var dbContext2 = CreateDbContext();
                     var ownerRoleAuthorIds = (await dbContext2.Authors
-                        .Where(a => a.ChatId == chatId.Value && a.UserId != null && a.Roles.Any(r => r.DbRoleId == dbOwnerRole.Id))
+                        .Where(a => a.ChatId == chatId && a.UserId != null && a.Roles.Any(r => r.DbRoleId == dbOwnerRole.Id))
                         .Select(a => a.Id)
                         .ToListAsync(cancellationToken)
                         .ConfigureAwait(false))

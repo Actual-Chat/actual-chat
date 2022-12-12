@@ -10,12 +10,13 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     [Inject] protected IUserPresences UserPresences { get; init; } = null!;
     [Inject] protected Session Session { get; init; } = null!;
 
+    protected AuthorId AuthorId { get; private set; }
     protected ChatId ChatId => AuthorId.ChatId;
     protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
-    [Parameter, EditorRequired] public AuthorId AuthorId { get; set; }
-    [Parameter] public bool ShowsPresence { get; set; }
-    [Parameter] public bool ShowsRecording { get; set; }
+    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter] public bool ShowPresence { get; set; }
+    [Parameter] public bool ShowRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
@@ -23,10 +24,15 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         ChatRecordingActivity = null;
     }
 
-    protected override async Task OnParametersSetAsync() {
+    protected override void OnParametersSet()
+    {
+        AuthorId = new AuthorId(AuthorSid);
         ChatRecordingActivity?.Dispose();
         ChatRecordingActivity = null;
-        if (ShowsRecording)
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (ShowRecording)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
@@ -38,7 +44,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
             return new () { InitialValue = model };
 
         // Try to provide pre-filled initialValue for the first render when everything is cached
-        var authorTask = GetAuthor(Session, ChatId, AuthorId, default);
+        var authorTask = GetAuthor(AuthorId, default);
 #pragma warning disable VSTHRD002
         var author = authorTask.IsCompletedSuccessfully ? authorTask.Result : null;
 #pragma warning restore VSTHRD002
@@ -61,42 +67,37 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         if (AuthorId.IsNone)
             return Model.None;
 
-        var author = await GetAuthor(Session, ChatId, AuthorId, cancellationToken);
+        var author = await GetAuthor(AuthorId, cancellationToken);
         if (author == null)
             return Model.None;
 
-        var presence = await GetPresence(Session, ChatId, AuthorId, cancellationToken);
-        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
+        var getPresenceTask = GetPresence(AuthorId, cancellationToken);
+        var getOwnAuthorTask = Authors.GetOwn(Session, ChatId, cancellationToken);
+
+        var presence = await getPresenceTask;
+        var ownAuthor = await getOwnAuthorTask;
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
         return new(author, presence, isOwn);
     }
 
-    private async ValueTask<Author?> GetAuthor(
-        Session session,
-        ChatId chatId,
-        AuthorId authorId,
-        CancellationToken cancellationToken)
+    private async ValueTask<Author?> GetAuthor(AuthorId authorId, CancellationToken cancellationToken)
     {
-        if (AuthorId.IsNone)
+        if (authorId.IsNone)
             return null;
 
-        var author = await Authors.Get(session, chatId, authorId, cancellationToken);
+        var author = await Authors.Get(Session, authorId.ChatId, authorId, cancellationToken);
         return author;
     }
 
-    private async ValueTask<Presence> GetPresence(
-        Session session,
-        ChatId chatId,
-        AuthorId authorId,
-        CancellationToken cancellationToken)
+    private async ValueTask<Presence> GetPresence(AuthorId authorId, CancellationToken cancellationToken)
     {
-        if (AuthorId.IsNone)
+        if (authorId.IsNone)
             return Presence.Offline;
 
         var presence = Presence.Unknown;
-        if (ShowsPresence)
-            presence = await Authors.GetPresence(session, chatId, authorId, cancellationToken);
-        if (ChatRecordingActivity != null) {
+        if (ShowPresence)
+            presence = await Authors.GetPresence(Session, authorId.ChatId, authorId, cancellationToken);
+        if (ShowRecording && ChatRecordingActivity != null) {
             var isRecording = await ChatRecordingActivity.IsAuthorActive(authorId, cancellationToken);
             if (isRecording)
                 presence = Presence.Recording;

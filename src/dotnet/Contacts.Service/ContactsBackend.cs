@@ -21,10 +21,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
     {
-        if (contactId.OwnerId.Id != (Symbol)ownerId)
+        if (contactId.OwnerId != ownerId)
             throw new ArgumentOutOfRangeException(nameof(contactId));
 
-        var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
+        var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel()
             ?? new Contact(contactId); // A fake contact
 
@@ -98,7 +98,6 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         id.Require();
         change.RequireValid();
-        var dbId = id.Value;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -106,7 +105,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         DbContact? dbContact;
         if (change.IsCreate(out var contact)) {
             dbContact = await dbContext.Contacts.ForUpdate()
-                .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken)
                 .ConfigureAwait(false);
             if (dbContact != null)
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
@@ -123,7 +122,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         else {
             // Update or Delete
             dbContact = await dbContext.Contacts.ForUpdate()
-                .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken)
                 .ConfigureAwait(false);
             dbContact = dbContact.RequireVersion(expectedVersion);
             if (change.IsUpdate(out contact)) {
@@ -155,9 +154,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Update or Delete
-        var dbId = id.Value;
         var dbContact = await dbContext.Contacts.ForUpdate()
-            .SingleOrDefaultAsync(c => c.Id == dbId, cancellationToken)
+            .SingleOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
         if (dbContact == null)
             return;

@@ -47,6 +47,9 @@ public readonly struct Language : ISymbolIdentifier<Language>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(Language source) => source.Id;
+    public static implicit operator string(Language source) => source.Id.Value;
+    public static implicit operator Language(Symbol source) => new (source);
+    public static implicit operator Language(string source) => new (source);
 
     // Equality
 

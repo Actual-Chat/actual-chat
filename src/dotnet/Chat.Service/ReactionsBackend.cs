@@ -38,7 +38,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
-            .Where(x => x.EntryId == entryId.Value && x.Count > 0)
+            .Where(x => x.EntryId == entryId && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbReactionSummaries.Select(x => x.ToModel()).ToImmutableArray();
@@ -150,7 +150,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         async Task UpdateHasReactions()
         {
             var hasReactions = await dbContext.ReactionSummaries
-                .AnyAsync(x => x.EntryId == entryId.Value && x.Count > 0, cancellationToken)
+                .AnyAsync(x => x.EntryId == entryId && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
             entry = entry with { HasReactions = hasReactions };
             entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);

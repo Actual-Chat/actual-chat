@@ -46,10 +46,10 @@ public class FirebaseMessagingClient
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
             Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                { NotificationConstants.MessageDataKeys.NotificationId, notificationId.Value },
+                { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
                 { NotificationConstants.MessageDataKeys.Tag, tag },
-                { NotificationConstants.MessageDataKeys.ChatId, chatId.Value },
-                { NotificationConstants.MessageDataKeys.ChatEntryId, chatEntryId.Value },
+                { NotificationConstants.MessageDataKeys.ChatId, chatId },
+                { NotificationConstants.MessageDataKeys.ChatEntryId, chatEntryId },
                 { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
                 { NotificationConstants.MessageDataKeys.Link, link },
             },

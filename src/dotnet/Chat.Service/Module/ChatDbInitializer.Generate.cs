@@ -16,15 +16,15 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         var defaultChatId = Constants.Chat.DefaultChatId;
         var adminUserId = Constants.User.Admin.UserId;
         var dbChat = new DbChat {
-            Id = defaultChatId.Value,
+            Id = defaultChatId,
             Version = VersionGenerator.NextVersion(),
             Title = "The Actual One",
             CreatedAt = Clocks.SystemClock.Now,
             IsPublic = true,
             Owners = {
                 new DbChatOwner {
-                    DbChatId = defaultChatId.Value,
-                    DbUserId = adminUserId.Value,
+                    DbChatId = defaultChatId,
+                    DbUserId = adminUserId,
                 },
             },
         };
@@ -32,11 +32,11 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(defaultChatId, 1),
-            ChatId = defaultChatId.Value,
+            ChatId = defaultChatId,
             LocalId = 1,
             Version = VersionGenerator.NextVersion(),
             IsAnonymous = false,
-            UserId = adminUserId.Value,
+            UserId = adminUserId,
         };
         dbContext.Authors.Add(dbAuthor);
 
@@ -78,7 +78,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbAuthor {
                 Id = DbAuthor.ComposeId(chatId, i + 1),
-                ChatId = chatId.Value,
+                ChatId = chatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),
                 IsAnonymous = false,
@@ -143,7 +143,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
             var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
             var entry = new DbChatEntry {
-                Id = id.Value,
+                Id = id,
                 Kind = ChatEntryKind.Text,
                 ChatId = dbChat.Id,
                 Version = VersionGenerator.NextVersion(),
@@ -172,7 +172,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
             var audioEntry = new DbChatEntry {
-                Id = id.Value,
+                Id = id,
                 ChatId = dbChat.Id,
                 Kind = ChatEntryKind.Audio,
                 LocalId = localId,
@@ -189,7 +189,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
             id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
             var textEntry = new DbChatEntry {
-                Id = id.Value,
+                Id = id,
                 ChatId = dbChat.Id,
                 Kind = ChatEntryKind.Text,
                 LocalId = localId,
@@ -223,7 +223,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
             var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
             var audioEntry = new DbChatEntry {
-                Id = id.Value,
+                Id = id,
                 ChatId = dbChat.Id,
                 Kind = ChatEntryKind.Audio,
                 LocalId = localId,
@@ -240,7 +240,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
             id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
             var textEntry = new DbChatEntry {
-                Id = id.Value,
+                Id = id,
                 ChatId = dbChat.Id,
                 Kind = ChatEntryKind.Text,
                 LocalId = localId,

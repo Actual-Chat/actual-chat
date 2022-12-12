@@ -14,7 +14,7 @@
     @foreach (var language in Languages.All) {
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
-                   Value="@language.Value" IsChecked="@(language == languages.Primary)"
+                   Value="@language" IsChecked="@(language == languages.Primary)"
                    Title="@language.Title" Change="_ => SetPrimary(language)" />
         </div>
     }
@@ -30,7 +30,7 @@
     @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
-                   Value="@language.Value" IsChecked="@(language == languages.Secondary)"
+                   Value="@language" IsChecked="@(language == languages.Secondary)"
                    Title="@language.Title" Change="_ => SetSecondary(language)"/>
             @* Disabled="@(language == languages.Primary)"/> *@
         </div>

@@ -34,7 +34,7 @@ public class GoogleTranscriberTest : TestBase
         var services = CreateServiceProvider();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = new ("ru-RU"),
+            Language = "ru-RU",
         };
         var audio = await GetAudio(fileName, withDelay: withDelay);
 
@@ -71,7 +71,7 @@ public class GoogleTranscriberTest : TestBase
         var services = CreateServiceProvider();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
-            Language = new ("ru-RU"),
+            Language = "ru-RU",
         };
         var audio = await GetAudio(fileName);
         var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();

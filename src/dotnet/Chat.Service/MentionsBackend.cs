@@ -23,7 +23,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.MentionId == mentionId.Value)
+            .Where(x => x.ChatId == chatId && x.MentionId == mentionId.Value)
             .OrderByDescending(x => x.EntryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -54,7 +54,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         var markup = MarkupParser.Parse(entry.Content);
         var mentionIds = new MentionExtractor().GetMentionIds(markup);
         var existingMentions = await dbContext.Mentions
-            .Where(x => x.ChatId == entry.ChatId.Value && x.EntryId == entry.LocalId)
+            .Where(x => x.ChatId == entry.ChatId && x.EntryId == entry.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

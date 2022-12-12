@@ -126,7 +126,7 @@ public class GoogleTranscriber : ITranscriber
         => language.Code.Value switch {
             "ES" => "es-US",
             "FR" => "fr-CA",
-            _ => language.Value,
+            _ => language,
         };
 
     private Task<string> GetProjectId()

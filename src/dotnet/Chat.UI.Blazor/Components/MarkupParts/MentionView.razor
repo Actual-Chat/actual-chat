@@ -2,7 +2,7 @@
 @inherits MarkupViewBase<MentionMarkup>
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
-<AuthorBadgeTemplate AuthorId="@_authorId">
+<AuthorBadgeTemplate AuthorSid="@_authorId">
     @if (context.Author.Id.IsNone) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;

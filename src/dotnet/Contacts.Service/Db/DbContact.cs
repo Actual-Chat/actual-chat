@@ -38,7 +38,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public void UpdateFrom(Contact model)
     {
         var id = model.Id;
-        this.RequireSameOrEmptyId(id.Value);
+        this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
         Version = model.Version;
@@ -47,8 +47,8 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (!Id.IsNullOrEmpty())
             return; // Only above properties can be changed for already existing contacts
 
-        Id = id.Value;
-        OwnerId = model.OwnerId.Value;
+        Id = id;
+        OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
     }

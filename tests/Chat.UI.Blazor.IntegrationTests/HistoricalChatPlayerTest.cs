@@ -71,11 +71,11 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         var dbAuthor = new DbAuthor {
             Id = DbAuthor.ComposeId(chatId, 1),
-            ChatId = chatId.Value,
+            ChatId = chatId,
             LocalId = 1,
             Version = 1,
             IsAnonymous = false,
-            UserId = userId.Value,
+            UserId = userId,
         };
         dbContext.Authors.Add(dbAuthor);
         return dbAuthor;
@@ -85,15 +85,15 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         var chatId = new ChatId("testchat");
         var dbChat = new DbChat {
-            Id = chatId.Value,
+            Id = chatId,
             Version = 1,
             Title = "Test chat",
             CreatedAt = сreatedAt,
             IsPublic = true,
             Owners = {
                 new DbChatOwner {
-                    DbChatId = chatId.Value,
-                    DbUserId = ownerUserId.Value,
+                    DbChatId = chatId,
+                    DbUserId = ownerUserId,
                 },
             },
         };
@@ -111,9 +111,9 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
         var audioEntry = new DbChatEntry {
-            Id = id.Value,
-            ChatId = id.ChatId.Value,
-            AuthorId = authorId.Value,
+            Id = id,
+            ChatId = id.ChatId,
+            AuthorId = authorId,
             Kind = id.Kind,
             LocalId = id.LocalId,
             Version = 1,

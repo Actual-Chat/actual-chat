@@ -9,7 +9,7 @@
     RenderFragment RenderContact()
         => @<div class="creation-panel-contact-item @(isFocusable ? "" : "unfocusable")">
                <div class="flex-x w-full items-center gap-x-2">
-                   <AccountCircle UserId="@Contact.Account!.Id" ShowPresence="true"/>
+                   <AccountCircle UserSid="@Contact.Account!.Id" ShowPresence="true"/>
                    <span class="text-ellipsis whitespace-nowrap overflow-hidden">
                        <SearchUIHighlighter Text="@Contact.Account.Avatar.Name"/>
                    </span>

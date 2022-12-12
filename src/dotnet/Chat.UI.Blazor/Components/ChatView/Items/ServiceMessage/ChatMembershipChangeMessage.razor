@@ -2,7 +2,7 @@
 @{
     var action = Details.HasLeft ? "left" : "joined";
 }
-<AuthorName AuthorId="@Details.AuthorId" Class="service-message-author-name"/><span> @action the chat</span>
+<AuthorName AuthorSid="@Details.AuthorId" Class="service-message-author-name"/><span> @action the chat</span>
 
 @code {
     [Inject] private IAuthors Authors { get; init; } = null!;

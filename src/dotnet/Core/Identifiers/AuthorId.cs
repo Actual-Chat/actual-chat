@@ -55,6 +55,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(AuthorId source) => source.Id;
+    public static implicit operator string(AuthorId source) => source.Id.Value;
 
     // Equality
 

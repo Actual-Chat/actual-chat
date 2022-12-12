@@ -10,11 +10,12 @@
     @onmouseout="MouseOut">
     @foreach (var notification in notifications.OrderBy(n => n.HandledAt)) {
         var notificationId = notification.Id;
-        <NotificationEntry @key="@notificationId.Value"
-                      Closed="() => OnClose(notificationId)"
-                      AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"
-                      AnimationTime="@(TimeSpan.FromSeconds(1))"
-                      Notification="@notification"/>
+        <NotificationEntry
+            @key="@notificationId.Value"
+            Notification="@notification"
+            AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"
+            AnimationTime="@(TimeSpan.FromSeconds(1))"
+            Closed="() => OnClose(notificationId)"/>
     }
 </div>
 

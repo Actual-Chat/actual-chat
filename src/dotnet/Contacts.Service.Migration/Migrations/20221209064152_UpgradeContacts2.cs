@@ -49,12 +49,12 @@ namespace ActualChat.Contacts.Migrations
                 switch (type) {
                 case "c":
                     var chatId = new ChatId(otherId);
-                    newId = new ContactId(ownerId, chatId).Value;
+                    newId = new ContactId(ownerId, chatId);
                     break;
                 case "u":
                     var userId = new UserId(otherId);
                     var peerChatId = new PeerChatId(ownerId, userId);
-                    newId = new ContactId(ownerId, peerChatId).Value;
+                    newId = new ContactId(ownerId, peerChatId);
                     break;
                 default:
                     goto skip;

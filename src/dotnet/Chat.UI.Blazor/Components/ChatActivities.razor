@@ -8,7 +8,7 @@
     Class="chat-activity-panel"
     MaxIconCount="@MaxIconCount"
     Size="SquareSize.Size6"
-    AuthorIds="@m.RecordingAuthorIds" />
+    AuthorSids="@m.RecordingAuthorSids" />
 
 @code {
     [Inject] private IAuthors Authors { get; init; } = null!;
@@ -39,13 +39,13 @@
 
         var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
         return new() {
-            RecordingAuthorIds = authorIds,
+            RecordingAuthorSids = authorIds.Select(id => id.Value).ToImmutableArray(),
         };
     }
 
     public sealed class Model {
         public static Model None { get; } = new();
 
-        public ImmutableArray<AuthorId> RecordingAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
+        public ImmutableArray<string> RecordingAuthorSids { get; init; } = ImmutableArray<string>.Empty;
     }
 }

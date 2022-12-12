@@ -96,7 +96,7 @@
     }
 
     private async Task CopyMessageLink(ChatEntry chatEntry) {
-        var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId.Value}#{chatEntry.Id}";
+        var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId}#{chatEntry.LocalId}";
         await ClipboardUI.WriteText(url);
     }
 

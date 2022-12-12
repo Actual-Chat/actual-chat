@@ -40,7 +40,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         await using var _ = dbContext.ConfigureAwait(false);
 
         var defaultChatExists = await dbContext.Chats
-            .Where(c => c.Id == Constants.Chat.DefaultChatId.Value)
+            .Where(c => c.Id == Constants.Chat.DefaultChatId)
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
         var isNewDb = HostInfo.IsDevelopmentInstance && (DbInfo.ShouldRecreateDb || !defaultChatExists);

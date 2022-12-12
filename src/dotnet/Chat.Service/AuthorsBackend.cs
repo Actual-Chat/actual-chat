@@ -44,7 +44,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (authorId == Bots.GetWalleId(chatId))
             return Bots.GetWalle(chatId);
 
-        var dbAuthor = await DbAuthorResolver.Get(authorId.Value, cancellationToken).ConfigureAwait(false);
+        var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         if (dbAuthor == null)
             return null;
 
@@ -71,7 +71,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
             var dbAuthor = await dbContext.Authors
                 .Include(a => a.Roles)
-                .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             author = dbAuthor?.ToModel();
             if (author == null)
@@ -117,7 +117,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var authorIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId.Value && !a.HasLeft)
+            .Where(a => a.ChatId == chatId && !a.HasLeft)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -134,7 +134,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId.Value && !a.HasLeft && a.UserId != null)
+            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -165,7 +165,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var dbAuthor = await dbContext.Authors.ForUpdate()
             .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         if (dbAuthor != null)
             return dbAuthor.ToModel(); // Already exist, so we don't recreate one
@@ -184,15 +184,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
 
         var localId = await DbAuthorLocalIdGenerator
-            .Next(dbContext, chatId.Value, cancellationToken)
+            .Next(dbContext, chatId, cancellationToken)
             .ConfigureAwait(false);
         var id = DbAuthor.ComposeId(chatId, localId);
         dbAuthor = new() {
             Id = id,
             Version = VersionGenerator.NextVersion(),
-            ChatId = chatId.Value,
+            ChatId = chatId,
             LocalId = localId,
-            UserId = account.Id.Value,
+            UserId = account.Id,
             AvatarId = newAvatar?.Id,
             IsAnonymous = true,
         };
@@ -250,7 +250,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var dbAuthor = await dbContext.Authors.ForUpdate()
             .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.Id == authorId.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
             .Require()
             .ConfigureAwait(false);
         if (dbAuthor.HasLeft == hasLeft)
@@ -290,7 +290,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var dbAuthor = await dbContext.Authors.ForUpdate()
             .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.Id == authorId.Value, cancellationToken)
+            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
             .Require()
             .ConfigureAwait(false);
         dbAuthor.AvatarId = avatarId;
@@ -320,8 +320,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
-            Name = RandomNameGenerator.Default.Generate(author.Id.Value),
-            Picture = DefaultUserPicture.GetAvataaar(author.Id.Value),
+            Name = RandomNameGenerator.Default.Generate(author.Id),
+            Picture = DefaultUserPicture.GetAvataaar(author.Id),
             Bio = "",
         };
 }

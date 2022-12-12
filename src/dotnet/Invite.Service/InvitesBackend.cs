@@ -126,7 +126,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var chatInviteDetails = invite.Details?.Chat;
         if (chatInviteDetails != null) {
             _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
-            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId.Value)
+            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 

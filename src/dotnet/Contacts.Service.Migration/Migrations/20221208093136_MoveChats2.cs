@@ -66,9 +66,9 @@ namespace ActualChat.Contacts.Migrations
                     continue;
 
                 var c = new DbContact() {
-                    Id = new ContactId(userId, new ChatId(chat.Id), AssumeValid.Option).Value,
+                    Id = new ContactId(userId, new ChatId(chat.Id), AssumeValid.Option),
                     Version = versionGenerator.NextVersion(),
-                    OwnerId = userId.Value,
+                    OwnerId = userId,
                     UserId = null,
                     ChatId = chat.Id,
                     TouchedAt = clocks.SystemClock.Now,

@@ -58,6 +58,7 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
 
     public override string ToString() => Value;
     public static implicit operator Symbol(NotificationId source) => source.Id;
+    public static implicit operator string(NotificationId source) => source.Id.Value;
 
     // Equality
 

@@ -5,10 +5,7 @@ namespace ActualChat.Users.Db;
 
 public sealed class DbSessionInfoConverter : DbSessionInfoConverter<UsersDbContext, DbSessionInfo, string>
 {
-    private ILogger Log { get; }
-
-    public DbSessionInfoConverter(IServiceProvider services) : base(services)
-        => Log = services.LogFor(GetType());
+    public DbSessionInfoConverter(IServiceProvider services) : base(services) { }
 
     public override void UpdateEntity(SessionInfo source, DbSessionInfo target)
     {

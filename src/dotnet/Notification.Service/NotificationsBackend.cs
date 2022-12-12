@@ -35,7 +35,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId.Value)
+            .Where(d => d.UserId == userId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var devices = dbDevices.Select(d => d.ToModel()).ToImmutableArray();
@@ -75,7 +75,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var yesterdayId = new NotificationId(userId, Ulid.NewUlid(Clocks.CoarseSystemClock.UtcNow.AddDays(-1)));
         return dbContext.Notifications
             // ReSharper disable once StringCompareToIsCultureSpecific
-            .Where(n => n.UserId == userId.Value && n.Id.CompareTo(yesterdayId.ToString()) > 0)
+            .Where(n => n.UserId == userId && n.Id.CompareTo(yesterdayId.ToString()) > 0)
             .OrderByDescending(n => n.Id)
             .Select(n => new NotificationId(n.Id))
             .ToImmutableArray();
@@ -86,7 +86,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         NotificationId notificationId,
         CancellationToken cancellationToken)
     {
-        var dbNotification = await DbNotificationResolver.Get(notificationId.Value, cancellationToken).ConfigureAwait(false);
+        var dbNotification = await DbNotificationResolver.Get(notificationId, cancellationToken).ConfigureAwait(false);
         return dbNotification.Require().ToModel();
     }
 
@@ -176,7 +176,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         else {
             var notificationCopy = notification;
             dbNotification = await dbContext.Notifications.ForUpdate()
-                .SingleOrDefaultAsync(e => e.Id == notificationCopy.Id.Value, cancellationToken)
+                .SingleOrDefaultAsync(e => e.Id == notificationCopy.Id, cancellationToken)
                 .ConfigureAwait(false);
             dbNotification = dbNotification.RequireVersion(notification.Version);
             notification = notification with {

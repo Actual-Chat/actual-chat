@@ -8,8 +8,13 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
-    [Parameter, EditorRequired] public UserId UserId { get; set; }
+    protected UserId UserId { get; private set; }
+
+    [Parameter, EditorRequired] public string UserSid { get; set; } = "";
     [Parameter] public bool ShowPresence { get; set; }
+
+    protected override void OnParametersSet()
+        => UserId = new UserId(UserSid);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.Loading };
