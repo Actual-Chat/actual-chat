@@ -16,11 +16,13 @@
     var isMobile = ScreenSize.IsNarrow();
 }
 
-<div @ref="Ref" class="landing @(isMobile ? "mobile" : "")">
+<div @ref="Ref" class="landing @(isMobile ? "mobile" : "desktop")">
+    <LandingLeftMenu IsOpen="@m.IsMenuOpen"/>
+
     @* Header *@
     <div class="landing-header blur-bg">
         @if (isMobile) {
-            <ButtonRound Class="menu-button">
+            <ButtonRound Class="menu-button" Click="@OnMenuHandle">
                 <i class="icon-menu text-2xl"></i>
             </ButtonRound>
         }
@@ -58,8 +60,8 @@
             </div>
         </div>
         @if (isMobile) {
-            <div class="min-w-12">
-                <ButtonRound Class="signin-button">
+            <div class="flex min-w-12 justify-end">
+                <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
             </div>
@@ -576,14 +578,26 @@
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-        => new() {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new() {
             Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+            IsMenuOpen = State.LatestNonErrorValue.IsMenuOpen,
         };
+    }
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);
+
+    private void OnMenuHandle() {
+        var m = State.LatestNonErrorValue;
+        m.IsMenuOpen = !m.IsMenuOpen;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void CloseMenu()
+        => OnMenuHandle();
 
     // Nested types
 
@@ -592,5 +606,6 @@
 
         public AccountFull? Account { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsMenuOpen { get; set; }
     }
 }

@@ -169,3 +169,28 @@
 .landing.mobile .footer-info-btn {
     @apply h-10 text-xl font-medium text-start;
 }
+
+.landing.mobile .landing-menu {
+    @apply absolute flex-x top-0 left-0 z-20;
+}
+.landing.desktop .landing-menu {
+    @apply hidden;
+}
+.landing.mobile .landing-menu.closed {
+    @apply opacity-0 w-0;
+}
+.landing.mobile .landing-menu.open {
+    @apply w-10/12;
+}
+.landing-menu.open .left-line {
+    @apply relative w-full flex-y h-screen bg-01 transition-all ease-in-out duration-100;
+}
+.landing-menu.closed .left-line {
+    @apply w-0 bg-transparent transition-all ease-in-out duration-100;
+}
+.landing-menu .menu-footer {
+    @apply flex-x gap-x-2 items-center justify-center h-1/3;
+}
+.landing-menu .menu-content {
+    @apply flex-y gap-y-8 h-full w-7/12 self-center items-start justify-center;
+}
