@@ -17,6 +17,8 @@ export class Landing {
     private nearestTopPageNumber: number = 1;
     private nearestBottomPageNumber: number = 2;
     private header: HTMLElement;
+    readonly menu: HTMLElement;
+    private menuObserver : MutationObserver;
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
         return new Landing(landing, blazorRef);
@@ -26,10 +28,36 @@ export class Landing {
         this.landing = landing;
         this.blazorRef = blazorRef;
         this.header = this.landing.querySelector('.landing-header');
+        this.menu = this.landing.querySelector('.landing-menu');
         this.getInitialData();
         window.addEventListener('keydown', this.keyboardHandler, { passive: false, });
         this.landing.addEventListener('wheel', this.smartScrollThrottled);
+        this.menuObserver = new MutationObserver(this.menuStateObserver);
+        this.menuObserver.observe(this.menu, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        })
     }
+
+    private menuStateObserver = (mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.target.classList.contains('open')) {
+                this.landing.addEventListener('click', this.onCloseMenu);
+            }
+        }
+    };
+
+    private onCloseMenu = ((event: Event & { target: Element; }) => {
+        if (this.menu.classList.contains('open')) {
+            const withinMenu = event.composedPath().includes(this.menu);
+            if (!withinMenu) {
+                this.blazorRef.invokeMethodAsync('CloseMenu');
+                if (this.menu.classList.contains('closed'))
+                    this.landing.removeEventListener('click', this.onCloseMenu);
+            }
+        }
+    });
 
     private keyboardHandler = ((event: KeyboardEvent & { target: Element; }) => {
         if (event.keyCode == 40 || event.keyCode == 38)
@@ -187,6 +215,7 @@ export class Landing {
     public dispose() {
         window.removeEventListener('keydown', this.smartScrollThrottled);
         this.landing.removeEventListener('wheel', this.smartScrollThrottled);
+        // this.landing.removeEventListener('click', this.onCloseMenu);
     }
 }
 
