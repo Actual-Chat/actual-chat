@@ -1,8 +1,10 @@
+using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppPresenceReporter : WorkerBase
+internal class AppPresenceReporter : WorkerBase
 {
     public record Options
     {
@@ -19,6 +21,7 @@ public class AppPresenceReporter : WorkerBase
     protected MomentClockSet Clocks { get; }
     protected UserActivityUI UserActivityUI { get; }
     protected IUserPresences UserPresences { get; }
+    protected ChatUI ChatUI { get; }
 
     public AppPresenceReporter(Options settings, IServiceProvider services)
     {
@@ -31,21 +34,31 @@ public class AppPresenceReporter : WorkerBase
         Clocks = Settings.Clocks ?? services.Clocks();
         UserActivityUI = services.GetRequiredService<UserActivityUI>();
         UserPresences = services.GetRequiredService<IUserPresences>();
+        ChatUI = services.GetRequiredService<ChatUI>();
     }
 
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
-        await foreach (var change in UserActivityUI.LastActiveAt.Changes(cancellationToken)) {
-            var lastActiveAt = change.Value;
-            if (Clocks.SystemClock.Now - lastActiveAt < Settings.AwayTimeout)
+        var cState = await Computed.Capture(() => GetAppPresenceState(cancellationToken)).ConfigureAwait(false);
+        await foreach (var change in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var (lastActiveAt, isRecording) = change.Value;
+            if (Clocks.SystemClock.Now - lastActiveAt < Settings.AwayTimeout || isRecording)
                 await UpdatePresence(session, cancellationToken).ConfigureAwait(false);
             else {
-                await InvalidatePresence(session, cancellationToken);
-                await UserActivityUI.SubscribeForNext(cancellationToken);
+                await InvalidatePresence(session, cancellationToken).ConfigureAwait(false);
+                await UserActivityUI.SubscribeForNext(cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<(Moment lastActiveAt, bool IsRecording)> GetAppPresenceState(CancellationToken cancellationToken)
+    {
+        var lastActiveAt = await UserActivityUI.LastActiveAt.Use(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatUI.GetRecordingChatId().ConfigureAwait(false);
+        return (lastActiveAt, !recordingChatId.IsNone);
     }
 
     // Private methods
@@ -54,7 +67,7 @@ public class AppPresenceReporter : WorkerBase
     {
         try {
             await Auth.UpdatePresence(session, cancellationToken).ConfigureAwait(false);
-            await InvalidatePresence(session, cancellationToken);
+            await InvalidatePresence(session, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "UpdatePresence failed");
@@ -63,7 +76,7 @@ public class AppPresenceReporter : WorkerBase
 
     private async Task InvalidatePresence(Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         using (Computed.Invalidate())
             _ = UserPresences.Get(account.Id, cancellationToken);
     }

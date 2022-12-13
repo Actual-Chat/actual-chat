@@ -3,6 +3,7 @@
 @using Stl.OS
 @using Stl.Plugins
 @using System.Reflection
+@using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
 
 <BrowserInfoProvider>
@@ -42,7 +43,6 @@
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
-    [Inject] private AppPresenceReporter AppPresenceReporter { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
@@ -79,7 +79,7 @@
         }), TaskScheduler.Current);
 
         // Starting less important UI services
-        AppPresenceReporter.Start();
+        Services.GetRequiredService<AppPresenceReporter>().Start();
 
         _ = Loaded();
     }

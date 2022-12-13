@@ -43,10 +43,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddAuthentication();
         services.AddScoped<ClientAuthHelper>();
         services.RemoveAll<PresenceReporter>(); // We replace it with our own one further
-        services.AddScoped<AppPresenceReporter>();
-        services.AddSingleton(_ => new AppPresenceReporter.Options() {
-            AwayTimeout = Constants.Presence.AwayTimeout,
-        });
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
