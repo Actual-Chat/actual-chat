@@ -132,7 +132,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public async Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
