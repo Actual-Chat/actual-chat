@@ -28,5 +28,11 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
                 };
             });
         }
+
+        var fusion = services.AddFusion();
+        fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
+        services.AddSingleton(_ => new AppPresenceReporter.Options {
+            AwayTimeout = Constants.Presence.AwayTimeout,
+        });
     }
 }
