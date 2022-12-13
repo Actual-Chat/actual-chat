@@ -59,13 +59,9 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             // Peer chat
             await peerChatId.UserIds
                 .ToArray()
-                .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
+                .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
                 .Collect(0)
                 .ConfigureAwait(false);
-            var (userId1, userId2) = peerChatId.UserIds;
-            var contactTask1 = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
-            var contactTask2 = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
-            await Task.WhenAll(contactTask1, contactTask2).ConfigureAwait(false);
         }
         else {
             // Group chat
@@ -91,7 +87,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
             var ownerIds = dbChat.Owners.Select(o => new UserId(o.DbUserId)).ToArray();
             var ownerAuthors = await ownerIds
-                .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
+                .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
 
@@ -233,7 +229,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         var authorByUserId = new Dictionary<UserId, AuthorFull>();
         foreach (var userId in userIds) {
             // join existent users to the chat
-           var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+           var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
            authorByUserId.Add(userId, author);
         }
 

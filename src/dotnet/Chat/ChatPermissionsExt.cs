@@ -10,7 +10,7 @@ public static class ChatPermissionsExt
             permissions |= ChatPermissions.EditRoles | ChatPermissions.EditProperties | ChatPermissions.Invite | ChatPermissions.Write;
         if (permissions.Has(ChatPermissions.Invite))
             permissions |= ChatPermissions.Join;
-        if (permissions.Has(ChatPermissions.Write) || permissions.Has(ChatPermissions.Join))
+        if (permissions.Has(ChatPermissions.Join) || permissions.Has(ChatPermissions.Write))
             permissions |= ChatPermissions.Read;
         return permissions;
     }

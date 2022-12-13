@@ -61,14 +61,6 @@ public class ChatsController : ControllerBase, IChats
         => Service.GetIdRange(session, chatId, entryKind, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken)
-        => Service.HasInvite(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
-    public Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken)
-        => Service.CanJoin(session, chatId, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
         => Service.ListMentionableAuthors(session, chatId, cancellationToken);
 
@@ -88,14 +80,6 @@ public class ChatsController : ControllerBase, IChats
 
     [HttpPost]
     public Task<Chat> Change([FromBody] IChats.ChangeCommand command, CancellationToken cancellationToken)
-        => Commander.Call(command, cancellationToken);
-
-    [HttpPost]
-    public Task<Unit> Join([FromBody] IChats.JoinCommand command, CancellationToken cancellationToken)
-        => Commander.Call(command, cancellationToken);
-
-    [HttpPost]
-    public Task Leave([FromBody] IChats.LeaveCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]

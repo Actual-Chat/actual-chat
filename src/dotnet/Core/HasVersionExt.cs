@@ -7,15 +7,15 @@ public static class HasVersionExt
 {
     public static bool IsStored<TEntity>([NotNullWhen(true)] this TEntity? entity)
         where TEntity : IHasVersion<long>
-        => entity != null && entity.Version != 0;
+        => entity is { Version: > 0 };
 
     public static TEntity RequireSomeVersion<TEntity>(this TEntity? entity)
         where TEntity : IHasVersion<long>
     {
         if (entity == null)
             throw StandardError.NotFound<TEntity>();
-        if (entity.Version == default)
-            throw StandardError.Constraint("Version cannot be default here.");
+        if (entity.Version <= 0)
+            throw StandardError.Constraint("Version must be positive here.");
 
         return entity;
     }

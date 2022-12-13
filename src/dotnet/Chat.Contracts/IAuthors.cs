@@ -23,16 +23,32 @@ public interface IAuthors : IComputeService
     // Commands
 
     [CommandHandler]
-    Task CreateAuthors(CreateAuthorsCommand command, CancellationToken cancellationToken);
+    Task<AuthorFull> Join(JoinCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task Leave(LeaveCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task Invite(InviteCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record CreateAuthorsCommand(
+    public sealed record JoinCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] ChatId ChatId
+    ) : ISessionCommand<AuthorFull>;
+
+    [DataContract]
+    public sealed record LeaveCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] ChatId ChatId
+    ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record InviteCommand(
         [property: DataMember] Session Session,
         [property: DataMember] ChatId ChatId,
         [property: DataMember] UserId[] UserIds
-        ) : ISessionCommand<Unit>;
+    ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record SetAvatarCommand(

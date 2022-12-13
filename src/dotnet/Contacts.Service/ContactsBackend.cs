@@ -62,22 +62,6 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         return ImmutableArray.Create(result);
     }
 
-    public async Task<Contact> GetOrCreateUserContact(UserId ownerId, UserId userId, CancellationToken cancellationToken)
-    {
-        var peerChatId = new PeerChatId(ownerId, userId);
-        var contactId = new ContactId(ownerId, peerChatId, AssumeValid.Option);
-        var contact = await Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsStored())
-            return contact;
-
-        var command = new IContactsBackend.ChangeCommand(contactId, null, new Change<Contact> {
-            Create = new Contact(contactId),
-        });
-
-        contact = await Commander.Call(command, false, cancellationToken).ConfigureAwait(false);
-        return contact;
-    }
-
     // [CommandHandler]
     public virtual async Task<Contact> Change(
         IContactsBackend.ChangeCommand command,
@@ -186,8 +170,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-        var hasNoStoredContact = contact is not { IsVirtual: true };
-        if (author.HasLeft == hasNoStoredContact)
+        if (author.HasLeft == !contact.IsStored())
             return; // No need to make any changes
 
         var change = author.HasLeft

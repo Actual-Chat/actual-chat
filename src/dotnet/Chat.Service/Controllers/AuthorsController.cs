@@ -48,7 +48,15 @@ public class AuthorsController : ControllerBase, IAuthors
     // Commands
 
     [HttpPost]
-    public Task CreateAuthors([FromBody] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken)
+    public Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task Leave(IAuthors.LeaveCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task Invite([FromBody] IAuthors.InviteCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]

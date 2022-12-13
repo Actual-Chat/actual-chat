@@ -44,11 +44,6 @@ public interface IChatsClientDef
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    [Get(nameof(HasInvite))]
-    Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [Get(nameof(CanJoin))]
-    Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken);
-
     [Get(nameof(ListMentionableAuthors))]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
     [Get(nameof(FindNext))]
@@ -56,10 +51,6 @@ public interface IChatsClientDef
 
     [Post(nameof(Change))]
     Task<Chat> Change([Body] IChats.ChangeCommand command, CancellationToken cancellationToken);
-    [Post(nameof(Join))]
-    Task<Unit> Join([Body] IChats.JoinCommand command, CancellationToken cancellationToken);
-    [Post(nameof(Leave))]
-    Task Leave([Body] IChats.LeaveCommand command, CancellationToken cancellationToken);
 
     [Post(nameof(UpsertTextEntry))]
     Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
@@ -86,8 +77,12 @@ public interface IAuthorsClientDef
     [Get(nameof(ListUserIds))]
     Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [Post(nameof(CreateAuthors))]
-    Task CreateAuthors([Body] IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Join))]
+    Task<AuthorFull> Join([Body] IAuthors.JoinCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Leave))]
+    Task Leave([Body] IAuthors.LeaveCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Invite))]
+    Task Invite([Body] IAuthors.InviteCommand command, CancellationToken cancellationToken);
     [Post(nameof(SetAvatar))]
     Task SetAvatar([Body] IAuthors.SetAvatarCommand command, CancellationToken cancellationToken);
 }

@@ -126,23 +126,18 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
-        var (account, rules, canJoin) = await Accounts.GetOwn(Session, cancellationToken)
-            .Join(
-                Chats.GetRules(Session, chatId, cancellationToken),
-                Chats.CanJoin(Session, chatId, cancellationToken)
-            ).ConfigureAwait(false);
-        // Default scheduler is used from here
-        var canPost = rules.CanWrite();
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var canPost = Chat.Rules.CanWrite();
+        var canJoin = !canPost && Chat.Rules.CanJoin();
         return new () {
             CanPost = canPost,
-            CanJoin = !canPost && canJoin,
+            CanJoin = canJoin,
             IsGuest = account.IsGuest,
         };
     }
 
     private async Task OnJoin() {
-        var command = new IChats.JoinCommand(Session, Chat.Id);
+        var command = new IAuthors.JoinCommand(Session, Chat.Id);
         await UICommander.Run(command);
     }
 

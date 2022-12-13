@@ -16,7 +16,7 @@ public sealed record Chat(
     public static IdAndVersionEqualityComparer<Chat, ChatId> EqualityComparer { get; } = new();
 
     public static Chat None { get; } = new(default, 0) { Title = "This chat is unavailable" };
-    public static Chat Loading { get; } = new(default, 1) { Title = "Loading..."};
+    public static Chat Loading { get; } = new(default, -1) { Title = "Loading..."};
 
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Chat>()),
@@ -32,8 +32,6 @@ public sealed record Chat(
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsVirtual => Version == 0 || Id.IsNone;
 
     public Chat() : this(ChatId.None) { }
 

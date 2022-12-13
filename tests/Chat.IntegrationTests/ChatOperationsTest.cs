@@ -112,20 +112,21 @@ public class ChatOperationsTest : AppHostTestBase
             var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
             var commander = tester.Commander;
             var chats = tester.AppServices.GetRequiredService<IChats>();
-            var canJoin = await chats.CanJoin(session, chatId, default);
+            var chat = await chats.Get(session, chatId, default).Require();
+            var canJoin = chat.Rules.CanJoin();
 
             if (!isPublicChat) {
                 canJoin.Should().BeFalse();
                 // to join private chat we need to activate invite code first
                 await commander.Call(new IInvites.UseCommand(session, inviteId));
 
-                var c = await Computed.Capture(() => chats.CanJoin(session, chatId, default));
-                await c.When(x => x).WaitAsync(TimeSpan.FromSeconds(3));
-                canJoin = await c.Use();
+                var c = await Computed.Capture(() => chats.Get(session, chatId, default));
+                c = await c.When(x => x?.Rules.CanJoin() ?? false).WaitAsync(TimeSpan.FromSeconds(3));
+                canJoin = c.Value?.Rules.CanJoin() ?? false;
             }
             canJoin.Should().BeTrue();
 
-            var command = new IChats.JoinCommand(session, chatId);
+            var command = new IAuthors.JoinCommand(session, chatId);
             await commander.Call(command, default);
 
             await AssertJoined(tester.AppServices, session, chatId, account);
@@ -180,11 +181,11 @@ public class ChatOperationsTest : AppHostTestBase
                 await Task.Delay(1000); // Let the command complete
             }
 
-            var joinChatCommand = new IChats.JoinCommand(session, chatId);
-            await commander.Call(joinChatCommand);
+            var joinCommand = new IAuthors.JoinCommand(session, chatId);
+            await commander.Call(joinCommand);
             await AssertJoined(tester.AppServices, session, chatId, account);
 
-            var leaveCommand = new IChats.LeaveCommand(session, chatId);
+            var leaveCommand = new IAuthors.LeaveCommand(session, chatId);
             await commander.Call(leaveCommand);
 
             var permissions = await chats.GetRules(session, chatId, default);
@@ -204,7 +205,7 @@ public class ChatOperationsTest : AppHostTestBase
                 await commander.Call(new IInvites.UseCommand(session, inviteId));
                 await Task.Delay(1000); // Let the command complete
             }
-            await commander.Call(joinChatCommand, default);
+            await commander.Call(joinCommand, default);
             await AssertJoined(tester.AppServices, session, chatId, account);
         }
     }

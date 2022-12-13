@@ -25,7 +25,7 @@
         => _ = ModalInstance.CloseAsync();
 
     private async Task OnLeave(MouseEventArgs arg) {
-        var command = new IChats.LeaveCommand(Session, ModalModel.Chat.Id);
+        var command = new IAuthors.LeaveCommand(Session, ModalModel.Chat.Id);
         await UICommander.Run(command);
         await ModalInstance.CloseAsync();
     }

@@ -6,15 +6,18 @@ namespace ActualChat.Invite;
 
 internal class Invites : IInvites
 {
+    private IChats? _chats;
+
+    private IServiceProvider Services { get; }
     private IAccounts Accounts { get; }
-    private IChats Chats { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ICommander Commander { get; }
     private IInvitesBackend Backend { get; }
 
     public Invites(IServiceProvider services)
     {
+        Services = services;
         Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
         Commander = services.Commander();
         Backend = services.GetRequiredService<IInvitesBackend>();
     }

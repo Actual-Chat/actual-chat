@@ -30,7 +30,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private TranscriptPostProcessor TranscriptPostProcessor { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
     private IChats Chats { get; }
-    private IAuthorsBackend AuthorsBackend { get; }
+    private IAuthors Authors { get; }
     private IAccounts Accounts { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -47,8 +47,8 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
         Chats = services.GetRequiredService<IChats>();
+        Authors = services.GetRequiredService<IAuthors>();
         Accounts = services.GetRequiredService<IAccounts>();
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
         OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
@@ -75,7 +75,8 @@ public sealed class AudioProcessor : IAudioProcessor
             var language = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
             var languages = ImmutableArray.Create(language);
 
-            var author = await AuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken)
+            var author = await Authors
+                .EnsureJoined(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             var audio = new AudioSource(
                 Task.FromResult(AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames }),
@@ -83,13 +84,7 @@ public sealed class AudioProcessor : IAudioProcessor
                 TimeSpan.Zero,
                 AudioSourceLog,
                 cancellationToken);
-            var openSegment = new OpenAudioSegment(
-                0,
-                record,
-                audio,
-                author,
-                languages,
-                OpenAudioSegmentLog);
+            var openSegment = new OpenAudioSegment(0, record, audio, author, languages, OpenAudioSegmentLog);
             streamId = openSegment.StreamId;
             openSegment.SetRecordedAt(Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset));
 

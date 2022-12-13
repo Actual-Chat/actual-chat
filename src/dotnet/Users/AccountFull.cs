@@ -7,7 +7,7 @@ public sealed record AccountFull(
     ) : Account(new UserId(User.Id, AssumeValid.Option), Version)
 {
     public static new AccountFull None { get; } = new(User.NewGuest(), 0) { Avatar = Avatar.None };
-    public static new AccountFull Loading { get; } = new(User.NewGuest(), 1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
+    public static new AccountFull Loading { get; } = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),

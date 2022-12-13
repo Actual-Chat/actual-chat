@@ -1,7 +1,7 @@
 using ActualChat.Chat.Db;
-using ActualChat.Commands;
 using ActualChat.Contacts;
 using ActualChat.Invite;
+using ActualChat.Invite.Backend;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +17,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IAuthors Authors { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IContactsBackend ContactsBackend { get; }
+    private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
 
@@ -26,6 +27,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Authors = services.GetRequiredService<IAuthors>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
+        InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
     }
@@ -107,9 +109,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanRead() && chatId.Kind != ChatKind.Peer) {
             // Has invite = same as having read permission
-            var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
-            if (hasInvite)
-                rules = rules with { Permissions = (rules.Permissions | ChatPermissions.Read).AddImplied() };
+            var activationKeyOpt = await ServerKvas
+                .Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+                .ConfigureAwait(false);
+            if (activationKeyOpt.IsSome(out var activationKey)) {
+                var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
+                if (isValid)
+                    rules = rules with { Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied() };
+            }
         }
         return rules;
     }
@@ -125,28 +132,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default;
 
         return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var value = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
-        return value.HasValue;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author is { HasLeft: false })
-            return false;
-
-        var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (rules.CanJoin())
-            return true;
-
-        var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
-        return hasInvite;
     }
 
     // [ComputeMethod]
@@ -216,21 +201,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return chat;
     }
 
-    // [CommandHandler]
-    public virtual async Task<Unit> Join(IChats.JoinCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
-        var (session, chatId) = command;
-
-        if (!await CanJoin(session, chatId, cancellationToken).ConfigureAwait(false))
-            throw ChatPermissionsExt.NotEnoughPermissions();
-
-        await JoinChat(session, chatId, cancellationToken).ConfigureAwait(false);
-        return default;
-    }
-
     public virtual Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -260,28 +230,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         if (textEntry.AudioEntryId != null)
             await RemoveChatEntry(session, chatId, textEntry.AudioEntryId.Value, ChatEntryKind.Audio, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task Leave(IChats.LeaveCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var (session, chatId) = command;
-
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return;
-
-        chat.Rules.Permissions.Require(ChatPermissions.Leave);
-
-        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author == null || author.HasLeft)
-            return;
-
-        var leaveAuthorCommand = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, true);
-        await Commander.Call(leaveAuthorCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -319,7 +267,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var backendCommand = new IChatsBackend.UpsertEntryCommand(
             new ChatEntry(id) {
@@ -380,7 +328,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     {
         var chatEntry = await GetChatEntry(session, chatId, entryId, kind, cancellationToken).ConfigureAwait(false);
 
-        var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("You can delete only your own messages.");
 
@@ -388,20 +336,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         return chatEntry;
-    }
-
-    private async Task JoinChat(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var author = await AuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author.HasLeft) {
-            var command = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, false);
-            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-        }
-        var hasInvite = await HasInvite(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (hasInvite)
-            // Remove the invite
-            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
     }
 
     // Assertions

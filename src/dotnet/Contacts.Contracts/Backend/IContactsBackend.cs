@@ -6,9 +6,6 @@ public interface IContactsBackend : IComputeService
     public Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     public Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
 
-    // Not a [ComputeMethod]!
-    public Task<Contact> GetOrCreateUserContact(UserId ownerId, UserId userId, CancellationToken cancellationToken);
-
     [CommandHandler]
     public Task<Contact> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]

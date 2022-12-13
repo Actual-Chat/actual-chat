@@ -11,24 +11,20 @@ public interface IAuthorsBackend : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
 
-    // Non-compute methods
-
-    Task<AuthorFull> GetOrCreate(Session session, ChatId chatId, CancellationToken cancellationToken);
-    Task<AuthorFull> GetOrCreate(ChatId chatId, UserId userId, CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]
-    Task<AuthorFull> Create(CreateCommand command, CancellationToken cancellationToken);
+    Task<AuthorFull> Upsert(UpsertCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<AuthorFull> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<AuthorFull> SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record CreateCommand(
+    public sealed record UpsertCommand(
         [property: DataMember] ChatId ChatId,
-        [property: DataMember] UserId UserId
+        [property: DataMember] UserId UserId,
+        [property: DataMember] bool? HasLeft
         ) : ICommand<AuthorFull>, IBackendCommand;
 
     [DataContract]

@@ -217,7 +217,7 @@
             chat = chat.Require();
 
             var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account!.Id).ToArray();
-            var createAuthorsCommand = new IAuthors.CreateAuthorsCommand(Session, chat.Id, userIds);
+            var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, DisposeToken);
             if (error != null)
                 return;

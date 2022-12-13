@@ -1,5 +1,5 @@
 using ActualChat.Chat.Db;
-using ActualChat.Contacts;
+using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
@@ -18,6 +18,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IUserPresences UserPresences { get; }
+    private IServerKvas ServerKvas { get; }
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
 
     public Authors(IServiceProvider services) : base(services)
@@ -25,6 +26,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         UserPresences = services.GetRequiredService<IUserPresences>();
+        ServerKvas = services.ServerKvas();
     }
 
     // [ComputeMethod]
@@ -130,16 +132,65 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task CreateAuthors(IAuthors.CreateAuthorsCommand command, CancellationToken cancellationToken)
+    public async Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId) = command;
+        var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author is { HasLeft: false })
+            return author;
+
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require(ChatPermissions.Join);
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var ensureExistsCommand = new IAuthorsBackend.UpsertCommand(chatId, account.Id, true);
+        author = await Commander.Call(ensureExistsCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
+        if (invite.HasValue) {
+            // Remove the invite
+            var removeInviteCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null);
+            await Commander.Call(removeInviteCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        return author;
+    }
+
+    // [CommandHandler]
+    public virtual async Task Leave(IAuthors.LeaveCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var chatRules = await Chats.GetRules(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Invite);
+        var (session, chatId) = command;
+        var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author == null || author.HasLeft)
+            return;
 
-        foreach (var userId in command.UserIds)
-            await Backend.GetOrCreate(command.ChatId, userId, cancellationToken).ConfigureAwait(false);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return;
+        chat.Rules.Require(ChatPermissions.Leave);
+
+        var changeHasLeftCommand = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, true);
+        await Commander.Call(changeHasLeftCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task Invite(IAuthors.InviteCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, userIds) = command;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require(ChatPermissions.Invite);
+
+        foreach (var userId in userIds)
+            await Backend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

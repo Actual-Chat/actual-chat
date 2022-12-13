@@ -30,7 +30,7 @@ public sealed record ChatEntry(
     [DataMember] public Moment? EndsAt { get; init; }
     [DataMember] public Moment? ContentEndsAt { get; init; }
     [DataMember] public string Content { get; init; } = "";
-    [DataMember] public SystemEntryContent? ServiceEntry { get; init; }
+    [DataMember] public SystemEntryContent? SystemEntry { get; init; }
     [DataMember] public bool HasReactions { get; init; }
     [DataMember] public Symbol StreamId { get; init; } = "";
     [DataMember] public long? AudioEntryId { get; init; }
@@ -47,7 +47,7 @@ public sealed record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatEntryKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsServiceEntry => ServiceEntry != null;
+    public bool IsSystemEntry => SystemEntry != null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;

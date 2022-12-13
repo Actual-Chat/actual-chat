@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <div class="service-message">
-    @if (Message.Entry.ServiceEntry!.MembersChanged != null) {
+    @if (Message.Entry.SystemEntry!.MembersChanged != null) {
         <ChatMembershipChangeMessage Message="@Message"/>
     }
 </div>

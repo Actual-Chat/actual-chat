@@ -37,7 +37,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => _expiresOn = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public string? DetailsJson { get; set; }
+    public string DetailsJson { get; set; }
 
     public Invite ToModel()
         => new(Id, Version) {
@@ -61,8 +61,8 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CreatedAt = model.CreatedAt;
         CreatedBy = model.CreatedBy;
 
-        var details = model.Details;
-        SearchKey = details?.GetSearchKey() ?? "";
-        DetailsJson = details == null ? null : DetailsSerializer.Write(details);
+        var details = model.Details.Require();
+        SearchKey = details.GetSearchKey();
+        DetailsJson = DetailsSerializer.Write(details);
     }
 }

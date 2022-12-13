@@ -18,7 +18,7 @@ public class ChatActivityTest : AppHostTestBase
         var services = tester.AppServices;
         var clientServices = tester.ClientServices;
         var commander = services.GetRequiredService<ICommander>();
-        var authorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
         var account = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
         var sessionProvider = clientServices.GetRequiredService<ISessionProvider>();
@@ -39,7 +39,7 @@ public class ChatActivityTest : AppHostTestBase
             cActiveChatEntries.Value.Count.Should().Be(0);
 
             // 2s pause, create entry, 2s pause, complete it
-            _ = Task.Run(() => AddChatEntries(commander, authorsBackend, session, ct), ct);
+            _ = Task.Run(() => AddChatEntries(session, authors, ct), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
@@ -60,14 +60,13 @@ public class ChatActivityTest : AppHostTestBase
     }
 
     private async Task AddChatEntries(
-        ICommander commander,
-        IAuthorsBackend authorsBackend,
         Session session,
+        IAuthors authors,
         CancellationToken cancellationToken)
     {
         var testClock = new TestClock();
         await testClock.Delay(2000, cancellationToken);
-        var author = await authorsBackend.GetOrCreate(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
+        var author = await authors.EnsureJoined(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var id = new ChatEntryId(TestChatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
         var entry = new ChatEntry(id) {
@@ -77,6 +76,7 @@ public class ChatActivityTest : AppHostTestBase
             BeginsAt = clock.Now + TimeSpan.FromMilliseconds(20),
             ClientSideBeginsAt = clock.Now,
         };
+        var commander = authors.GetCommander();
         var createCommand = new IChatsBackend.UpsertEntryCommand(entry);
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 

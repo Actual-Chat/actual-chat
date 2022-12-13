@@ -44,11 +44,6 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> HasInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<bool> CanJoin(Session session, ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
@@ -64,10 +59,6 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task<Chat> Change(ChangeCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<Unit> Join(JoinCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task Leave(LeaveCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<ChatEntry> UpsertTextEntry(UpsertTextEntryCommand command, CancellationToken cancellationToken);
@@ -81,18 +72,6 @@ public interface IChats : IComputeService
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<ChatDiff> Change
         ) : ISessionCommand<Chat>;
-
-    [DataContract]
-    public sealed record JoinCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId
-        ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public sealed record LeaveCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId
-    ) : ISessionCommand<Unit>;
 
     [DataContract]
     public sealed record UpsertTextEntryCommand(

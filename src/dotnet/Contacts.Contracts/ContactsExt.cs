@@ -2,6 +2,26 @@ namespace ActualChat.Contacts;
 
 public static class ContactsExt
 {
+    public static async ValueTask<Contact> EnsureExists(
+        this IContacts contacts,
+        Session session,
+        ContactId contactId,
+        CancellationToken cancellationToken)
+    {
+        if (contactId.IsNone)
+            throw new ArgumentOutOfRangeException(contactId);
+
+        var contact = await contacts.Get(session, contactId, cancellationToken).ConfigureAwait(false);
+        if (contact.IsStored())
+            return contact;
+
+        var command = new IContacts.ChangeCommand(session, contactId, null, new Change<Contact>() {
+            Create = new Contact(contactId),
+        });
+        contact = await contacts.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
+        return contact;
+    }
+
     // ListXxx
 
     public static ValueTask<List<Contact>> ListChatContacts(

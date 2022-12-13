@@ -8,6 +8,7 @@ namespace ActualChat.Invite.Db;
 public class InviteDbContext : DbContextBase
 {
     public DbSet<DbInvite> Invites { get; protected set; } = null!;
+    public DbSet<DbActivationKey> ActivationKeys { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

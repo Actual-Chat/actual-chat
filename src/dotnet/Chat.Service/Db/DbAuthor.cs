@@ -39,6 +39,20 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
         return result;
     }
 
+    public void UpdateFrom(AuthorFull model)
+    {
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
+
+        Id = id;
+        Version = model.Version;
+        IsAnonymous = model.IsAnonymous;
+        UserId = model.UserId.Value.NullIfEmpty();
+        AvatarId = model.AvatarId.NullIfEmpty();
+        HasLeft = model.HasLeft;
+    }
+
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAuthor>
     {
         public void Configure(EntityTypeBuilder<DbAuthor> builder)

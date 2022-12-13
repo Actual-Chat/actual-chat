@@ -11,24 +11,24 @@ namespace ActualChat.Invite;
 
 internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 {
+    private IChatsBackend? _chatsBackend;
+
     private IAccounts Accounts { get; }
-    private IChatsBackend ChatsBackend { get; }
+    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
+    private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        DbInviteResolver = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
+        DbActivationKeyResolver = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
     }
 
     // [ComputeMethod]
     public virtual async Task<Invite?> Get(string id, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbInvite = await dbContext.Invites
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            .ConfigureAwait(false);
+        var dbInvite = await DbInviteResolver.Get(id, cancellationToken).ConfigureAwait(false);
         return dbInvite?.ToModel();
     }
 
@@ -46,6 +46,13 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbInvites.Select(x => x.ToModel()).ToImmutableArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<bool> IsValid(string activationKey, CancellationToken cancellationToken)
+    {
+        var dbActivationKey = await DbActivationKeyResolver.Get(activationKey, cancellationToken).ConfigureAwait(false);
+        return dbActivationKey != null;
     }
 
     // [CommandHandler]
@@ -113,8 +120,11 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
-        var userInviteDetails = invite.Details.User;
+        var details = invite.Details;
+        var userInviteDetails = details.User;
         if (userInviteDetails != null) {
+            if (account.IsGuest)
+                throw StandardError.Unauthorized("Please sign in and open this link again to use this invite.");
             if (account.Status == AccountStatus.Suspended)
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
@@ -123,10 +133,16 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 
-        var chatInviteDetails = invite.Details?.Chat;
+        var chatInviteDetails = details.Chat;
         if (chatInviteDetails != null) {
-            _ = await ChatsBackend.Get(chatInviteDetails.ChatId, cancellationToken).Require().ConfigureAwait(false);
-            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatInviteDetails.ChatId), chatInviteDetails.ChatId)
+            var chatId = chatInviteDetails.ChatId;
+            _ = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+
+            var dbActivationKey = new DbActivationKey(invite.Id);
+            dbContext.Add(dbActivationKey);
+            context.Operation().Items.Set(dbActivationKey.Id);
+
+            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
         }
 

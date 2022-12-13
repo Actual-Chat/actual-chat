@@ -35,7 +35,7 @@ public sealed record Invite(
         };
 }
 
-public sealed record InviteDetails
+public sealed record InviteDetails : IRequirementTarget
 {
     public ChatInviteDetails? Chat { get; init; }
     public UserInviteDetails? User { get; init; }

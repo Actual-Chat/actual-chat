@@ -12,7 +12,7 @@ public record Avatar(
     public static IdAndVersionEqualityComparer<Avatar, Symbol> EqualityComparer { get; } = new();
 
     public static Avatar None { get; } = new(Symbol.Empty, 0);
-    public static Avatar Loading { get; } = new(Symbol.Empty, 1); // Should differ by ref. from None
+    public static Avatar Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
 
     public static Requirement<Avatar> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),

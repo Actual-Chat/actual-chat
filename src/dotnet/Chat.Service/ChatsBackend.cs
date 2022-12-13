@@ -283,21 +283,14 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 // Creating authors
                 await peerChatId.UserIds
                     .ToArray()
-                    .Select(userId => AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken))
+                    .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
                     .Collect(0)
                     .ConfigureAwait(false);
-
-                // Creating contacts
-                var (userId1, userId2) = peerChatId.UserIds;
-                var contact1Task = ContactsBackend.GetOrCreateUserContact(userId1, userId2, cancellationToken);
-                var contact2Task = ContactsBackend.GetOrCreateUserContact(userId2, userId1, cancellationToken);
-                await Task.WhenAll(contact1Task, contact2Task).ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
                 ownerId = ownerId.Require("Command.OwnerId");
-                var author = await AuthorsBackend
-                    .GetOrCreate(chatId, ownerId, cancellationToken)
+                var author = await AuthorsBackend.EnsureJoined(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
                 var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
@@ -400,8 +393,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return null!;
         }
 
-        if (chatId.Kind == ChatKind.Peer)
-            _ = await GetOrCreatePeerChat(chatId, cancellationToken).ConfigureAwait(false);
+        if (chatId.IsPeerChatId(out var peerChatId))
+            _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
         // Injecting mention names into the markup
         if (entry is { Kind: ChatEntryKind.Text, Content.Length: > 0 }) {
@@ -485,17 +478,18 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (Computed.IsInvalidating())
             return;
 
-        var (author, _) = @event;
+        var (author, changeKind) = @event;
         if (author.ChatId == Constants.Chat.AnnouncementsChatId)
             return;
 
-        var id = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(id) {
+        var hasLeft = changeKind == ChangeKind.Remove || author.HasLeft;
+        var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
-            ServiceEntry = new () {
+            SystemEntry = new () {
                 MembersChanged = new () {
                     AuthorId = author.Id,
-                    HasLeft = author.HasLeft,
+                    HasLeft = hasLeft,
                 },
             },
         });
@@ -608,7 +602,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private async Task JoinAnnouncementsChat(UserId userId, CancellationToken cancellationToken)
     {
         var chatId = Constants.Chat.AnnouncementsChatId;
-        var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         if (!HostInfo.IsDevelopmentInstance)
             return;
@@ -627,7 +621,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
-        var author = await AuthorsBackend.GetOrCreate(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
     }
@@ -685,16 +679,16 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return new(chatId, author, account, ChatPermissions.Write.AddImplied());
     }
 
-    private async Task<Chat> GetOrCreatePeerChat(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<Chat> EnsureExists(PeerChatId peerChatId, CancellationToken cancellationToken)
     {
-        if (chatId.Kind != ChatKind.Peer)
-            throw new ArgumentOutOfRangeException(nameof(chatId), "Peer chat Id is expected here.");
+        if (peerChatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(peerChatId));
 
-        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(peerChatId, cancellationToken).ConfigureAwait(false);
         if (chat.IsStored())
             return chat;
 
-        var command = new IChatsBackend.ChangeCommand(chatId, null, new() { Create = new ChatDiff() });
+        var command = new IChatsBackend.ChangeCommand(peerChatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }
