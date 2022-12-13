@@ -3,6 +3,8 @@
 @inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
     var account = State.LatestNonErrorValue;
+    if (account == AccountFull.Loading)
+        return;
 }
 
 <AccountBadge
@@ -16,7 +18,7 @@
     [Inject] IAccounts Accounts { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() { UpdateDelayer = FixedDelayer.Instant, InitialValue = AccountFull.Loading };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
