@@ -1,0 +1,59 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+
+<div>
+    <p>Your phone number and email</p>
+    <p>Please confirm your country code and enter your phone number</p>
+    <EditForm
+        Model="@_stepModel"
+        OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+        <InputSelect @bind-Value="_stepModel.Country">
+            @foreach (var phoneCode in PhoneCodes.List)
+            {
+                <option value="@phoneCode.Country">@phoneCode.Country</option>
+            }
+        </InputSelect>
+        <InputSelect @bind-Value="_stepModel.Code">
+            @foreach (var phoneCode in PhoneCodes.List)
+            {
+                <option value="@phoneCode.Code">+@phoneCode</option>
+            }
+        </InputSelect>
+        <InputNumber @bind-Value="_stepModel.Number"/>
+        <InputCheckbox @bind-Value="_stepModel.SyncContacts"/>
+        <InputText @bind-Value="_stepModel.Email"/>
+        <button type="submit">Submit</button>
+    </EditForm>
+</div>
+
+@code {
+    private readonly PhoneStepModel _stepModel = new();
+
+    public class PhoneStepModel {
+        private string? _country;
+
+        [Required]
+        public string? Country {
+            get => _country;
+            set {
+                _country = value;
+                Code = PhoneCodes.List.First(x => x.Country == value).Code;
+            }
+        }
+
+        [Required]
+        public string? Code { get; set; }
+
+        [Required]
+        public int? Number { get; set; }
+
+        public bool SyncContacts { get; set; }
+
+        public string? Email { get; set; }
+    }
+
+    private void HandleValidSubmit() {
+    }
+}
