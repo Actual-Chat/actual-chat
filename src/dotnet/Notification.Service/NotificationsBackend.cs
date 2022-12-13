@@ -269,6 +269,11 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
     {
         var devices = await ListDevices(userId, cancellationToken1).ConfigureAwait(false);
+        if (devices.Length == 0) {
+            Log.LogInformation("No recipient devices found found for notification #{NotificationId}", notification.Id);
+            return;
+        }
+
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, cancellationToken1).ConfigureAwait(false);
     }
@@ -289,6 +294,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         foreach (var otherUserId in otherUserIds) {
             var notification = new Notification(default) {
+                UserId = otherUserId,
                 Kind = kind,
                 Title = title,
                 Content = content,
