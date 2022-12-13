@@ -187,7 +187,7 @@
                 readEntryId = chatEntry.LocalId;
 
             } else {
-                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id);
+                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id.LocalId);
             }
 
             if (ReadState != null && ReadState.Value < readEntryId)
