@@ -15,8 +15,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     private IChatsBackend ChatsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
-    private FirebaseMessagingClient FirebaseMessagingClient { get; }
+
+    private IMarkupParser MarkupParser { get; }
     private UrlMapper UrlMapper { get; }
+    private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
     public NotificationsBackend(IServiceProvider services) : base(services)
     {
@@ -24,8 +26,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
         DbNotificationResolver = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
-        FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
+
+        MarkupParser = services.GetRequiredService<IMarkupParser>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
     }
 
     // [ComputeMethod]
@@ -317,18 +321,18 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
              _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null),
          };
 
-    private static string GetTitle(Chat.Chat chat, AuthorFull author)
-         => chat.Kind switch {
-             ChatKind.Group => $"{author.Avatar.Name} @ {chat.Title}",
-             ChatKind.Peer => $"{author.Avatar.Name}",
-             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
-         };
+    private string GetTitle(Chat.Chat chat, AuthorFull author)
+        => chat.Kind switch {
+            ChatKind.Group => $"{author.Avatar.Name} @ {chat.Title}",
+            ChatKind.Peer => $"{author.Avatar.Name}",
+            _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
+        };
 
-     private static string GetText(ChatEntry entry, int maxLength = 100)
-     {
-         var content = entry.GetContentOrDescription();
-         var markup = MarkupParser.ParseRaw(content);
-         markup = new MarkupTrimmer(maxLength).Rewrite(markup);
-         return MarkupFormatter.ReadableUnstyled.Format(markup);
-     }
+    private string GetText(ChatEntry entry, int maxLength = 100)
+    {
+        var content = entry.GetContentOrDescription();
+        var markup = MarkupParser.Parse(content);
+        markup = new MarkupTrimmer(maxLength).Rewrite(markup);
+        return MarkupFormatter.ReadableUnstyled.Format(markup);
+    }
 }
