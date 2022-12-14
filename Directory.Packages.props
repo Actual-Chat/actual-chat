@@ -52,11 +52,18 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="7.0.49" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
+  </ItemGroup>
+  <!--
+    MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
+    It gives NU1009 error during the build step.
+    I tried to apply DisableImplicitLibraryPacksFolder property but it did not help.
+    Solution with excluding some packages by condition solves the issue. Keep it for now.
+  -->
+  <ItemGroup Label="Nupkg Versions 2" Condition ="!$(MSBuildProjectName.Contains('.Maui'))">
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
@@ -74,6 +81,8 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsLoggingVersion)"/>
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsLoggingVersion)"/>
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)"/>
+  </ItemGroup>
+  <ItemGroup Label="Nupkg Versions 3">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
