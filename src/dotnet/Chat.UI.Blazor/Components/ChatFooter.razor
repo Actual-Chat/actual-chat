@@ -121,7 +121,7 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Instant
+            UpdateDelayer = FixedDelayer.Instant,
         };
     }
 
@@ -146,7 +146,6 @@
 
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
-        public bool HasFooter => CanPost || CanJoin;
         public bool IsGuest { get; init; }
     }
 }

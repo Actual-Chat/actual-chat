@@ -3,6 +3,7 @@
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var chat = m.Chat;
+    var info = m.Info;
     var mediaState = m.MediaState;
     var canWrite = chat.Rules.CanWrite();
     var isMenuVisible = m.IsListening || m.IsRecording;
@@ -19,9 +20,21 @@
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <ChatIcon Chat="m.Chat"/>
-            <span class="text-headline-1 text-02 text-ellipsis whitespace-nowrap overflow-hidden">
-                <SearchUIHighlighter Text="@m.Chat.Title"/>
-            </span>
+            <div class="flex-none flex-y justify-start items-start">
+                <div class="text-headline-1 text-02 text-ellipsis whitespace-nowrap overflow-hidden">
+                    <SearchUIHighlighter Text="@m.Chat.Title"/>
+                </div>
+                @if (info.LastTextEntry != null) {
+                    <div class="text-xs text-03 text-ellipsis whitespace-nowrap overflow-hidden">
+                        @if (m.Chat.Kind != ChatKind.Peer) {
+                            <span>
+                                <AuthorName Class="text-xs text-02" AuthorSid="@info.LastTextEntry.AuthorId"/>:
+                            </span>
+                        }
+                        @info.LastTextEntryContent
+                    </div>
+                }
+            </div>
         </div>
     </ChildContent>
     <Ending>

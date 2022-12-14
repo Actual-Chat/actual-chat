@@ -32,15 +32,8 @@
     @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg select-none md:select-auto;
 }
 .navbar-item .navbar-item-content {
-    @apply text-02 overflow-hidden my-0.5;
-}
-.navbar-item .navbar-item-status {
-    @apply rounded-full block w-2 h-2 mr-2;
-}
-.navbar-item.status-unknown .navbar-item-status,
-.navbar-item.status-online .navbar-item-status,
-.navbar-item.status-offline .navbar-item-status {
-    @apply hidden;
+    @apply my-0.5 overflow-hidden;
+    @apply text-02;
 }
 
 .navbar-item .navbar-item-ending {

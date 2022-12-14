@@ -17,7 +17,6 @@ public sealed record ChatState(
     // Shortcuts
     public ChatId Id => Info.Id;
     public Chat Chat => Info.Chat;
-    public ChatNews News => Info.News;
     public Contact Contact => Info.Contact;
     public bool IsListening => MediaState.IsListening;
     public bool IsPlayingHistorical => MediaState.IsPlayingHistorical;

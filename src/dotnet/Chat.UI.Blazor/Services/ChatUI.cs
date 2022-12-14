@@ -26,6 +26,7 @@ public partial class ChatUI : WorkerBase
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
+    private IMarkupParser MarkupParser { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private IUserPresences UserPresences { get; }
@@ -60,8 +61,9 @@ public partial class ChatUI : WorkerBase
         Log = services.LogFor(GetType());
         Services = services;
         Clocks = services.Clocks();
-
         StateFactory = services.StateFactory();
+        MarkupParser = services.GetRequiredService<IMarkupParser>();
+
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
         UserPresences = services.GetRequiredService<IUserPresences>();
@@ -125,13 +127,40 @@ public partial class ChatUI : WorkerBase
         var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
         var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
-        var userChatSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
+        var userSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
+
+        var news = await chatNewsTask.ConfigureAwait(false);
+        var userSettings = await userSettingsTask.ConfigureAwait(false);
+        var lastMention = await lastMentionTask.ConfigureAwait(false);
+        var readEntryId = await readEntryIdTask.ConfigureAwait(false);
+
+        var unreadCount = 0;
+        if (readEntryId is { } vReadEntryId) { // Otherwise the chat wasn't ever opened
+            var lastId = news.TextEntryIdRange.End - 1;
+            unreadCount = (int)(lastId - vReadEntryId).Clamp(0, ChatInfo.MaxUnreadCount);
+        }
+
+        var hasUnreadMentions = false;
+        if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
+            var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
+            hasUnreadMentions = lastMentionEntryId > readEntryId;
+        }
+
+        var lastTextEntryContent = news.LastTextEntry?.GetContentOrDescription() ?? "";
+        if (lastTextEntryContent.Length != 0) {
+            var markup = MarkupParser.Parse(lastTextEntryContent);
+            markup = new MarkupTrimmer(ChatInfo.MaxLastTextEntryContentLength).Rewrite(markup);
+            lastTextEntryContent = MarkupFormatter.ReadableUnstyled.Format(markup);
+        }
 
         var result = new ChatInfo(contact) {
-            News = await chatNewsTask.ConfigureAwait(false),
-            LastMention = await lastMentionTask.ConfigureAwait(false),
-            ReadEntryId = await readEntryIdTask.ConfigureAwait(false),
-            UserSettings = await userChatSettingsTask.ConfigureAwait(false),
+            News = news,
+            UserSettings = userSettings,
+            LastMention = lastMention,
+            ReadEntryId = readEntryId,
+            UnreadCount = new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount),
+            HasUnreadMentions = hasUnreadMentions,
+            LastTextEntryContent = lastTextEntryContent,
         };
         return result;
     }

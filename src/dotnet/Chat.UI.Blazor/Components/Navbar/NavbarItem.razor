@@ -2,12 +2,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var activeClass = IsSelected ? "active" : "inactive";
-    var statusClass = IsOnline switch { true  => "status-online", false  => "status-offline", _ => "status-unknown" };
 }
 
-<div class="@Class @activeClass @statusClass navbar-item group"
+<div class="@Class @activeClass navbar-item group"
      @attributes="InputAttributes">
-    <div class="navbar-item-status"></div>
     <div class="navbar-item-content">
         @if (Url.IsNullOrEmpty()) {
             @ChildContent
@@ -22,7 +20,6 @@
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool? IsOnline { get; set; }
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
