@@ -18,21 +18,16 @@
             </InputSelect>
         </FormSection>
         <div class="flex-x gap-x-1">
-            <FormSection Label="Code" IsLabelInsideInput="true" IsRequired="true">
-                <InputSelect @bind-Value="_stepModel.Code">
-                    @foreach (var phoneCode in PhoneCodes.List.OrderBy(x => x.Code)) {
-                        <option value="@phoneCode.Code">+@phoneCode.Code</option>
-                    }
-                </InputSelect>
+            <FormSection Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
+                <InputText @bind-Value="_stepModel.Code"/>
             </FormSection>
-            <FormSection Label="Phone number" IsLabelInsideInput="true" IsRequired="true">
+            <FormSection Label="Phone number" Class="grow" IsLabelInsideInput="true" IsRequired="true">
                 <InputText @bind-Value="_stepModel.Number"/>
             </FormSection>
         </div>
-        <div class="flex-x mt-2">
-            <InputCheckbox @bind-Value="_stepModel.SyncContacts" id="1"/>
-            <label for="1" class="p-1.5">Sync Contacts</label>
-        </div>
+        <FormSection>
+            <ToggleEdit @bind-Value="_stepModel.SyncContacts" Label="Sync Contacts"/>
+        </FormSection>
         <FormSection Label="Email (optional)" IsLabelInsideInput="true">
             <InputText @bind-Value="_stepModel.Email"/>
         </FormSection>
