@@ -89,6 +89,9 @@
                 </li>
             }
         }
+        @if (items.Count == 0) {
+            @Empty
+        }
     </ul>
 
     <div @key="VirtualListSpecialKeys.Spacer"

@@ -1,0 +1,3 @@
+.greetings {
+    @apply flex-y items-center w-full text-lg;
+}
