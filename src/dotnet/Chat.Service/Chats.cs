@@ -48,8 +48,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
             chat ??= new Chat(chatId);
             chat = chat with {
-                Title = account.Avatar.Name,
-                Picture = account.Avatar.Picture,
+                Title = contact.Account.Avatar.Name,
+                Picture = contact.Account.Avatar.Picture,
             };
         }
         else if (chat == null)
