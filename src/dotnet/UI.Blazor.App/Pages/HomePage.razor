@@ -57,7 +57,7 @@
             else {
                 var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
                 var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-                link = Links.ChatPage(selectedChat != null ? selectedChatId : Constants.Chat.DefaultChatId);
+                link = Links.ChatPage(selectedChat != null ? selectedChatId : Constants.Chat.AnnouncementsChatId);
             }
         }
         return new(account, link);
