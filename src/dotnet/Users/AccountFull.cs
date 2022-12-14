@@ -12,16 +12,18 @@ public sealed record AccountFull(
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
         (AccountFull? a) => a is { Id.IsNone: false });
+    public static new Requirement<AccountFull> MustNotBeGuest { get; } = Requirement.New(
+        new(() => StandardError.Account.Guest()),
+        (AccountFull? a) => a?.IsGuest == false);
     public static Requirement<AccountFull> MustBeAdmin { get; } = MustExist & Requirement.New(
         new(() => StandardError.Account.NonAdmin()),
         (AccountFull? a) => a?.IsAdmin ?? false);
-    public static Requirement<AccountFull> MustNotBeInactive { get; } = MustExist & Requirement.New(
-        new(() => StandardError.Account.Inactive()),
-        (AccountFull? a) => a != null && (a.Status != AccountStatus.Inactive || a.IsAdmin));
     public static Requirement<AccountFull> MustNotBeSuspended { get; } = MustExist & Requirement.New(
         new(() => StandardError.Account.Suspended()),
         (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin));
-    public static Requirement<AccountFull> MustBeActive { get; } = MustNotBeSuspended & MustNotBeInactive;
+    public static Requirement<AccountFull> MustBeActive { get; } = MustNotBeGuest & Requirement.New(
+        new(() => StandardError.Account.Inactive()),
+        (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
     [DataMember] public bool IsAdmin { get; init; }
 

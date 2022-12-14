@@ -170,7 +170,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-        if (author.HasLeft == !contact.IsStored())
+        if (contact.IsStored() == !author.HasLeft)
             return; // No need to make any changes
 
         var change = author.HasLeft

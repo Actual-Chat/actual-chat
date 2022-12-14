@@ -142,8 +142,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             dbContext.Add(dbActivationKey);
             context.Operation().Items.Set(dbActivationKey.Id);
 
-            new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
+            var setCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
+            await Commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         dbInvite.UpdateFrom(invite);

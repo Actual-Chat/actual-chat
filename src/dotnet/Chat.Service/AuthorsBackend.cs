@@ -128,11 +128,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>();
-            var invIsChanged = context.Operation().Items.GetOrDefault(false);
-            if (invIsChanged || invAuthor != null)
-                _ = GetByUserId(chatId, userId, default);
             if (invAuthor != null) {
-                _ = ListUserIds(chatId, default);
+                var invUserId = invAuthor.UserId;
+                if (!invUserId.IsNone) {
+                    _ = GetByUserId(chatId, invUserId, default);
+                    _ = ListUserIds(chatId, default);
+                }
+                _ = Get(chatId, invAuthor.Id, default);
                 _ = ListAuthorIds(chatId, default);
             }
             return default!;
@@ -150,102 +152,109 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .ConfigureAwait(false);
         if (dbAuthor != null) {
             // Already exist, so we don't recreate one
-            var originalAuthor = dbAuthor.ToModel();
-            var updatedAuthor = originalAuthor;
+            var author = dbAuthor.ToModel();
+            var changedAuthor = author;
+            if (hasLeftOpt is { } hasLeft && changedAuthor.HasLeft != hasLeft)
+                changedAuthor = changedAuthor with { HasLeft = hasLeft };
 
-            if (hasLeftOpt is { } hasLeft && updatedAuthor.HasLeft != hasLeft)
-                updatedAuthor = updatedAuthor with { HasLeft = hasLeft };
+            if (ReferenceEquals(changedAuthor, author))
+                return author;
 
-            if (ReferenceEquals(updatedAuthor, originalAuthor))
-                return originalAuthor;
-
-            updatedAuthor = updatedAuthor with {
-                Version = VersionGenerator.NextVersion(updatedAuthor.Version)
+            changedAuthor = changedAuthor with {
+                Version = VersionGenerator.NextVersion(changedAuthor.Version),
             };
-            dbAuthor.UpdateFrom(updatedAuthor);
+            dbAuthor.UpdateFrom(changedAuthor);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.Set(true);
+            author = dbAuthor.ToModel();
+            context.Operation().Items.Set(author);
 
-            originalAuthor = dbAuthor.ToModel();
-            new AuthorChangedEvent(originalAuthor, ChangeKind.Update)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(originalAuthor.UserId), Queues.Chats.ShardBy(chatId));
-            return originalAuthor;
+            // Raise AuthorChangedEvent
+            new AuthorChangedEvent(author, ChangeKind.Update)
+                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
+            return author;
         }
+        else {
+            if (account.IsGuest) {
+                // We're creating an author for unregistered user here,
+                // so we have to create a new random avatar
+                var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
+                    Create = new AvatarFull() {
+                        Name = RandomNameGenerator.Default.Generate(),
+                        Bio = "Unregistered user",
+                        Picture = "", // NOTE(AY): Add a random one?
+                    },
+                });
+                newAvatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+            }
 
-        if (account.IsGuest) {
-            // We're creating an author for unregistered user here,
-            // so we have to create a new random avatar
-            var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
-                Create = new AvatarFull() {
-                    Name = RandomNameGenerator.Default.Generate(),
-                    Bio = "Unregistered user",
-                    Picture = "", // NOTE(AY): Add a random one?
-                },
-            });
-            newAvatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-
-        var localId = await DbAuthorLocalIdGenerator
-            .Next(dbContext, chatId, cancellationToken)
-            .ConfigureAwait(false);
-        var id = DbAuthor.ComposeId(chatId, localId);
-        dbAuthor = new() {
-            Id = id,
-            Version = VersionGenerator.NextVersion(),
-            ChatId = chatId,
-            LocalId = localId,
-            UserId = account.Id,
-            AvatarId = newAvatar?.Id,
-            IsAnonymous = account.IsGuest,
-            HasLeft = false,
-        };
-        dbContext.Add(dbAuthor);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var author = dbAuthor.ToModel();
-        context.Items.Set(author);
-
-        if (newAvatar != null) {
-            // We're creating an author for unregistered user here,
-            // and its newAvatar.PrincipalId is empty here,
-            // so we need to set it to the right one as a follow-up.
-            newAvatar = newAvatar with {
-                PrincipalId = author.Id,
+            var localId = await DbAuthorLocalIdGenerator
+                .Next(dbContext, chatId, cancellationToken)
+                .ConfigureAwait(false);
+            var id = DbAuthor.ComposeId(chatId, localId);
+            dbAuthor = new() {
+                Id = id,
+                Version = VersionGenerator.NextVersion(),
+                ChatId = chatId,
+                LocalId = localId,
+                UserId = account.Id,
+                AvatarId = newAvatar?.Id,
+                IsAnonymous = account.IsGuest,
+                HasLeft = hasLeftOpt ?? true,
             };
-            new IAvatarsBackend.ChangeCommand(newAvatar.Id, newAvatar.Version, new Change<AvatarFull>() {
-                Update = newAvatar,
-            }).EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
-        }
+            dbContext.Add(dbAuthor);
 
-        var chatTextIdRange = await ChatsBackend
-            .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
-            .ConfigureAwait(false);
-        new AuthorChangedEvent(author, ChangeKind.Create)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
-        new IReadPositionsBackend.SetCommand(command.UserId, command.ChatId, chatTextIdRange.End - 1)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
-        return author;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            var author = dbAuthor.ToModel();
+            context.Operation().Items.Set(author);
+
+            if (newAvatar != null) {
+                // We're creating an author for unregistered user here,
+                // and its newAvatar.PrincipalId is empty here,
+                // so we need to set it to the right one as a follow-up.
+                newAvatar = newAvatar with {
+                    PrincipalId = author.Id,
+                };
+                new IAvatarsBackend.ChangeCommand(newAvatar.Id, newAvatar.Version, new Change<AvatarFull>() {
+                    Update = newAvatar,
+                }).EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
+            }
+
+            // Set chat read position to the very end
+            var chatTextIdRange = await ChatsBackend
+                .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
+                .ConfigureAwait(false);
+            new IReadPositionsBackend.SetCommand(command.UserId, command.ChatId, chatTextIdRange.End - 1)
+                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
+
+            // Raise AuthorChangedEvent
+            new AuthorChangedEvent(author, ChangeKind.Create)
+                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
+            return author;
+        }
     }
 
     // [CommandHandler]
     public virtual async Task<AuthorFull> ChangeHasLeft(IAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, hasLeft) = command;
-        var context = CommandContext.GetCurrent();
+        if (chatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
+        if (authorId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
 
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>();
-            if (invAuthor == null)
-                return default!; // No change was made
-
-            var userId = invAuthor.UserId;
-            if (!userId.IsNone) {
-                _ = GetByUserId(chatId, userId, default);
-                _ = ListUserIds(chatId, default);
+            if (invAuthor != null) {
+                var invUserId = invAuthor.UserId;
+                if (!invUserId.IsNone) {
+                    _ = GetByUserId(chatId, invUserId, default);
+                    _ = ListUserIds(chatId, default);
+                }
+                _ = Get(chatId, invAuthor.Id, default);
+                _ = ListAuthorIds(chatId, default);
             }
-            _ = Get(invAuthor.ChatId, invAuthor.Id, default);
-            _ = ListAuthorIds(chatId, default);
             return default!;
         }
 
@@ -275,17 +284,23 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task<AuthorFull> SetAvatar(IAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, avatarId) = command;
-        var context = CommandContext.GetCurrent();
+        if (chatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
+        if (authorId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
 
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invAuthor = context.Operation().Items.Get<AuthorFull>()!;
-            var userId = invAuthor.UserId;
-            if (!userId.IsNone) {
-                _ = GetByUserId(chatId, userId, default);
-                _ = ListUserIds(chatId, default);
+            var invAuthor = context.Operation().Items.Get<AuthorFull>();
+            if (invAuthor != null) {
+                var invUserId = invAuthor.UserId;
+                if (!invUserId.IsNone) {
+                    _ = GetByUserId(chatId, invUserId, default);
+                    _ = ListUserIds(chatId, default);
+                }
+                _ = Get(chatId, invAuthor.Id, default);
+                _ = ListAuthorIds(chatId, default);
             }
-            _ = Get(invAuthor.ChatId, invAuthor.Id, default);
-            _ = ListAuthorIds(chatId, default);
             return default!;
         }
 
@@ -297,7 +312,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        dbAuthor.AvatarId = avatarId;
+        dbAuthor.AvatarId = avatarId.NullIfEmpty();
         dbAuthor.Version = VersionGenerator.NextVersion(dbAuthor.Version);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -12,7 +12,7 @@ public static class AuthorsBackendExt
         if (author is { HasLeft: false })
             return author;
 
-        var command = new IAuthorsBackend.UpsertCommand(chatId, userId, true);
+        var command = new IAuthorsBackend.UpsertCommand(chatId, userId, false);
         author = await authorsBackend.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
         return author;
     }
@@ -27,7 +27,7 @@ public static class AuthorsBackendExt
         if (author != null)
             return author;
 
-        var command = new IAuthorsBackend.UpsertCommand(chatId, userId, false);
+        var command = new IAuthorsBackend.UpsertCommand(chatId, userId);
         author = await authorsBackend.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
         return author;
     }

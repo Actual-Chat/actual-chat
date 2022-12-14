@@ -290,7 +290,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
                 ownerId = ownerId.Require("Command.OwnerId");
-                var author = await AuthorsBackend.EnsureJoined(chatId, ownerId, cancellationToken)
+                var author = await AuthorsBackend
+                    .EnsureJoined(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
                 var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {

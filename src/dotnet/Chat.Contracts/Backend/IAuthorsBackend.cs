@@ -24,7 +24,7 @@ public interface IAuthorsBackend : IComputeService
     public sealed record UpsertCommand(
         [property: DataMember] ChatId ChatId,
         [property: DataMember] UserId UserId,
-        [property: DataMember] bool? HasLeft
+        [property: DataMember] bool? HasLeft = null
         ) : ICommand<AuthorFull>, IBackendCommand;
 
     [DataContract]

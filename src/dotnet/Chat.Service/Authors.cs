@@ -142,12 +142,12 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author is { HasLeft: false })
             return author;
 
-        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Require(ChatPermissions.Join);
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Join);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var ensureExistsCommand = new IAuthorsBackend.UpsertCommand(chatId, account.Id, true);
-        author = await Commander.Call(ensureExistsCommand, true, cancellationToken).ConfigureAwait(false);
+        var upsertCommand = new IAuthorsBackend.UpsertCommand(chatId, account.Id, false);
+        author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
         if (invite.HasValue) {
