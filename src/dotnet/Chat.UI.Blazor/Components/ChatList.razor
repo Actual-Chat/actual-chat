@@ -7,7 +7,7 @@
 
 <div class="@GetCss(Kind)">
     @foreach (var chat in Chats) {
-        <ChatListItem @key="chat" ChatInfo="@chat" ListKind="@Kind" />
+        <ChatListItem @key="chat" ChatInfo="@chat" ListKind="@Kind"/>
     }
 </div>
 @if (Kind == ChatListKind.Pinned) {
@@ -24,5 +24,5 @@
             ChatListKind.Unpinned => "unpinned-chats custom-scrollbar",
             ChatListKind.Active => "flex-y gap-y-0.5",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-        };
+            };
 }

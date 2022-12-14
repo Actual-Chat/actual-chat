@@ -5,13 +5,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed record ChatState(
     ChatInfo Info,
-    ChatMediaState MediaState = default,
-    bool IsSelected = false,
-    Presence Presence = Presence.Unknown
+    ChatMediaState MediaState = default
     ) : IHasId<ChatId>
 {
     public static ChatState None { get; } = new(ChatInfo.None);
     public static ChatState Loading { get; } = new(ChatInfo.Loading);
+
+    public bool IsSelected { get; init; }
+    public Presence Presence { get; init; } = Presence.Unknown;
 
     // Shortcuts
     public ChatId Id => Info.Id;

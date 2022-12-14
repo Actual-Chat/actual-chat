@@ -165,7 +165,9 @@ public partial class ChatUI : WorkerBase
 
         var isSelected = await IsSelected(chatId).ConfigureAwait(false);
         var mediaState = await GetMediaState(chatId).ConfigureAwait(false);
-        return new(chat, mediaState, isSelected);
+        return new(chat, mediaState) {
+            IsSelected = isSelected,
+        };
     }
 
     [ComputeMethod] // Synced

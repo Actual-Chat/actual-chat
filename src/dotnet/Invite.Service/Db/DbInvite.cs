@@ -37,7 +37,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => _expiresOn = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public string DetailsJson { get; set; }
+    public string DetailsJson { get; set; } = "";
 
     public Invite ToModel()
         => new(Id, Version) {
