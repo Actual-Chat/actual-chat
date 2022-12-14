@@ -28,7 +28,7 @@
                     <div class="text-xs text-03 text-ellipsis whitespace-nowrap overflow-hidden">
                         @if (m.Chat.Kind != ChatKind.Peer) {
                             <span>
-                                <AuthorName Class="text-xs text-02" AuthorSid="@info.LastTextEntry.AuthorId"/>:
+                                <AuthorName Class="text-xs text-02" AuthorSid="@info.LastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                             </span>
                         }
                         @info.LastTextEntryContent

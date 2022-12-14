@@ -4,18 +4,21 @@
     var m = State.LatestNonErrorValue;
 }
 
-<AvatarName Avatar="@m.Author.Avatar" Class="@Class" Click="OnAuthorClick"/>
+@if (ShowDetailsOnClick) {
+    <AvatarName Avatar="@m.Author.Avatar" Class="@Class" Click="OnAuthorClick"/>
+}
+else {
+    <AvatarName Avatar="@m.Author.Avatar" Class="@Class"/>
+}
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool EnableDetailsPopup { get; set; } = true;
+    [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
 
     private void OnAuthorClick() {
-        if (EnableDetailsPopup) {
-            var author = State.LatestNonErrorValue.Author;
-            ChatUI.ShowAuthorModal(author.Id);
-        }
+        var author = State.LatestNonErrorValue.Author;
+        ChatUI.ShowAuthorModal(author.Id);
     }
 }
