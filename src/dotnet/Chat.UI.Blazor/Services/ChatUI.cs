@@ -5,7 +5,6 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using ActualChat.Users.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -28,9 +27,9 @@ public partial class ChatUI : WorkerBase
     private IStateFactory StateFactory { get; }
     private IMarkupParser MarkupParser { get; }
     private Session Session { get; }
-    private IAccounts Accounts { get; }
     private IUserPresences UserPresences { get; }
     private IChats Chats { get; }
+    private IAuthors Authors { get; }
     private IContacts Contacts { get; }
     private IReadPositions ReadPositions { get; }
     private IMentions Mentions { get; }
@@ -39,7 +38,6 @@ public partial class ChatUI : WorkerBase
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AccountSettings AccountSettings { get; }
     private LocalSettings LocalSettings { get; }
-    private AccountUI AccountUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
     private KeepAwakeUI KeepAwakeUI { get; }
@@ -65,15 +63,14 @@ public partial class ChatUI : WorkerBase
         MarkupParser = services.GetRequiredService<IMarkupParser>();
 
         Session = services.GetRequiredService<Session>();
-        Accounts = services.GetRequiredService<IAccounts>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         Chats = services.GetRequiredService<IChats>();
+        Authors = services.GetRequiredService<IAuthors>();
         Contacts = services.GetRequiredService<IContacts>();
         ReadPositions = services.GetRequiredService<IReadPositions>();
         Mentions = services.GetRequiredService<IMentions>();
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
-        AccountUI = services.GetRequiredService<AccountUI>();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
@@ -89,7 +86,7 @@ public partial class ChatUI : WorkerBase
         LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
         HighlightedChatEntryId = StateFactory.NewMutable<long>();
         VisibleIdRange = StateFactory.NewMutable<Range<long>>();
-        IsEndAnchorVisible = StateFactory.NewMutable<bool>(true);
+        IsEndAnchorVisible = StateFactory.NewMutable(true);
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
@@ -133,6 +130,7 @@ public partial class ChatUI : WorkerBase
         var userSettings = await userSettingsTask.ConfigureAwait(false);
         var lastMention = await lastMentionTask.ConfigureAwait(false);
         var readEntryId = await readEntryIdTask.ConfigureAwait(false);
+        var lastTextEntryContent = await GetLastEntryTextContent(news.LastTextEntry, cancellationToken).ConfigureAwait(false);
 
         var unreadCount = 0;
         if (readEntryId is { } vReadEntryId) { // Otherwise the chat wasn't ever opened
@@ -146,7 +144,6 @@ public partial class ChatUI : WorkerBase
             hasUnreadMentions = lastMentionEntryId > readEntryId;
         }
 
-        var lastTextEntryContent = news.LastTextEntry?.GetContentOrDescription() ?? "";
         if (lastTextEntryContent.Length != 0) {
             var markup = MarkupParser.Parse(lastTextEntryContent);
             markup = new MarkupTrimmer(ChatInfo.MaxLastTextEntryContentLength).Rewrite(markup);
@@ -163,6 +160,27 @@ public partial class ChatUI : WorkerBase
             LastTextEntryContent = lastTextEntryContent,
         };
         return result;
+    }
+
+    private async Task<string> GetLastEntryTextContent(ChatEntry? entry, CancellationToken cancellationToken)
+    {
+        if (entry is null)
+            return "";
+
+        if (!entry.IsSystemEntry)
+            return entry.GetContentOrDescription();
+
+        var membersChanged = entry.SystemEntry?.MembersChanged;
+        if (membersChanged != null) {
+            var author = await Authors.Get(Session, entry.ChatId, membersChanged.AuthorId, cancellationToken).ConfigureAwait(false);
+            if (author == null)
+                return "";
+
+            var action = membersChanged.HasLeft ? "left" : "joined";
+            return $"{author.Avatar.Name} {action} the group";
+        }
+
+        return "";
     }
 
     [ComputeMethod]

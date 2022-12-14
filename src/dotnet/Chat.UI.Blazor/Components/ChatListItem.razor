@@ -26,7 +26,7 @@
                 </div>
                 @if (info.LastTextEntry != null) {
                     <div class="text-xs text-03 text-ellipsis whitespace-nowrap overflow-hidden">
-                        @if (m.Chat.Kind != ChatKind.Peer) {
+                        @if (m.Chat.Kind != ChatKind.Peer && !info.LastTextEntry.IsSystemEntry) {
                             <span>
                                 <AuthorName Class="text-xs text-02" AuthorSid="@info.LastTextEntry.AuthorId"/>:
                             </span>
