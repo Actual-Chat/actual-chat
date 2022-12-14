@@ -7,3 +7,6 @@
 .stepper-body {
     @apply flex-y grow px-6 justify-center;
 }
+.stepper-footer {
+    @apply mt-8;
+}
