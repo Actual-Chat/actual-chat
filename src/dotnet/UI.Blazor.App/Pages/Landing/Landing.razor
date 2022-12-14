@@ -207,8 +207,8 @@
     <div class="page page-6 @(isMobile ? "page-scrolling" : "")" id="landing-page-6">
         <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y py-8" : "flex-x")">
             <div class="flex items-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="w-full bg-[#CBCBD1] @(isMobile ? "h-48" : "h-96")">
-
+                <div class="flex overflow-hidden justify-center items-center">
+                    <img src="/landing/synchronous.svg" alt="synchronous">
                 </div>
             </div>
             <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pb-24 pl-6")">
@@ -245,8 +245,8 @@
                     Actual.chat shines in these scenarios
                 </div>
                 <div class="flex @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
-                    <div class="w-full bg-[#CBCBD1] @(isMobile ? "h-48" : "h-full")">
-
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/landing/productive.svg" alt="productive" class="h-full">
                     </div>
                 </div>
             </div>
@@ -308,18 +308,10 @@
 
             </div>
         </div>
-        <div class="items-center justify-evenly bg-[#8AB1FF] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-80 p-16")">
+        <div class="items-center justify-evenly bg-gradient-to-r from-[#C20279] to-[#2D6EFC] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-60 p-16")">
             <div class="flex-y gap-y-2">
-                <div class="font-semibold @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
+                <div class="font-semibold text-04 @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
                     Get Actual.chat
-                </div>
-                <div class="@(isMobile ? "flex-y text-2xl text-center pb-4" : "text-4xl font-medium")">
-                    @if (isMobile) {
-                        <span>Download for:</span>
-                        <span>iOS, Android or use in Web</span>
-                    } else {
-                        <span>Download for iOS, Android or use in Web</span>
-                    }
                 </div>
             </div>
             <div class="flex-x gap-x-12 @(isMobile ? "p-4" : "")">
@@ -474,18 +466,12 @@
                         So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.</span>
                 </div>
             </div>
-            <div class="items-center justify-evenly bg-[#8AB1FF] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-80 p-16")">
+            <div class="items-center justify-evenly bg-gradient-to-r from-[#C20279] to-[#2D6EFC] @(isMobile ? "flex-y p-4" : "flex-x gap-x-12 h-60 p-16")">
                 <div class="flex-y gap-y-2">
-                    <div class="font-semibold @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
-                        Get Actual.chat
-                    </div>
-                    <div class="@(isMobile ? "flex-y text-2xl text-center pb-4" : "text-4xl font-medium")">
-                        @if (isMobile) {
-                            <span>Download for:</span>
-                            <span>iOS, Android or use in Web</span>
-                        } else {
-                            <span>Download for iOS, Android or use in Web</span>
-                        }
+                    <div class="flex-y gap-y-2">
+                        <div class="font-semibold text-04 @(isMobile ? "text-4.5xl text-center py-4" : "text-7xl")">
+                            Get Actual.chat
+                        </div>
                     </div>
                 </div>
                 <div class="flex-x gap-x-12 @(isMobile ? "p-4" : "")">
