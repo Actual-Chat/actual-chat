@@ -163,6 +163,22 @@
     @apply justify-end mx-4;
 }
 
+.link-btn {
+    @apply flex-y gap-y-1 items-center justify-center max-w-24 bg-transparent;
+}
+.link-btn-content {
+    @apply  flex items-center h-12;
+}
+.landing.mobile .link-btn-content {
+    @apply h-8;
+}
+.link-btn-content img {
+    @apply min-h-10 min-w-10 max-w-10 max-h-10;
+}
+.landing.mobile .link-btn-content img {
+    @apply min-h-8 min-w-8 max-w-8 max-h-8;
+}
+
 .landing .footer-info-btn {
     @apply h-12;
 }
