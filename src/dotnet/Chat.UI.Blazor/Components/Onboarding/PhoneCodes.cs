@@ -4,6 +4,8 @@ public sealed record PhoneCode(string Country, string Code);
 
 public static class PhoneCodes
 {
+    public static readonly PhoneCode Default = new PhoneCode("United States of America", "1");
+
     public static readonly List<PhoneCode> List = new () {
         new PhoneCode("Afghanistan", "93"),
         new PhoneCode("Albania", "355"),

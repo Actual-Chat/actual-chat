@@ -2,40 +2,51 @@
 @using System.ComponentModel.DataAnnotations
 
 <div>
-    <p>Your phone number and email</p>
-    <p>Please confirm your country code and enter your phone number</p>
-    <EditForm
+    <p class="text-title-1 text-center">Your phone number and email</p>
+    <p class="text-headline-1 mb-8">Please confirm your country code and enter your phone number</p>
+    <Form
         Model="@_stepModel"
         OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator/>
         <ValidationSummary/>
-        <InputSelect @bind-Value="_stepModel.Country">
-            @foreach (var phoneCode in PhoneCodes.List)
-            {
-                <option value="@phoneCode.Country">@phoneCode.Country</option>
-            }
-        </InputSelect>
-        <InputSelect @bind-Value="_stepModel.Code">
-            @foreach (var phoneCode in PhoneCodes.List)
-            {
-                <option value="@phoneCode.Code">+@phoneCode</option>
-            }
-        </InputSelect>
-        <InputNumber @bind-Value="_stepModel.Number"/>
-        <InputCheckbox @bind-Value="_stepModel.SyncContacts"/>
-        <InputText @bind-Value="_stepModel.Email"/>
-        <button type="submit">Submit</button>
-    </EditForm>
+        <FormSection Label="Country" IsLabelInsideInput="true" IsRequired="true">
+            <InputSelect @bind-Value="_stepModel.Country">
+                @foreach (var phoneCode in PhoneCodes.List)
+                {
+                    <option value="@phoneCode.Country">@phoneCode.Country</option>
+                }
+            </InputSelect>
+        </FormSection>
+        <div class="flex-x gap-x-1">
+            <FormSection Label="Code" IsLabelInsideInput="true" IsRequired="true">
+                <InputSelect @bind-Value="_stepModel.Code">
+                    @foreach (var phoneCode in PhoneCodes.List.OrderBy(x => x.Code)) {
+                        <option value="@phoneCode.Code">+@phoneCode.Code</option>
+                    }
+                </InputSelect>
+            </FormSection>
+            <FormSection Label="Phone number" IsLabelInsideInput="true" IsRequired="true">
+                <InputText @bind-Value="_stepModel.Number"/>
+            </FormSection>
+        </div>
+        <div class="flex-x mt-2">
+            <InputCheckbox @bind-Value="_stepModel.SyncContacts" id="1"/>
+            <label for="1" class="p-1.5">Sync Contacts</label>
+        </div>
+        <FormSection Label="Email (optional)" IsLabelInsideInput="true">
+            <InputText @bind-Value="_stepModel.Email"/>
+        </FormSection>
+    </Form>
 </div>
 
 @code {
     private readonly PhoneStepModel _stepModel = new();
 
     public class PhoneStepModel {
-        private string? _country;
+        private string _country = PhoneCodes.Default.Country;
 
         [Required]
-        public string? Country {
+        public string Country {
             get => _country;
             set {
                 _country = value;
@@ -44,10 +55,10 @@
         }
 
         [Required]
-        public string? Code { get; set; }
+        public string? Code { get; set; } = PhoneCodes.Default.Code;
 
         [Required]
-        public int? Number { get; set; }
+        public string? Number { get; set; }
 
         public bool SyncContacts { get; set; }
 
