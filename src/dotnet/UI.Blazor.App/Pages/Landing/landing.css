@@ -183,7 +183,7 @@
     @apply h-12;
 }
 .landing.mobile .footer-info-btn {
-    @apply h-10 text-xl font-medium text-start;
+    @apply h-10 text-title-1 text-start;
 }
 
 .landing.mobile .landing-menu {
@@ -209,4 +209,7 @@
 }
 .landing-menu .menu-content {
     @apply flex-y gap-y-8 h-full w-7/12 self-center items-start justify-center;
+}
+.landing-menu .menu-content button {
+    @apply text-title-1 h-8;
 }
