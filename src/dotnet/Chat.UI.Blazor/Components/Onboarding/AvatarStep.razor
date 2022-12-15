@@ -2,17 +2,21 @@
 @using System.ComponentModel.DataAnnotations
 
 <div>
-    <p>Set up your avatar and name</p>
-    <EditForm
+    <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
+    <Form
         Model="@_stepModel"
         OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator/>
-        <ValidationSummary/>
-        <InputText id="name" @bind-Value="_stepModel.Name"/>
-        <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
-        <InputText id="userName" @bind-Value="_stepModel.UserName"/>
-        <button type="submit">Submit</button>
-    </EditForm>
+        <FormSection InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
+            <InputText id="name" @bind-Value="_stepModel.Name"/>
+        </FormSection>
+        <FormSection InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">
+            <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
+        </FormSection>
+        <FormSection InputId="userName" Label="@("@username")" IsLabelInsideInput="true" IsRequired="true">
+            <InputText id="userName" @bind-Value="_stepModel.UserName"/>
+        </FormSection>
+    </Form>
 </div>
 
 @code {
