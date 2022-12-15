@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.Chat.UI.Blazor.Services;
+using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui;
 
@@ -96,29 +97,50 @@ public static class MauiProgram
 #if ANDROID
         events.AddAndroid(android => {
             android.OnBackPressed(activity => {
-                // Sometimes I observe a situation that BlazorWebView contains 2 history items and can go back,
-                // but it doesn't handle BackPressed event.
-                // This handler forces BackPressed handling on BlazorWebView and
-                // prevents the situation that app is closed on BackPressed
-                // while BlazorWebView still can go back.
-                if (Application.Current?.MainPage is MainPage mainPage) {
-                    var webView = mainPage.PlatformWebView;
-                    if (webView != null) {
-                        if (webView.CanGoBack()) {
-                            webView.GoBack();
-                            return true;
-                        }
-                        Android.Util.Log.Debug(AndroidConstants.LogTag, $"MauiProgram.OnBackPressed. Can not go back. Current url is '{webView.Url}'");
-                    }
-                }
-                // Move app to background as Home button acts.
-                // It prevents scenario when app is running, but activity is destroyed.
-                activity.MoveTaskToBack(true);
+                _ = HandleBackPressed(activity);
                 return true;
             });
         });
 #endif
     }
+
+#if ANDROID
+    private static async Task HandleBackPressed(Android.App.Activity activity)
+    {
+        var webView = Application.Current?.MainPage is MainPage mainPage ? mainPage.PlatformWebView : null;
+        var goBack = webView != null ? await TryGoBack(webView).ConfigureAwait(false) : false;
+        if (goBack)
+            return;
+        // Move app to background as Home button acts.
+        // It prevents scenario when app is running, but activity is destroyed.
+        activity.MoveTaskToBack(true);
+    }
+
+    private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)
+    {
+        var canGoBack = webView.CanGoBack();
+        if (canGoBack) {
+            webView.GoBack();
+            return true;
+        }
+        // Sometimes Chromium reports that it can't go back while there are 2 items in the history.
+        // It seems that this bug exists for a while, not fixed yet and there is not plans to do it.
+        // https://bugs.chromium.org/p/chromium/issues/detail?id=1098388
+        // https://github.com/flutter/flutter/issues/59185
+        // But we can use web api to navigate back.
+        var list = webView.CopyBackForwardList();
+        var canGoBack2 = list.Size > 1 && list.CurrentIndex > 0;
+        if (canGoBack2) {
+            if (ScopedServicesAccessor.IsInitialized) {
+                var jsRuntime = ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>();
+                await jsRuntime.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+#endif
 
     private static void ConfigureServices(IServiceCollection services)
     {
