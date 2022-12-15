@@ -50,6 +50,10 @@
 /* Header */
 .landing-header {
     @apply absolute h-16 top-0 z-10 flex-x w-full py-2 px-16 items-center bg-transparent overflow-hidden;
+    @apply opacity-100 transition-all duration-300 ease-in-out;
+}
+.landing-header.hide-header {
+    @apply opacity-0 transition-all duration-300 ease-in-out;
 }
 .mobile .landing-header {
     @apply px-2 h-14;
@@ -212,4 +216,11 @@
 }
 .landing-menu .menu-content button {
     @apply text-title-1 h-8;
+}
+.landing-links {
+    @apply flex-x gap-x-16 items-center justify-evenly;
+    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC] h-60 p-16;
+}
+.mobile .landing-links {
+    @apply flex-y p-4;
 }

@@ -19,6 +19,7 @@ export class Landing {
     private header: HTMLElement;
     readonly menu: HTMLElement;
     private menuObserver : MutationObserver;
+    private links: HTMLElement[];
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
         return new Landing(landing, blazorRef);
@@ -38,6 +39,16 @@ export class Landing {
             childList: true,
             subtree: true,
         })
+    }
+
+    private getLinks = () => {
+        let linksNodes = this.landing.querySelectorAll('.landing-links');
+        let links = new Array<HTMLElement>();
+        for (let i = 0; i < linksNodes.length; i++) {
+            let elem = linksNodes[i] as HTMLElement;
+            links.push(elem);
+        }
+        this.links = links;
     }
 
     private menuStateObserver = (mutationsList, observer) => {
@@ -205,6 +216,29 @@ export class Landing {
         } else {
             list.remove('filled');
         }
+        this.hideOrShowHeader();
+    }
+
+    private hideOrShowHeader = () => {
+        this.getLinks();
+        if (this.links.length == 0)
+            return;
+        let headerRect = this.header.getBoundingClientRect();
+        let i = 1;
+        this.links.forEach(item => {
+            let linksRect = item.getBoundingClientRect();
+            if (linksRect.top <= headerRect.top && linksRect.bottom >= headerRect.bottom) {
+                if (!this.header.classList.contains('hide-header')) {
+                    setTimeout(() => {
+                        this.header.classList.add('hide-header');
+                    }, 100);
+                    return;
+                }
+            } else {
+                this.header.classList.remove('hide-header');
+            }
+            i++;
+        });
     }
 
     private preventEvent(e: Event) {
@@ -215,7 +249,7 @@ export class Landing {
     public dispose() {
         window.removeEventListener('keydown', this.smartScrollThrottled);
         this.landing.removeEventListener('wheel', this.smartScrollThrottled);
-        // this.landing.removeEventListener('click', this.onCloseMenu);
+        this.landing.removeEventListener('click', this.onCloseMenu);
     }
 }
 
