@@ -480,7 +480,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var (author, changeKind) = @event;
-        if (author.ChatId == Constants.Chat.AnnouncementsChatId)
+        if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChatId(out _))
             return;
 
         var hasLeft = changeKind == ChangeKind.Remove || author.HasLeft;
@@ -677,7 +677,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (otherUserId.IsNone)
             return AuthorRules.None(chatId);
 
-        return new(chatId, author, account, ChatPermissions.Write.AddImplied());
+        return new(chatId, author, account, ChatPermissions.Write.AddImplied() | ChatPermissions.Join);
     }
 
     private async Task<Chat> EnsureExists(PeerChatId peerChatId, CancellationToken cancellationToken)
