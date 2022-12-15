@@ -53,18 +53,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
             IconUrl = IconUrl,
             CreatedAt = CreatedAt,
             HandledAt = HandledAt,
-            ChatEntryNotification = Kind switch {
-                NotificationKind.Invitation => null,
-                NotificationKind.Message => new ChatEntryNotification(entryId, authorId),
-                NotificationKind.Reply => new ChatEntryNotification(entryId, authorId),
-                NotificationKind.Reaction => new ChatEntryNotification(entryId, authorId),
-                _ => throw new ArgumentOutOfRangeException(),
-            },
-            ChatNotification = Kind switch {
-                NotificationKind.Invitation => new ChatNotification(chatId),
-                NotificationKind.Message => null,
-                NotificationKind.Reply => null,
-                NotificationKind.Reaction => null,
+            Option = Kind switch {
+                NotificationKind.Invitation => new ChatNotificationOption(chatId),
+                NotificationKind.Message => new ChatEntryNotificationOption(entryId, authorId),
+                NotificationKind.Reply => new ChatEntryNotificationOption(entryId, authorId),
+                NotificationKind.Reaction => new ChatEntryNotificationOption(entryId, authorId),
                 _ => throw new ArgumentOutOfRangeException(),
             },
         };

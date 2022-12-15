@@ -109,7 +109,7 @@
         if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
             return;
 
-        Nav.NavigateTo(Links.ChatPage(firstUnreadChat.Chat.Id));
+        Nav.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
     }
 
     public enum TabId {

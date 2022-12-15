@@ -98,8 +98,8 @@ public class ChatOperationsTest : AppHostTestBase
             if (!isPublicChat) {
                 // to join private chat we need to generate invite code
                 var invite = new Invite.Invite {
-                    Details = new InviteDetails { Chat = new (chatId) },
                     Remaining = 10,
+                    Details = new ChatInviteOption(chatId),
                 };
                 invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
                 inviteId = invite.Id;
@@ -161,8 +161,8 @@ public class ChatOperationsTest : AppHostTestBase
             if (!isPublicChat) {
                 // to join private chat we need to generate invite code
                 var invite = new Invite.Invite {
-                    Details = new InviteDetails { Chat = new (chatId) },
                     Remaining = 10,
+                    Details = new ChatInviteOption(chatId),
                 };
                 invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
                 inviteId = invite.Id;

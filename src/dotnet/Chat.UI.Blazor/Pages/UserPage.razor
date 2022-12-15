@@ -105,7 +105,7 @@
     private void OnSendMessageClick() {
         var m = State.LatestNonErrorValue;
         m.Account.Require();
-        Nav.NavigateTo(Links.ChatPage(m.PeerChatId));
+        Nav.NavigateTo(Links.Chat(m.PeerChatId));
     }
 
     // Nested types

@@ -51,12 +51,12 @@
         if (recordingChat.Kind == ChatKind.Group)
             return new Model {
                 RecordingChat = recordingChat,
-                RecordingChatUrl = Links.ChatPage(recordingChat.Id),
+                RecordingChatUrl = Links.Chat(recordingChat.Id),
             };
 
         return new Model {
             RecordingChat = recordingChat,
-            RecordingChatUrl = Links.ChatPage(recordingChatId),
+            RecordingChatUrl = Links.Chat(recordingChatId),
         };
     }
 

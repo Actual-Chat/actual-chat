@@ -1,9 +1,11 @@
 ﻿using ActualChat.Comparison;
+using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Users;
 
 [DataContract]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public record Avatar(
     [property: DataMember] Symbol Id,
     [property: DataMember] long Version = 0

@@ -13,8 +13,8 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(Kind), nameof(Version))]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private static ITextSerializer<SystemEntryContent> SystemEntrySerializer { get; } =
-        SystemJsonSerializer.Default.ToTyped<SystemEntryContent>();
+    private static ITextSerializer<SystemEntry> SystemEntrySerializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<SystemEntry>();
     private DateTime _beginsAt;
     private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;

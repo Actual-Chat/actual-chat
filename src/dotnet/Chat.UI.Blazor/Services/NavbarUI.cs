@@ -54,7 +54,7 @@ public class NavbarUI
         else {
             var selectedChatId = ChatUI.SelectedChatId.Value;
             if (!selectedChatId.IsNone)
-                Nav.NavigateTo(Links.ChatPage(selectedChatId));
+                Nav.NavigateTo(Links.Chat(selectedChatId));
         }
     }
 
@@ -67,9 +67,8 @@ public class NavbarUI
 
     private bool ShouldShowNavbar()
     {
-        var relativeUrl = Nav.GetRelativePath();
-        var showNavbar = Links.Equals(relativeUrl, Links.ChatPage(default));
-        return showNavbar;
+        var navUrl = Nav.GetLocalUrl();
+        return navUrl == Links.Chat(default);
     }
 
     private void ChangeVisibilityInternal(bool visible)

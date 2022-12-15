@@ -103,7 +103,7 @@
         if (m.ContactId.IsNone || m.OwnAccount == null)
             return;
 
-        Nav.NavigateTo(Links.ChatPage(m.ContactId.ChatId));
+        Nav.NavigateTo(Links.Chat(m.ContactId.ChatId));
     }
 
     public sealed record ComputedModel {

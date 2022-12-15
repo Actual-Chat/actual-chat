@@ -97,7 +97,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
         // Misc. helpers
-        services.AddScoped<LinkInfoBuilder>();
         services.AddScoped<NotificationNavigationHandler>();
 
         // Host-specific services

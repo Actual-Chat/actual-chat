@@ -223,7 +223,7 @@
                 return;
 
             await ModalInstance.CloseAsync();
-            Nav.NavigateTo(Links.ChatPage(chat.Id));
+            Nav.NavigateTo(Links.Chat(chat.Id));
         }
         catch {
         // Intended: command errors are shown in the UI anyway

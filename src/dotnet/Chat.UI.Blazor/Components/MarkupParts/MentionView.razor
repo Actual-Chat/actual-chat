@@ -10,7 +10,7 @@
 
     <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
          @onclick="OnAuthorClick">
-        <div class="overflow-hidden truncate">
+        <div class="truncate">
             <i class="absolute icon-at text-lg"></i>
             <span class="ml-5">
                 @context.Author.Avatar.Name
@@ -34,5 +34,4 @@
         if (!_authorId.IsNone)
             ChatUI.ShowAuthorModal(_authorId);
     }
-
 }

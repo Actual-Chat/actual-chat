@@ -1,5 +1,9 @@
+using Stl.Fusion.Blazor;
+
 namespace ActualChat.Users;
 
+[DataContract]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Version)
 {
     public static new Requirement<AvatarFull> MustExist { get; } = Requirement.New(

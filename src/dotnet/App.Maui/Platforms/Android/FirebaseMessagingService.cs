@@ -40,7 +40,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var chatId = new ChatId(sChatId, ParseOrNone.Option);
         if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
             var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
-            if (handler.IsAlreadySelected(chatId)) {
+            if (handler.IsAlreadyThere(chatId)) {
                 // Do nothing if notification leads to the active chat.
                 Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: '{chatId}'.");
                 return;

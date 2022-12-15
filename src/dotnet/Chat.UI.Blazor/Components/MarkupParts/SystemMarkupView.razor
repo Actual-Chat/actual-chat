@@ -1,0 +1,5 @@
+@using Stl.Extensibility
+@inherits MarkupViewBase<SystemMarkup>
+@attribute [MatchFor(typeof(SystemMarkup), typeof(IMarkupView))]
+
+<MarkupView Markup="@Markup.Content"/>

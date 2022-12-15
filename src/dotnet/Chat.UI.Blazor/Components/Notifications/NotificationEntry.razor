@@ -70,9 +70,9 @@
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notification = Notification;
-        var chatId = notification.ChatEntryNotification?.EntryId.ChatId ?? notification.ChatNotification?.ChatId ?? default;
-        var entryId = notification.ChatEntryNotification?.EntryId;
-        var authorId = notification.ChatEntryNotification?.AuthorId ?? Symbol.Empty;
+        var chatId = notification.ChatId;
+        var entryId = notification.EntryId;
+        var authorId = notification.AuthorId;
         if (!chatId.IsNone) {
             // TODO(AK): Unread message counter
         }
@@ -80,7 +80,7 @@
             Title = notification.Title,
             Content = notification.Content,
             NavigateToUrl = chatId.IsNone ? null
-                : UrlMapper.ToAbsolute(Links.ChatPage(chatId, entryId?.LocalId)),
+                : Links.Chat(chatId, entryId.IsNone ? null : entryId.LocalId).ToAbsolute(UrlMapper),
             AuthorId = authorId,
         });
     }

@@ -1,11 +1,14 @@
 using System.Text.RegularExpressions;
 using ActualChat.Hosting;
+using Cysharp.Text;
 
 namespace ActualChat;
 
 public sealed class UrlMapper
 {
     private static readonly Regex IsAbsoluteUrlRe = new(@"^[\w\d]+://", RegexOptions.Compiled);
+
+    private string _baseUrlWithoutBackslash;
 
     public Uri BaseUri { get; }
     public bool IsActualChat { get; }
@@ -26,6 +29,7 @@ public sealed class UrlMapper
 
         // Normalize baseUri
         baseUrl = baseUrl.EnsureSuffix("/");
+        _baseUrlWithoutBackslash = baseUrl.TrimSuffix("/");
         BaseUrl = baseUrl;
         BaseUri = baseUrl.ToUri();
         IsActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, "actual.chat");
@@ -51,19 +55,25 @@ public sealed class UrlMapper
     public static bool IsAbsolute(string url)
         => IsAbsoluteUrlRe.IsMatch(url);
 
-    public string ToAbsolute(string relativeUrl, bool allowAbsoluteUrl = false)
-        => ToAbsolute(BaseUrl, relativeUrl, allowAbsoluteUrl);
+    public string ToAbsolute(string url, bool allowAbsoluteUrl = false)
+        => ToAbsolute(BaseUrl, url, allowAbsoluteUrl);
 
-    public string ToAbsolute(string baseUrl, string relativeUrl, bool allowAbsoluteUrl = false)
+    public string ToAbsolute(string baseUrl, string url, bool allowAbsoluteUrl = false)
     {
-        if (IsAbsolute(relativeUrl))
-            return allowAbsoluteUrl ? relativeUrl : throw new ArgumentOutOfRangeException(relativeUrl);
-        return baseUrl + relativeUrl.TrimStart('/');
+        if (IsAbsolute(url))
+            return allowAbsoluteUrl ? url : throw new ArgumentOutOfRangeException(url);
+        if (ReferenceEquals(baseUrl, BaseUrl)) // A bit more efficient shortcut for BaseUrl
+            return url.Length != 0 && url[0] == '/'
+                ? _baseUrlWithoutBackslash + url
+                : baseUrl + url;
+        return baseUrl + url.TrimStart('/');
     }
 
+    // Returns absolute URL
     public string ContentUrl(string contentId)
         => ToAbsolute(ContentBaseUrl, contentId, true);
 
+    // Returns absolute URL
     public string ImagePreviewUrl(string imageUrl, int maxWidth, int maxHeight)
     {
         if (!HasImageProxy)
@@ -74,6 +84,7 @@ public sealed class UrlMapper
         return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight},fit/{imageUrl}";
     }
 
+    // Returns absolute URL
     public string ImagePreview128Url(string imageUrl)
         => HasImageProxy ? $"{ImageProxyBaseUrl}128/{imageUrl}" : imageUrl;
 }

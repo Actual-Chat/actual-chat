@@ -2,7 +2,7 @@
 @using ActualChat.Contacts
 @inherits FusionComponentBase
 @{
-    var url = Links.ChatPage(Contact.Id.ChatId);
+    var url = Links.Chat(Contact.Id.ChatId);
     var isFocusable = PageNumber == 1;
     var isSelectable = PageNumber == 2;
 

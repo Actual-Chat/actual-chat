@@ -120,9 +120,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         var invite = dbInvite.ToModel();
         invite = invite.Use(VersionGenerator);
 
-        var details = invite.Details;
-        var userInviteDetails = details.User;
-        if (userInviteDetails != null) {
+        switch (invite.Details.Option) {
+        case UserInviteOption:
             if (account.IsGuest)
                 throw StandardError.Unauthorized("Please sign in and open this link again to use this invite.");
             if (account.Status == AccountStatus.Suspended)
@@ -131,11 +130,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 throw StandardError.StateTransition("Your account is already active.");
             new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
-        }
-
-        var chatInviteDetails = details.Chat;
-        if (chatInviteDetails != null) {
-            var chatId = chatInviteDetails.ChatId;
+            break;
+        case ChatInviteOption chatInviteOption:
+            var chatId = chatInviteOption.ChatId;
             _ = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
 
             var dbActivationKey = new DbActivationKey(invite.Id);
@@ -144,8 +141,10 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
             var setCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
             await Commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
+            break;
+        default:
+            throw StandardError.Format<Invite>();
         }
-
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

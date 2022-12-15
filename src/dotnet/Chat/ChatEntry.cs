@@ -30,7 +30,7 @@ public sealed record ChatEntry(
     [DataMember] public Moment? EndsAt { get; init; }
     [DataMember] public Moment? ContentEndsAt { get; init; }
     [DataMember] public string Content { get; init; } = "";
-    [DataMember] public SystemEntryContent? SystemEntry { get; init; }
+    [DataMember] public SystemEntry? SystemEntry { get; init; }
     [DataMember] public bool HasReactions { get; init; }
     [DataMember] public Symbol StreamId { get; init; } = "";
     [DataMember] public long? AudioEntryId { get; init; }
@@ -46,20 +46,31 @@ public sealed record ChatEntry(
     public long LocalId => Id.LocalId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatEntryKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsSystemEntry => SystemEntry != null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsSystemEntry => SystemEntry != null;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsAudioEntry => AudioEntryId.HasValue;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsVideoEntry => VideoEntryId.HasValue;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsMediaEntry => VideoEntryId.HasValue || AudioEntryId.HasValue;
 
     public ChatEntry() : this(ChatEntryId.None) { }
 
     public string GetContentOrDescription()
     {
-        if (!Content.IsNullOrEmpty())
+        if (SystemEntry != null) {
+
+        }
+        if (!Content.IsNullOrEmpty()) {
+
             return Content;
+        }
 
         var imageCount = Attachments.Count(x => x.IsImage());
         var description = imageCount switch {

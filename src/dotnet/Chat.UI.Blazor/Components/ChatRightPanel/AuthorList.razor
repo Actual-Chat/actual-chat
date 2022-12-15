@@ -14,13 +14,13 @@
                 <AuthorBadge
                     AuthorSid="@authorId"
                     ShowPresence="true"
-                    TextClass="font-medium text-02 select-none"
+                    NameClass="font-medium text-02 select-none"
                     Click="OnSelfClick"/>
             } else {
                 <AuthorBadge
                     AuthorSid="@authorId"
                     ShowPresence="true"
-                    TextClass="font-medium text-02 select-none"
+                    NameClass="font-medium text-02 select-none"
                     Click="() => OnAuthorClick(authorId)"/>
             }
         }
@@ -29,7 +29,7 @@
             <AuthorBadge
                 AuthorSid="@authorId"
                 ShowPresence="true"
-                TextClass="font-medium text-02 select-none"
+                NameClass="font-medium text-02 select-none"
                 Click="() => OnAuthorClick(authorId)"/>
         }
     </div>

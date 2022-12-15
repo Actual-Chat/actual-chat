@@ -8,30 +8,48 @@
     var message = _lastRenderedMessage = Message;
     var entry = message.Entry;
 
-    var showHeader = message.IsBlockStart;
-    var showPicture = showHeader;
+    // Flags
+    var isSystem = entry.IsSystemEntry;
+    var isReply = entry.RepliedEntryLocalId != null;
+    var isReplyToOwnMessage = m.RepliedChatMessage?.Entry.AuthorId == entry.AuthorId;
+    var showAuthor = !isSystem && (message.IsBlockStart || isReply);
+
+    // Classes
+    var systemClass = isSystem ? "system-entry" : "";
     var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
-    var repliedClass = m.IsReplied ? "replied-message" : "";
-    var isReply = entry.RepliedEntryLocalId != null;
-    var selfQuoted = m.RepliedChatMessage?.Entry.AuthorId == entry.AuthorId;
-    var mentionClass = m.IsMentioned && !selfQuoted ? "mention" : "";
+    var repliedClass = m.IsReplyTarget ? "replied-message" : "";
+    var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
+    var cls = $"{systemClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} message-wrapper";
 }
 
 @if (message.DateLine.HasValue) {
     <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
 }
 @if (message.IsFirstUnread) {
-    <ActualChat.UI.Blazor.Components.Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-
-@if (message.Entry.IsSystemEntry) {
-    <ServiceMessage Message="Message"/>
+@if (isSystem) {
+    <div class="@cls">
+        <div class="flex-y w-full">
+            <div class="chat-message group px-1.5 py-1 relative">
+                <div class="flex-1 overflow-hidden">
+                    <div class="message-content rounded-sm">
+                        <p class="chat-message-markup mx-1">
+                            <CascadingValue Value="@entry" IsFixed="true">
+                                <MarkupView Markup="@Markup"/>
+                            </CascadingValue>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     return;
 }
 
-<div class="@ownMessageClass @mentionClass @marginClass @highlightClass @repliedClass message-wrapper"
+<div class="@cls"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
      data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
@@ -39,7 +57,7 @@
      data-long-press-delay="500">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">
-            @if (showPicture || isReply) {
+            @if (showAuthor) {
                 <div class="m-1.5">
                     <ChatMessageAuthorCircle AuthorSid="@entry.AuthorId" Click="@OnAuthorClick"/>
                 </div>
@@ -50,7 +68,7 @@
                 </div>
             }
             <div class="flex-1 overflow-hidden">
-                @if (showHeader || isReply) {
+                @if (showAuthor) {
                     <div class="flex-x items-baseline header chat-message-header ml-1">
                         <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name" />
                         <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
@@ -93,7 +111,6 @@
     @if (!message.IsQuote) {
         <div class="message-hover-menu-placement placement"></div>
     }
-
 </div>
 
 @code {
@@ -141,32 +158,31 @@
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
         var ownAuthorId = ownAuthor?.Id ?? Symbol.Empty;
 
-        var repliedChatMessage = await GetRepliedChatMessage(cancellationToken);
+        var repliedMessage = await GetRepliedChatMessage(cancellationToken);
         var hasAnyMentions = HasAnyMentions(Markup);
-        var isMentioned = IsMentioned(Markup, repliedChatMessage, ownAuthorId, hasAnyMentions);
-        var isReplied = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
+        var isOwnAuthorMentioned = IsMentioned(Markup, repliedMessage, ownAuthorId, hasAnyMentions);
+        var isReplyTarget = entry == (await ChatUI.LinkedChatEntry.Use(cancellationToken))?.Entry;
         var isHighlighted = entry.Id.LocalId == await ChatUI.HighlightedChatEntryId.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
-            RepliedChatMessage = repliedChatMessage,
-            IsMentioned = isMentioned,
+            RepliedChatMessage = repliedMessage,
             IsHighlighted = isHighlighted,
-            IsReplied = isReplied,
+            IsReplyTarget = isReplyTarget,
+            IsOwnAuthorMentioned = isOwnAuthorMentioned,
         };
         return result.Equals(_lastRenderedModel) ? _lastRenderedModel! : result;
     }
 
     private Markup GetMarkup() {
-        var message = Message;
-        var markup = message.Entry.AudioEntryId == null || message.IsQuote
-            ? MarkupParser.Parse(message.Entry.Content)
-            : new PlayableTextMarkup(message.Entry.Content, message.Entry.TextToTimeMap);
-        if (message.ShowEntryKind) {
-            // Adds "T" or "Audio" symbol to the beginning of markup
-            var isAudio = markup is PlayableTextMarkup;
-            var entryKindMarker = new ChatEntryKindMarker(isAudio ? ChatEntryKind.Audio : ChatEntryKind.Text);
-            markup = new MarkupSeq(entryKindMarker, markup);
-        }
+        var entry = Message.Entry;
+        var isQuote = Message.IsQuote;
+        var content = entry.Content;
+        var markup = entry switch {
+            { SystemEntry: { } se } => new SystemMarkup(MarkupParser.Parse(se.Option?.ToMarkup() ?? "")),
+            { IsAudioEntry: true } when !isQuote => new PlayableTextMarkup(content, entry.TextToTimeMap),
+            { IsAudioEntry: true } when isQuote => new PlainTextMarkup(content),
+            _ => MarkupParser.Parse(content),
+        };
         return markup;
     }
 
@@ -218,8 +234,8 @@
 
         public Symbol OwnAuthorId { get; init; }
         public ChatMessageModel? RepliedChatMessage { get; init; }
-        public bool IsMentioned { get; init; }
         public bool IsHighlighted { get; init; }
-        public bool IsReplied { get; init; }
+        public bool IsReplyTarget { get; init; }
+        public bool IsOwnAuthorMentioned { get; init; }
     }
 }

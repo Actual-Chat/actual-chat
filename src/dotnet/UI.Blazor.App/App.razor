@@ -125,12 +125,10 @@
         var loadingUI = Services.GetRequiredService<LoadingUI>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
         if (browserInfo.ScreenSize.Value.IsNarrow()) {
-            var relativeUri = Nav.GetRelativePath();
-            var isHomePage = Links.Equals(relativeUri, "/");
-            var isChatPage = relativeUri.OrdinalStartsWith(Links.ChatPage(default));
+            var url = Nav.GetLocalUrl();
             // Home page in narrow view redirects to Chat page.
-            // Chat page will set marker.
-            if (isHomePage || isChatPage) {
+            // Chat page sets WhenLoaded marker.
+            if (url.IsHome() || url.IsChat()) {
                 // Wait to let Chat page to
                 // So far timeout is too big. I would like to put in less than 5 seconds.
                 // But tests with my phone indicate that it takes more that 5 seconds to be ready to

@@ -40,9 +40,9 @@
                     </FormSection>
                 }
                 @if (_form.IsPublic) {
-                    @if (m.PublicUrl != null) {
+                    @if (m.Link is { } publicUrl) {
                         <h4 class="section">Public join link</h4>
-                        <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl.CopyLink"/>
+                        <CopyToClipboard Class="px-1 pl-2" Text="@publicUrl.ShortLocalUrl" CopyText="@publicUrl.AbsoluteUrl" />
                     }
                 } else {
                     @if (m.Rules.CanInvite()) {
@@ -76,14 +76,13 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
-    [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public ModalInput ModalModel { get; set; } = null!;
@@ -111,10 +110,10 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
-        var publicUrl = LinkInfoBuilder.GetFrom(Links.ChatPage(ModalModel.Chat.Id));
+        var link = Links.Chat(ModalModel.Chat.Id).ToDual(UrlMapper);
         return new() {
             Rules = rules,
-            PublicUrl = publicUrl,
+            Link = link,
             Invites = invites,
         };
     }
@@ -164,8 +163,8 @@
 
     private async Task OnNewInviteClick() {
         var invite = new Invite {
-            Details = new InviteDetails { Chat = new(ModalModel.Chat.Id) },
-            Remaining = 10, // TODO: configurable
+            Remaining = 10, // TODO: make it configurable
+            Details = new ChatInviteOption(ModalModel.Chat.Id),
         };
         _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
     }
@@ -176,7 +175,7 @@
         public static Model None { get; } = new();
 
         public AuthorRules? Rules { get; init; }
-        public LinkInfo? PublicUrl { get; init; }
+        public DualUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }
 }

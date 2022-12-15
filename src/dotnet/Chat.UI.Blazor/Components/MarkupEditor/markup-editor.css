@@ -13,7 +13,7 @@
     @apply px-1.5 py-0.25 mx-[1px] -mb-1.5;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-medium;
-    @apply overflow-hidden truncate;
+    @apply truncate;
     max-width: 12rem;
 }
 .markup-editor .editor-hidden {

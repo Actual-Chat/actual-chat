@@ -109,3 +109,12 @@
 .message-hover-menu .btn.btn-round:hover .btn-content {
     @apply bg-round-hover;
 }
+
+.system-entry .message-content {
+    @apply flex-x justify-center items-center;
+}
+.system-entry .message-content .avatar-name {
+    @apply font-bold text-03;
+    @apply cursor-pointer;
+    @apply hover:opacity-80;
+}

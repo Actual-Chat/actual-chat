@@ -40,7 +40,7 @@
         <div class="flex-auto flex-y">
             @if (m.ShowChatTitle) {
                 <div class="c-chat-title truncate whitespace-nowrap">
-                    <a href="@Links.ChatPage(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
+                    <a href="@Links.Chat(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
                 </div>
             }
             @if (ScreenSize.IsWide()) {

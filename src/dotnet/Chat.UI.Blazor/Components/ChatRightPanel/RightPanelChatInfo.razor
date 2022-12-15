@@ -17,20 +17,20 @@
                 @m.Title
             </div>
             <div class="text-03 text-caption-2">
-                @(m.IsPublic ? "Public" : "Private")
+                @(m.Link.HasValue ? "Public" : "Private")
             </div>
         </div>
     </div>
 
-    @if (m.PublicUrl != null) {
+    @if (m.Link is { } publicUrl) {
         <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-            @onclick="() => OnPublicUrlClick(m.PublicUrl)">
+            @onclick="() => OnPublicUrlClick(publicUrl)">
             <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
                 <i class="icon-link-2 text-2xl text-icons-03"></i>
             </div>
             <div class="flex-y min-w-0 self-center">
                 <div class="text-01 text-headline-1 truncate">
-                    @m.PublicUrlTitle
+                    @publicUrl.ShortLocalUrl
                 </div>
                 <div class="text-03 text-caption-2">
                     Public join link
@@ -63,7 +63,6 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
-    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
@@ -74,26 +73,18 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatLinkInfo = Chat.IsPublic ? LinkInfoBuilder.GetFrom(Links.ChatPage(Chat.Id)) : null;
-        var publicUrl = chatLinkInfo?.CopyLink;
-        var chatAbsolutePath = chatLinkInfo?.CopyLink.ToUri().AbsolutePath;
-        var publicUrlTitle = chatAbsolutePath == null
-            ? ""
-            : chatAbsolutePath.Substring(1, chatAbsolutePath.Length - 1);
+        var publicUrl = Chat.IsPublic ? Links.Chat(Chat.Id).ToDual(UrlMapper) : (DualUrl?)null;
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new Model {
             Title = Chat.Title,
-            IsPublic = Chat.IsPublic,
             Picture = Chat.Picture,
-            PublicUrl = publicUrl,
-            PublicUrlTitle = publicUrlTitle,
+            Link = publicUrl,
             NotificationMode = userChatSettings.NotificationMode,
         };
     }
 
-    private async Task OnPublicUrlClick(string publicUrl) {
-        await ClipboardUI.WriteText(publicUrl);
-    }
+    private ValueTask OnPublicUrlClick(DualUrl publicUrl)
+        => ClipboardUI.WriteText(publicUrl.AbsoluteUrl);
 
     private Task OnValueChanged(bool isMuted)
         => UICommander.RunLocal(async cancellationToken => {
@@ -109,9 +100,7 @@
 
         public string? Picture { get; init; }
         public string? Title { get; init; }
-        public bool IsPublic { get; init; }
-        public string? PublicUrl { get; init; }
-        public string? PublicUrlTitle { get; init; }
+        public DualUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
     }
 }

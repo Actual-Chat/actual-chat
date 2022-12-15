@@ -4,10 +4,10 @@
     var m = State.LatestNonErrorValue;
 }
 
-<AvatarBadge Avatar="@m.Author.Avatar" Size="@Size" Presence="@m.Presence" TextClass="@TextClass" Click="@Click"/>
+<AvatarBadge Avatar="@m.Author.Avatar" Size="@Size" Presence="@m.Presence" NameClass="@NameClass" Click="@Click"/>
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
-    [Parameter] public string TextClass { get; set; } = "";
+    [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 }

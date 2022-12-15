@@ -40,7 +40,7 @@ public class HistoryUI
         }
         else {
             var uri = Nav.Uri;
-            _initialLocation = Nav.GetRelativePath();
+            _initialLocation = Nav.GetLocalUrl();
             _historyIndex = 0;
             _history.Add(new HistoryItem(uri, ""));
             Log.LogDebug("Initial location: '{Location}'", uri);
@@ -61,14 +61,12 @@ public class HistoryUI
 
         _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
 
-        var relativeUri = Nav.GetRelativePath();
-        var isHomePage = Links.Equals(relativeUri, "/");
-        var isChatsRootPage = Links.Equals(relativeUri, Links.ChatPage(default));
-        if (!isHomePage && !isChatsRootPage) {
+        var url = Nav.GetLocalUrl();
+        if (!url.IsHome() && !url.IsChatRoot()) {
             _rewriteInitialLocation = true;
             _whenInitializedSource = TaskSource.New<Unit>(true);
-            Log.LogDebug("Rewrite initial location from '{InitialLocation}'", relativeUri);
-            Nav.NavigateTo(Links.ChatPage(default), false, true);
+            Log.LogDebug("Rewrite initial location from '{InitialLocation}'", url);
+            Nav.NavigateTo(Links.Chat(default), false, true);
             await _whenInitializedSource.Task.ConfigureAwait(true);
             _whenInitializedSource = TaskSource<Unit>.Empty;
         }

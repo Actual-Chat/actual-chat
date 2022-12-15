@@ -35,21 +35,48 @@ public sealed record Invite(
         };
 }
 
-public sealed record InviteDetails : IRequirementTarget
+[DataContract]
+public sealed record InviteDetails : IUnionRecord<InviteDetailsOption?>
 {
-    public ChatInviteDetails? Chat { get; init; }
-    public UserInviteDetails? User { get; init; }
+    // Union options
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public InviteDetailsOption? Option { get; init; }
+
+    [DataMember]
+    public ChatInviteOption? Chat {
+        get => Option as ChatInviteOption;
+        init => Option = value;
+    }
+
+    [DataMember]
+    public UserInviteOption? User {
+        get => Option as UserInviteOption;
+        init => Option = value;
+    }
 
     public string GetSearchKey()
-    {
-        if (Chat is { } chat)
-            return $"{nameof(ChatInviteDetails)}:{chat.ChatId}";
-        if (User is { } user)
-            return $"{nameof(UserInviteDetails)}";
-        return "-";
-    }
+        => Option.Require().GetSearchKey();
+
+    public static implicit operator InviteDetails(InviteDetailsOption option) => new() { Option = option };
 }
 
-public record ChatInviteDetails(ChatId ChatId);
+public abstract record InviteDetailsOption : IRequirementTarget
+{
+    public abstract string GetSearchKey();
+}
 
-public record UserInviteDetails;
+[DataContract]
+public record ChatInviteOption(
+    [property: DataMember] ChatId ChatId
+    ) : InviteDetailsOption
+{
+    public override string GetSearchKey()
+        => $"{nameof(ChatInviteOption)}:{ChatId}";
+}
+
+[DataContract]
+public record UserInviteOption : InviteDetailsOption
+{
+    public override string GetSearchKey()
+        => nameof(UserInviteOption);
+}

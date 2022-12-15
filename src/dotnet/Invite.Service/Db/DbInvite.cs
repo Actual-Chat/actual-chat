@@ -10,9 +10,9 @@ namespace ActualChat.Invite.Db;
 [Index(nameof(SearchKey), nameof(Remaining))]
 public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<InviteDetails>();
-    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     private DateTime _createdAt;
     private DateTime _expiresOn;
@@ -62,7 +62,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CreatedBy = model.CreatedBy;
 
         var details = model.Details.Require();
-        SearchKey = details.GetSearchKey();
+        SearchKey = details.Option.Require().GetSearchKey();
         DetailsJson = DetailsSerializer.Write(details);
     }
 }

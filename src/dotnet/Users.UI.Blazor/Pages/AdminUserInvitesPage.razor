@@ -27,7 +27,7 @@
     private async Task OnNewInviteClick() {
         var invite = new Invite() {
             Remaining = 10,
-            Details = new InviteDetails { User = new() },
+            Details = new UserInviteOption(),
         };
         _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
     }

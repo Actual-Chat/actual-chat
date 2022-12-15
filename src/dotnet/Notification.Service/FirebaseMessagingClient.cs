@@ -40,8 +40,8 @@ public class FirebaseMessagingClient
             ? chatEntryId.Value
             : isChatRelated ? chatId.Value : "topic";
         var link = isTextEntryRelated
-            ? UrlMapper.ToAbsolute(Links.ChatPage(chatId, chatEntryId.LocalId))
-            : isChatRelated ? UrlMapper.ToAbsolute(Links.ChatPage(chatId)) : "";
+            ? UrlMapper.ToAbsolute(Links.Chat(chatId, chatEntryId.LocalId))
+            : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId)) : "";
 
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),

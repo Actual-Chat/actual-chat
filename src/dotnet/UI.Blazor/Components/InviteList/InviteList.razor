@@ -4,10 +4,13 @@
 
 @if (Invites.Length > 0) {
     @foreach (var invite in Invites) {
+        var link = GetLink(invite);
+
         <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-02">
             <CopyToClipboard
                 Class="flex-auto"
-                Text="@invite.Id" CopyText="@GenerateLink(invite).CopyLink"/>
+                Text="@invite.Id"
+                CopyText="@link.AbsoluteUrl"/>
             <div class="flex-auto text-xxs">
                 @if (invite.Remaining > 1) {
                     <span><b>@(invite.Remaining)</b> activations remaining, </span>
@@ -24,11 +27,11 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [Parameter] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
-    [Parameter] public string LinkFormat { get; set; } = "";
+    [Parameter, EditorRequired] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
+    [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
 
-    private LinkInfo GenerateLink(Invite invite)
-        => LinkInfoBuilder.GetFrom(Links.Invite(LinkFormat, invite.Id));
+    private DualUrl GetLink(Invite invite)
+        => Links.Invite(LinkFormat, invite.Id).ToDual(UrlMapper);
 }

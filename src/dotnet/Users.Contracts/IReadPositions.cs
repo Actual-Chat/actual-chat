@@ -11,7 +11,7 @@ public interface IReadPositions : IComputeService
     [DataContract]
     public sealed record SetCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] ChatId chatId,
+        [property: DataMember] ChatId ChatId,
         [property: DataMember] long ReadEntryId
         ) : ISessionCommand<Unit>;
 }

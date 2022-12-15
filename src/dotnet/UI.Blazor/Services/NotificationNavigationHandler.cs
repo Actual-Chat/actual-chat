@@ -33,6 +33,6 @@ public class NotificationNavigationHandler
         return Task.CompletedTask;
     }
 
-    public bool IsAlreadySelected(ChatId chatId)
-        => Links.Equals(Nav.GetRelativePath(), Links.ChatPage(chatId));
+    public bool IsAlreadyThere(ChatId chatId)
+        => Nav.GetLocalUrl() == Links.Chat(chatId);
 }

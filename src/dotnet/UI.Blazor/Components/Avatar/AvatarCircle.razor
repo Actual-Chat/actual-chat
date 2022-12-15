@@ -1,6 +1,7 @@
+@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using Microsoft.Toolkit.HighPerformance
-@namespace ActualChat.UI.Blazor.Components
+@inherits FusionComponentBase
 @{
     var title = HasTooltip ? Avatar.Name : "";
 }
@@ -33,7 +34,6 @@
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        base.OnParametersSet();
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";

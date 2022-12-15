@@ -304,7 +304,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 Content = content,
                 IconUrl = iconUrl,
                 CreatedAt = createdAt,
-                ChatEntryNotification = new ChatEntryNotification(entry.Id, changeAuthor.Id),
+                ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
             await new INotificationsBackend.NotifyCommand(notification)
                 .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)

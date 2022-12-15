@@ -29,8 +29,8 @@ internal class Invites : IInvites
     {
         await AssertCanListUserInvites(session, cancellationToken).ConfigureAwait(false);
 
-        var inviteDetails = new InviteDetails() { User = new UserInviteDetails() };
-        return await Backend.GetAll(inviteDetails.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
+        var searchKey = new UserInviteOption().GetSearchKey();
+        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -41,8 +41,8 @@ internal class Invites : IInvites
     {
         await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var inviteDetails = new InviteDetails() { Chat = new ChatInviteDetails(chatId) };
-        return await Backend.GetAll(inviteDetails.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
+        var searchKey = new ChatInviteOption(chatId).GetSearchKey();
+        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -95,15 +95,19 @@ internal class Invites : IInvites
         account.Require(Account.MustNotBeGuest);
         account.Require(AccountFull.MustBeActive);
 
-        if (invite.Details.User != null) {
+        switch (invite.Details.Option) {
+        case UserInviteOption:
             if (!account.IsAdmin)
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
-        }
-        if (invite.Details.Chat is { } chatDetails) {
+            break;
+        case ChatInviteOption chatInvite:
             var rules = await Chats
-                .GetRules(session, chatDetails.ChatId, cancellationToken)
+                .GetRules(session, chatInvite.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             rules.Require(ChatPermissions.Invite);
+            break;
+        default:
+            throw StandardError.Format<Invite>();
         }
 
         return account;

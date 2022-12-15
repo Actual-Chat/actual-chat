@@ -53,11 +53,11 @@
         var link = "";
         if (HistoryUI.IsInitialLocation || _signInHasRequested) {
             if (BrowserInfo.ScreenSize.Value.IsNarrow())
-                link = Links.ChatPage(default);
+                link = Links.Chat(default);
             else {
                 var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
                 var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-                link = Links.ChatPage(selectedChat != null ? selectedChatId : Constants.Chat.AnnouncementsChatId);
+                link = Links.Chat(selectedChat != null ? selectedChatId : Constants.Chat.AnnouncementsChatId);
             }
         }
         return new(account, link);
