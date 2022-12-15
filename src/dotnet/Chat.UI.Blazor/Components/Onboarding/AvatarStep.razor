@@ -7,6 +7,31 @@
         Model="@_stepModel"
         OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator/>
+        <div class="flex-x mb-8">
+            <Pic Title="@_stepModel.UserName" Size="SquareSize.Size20">
+                <NoPicture>
+                    <AnonymousIcon Class="w-20 h-20"/>
+                </NoPicture>
+            </Pic>
+            <div class="flex-y">
+                <Button Class="transparent border-none" Click="OnGenerateAvatarClick">
+                    <div class="flex min-w-10 items-center justify-center">
+                        <i class="icon-plus text-xl text-primary"></i>
+                    </div>
+                    <div class="flex items-center text-headline-1 text-primary">
+                        Generate random avatar
+                    </div>
+                </Button>
+                <Button Class="transparent border-none" Click="OnUploadAvatarClick">
+                    <div class="flex min-w-10 items-center justify-center">
+                        <i class="icon-image text-xl text-primary"></i>
+                    </div>
+                    <div class="flex items-center text-headline-1 text-primary">
+                        Upload your photo
+                    </div>
+                </Button>
+            </div>
+        </div>
         <FormSection InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
         </FormSection>
@@ -28,8 +53,19 @@
         public string? LastName { get; set; }
         [Required]
         public string? UserName { get; set; }
+        public string? Picture { get; set; }
     }
 
     private void HandleValidSubmit() {
+    }
+
+    private void OnImagePicked(string contentId) {
+        _stepModel.Picture = contentId;
+    }
+
+    private void OnGenerateAvatarClick() {
+    }
+
+    private void OnUploadAvatarClick() {
     }
 }
