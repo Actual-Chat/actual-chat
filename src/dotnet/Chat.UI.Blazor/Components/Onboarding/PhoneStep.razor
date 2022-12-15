@@ -8,9 +8,8 @@
         Model="@_stepModel"
         OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator/>
-        <ValidationSummary/>
-        <FormSection Label="Country" IsLabelInsideInput="true" IsRequired="true">
-            <InputSelect @bind-Value="_stepModel.Country">
+        <FormSection InputId="country" Label="Country" IsLabelInsideInput="true" IsRequired="true">
+            <InputSelect id="country" @bind-Value="_stepModel.Country">
                 @foreach (var phoneCode in PhoneCodes.List)
                 {
                     <option value="@phoneCode.Country">@phoneCode.Country</option>
@@ -18,18 +17,22 @@
             </InputSelect>
         </FormSection>
         <div class="flex-x gap-x-1">
-            <FormSection Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
-                <InputText @bind-Value="_stepModel.Code"/>
+            <FormSection InputId="phoneCode" Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
+                <InputText id="phoneCode" @bind-Value="_stepModel.Code"/>
             </FormSection>
-            <FormSection Label="Phone number" Class="grow" IsLabelInsideInput="true" IsRequired="true">
-                <InputText @bind-Value="_stepModel.Number"/>
+            <FormSection InputId="phoneNumber" Label="Phone number" Class="grow" IsLabelInsideInput="true" IsRequired="true">
+                <InputText id="phoneNumber" @bind-Value="_stepModel.Number"/>
             </FormSection>
         </div>
         <FormSection>
-            <ToggleEdit @bind-Value="_stepModel.SyncContacts" Label="Sync Contacts"/>
+            <Checkbox
+                Id="syncContacts"
+                Checked="@_stepModel.SyncContacts"
+                Change="OnSyncContactsChange"
+                Name="Sync Contacts"/>
         </FormSection>
-        <FormSection Label="Email (optional)" IsLabelInsideInput="true">
-            <InputText @bind-Value="_stepModel.Email"/>
+        <FormSection InputId="email" Label="Email (optional)" IsLabelInsideInput="true">
+            <InputText id="email" @bind-Value="_stepModel.Email"/>
         </FormSection>
     </Form>
 </div>
@@ -61,5 +64,9 @@
     }
 
     private void HandleValidSubmit() {
+    }
+
+    private void OnSyncContactsChange(ChangeEventArgs args) {
+        _stepModel.SyncContacts = args.Value is true;
     }
 }
