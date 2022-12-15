@@ -25,12 +25,12 @@ public record Notification(
     [DataMember]
     public ChatNotificationOption? ChatNotification {
         get => Option as ChatNotificationOption;
-        init => Option = value;
+        init => Option ??= value;
     }
     [DataMember]
     public ChatEntryNotificationOption? ChatEntryNotification {
         get => Option as ChatEntryNotificationOption;
-        init => Option = value;
+        init => Option ??= value;
     }
 
     // Computed

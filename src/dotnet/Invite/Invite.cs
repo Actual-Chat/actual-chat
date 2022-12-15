@@ -45,13 +45,13 @@ public sealed record InviteDetails : IUnionRecord<InviteDetailsOption?>
     [DataMember]
     public ChatInviteOption? Chat {
         get => Option as ChatInviteOption;
-        init => Option = value;
+        init => Option ??= value;
     }
 
     [DataMember]
     public UserInviteOption? User {
         get => Option as UserInviteOption;
-        init => Option = value;
+        init => Option ??= value;
     }
 
     public string GetSearchKey()

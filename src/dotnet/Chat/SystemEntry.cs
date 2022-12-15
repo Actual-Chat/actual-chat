@@ -10,7 +10,7 @@ public record SystemEntry : IUnionRecord<SystemEntryOption?>
     [DataMember]
     public MembersChangedOption? MembersChanged {
         get => Option as MembersChangedOption;
-        init => Option = value;
+        init => Option ??= value;
     }
 
     public static implicit operator SystemEntry(SystemEntryOption option) => new() { Option = option };
