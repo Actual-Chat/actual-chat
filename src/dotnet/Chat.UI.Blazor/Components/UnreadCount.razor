@@ -8,10 +8,12 @@
         return;
 
     var text = HasMentions ? "@" : Value == 0 ? "" : Value.Format();
-    var isMuted = HasMentions
-        ? NotificationMode is ChatNotificationMode.Muted
-        : NotificationMode is ChatNotificationMode.ImportantOnly;
-    var bgColor = isMuted ? "bg-primary" : "bg-counter";
+    var isMuted = NotificationMode switch {
+        ChatNotificationMode.ImportantOnly => !HasMentions,
+        ChatNotificationMode.Muted => true
+        ,_ => false,
+        };
+    var bgColor = isMuted ? "bg-counter" : "bg-primary";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
     var cssClass = $"message-counter-badge {cursorClass}";
 }
