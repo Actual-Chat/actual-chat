@@ -11,7 +11,6 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 @using Stl.Locking
-
 @{
     var editorCls = "";
     if (ScreenSize.IsNarrow())
@@ -75,8 +74,6 @@
 </div>
 
 @code {
-    private AsyncLock _lastReadEntrySync = new(ReentryMode.CheckedPass);
-
     private static object MentionListManagerKey { get; } = new();
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
@@ -88,6 +85,7 @@
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
+    private MarkupHub MarkupHub { get; set; } = null!;
     private MarkupEditorHtmlConverter HtmlConverter => MarkupHub.MarkupEditorHtmlConverter;
     private SyncedStateLease<long?>? ReadState { get; set; } = null!;
 
@@ -95,12 +93,12 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ServiceFactory<MarkupHub, ChatId> MarkupHubFactory { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -110,27 +108,20 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-
-        using (await _lastReadEntrySync.Lock()) {
-            ReadState?.DisposeSilently();
-            ReadState = null!;
-        }
+        ReadState?.DisposeSilently();
+        ReadState = null!;
     }
 
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;
-        using (await _lastReadEntrySync.Lock()) {
-            var oldChatId = MarkupHub.ChatId;
-            if (oldChatId.IsNone)
-                MarkupHub.ChatId = chatId; // initially set chat id for mentions.
-            if (oldChatId == chatId)
-                return;
+        var oldChatId = MarkupHub?.ChatId ?? default;
+        if (oldChatId == chatId)
+            return;
 
-            ReadState.DisposeSilently();
-            ReadState = null;
-            ReadState = await ChatUI.LeaseReadState(chatId, default);
-            MarkupHub.ChatId = chatId;
-        }
+        MarkupHub = MarkupHubFactory[chatId];
+        ReadState.DisposeSilently();
+        ReadState = null;
+        ReadState = await ChatUI.LeaseReadState(chatId, default);
 
         if (JSRef != null!) {
             // Only when rendered
@@ -163,7 +154,6 @@
     // Private methods
 
     private async Task Post(string? text = null) {
-        using var __ = await _lastReadEntrySync.Lock();
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
         var attachments = AttachmentListRef.Attachments;

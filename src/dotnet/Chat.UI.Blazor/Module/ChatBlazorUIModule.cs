@@ -29,9 +29,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Singletons
         fusion.AddComputeService<VirtualListTestService>();
 
-        // Transient
-        services.AddTransient<MarkupHub>();
-
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         services.AddScoped<NavbarUI>();
@@ -42,7 +39,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>();
-        services.AddScoped<FrontendChatMentionResolverFactory>();
+        services.AddServiceFactory<ChatMentionResolver, ChatId>(ServiceLifetime.Scoped);
+        services.AddServiceFactory<ChatMentionSearchProvider, ChatId>(ServiceLifetime.Scoped);
+        services.AddServiceFactory<MarkupHub, ChatId>(ServiceLifetime.Scoped);
 
         // Chat activity
         services.AddScoped<ChatActivity>();

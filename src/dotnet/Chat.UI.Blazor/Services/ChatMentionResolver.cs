@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class FrontendChatMentionResolver : IChatMentionResolver
+public class ChatMentionResolver : IChatMentionResolver
 {
     private Session Session { get; }
     private IAccounts Accounts { get; }
@@ -10,11 +10,12 @@ public class FrontendChatMentionResolver : IChatMentionResolver
 
     public ChatId ChatId { get; set; }
 
-    public FrontendChatMentionResolver(IServiceProvider services)
+    public ChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
         Authors = services.GetRequiredService<IAuthors>();
+        ChatId = chatId;
     }
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)

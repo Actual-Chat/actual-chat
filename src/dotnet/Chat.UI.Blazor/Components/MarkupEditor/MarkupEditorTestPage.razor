@@ -21,7 +21,7 @@
             <MentionListManager Limit="5">
                 <MarkupEditor
                     @ref="_editorRef"
-                    HtmlConverter="@_htmlConverter"
+                    HtmlConverter="@_markupHub.MarkupEditorHtmlConverter"
                     Id="message-input"
                     Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
                     Placeholder="Enter some text..."
@@ -39,23 +39,22 @@
     private MarkupEditor _editorRef = null!;
     private string _markup = "@`Mention`the-actual-one:361 normal *italic* **bold** `code`\n\n```cs\nCode\n```";
     private Markup _parsedMarkup = null!;
-    private MarkupEditorHtmlConverter _htmlConverter = null!;
+    private MarkupHub _markupHub = null!;
 
-    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+    [Inject] private ServiceFactory<MarkupHub, ChatId> MarkupHubFactory { get; init; } = null!;
 
     protected override void OnInitialized()
-        => _htmlConverter = new MarkupEditorHtmlConverter(MarkupHub);
+        => _markupHub = MarkupHubFactory[Constants.Chat.DefaultChatId];
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            MarkupHub.ChatId = Constants.Chat.DefaultChatId;
             await OnSetMarkupClick();
         }
     }
 
     private async Task OnGetMarkupClick() {
         _markup = await _editorRef.GetText();
-        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
+        _parsedMarkup = await _markupHub.ParseAndNameMentions(_markup, default);
         StateHasChanged();
     }
 
@@ -64,7 +63,7 @@
 
     private async Task OnPost(string text) {
         _markup = text;
-        _parsedMarkup = await MarkupHub.ParseAndNameMentions(_markup, default);
+        _parsedMarkup = await _markupHub.ParseAndNameMentions(_markup, default);
         await _editorRef.Clear();
         StateHasChanged();
     }

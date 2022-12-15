@@ -33,11 +33,14 @@
 }
 
 @code {
+    private MarkupHub _markupHub = null!;
+    private string _quoteText = "";
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
+    [Inject] private ServiceFactory<MarkupHub, ChatId> MarkupHubFactory { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
@@ -45,18 +48,19 @@
 
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
-    private string _quoteText = "";
-
-    private ChatEntryReader Reader => Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
+    // Shortcuts
+    private ChatId ChatId => Message.Entry.ChatId;
 
     protected override void OnParametersSet() {
-        MarkupHub.ChatId = Message.Entry.ChatId;
+        var chatId = ChatId;
+        if (_markupHub == null! || _markupHub.ChatId != chatId)
+            _markupHub = MarkupHubFactory[chatId];
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Message.Entry;
         var hasAttachments = chatEntry.Attachments.Length > 0;
-        var markup = await MarkupHub.ParseAndNameMentions(chatEntry.Content, cancellationToken);
+        var markup = await _markupHub.ParseAndNameMentions(chatEntry.Content, cancellationToken);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
         var ownAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, cancellationToken);

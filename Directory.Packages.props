@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.0</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.1</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>7.0.0</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.0</EntityFrameworkCoreNpgsqlVersion>
@@ -15,9 +15,9 @@
     <MicrosoftExtensionsLoggingVersion>7.0.0</MicrosoftExtensionsLoggingVersion>
     <NpgsqlVersion>7.0.0</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.6.80</RedisVersion>
+    <RedisVersion>2.6.86</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>4.1.38</StlFusionVersion>
+    <StlFusionVersion>4.1.40</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-beta.3</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.9</OpenTelemetryAspNetCoreVersion>

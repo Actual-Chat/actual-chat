@@ -9,10 +9,11 @@ public class BackendChatMentionResolver : IChatMentionResolver
 
     public ChatId ChatId { get; set; }
 
-    public BackendChatMentionResolver(IServiceProvider services)
+    public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        ChatId = chatId;
     }
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)

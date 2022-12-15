@@ -38,6 +38,23 @@
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var model = await InnerComputeState(cancellationToken);
+        if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
+            return model;
+
+        var colorLease = ActualizeColorLease(model, _lastRenderedModel);
+        var map = EnrichMapWithPlayedStatus(model.Map, _lastRenderedModel.Map);
+        return new Model {
+            Map = map,
+            ColorLease = colorLease,
+            Color = colorLease?.Color ?? _lastRenderedModel.Color,
+        };
+    }
+
     private async Task OnClick(int startIndex) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var markup = Markup;
@@ -61,22 +78,6 @@
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
         chatPlayers.StartHistoricalPlayback(chatId, startAt);
-    }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var model = await InnerComputeState(cancellationToken);
-        if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
-            return model;
-        var colorLease = ActualizeColorLease(model, _lastRenderedModel);
-        var map = EnrichMapWithPlayedStatus(model.Map, _lastRenderedModel.Map);
-        return new Model {
-            Map = map,
-            ColorLease = colorLease,
-            Color = colorLease?.Color ?? _lastRenderedModel.Color
-        };
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)

@@ -102,7 +102,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
 
         // ChatMentionResolver
-        services.AddSingleton<BackendChatMentionResolverFactory>();
+        services.AddServiceFactory<BackendChatMentionResolver, ChatId>();
 
         // ContentSaver
         services.AddResponseCaching();
