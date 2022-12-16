@@ -10,19 +10,17 @@ public class ChatActivityTest : AppHostTestBase
 
     public ChatActivityTest(ITestOutputHelper @out) : base(@out) { }
 
-    [Fact(Skip = "Stopped working")]
+    [Fact]
     public async Task BasicTest()
     {
         using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
+        await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
-        var clientServices = tester.ClientServices;
+        var clientServices = tester.ScopedAppServices;
         var commander = services.GetRequiredService<ICommander>();
         var authors = services.GetRequiredService<IAuthors>();
         var account = await tester.SignIn(new User("Bob"));
         var session = tester.Session;
-        var sessionProvider = clientServices.GetRequiredService<ISessionProvider>();
-        sessionProvider.Session = session;
 
         var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
